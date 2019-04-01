@@ -1,8 +1,6 @@
-# openpubarchive
-
-# Project Title
-
-Software for online publishing of journal archives - Open Publications Archive Software (OPAS, working Acronym for project) 
+# OpenPubArchive - Open Publications Archive Software (OPAS, working Acronym for project) 
+ 
+(Software for online publishing of journal archives)
 
 The purpose of this project is to produce software to publish an archive of journals to the web.  The first version is based on the requirements of Psychoanalytic Electronic Publishing (PEP), a non-profit company, who currently operate www.PEP-Web.org via commercial software to publish journals and books in the subject domain of Psychoanalysis.  The goal is to rebuild and replace that software with a completely open source alternative.  This project is sponsored and directed initially by PEP.
 
