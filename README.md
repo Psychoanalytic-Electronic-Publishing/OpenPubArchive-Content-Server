@@ -16,7 +16,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-What things you need to install the software and how to install them
+TBD. What things you need to install the software and how to install them.  Docker should be of help here.
 
 ```
 Give examples
@@ -24,7 +24,7 @@ Give examples
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running
+TBD.  A step by step series of examples shall be provided (eventually here) that tell you how to get a development env running
 
 Say what the step will be
 
@@ -46,29 +46,31 @@ Explain how to run the automated tests for this system
 
 ### Break down into end to end tests
 
-Explain what these tests test and why
+An initial test set for Phase I will be developed and consist of queries against the various parts of the schema and to make sure query results make sense in terms of term weighting (e.g., albino elephant problem) and global search versus fielded.  
 
 ```
-Give an example
+http://lucene.472066.n3.nabble.com/The-downsides-of-not-splitting-on-whitespace-in-edismax-the-old-albino-elephant-prob-td4327440.html
 ```
 
 ### And coding style tests
 
-Explain what these tests test and why
+Code should be well commented in English.
+Python code should follow style guidelines, e.g.,
 
 ```
-Give an example
+http://google.github.io/styleguide/pyguide.html
 ```
 
 ## Deployment
 
-Add additional notes about how to deploy this on a live system
+Docker or similar technology will be used to make deployment and redeployment easy.
 
 ## Built With
 
 * [Python]
 * [Solr](http://lucene.apache.org/solr/) - Dependency Management
 * Python Web framework - Flask, Hug, Pyramid, or other!
+* XML/XSLT for coding source files and transforming them
 
 ## Contributing
 
@@ -76,13 +78,13 @@ Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c6
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
+We use [SemVer](http://semver.org/) standards for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
 
 ## Authors
 
 * **Neil R. Shapiro** - *Initial work* - [Scilab Inc.](https://github.com/nrshapiro)
 
-See also the list of [contributors](https://github.com/nrshapiro/openpubarchive/contributors) who participated in this project.
+Future: See also the list of [contributors](https://github.com/nrshapiro/openpubarchive/contributors) who participated in this project.
 
 ## License
 
@@ -90,7 +92,6 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE.md](LIC
 
 ## Acknowledgments
 
-* Psychoanalytic Electronic Publishing is graciously funding this project and donating the code as Open Source to provide the resource to scholarly endevours in other fields.
+* Psychoanalytic Electronic Publishing is graciously funding this project and donating the code as Open Source to provide the resource to scholarly endeavors and related projects.
 
-* The initial requirements for this project are based on PEP-Web, PEP's current system for archived journal search and retrieval.
-
+* The initial requirements for this project are based on PEP-Web, PEP's current system for archived journal search and retrieval.  The requirements for PEP-Web 2021, a future version of PEP-Web, will guide design and development for at least the first release.
