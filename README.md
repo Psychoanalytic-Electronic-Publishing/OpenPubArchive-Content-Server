@@ -69,7 +69,7 @@ Docker or similar technology will be used to make deployment and redeployment ea
 
 * [Python]
 * [Solr](http://lucene.apache.org/solr/) - Dependency Management
-* Python Web framework - Flask, Hug, Pyramid, or other!
+* Python Web framework - Flask, Falcon, Hug, Pyramid, or other!
 * XML/XSLT for coding source files and transforming them
 
 ## Contributing
