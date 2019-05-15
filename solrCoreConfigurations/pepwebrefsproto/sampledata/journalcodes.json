@@ -1,0 +1,1124 @@
+{
+"RECORDS":[
+{
+"jrnlcode":"ADPSA",
+"jrnlnamefull":"Almanach der Psychoanalyse ",
+"jrnlname":"Almanach d. PsA.",
+"active":1,
+"pepversion":16,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"AIM",
+"jrnlnamefull":"American Imago",
+"jrnlname":"Am. Imago",
+"active":1,
+"pepversion":9,
+"duplicate":null,
+"landing_page":"journalLanding\/aim_FM.pdf",
+"jrnl":1
+},
+{
+"jrnlcode":"AJP",
+"jrnlnamefull":"American Journal of Psychoanalysis",
+"jrnlname":"Am. J. Psychoanal.",
+"active":1,
+"pepversion":10,
+"duplicate":null,
+"landing_page":"http:\/\/www.palgrave-journals.com\/ajp\/subscribe.html",
+"jrnl":1
+},
+{
+"jrnlcode":"AJRPP",
+"jrnlnamefull":"Attachment: New Directions in Relational Psychoanalysis and Psychotherapy",
+"jrnlname":"Attach: New Dir. Rel. Psychoanal. Psychother.",
+"active":1,
+"pepversion":14,
+"duplicate":null,
+"landing_page":"https:\/\/www.karnacbooks.com\/JournalDetail.asp?ID=5",
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-CHI",
+"jrnlnamefull":"Chinese Annual of Psychoanalysis",
+"jrnlname":"Chi Annual of Int. J. Psychoanal.",
+"active":1,
+"pepversion":18,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-DE",
+"jrnlnamefull":"Internationale Psychoanalyse",
+"jrnlname":"Int. Psychoanalyse",
+"active":1,
+"pepversion":8,
+"duplicate":null,
+"landing_page":"http:\/\/www.annualsofpsychoanalysis.com\/page_de.html",
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-DE001",
+"jrnlnamefull":"Ausgewählte Beiträge aus dem \"International Journal of Psychoanalysis",
+"jrnlname":"Int. Psychoanalyse",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-DE",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-DE002",
+"jrnlnamefull":"Schweigen-Ausgewählte-Beiträge-International-Psychoanalysis",
+"jrnlname":"Int. Psychoanalyse",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-DE",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-DE003",
+"jrnlnamefull":"Vorstoß ins Sprachlose: Ausgewählte Beiträge aus dem International Journal of Psychoanalysis",
+"jrnlname":"Int. Psychoanalyse",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-DE",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-DE004",
+"jrnlnamefull":"Ausgewählte Beiträge aus dem \"International Journal of Psychoanalysis\"",
+"jrnlname":"Int. Psychoanalyse",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-DE",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-DE005",
+"jrnlnamefull":"Internationale Psychoanalyse 2010",
+"jrnlname":"Int. Psychoanalyse",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-DE",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-DE006",
+"jrnlnamefull":"Internationale Psychoanalyse 2011",
+"jrnlname":"Int. Psychoanalyse",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-DE",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-DE007",
+"jrnlnamefull":"Internationale Psychoanalyse 2012",
+"jrnlname":"Int. Psychoanalyse",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-DE",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-DE008",
+"jrnlnamefull":"Internationale Psychoanalyse 2013",
+"jrnlname":"Int. Psychoanalyse",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-DE",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-DE009",
+"jrnlnamefull":"Internationale Psychoanalyse 2014",
+"jrnlname":"Int. Psychoanalyse",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-DE",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-EL",
+"jrnlnamefull":"Ετήσια ελληνική έκδοση",
+"jrnlname":"Ετήσια ελληνική έκδοση",
+"active":1,
+"pepversion":12,
+"duplicate":null,
+"landing_page":"http:\/\/www.annualsofpsychoanalysis.com\/page_gr.html",
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-FR",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":1,
+"pepversion":8,
+"duplicate":null,
+"landing_page":"http:\/\/www.annualsofpsychoanalysis.com\/page_fr.html",
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-FR2003",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-FR",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-FR2004",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-FR",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-FR2005",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-FR",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-FR2006",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-FR",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-FR2007",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-FR",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-FR2008",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-FR",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-FR2009",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-FR",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-FR2010",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-FR",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-FR2011",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-FR",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-FR2012",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-FR",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-FR2014",
+"jrnlnamefull":"L'anneé Psychanalytique Internationale\t",
+"jrnlname":"L'Annee Psychanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-FR",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-IT",
+"jrnlnamefull":"L'Annata Psicoanaltica Internazionale",
+"jrnlname":"L'Annata Psicoanal. Int.",
+"active":1,
+"pepversion":8,
+"duplicate":null,
+"landing_page":"http:\/\/www.annualsofpsychoanalysis.com\/page_it.html",
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-IT001",
+"jrnlnamefull":"L'Annata Psicoanaltica Internazionale",
+"jrnlname":"L'Annata Psicoanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-IT",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-IT002",
+"jrnlnamefull":"L'Annata Psicoanaltica Internazionale",
+"jrnlname":"L'Annata Psicoanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-IT",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-IT003",
+"jrnlnamefull":"L'Annata Psicoanaltica Internazionale",
+"jrnlname":"L'Annata Psicoanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-IT",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-IT004",
+"jrnlnamefull":"L'Annata Psicoanaltica Internazionale",
+"jrnlname":"L'Annata Psicoanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-IT",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-IT005",
+"jrnlnamefull":"L'Annata Psicoanaltica Internazionale",
+"jrnlname":"L'Annata Psicoanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-IT",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-IT006",
+"jrnlnamefull":"L'Annata Psicoanaltica Internazionale",
+"jrnlname":"L'Annata Psicoanal. Int.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANIJP-IT",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANIJP-TR",
+"jrnlnamefull":"Uluslararası Psikanaliz Yıllığı \/ The International Journal of Psychoanalysis Turkish Annual",
+"jrnlname":"Int. J.\r\nPsychoanal. Turkish Annu.",
+"active":1,
+"pepversion":14,
+"duplicate":null,
+"landing_page":"http:\/\/www.annualsofpsychoanalysis.com\/page_tu.html",
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-TR001",
+"jrnlnamefull":"Turkish Annual of Psychanal. Int.",
+"jrnlname":"Turkish Annu. of Psychanal. Int.",
+"active":0,
+"pepversion":14,
+"duplicate":"ANIJP-TR",
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-TR002",
+"jrnlnamefull":"Turkish Annual of Psychanal. Int.",
+"jrnlname":"Turkish Annu. of Psychanal. Int.",
+"active":0,
+"pepversion":14,
+"duplicate":"ANIJP-TR",
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-TR003",
+"jrnlnamefull":"Turkish Annual of Psychanal. Int.",
+"jrnlname":"Turkish Annu. of Psychanal. Int.",
+"active":0,
+"pepversion":14,
+"duplicate":"ANIJP-TR",
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-TR004",
+"jrnlnamefull":"Turkish Annual of Psychanal. Int.",
+"jrnlname":"Turkish Annu. of Psychanal. Int.",
+"active":0,
+"pepversion":14,
+"duplicate":"ANIJP-TR",
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-TR005",
+"jrnlnamefull":"Turkish Annual of Psychanal. Int.",
+"jrnlname":"Turkish Annu. of Psychanal. Int.",
+"active":0,
+"pepversion":14,
+"duplicate":"ANIJP-TR",
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"ANIJP-TR006",
+"jrnlnamefull":"Turkish Annual of Psychanal. Int.",
+"jrnlname":"Turkish Annu. of Psychanal. Int.",
+"active":0,
+"pepversion":14,
+"duplicate":"ANIJP-TR",
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"ANRP",
+"jrnlnamefull":"The Italian Psychoanalytic Annual",
+"jrnlname":"Ital. Psychoanal. Annu.",
+"active":1,
+"pepversion":8,
+"duplicate":null,
+"landing_page":"http:\/\/icepj.org\/italian-psychoanalytic-annual\/",
+"jrnl":1
+},
+{
+"jrnlcode":"ANRP001",
+"jrnlnamefull":"The Italian Psychoanalytic Annual",
+"jrnlname":"Ital. Psychoanal. Annu.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANRP",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANRP002",
+"jrnlnamefull":"The Italian Psychoanalytic Annual",
+"jrnlname":"Ital. Psychoanal. Annu.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANRP",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANRP003",
+"jrnlnamefull":"The Italian Psychoanalytic Annual",
+"jrnlname":"Ital. Psychoanal. Annu.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANRP",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANRP004",
+"jrnlnamefull":"The Italian Psychoanalytic Annual",
+"jrnlname":"Ital. Psychoanal. Annu.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANRP",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"ANRP005",
+"jrnlnamefull":"The Italian Psychoanalytic Annual",
+"jrnlname":"Ital. Psychoanal. Annu.",
+"active":0,
+"pepversion":8,
+"duplicate":"ANRP",
+"landing_page":null,
+"jrnl":0
+},
+{
+"jrnlcode":"AOP",
+"jrnlnamefull":"Annual of Psychoanalysis",
+"jrnlname":"Annu. Psychoanal.",
+"active":1,
+"pepversion":4,
+"duplicate":null,
+"landing_page":"journalLanding\/AOP_FM.pdf",
+"jrnl":1
+},
+{
+"jrnlcode":"APA",
+"jrnlnamefull":"Journal of the American Psychoanalytic Association",
+"jrnlname":"J. Amer. Psychoanal. Assn.",
+"active":1,
+"pepversion":1,
+"duplicate":null,
+"landing_page":"journalLanding\/apa_FM.pdf",
+"jrnl":1
+},
+{
+"jrnlcode":"APM",
+"jrnlnamefull":"Revista de Psicoanálisis",
+"jrnlname":"J. Revista de Psicoanal.",
+"active":1,
+"pepversion":14,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"APS",
+"jrnlnamefull":"Journal of Applied Psychoanalytic Studies",
+"jrnlname":"J. Appl. Psychoanal. Stud.",
+"active":1,
+"pepversion":null,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"BAFC",
+"jrnlnamefull":"Bulletin of the Anna Freud Centre",
+"jrnlname":"Bul. Anna Freud Centre",
+"active":1,
+"pepversion":7,
+"duplicate":null,
+"landing_page":"journalLanding\/bafc_FM.pdf",
+"jrnl":1
+},
+{
+"jrnlcode":"BAP",
+"jrnlnamefull":"Bulletin of the American Psychoanalytical Association",
+"jrnlname":"Bul. Amer. Psychoanal. Assn.",
+"active":1,
+"pepversion":1,
+"duplicate":null,
+"landing_page":"journalLanding\/bap_FM.pdf",
+"jrnl":1
+},
+{
+"jrnlcode":"BIP",
+"jrnlnamefull":"Bulletin of the International Psycho-Analytical Association",
+"jrnlname":"Bul. Int. Psychoanal. Assn.",
+"active":1,
+"pepversion":1,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"BJP",
+"jrnlnamefull":"British Journal of Psychotherapy",
+"jrnlname":"Brit. J. Psychother.",
+"active":1,
+"pepversion":14,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"CFP",
+"jrnlnamefull":"Couple and Family Psychoanalysis",
+"jrnlname":"Cpl. Fam. Psychoanal.",
+"active":1,
+"pepversion":12,
+"duplicate":null,
+"landing_page":"http:\/\/www.karnacbooks.com\/JournalDetail.asp?ID=8",
+"jrnl":1
+},
+{
+"jrnlcode":"CJP",
+"jrnlnamefull":"Canadian Journal of Psychoanalysis",
+"jrnlname":"Can. J. Psychoanal.",
+"active":1,
+"pepversion":5,
+"duplicate":null,
+"landing_page":"journalLanding\/cjp_FM.pdf",
+"jrnl":1
+},
+{
+"jrnlcode":"CPS",
+"jrnlnamefull":"Contemporary Psychoanalysis",
+"jrnlname":"Contemp. Psychoanal.",
+"active":1,
+"pepversion":1,
+"duplicate":null,
+"landing_page":"http:\/\/www.p-e-p.org\/contemporary_psychoanalysis.htm",
+"jrnl":1
+},
+{
+"jrnlcode":"DR",
+"jrnlnamefull":"Division Review",
+"jrnlname":"Div. Rev.",
+"active":1,
+"pepversion":15,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"FA",
+"jrnlnamefull":"Free Associations",
+"jrnlname":"Free Associations",
+"active":1,
+"pepversion":7,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"FD",
+"jrnlnamefull":"Fort Da",
+"jrnlname":"Fort Da",
+"active":1,
+"pepversion":10,
+"duplicate":null,
+"landing_page":"http:\/\/www.ncspp.org\/fortda\/",
+"jrnl":1
+},
+{
+"jrnlcode":"GAP",
+"jrnlnamefull":"Gender and Psychoanalysis",
+"jrnlname":"Gender and Psychoanal.",
+"active":1,
+"pepversion":5,
+"duplicate":null,
+"landing_page":"journalLanding\/GAP_FM.pdf",
+"jrnl":1
+},
+{
+"jrnlcode":"IFP",
+"jrnlnamefull":"International Forum of Psychoanalysis",
+"jrnlname":"Int. Forum Psychoanal.",
+"active":1,
+"pepversion":5,
+"duplicate":null,
+"landing_page":"http:\/\/www.informaworld.com\/smpp\/title~content=t713700166~tab=subscribe~db=all",
+"jrnl":1
+},
+{
+"jrnlcode":"IJAPS",
+"jrnlnamefull":"International Journal of Applied Psychoanalytic Studies",
+"jrnlname":"Int. J. Appl. Psychoanal. Stud.",
+"active":1,
+"pepversion":11,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"IJP",
+"jrnlnamefull":"International Journal of Psychoanalysis ",
+"jrnlname":"Int. J. Psychoanal.",
+"active":1,
+"pepversion":1,
+"duplicate":null,
+"landing_page":"http:\/\/www.wiley.com\/bw\/subs.asp?ref=0020-7578&site=1",
+"jrnl":1
+},
+{
+"jrnlcode":"IJP-ES",
+"jrnlnamefull":"International Journal of Psychoanalysis en Espanol",
+"jrnlname":"Int. J. Psychoanal. Es.",
+"active":1,
+"pepversion":15,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"IJPSP",
+"jrnlnamefull":"International Journal of Psychoanalytic Self Psychology",
+"jrnlname":"Int. J. Psychoanal. Self Psychol.",
+"active":1,
+"pepversion":8,
+"duplicate":null,
+"landing_page":"http:\/\/www.psychologyoftheself.com\/ijpsp\/",
+"jrnl":1
+},
+{
+"jrnlcode":"IJPSPPSC",
+"jrnlnamefull":"Psychoanalysis, Self, and Context",
+"jrnlname":"Psychoanal. Self Cxt.",
+"active":1,
+"pepversion":17,
+"duplicate":null,
+"landing_page":" ",
+"jrnl":1
+},
+{
+"jrnlcode":"IMAGO",
+"jrnlnamefull":"Imago",
+"jrnlname":"Imago",
+"active":1,
+"pepversion":16,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"IRP",
+"jrnlnamefull":"International Review of Psychoanalysis",
+"jrnlname":"Int. Rev. Psycho-Anal.",
+"active":1,
+"pepversion":1,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"IZPA",
+"jrnlnamefull":"Internationale Zeitschrift für Psychoanalyse",
+"jrnlname":"Int. Z. Psychoanal.",
+"active":1,
+"pepversion":16,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"JAA",
+"jrnlnamefull":"Journal of the American Academy of Psychoanalysis",
+"jrnlname":"J. Am. Acad. Psychoanal. Dyn. Psychiatr.",
+"active":1,
+"pepversion":5,
+"duplicate":null,
+"landing_page":"http:\/\/aapdp.org\/index.php\/journal\/",
+"jrnl":1
+},
+{
+"jrnlcode":"JBP",
+"jrnlnamefull":"Jahrbuch der Psychoanalyse",
+"jrnlname":"Jahrb. Psychoanal.",
+"active":1,
+"pepversion":15,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"JCP",
+"jrnlnamefull":"Journal of Clinical Psychoanalysis",
+"jrnlname":"J. Clin. Psychoanal.",
+"active":1,
+"pepversion":9,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"JCPTX",
+"jrnlnamefull":"Journal of Child Psychotherapy",
+"jrnlname":"J. Child Psychother.",
+"active":1,
+"pepversion":10,
+"duplicate":null,
+"landing_page":"http:\/\/www.tandf.co.uk\/journals\/RJCP",
+"jrnl":1
+},
+{
+"jrnlcode":"JEP",
+"jrnlnamefull":"Journal of European Psychoanalysis",
+"jrnlname":"J. Eur. Psychoanal.",
+"active":0,
+"pepversion":99,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"JICAP",
+"jrnlnamefull":"Journal of Infant, Child & Adolescent Psychotherapy",
+"jrnlname":"J. Infant Child Adolesc. Psychother.",
+"active":1,
+"pepversion":10,
+"duplicate":null,
+"landing_page":"http:\/\/www.informaworld.com\/smpp\/title~content=t783567625~db=all",
+"jrnl":1
+},
+{
+"jrnlcode":"JOAP",
+"jrnlnamefull":"Journal of Analytical Psychology",
+"jrnlname":"J. Anal. Psychol.",
+"active":1,
+"pepversion":8,
+"duplicate":null,
+"landing_page":"http:\/\/www.wiley.com\/bw\/journal.asp?ref=0021-8774",
+"jrnl":1
+},
+{
+"jrnlcode":"JPPF",
+"jrnlnamefull":"Jahrbuch für psychoanalytische und psychopathologische Forschung",
+"jrnlname":"Jahrb. Psychoanalyt. Psych. Forsch.",
+"active":1,
+"pepversion":16,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"LU-AM",
+"jrnlnamefull":"Luzifer-Amor: Zeitschrift zur Geschichte der Psychoanalyse",
+"jrnlname":"Luzifer-Amor",
+"active":1,
+"pepversion":19,
+"duplicate":null,
+"landing_page":"https:\/\/www.luzifer-amor.de\/index.php?id=11",
+"jrnl":0
+},
+{
+"jrnlcode":"MPSA",
+"jrnlnamefull":"Modern Psychoanalysis",
+"jrnlname":"Mod. Psychoanal.",
+"active":1,
+"pepversion":7,
+"duplicate":null,
+"landing_page":"http:\/\/www.cmps.edu\/publicatons\/subscription.html",
+"jrnl":1
+},
+{
+"jrnlcode":"NP",
+"jrnlnamefull":"Neuropsychoanalysis",
+"jrnlname":"Neurpsychoanalysis",
+"active":1,
+"pepversion":5,
+"duplicate":null,
+"landing_page":"https:\/\/www.neuropsa.org.uk\/main\/secure-page\/centre\/joinoursociety.shtml",
+"jrnl":1
+},
+{
+"jrnlcode":"OPUS",
+"jrnlnamefull":"Organizational and Social Dynamics",
+"jrnlname":"Organ. Soc. Dyn.",
+"active":1,
+"pepversion":12,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"PAH",
+"jrnlnamefull":"Psychoanalysis and History",
+"jrnlname":"Psychoanal. Hist.",
+"active":1,
+"pepversion":9,
+"duplicate":null,
+"landing_page":"http:\/\/www.euppublishing.com\/loi\/pah",
+"jrnl":1
+},
+{
+"jrnlcode":"PAQ",
+"jrnlnamefull":"Psychoanalytic Quarterly",
+"jrnlname":"Psychoanal. Q.",
+"active":1,
+"pepversion":1,
+"duplicate":null,
+"landing_page":"http:\/\/www.psaq.org\/subscribe.html ",
+"jrnl":1
+},
+{
+"jrnlcode":"PCS",
+"jrnlnamefull":"Psychoanalysis and Contemporary Science",
+"jrnlname":"Psychoanal. Contemp Sci",
+"active":1,
+"pepversion":7,
+"duplicate":null,
+"landing_page":"journalLanding\/PCS_FM.pdf",
+"jrnl":1
+},
+{
+"jrnlcode":"PCT",
+"jrnlnamefull":"Psychoanalysis and Contemporary Thought",
+"jrnlname":"Psychoanal. Contemp Thought",
+"active":1,
+"pepversion":7,
+"duplicate":null,
+"landing_page":"journalLanding\/PCT_FM.pdf",
+"jrnl":1
+},
+{
+"jrnlcode":"PD",
+"jrnlnamefull":"Psychoanalytic Dialogues",
+"jrnlname":"Psychoanal. Dial.",
+"active":1,
+"pepversion":3,
+"duplicate":null,
+"landing_page":"http:\/\/www.psychoanalysisarena.com\/psychoanalytic-dialogues-1048-1885",
+"jrnl":1
+},
+{
+"jrnlcode":"PDPSY",
+"jrnlnamefull":"Psychodynamic Psychiatry",
+"jrnlname":"Psychodyn. Psi.",
+"active":1,
+"pepversion":11,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"PI",
+"jrnlnamefull":"Psychoanalytic Inquiry",
+"jrnlname":"Psychoanal. Inq.",
+"active":1,
+"pepversion":3,
+"duplicate":null,
+"landing_page":"http:\/\/www.psychoanalysisarena.com\/psychoanalytic-inquiry-0735-1690",
+"jrnl":1
+},
+{
+"jrnlcode":"PPERSP",
+"jrnlnamefull":"Psychoanalytic Perspectives",
+"jrnlname":"Psychoanal. Persp.",
+"active":1,
+"pepversion":11,
+"duplicate":null,
+"landing_page":"http:\/\/www.psychperspectives.com\/",
+"jrnl":1
+},
+{
+"jrnlcode":"PPSY",
+"jrnlnamefull":"Psychoanalytic Psychology",
+"jrnlname":"Psychoanal. Psychol.",
+"active":1,
+"pepversion":4,
+"duplicate":null,
+"landing_page":"http:\/\/www.apa.org\/pubs\/journals\/pap",
+"jrnl":1
+},
+{
+"jrnlcode":"PPTX",
+"jrnlnamefull":"Psychoanalytic Psychotherapy",
+"jrnlname":"Psychoanal. Psychother.",
+"active":1,
+"pepversion":10,
+"duplicate":null,
+"landing_page":"http:\/\/www.tandf.co.uk\/journals\/titles\/02668734.asp",
+"jrnl":1
+},
+{
+"jrnlcode":"PSABEW",
+"jrnlnamefull":"Psychoanalytische Bewegung",
+"jrnlname":"Psychoanal. Bew.",
+"active":1,
+"pepversion":16,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"PSAR",
+"jrnlnamefull":"Psychoanalytic Review",
+"jrnlname":"Psychoanal. Rev.",
+"active":1,
+"pepversion":7,
+"duplicate":null,
+"landing_page":"http:\/\/www.npap.org\/psychoanalytic\/subscribe.html",
+"jrnl":1
+},
+{
+"jrnlcode":"PSC",
+"jrnlnamefull":"Psychoanalytic Study of the Child",
+"jrnlname":"Psychoanal. Study Child",
+"active":1,
+"pepversion":1,
+"duplicate":null,
+"landing_page":"http:\/\/yalepress.yale.edu\/yupbooks\/SeriesPage.asp?Series=75",
+"jrnl":1
+},
+{
+"jrnlcode":"PSP",
+"jrnlnamefull":"Progress in Self-Psychology",
+"jrnlname":"Progr. Self Psychol.",
+"active":1,
+"pepversion":5,
+"duplicate":null,
+"landing_page":"journalLanding\/PSP_FM.pdf",
+"jrnl":1
+},
+{
+"jrnlcode":"PSU",
+"jrnlnamefull":"Psicoterapia e Scienze Umane",
+"jrnlname":"Psychoter. Sci. U.",
+"active":1,
+"pepversion":17,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"PSW",
+"jrnlnamefull":"Psychoanalytic Social Work",
+"jrnlname":"Psychoanal. Soc. Work",
+"active":1,
+"pepversion":11,
+"duplicate":null,
+"landing_page":"http:\/\/www.tandfonline.com\/toc\/wpsw20\/current",
+"jrnl":1
+},
+{
+"jrnlcode":"PSYCHE",
+"jrnlnamefull":"Psyche - Zeitschrift für Psychoanalyse",
+"jrnlname":"Psyche",
+"active":1,
+"pepversion":13,
+"duplicate":null,
+"landing_page":"http:\/\/volltext.psyche.de\/",
+"jrnl":1
+},
+{
+"jrnlcode":"RBP",
+"jrnlnamefull":"Revue Belge de Psychanalyse",
+"jrnlname":"Rev. Belg. Psychanal.",
+"active":1,
+"pepversion":8,
+"duplicate":null,
+"landing_page":"http:\/\/revue.psychanalyse.be\/commandes1.html",
+"jrnl":1
+},
+{
+"jrnlcode":"REVAPA",
+"jrnlnamefull":"Revista de Psicoanálisis ",
+"jrnlname":"Rev. Psicoanál. ",
+"active":1,
+"pepversion":18,
+"duplicate":null,
+"landing_page":"https:\/\/www.apa.org.ar\/",
+"jrnl":0
+},
+{
+"jrnlcode":"RIP",
+"jrnlnamefull":"Rivista Italiana di Psicoanalisi",
+"jrnlname":"Rivista Italian Psicoanal.",
+"active":1,
+"pepversion":8,
+"duplicate":null,
+"landing_page":"journalLanding\/RPSA_FM.pdf",
+"jrnl":1
+},
+{
+"jrnlcode":"RPP-CS",
+"jrnlnamefull":"Revue psychoanalytická psychoterapie",
+"jrnlname":"Rev. psychoanal. psychoter.",
+"active":1,
+"pepversion":16,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"RPSA",
+"jrnlnamefull":"Rivista di Psychoanalisi",
+"jrnlname":"Rivista Psicoanal.",
+"active":1,
+"pepversion":8,
+"duplicate":null,
+"landing_page":"http:\/\/www.rivistapsicoanalisi.it\/index1.php",
+"jrnl":1
+},
+{
+"jrnlcode":"RRP",
+"jrnlnamefull":"Revue Roumaine de Psychanalyse",
+"jrnlname":"Rom. J. Psychoanal.",
+"active":1,
+"pepversion":14,
+"duplicate":null,
+"landing_page":"http:\/\/revista.srdp.ro\/",
+"jrnl":1
+},
+{
+"jrnlcode":"SGS",
+"jrnlnamefull":"Studies in Gender and Sexuality",
+"jrnlname":"Stud. Gend. Sex.",
+"active":1,
+"pepversion":5,
+"duplicate":null,
+"landing_page":"http:\/\/www.ingentaconnect.com\/content\/tap\/sgs",
+"jrnl":1
+},
+{
+"jrnlcode":"SPR",
+"jrnlnamefull":"Scandinavian Psychoanalytic Review",
+"jrnlname":"Scand. Psychoanal. Rev.",
+"active":1,
+"pepversion":4,
+"duplicate":null,
+"landing_page":"http:\/\/www.scandrev.com\/",
+"jrnl":1
+},
+{
+"jrnlcode":"TVPA",
+"jrnlnamefull":"Tijdschrift voor psychoanalyse",
+"jrnlname":"Tijdschr. Psychoanal.",
+"active":1,
+"pepversion":16,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"ZBPA",
+"jrnlnamefull":"Zentralblatt für Psychoanalyse",
+"jrnlname":"Zbl. Psyca",
+"active":1,
+"pepversion":16,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+},
+{
+"jrnlcode":"ZPSAP",
+"jrnlnamefull":"Zeitschrift für psychoanalytische Pädagogik",
+"jrnlname":"Z. Psychoanalyt Pädagogik",
+"active":1,
+"pepversion":16,
+"duplicate":null,
+"landing_page":null,
+"jrnl":1
+}
+]
+}

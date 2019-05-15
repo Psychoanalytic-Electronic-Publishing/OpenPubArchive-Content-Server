@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+    PEP Reference Database Schema v.01
+    for core PEPWebRefsProto
+-->
+<!-- Schema name just for labeling, the managed-schema file name is what Solr looks for -->
+<schema name="pepwebrefs-nrs" version="1.61">
+  <!-- This is the schema for a database of references extracted from PEP-Web articles (all types) -->
+  <!-- This will give us new types of searches against the database -->
+
+  <!-- the ID will be unique for each bibliographic REFERENCE; the document ID + the bibID (full bib_id) -->
+  <uniqueKey>id</uniqueKey>
+  <!-- ********************************* -->
+  <!-- commonly used field names -->
+  <!-- Redundant with names following patterns, but it's nice to have Fields
+       which exist in all the dbs -->
+  <!-- ********************************* -->
+  <!-- Metadata fields -->
+  <!-- containing file info -->
+  <field name="myfileAbsolutePath" type="string" indexed="true" stored="true"/>
+  <field name="myfileSize" type="string" indexed="true" stored="true"/>
+  <field name="myfileDir" type="string" indexed="true" stored="true"/>
+  <field name="myfileLastModified" type="string" indexed="true" stored="true"/>
+  <field name="myfileName" type="string" indexed="true" stored="true"/>
+
+  <!-- Reference ID = PEP article ID + biblio entry ID -->
+  <field name="id" type="string" indexed="true" stored="true"/>
+  <!-- this will be the biblio reference document authors -->
+  <field name="authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+  <!-- this will be the biblio reference document title (containing article)-->
+  <field name="title" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+  <!-- this is probably not of interest, but leave for now-->
+  <field name="format" type="string" indexed="true" stored="true"/>
+  <!-- version is required to do atomic updates, though I still can't get them to work. -->
+  <field name="_version_" type="plong" indexed="false" stored="false"/>
+  <!-- field "text" full-text of each reference (be|binc)-->
+  <field name="text" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+
+  <!-- ********************************* -->
+  <!-- Containing Article metadata -->
+  <!-- Article Level prefix art_ -->
+  <!-- ********************************* -->
+  <field name="art_id" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_pepsrccode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_pepsourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_pepsourcetitlefull" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_pepsourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_vol" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_year" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_title" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_pgrg" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_lang" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!-- this will be a full-text reference to the  citing document -->
+  <field name="art_citeas" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!-- Article Citation -->
+  <field name="art_citation" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+
+  <!-- ********************************* -->
+  <!-- Biblio fields -->
+  <!-- Reference Level prefix bib_ -->
+  <!-- ********************************* -->
+  <field name="bib_ref_id" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_ref_rx" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_articletitle" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_authors" type="string" indexed="true" stored="true" multiValued="true"/>
+  <!-- source title is book, video source or journal title. -->
+  <field name="bib_sourcetitle" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_sourcetype" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_publisher" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_volume" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_year" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_pgrg" type="string" indexed="true" stored="true" multiValued="false"/>
+  <!-- Naming exception for now, this the full-text biblio reference -->
+  <field name="reference" type="text_general" indexed="true" stored="true" multiValued="false"/>
+
+  <!-- Uncomment the dynamicField definition to catch any other fields
+   that may have been declared in the DIH configuration.
+   This allows to speed up prototyping.
+  -->
+  <!-- <dynamicField name="*" type="string" indexed="true" stored="true" multiValued="true"/> -->
+
+  <!-- The StrField type is not analyzed, but is indexed/stored verbatim. -->
+  <fieldType name="string" class="solr.StrField" sortMissingLast="true"/>
+
+  <!-- A basic text field that has reasonable, generic
+   cross-language defaults: it tokenizes with StandardTokenizer,
+   and down cases. It does not deal with stopwords or other issues.
+   See other examples for alternative definitions.
+  -->
+  <fieldType name="text_simple" class="solr.TextField" positionIncrementGap="100">
+    <analyzer>
+      <!-- nrs added HTMLStripCharFilterFactory -->
+      <charFilter class="solr.HTMLStripCharFilterFactory"/>
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <!-- A general text field that has reasonable, generic
+       cross-language defaults: it tokenizes with StandardTokenizer,
+       removes stop words from case-insensitive "stopwords.txt"
+       (empty by default), and down cases.  At query time only, it
+       also applies synonyms.
+  -->
+  <fieldType name="text_general" class="solr.TextField" positionIncrementGap="100" multiValued="true">
+    <analyzer type="index">
+      <!-- nrs added HTMLStripCharFilterFactory -->
+      <charFilter class="solr.HTMLStripCharFilterFactory"/>
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />
+      <!-- in this example, we will only use synonyms at query time
+      <filter class="solr.SynonymGraphFilterFactory" synonyms="index_synonyms.txt" ignoreCase="true" expand="false"/>
+      <filter class="solr.FlattenGraphFilterFactory"/>
+      -->
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+    <analyzer type="query">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />
+      <filter class="solr.SynonymGraphFilterFactory" synonyms="synonyms.txt" ignoreCase="true" expand="true"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <fieldType name="pint" class="solr.IntPointField" docValues="true"/>
+  <fieldType name="pfloat" class="solr.FloatPointField" docValues="true"/>
+  <fieldType name="plong" class="solr.LongPointField" docValues="true"/>
+  <fieldType name="pdouble" class="solr.DoublePointField" docValues="true"/>
+
+  <fieldType name="pints" class="solr.IntPointField" docValues="true" multiValued="true"/>
+  <fieldType name="pfloats" class="solr.FloatPointField" docValues="true" multiValued="true"/>
+  <fieldType name="plongs" class="solr.LongPointField" docValues="true" multiValued="true"/>
+  <fieldType name="pdoubles" class="solr.DoublePointField" docValues="true" multiValued="true"/>
+  <fieldType name="random" class="solr.RandomSortField" indexed="true"/>
+
+  <!-- since fields of this type are by default not stored or indexed,
+     any data added to them will be ignored outright.  -->
+  <fieldType name="ignored" stored="false" indexed="false" multiValued="true" class="solr.StrField" />
+
+
+</schema>
