@@ -1,0 +1,137 @@
+<!-- Sample Data Input handler, PDF and PEP XML.  Mostly string fields imported from the
+      XML, at the CDATA level since otherwise it doesn't seem to get in.
+
+      2019-05-09 NRS       Version 0.1
+
+-->
+
+<dataConfig>
+  <dataSource name="PEPXMLImporter" type="FileDataSource"/>
+  <document>
+    <!-- this outer processor generates a list of files satisfying the conditions specified in the attributes -->
+      <!-- Alternate entity definitions for testing convenience -->
+      <!-- <entity name="f" processor="FileListEntityProcessor" fileName=".*(bEXP_ARCH1).*"
+        recursive="true" baseDir="${solr.install.dir}/pepsampledocs"
+        rootEntity="false"> -->
+
+      <!-- Alternate entity definition with full path to real source for convenience -->
+      <!-- <entity name="f" processor="FileListEntityProcessor" fileName=".*(bEXP_ARCH1)\.xml"
+      recursive="true" baseDir="X:\_PEPA1\_PEPa1v\_PEPArchive\CPS\"
+      rootEntity="false"> -->
+      <!-- > -->
+      <!-- This entity points to data within the core path -->
+      <entity name="f" processor="FileListEntityProcessor" fileName=".*(bEXP_ARCH1).*(xml|XML)"
+         recursive="true" baseDir="${solr.install.dir}/server/solr/pepwebproto/sampledata"
+         rootEntity="false">
+
+      <!-- this processor extracts content using Xpath from each file found -->
+
+      <!-- NOTE: column is the predefined entity attribute and name is the Solr field! -->
+      <field column="file" name="myfileName" />
+      <field column="fileDir" name="myfileDir" />
+      <field column="fileLastModified" name="myfileLastModified" />
+      <field column="fileAbsolutePath" name="myfileAbsolutePath" />
+      <field column="fileSize" name="myfileSize" />
+
+      <entity name="nested" processor="XPathEntityProcessor" forEach="/pepkbd3" url="${f.fileAbsolutePath}" >
+          <!-- Common fields -->
+         <field column="id" xpath="/pepkbd3/artinfo/@id"/>
+         <field column="authors" xpath="/pepkbd3/artinfo/artauth/aut/@authindexid"/>
+         <field column="title" xpath="/pepkbd3/artinfo/arttitle" meta="true"/>
+         <field column="text"  xpath="/pepkbd3/node()"/>
+
+          <!-- Metadata fields -->
+          <!-- <field column="author_name_first" xpath="/pepkbd3/artinfo/artauth/aut/nfirst"/> -->
+          <!-- Article front matter fields -->
+          <field column="abstract_1" xpath="/pepkbd3/abs/p"/>
+          <field column="abstract_2" xpath="/pepkbd3/abs/p2"/>
+          <field column="artdoi" xpath="/pepkbd3/artinfo/@doi"/>
+          <field column="artiss" xpath="/pepkbd3/artinfo/artiss"/>
+          <field column="artissn" xpath="/pepkbd3/artinfo/@issn"/>
+          <field column="artjournal" xpath="/pepkbd3/artinfo/@j"/>
+          <field column="artkwds" xpath="/pepkbd3/artinfo/artkwds"/>
+          <field column="artlang" xpath="/pepkbd3//@lang"/>
+          <field column="artnewsecnm" xpath="/pepkbd3/artinfo/@newsecnm"/>
+          <field column="artpgrg" xpath="/pepkbd3/artinfo/artpgrg"/>
+          <field column="artqual" xpath="/pepkbd3/artinfo/artqual/@rx"/>
+          <field column="artsubtitle" xpath="/pepkbd3/artinfo/artsub"/>
+          <field column="arttitle" xpath="/pepkbd3/artinfo/arttitle"/>
+          <field column="arttype" xpath="/pepkbd3/artinfo/@arttype"/>
+          <field column="artvol" xpath="/pepkbd3/artinfo/artvol"/>
+          <field column="artvoltitle" xpath="/pepkbd3/artinfo/artvolinfo/artvol/voltitle"/>
+          <field column="artyear" xpath="/pepkbd3/artinfo/artyear"/>
+          <field column="author_bio" xpath="/pepkbd3/artinfo/artauth/aut/nbio"/>
+          <field column="author_name_last" xpath="/pepkbd3/artinfo/artauth/aut/nlast"/>
+          <field column="author_name_str" xpath="/pepkbd3/artinfo/artauth/aut/@authindexid"/>
+          <!-- Doing this since copyfield doesn't seem to work for this field! -->
+          <!-- biblio section fields -->
+          <field column="bib_article_cited_id" xpath="/pepkbd3//be/@rx"/>
+          <field column="bib_articletitle" xpath="/pepkbd3//t"/>
+          <field column="bib_author" xpath="/pepkbd3//a"/>
+          <field column="bib_authorlastname" xpath="/pepkbd3//be//l"/>
+          <field column="bib_booktitle" xpath="/pepkbd3//bst"/>
+          <field column="bib_journaltitle" xpath="/pepkbd3//be/j"/>
+          <field column="bib_yearofpublication" xpath="/pepkbd3//be/y"/>
+          <field column="bib_yearofbookpublication" xpath="/pepkbd3//bpd"/>
+          <field column="bib_volume" xpath="/pepkbd3//be/v"/>
+          <field column="bib_publishers" xpath="/pepkbd3//bp"/>
+          <field column="bib_refentry" xpath="/pepkbd3//be/node()"/>
+          <field column="bib_includeentry" xpath="/pepkbd3//binc"/>
+          <field column="bib_entry" xpath="/pepkbd3//be"/>
+          <field column="bib_entry2" xpath="/pepkbd3//be"/>
+
+          <!-- Book front matter metadata -->
+          <field column="bkalsoknownas" xpath="/pepkbd3/artinfo/artbkinfo/bkalsoknownas"/>
+          <field column="bkeditor_name_last" xpath="/pepkbd3/artinfo/artbkinfo/bkeditor/aut/nlast"/>
+          <field column="bkeditor_name" xpath="/pepkbd3/artinfo/artbkinfo/bkeditor/aut/@authindexid"/>
+          <field column="bkpubyear" xpath="/pepkbd3/artinfo/artbkinfo/bkpubyear"/>
+          <field column="bkseriestitle" xpath="/pepkbd3/artinfo/artbkinfo/bkseriestitle"/>
+          <field column="bktitle" xpath="/pepkbd3/artinfo/artbkinfo/bktitle"/>
+          <!-- article content -->
+          <field column="body_para_1" xpath="/pepkbd3/body/p"/>
+          <field column="body_para_2" xpath="/pepkbd3/body/p2"/>
+          <field column="captiontext" xpath="/pepkbd3//caption/p"/>
+          <field column="captiontitle" xpath="/pepkbd3//caption/ctitle"/>
+          <field column="citations" xpath="/pepkbd3//bx/"/>
+          <field column="heading_1" xpath="/pepkbd3//h1"/>
+          <field column="heading_2" xpath="/pepkbd3//h2"/>
+          <field column="heading_3" xpath="/pepkbd3//h3"/>
+          <field column="heading_4" xpath="/pepkbd3//h4"/>
+          <field column="heading_5" xpath="/pepkbd3//h5"/>
+          <field column="heading_6" xpath="/pepkbd3//h6"/>
+
+          <field column="impx" xpath="/pepkbd3//impx"/>
+          <field column="impx_grpname" xpath="/pepkbd3//impx/@grpname"/>
+          <field column="impx_id" xpath="/pepkbd3//impx/@rx"/>
+
+          <field column="para_named" xpath="/pepkbd3//p/@name"/>
+          <field column="revbld" xpath="/pepkbd3/meta/revisions/revbld"/>
+          <field column="revdesc" xpath="/pepkbd3/meta/revisions/revdesc"/>
+          <field column="summary_1" xpath="/pepkbd3//summaries//p"/>
+          <field column="summary_2" xpath="/pepkbd3//summaries//p"/>
+          <field column="tagline" xpath="/pepkbd3//tagline//p"/>
+          <field column="term" xpath="/pepkbd3//impx[@type='term2']"/>
+          <field column="terms_bolded" xpath="/pepkbd3//b/"/>
+          <field column="terms_italicized" xpath="/pepkbd3//i/"/>
+          <field column="zone_dialog_spkr" xpath="/pepkbd3//dialog//spkr"/>
+          <field column="zone_dialog_1" xpath="/pepkbd3//dialog//p"/>
+          <field column="zone_dialog_2" xpath="/pepkbd3//dialog//p2"/>
+          <field column="zone_dream_1" xpath="/pepkbd3//dream//p"/>
+          <field column="zone_dream_2" xpath="/pepkbd3//dream//p2"/>
+          <field column="zone_note_1" xpath="/pepkbd3//note//p"/>
+          <field column="zone_note_2" xpath="/pepkbd3//note//p2"/>
+          <field column="zone_panel_spkr" xpath="/pepkbd3//panel//spkr"/>
+          <field column="zone_panel_1" xpath="/pepkbd3//panel//p"/>
+          <field column="zone_panel_2" xpath="/pepkbd3//panel//p2"/>
+          <field column="zone_poem_src" xpath="/pepkbd3//poem//src"/>
+          <field column="zone_poem_1" xpath="/pepkbd3//poem//p"/>
+          <field column="zone_poem_2" xpath="/pepkbd3//poem//p2"/>
+          <field column="zone_quote_spkr" xpath="/pepkbd3//quote//spkr"/>
+          <field column="zone_quote_1" xpath="/pepkbd3//quote//p"/>
+          <field column="zone_quote_2" xpath="/pepkbd3//quote//p2"/>
+          <field column="zone_be" xpath="/pepkbd3//be"/>
+
+      </entity>
+    </entity>
+  </document>
+</dataConfig>

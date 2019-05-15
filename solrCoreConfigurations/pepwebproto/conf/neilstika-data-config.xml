@@ -1,0 +1,29 @@
+<!-- Sample Data Input handler, PDF and PEP XML.  Mostly string fields imported from the
+      XML, at the CDATA level since otherwise it doesn't seem to get in.
+
+      2019-05-09 NRS       Version 0.1
+
+-->
+
+<dataConfig>
+  <dataSource name="PEPPDFImporter" type="BinFileDataSource"/>
+  <document>
+    <entity name="file" processor="FileListEntityProcessor" dataSource="PEPPDFImporter"
+            baseDir="${solr.install.dir}/pepsampledocs" fileName=".*(pdf|xml)" recursive="true"
+            rootEntity="false">
+
+      <field column="file" name="id"/>
+
+      <entity name="pdf" processor="TikaEntityProcessor"
+              url="${file.fileAbsolutePath}" format="text">
+
+        <field column="authors" name="author" meta="true"/>
+
+        <field column="title" name="title" meta="true"/>
+        <field column="dc:format" name="format" meta="true"/>
+        <field column="text" name="text"/>
+
+      </entity>
+    </entity>
+  </document>
+</dataConfig>
