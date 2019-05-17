@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Web Database Schema v.02
+    PEP Web Database Schema v.00.01.03
     for core PEPWebProto
+
+    2019-05-16: had to change art_kwds to multiValued, in testing against
+                full PEP Data set.
+    
 -->
 <!-- Schema name just for labeling, the managed-schema file name is what Solr looks for -->
 <schema name="pepwebproto-nrs" version="1.61">
@@ -63,7 +67,7 @@
   <field name="art_lang" type="string" indexed="true" stored="true" multiValued="true"/>
   <field name="art_iss"  type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="art_issn" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_kwds"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_kwds"  type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <field name="art_qual" type="string" indexed="true" stored="true" docValues="true" multiValued="false"/>
   <field name="art_newsecnm" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!-- this will be a full-text reference to the  citing document -->
