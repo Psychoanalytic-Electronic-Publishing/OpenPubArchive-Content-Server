@@ -24,9 +24,14 @@ docker-compose up
 ```
 will start both the sftp demon, and solr.
 Sftp will be accessible on port :2222, while solr will be accessible on its normal port :8983.
+
+In this moment, the FTP user is _foo_ with password _pass_: this will change as soon as we decide on the mechanism to upload files and manage identities.
+
 The address:
 http://localhost:8983/solr/#/pepwebrefsproto/query
 should be accessible once the services have started.
+
+**Please note** that the index will be empty. It is then necessary to copy/move the data for the index, or insert the documents. **The index will be persisted**.
 
 ### Installing
 
