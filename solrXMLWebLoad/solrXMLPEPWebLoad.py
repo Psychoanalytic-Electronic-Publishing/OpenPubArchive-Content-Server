@@ -25,7 +25,7 @@ OPAS - Open Publications-Archive Software
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "0.1.21"
+__version__     = "0.1.22"
 __status__      = "Development"
 
 #Revisions:
@@ -522,7 +522,7 @@ def main():
     scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
 
     parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.13")
-    parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default="False",
+    parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
                       help="Option to force all files to be updated on the specified cores.  This does not reset the file tracker but updates it as files are processed.")
     parser.add_option("-b", "--bibliocorename", dest="biblioCoreName", default=None,
                       help="the Solr corename (holding the collection) to connect to, i.e., where to send data.  Example: 'pepwebrefs'")
