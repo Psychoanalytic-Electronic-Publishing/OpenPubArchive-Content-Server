@@ -1,31 +1,44 @@
-""" solrXMLPEPWebRefsLoad
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import print_function
+print(
+""" 
+OPAS - Open Publications-Archive Software 
 
-This module imports references from PEP's processed XML form (bEXP_ARCH1)
-   into a Solr database.
-
-Example Invocation:
-
-        $ python solrXMLPEPRefsLoad.py
-
-        Use -h for help on arguments.
-
-Todo:
-    * Need to add code to only do "new" files to save build time
-
-
-
-Initial Release: Neil R. Shapiro 2019-05-13 (python 2.7)
-
-Revisions:
-    2019-05-16: Addded command line options to specify a different path for PEPSourceInfo.json
-                Added error logging using python's built-in logging library default INFO level
-
+    Load articles into one Solr core and extract individual references from
+    the bibliography into a second Solr core.
+    
+    This data loader is specific to PEP Data and Bibliography schemas but can 
+    serve as a model or framework for other schemas
+    
+    Example Invocation:
+    
+            $ python solrXMLPEPWebLoad.py
+    
+            Use -h for help on arguments.
+            
+            (Requires Python 2.7)
+    
 """
+)
+
+__author__      = "Neil R. Shapiro"
+__copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
+__license__     = "Apache 2.0"
+__version__     = "0.1.21"
+__status__      = "Development"
+
+#Revisions:
+    #2019-05-16: Addded command line options to specify a different path for PEPSourceInfo.json
+                #Added error logging using python's built-in logging library default INFO level
+
+    #2019-06-01: Fixe
+
+
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
 
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004
-
 import re
 import sys
 import os
@@ -37,8 +50,6 @@ from datetime import datetime
 from optparse import OptionParser
 from base64 import b64encode
 
-# If on Python 2.X
-#from __future__ import print_function
 import json
 import lxml
 from lxml import etree
@@ -47,9 +58,6 @@ import solr     # supports a number of types of authentication, including basic.
 
 import config
 from OPASFileTracker import FileTracker, FileTrackingInfo
-
-# Globals
-options = None
 
 class ExitOnExceptionHandler(logging.StreamHandler):
     """
@@ -109,7 +117,7 @@ def xmlGetSingleDirectSubnodeText(elementNode, subelementName):
     except IndexError, err:
         retVal = elementNode.xpath('%s' % subelementName)
     except Exception, err:
-        print "getSingleSubnodeText Error: ", err
+        print ("getSingleSubnodeText Error: ", err)
 
     if retVal == []:
         retVal = ""
@@ -176,14 +184,9 @@ def readSourceInfoDB(journalInfoFile):
 class ArticleInfo:
     """
     Grab all the article metadata, and save as instance variables.
-
-    TODO: Like the rest of the code, this is "caught" between snake_case (from names meant to match Solr) and my usual camelCase.
-          we do need to eventually fix this.
     """
     def __init__(self, sourceInfoDB, pepxml, artID, logger):
-        #self.articleInfo = {}
         #global options
-
         # let's just double check artid!
         self.artID = artID
         try:
@@ -213,7 +216,7 @@ class ArticleInfo:
             self.artPepSourceTitleFull = ""
             self.artPepSourceType = ""
             self.artPepSrcEmbargo = None
-            logger.warn("Error: PEP Source Code %s not found in db (%s).  Use the 'PEPSourceInfo export' after fixing the issn table in MySQL DB", self.artPepSrcCode, options.rootFolder + options.sourceCodeDBName)
+            logger.warn("Error: PEP Source %s not found in source info db.  Use the 'PEPSourceInfo export' after fixing the issn table in MySQL DB", self.artPepSrcCode)
 
         except Exception, err:
             logger.error("Error: Problem with this files source info. File skipped. (%s)", err)
@@ -282,37 +285,39 @@ def processFileforFullTextCore(pepxml, base, artInfo, solrcon, fileXMLContents):
 
 
     """
-    bib_references = pepxml.xpath("/pepkbd3//be")
+    if options.displayVerbose:
+        print("   ...Processing main file content for the %s core." % options.fullTextCoreName)
+
+    #bib_references = pepxml.xpath("/pepkbd3//be")
     #bib_refentries_struct = {}  # not using this struct because solrpy doesn't like loading structures to solr
                                  # and in retrospect, we probably don't need it.  But leaving as 
                                  # comments if we want to later reintroduce it.
-    print("   ...Processing main file content for the %s core." % options.fullTextCoreName)
 
     # walk through the references, save general info into a struct
-    for ref in bib_references:
+    #for ref in bib_references:
         # Check special bib fields, where data could come from multiple places
-        bib_articletitle = xmlGetSingleDirectSubnodeText(ref, "t")
-        bib_sourcetitle = xmlGetSingleDirectSubnodeText(ref, "j")
-        bib_publishers = xmlGetSingleDirectSubnodeText(ref, "bp")
-        bib_bookyearofpublication = xmlGetSingleDirectSubnodeText(ref, "bpd")
-        bib_yearofpublication = xmlGetSingleDirectSubnodeText(ref, "y")
-        if bib_publishers != "":
-            bib_sourcetype = "book"
-        else:
-            bib_sourcetype = "journal"
-        if bib_sourcetype == "book":
-            if bib_yearofpublication == "":
-                bib_yearofpublication = bib_bookyearofpublication
-            if bib_bookyearofpublication == "":
-                bib_bookyearofpublication = bib_yearofpublication
-            if bib_sourcetitle == "":
-                bib_sourcetitle = bib_sourcetitle  # book title
-                if bib_articletitle == "":
-                    bib_articletitle = xmlGetSingleDirectSubnodeText(ref, "bst")  # book title
-                    bib_sourcetitle = ""
+        #bib_articletitle = xmlGetSingleDirectSubnodeText(ref, "t")
+        #bib_sourcetitle = xmlGetSingleDirectSubnodeText(ref, "j")
+        #bib_publishers = xmlGetSingleDirectSubnodeText(ref, "bp")
+        #bib_bookyearofpublication = xmlGetSingleDirectSubnodeText(ref, "bpd")
+        #bib_yearofpublication = xmlGetSingleDirectSubnodeText(ref, "y")
+        #if bib_publishers != "":
+            #bib_sourcetype = "book"
+        #else:
+            #bib_sourcetype = "journal"
+        #if bib_sourcetype == "book":
+            #if bib_yearofpublication == "":
+                #bib_yearofpublication = bib_bookyearofpublication
+            #if bib_bookyearofpublication == "":
+                #bib_bookyearofpublication = bib_yearofpublication
+            #if bib_sourcetitle == "":
+                #bib_sourcetitle = bib_sourcetitle  # book title
+                #if bib_articletitle == "":
+                    #bib_articletitle = xmlGetSingleDirectSubnodeText(ref, "bst")  # book title
+                    #bib_sourcetitle = ""
 
-        bib_author_name_list = [(etree.tostring(x, with_tail=False)) for x in ref.findall("a")]
-        bib_authors = '; '.join(bib_author_name_list)
+        #bib_author_name_list = [(etree.tostring(x, with_tail=False)) for x in ref.findall("a")]
+        #bib_authors = '; '.join(bib_author_name_list)
 
         # Now put the reference data into a structure
 
@@ -413,10 +418,10 @@ def processFileforFullTextCore(pepxml, base, artInfo, solrcon, fileXMLContents):
                                       text_xml = unicode(fileXMLContents, "utf8")
                                      )
         if not re.search('"status">0</int>', response_update):
-            print response_update
+            print (response_update)
     except Exception, err:
         #processingErrorCount += 1
-        print "Error for :", artInfo.artID, err
+        print ("Error for :", artInfo.artID, err)
         config.logger.error("Solr call exception %s", err)
 
     return
@@ -436,9 +441,11 @@ def processBibSection(pepxml, base, artInfo, solrcon):
     #Note: currently, this does not include footnotes or biblio include tagged data in document (binc)
     bibReferences = pepxml.xpath("/pepkbd3//be")
     retVal = bibReferenceCount = len(bibReferences)
-    print("   ...Processing %s references for the references database." % (bibReferenceCount))
+    if options.displayVerbose:
+        print("   ...Processing %s references for the references database." % (bibReferenceCount))
     #processedFilesCount += 1
 
+    allRefs = []
     for ref in bibReferences:
         config.bibTotalReferenceCount += 1
         bibRefEntry = etree.tostring(ref, with_tail=False)
@@ -461,55 +468,53 @@ def processBibSection(pepxml, base, artInfo, solrcon):
         bibAuthorNameList = [etree.tostring(x, with_tail=False) for x in ref.findall("a") if x is not None]
         bibAuthorsXml = '; '.join(bibAuthorNameList)
         #Note: Changed to is not None since if x gets warning - FutureWarning: The behavior of this method will change in future versions. Use specific 'len(elem)' or 'elem is not None' test instead
-        authorList = [xmlTextOnly(x) for x in ref.findall("a") if x is not None]   # final if x gets rid of any None entries which can rarely occur.
+        authorList = [xmlTextOnly(x) for x in ref.findall("a") if xmlTextOnly(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
         authorList = '; '.join(authorList)
+        
+        thisRef = {
+                    "id" : refID,
+                    "art_id" : artInfo.artID,
+                    "art_title" : artInfo.artTitle,
+                    "art_pepsrccode" : artInfo.artPepSrcCode,
+                    "art_pepsourcetitleabbr" : artInfo.artPepSourceTitleAbbr,
+                    "art_pepsourcetitlefull" : artInfo.artPepSourceTitleFull,
+                    "art_pepsourcetype" : artInfo.artPepSourceType,
+                    "art_authors" : artInfo.artAuthors,
+                    "art_year" : artInfo.artYear,
+                    "art_vol" : artInfo.artVol,
+                    "art_pgrg" : artInfo.artPgrg,
+                    "art_lang" : artInfo.artLang,
+                    "art_citeas_xml" : artInfo.artCiteAsXML,
+                    "text" : bibRefEntry,                        
+                    "authors" : authorList,
+                    "title" : xmlFindSubElementText(ref, "t"),
+                    "bib_authors_xml" : bibAuthorsXml,
+                    "bib_ref_id" : bibRefID,
+                    "bib_ref_rx" : xmlGetElementAttr(ref, "rx"),
+                    "bib_articletitle" : xmlFindSubElementText(ref, "t"),
+                    "bib_sourcetype" : bibSourceType,
+                    "bib_sourcetitle" : bibSourceTitle,
+                    "bib_pgrg" : xmlFindSubElementText(ref, "pp"),
+                    "bib_year" : bibYearofPublication,
+                    "bib_volume" : xmlFindSubElementText(ref, "v"),
+                    "bib_publisher" : bibPublishers            
+                  }
+        allRefs.append(thisRef)
+        
+    # We collected all the references.  Now lets save the whole shebang
+    try:
+        response_update = solrcon.add_many(allRefs)  # lets hold off on the , _commit=True)
 
-        try:
-            response_update = solrcon.add(id = refID,
-                                          art_id = artInfo.artID,
-                                          art_title = artInfo.artTitle,
-                                          art_pepsrccode = artInfo.artPepSrcCode,
-                                          art_pepsourcetitleabbr = artInfo.artPepSourceTitleAbbr,
-                                          art_pepsourcetitlefull = artInfo.artPepSourceTitleFull,
-                                          art_pepsourcetype = artInfo.artPepSourceType,
-                                          art_authors = artInfo.artAuthors,
-                                          art_year = artInfo.artYear,
-                                          art_vol = artInfo.artVol,
-                                          art_pgrg = artInfo.artPgrg,
-                                          art_lang = artInfo.artLang,
-                                          art_citeas_xml = artInfo.artCiteAsXML,
-                                          text =  bibRefEntry,                        # full text of the reference in XML
-                                          authors = authorList,
-                                          title = xmlFindSubElementText(ref, "t"),
-                                          bib_authors_xml = bibAuthorsXml,
-                                          bib_ref_id = bibRefID,
-                                          bib_ref_rx = xmlGetElementAttr(ref, "rx"),
-                                          bib_articletitle = xmlFindSubElementText(ref, "t"),
-                                          bib_sourcetype = bibSourceType,
-                                          bib_sourcetitle = bibSourceTitle,
-                                          bib_pgrg = xmlFindSubElementText(ref, "pp"),
-                                          bib_year = bibYearofPublication,
-                                          bib_volume = xmlFindSubElementText(ref, "v"),
-                                          bib_publisher = bibPublishers
-                                          )
-            if not re.search('"status">0</int>', response_update):
-                print response_update
-        except Exception, err:
-            #processingErrorCount += 1
-            config.logger.error("Solr call exception %s", err)
+        if not re.search('"status">0</int>', response_update):
+            print (response_update)
+    except Exception, err:
+        #processingErrorCount += 1
+        config.logger.error("Solr call exception %s", err)
 
     return retVal  # return the bibRefCount
 
-
 def main():
-    print """OPAS Web Data Loader specific to PEP Data and Bibliography schemas...
-
-             Load articles into one Solr core and extract individual references from
-             the bibliography into a second Solr core.
-
-             Ver 0.1.21 - nrs 2019-06-01
-        """
-
+    
     global options  # so the information can be used in support functions
     global bibTotalReferenceCount
 
@@ -521,24 +526,24 @@ def main():
                       help="Option to force all files to be updated on the specified cores.  This does not reset the file tracker but updates it as files are processed.")
     parser.add_option("-b", "--bibliocorename", dest="biblioCoreName", default=None,
                       help="the Solr corename (holding the collection) to connect to, i.e., where to send data.  Example: 'pepwebrefs'")
-    parser.add_option("-d", "--dataroot", dest="rootFolder", default=r"C:\solr-8.0.0\server\solr\pepwebproto\sampledata\_PEPA1",
+    parser.add_option("-d", "--dataroot", dest="rootFolder", default=config.DEFAULTDATAROOT,
                       help="Root folder path where input data is located")
     parser.add_option("-f", "--fulltextcorename", dest="fullTextCoreName", default=None,
                       help="the Solr corename (holding the collection) to connect to, i.e., where to send data.  Example: 'pepwebproto'")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.INFO,
                       help="Level at which events should be logged")
-    parser.add_option("-r", "--resetcoredata",
+    parser.add_option("--resetcore",
                       action="store_true", dest="resetCoreData", default=False,
-                      help="reset the data in the core (collection)")
+                      help="reset the data in the selected cores")
     parser.add_option("-s", "--sourceinfodbpath", dest="sourceInfoDBPath", default=None,
                       help="Full path (and file name) of JSON file with the source info DB")
-    #parser.add_option("-n", "--sourcodedbname", dest="sourceCodeDBName", default="PEPSourceInfo.json",
-                      #help="Name of source code file (default = PEPSourceInfo.json)")
     parser.add_option("-t", "--trackerdb", dest="fileTrackerDBPath", default="filetracker.db",
                       help="Full path and database name where the File Tracking Database is located (sqlite3 db)")
     parser.add_option("-u", "--url",
-                      dest="solrURL", default="http://localhost:8983/solr/",
+                      dest="solrURL", default=config.DEFAULTSOLRHOME,
                       help="Base URL of Solr api (without core), e.g., http://localhost:8983/solr/", metavar="URL")
+    parser.add_option("-v", "--verbose", action="store_true", dest="displayVerbose", default=False,
+                      help="Display status and operational timing info as load progresses.")
     parser.add_option("--pw", dest="httpPassword", default=None,
                       help="Password for the server")
     parser.add_option("--userid", dest="httpUserID", default=None,
@@ -555,8 +560,6 @@ def main():
 
     logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
 
-    # TODO saving the core name is not important if we are only running once for both cores.
-    # But we do need them for saving to the cores!
     solrAPIURL = None
     solrAPIURLRefs = None
 
@@ -568,21 +571,21 @@ def main():
     # instantiate the fileTracker.
     fileTracker = FileTracker(options.fileTrackerDBPath)
 
-    print "Input data Root: ", options.rootFolder
-    print "Solr Full-Text Core: ", options.fullTextCoreName
-    print "Solr Biblio Core: ", options.biblioCoreName
-    print "Reset Core Data: ", options.resetCoreData
+    print ("Input data Root: ", options.rootFolder)
+    print ("Solr Full-Text Core: ", options.fullTextCoreName)
+    print ("Solr Biblio Core: ", options.biblioCoreName)
+    print ("Reset Core Data: ", options.resetCoreData)
     if options.fullTextCoreName is not None:
-        print "Solr solrAPIURL: ", solrAPIURL
+        print ("Solr solrAPIURL: ", solrAPIURL)
     if options.biblioCoreName is not None:
-        print "Solr solrAPIURLRefs: ", solrAPIURLRefs
-    print "Logfile: ", logFilename
+        print ("Solr solrAPIURLRefs: ", solrAPIURLRefs)
+    print ("Logfile: ", logFilename)
 
     if options.fullTextCoreName is None and options.biblioCoreName is None:
         msg = "No cores specified so no database to update. Use the -f and -b options to specify the core. Use -h for help."
-        print len(msg)*"-"
-        print msg
-        print len(msg)*"-"
+        print (len(msg)*"-")
+        print (msg)
+        print (len(msg)*"-")
         sys.exit(0)
         
     timeStart = time.time()
@@ -592,9 +595,9 @@ def main():
     sourceInfoDB = {}
     try:
         # Read the source code database - info about the various PEP Codes
-        # Default sourceCodeDBName is 'PEPSourceInfo.json' at script path
+        # Default sourceCodeDBName is 'PEPSourceInfo.json' at script path (see config)
         if options.sourceInfoDBPath is None:
-            sourceInfoDB = readSourceInfoDB(os.path.join(scriptSourcePath, 'PEPSourceInfo.json'))
+            sourceInfoDB = readSourceInfoDB(os.path.join(scriptSourcePath, config.SOURCEINFODBFILENAME))
         else:
             sourceInfoDB = readSourceInfoDB(options.sourceInfoDBPath)
     except IOError:
@@ -616,11 +619,11 @@ def main():
     # Reset core's data if requested (mainly for early development)
     if options.resetCoreData:
         if options.fullTextCoreName is not None:
-            print "Deleting all data from the full text core"
+            print ("Deleting all data from the full text core")
             solrFT.delete_query("*:*")
             solrFT.commit()
         if options.biblioCoreName is not None:
-            print "Deleting all data from the References core"
+            print ("Deleting all data from the References core")
             solrBib.delete_query("*:*")
             solrBib.commit()
         # also reset the file tracker in both cases
@@ -628,9 +631,9 @@ def main():
         fileTracker.commit()
 
     if options.forceRebuildAllFiles == False:
-        print "Adding only files with newer modification dates than what's in fileTracker database"
+        print ("Adding only files with newer modification dates than what's in fileTracker database")
     else:
-        print "Forced Rebuild - All files added, regardless of whether they were marked in the fileTracker as already added."
+        print ("Forced Rebuild - All files added, regardless of whether they were marked in the fileTracker as already added.")
 
     # find all processed XML files where build is (bEXP_ARCH1) in path
     # glob.glob doesn't unfortunately work to do this in Py2.7.x
@@ -643,8 +646,6 @@ def main():
     # get a list of all the XML files that are new
     for root, d_names, f_names in os.walk(options.rootFolder):
         for f in f_names:
-            #TODO: We need a "rebuild" option in the command line, to bypass the date skipping (but not the recording)
-
             if filePatternMatch.match(f):
                 totalFiles += 1
                 filename = os.path.join(root, f)
@@ -662,13 +663,12 @@ def main():
                 else:
                     newFiles += 1
                     #print "File is NOT the same!  Scanning the data..."
-                    #fileTracker.setFileDatabaseRecord(currFileInfo)
                     filenames.append(filename)
 
-    print 80*"-"
-    print "Ready to import records from %s files of %s at path: %s." % (newFiles, totalFiles, options.rootFolder)
-    print "%s Skipped files (those not modified since the last run)" % (skippedFiles)
-    print 80*"-"
+    print (80*"-")
+    print ("Ready to import records from %s files of %s at path: %s." % (newFiles, totalFiles, options.rootFolder))
+    print ("%s Skipped files (those not modified since the last run)" % (skippedFiles))
+    print (80*"-")
     bibTotalReferenceCount = 0
     preCommitFileCount = 0
     processedFilesCount = 0
@@ -684,7 +684,7 @@ def main():
         base = os.path.basename(n)
         artID = os.path.splitext(base)[0]
         m = re.match(r"(.*)\(.*\)", artID)
-        print "Processing file #%s of %s: %s (%s bytes)." % (processedFilesCount, totalFiles, base, nFileSize)
+        print ("Processing file #%s of %s: %s (%s bytes)." % (processedFilesCount, totalFiles, base, nFileSize))
 
         # Note: We could also get the artID from the XML, but since it's also important
         # the file names are correct, we'll do it here.  Also, it "could" have been left out
@@ -704,42 +704,45 @@ def main():
         # Update this file in the database as "processed"
         currFileInfo.loadForFile(n, solrAPIURL)
         fileTracker.setFileDatabaseRecord(currFileInfo)
-        # process the bib section
-        if solrAPIURLRefs is not None:
-            bibTotalReferenceCount += processBibSection(pepxml, base, artInfo, solrBib)
-            if preCommitFileCount > config.COMMITLIMIT:
-                preCommitFileCount = 0
-                solrBib.commit()
-                fileTracker.commit()
-                print "Committing %s records" % config.COMMITLIMIT
-
+        if preCommitFileCount > config.COMMITLIMIT:
+            print ("Committing info for %s documents/articles" % config.COMMITLIMIT)
+            
+        # input to the full-text code
         if solrAPIURL is not None:
             processFileforFullTextCore(pepxml, base, artInfo, solrFT, fileXMLContents)
             if preCommitFileCount > config.COMMITLIMIT:
                 preCommitFileCount = 0
                 solrFT.commit()
                 fileTracker.commit()
-                print "Committing %s records" % config.COMMITLIMIT
+
+        # input to the references core
+        if solrAPIURLRefs is not None:
+            bibTotalReferenceCount += processBibSection(pepxml, base, artInfo, solrBib)
+            if preCommitFileCount > config.COMMITLIMIT:
+                preCommitFileCount = 0
+                solrBib.commit()
+                fileTracker.commit()
 
         preCommitFileCount += 1
         # close the file, and do the next
         f.close()
-        print "   ...Time: %s seconds." % (time.time() - fileTimeStart)
+        if options.displayVerbose:
+            print ("   ...Time: %s seconds." % (time.time() - fileTimeStart))
 
     # all done with the files.  Do a final commit.
+    print ("Performing final commit.")
     try:
         if solrAPIURLRefs is not None:
             solrBib.commit()
             fileTracker.commit()
     except Exception, e:
-        print "Exception: ", e
+        print ("Exception: ", e)
     try:
         if solrAPIURL is not None:
             solrFT.commit()
             fileTracker.commit()
-            print "Committed!"
     except Exception, e:
-        print "Exception: ", e
+        print ("Exception: ", e)
 
     timeEnd = time.time()
 
@@ -748,10 +751,10 @@ def main():
     else:
         msg = "Finished! Imported %s documents. Elapsed time: %s secs" % (len(filenames), timeEnd-timeStart)
         
-    print msg
+    print (msg)
     config.logger.info(msg)
     if processingWarningCount + processingErrorCount > 0:
-        print "  Issues found.  Warnings: %s, Errors: %s.  See log file %s" % (processingWarningCount, processingErrorCount, logFilename)
+        print ("  Issues found.  Warnings: %s, Errors: %s.  See log file %s" % (processingWarningCount, processingErrorCount, logFilename))
 
 # -------------------------------------------------------------------------------------------------------
 # run it!

@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
 OPASFileTracker.py:    Library for file tracking to skip already processed files 
                        for OPAS
