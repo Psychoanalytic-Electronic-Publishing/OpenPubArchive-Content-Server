@@ -1,9 +1,9 @@
 solr:
-    image: bitnami/solr:8.1.1-ol-7-r6
+    image: solr:8
     volumes:
         - ./solrCoreConfigurations/data:/var/solr/data/
     ports:
         - "8983:8983"
-    environment:
-        - SOLR_CORE_CONF_DIR=./solrCoreConfigurations/data
+    command: solr-foreground
+    entrypoint: "docker-entrypoint.sh"
     restart: always
