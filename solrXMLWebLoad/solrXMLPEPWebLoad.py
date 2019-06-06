@@ -25,14 +25,16 @@ OPAS - Open Publications-Archive Software
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "0.1.22"
+__version__     = "0.1.23"
 __status__      = "Development"
 
-#Revisions:
-    #2019-05-16: Addded command line options to specify a different path for PEPSourceInfo.json
-                #Added error logging using python's built-in logging library default INFO level
 
-    #2019-06-01: Fixe
+#Revision Notes:
+    #2019-05-16: Addded command line options to specify a different path for PEPSourceInfo.json
+                 #Added error logging using python's built-in logging library default INFO level
+
+    #2019-06-05: added int fields for year as they are needeed to do faceting ranges (though that's
+                 #beginning to be unclear)
 
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
@@ -223,15 +225,21 @@ class ArticleInfo:
             #processingErrorCount += 1
             return
         self.artVol = xmlGetTextSingleton(pepxml, '//artinfo/artvol/node()')
-        self.artYear = xmlGetTextSingleton(pepxml, '//artinfo/artyear/node()')
         self.artIssue = xmlGetTextSingleton(pepxml, '//artinfo/artiss/node()')
+        self.artYear = xmlGetTextSingleton(pepxml, '//artinfo/artyear/node()')
+        try:
+            artYearForInt = re.sub("[^0-9]", "", self.artYear)
+            self.artYearInt = int(artYearForInt)
+        except ValueError, e:
+            logging.warn("Error converting artYear to int: %s" % (artYear))
+            self.artYearInt = 0
 
         artInfoNode = pepxml.xpath('//artinfo')[0]
         self.artType = xmlGetElementAttr(artInfoNode, "arttype") 
         self.artDOI = xmlGetElementAttr(artInfoNode, "doi") 
         self.artISSN = xmlGetElementAttr(artInfoNode, "ISSN") 
         self.artOrigRX = xmlGetElementAttr(artInfoNode, "origrx") 
-        self.newSecNm = xmlGetElementAttr(artInfoNode, "ISSN") 
+        self.newSecNm = xmlGetElementAttr(artInfoNode, "newsecnm") 
         self.artPgrg = xmlFindSubElementText(artInfoNode, "artpgrg")  # note: getSingleSubnodeText(pepxml, "artpgrg"),
 
         self.artTitle = xmlFindSubElementXML(artInfoNode, "arttitle")
@@ -268,7 +276,9 @@ class ArticleInfo:
 
         artQualNode = pepxml.xpath("//artinfo/artqual")
         self.artQual = xmlGetElementAttr(artQualNode, "rx") 
-       
+        bibReferences = pepxml.xpath("/pepkbd3//be")
+        self.artBibReferenceCount = len(bibReferences)
+      
 
 def processFileforFullTextCore(pepxml, base, artInfo, solrcon, fileXMLContents):
     """
@@ -288,7 +298,6 @@ def processFileforFullTextCore(pepxml, base, artInfo, solrcon, fileXMLContents):
     if options.displayVerbose:
         print("   ...Processing main file content for the %s core." % options.fullTextCoreName)
 
-    #bib_references = pepxml.xpath("/pepkbd3//be")
     #bib_refentries_struct = {}  # not using this struct because solrpy doesn't like loading structures to solr
                                  # and in retrospect, we probably don't need it.  But leaving as 
                                  # comments if we want to later reintroduce it.
@@ -359,10 +368,23 @@ def processFileforFullTextCore(pepxml, base, artInfo, solrcon, fileXMLContents):
     headings += xmlElementsToStrings(pepxml, "//h4")
     headings += xmlElementsToStrings(pepxml, "//h5")
     headings += xmlElementsToStrings(pepxml, "//h6")
+    
+    summariesXml = xmlElementsToStrings(pepxml, "//summaries"),
+    abstractsXml = xmlElementsToStrings(pepxml, "//abs")
+    if abstractsXml == "":
+        if summariesXml == "":
+            abstracts_xml = xmlElementsToStrings(pepxml, "//p")[0:20]
+        else:
+            abstracts_xml = summariesXml
 
     try:
         response_update = solrcon.add(id = artInfo.artID,                   # important =  note this is unique id for every reference
                                       art_id = artInfo.artID,
+                                      file_last_modified = artInfo.fileTimeStamp,
+                                      file_classification = artInfo.fileClassification,
+                                      file_size = artInfo.fileSize,
+                                      file_name = artInfo.fileName,
+                                      timestamp = artInfo.processedDateTime,  # When batch was entered into core
                                       art_title_xml = xmlElementsToStrings(pepxml, "//arttitle"),
                                       art_subtitle_xml = xmlElementsToStrings(pepxml, "//artsubtitle"),
                                       title = artInfo.artTitle,
@@ -374,6 +396,7 @@ def processFileforFullTextCore(pepxml, base, artInfo, solrcon, fileXMLContents):
                                       art_authors_unlisted = pepxml.xpath('//artinfo/artauth/aut[@listed="false"]/@authindexid'),
                                       art_authors_xml = xmlElementsToStrings(pepxml, "//aut"),
                                       art_year = artInfo.artYear,
+                                      art_year_int = artInfo.artYearInt,
                                       art_vol = artInfo.artVol,
                                       art_pgrg = artInfo.artPgrg,
                                       art_iss = artInfo.artIssue,
@@ -399,6 +422,7 @@ def processFileforFullTextCore(pepxml, base, artInfo, solrcon, fileXMLContents):
                                       caption_text_xml = xmlElementsToStrings(pepxml, "//caption"),
                                       caption_title_xml = xmlElementsToStrings(pepxml, "//ctitle"),
                                       headings_xml = headings,
+                                      reference_count = artInfo.artBibReferenceCount,
                                       references_xml = xmlElementsToStrings(pepxml, "/pepkbd3//be"),
                                       abstracts_xml = xmlElementsToStrings(pepxml, "///abs"),
                                       summaries_xml = xmlElementsToStrings(pepxml, "///summaries"),
@@ -439,10 +463,10 @@ def processBibSection(pepxml, base, artInfo, solrcon):
     """
     #<!-- biblio section fields -->
     #Note: currently, this does not include footnotes or biblio include tagged data in document (binc)
-    bibReferences = pepxml.xpath("/pepkbd3//be")
-    retVal = bibReferenceCount = len(bibReferences)
+    bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
+    retVal = artInfo.artBibReferenceCount
     if options.displayVerbose:
-        print("   ...Processing %s references for the references database." % (bibReferenceCount))
+        print("   ...Processing %s references for the references database." % (artInfo.artBibReferenceCount))
     #processedFilesCount += 1
 
     allRefs = []
@@ -459,11 +483,31 @@ def processBibSection(pepxml, base, artInfo, solrcon):
             bibSourceType = "journal"
         if bibSourceType == "book":
             bibYearofPublication = xmlFindSubElementText(ref, "bpd")
+            if bibYearofPublication == "":
+                bibYearofPublication = xmlFindSubElementText(ref, "y")
             if bibSourceTitle == None or bibSourceTitle == "":
                 # sometimes has markup
                 bibSourceTitle = xmlGetSingleDirectSubnodeText(ref, "bst")  # book title
         else:
             bibYearofPublication = xmlFindSubElementText(ref, "y")
+           
+        if bibYearofPublication == "":
+            # try to match
+            try:
+                bibYearofPublication = re.search("\(([A-z]*\s*,?\s*)?([12][0-9]{3,3}[abc]?)\)", bibRefEntry).group(2)
+            except Exception, e:
+                logging.warn("no match %s/%s/%s" % (bibYearofPublication, ref, e))
+            
+        try:
+            bibYearofPublication = re.sub("[^0-9]", "", bibYearofPublication)
+            bibYearofPublicationInt = int(bibYearofPublication[0:4])
+        except ValueError, e:
+            logging.warn("Error converting bibYearofPublication to int: %s / %s.  (%s)" % (bibYearofPublication, bibRefEntry, e))
+            bibYearofPublicationInt = 0
+        except Exception, e:
+            logging.warn("Error trying to find untagged bib year in %s (%s)" % (bibRefEntry, e))
+            bibYearofPublicationInt = 0
+            
 
         bibAuthorNameList = [etree.tostring(x, with_tail=False) for x in ref.findall("a") if x is not None]
         bibAuthorsXml = '; '.join(bibAuthorNameList)
@@ -474,13 +518,20 @@ def processBibSection(pepxml, base, artInfo, solrcon):
         thisRef = {
                     "id" : refID,
                     "art_id" : artInfo.artID,
+                    "file_last_modified" : artInfo.fileTimeStamp,
+                    "file_classification" : artInfo.fileClassification,
+                    "file_size" : artInfo.fileSize,
+                    "file_name" : artInfo.fileName,
+                    "timestamp" : artInfo.processedDateTime,  # When batch was entered into core
                     "art_title" : artInfo.artTitle,
                     "art_pepsrccode" : artInfo.artPepSrcCode,
                     "art_pepsourcetitleabbr" : artInfo.artPepSourceTitleAbbr,
                     "art_pepsourcetitlefull" : artInfo.artPepSourceTitleFull,
                     "art_pepsourcetype" : artInfo.artPepSourceType,
                     "art_authors" : artInfo.artAuthors,
+                    "reference_count" :artInfo.artBibReferenceCount,  # would be the same for each reference in article, but could still be useful
                     "art_year" : artInfo.artYear,
+                    "art_year_int" : artInfo.artYearInt,
                     "art_vol" : artInfo.artVol,
                     "art_pgrg" : artInfo.artPgrg,
                     "art_lang" : artInfo.artLang,
@@ -496,8 +547,9 @@ def processBibSection(pepxml, base, artInfo, solrcon):
                     "bib_sourcetitle" : bibSourceTitle,
                     "bib_pgrg" : xmlFindSubElementText(ref, "pp"),
                     "bib_year" : bibYearofPublication,
+                    "bib_year_int" : bibYearofPublicationInt,
                     "bib_volume" : xmlFindSubElementText(ref, "v"),
-                    "bib_publisher" : bibPublishers            
+                    "bib_publisher" : bibPublishers
                   }
         allRefs.append(thisRef)
         
@@ -650,7 +702,7 @@ def main():
                 totalFiles += 1
                 filename = os.path.join(root, f)
                 currFileInfo = FileTrackingInfo()
-                currFileInfo.loadForFile(filename, solrAPIURL)
+                currFileInfo.loadForFile(filename, options.solrURL)  # mod 2019-06-05 Just the base URL, not the core
                 isModified = fileTracker.isFileModified(currFileInfo)
                 if options.forceRebuildAllFiles:
                     # fake it, make it look modified!
@@ -664,27 +716,34 @@ def main():
                     newFiles += 1
                     #print "File is NOT the same!  Scanning the data..."
                     filenames.append(filename)
-
+    
     print (80*"-")
     print ("Ready to import records from %s files of %s at path: %s." % (newFiles, totalFiles, options.rootFolder))
     print ("%s Skipped files (those not modified since the last run)" % (skippedFiles))
+    print ("%s Files to process" % (newFiles ))
     print (80*"-")
     bibTotalReferenceCount = 0
     preCommitFileCount = 0
     processedFilesCount = 0
+    processedDateTime = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
+    
 
     for n in filenames:
         fileTimeStart = time.time()
         processedFilesCount += 1
-        nFileSize = os.path.getsize(n)
         f = open(n)
         fileXMLContents = f.read()
-
+        
         # get file basename without build (which is in paren)
         base = os.path.basename(n)
         artID = os.path.splitext(base)[0]
         m = re.match(r"(.*)\(.*\)", artID)
-        print ("Processing file #%s of %s: %s (%s bytes)." % (processedFilesCount, totalFiles, base, nFileSize))
+
+        # Update this file in the database as "processed"
+        currFileInfo.loadForFile(n, options.solrURL)
+        fileTracker.setFileDatabaseRecord(currFileInfo)
+        fileTimeStamp = datetime.utcfromtimestamp(currFileInfo.fileModDate).strftime('%Y-%m-%dT%H:%M:%SZ')
+        print ("Processing file #%s of %s: %s (%s bytes)." % (processedFilesCount, newFiles, base, currFileInfo.fileSize))
 
         # Note: We could also get the artID from the XML, but since it's also important
         # the file names are correct, we'll do it here.  Also, it "could" have been left out
@@ -699,11 +758,18 @@ def main():
 
         # save common document (article) field values into artInfo instance for both databases
         artInfo = ArticleInfo(sourceInfoDB, pepxml, artID, logger)
+        artInfo.fileTimeStamp = fileTimeStamp
+        artInfo.fileName = base
+        artInfo.fileSize = currFileInfo.fileSize
+        artInfo.processedDateTime = processedDateTime  # use same time for all files this run
+        try:
+            artInfo.fileClassification = re.search("(pepcurrent|peparchive|pepfuture|pepfree|pepoffsite)", n, re.IGNORECASE).group(1)
+        except Exception, e:
+            logging.warn("Could not determine file classification for %s (%s)" % (n, e))
+        
 
         # walk through bib section and add to refs core database
-        # Update this file in the database as "processed"
-        currFileInfo.loadForFile(n, solrAPIURL)
-        fileTracker.setFileDatabaseRecord(currFileInfo)
+
         if preCommitFileCount > config.COMMITLIMIT:
             print ("Committing info for %s documents/articles" % config.COMMITLIMIT)
             
