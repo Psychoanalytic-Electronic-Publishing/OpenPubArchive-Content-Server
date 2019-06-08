@@ -37,7 +37,12 @@
   <!-- version is required to do atomic updates, though I still can't get them to work. -->
   <field name="_version_" type="plong" indexed="false" stored="false"/>
   <!-- field "text" full-text of each reference (be|binc)-->
-  <field name="text" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="text_ref" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="text_offsite_ref" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <!-- field "text" full-text of each reference (be|binc)-->
+  <field name="text" type="text_simple" indexed="true" stored="false" multiValued="false"/>
+  <copyField source="text_*" dest="text"/>
+
 
   <!-- ********************************* -->
   <!-- Containing Article metadata -->
@@ -67,7 +72,10 @@
   <!-- Reference Level prefix bib_ -->
   <!-- ********************************* -->
   <field name="bib_ref_id" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="bib_ref_rx" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_ref_rx" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="bib_ref_rxcf" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!--For faceting the source code (only) of reference matched documents-->
+  <field name="bib_ref_rx_sourcecode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="bib_articletitle" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bib_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!-- source title is book, video source or journal title. -->

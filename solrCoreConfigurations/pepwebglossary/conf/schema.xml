@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Reference Database Schema v.01
-    for core PEPWebRefsProto
+    PEP Author Database Schema v.01
+    for core PEPWebAuthors
 -->
 <!-- Schema name just for labeling, the managed-schema file name is what Solr looks for -->
-<schema name="pepwebrefs-nrs" version="1.61">
-  <!-- This is the schema for a database of references extracted from PEP-Web articles (all types) -->
+<schema name="pepwebauthors" version="1.61">
+
+  <!-- This is the schema for a database of authors extracted from PEP-Web articles (all types) -->
   <!-- This will give us new types of searches against the database -->
 
-  <!-- the ID will be unique for each bibliographic REFERENCE; the document ID + the bibID (full bib_id) -->
-  <uniqueKey>id</uniqueKey>
+  <!-- the ID will be unique for each AuthorArticle combination; the authorID + the articleID  -->
+  <uniqueKey>term_id</uniqueKey>
   <!-- ********************************* -->
   <!-- commonly used field names -->
   <!-- Redundant with names following patterns, but it's nice to have Fields
@@ -29,62 +30,34 @@
   <!-- Reference ID = PEP article ID + biblio entry ID -->
   <field name="id" type="string" indexed="true" stored="true"/>
   <!-- this will be the biblio reference document authors -->
-  <field name="authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
-  <!-- this will be the biblio reference document title (containing article)-->
   <field name="title" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!-- this is probably not of interest, but leave for now-->
   <field name="format" type="string" indexed="true" stored="true"/>
   <!-- version is required to do atomic updates, though I still can't get them to work. -->
   <field name="_version_" type="plong" indexed="false" stored="false"/>
-  <!-- field "text" full-text of each reference (be|binc)-->
+  <!-- field "text" full-text of the citation for the article-->
   <field name="text" type="text_simple" indexed="true" stored="true" multiValued="false"/>
 
   <!-- ********************************* -->
   <!-- Containing Article metadata -->
   <!-- Article Level prefix art_ -->
   <!-- ********************************* -->
-  <field name="art_id" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
-  <field name="art_pepsrccode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_pepsourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_pepsourcetitlefull" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_pepsourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_vol" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_year" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_year_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_title" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_pgrg" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_lang" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <!-- this will be a full-text reference to the  citing document -->
-  <field name="art_citeas_xml" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="reference_count" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  
-  <!-- Article Citation, not used -->
-  <!-- <field name="art_citation" type="text_simple" indexed="true" stored="true" multiValued="true"/> -->
-
-  <!-- ********************************* -->
-  <!-- Biblio fields -->
-  <!-- Reference Level prefix bib_ -->
-  <!-- ********************************* -->
-  <field name="bib_ref_id" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="bib_ref_rx" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="bib_articletitle" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="bib_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
-  <!-- source title is book, video source or journal title. -->
-  <field name="bib_sourcetitle" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <!-- to be used for faceting by who queries what -->
-  <field name="bib_sourcename" type="string" indexed="true" stored="true" multiValued="false"/>
-  <copyField source="bib_sourcetitle" dest="bib_sourcename"/>
-
-  <field name="bib_sourcetype" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="bib_publisher" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="bib_volume" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="bib_pgrg" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="bib_year" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="bib_year_int" type="pint" indexed="true" stored="true" multiValued="false"/>
-
-  <!-- Naming exception for now, this the full-text biblio reference -->
-  <!-- <field name="reference_xml" type="text_general" indexed="true" stored="true" multiValued="false"/> -->
+  <!--Term_id will unique, defined by group_id + . + sequence_number-->
+  <field name="term_id" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!--Group id will be the current ID we use to link -->
+  <field name="group_id" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="term" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="term_type" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="term_source" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="term_also" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="term_def_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="term_def_rest_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <!--the PEP source document ID-->
+  <field name="art_id" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!--term only text just the text under the term (or group if there are no sub terms-->
+  <field name="group_name" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="group_also" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="group_term_count" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
 
   <!-- Uncomment the dynamicField definition to catch any other fields
    that may have been declared in the DIH configuration.

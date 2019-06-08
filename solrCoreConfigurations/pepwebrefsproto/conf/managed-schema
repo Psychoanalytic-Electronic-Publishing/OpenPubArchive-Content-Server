@@ -57,7 +57,9 @@
   <field name="bib_pgrg" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_publisher" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_ref_id" type="string" multiValued="false" indexed="true" stored="true"/>
-  <field name="bib_ref_rx" type="string" multiValued="false" indexed="true" stored="true"/>
+  <field name="bib_ref_rx" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="bib_ref_rx_sourcecode" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="bib_ref_rxcf" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_sourcename" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_sourcetitle" type="text_simple" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_sourcetype" type="text_simple" multiValued="false" indexed="true" stored="true"/>
@@ -71,8 +73,11 @@
   <field name="format" type="string" indexed="true" stored="true"/>
   <field name="id" type="string" indexed="true" stored="true"/>
   <field name="reference_count" type="pint" docValues="true" multiValued="false" indexed="true" stored="true"/>
-  <field name="text" type="text_simple" multiValued="false" indexed="true" stored="true"/>
+  <field name="text" type="text_simple" multiValued="false" indexed="true" stored="false"/>
+  <field name="text_offsite_ref" type="text_simple" multiValued="false" indexed="true" stored="true"/>
+  <field name="text_ref" type="text_simple" multiValued="false" indexed="true" stored="true"/>
   <field name="timestamp" type="pdate" multiValued="false" indexed="true" stored="true"/>
   <field name="title" type="text_simple" multiValued="true" indexed="true" stored="true"/>
   <copyField source="bib_sourcetitle" dest="bib_sourcename"/>
+  <copyField source="text_*" dest="text"/>
 </schema>
