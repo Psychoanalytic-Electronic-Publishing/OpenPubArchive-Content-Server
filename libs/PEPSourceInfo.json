@@ -6005,32 +6005,6 @@
 "ISBN-10":"5518923341 ",
 "ISBN-13":"978-5518923348",
 "pages":null
-},
-{
-"pepsrccode":"OFFSITE",
-"basecode":"OFFSITE",
-"active":1,
-"sourcetitleabbr":"Articles of Interest on the Web",
-"source":1,
-"start_year":null,
-"end_year":null,
-"pep_url":null,
-"language":null,
-"sourcetitlefull":"Articles of Interest on the Web (text searchable but only citation data returned)",
-"pep_class":"journal",
-"pep_class_qualifier":null,
-"wall":100,
-"mainTOC":null,
-"author":null,
-"updated":"2017\/5\/3 16:59:57",
-"landing_page":null,
-"google_books_link":null,
-"pepversion":16,
-"publisher":null,
-"ISSN":null,
-"ISBN-10":null,
-"ISBN-13":null,
-"pages":null
 }
 ]
 }

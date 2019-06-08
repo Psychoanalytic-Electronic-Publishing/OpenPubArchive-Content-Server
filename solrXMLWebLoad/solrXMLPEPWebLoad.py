@@ -26,7 +26,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "0.1.23"
+__version__     = "0.1.24"
 __status__      = "Development"
 
 #Revision Notes:
@@ -46,20 +46,21 @@ import os
 import os.path
 import time
 import logging
+import urllib
 
 from datetime import datetime
 from optparse import OptionParser
-from base64 import b64encode
+#from base64 import b64encode
 
-import json
-import lxml
 from lxml import etree
-#import pysolr  # does not support basic authentication
 import solr     # supports a number of types of authentication, including basic.  This is "solrpy"
 
 import config
 from OPASFileTracker import FileTracker, FileTrackingInfo
-#from authorTracker import AuthorTracker, AuthorInfo
+
+import imp
+SourceInfoDB = imp.load_source('sourceInfoDB', '../libs/sourceInfoDB.py')
+opasxmllib = imp.load_source('opasxmllib', '../libs/opasXMLHelper.py')
 
 # Module Globals
 #authorTracker = AuthorTracker()
@@ -73,129 +74,24 @@ class ExitOnExceptionHandler(logging.StreamHandler):
         if record.levelno in (logging.ERROR, logging.CRITICAL):
             raise SystemExit(-1)
 
-def xmlElementsToStrings(elementNode, xPathDef):
-    """
-    Return a list of XML tagged strings from the nodes in the specified xPath
-
-    Example:
-    strList = elementsToStrings(treeRoot, "//aut[@listed='true']")
-
-    """
-    retVal = [etree.tostring(n, with_tail=False) for n in elementNode.xpath(xPathDef)]
-    return retVal
-
-def xmlTextOnly(elem):
-    """
-    Return inner text of mixed content element with sub tags stripped out
-    """
-    etree.strip_tags(elem, '*')
-    inner_text = elem.text
-    if inner_text:
-        return inner_text.strip()
-    return None
-
-def xmlGetTextSingleton(elementNode, xpath):
-    """
-    Return text of element specified by xpath (with Node() as final part of path)
-    """
-    try:
-        retVal = elementNode.xpath(xpath)[0]
-    except IndexError:
-        retVal = ""
-        
-    return retVal    
-
-def xmlGetSingleDirectSubnodeText(elementNode, subelementName):
-    """
-    Return the text for a direct subnode of the lxml elementTree elementNode.
-    
-    Important Note: Looks only at direct subnodes, not all decendents (for max speed)
-    """
-    retVal = ""
-
-    try:
-        retVal = elementNode.xpath('%s/node()' % subelementName)
-        retVal = retVal[0]
-    except ValueError, err: # try without node
-        retVal = elementNode.xpath('%s' % subelementName)
-        retVal = retVal[0]
-    except IndexError, err:
-        retVal = elementNode.xpath('%s' % subelementName)
-    except Exception, err:
-        print ("getSingleSubnodeText Error: ", err)
-
-    if retVal == []:
-        retVal = ""
-    if isinstance(retVal, lxml.etree._Element):
-        retVal = xmlTextOnly(retVal)        
-
-    return retVal
-
-def xmlGetElementAttr(elementNode, attrName):
-    """
-    Get an attribute from the lxml elementNode
-    """
-    retVal = ""
-    try:
-        retVal = elementNode.attrib[attrName]
-    except Exception, err:
-        retVal = ""
-
-    return retVal
-
-def xmlFindSubElementText(elementNode, subElementName):
-    """
-    Text for elements with only CDATA underneath
-    """
-    retVal = ""
-    try:
-        retVal = elementNode.find(subElementName).text
-        retVal = retVal.strip()
-    except Exception, err:
-        retVal = ""
-
-    return retVal
-
-def xmlFindSubElementXML(elementNode, subElementName):
-    """
-    Returns the marked up XML text for elements (including subelements)
-    """
-    retVal = ""
-    try:
-        retVal = etree.tostring(elementNode.find(subElementName), with_tail=False)
-    except Exception, err:
-        retVal = ""
-
-    return retVal
-
-def readSourceInfoDB(journalInfoFile):
-    """
-    The source info DB is a journal basic info "database" in json
-    
-    Read as is since this JSON file can be simply and quickly exported
-         from the PEP issn table in mySQL used in data conversion
-
-    """
-    retVal = {}
-    with open(journalInfoFile) as f:
-        journalInfo = json.load(f)
-
-    # turn it into a in-memory dictionary indexed by jrnlcode;
-    # in 2019, note that there are only 111 records
-    for n in journalInfo["RECORDS"]:
-        retVal[n["pepsrccode"]] = n
-
-    return retVal
-
 class ArticleInfo(object):
     """
     Grab all the article metadata, and save as instance variables.
     """
-    def __init__(self, sourceInfoDB, pepxml, artID, logger):
+    def __init__(self, sourceInfoDBData, pepxml, artID, logger):
         #global options
         # let's just double check artid!
         self.artID = artID
+        # Just init these.  Creator will set based on filename
         self.fileClassification = None
+        self.fileSize = 0  
+        self.fileTimeStamp = ""
+        self.fileName = ""
+
+        # now, the rest of the variables we can set from the data
+        processedDateTime = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
+        self.processedDateTime = processedDateTime  # use same time for all files this run
+
         try:
             self.artIDFromFile = pepxml.xpath('//artinfo/@id')[0]
             self.artIDFromFile = self.artIDFromFile.upper()
@@ -211,15 +107,15 @@ class ArticleInfo(object):
         #---------------------------------------------
         self.artPepSrcCode = pepxml.xpath("//artinfo/@j")[0]
         try:
-            self.artPepSourceTitleAbbr = sourceInfoDB[self.artPepSrcCode].get("sourcetitleabbr")
-            self.artPepSourceTitleFull = sourceInfoDB[self.artPepSrcCode].get("sourcetitlefull")
-            self.artPepSourceType = sourceInfoDB[self.artPepSrcCode].get("pep_class")  # journal, book, video...
-            self.artPepSrcEmbargo = sourceInfoDB[self.artPepSrcCode].get("wall")
+            self.artPepSourceTitleAbbr = sourceInfoDBData[self.artPepSrcCode].get("sourcetitleabbr", None)
+            self.artPepSourceTitleFull = sourceInfoDBData[self.artPepSrcCode].get("sourcetitlefull", None)
+            self.artPepSourceType = sourceInfoDBData[self.artPepSrcCode].get("pep_class", None)  # journal, book, video...
+            self.artPepSrcEmbargo = sourceInfoDBData[self.artPepSrcCode].get("wall", None)
 
         except KeyError, err:
-            self.artPepSourceTitleAbbr = ""
-            self.artPepSourceTitleFull = ""
-            self.artPepSourceType = ""
+            self.artPepSourceTitleAbbr = None
+            self.artPepSourceTitleFull = None
+            self.artPepSourceType = None
             self.artPepSrcEmbargo = None
             logger.warn("Error: PEP Source %s not found in source info db.  Use the 'PEPSourceInfo export' after fixing the issn table in MySQL DB", self.artPepSrcCode)
 
@@ -227,9 +123,10 @@ class ArticleInfo(object):
             logger.error("Error: Problem with this files source info. File skipped. (%s)", err)
             #processingErrorCount += 1
             return
-        self.artVol = xmlGetTextSingleton(pepxml, '//artinfo/artvol/node()')
-        self.artIssue = xmlGetTextSingleton(pepxml, '//artinfo/artiss/node()')
-        self.artYear = xmlGetTextSingleton(pepxml, '//artinfo/artyear/node()')
+        self.artVol = opasxmllib.xmlGetTextSingleton(pepxml, '//artinfo/artvol/node()', defaultReturn=None)
+        self.artIssue = opasxmllib.xmlGetTextSingleton(pepxml, '//artinfo/artiss/node()', defaultReturn=None)
+        self.artIssueTitle = opasxmllib.xmlGetTextSingleton(pepxml, '//artinfo/isstitle/node()', defaultReturn=None)
+        self.artYear = opasxmllib.xmlGetTextSingleton(pepxml, '//artinfo/artyear/node()')
         try:
             artYearForInt = re.sub("[^0-9]", "", self.artYear)
             self.artYearInt = int(artYearForInt)
@@ -238,18 +135,18 @@ class ArticleInfo(object):
             self.artYearInt = 0
 
         artInfoNode = pepxml.xpath('//artinfo')[0]
-        self.artType = xmlGetElementAttr(artInfoNode, "arttype") 
-        self.artDOI = xmlGetElementAttr(artInfoNode, "doi") 
-        self.artISSN = xmlGetElementAttr(artInfoNode, "ISSN") 
-        self.artOrigRX = xmlGetElementAttr(artInfoNode, "origrx") 
-        self.newSecNm = xmlGetElementAttr(artInfoNode, "newsecnm") 
-        self.artPgrg = xmlFindSubElementText(artInfoNode, "artpgrg")  # note: getSingleSubnodeText(pepxml, "artpgrg"),
+        self.artType = opasxmllib.xmlGetElementAttr(artInfoNode, "arttype") 
+        self.artDOI = opasxmllib.xmlGetElementAttr(artInfoNode, "doi") 
+        self.artISSN = opasxmllib.xmlGetElementAttr(artInfoNode, "ISSN") 
+        self.artOrigRX = opasxmllib.xmlGetElementAttr(artInfoNode, "origrx", defaultReturn=None) 
+        self.newSecNm = opasxmllib.xmlGetElementAttr(artInfoNode, "newsecnm", defaultReturn=None) 
+        self.artPgrg = opasxmllib.xmlFindSubElementText(artInfoNode, "artpgrg")  # note: getSingleSubnodeText(pepxml, "artpgrg"),
 
-        self.artTitle = xmlFindSubElementXML(artInfoNode, "arttitle")
+        self.artTitle = opasxmllib.xmlFindSubElementXML(artInfoNode, "arttitle")
         if self.artTitle != None and self.artTitle != "":
             # remove tags:
             self.artTitle = ''.join(etree.fromstring(self.artTitle).itertext())
-        self.artSubtitle = xmlFindSubElementXML(artInfoNode, 'artsub')
+        self.artSubtitle = opasxmllib.xmlFindSubElementXML(artInfoNode, 'artsub')
         if self.artSubtitle == "":
             pass
         elif self.artSubtitle is None:
@@ -267,7 +164,7 @@ class ArticleInfo(object):
         self.authorList = self.artAuthors = pepxml.xpath('//artinfo/artauth/aut[@listed="true"]/@authindexid')
         self.authorXMLList = pepxml.xpath('//artinfo/artauth/aut')
         self.artAuthors = ", ".join(self.artAuthors)
-        self.artKwds = xmlGetTextSingleton(pepxml, "//artinfo/artkwds/node()")
+        self.artKwds = opasxmllib.xmlGetTextSingleton(pepxml, "//artinfo/artkwds/node()")
 
         # Usually we put the abbreviated title here, but that won't always work here.
         self.artCiteAsXML = """<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="sourcetitle">%s</span> <span class="pgrg">%s</span>:<span class="pgrg">%s</span></p>""" \
@@ -279,7 +176,7 @@ class ArticleInfo(object):
                                  self.artPgrg)
 
         artQualNode = pepxml.xpath("//artinfo/artqual")
-        self.artQual = xmlGetElementAttr(artQualNode, "rx") 
+        self.artQual = opasxmllib.xmlGetElementAttr(artQualNode, "rx") 
         bibReferences = pepxml.xpath("/pepkbd3//be")
         self.artBibReferenceCount = len(bibReferences)
 
@@ -309,21 +206,46 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
     # the solr schema names are in snake_case; variables in the code here are camelCase
     # by my own coding habits.
 
-    headings = xmlElementsToStrings(pepxml, "//h1")
-    headings += xmlElementsToStrings(pepxml, "//h2")
-    headings += xmlElementsToStrings(pepxml, "//h3")
-    headings += xmlElementsToStrings(pepxml, "//h4")
-    headings += xmlElementsToStrings(pepxml, "//h5")
-    headings += xmlElementsToStrings(pepxml, "//h6")
-    
-    summariesXml = xmlElementsToStrings(pepxml, "//summaries"),
-    abstractsXml = xmlElementsToStrings(pepxml, "//abs")
-    if abstractsXml == "":
-        if summariesXml == "":
-            abstractsXml = xmlElementsToStrings(pepxml, "//p")[0:20]
-        else:
-            abstractsXml = summariesXml
+    headings = opasxmllib.xmlElementsToStrings(pepxml, "//h1")
+    headings += opasxmllib.xmlElementsToStrings(pepxml, "//h2")
+    headings += opasxmllib.xmlElementsToStrings(pepxml, "//h3")
+    headings += opasxmllib.xmlElementsToStrings(pepxml, "//h4")
+    headings += opasxmllib.xmlElementsToStrings(pepxml, "//h5")
+    headings += opasxmllib.xmlElementsToStrings(pepxml, "//h6")
   
+    # see if this is an offsite article
+    if artInfo.fileClassification == "pepoffsite":
+        # certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
+        offsiteContents = fileXMLContents
+        
+        fileXMLContents = """<html>
+                             <p>This article or book is available online on a non-PEP website. 
+                                Click <a href="//www.doi.org/%s" target="_blank">here</a> to open that website 
+                                in another window or tab.
+                             </p>
+                             </html>
+                          """ % urllib.quote(artInfo.artDOI)
+        # should we trust clients, or remove this data?  For now, remove.  Need to probably do this in biblio core too
+        dialogsXml = dreamsXml = notesXml = panelsXml = poemsXml = quotesXml = None    
+        referencesXml = abstractsXml = summariesXml = None
+    else: # other PEP classified files, peparchive, pepcurrent, pepfree can have the full-text
+        offsiteContents = ""
+        #TODO: Later, it may be that we don't need Solr to store these, just index them.  If so, the schema can be changed.
+        dialogsXml = opasxmllib.xmlElementsToStrings(pepxml, "//dialog"),
+        dreamsXml = opasxmllib.xmlElementsToStrings(pepxml, "//dream"),
+        notesXml = opasxmllib.xmlElementsToStrings(pepxml, "//note"),
+        panelsXml = opasxmllib.xmlElementsToStrings(pepxml, "//panel"),
+        poemsXml = opasxmllib.xmlElementsToStrings(pepxml, "//poem"),
+        quotesXml = opasxmllib.xmlElementsToStrings(pepxml, "//quote"),
+        referencesXml = opasxmllib.xmlElementsToStrings(pepxml, "/pepkbd3//be"),
+        summariesXml = opasxmllib.xmlElementsToStrings(pepxml, "//summaries"),
+        abstractsXml = opasxmllib.xmlElementsToStrings(pepxml, "//abs")
+        if abstractsXml == "":
+            if summariesXml == "":
+                abstractsXml = opasxmllib.xmlElementsToStrings(pepxml, "//p")[0:20]
+            else:
+                abstractsXml = summariesXml
+        
     #save main article info    
     try:
         response_update = solrcon.add(id = artInfo.artID,                   # important =  note this is unique id for every reference
@@ -333,8 +255,8 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                                       file_size = artInfo.fileSize,
                                       file_name = artInfo.fileName,
                                       timestamp = artInfo.processedDateTime,  # When batch was entered into core
-                                      art_title_xml = xmlElementsToStrings(pepxml, "//arttitle"),
-                                      art_subtitle_xml = xmlElementsToStrings(pepxml, "//artsubtitle"),
+                                      art_title_xml = opasxmllib.xmlElementsToStrings(pepxml, "//arttitle"),
+                                      art_subtitle_xml = opasxmllib.xmlElementsToStrings(pepxml, "//artsubtitle"),
                                       title = artInfo.artTitle,
                                       art_pepsrccode = artInfo.artPepSrcCode,
                                       art_pepsourcetitleabbr = artInfo.artPepSourceTitleAbbr,
@@ -342,12 +264,13 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                                       art_pepsourcetype = artInfo.artPepSourceType,
                                       art_authors = artInfo.artAuthors,
                                       art_authors_unlisted = pepxml.xpath('//artinfo/artauth/aut[@listed="false"]/@authindexid'),
-                                      art_authors_xml = xmlElementsToStrings(pepxml, "//aut"),
+                                      art_authors_xml = opasxmllib.xmlElementsToStrings(pepxml, "//aut"),
                                       art_year = artInfo.artYear,
                                       art_year_int = artInfo.artYearInt,
                                       art_vol = artInfo.artVol,
                                       art_pgrg = artInfo.artPgrg,
                                       art_iss = artInfo.artIssue,
+                                      art_iss_title = artInfo.artIssueTitle,
                                       art_doi = artInfo.artDOI,
                                       art_lang = artInfo.artLang,                      
                                       art_issn = artInfo.artISSN,
@@ -360,34 +283,35 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                                       # this produces errors because the solrpy library is looking for these and thinks its a mistake.
                                       #bib_entries_json = " " + ','.join(['='.join(i) for i in bib_refentries_struct.items()]), #bib_refentries_struct,  # hmm, I wonder if we should type suffix other fields?
                                       authors =  artInfo.artAuthors,         # for common names convenience
-                                      author_bio_xml = xmlElementsToStrings(pepxml, "//nbio"),
-                                      author_aff_xml = xmlElementsToStrings(pepxml, "//autaff"),
-                                      bk_title_xml = xmlElementsToStrings(pepxml, "//artbkinfo/bktitle"),
-                                      bk_alsoknownas_xml = xmlElementsToStrings(pepxml, "//artbkinfo/bkalsoknownas"),
-                                      bk_editors_xml = xmlElementsToStrings(pepxml, "//bkeditors"),
-                                      bk_seriestitle_xml = xmlElementsToStrings(pepxml, "//bkeditors"),
+                                      author_bio_xml = opasxmllib.xmlElementsToStrings(pepxml, "//nbio"),
+                                      author_aff_xml = opasxmllib.xmlElementsToStrings(pepxml, "//autaff"),
+                                      bk_title_xml = opasxmllib.xmlElementsToStrings(pepxml, "//artbkinfo/bktitle"),
+                                      bk_alsoknownas_xml = opasxmllib.xmlElementsToStrings(pepxml, "//artbkinfo/bkalsoknownas"),
+                                      bk_editors_xml = opasxmllib.xmlElementsToStrings(pepxml, "//bkeditors"),
+                                      bk_seriestitle_xml = opasxmllib.xmlElementsToStrings(pepxml, "//bkeditors"),
                                       bk_pubyear = pepxml.xpath("//bkpubyear/node()"),
-                                      caption_text_xml = xmlElementsToStrings(pepxml, "//caption"),
-                                      caption_title_xml = xmlElementsToStrings(pepxml, "//ctitle"),
+                                      caption_text_xml = opasxmllib.xmlElementsToStrings(pepxml, "//caption"),
+                                      caption_title_xml = opasxmllib.xmlElementsToStrings(pepxml, "//ctitle"),
                                       headings_xml = headings,
-                                      reference_count = artInfo.artBibReferenceCount,
-                                      references_xml = xmlElementsToStrings(pepxml, "/pepkbd3//be"),
                                       abstracts_xml = abstractsXml,
-                                      summaries_xml = xmlElementsToStrings(pepxml, "///summaries"),
-                                      terms_xml = xmlElementsToStrings(pepxml, "//impx[@type='TERM2']"),
-                                      terms_highlighted_xml = xmlElementsToStrings(pepxml, "//b") + xmlElementsToStrings(pepxml, "//i"),
+                                      summaries_xml = summariesXml,
+                                      terms_xml = opasxmllib.xmlElementsToStrings(pepxml, "//impx[@type='TERM2']"),
+                                      terms_highlighted_xml = opasxmllib.xmlElementsToStrings(pepxml, "//b") + opasxmllib.xmlElementsToStrings(pepxml, "//i"),
                                       dialogs_spkr = pepxml.xpath("//dialog/spkr/node()"),
-                                      dialogs_xml = xmlElementsToStrings(pepxml, "//dialog"),
-                                      dreams_xml = xmlElementsToStrings(pepxml, "//dream"),
-                                      notes_xml = xmlElementsToStrings(pepxml, "//note"),
-                                      panels_spkr = xmlElementsToStrings(pepxml, "//panel/spkr"),
-                                      panels_xml = xmlElementsToStrings(pepxml, "//panel"),
+                                      dialogs_xml = dialogsXml,
+                                      dreams_xml = dreamsXml,
+                                      notes_xml = notesXml,
+                                      panels_spkr = opasxmllib.xmlElementsToStrings(pepxml, "//panel/spkr"),
+                                      panels_xml = panelsXml,
                                       poems_src = pepxml.xpath("//poem/src/node()"),
-                                      poems_xml = xmlElementsToStrings(pepxml, "//poem"),
+                                      poems_xml = poemsXml,
                                       quotes_spkr = pepxml.xpath("//quote/spkr/node()"),
-                                      quotes_xml = xmlElementsToStrings(pepxml, "//quote"),
-                                      meta_xml = xmlElementsToStrings(pepxml, "//meta"),
-                                      text_xml = unicode(fileXMLContents, "utf8")
+                                      quotes_xml = quotesXml,
+                                      reference_count = artInfo.artBibReferenceCount,
+                                      references_xml = referencesXml,
+                                      meta_xml = opasxmllib.xmlElementsToStrings(pepxml, "//meta"),
+                                      text_xml = unicode(fileXMLContents, "utf8"),
+                                      text_offsite = unicode(offsiteContents, "utf8")
                                      )
         if not re.search('"status">0</int>', response_update):
             print (response_update)
@@ -420,7 +344,7 @@ def processInfoForAuthorCore(pepxml, artInfo, solrAuthor):
             authorRole = author.attrib['role']
             authorXML = etree.tostring(author)
             authorDocid = artInfo.artID + "." + ''.join(e for e in authorID if e.isalnum())
-            authorBio = xmlElementsToStrings(author, "nbio")
+            authorBio = opasxmllib.xmlElementsToStrings(author, "nbio")
             try:
                 authorAffID = author.attrib['affid']
             except KeyError, e:
@@ -488,23 +412,23 @@ def processBibForReferencesCore(pepxml, artInfo, solrcon):
     for ref in bibReferences:
         config.bibTotalReferenceCount += 1
         bibRefEntry = etree.tostring(ref, with_tail=False)
-        bibRefID = xmlGetElementAttr(ref, "id")
+        bibRefID = opasxmllib.xmlGetElementAttr(ref, "id")
         refID = artInfo.artID + "." + bibRefID
-        bibSourceTitle = xmlFindSubElementText(ref, "j")
-        bibPublishers = xmlFindSubElementText(ref, "bp")
+        bibSourceTitle = opasxmllib.xmlFindSubElementText(ref, "j")
+        bibPublishers = opasxmllib.xmlFindSubElementText(ref, "bp")
         if bibPublishers != "":
             bibSourceType = "book"
         else:
             bibSourceType = "journal"
         if bibSourceType == "book":
-            bibYearofPublication = xmlFindSubElementText(ref, "bpd")
+            bibYearofPublication = opasxmllib.xmlFindSubElementText(ref, "bpd")
             if bibYearofPublication == "":
-                bibYearofPublication = xmlFindSubElementText(ref, "y")
+                bibYearofPublication = opasxmllib.xmlFindSubElementText(ref, "y")
             if bibSourceTitle is None or bibSourceTitle == "":
                 # sometimes has markup
-                bibSourceTitle = xmlGetSingleDirectSubnodeText(ref, "bst")  # book title
+                bibSourceTitle = opasxmllib.xmlGetSingleDirectSubnodeText(ref, "bst")  # book title
         else:
-            bibYearofPublication = xmlFindSubElementText(ref, "y")
+            bibYearofPublication = opasxmllib.xmlFindSubElementText(ref, "y")
            
         if bibYearofPublication == "":
             # try to match
@@ -527,14 +451,31 @@ def processBibForReferencesCore(pepxml, artInfo, solrcon):
         bibAuthorNameList = [etree.tostring(x, with_tail=False) for x in ref.findall("a") if x is not None]
         bibAuthorsXml = '; '.join(bibAuthorNameList)
         #Note: Changed to is not None since if x gets warning - FutureWarning: The behavior of this method will change in future versions. Use specific 'len(elem)' or 'elem is not None' test instead
-        authorList = [xmlTextOnly(x) for x in ref.findall("a") if xmlTextOnly(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
+        authorList = [opasxmllib.xmlGetTextOnly(x) for x in ref.findall("a") if opasxmllib.xmlGetTextOnly(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
         authorList = '; '.join(authorList)
-        bibRefRx = xmlGetElementAttr(ref, "rx")
-        if bibRefRx != "":
+        bibRefRxCf = opasxmllib.xmlGetElementAttr(ref, "rxcf", defaultReturn=None)
+        bibRefRx = opasxmllib.xmlGetElementAttr(ref, "rx", defaultReturn=None)
+        if bibRefRx != None:
             bibRefRxSourceCode = re.search("(.*?)\.", bibRefRx, re.IGNORECASE).group(1)
         else:
             bibRefRxSourceCode = None
-            bibRefRx = None
+            
+        # see if this is an offsite article
+        if artInfo.fileClassification == "pepoffsite":
+            # certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
+            bibRefOffsiteEntry = bibRefEntry
+          
+            #bibEntryXMLContents = """<html>
+                                 #<p>This reference is in an article or book where text is not is available on PEP. 
+                                    #Click <a href="//www.doi.org/%s" target="_blank">here</a> to show the article on another website 
+                                    #in another window or tab.
+                                 #</p>
+                                 #</html>
+                              #""" % urllib.quote(artInfo.artDOI)
+            # should we trust clients, or remove this data?  For now, remove.  Need to probably do this in biblio core too
+            bibRefEntry = None
+        else:
+            bibRefOffsiteEntry = None
     
         thisRef = {
                     "id" : refID,
@@ -557,20 +498,22 @@ def processBibForReferencesCore(pepxml, artInfo, solrcon):
                     "art_pgrg" : artInfo.artPgrg,
                     "art_lang" : artInfo.artLang,
                     "art_citeas_xml" : artInfo.artCiteAsXML,
-                    "text" : bibRefEntry,                        
+                    "text_ref" : bibRefEntry,                        
+                    "text_offsite_ref": bibRefOffsiteEntry,
                     "authors" : authorList,
-                    "title" : xmlFindSubElementText(ref, "t"),
+                    "title" : opasxmllib.xmlFindSubElementText(ref, "t"),
                     "bib_authors_xml" : bibAuthorsXml,
                     "bib_ref_id" : bibRefID,
                     "bib_ref_rx" : bibRefRx,
+                    "bib_ref_rxcf" : bibRefRxCf, # the not 
                     "bib_ref_rx_sourcecode" : bibRefRxSourceCode,
-                    "bib_articletitle" : xmlFindSubElementText(ref, "t"),
+                    "bib_articletitle" : opasxmllib.xmlFindSubElementText(ref, "t"),
                     "bib_sourcetype" : bibSourceType,
                     "bib_sourcetitle" : bibSourceTitle,
-                    "bib_pgrg" : xmlFindSubElementText(ref, "pp"),
+                    "bib_pgrg" : opasxmllib.xmlFindSubElementText(ref, "pp"),
                     "bib_year" : bibYearofPublication,
                     "bib_year_int" : bibYearofPublicationInt,
-                    "bib_volume" : xmlFindSubElementText(ref, "v"),
+                    "bib_volume" : opasxmllib.xmlFindSubElementText(ref, "v"),
                     "bib_publisher" : bibPublishers
                   }
         allRefs.append(thisRef)
@@ -595,6 +538,7 @@ def main():
 
     programNameShort = "OPASWebLoaderPEP"  # used for log file
     scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
+    logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
 
     parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.13")
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
@@ -607,11 +551,11 @@ def main():
                       help="the Solr corename (holding the collection) to connect to, i.e., where to send data.  Example: 'pepwebdocs'")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.INFO,
                       help="Level at which events should be logged")
+    parser.add_option("--logfile", dest="logfile", default=logFilename,
+                      help="Logfile name with full path where events should be logged")
     parser.add_option("--resetcore",
                       action="store_true", dest="resetCoreData", default=False,
-                      help="reset the data in the selected cores")
-    parser.add_option("-s", "--sourceinfodbpath", dest="sourceInfoDBPath", default=None,
-                      help="Full path (and file name) of JSON file with the source info DB")
+                      help="reset the data in the selected cores. (authorscore is reset with the fulltext core)")
     parser.add_option("-t", "--trackerdb", dest="fileTrackerDBPath", default="filetracker.db",
                       help="Full path and database name where the File Tracking Database is located (sqlite3 db)")
     parser.add_option("-u", "--url",
@@ -626,9 +570,8 @@ def main():
 
     (options, args) = parser.parse_args()
 
-    logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
-    processingErrorCount = 0
-    processingWarningCount = 0
+    #processingErrorCount = 0
+    #processingWarningCount = 0
     processedFilesCount = 0
     logging.basicConfig(handlers=[ExitOnExceptionHandler()], filename=logFilename, level=options.logLevel)
     logger = config.logger = logging.getLogger(programNameShort)
@@ -667,32 +610,13 @@ def main():
 
     # import data about the PEP codes for journals and books.
     #  Codes are like APA, PAH, ... and special codes like ZBK000 for a particular book
-    sourceInfoDB = {}
-    try:
-        # Read the source code database - info about the various PEP Codes
-        # Default sourceCodeDBName is 'PEPSourceInfo.json' at script path (see config)
-        if options.sourceInfoDBPath is None:
-            sourceInfoDB = readSourceInfoDB(os.path.join(scriptSourcePath, config.SOURCEINFODBFILENAME))
-        else:
-            sourceInfoDB = readSourceInfoDB(options.sourceInfoDBPath)
-    except IOError:
-        logger.fatal("%s not found in %s.", options.sourceCodeDBName, scriptSourcePath)
-
-    # Need to keep a database of author names too, for the author index, because Solr isn't capable
-    # of this without creating a new core for it, which seems like overkill (for now).
-    # BUT TODO: if we decided to show more info, we could redundantly add the citeas data for each 
-    # article, and then the author core queries could search and also display even better
-    # author information.
-    
+    sourceDB = SourceInfoDB.SourceInfoDB()
 
     #TODO: Try without the None test, the library should not try to use None as user name or password, so only the first case may be needed
     # The connection call is to solrpy (import was just solr)
     if options.httpUserID is not None and options.httpPassword is not None:
         if options.fullTextCoreName is not None:
             solrDocs = solr.SolrConnection(solrAPIURL, http_user=options.httpUserID, http_pass=options.httpPassword)
-            # these are updated together with the full-text core
-            #glossCore = options.solrURL + config.GLOSSARYCORENAME
-            #authorCore = options.solrURL + config.AUTHORCORENAME
             solrAuthor = solr.SolrConnection(options.solrURL + config.AUTHORCORENAME, http_user=options.httpUserID, http_pass=options.httpPassword)
         if options.biblioCoreName is not None:
             solrBib = solr.SolrConnection(solrAPIURLRefs, http_user=options.httpUserID, http_pass=options.httpPassword)
@@ -706,11 +630,11 @@ def main():
     # Reset core's data if requested (mainly for early development)
     if options.resetCoreData:
         if options.fullTextCoreName is not None:
-            print ("Deleting all data from the full text core")
+            print ("*** Deleting all data from the full text core ***")
             solrDocs.delete_query("*:*")
             solrDocs.commit()
         if options.biblioCoreName is not None:
-            print ("Deleting all data from the References core")
+            print ("*** Deleting all data from the References core ***")
             solrBib.delete_query("*:*")
             solrBib.commit()
         # also reset the file tracker in both cases
@@ -760,7 +684,6 @@ def main():
     bibTotalReferenceCount = 0
     preCommitFileCount = 0
     processedFilesCount = 0
-    processedDateTime = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
     
 
     for n in filenames:
@@ -792,13 +715,14 @@ def main():
         pepxml = root
 
         # save common document (article) field values into artInfo instance for both databases
-        artInfo = ArticleInfo(sourceInfoDB, pepxml, artID, logger)
+        artInfo = ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
         artInfo.fileTimeStamp = fileTimeStamp
         artInfo.fileName = base
         artInfo.fileSize = currFileInfo.fileSize
-        artInfo.processedDateTime = processedDateTime  # use same time for all files this run
         try:
             artInfo.fileClassification = re.search("(pepcurrent|peparchive|pepfuture|pepfree|pepoffsite)", n, re.IGNORECASE).group(1)
+            # set it to lowercase for ease of matching later
+            artInfo.fileClassification = artInfo.fileClassification.lower()
         except Exception, e:
             logging.warn("Could not determine file classification for %s (%s)" % (n, e))
         
