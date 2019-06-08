@@ -47,6 +47,10 @@ import lxml
 from lxml import etree
 import solr     # Solrpy - supports a number of types of authentication, including basic.  This is "solrpy"
 
+import imp
+SourceInfoDB = imp.load_source('sourceInfoDB', '../libs/sourceInfoDB.py')
+opasxmllib = imp.load_source('opasxmllib', '../libs/opasXMLHelper.py')
+
 
 class ExitOnExceptionHandler(logging.StreamHandler):
     """
@@ -56,101 +60,6 @@ class ExitOnExceptionHandler(logging.StreamHandler):
         super().emit(record)
         if record.levelno in (logging.ERROR, logging.CRITICAL):
             raise SystemExit(-1)
-
-def xmlElementsToStrings(elementNode, xPathDef):
-    """
-    Return a list of XML tagged strings from the nodes in the specified xPath
-
-    Example:
-    strList = elementsToStrings(treeRoot, "//aut[@listed='true']")
-
-    """
-    retVal = [etree.tostring(n, with_tail=False) for n in elementNode.xpath(xPathDef)]
-    return retVal
-
-def xmlTextOnly(elem):
-    """
-    Return inner text of mixed content element with sub tags stripped out
-    """
-    etree.strip_tags(elem, '*')
-    inner_text = elem.text
-    if inner_text:
-        return inner_text.strip()
-    return None
-
-def xmlGetTextSingleton(elementNode, xpath):
-    """
-    Return text of element specified by xpath (with Node() as final part of path)
-    """
-    try:
-        retVal = elementNode.xpath(xpath)[0]
-    except IndexError:
-        retVal = ""
-        
-    return retVal    
-
-def xmlGetSingleDirectSubnodeText(elementNode, subelementName):
-    """
-    Return the text for a direct subnode of the lxml elementTree elementNode.
-    
-    Important Note: Looks only at direct subnodes, not all decendents (for max speed)
-    """
-    retVal = ""
-
-    try:
-        retVal = elementNode.xpath('%s/node()' % subelementName)
-        retVal = retVal[0]
-    except ValueError, err: # try without node
-        retVal = elementNode.xpath('%s' % subelementName)
-        retVal = retVal[0]
-    except IndexError, err:
-        retVal = elementNode.xpath('%s' % subelementName)
-    except Exception, err:
-        print ("getSingleSubnodeText Error: ", err)
-
-    if retVal == []:
-        retVal = ""
-    if isinstance(retVal, lxml.etree._Element):
-        retVal = xmlTextOnly(retVal)        
-
-    return retVal
-
-def xmlGetElementAttr(elementNode, attrName):
-    """
-    Get an attribute from the lxml elementNode
-    """
-    retVal = ""
-    try:
-        retVal = elementNode.attrib[attrName]
-    except Exception, err:
-        retVal = ""
-
-    return retVal
-
-def xmlFindSubElementText(elementNode, subElementName):
-    """
-    Text for elements with only CDATA underneath
-    """
-    retVal = ""
-    try:
-        retVal = elementNode.find(subElementName).text
-        retVal = retVal.strip()
-    except Exception, err:
-        retVal = ""
-
-    return retVal
-
-def xmlFindSubElementXML(elementNode, subElementName):
-    """
-    Returns the marked up XML text for elements (including subelements)
-    """
-    retVal = ""
-    try:
-        retVal = etree.tostring(elementNode.find(subElementName), with_tail=False)
-    except Exception, err:
-        retVal = ""
-
-    return retVal
 
 def main():
 
@@ -250,9 +159,9 @@ def main():
         allDictEntries = []
         for glossaryGroup in glossaryGroups:
             glossaryGroupXML = etree.tostring(glossaryGroup, with_tail=False)
-            glossaryGroupID = xmlGetElementAttr(glossaryGroup, "id")
-            glossaryGroupTerm = xmlFindSubElementText(glossaryGroup, "term")
-            glossaryGroupAlso = xmlFindSubElementXML(glossaryGroup, "dictalso")
+            glossaryGroupID = opasxmllib.xmlGetElementAttr(glossaryGroup, "id")
+            glossaryGroupTerm = opasxmllib.xmlFindSubElementText(glossaryGroup, "term")
+            glossaryGroupAlso = opasxmllib.xmlFindSubElementXML(glossaryGroup, "dictalso")
             if glossaryGroupAlso == "":
                 glossaryGroupAlso = None
             print ("Processing Term: %s" % glossaryGroupTerm)
@@ -263,7 +172,7 @@ def main():
                 counter += 1
                 thisDictEntry = {}
                 dictEntryID = glossaryGroupID + ".{:03d}".format(counter)
-                dictEntryTerm = xmlFindSubElementText(dictEntry, "term")
+                dictEntryTerm = opasxmllib.xmlFindSubElementText(dictEntry, "term")
                 if dictEntryTerm == "":
                     dictEntryTerm = glossaryGroupTerm
                 dictEntryTermType = dictEntry.xpath("term/@type")  
@@ -272,12 +181,12 @@ def main():
                 else:
                     dictEntryTermType = "term"
                 
-                dictEntrySrc = xmlFindSubElementText(dictEntry, "src")
-                dictEntryAlso = xmlFindSubElementXML(dictEntry, "dictalso")
+                dictEntrySrc = opasxmllib.xmlFindSubElementText(dictEntry, "src")
+                dictEntryAlso = opasxmllib.xmlFindSubElementXML(dictEntry, "dictalso")
                 if dictEntryAlso == "":
                     dictEntryAlso = None
-                dictEntryDef = xmlFindSubElementXML(dictEntry, "def")
-                dictEntryDefRest = xmlFindSubElementXML(dictEntry, "defrest")
+                dictEntryDef = opasxmllib.xmlFindSubElementXML(dictEntry, "def")
+                dictEntryDefRest = opasxmllib.xmlFindSubElementXML(dictEntry, "defrest")
                 thisDictEntry = {
                     "term_id"             : dictEntryID,
                     "group_id"            : glossaryGroupID,
