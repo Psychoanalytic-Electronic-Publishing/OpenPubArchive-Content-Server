@@ -4,11 +4,14 @@
 from __future__ import print_function
 
 import json
+import os.path
 
 SOURCEINFODBFILENAME = 'PEPSourceInfo.json'
+scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
+dbPath = os.path.join(scriptSourcePath, SOURCEINFODBFILENAME)
 
 class SourceInfoDB (object):
-    def __init__(self, journalInfoFile=SOURCEINFODBFILENAME):
+    def __init__(self, journalInfoFile=dbPath):
         self.journalInfoFile = journalInfoFile
         self.sourceData = self.readSourceInfoDB(journalInfoFile)
         
