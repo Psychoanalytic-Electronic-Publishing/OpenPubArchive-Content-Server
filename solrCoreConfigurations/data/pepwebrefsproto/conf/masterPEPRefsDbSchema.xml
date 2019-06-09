@@ -17,11 +17,14 @@
   <!-- ********************************* -->
   <!-- Metadata fields -->
   <!-- containing file info -->
-  <field name="myfileAbsolutePath" type="string" indexed="true" stored="true"/>
-  <field name="myfileSize" type="string" indexed="true" stored="true"/>
-  <field name="myfileDir" type="string" indexed="true" stored="true"/>
-  <field name="myfileLastModified" type="string" indexed="true" stored="true"/>
-  <field name="myfileName" type="string" indexed="true" stored="true"/>
+  <!-- <field name="fileAbsolutePath" type="string" indexed="true" stored="true"/> -->
+  <field name="file_size" type="pint" indexed="true" stored="true"/>
+  <!-- Store whether its PEPArchive, PEPCurrent, etc. -->
+  <field name="file_classification" type="string" indexed="true" stored="true"/>
+  <field name="file_last_modified" type="pdate" indexed="true" stored="true"/>
+  <field name="file_name" type="string" indexed="true" stored="true"/>
+
+  <field name="timestamp" type="pdate" indexed="true" stored="true" multiValued="false"/>
 
   <!-- Reference ID = PEP article ID + biblio entry ID -->
   <field name="id" type="string" indexed="true" stored="true"/>
@@ -34,7 +37,12 @@
   <!-- version is required to do atomic updates, though I still can't get them to work. -->
   <field name="_version_" type="plong" indexed="false" stored="false"/>
   <!-- field "text" full-text of each reference (be|binc)-->
-  <field name="text" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="text_ref" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="text_offsite_ref" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <!-- field "text" full-text of each reference (be|binc)-->
+  <field name="text" type="text_simple" indexed="true" stored="false" multiValued="false"/>
+  <copyField source="text_*" dest="text"/>
+
 
   <!-- ********************************* -->
   <!-- Containing Article metadata -->
@@ -48,11 +56,14 @@
   <field name="art_pepsourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_vol" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_year" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_year_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_title" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_pgrg" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_lang" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <!-- this will be a full-text reference to the  citing document -->
   <field name="art_citeas_xml" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="reference_count" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  
   <!-- Article Citation, not used -->
   <!-- <field name="art_citation" type="text_simple" indexed="true" stored="true" multiValued="true"/> -->
 
@@ -61,18 +72,27 @@
   <!-- Reference Level prefix bib_ -->
   <!-- ********************************* -->
   <field name="bib_ref_id" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="bib_ref_rx" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_ref_rx" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="bib_ref_rxcf" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!--For faceting the source code (only) of reference matched documents-->
+  <field name="bib_ref_rx_sourcecode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="bib_articletitle" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bib_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!-- source title is book, video source or journal title. -->
   <field name="bib_sourcetitle" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <!-- to be used for faceting by who queries what -->
+  <field name="bib_sourcename" type="string" indexed="true" stored="true" multiValued="false"/>
+  <copyField source="bib_sourcetitle" dest="bib_sourcename"/>
+
   <field name="bib_sourcetype" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bib_publisher" type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="bib_volume" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="bib_year" type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="bib_pgrg" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_year" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="bib_year_int" type="pint" indexed="true" stored="true" multiValued="false"/>
+
   <!-- Naming exception for now, this the full-text biblio reference -->
-  <field name="reference_xml" type="text_general" indexed="true" stored="true" multiValued="false"/>
+  <!-- <field name="reference_xml" type="text_general" indexed="true" stored="true" multiValued="false"/> -->
 
   <!-- Uncomment the dynamicField definition to catch any other fields
    that may have been declared in the DIH configuration.
@@ -133,6 +153,33 @@
   <fieldType name="plongs" class="solr.LongPointField" docValues="true" multiValued="true"/>
   <fieldType name="pdoubles" class="solr.DoublePointField" docValues="true" multiValued="true"/>
   <fieldType name="random" class="solr.RandomSortField" indexed="true"/>
+
+  <!-- The format for this date field is of the form 1995-12-31T23:59:59Z, and
+       is a more restricted form of the canonical representation of dateTime
+       http://www.w3.org/TR/xmlschema-2/#dateTime
+       The trailing "Z" designates UTC time and is mandatory.
+       Optional fractional seconds are allowed: 1995-12-31T23:59:59.999Z
+       All other components are mandatory.
+
+       Expressions can also be used to denote calculations that should be
+       performed relative to "NOW" to determine the value, ie...
+
+             NOW/HOUR
+                ... Round to the start of the current hour
+             NOW-1DAY
+                ... Exactly 1 day prior to now
+             NOW/DAY+6MONTHS+3DAYS
+                ... 6 months and 3 days in the future from the start of
+                    the current day
+
+    -->
+  <!-- KD-tree versions of date fields -->
+  <fieldType name="pdate" class="solr.DatePointField" docValues="true"/>
+  <fieldType name="pdates" class="solr.DatePointField" docValues="true" multiValued="true"/>
+
+  <!--Binary data type. The data should be sent/retrieved in as Base64 encoded Strings -->
+  <fieldType name="binary" class="solr.BinaryField"/>
+
 
   <!-- since fields of this type are by default not stored or indexed,
      any data added to them will be ignored outright.  -->

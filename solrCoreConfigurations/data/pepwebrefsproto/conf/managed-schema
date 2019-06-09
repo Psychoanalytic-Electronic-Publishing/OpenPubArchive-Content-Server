@@ -2,7 +2,10 @@
 <!-- Solr managed schema - automatically generated - DO NOT EDIT -->
 <schema name="pepwebrefs-nrs" version="1.61">
   <uniqueKey>id</uniqueKey>
+  <fieldType name="binary" class="solr.BinaryField"/>
   <fieldType name="ignored" class="solr.StrField" indexed="false" stored="false" multiValued="true"/>
+  <fieldType name="pdate" class="solr.DatePointField" docValues="true"/>
+  <fieldType name="pdates" class="solr.DatePointField" docValues="true" multiValued="true"/>
   <fieldType name="pdouble" class="solr.DoublePointField" docValues="true"/>
   <fieldType name="pdoubles" class="solr.DoublePointField" docValues="true" multiValued="true"/>
   <fieldType name="pfloat" class="solr.FloatPointField" docValues="true"/>
@@ -47,25 +50,34 @@
   <field name="art_title" type="text_simple" multiValued="false" indexed="true" stored="true"/>
   <field name="art_vol" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="art_year" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="art_year_int" type="pint" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="authors" type="text_simple" multiValued="true" indexed="true" stored="true"/>
   <field name="bib_articletitle" type="text_simple" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_authors_xml" type="text_simple" multiValued="true" indexed="true" stored="true"/>
   <field name="bib_pgrg" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_publisher" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_ref_id" type="string" multiValued="false" indexed="true" stored="true"/>
-  <field name="bib_ref_rx" type="string" multiValued="false" indexed="true" stored="true"/>
+  <field name="bib_ref_rx" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="bib_ref_rx_sourcecode" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="bib_ref_rxcf" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="bib_sourcename" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_sourcetitle" type="text_simple" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_sourcetype" type="text_simple" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_volume" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="bib_year" type="string" multiValued="false" indexed="true" stored="true"/>
+  <field name="bib_year_int" type="pint" multiValued="false" indexed="true" stored="true"/>
+  <field name="file_classification" type="string" indexed="true" stored="true"/>
+  <field name="file_last_modified" type="pdate" indexed="true" stored="true"/>
+  <field name="file_name" type="string" indexed="true" stored="true"/>
+  <field name="file_size" type="pint" indexed="true" stored="true"/>
   <field name="format" type="string" indexed="true" stored="true"/>
   <field name="id" type="string" indexed="true" stored="true"/>
-  <field name="myfileAbsolutePath" type="string" indexed="true" stored="true"/>
-  <field name="myfileDir" type="string" indexed="true" stored="true"/>
-  <field name="myfileLastModified" type="string" indexed="true" stored="true"/>
-  <field name="myfileName" type="string" indexed="true" stored="true"/>
-  <field name="myfileSize" type="string" indexed="true" stored="true"/>
-  <field name="reference_xml" type="text_general" multiValued="false" indexed="true" stored="true"/>
-  <field name="text" type="text_simple" multiValued="false" indexed="true" stored="true"/>
+  <field name="reference_count" type="pint" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="text" type="text_simple" multiValued="false" indexed="true" stored="false"/>
+  <field name="text_offsite_ref" type="text_simple" multiValued="false" indexed="true" stored="true"/>
+  <field name="text_ref" type="text_simple" multiValued="false" indexed="true" stored="true"/>
+  <field name="timestamp" type="pdate" multiValued="false" indexed="true" stored="true"/>
   <field name="title" type="text_simple" multiValued="true" indexed="true" stored="true"/>
+  <copyField source="bib_sourcetitle" dest="bib_sourcename"/>
+  <copyField source="text_*" dest="text"/>
 </schema>

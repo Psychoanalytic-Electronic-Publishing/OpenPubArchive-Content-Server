@@ -2,7 +2,10 @@
 <!-- Solr managed schema - automatically generated - DO NOT EDIT -->
 <schema name="pepwebproto-nrs" version="1.61">
   <uniqueKey>id</uniqueKey>
+  <fieldType name="binary" class="solr.BinaryField"/>
   <fieldType name="ignored" class="solr.StrField" indexed="false" stored="false" multiValued="true"/>
+  <fieldType name="pdate" class="solr.DatePointField" docValues="true"/>
+  <fieldType name="pdates" class="solr.DatePointField" docValues="true" multiValued="true"/>
   <fieldType name="pdouble" class="solr.DoublePointField" docValues="true"/>
   <fieldType name="pdoubles" class="solr.DoublePointField" docValues="true" multiValued="true"/>
   <fieldType name="pfloat" class="solr.FloatPointField" docValues="true"/>
@@ -59,6 +62,7 @@
   <field name="art_type" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="art_vol" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="art_year" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="art_year_int" type="pint" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="artvoltitle" type="text_simple" multiValued="false" indexed="true" stored="true"/>
   <field name="author_aff_xml" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="author_bio_xml" type="text_general" multiValued="true" indexed="true" stored="true"/>
@@ -77,16 +81,15 @@
   <field name="dialogs_spkr" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="dialogs_xml" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="dreams_xml" type="text_general" multiValued="true" indexed="true" stored="true"/>
+  <field name="file_classification" type="string" indexed="true" stored="true"/>
+  <field name="file_last_modified" type="pdate" indexed="true" stored="true"/>
+  <field name="file_name" type="string" indexed="true" stored="true"/>
+  <field name="file_size" type="pint" indexed="true" stored="true"/>
   <field name="format" type="string" indexed="true" stored="true"/>
   <field name="headings_xml" type="text_simple" multiValued="true" indexed="true" stored="true"/>
   <field name="id" type="string" indexed="true" stored="true"/>
   <field name="lang" type="string" docValues="true" multiValued="true" indexed="true" stored="true"/>
   <field name="meta_xml" type="text_simple" indexed="true" stored="true"/>
-  <field name="myfileAbsolutePath" type="string" indexed="true" stored="true"/>
-  <field name="myfileDir" type="string" indexed="true" stored="true"/>
-  <field name="myfileLastModified" type="string" indexed="true" stored="true"/>
-  <field name="myfileName" type="string" indexed="true" stored="true"/>
-  <field name="myfileSize" type="string" indexed="true" stored="true"/>
   <field name="notes_xml" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="panels_spkr" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="panels_xml" type="text_general" multiValued="true" indexed="true" stored="true"/>
@@ -94,6 +97,7 @@
   <field name="poems_xml" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="quotes_spkr" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="quotes_xml" type="text_general" multiValued="true" indexed="true" stored="true"/>
+  <field name="reference_count" type="pint" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="references_xml" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="sections_xml" type="text_simple" multiValued="true" indexed="true" stored="true"/>
   <field name="summaries_xml" type="text_general" multiValued="true" indexed="true" stored="true"/>
@@ -101,7 +105,9 @@
   <field name="terms_highlighted_xml" type="string" docValues="true" multiValued="true" indexed="true" stored="true"/>
   <field name="terms_xml" type="text_simple" multiValued="true" indexed="true" stored="true"/>
   <field name="text" type="text_general" multiValued="true" indexed="true" stored="false"/>
+  <field name="text_offsite" type="text_simple" multiValued="false" indexed="true" stored="false"/>
   <field name="text_xml" type="text_simple" multiValued="true" indexed="true" stored="true"/>
+  <field name="timestamp" type="pdate" multiValued="false" indexed="true" stored="true"/>
   <field name="title" type="text_simple" multiValued="true" indexed="true" stored="true"/>
-  <copyField source="text_xml" dest="text"/>
+  <copyField source="text_*" dest="text"/>
 </schema>
