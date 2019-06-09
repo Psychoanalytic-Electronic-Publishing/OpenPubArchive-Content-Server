@@ -3,6 +3,7 @@ version: '2'
 services:
     solr:
         image: solr:8
+        user: ubuntu
         volumes:
             - ./solrCoreConfigurations/data:/var/solr/data/
         ports:
@@ -13,6 +14,7 @@ services:
 
     sftp:
         image: atmoz/sftp
+        user: ubuntu
         volumes:
             - ./ftpdata:/home/pep/upload
         restart: always
