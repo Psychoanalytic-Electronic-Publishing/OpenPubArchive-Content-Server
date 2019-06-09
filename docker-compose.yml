@@ -35,14 +35,15 @@ services:
             MYSQL_USER: 'pep'
             MYSQL_PASS: 'peppass'
         volumes:
-            - datavolume:/var/lib/mysql
+            - ./mysql-data:/var/lib/mysql
+#            - datavolume:/var/lib/mysql doesn't seem to work!
 
-volumes:
-    datavolume:
-        driver: local
-        driver_opts:
-            type: bind
-            device: ./mysql-data
+#volumes:
+#    datavolume:
+#        driver: local
+#        driver_opts:
+#            type: bind
+#            device: ./mysql-data
 
 #    solrdata:
 #        driver: local
