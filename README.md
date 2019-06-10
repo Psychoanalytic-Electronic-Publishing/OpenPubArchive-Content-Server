@@ -16,11 +16,22 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-TBD. What things you need to install the software and how to install them.  Docker should be of help here.
+At the moment, the only pre-requisite is having the docker demon installed.
+Once that's taken care of:
+```
+cd /CURRENT/DIRECTORY
+docker-compose up
+```
+will start both the sftp demon, and solr.
+Sftp will be accessible on port :2222, while solr will be accessible on its normal port :8983.
 
-```
-Give examples
-```
+In this moment, the FTP user is _foo_ with password _pass_: this will change as soon as we decide on the mechanism to upload files and manage identities.
+
+The address:
+http://localhost:8983/solr/#/pepwebrefsproto/query
+should be accessible once the services have started.
+
+**Please note** that the index will be empty. It is then necessary to copy/move the data for the index, or insert the documents. **The index will be persisted**.
 
 ### Installing
 

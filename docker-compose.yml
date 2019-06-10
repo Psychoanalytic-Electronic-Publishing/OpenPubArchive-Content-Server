@@ -1,0 +1,54 @@
+version: '2'
+
+services:
+    solr:
+        image: solr:8
+        user: ubuntu
+        volumes:
+            - ./solrCoreConfigurations/data:/var/solr/data/
+        ports:
+            - "8983:8983"
+        command: solr-foreground
+        entrypoint: "docker-entrypoint.sh"
+        restart: always
+
+    sftp:
+        image: atmoz/sftp
+        user: ubuntu
+        volumes:
+            - ./ftpdata:/home/pep/upload
+        restart: always
+        ports:
+            - "2222:22"
+        command: pep:$$1$$xBD5VtwX$$wbyeEB9mJSD3j5yqyamHA0:e:1001
+#        command: pep::1001
+
+    python:
+        image: python:3.7-alpine3.9
+        command: python
+#        restart: always
+#        please note that at the moment this does nothing
+
+    mysql:
+        restart: always
+        image: mysql:latest
+        environment:
+            MYSQL_ROOT_PASSWORD: 'pep_test' # TODO: Change this?
+            MYSQL_USER: 'pep'
+            MYSQL_PASS: 'peppass'
+        volumes:
+            - ./mysql-data:/var/lib/mysql
+#            - datavolume:/var/lib/mysql doesn't seem to work!
+
+#volumes:
+#    datavolume:
+#        driver: local
+#        driver_opts:
+#            type: bind
+#            device: ./mysql-data
+
+#    solrdata:
+#        driver: local
+#        driver_opts:
+#            type: bind
+#            device: ./solrCoreConfigurations/data

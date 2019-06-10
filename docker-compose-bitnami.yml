@@ -1,0 +1,7 @@
+solr:
+    image: bitnami/solr:8.1.1-debian-9-r6
+    volumes:
+        - ./solrCoreConfigurations/data:/bitnami
+    ports:
+        - "8983:8983"
+    restart: always
