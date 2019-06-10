@@ -1,1 +1,11 @@
 SamplesAndTests/
+solrXMLWebLoad/peparchive.db
+solrXMLWebLoad/pepbitn.db
+solrXMLWebLoad/pepcurrent.db
+solrXMLWebLoad/remotearchive.db
+solrXMLWebLoad/remotecurrent.db
+solrXMLWebLoad/authorTracker.db
+*.pyc
+solrCoreConfigurations/pepwebauthors/conf/dataimport.properties
+solrCoreConfigurations/pepwebauthors/conf/dataimportxml.properties
+*.db

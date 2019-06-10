@@ -1,0 +1,42 @@
+#!wing
+#!version=5.0
+##################################################################
+# Wing IDE project file                                          #
+##################################################################
+[project attributes]
+proj.directory-list = [{'dirloc': loc('.'),
+                        'excludes': [u'solrXMLWebLoad/pepbitn.db',
+                                     u'solrXMLWebLoad/remotecurrent.db',
+                                     u'solrXMLWebLoad/OPASWebLoaderPEP_2019-06-02.log',
+                                     u'solrXMLWebLoad/OPASWebLoaderPEP_2019-06-04.log',
+                                     u'solrXMLWebLoad/pepcurrent.db',
+                                     u'solrXMLWebLoad/OPASWebLoaderPEP_2019-06-05.log',
+                                     u'solrXMLWebLoad/peparchive.db',
+                                     u'images',
+                                     u'solrXMLWebLoad/remotearchive.db',
+                                     u'solrXMLWebLoad/OPASWebLoaderPEP_2019-06-01.log'],
+                        'filter': '*',
+                        'include_hidden': False,
+                        'recursive': True,
+                        'watch_for_changes': True}]
+proj.file-type = 'shared'
+proj.launch-config = {loc('libs/opasXMLHelper.py'): ('project',
+        (u'',
+         'launch-JGSYeDSXXVSmZKRW')),
+                      loc('libs/sourceInfoDB.py'): ('project',
+        (u'',
+         'launch-JGSYeDSXXVSmZKRW')),
+                      loc('queryTests/pepsolrquerytest.py'): ('project',
+        (u'',
+         'launch-JGSYeDSXXVSmZKRW')),
+                      loc('solrXMLWebLoad/authorTracker.py'): ('project',
+        (u'',
+         'launch-JGSYeDSXXVSmZKRW')),
+                      loc('solrXMLWebLoad/solrXMLGlossaryLoad.py'): ('projec'\
+        't',
+        (u'\n',
+         'launch-JGSYeDSXXVSmZKRW')),
+                      loc('solrXMLWebLoad/solrXMLPEPWebLoad.py'): ('project',
+        (u'solrXMLPEPWebLoad.py -b pepwebrefsproto -f  pepwebproto  -d "X:\\_PEPA1\\_PEPa1v\\_PEPCurrent\\CPS"  -a',
+         'launch-JGSYeDSXXVSmZKRW'))}
+proj.main-file = loc('queryTests/pepsolrquerytest.py')
