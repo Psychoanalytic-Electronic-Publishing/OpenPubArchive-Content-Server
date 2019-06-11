@@ -1,6 +1,7 @@
-version: '2'
+version: '3'
 
 services:
+
     solr:
         image: solr:8
         volumes:
@@ -11,21 +12,38 @@ services:
         entrypoint: "docker-entrypoint.sh"
         restart: always
 
-    sftp:
-        image: atmoz/sftp
-        volumes:
-            - ./ftpdata:/home/pep/upload
-        restart: always
-        ports:
-            - "2222:22"
-        command: pep:$$1$$xBD5VtwX$$wbyeEB9mJSD3j5yqyamHA0:e:1001
-        #  the password in encrypted, but this is still not the best way
+#
+#    sftp:
+#        image: atmoz/sftp
+#        volumes:
+#            - ./ftpdata:/home/pep/upload
+#        restart: always
+#        ports:
+#            - "2222:22"
+#        command: pep:$$1$$xBD5VtwX$$wbyeEB9mJSD3j5yqyamHA0:e:1001
+#        #  the password in encrypted, but this is still not the best way
+
+    ftp:
+      image: stilliard/pure-ftpd:hardened
+      ports:
+        - "21:21"
+        - "30000-30009:30000-30009"
+      volumes:
+        - ./ftpdata:/home/pep/
+        - ./config/ftp.passwd:/etc/pure-ftpd/pureftpd.passwd
+      environment:
+        PUBLICHOST: "localhost"
+        FTP_USER_NAME: pep
+        FTP_USER_PASS: NewPepPasswordIn2019
+        FTP_USER_HOME: /home/pep/
+      restart: always
 
     python2:
         build: solrXMLWebLoad
 #        command: python
 #        restart: always
 #        please note that at the moment this does nothing
+
 
     mysql:
         restart: always
@@ -37,6 +55,7 @@ services:
         volumes:
             - ./mysql-data:/var/lib/mysql
 #            - datavolume:/var/lib/mysql doesn't seem to work!
+
 
 #volumes:
 #    datavolume:

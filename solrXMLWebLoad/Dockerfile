@@ -11,5 +11,5 @@ RUN apk add --update --no-cache --virtual .build-deps \
     pip install --no-cache-dir -r requirements.txt && \
     apk del .build-deps && \
 
-COPY . .
-CMD ["bash"]
+#COPY . .
+CMD ["sh"]
