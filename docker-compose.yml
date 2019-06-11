@@ -3,7 +3,6 @@ version: '2'
 services:
     solr:
         image: solr:8
-        user: ubuntu
         volumes:
             - ./solrCoreConfigurations/data:/var/solr/data/
         ports:
@@ -14,18 +13,17 @@ services:
 
     sftp:
         image: atmoz/sftp
-        user: ubuntu
         volumes:
             - ./ftpdata:/home/pep/upload
         restart: always
         ports:
             - "2222:22"
         command: pep:$$1$$xBD5VtwX$$wbyeEB9mJSD3j5yqyamHA0:e:1001
-#        command: pep::1001
+        #  the password in encrypted, but this is still not the best way
 
-    python:
-        image: python:3.7-alpine3.9
-        command: python
+    python2:
+        build: solrXMLWebLoad
+#        command: python
 #        restart: always
 #        please note that at the moment this does nothing
 
