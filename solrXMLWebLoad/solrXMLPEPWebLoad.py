@@ -68,7 +68,7 @@ import solr     # supports a number of types of authentication, including basic.
 
 import config
 from OPASFileTracker import FileTracker, FileTrackingInfo
-import OpasGenSupportLib as opasgenlib
+import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
 
 import imp
