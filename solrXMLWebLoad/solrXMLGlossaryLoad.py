@@ -160,8 +160,8 @@ def main():
         for glossaryGroup in glossaryGroups:
             glossaryGroupXML = etree.tostring(glossaryGroup, with_tail=False)
             glossaryGroupID = opasxmllib.xmlGetElementAttr(glossaryGroup, "id")
-            glossaryGroupTerm = opasxmllib.xmlFindSubElementText(glossaryGroup, "term")
-            glossaryGroupAlso = opasxmllib.xmlFindSubElementXML(glossaryGroup, "dictalso")
+            glossaryGroupTerm = opasxmllib.xmlGetSubElementTextSingleton(glossaryGroup, "term")
+            glossaryGroupAlso = opasxmllib.xmlGetSubElementXMLSingleton(glossaryGroup, "dictalso")
             if glossaryGroupAlso == "":
                 glossaryGroupAlso = None
             print ("Processing Term: %s" % glossaryGroupTerm)
@@ -172,7 +172,7 @@ def main():
                 counter += 1
                 thisDictEntry = {}
                 dictEntryID = glossaryGroupID + ".{:03d}".format(counter)
-                dictEntryTerm = opasxmllib.xmlFindSubElementText(dictEntry, "term")
+                dictEntryTerm = opasxmllib.xmlGetSubElementTextSingleton(dictEntry, "term")
                 if dictEntryTerm == "":
                     dictEntryTerm = glossaryGroupTerm
                 dictEntryTermType = dictEntry.xpath("term/@type")  
@@ -181,12 +181,12 @@ def main():
                 else:
                     dictEntryTermType = "term"
                 
-                dictEntrySrc = opasxmllib.xmlFindSubElementText(dictEntry, "src")
-                dictEntryAlso = opasxmllib.xmlFindSubElementXML(dictEntry, "dictalso")
+                dictEntrySrc = opasxmllib.xmlGetSubElementTextSingleton(dictEntry, "src")
+                dictEntryAlso = opasxmllib.xmlGetSubElementXMLSingleton(dictEntry, "dictalso")
                 if dictEntryAlso == "":
                     dictEntryAlso = None
-                dictEntryDef = opasxmllib.xmlFindSubElementXML(dictEntry, "def")
-                dictEntryDefRest = opasxmllib.xmlFindSubElementXML(dictEntry, "defrest")
+                dictEntryDef = opasxmllib.xmlGetSubElementXMLSingleton(dictEntry, "def")
+                dictEntryDefRest = opasxmllib.xmlGetSubElementXMLSingleton(dictEntry, "defrest")
                 thisDictEntry = {
                     "term_id"             : dictEntryID,
                     "group_id"            : glossaryGroupID,
@@ -213,7 +213,7 @@ def main():
     
             if not re.search('"status">0</int>', response_update):
                 print (response_update)
-        except Exception, err:
+        except Exception as err:
             logger.error("Solr call exception %s", err)
     
         f.close()

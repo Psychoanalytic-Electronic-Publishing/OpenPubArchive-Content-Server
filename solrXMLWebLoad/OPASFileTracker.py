@@ -37,7 +37,7 @@ def getModDate(filePath):
     except IOError:
         # try where the script is running from instead.
         config.logger.info("%s not found.", filePath)
-    except Exception, e:
+    except Exception as e:
         config.logger.fatal("%s.", e)
 
     return retVal
@@ -104,19 +104,19 @@ class FileTracker (object):
                 try:
                     self.createTable(createCmd)
                     retVal = True
-                    print "Database has 0 entries"
+                    print ("Database has 0 entries")
                 except sqlite3.Error as e:
                     self.conn = None
                     retVal = False
-                    print "Cannot connect to database"
+                    print ("Cannot connect to database")
                     print(e)
             else:
-                print "%s Processed File Database found - it has %s entries" % (self.sqlDBPath, count)
+                print ("%s Processed File Database found - it has %s entries" % (self.sqlDBPath, count))
 
         except sqlite3.Error as e:
             self.conn = None
             retVal = False
-            print "Cannot connect to database"
+            print ("Cannot connect to database")
             print(e)
 
 
@@ -131,12 +131,12 @@ class FileTracker (object):
         retVal = False
         try:
             count = self.getFileDatabaseRecordCount()
-            print "Delete Requested,  %s records in database" % count
+            print ("Delete Requested,  %s records in database" % count)
             c = self.conn.cursor()
             c.execute("DELETE FROM fileTracking;")
             self.commit()
             count = self.getFileDatabaseRecordCount()
-            print "Delete Performed, now there are %s records in database" % count
+            print ("Delete Performed, now there are %s records in database" % count)
             retVal = True
         except sqlite3.Error as e:
             print(e)
@@ -189,7 +189,7 @@ class FileTracker (object):
         try:
             self.conn.commit()
         except sqlite3.Error as e:
-            print "Commit failed!", e
+            print ("Commit failed!", e)
 
     #----------------------------------------------------------------------------------------
     def setFileDatabaseRecord(self, currentFileInfo):
@@ -263,7 +263,7 @@ class FileTracker (object):
                 # no database record here
                 retVal = None
             elif len(rows) > 1:
-                print "Error: query returned multiple rows"
+                print ("Error: query returned multiple rows")
                 retVal = None
             else:
                 for row in rows:
@@ -288,7 +288,7 @@ class FileTracker (object):
             retVal = True  # file not in database.
         elif format(filesDBRecord.fileModDate, '.2f') != format(currentFileInfo.fileModDate, '.2f'):
             #print filesDBRecord.fileModDate, currentFileInfo.fileModDate
-            print "File is modified: %s.  %s != %s" % (currentFileInfo.filePath, int(filesDBRecord.fileModDate), int(currentFileInfo.fileModDate))
+            print ("File is modified: %s.  %s != %s" % (currentFileInfo.filePath, int(filesDBRecord.fileModDate), int(currentFileInfo.fileModDate)))
             retVal = True
         else: #File not modified
             retVal = False
