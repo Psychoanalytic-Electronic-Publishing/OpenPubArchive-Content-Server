@@ -8,7 +8,7 @@ opasAPISupportLib
 This library is meant to hold the heart of the API based Solr queries and other support 
 functions.  
 
-2019.0614.1 - Python 3.7 compatible
+2019.0614.1 - Python 3.7 compatible.  Work in progress.
 
 """
 __author__      = "Neil R. Shapiro"
