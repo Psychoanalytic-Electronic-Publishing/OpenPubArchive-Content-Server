@@ -3,42 +3,36 @@
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
 from __future__ import print_function
 
+import sys
+sys.path.append('../libs')
+
 import json
 import os.path
 
-SOURCEINFODBFILENAME = 'PEPSourceInfo.json'
+import PEPSourceDBData
+
 scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
-dbPath = os.path.join(scriptSourcePath, SOURCEINFODBFILENAME)
 
 class SourceInfoDB (object):
-    def __init__(self, journalInfoFile=dbPath):
-        self.journalInfoFile = journalInfoFile
-        self.sourceData = self.readSourceInfoDB(journalInfoFile)
+    def __init__(self):
+        self.sourceData = {}
         
-    def readSourceInfoDB(self, journalInfoFile):
-        """
-        The source info DB is a journal basic info "database" in json
+        for n in PEPSourceDBData.pepsourceInfoRecords:
+            try:
+                self.sourceData[n["pepsrccode"]] = n
+            except KeyError as e:
+                print ("Missing Source Code Value in %s" % n)
         
-        Read as is since this JSON file can be simply and quickly exported
-             from the PEP issn table in mySQL used in data conversion
-    
-        """
-        retVal = {}
-        with open(journalInfoFile) as f:
-            journalInfo = json.load(f)
-    
-        # turn it into a in-memory dictionary indexed by jrnlcode;
-        # in 2019, note that there are only 111 records
-        for n in journalInfo["RECORDS"]:
-            retVal[n["pepsrccode"]] = n
-    
-        return retVal
 
 def main():
-    
+    import sys
+    print ("Running in Python %s" % sys.version_info[0])
     # test load
     myDb = SourceInfoDB()
-    print (myDb.sourceData["AJP"])
+    print (myDb.sourceData["ANIJP-EL"])
+    for key, item in myDb.sourceData.items():
+        #print (key, item)
+        print (item["sourcetitlefull"], item["publisher"])
     
     
 if __name__ == "__main__":
