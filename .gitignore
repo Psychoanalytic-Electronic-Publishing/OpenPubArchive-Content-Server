@@ -10,3 +10,4 @@ solrCoreConfigurations/pepwebauthors/conf/dataimport.properties
 solrCoreConfigurations/pepwebauthors/conf/dataimportxml.properties
 *.db
 queryTests/
+.idea
