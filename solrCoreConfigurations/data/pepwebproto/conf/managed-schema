@@ -40,12 +40,14 @@
   <field name="_version_" type="plong" indexed="false" stored="false"/>
   <field name="abstracts_xml" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="art_authors" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="art_authors_mast" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="art_authors_unlisted" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="art_authors_xml" type="text_simple" multiValued="true" indexed="true" stored="true"/>
   <field name="art_citeas_xml" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="art_doi" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="art_id" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="art_iss" type="string" multiValued="false" indexed="true" stored="true"/>
+  <field name="art_iss_title" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="art_issn" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="art_kwds" type="text_simple" multiValued="true" indexed="true" stored="true"/>
   <field name="art_lang" type="string" multiValued="true" indexed="true" stored="true"/>

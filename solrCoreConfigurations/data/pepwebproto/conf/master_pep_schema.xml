@@ -58,6 +58,7 @@
   <field name="art_origrx" type="string" indexed="true" stored="true" multiValued="false"/>
   <!-- So how can we do queries for partial last names...can't bunch authors in printable form.  Try two fields, one XML one presentation one multifield. -->
   <field name="art_authors" type="string" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_mast" type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="art_authors_unlisted" type="string" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
 
