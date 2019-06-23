@@ -9,13 +9,18 @@ OPAS - XML Support Function Library
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "0.1.23"
+__version__     = "2019.0523.4"
 __status__      = "Development"
 
+import sys
 import re
+import os
+import stdMessageLib
+import logging
+
 import lxml
 from lxml import etree
-import sys
+from ebooklib import epub
 
 pyVer = 2
 if (sys.version_info > (3, 0)):
@@ -25,6 +30,31 @@ if (sys.version_info > (3, 0)):
 else:
     # Python 2 code in this block
     import StringIO
+import opasAPISupportLib
+
+# -------------------------------------------------------------------------------------------------------
+# run it! (for testing)
+# 
+# nrs note - Trying main at the top, for function refactors (wing moves to the bottom of the file.
+
+if __name__ == "__main__":
+    print ("Running in Python %s" % sys.version_info[0])
+    import doctest
+
+    testXML = """
+              <test>
+                <author role="writer">this is just authoring test stuff</author>
+                <p id="1">A random paragraph</p>
+                <p id="2" type="speech">Another random paragraph</p>
+                <p id="3">Another <b>random</b> paragraph</p>
+                <p id="4">Another random paragraph</p>
+                <p id="5">Another <b>random</b> paragraph with multiple <b>subelements</b></p>
+              </test>
+              """
+    doctest.testmod()
+    print ("Tests Completed")
+
+# -------------------------------------------------------------------------------------------------------
 
 def authorDeriveMastFromXMLStr(authorXMLStr, listed=True):
     """
@@ -355,7 +385,8 @@ def xmlElemOrStrToText(elemOrXMLStr, defaultReturn=""):
     else:
         try:
             if type(elemOrXMLStr) == type(""):
-                elem = etree.fromstring(elemOrXMLStr)
+                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
+                elem = etree.fromstring(elemOrXMLStr, parser)
             else:
                 elem = elemOrXMLStr
         except Exception as err:
@@ -463,22 +494,106 @@ def xmlXPathReturnXMLStringList(elementNode, xPathDef):
     return retVal
     
 
-# -------------------------------------------------------------------------------------------------------
-# run it! (for testing)
-
-if __name__ == "__main__":
-    print ("Running in Python %s" % sys.version_info[0])
-    import doctest
-    testXML = """
-              <test>
-                <author role="writer">this is just authoring test stuff</author>
-                <p id="1">A random paragraph</p>
-                <p id="2" type="speech">Another random paragraph</p>
-                <p id="3">Another <b>random</b> paragraph</p>
-                <p id="4">Another random paragraph</p>
-                <p id="5">Another <b>random</b> paragraph with multiple <b>subelements</b></p>
-              </test>
-              """
+def extractHTMLFragment(strHTML, xpathToExtract="//div[@id='abs']"):
+    # parse HTML
+    htree = etree.HTML(strHTML)
+    retVal = htree.xpath(xpathToExtract)
+    # make sure it's a string
+    retVal = opasAPISupportLib.forceStringReturnFromVariousReturnTypes(retVal)
     
-    doctest.testmod()
-    print ("Tests Completed")
+    return retVal
+
+def convertXMLStringToHTML(xmlTextStr, xsltFile=r"../styles/pepkbd3-html.xslt"):
+    retVal = None
+    if xmlTextStr is not None and xmlTextStr != "[]":
+        xsltFile = etree.parse(xsltFile)
+        xsltTransformer = etree.XSLT(xsltFile)
+        sourceFile = etree.fromstring(xmlTextStr)
+        transformedData = xsltTransformer(sourceFile)
+        retVal = str(transformedData)
+    
+    return retVal
+def convertHTMLToEPUB(htmlString, outputFilenameBase, artID, lang="en", htmlTitle=None, styleSheet="../styles/pep-html-preview.css"):
+    """
+    uses ebooklib
+    
+    """
+    if htmlTitle is None:
+        htmlTitle = artID
+        
+    root = etree.HTML(htmlString)
+    try:
+        title = root.xpath("//title/text()")
+        title = title[0]
+    except:
+        title = artID
+        
+    headings = root.xpath("//*[self::h1|h2|h3]")
+
+        
+    basename = os.path.basename(outputFilenameBase)
+    
+    book = epub.EpubBook()
+    book.set_identifier('basename')
+    book.set_title(htmlTitle)
+    book.set_language('en')
+    
+    book.add_author('PEP')    
+    book.add_metadata('DC', 'description', 'This is description for my book')
+
+    # main chapter
+    c1 = epub.EpubHtml(title=title,
+                       file_name= artID + '.xhtml',
+                       lang=lang)
+
+    c1.set_content(htmlString)
+    
+    # copyright page / chapter
+    c2 = epub.EpubHtml(title='Copyright',
+                       file_name='copyright.xhtml')
+    c2.set_content(stdMessageLib.copyrightPageHTML)   
+    
+    book.add_item(c1)
+    book.add_item(c2)    
+    
+    style = 'body { font-family: Times, Times New Roman, serif; }'
+    try:
+        styleFile = open(styleSheet, "r")
+        style = styleFile.read()
+        styleFile.close()
+        
+    except OSError as e:
+        logging.warning("Cannot open stylesheet %s" % e)
+    
+    
+    nav_css = epub.EpubItem(uid="style_nav",
+                            file_name="style/pepkbd3-html.css",
+                            media_type="text/css",
+                            content=style)
+    book.add_item(nav_css)    
+    
+    book.toc = (epub.Link(title, 'Introduction', 'intro'),
+                (
+                    epub.Section(title),
+                    (c1, c2)
+                )
+                )    
+
+    book.spine = ['nav', c1, c2]
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())    
+    filename = basename + '.epub'
+    epub.write_epub(filename, book)
+    return filename
+
+def removeEncodingString(xmlString):
+    # Get rid of the encoding for lxml
+    p=re.compile("\<\?xml version=\'1.0\' encoding=\'UTF-8\'\?\>\n")  # TODO - Move to module globals to optimize
+    retVal = xmlString
+    retVal = p.sub("", retVal)                
+    
+    return retVal
+
+
+
+

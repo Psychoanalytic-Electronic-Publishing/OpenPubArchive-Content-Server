@@ -11,3 +11,19 @@ solrCoreConfigurations/pepwebauthors/conf/dataimportxml.properties
 *.db
 queryTests/
 .idea
+OpenPubArchiveWing6.wpr
+OpenPubArchiveW7.wpu
+OpenPubArchiveW7.wpr
+scrap.py
+libs/epubExamination/IJP.051.0175A.epub
+OPASServer/.vs/OPASServer/v16/.suo
+OPASServer/.vs/slnx.sqlite
+OPASServer/.vs/VSWorkspaceState.json
+OPASServer/.vscode/launch.json
+OPASServer/pepsolrtest.log
+OPASServer/vs_opas.code-workspace
+styles/article.html
+styles/IJP.051.0175A(bEXP_ARCH1).html
+styles/IJP.051.0175A.epub
+schemas/opasCenter - not Open Source Yet/opasCenter.mwb
+*.bak

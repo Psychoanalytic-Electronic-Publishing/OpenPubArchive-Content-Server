@@ -22,6 +22,7 @@ from enum import Enum
 
 from pydantic import BaseModel
 from pydantic.types import EmailStr
+from opasCentralModels import User
 
 #-------------------------------------------------------
 #
@@ -35,6 +36,7 @@ class ListTypeEnum(Enum):
     authorPubList = "authorpublist"
     authorIndex = "authorindex"
     imageURLList = "imageurllist"
+    licenseInfo = "licenseinfo"
     sourceInfoList = "sourceinfolist"
     whatsNewList = "newlist"
     mostCitedList = "mostcited"
@@ -52,6 +54,13 @@ class ResponseInfo(BaseModel):
     request: str = None
     timeStamp: str = None
 
+class ResponseInfoLoginStatus(BaseModel):
+    loggedIn: bool = False
+    userName: str = None
+    request: str = None
+    user: User = None
+    timeStamp: str = None
+
 class AlertListItem(BaseModel):
     alertName: str
     alertSubscribeStatus: bool
@@ -67,15 +76,19 @@ class AuthorPubListItem(BaseModel):
     authorID: str
     documentID: str
     documentRef: str
+    documentRefHTML: str = None
     year: str = None
     documentURL: str = None
     score: float = None
-    
+
 class DocumentListItem(BaseModel):
-    PEPCode: str
+    PEPCode: str = None
     authorMast: str = None
     documentID: str = None
     documentRef: str = None
+    documentRefHTML: str = None
+    kwicList: list = None # a real list, seems better long term
+    kwic: str = None # the way GVPi did it
     issue: str = None
     issueTitle: str = None
     newSectionName: str = None
@@ -88,6 +101,12 @@ class DocumentListItem(BaseModel):
     term: str = None
     termCount: str = None
     abstract: str = None
+    documentText: str = None
+    updated: datetime = None
+    accessLimited: bool = False
+    accessLimitedReason: str = None
+    accessLimitedDescription: str = None
+    accessLimitedCurrentContent: bool = None
     score: float = None
     instanceCount: int = None
     
@@ -96,6 +115,13 @@ class ImageURLListItem(BaseModel):
     imageURL: str
     sourceType: str
     title: str
+    
+class LoginReturnItem(BaseModel):    
+    token_type: str
+    access_token: str = None
+    session_expires_time: datetime = None
+    authenticated: bool = False
+    scope: str = None
     
 class SourceInfoListItem(BaseModel):    
     ISSN: str = None
@@ -106,16 +132,17 @@ class SourceInfoListItem(BaseModel):
     language: str = None
     yearFirst: str = None
     yearLast: str = None
-    sourceType: str
-    title: str   
+    sourceType: str = None
+    title: str = None
 
 class VolumeListItem(BaseModel):
-    PEPCode: str
-    vol: str
+    PEPCode: str = None
+    vol: str = None
     year: str = None
     
 class WhatsNewListItem(BaseModel):
-    displayTitle: str
+    displayTitle: str = None
+    abbrev: str = None
     volume: str = None
     issue: str = None
     year: str = None
@@ -123,10 +150,36 @@ class WhatsNewListItem(BaseModel):
     srcTitle: str = None
     updated: str = None
     volumeURL: str = None
-    timestamp: str = None
   
+class SearchFormFields(BaseModel):
+    quickSearch: str = None
+    solrQ: str = None
+    disMax: str = None
+    edisMax: str = None
+    partialDocumentID: str = None
+    compoundQuery: bool = None
+    wordsOrPhrases: str = None
+    sourceWords: str = None
+    sourceCodes: str = None
+    sourceSet: str = None
+    author: str = None
+    title: str = None
+    year: str = None
+    startYear: str = None
+    endYear: str = None
+    citedTimes: int = None
+    citedPeriod: int = None
+    viewedTimes: int = None
+    viewedPeriod: int = None
+    articles: str = None
+    paragraphs: str = None
+    references: str = None
+    referenceAuthors: str = None
+    poems: str = None
+    quotes: str = None
+    dialogs: str = None
+    quotes: str = None
     
-
 #-------------------------------------------------------
 #
 # Top level schema structures
@@ -152,6 +205,9 @@ class DocumentListStruct(BaseModel):
 
 class DocumentList(BaseModel):
     documentList: DocumentListStruct
+    
+class Documents(BaseModel):        # this shouldnt be needed, should be able to use DocumentList. But for v1 API compat, included.
+    documents: DocumentListStruct
 
 class ImageURLListStruct(BaseModel):
     responseInfo: ResponseInfo
@@ -160,12 +216,19 @@ class ImageURLListStruct(BaseModel):
 class ImageURLList(BaseModel):
     imageURLList: ImageURLListStruct
 
+class LicenseInfoStruct(BaseModel):
+    responseInfo: ResponseInfoLoginStatus
+    responseSet: LoginReturnItem = None
+
+class LicenseStatusInfo(BaseModel):
+    licenseInfo: LicenseInfoStruct 
+
 class SourceInfoStruct(BaseModel):
     responseInfo: ResponseInfo
     responseSet: List[SourceInfoListItem] = []
 
 class SourceInfoList(BaseModel):
-    sourceInfoList: SourceInfoStruct
+    sourceInfo: SourceInfoStruct
 
 class VolumeListStruct(BaseModel):
     responseInfo: ResponseInfo
@@ -179,7 +242,7 @@ class WhatsNewListStruct(BaseModel):
     responseSet: List[WhatsNewListItem] = []   
 
 class WhatsNewList(BaseModel):
-    whatsNewList: WhatsNewListStruct
+    whatsNew: WhatsNewListStruct
 
 if __name__ == "__main__":
     pass
