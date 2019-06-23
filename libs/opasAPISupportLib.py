@@ -1000,13 +1000,21 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True):
                 elif retFormat == "HTML":
                     abstractHTML = opasxmllib.convertXMLStringToHTML(abstract)
                     abstract = opasxmllib.extractHTMLFragment(abstractHTML, "//div[@id='abs']")
+                elif retFormat == "TEXTONLY":
+                    abstract = opasxmllib.xmlElemOrStrToText(abstract)
+                #else: # not needed
+                    #abstract = abstract
+
                 if xmlDocument == "[]":
                     documentText = xmlDocument = None
                 elif retFormat == "HTML":
                     documentText  = opasxmllib.removeEncodingString(xmlDocument)
                     documentText = opasxmllib.convertXMLStringToHTML(documentText)
-                else:
-                    documentText = None
+                elif retFormat == "TEXTONLY":
+                    documentText  = opasxmllib.removeEncodingString(xmlDocument)
+                    documentText  = opasxmllib.xmlElemOrStrToText(documentText)
+                else: # XML
+                    documentText = xmlDocument
 
                 citeAs = result.get("art_citeas_xml", None)
                 citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
@@ -1016,13 +1024,13 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True):
                                         pgRg = pgRg,
                                         pgStart = pgStart,
                                         pgEnd = pgEnd,
-                                        authorMast = authorMast,
+                                        authormast = authorMast,  #TODO fix data model case to authorMast, but GVPi did it like this in their server
                                         documentID = result.get("art_id", None),
                                         documentRefHTML = citeAs,
                                         documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=""),
                                         accessLimited = False, # Todo
                                         abstract = abstract,
-                                        documentText = documentText,
+                                        document = documentText,
                                         score = result.get("score", None)
                                         )
             

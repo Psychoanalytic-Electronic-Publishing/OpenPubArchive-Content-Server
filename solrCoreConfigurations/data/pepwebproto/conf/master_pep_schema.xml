@@ -17,7 +17,7 @@
 <!-- Schema name just for labeling, the managed-schema file name is what Solr looks for -->
 <schema name="pepwebproto-nrs" version="1.61">
   <uniqueKey>id</uniqueKey>
-  <!-- Document ID (PEP code) -->
+  <!-- Document ID (Locator) -->
   <field name="id" type="string" indexed="true" stored="true"/>
 
   <field name="file_size" type="pint" indexed="true" stored="true"/>

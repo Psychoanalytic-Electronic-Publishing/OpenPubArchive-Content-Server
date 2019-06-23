@@ -83,7 +83,7 @@ class AuthorPubListItem(BaseModel):
 
 class DocumentListItem(BaseModel):
     PEPCode: str = None
-    authorMast: str = None
+    authormast: str = None
     documentID: str = None
     documentRef: str = None
     documentRefHTML: str = None
@@ -101,13 +101,14 @@ class DocumentListItem(BaseModel):
     term: str = None
     termCount: str = None
     abstract: str = None
-    documentText: str = None
+    document: str = None
     updated: datetime = None
     accessLimited: bool = False
     accessLimitedReason: str = None
     accessLimitedDescription: str = None
     accessLimitedCurrentContent: bool = None
     score: float = None
+    rank: int = None
     instanceCount: int = None
     
 class ImageURLListItem(BaseModel):    
