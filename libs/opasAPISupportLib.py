@@ -28,6 +28,7 @@ import datetime
 from datetime import datetime
 from typing import List
 from enum import Enum
+import pymysql
 
 pyVer = 2
 if (sys.version_info > (3, 0)):
@@ -45,6 +46,7 @@ import logging
 
 from lxml import etree
 from pydantic import BaseModel
+from pydantic import ValidationError
 
 from ebooklib import epub
 
@@ -52,9 +54,13 @@ import imp
 
 from stdMessageLib import copyrightPageHTML  # copyright page text to be inserted in ePubs and PDFs
 
+import opasConfig
+
+# note: documents and documentList share the same internals, except the first level json label (documents vs documentlist)
 from models import ListTypeEnum, \
                    ResponseInfo, \
                    DocumentList, \
+                   Documents, \
                    DocumentListStruct, \
                    DocumentListItem, \
                    ImageURLList, \
@@ -74,7 +80,8 @@ from models import ListTypeEnum, \
                    AuthorPubList, \
                    AuthorIndex, \
                    AuthorIndexStruct, \
-                   AuthorIndexItem
+                   AuthorIndexItem, \
+                   SearchFormFields
 
 try:
     import opasXMLHelper as opasxmllib
@@ -99,18 +106,38 @@ solrGloss = solr.SolrConnection('http://localhost:8983/solr/pepwebglossary')
 solrAuthors = solr.SolrConnection('http://localhost:8983/solr/pepwebauthors')
 
 #API endpoints
-documentURL = "/api/v1/Documents/"
+documentURL = "/v1/Documents/"
 
-
-
-def removeEncodingString(xmlString):
-    # Get rid of the encoding for lxml
-    p=re.compile("\<\?xml version=\'1.0\' encoding=\'UTF-8\'\?\>\n")
-    retVal = xmlString
-    retVal = p.sub("", retVal)                
     
-    return retVal
+def forceStringReturnFromVariousReturnTypes(theText, minLength=5):
+    retVal = None
+    if theText is not None:
+        if isinstance(theText, str):
+            if len(theText) > minLength:
+                # we have an abstract
+                retVal = theText
+        elif isinstance(theText, list):
+            retVal = theText[0]
+            if retVal == [] or retVal == '[]':
+                retVal = None
+        else:
+            logging.error("Type mismatch on Solr Data")
+            print ("ERROR: %s" % type(retVal))
 
+        try:
+            if isinstance(retVal, lxml.etree._Element):
+                retVal = etree.tostring(retVal)
+            
+            if isinstance(retVal, bytes) or isinstance(retVal, bytearray):
+                logging.error("Byte Data")
+                retVal = retVal.decode("utf8")
+        except Exception as e:
+            err = "Error forcing conversion to string: %s / %s" % (type(retVal), e)
+            logging.error(err)
+            print (err)
+            
+    return retVal        
+    
 def getArticleData(articleID):
     retVal = None
     if articleID != "":
@@ -134,6 +161,7 @@ def databaseGetMostCited(limit=50, offset=0):
     print ("Number found: %s" % results._numFound)
     
     responseInfo = ResponseInfo(
+                     count = len(results.results),
                      fullCount = results._numFound,
                      limit = limit,
                      offset = offset,
@@ -161,8 +189,10 @@ def databaseGetMostCited(limit=50, offset=0):
             pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
         else:
             pgStart, pgEnd = None
-        citeAs = artInfo.get("art_citeas_xml", None)
 
+        citeAs = artInfo.get("art_citeas_xml", None)
+        citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
+        
         item = DocumentListItem( documentID = artID,
                                  instanceCount = count,
                                  title = opasgenlib.getFirstValueOfDictItemList(artInfo, "title"),
@@ -170,9 +200,12 @@ def databaseGetMostCited(limit=50, offset=0):
                                  authorMast = artInfo.get("art_authors_mast", None),
                                  year = artInfo.get("art_year", None),
                                  vol = artInfo.get("art_vol", None),
+                                 pgRg = pgRg,
+                                 issue = artInfo.get("art_iss", None),
                                  pgStart = pgStart,
                                  pgEnd = pgEnd,
-                                 documentRef = artInfo.get("art_citeas_xml", None),
+                                 documentRefHTML = artInfo.get("art_citeas_xml", None),
+                                 documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=None),
                                  abstract = opasgenlib.getFirstValueOfDictItemList(artInfo, "abstracts_xml"),
                               ) 
         rowCount += 1
@@ -196,6 +229,87 @@ def databaseGetMostCited(limit=50, offset=0):
     
     return retVal   
 
+def databaseWhatsNew(limit=15, offset=0):
+    """
+    Return a what's been updated in the last week
+    
+    >>> databaseWhatsNew()
+    
+    """    
+    results = solrDocs.query(q = "timestamp:[NOW-7DAYS TO NOW]",  
+                             fl = "art_id, title, art_vol, art_iss, art_pepsrccode, timestamp, art_pepsourcetype",
+                             fq = "{!collapse field=art_pepsrccode max=art_year_int}",
+                             sort="timestamp", sort_order="desc",
+                             rows=150, offset=0,
+                             )
+    
+    print ("Number found: %s" % results._numFound)
+    
+    responseInfo = ResponseInfo(
+                     count = len(results.results),
+                     fullCount = results._numFound,
+                     limit = limit,
+                     offset = offset,
+                     listType="newlist",
+                     fullCountComplete = limit >= results._numFound,
+                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
+                   )
+
+    
+    whatsNewListItems = []
+    rowCount = 0
+    alreadySeen = []
+    for result in results:
+        PEPCode = result.get("art_pepsrccode", None)
+        #if PEPCode is None or PEPCode in ["SE", "GW", "ZBK", "IPL"]:  # no books
+            #continue
+        PEPSourceType = result.get("art_pepsourcetype", None)
+        if PEPSourceType != "journal":
+            continue
+            
+        volume = result.get("art_vol", None)
+        issue = result.get("art_iss", "")
+        year = result.get("art_year", None)
+        abbrev = sourceDB.sourceData[PEPCode].get("sourcetitleabbr", "")
+        updated = result.get("timestamp", None)
+        updated = updated.strftime('%Y-%m-%d')
+        displayTitle = abbrev + " v%s.%s (%s) (Added: %s)" % (volume, issue, year, updated)
+        if displayTitle in alreadySeen:
+            continue
+        else:
+            alreadySeen.append(displayTitle)
+        volumeURL = "/v1/Metadata/Contents/%s/%s" % (PEPCode, issue)
+        srcTitle = sourceDB.sourceData[PEPCode].get("sourcetitlefull", "")
+            
+        item = WhatsNewListItem( documentID = result.get("art_id", None),
+                                 displayTitle = displayTitle,
+                                 abbrev = abbrev,
+                                 volume = volume,
+                                 issue = issue,
+                                 year = year,
+                                 PEPCode = PEPCode, 
+                                 srcTitle = srcTitle,
+                                 volumeURL = volumeURL,
+                                 updated = updated
+                              ) 
+        print (item.displayTitle)
+        whatsNewListItems.append(item)
+        rowCount += 1
+        if rowCount > limit:
+            break
+
+    responseInfo.count = len(whatsNewListItems)
+    
+    whatsNewListStruct = WhatsNewListStruct( responseInfo = responseInfo, 
+                                             responseSet = whatsNewListItems
+                                             )
+    
+    whatsNewList = WhatsNewList(whatsNew = whatsNewListStruct)
+    
+    retVal = whatsNewList
+    
+    return retVal   
+
 def searchLikeThePEPAPI():
     pass  # later
 
@@ -214,6 +328,7 @@ def metadataGetVolumes(pepCode, year="*", limit=100, offset=0):
 
     print ("Number found: %s" % results._numFound)
     responseInfo = ResponseInfo(
+                     count = len(results.results),
                      fullCount = results._numFound,
                      limit = limit,
                      offset = offset,
@@ -244,21 +359,32 @@ def metadataGetVolumes(pepCode, year="*", limit=100, offset=0):
     retVal = volumeList
     return retVal
 
-def metadataGetContents(pepCode, year="*", limit=100, offset=0):
+def metadataGetContents(pepCode, year="*", vol="*", limit=100, offset=0):
     """
     Return a jounals contents
     
-    >>> metadataGetContents("IJP", "1993")
+    >>> metadataGetContents("IJP", "1993", limit=5, offset=0)
+    
+    >>> metadataGetContents("IJP", "1993", limit=5, offset=5)
     
     """
     retVal = []
-    results = solrDocs.query(q = "art_pepsrccode:%s && art_year:%s" % (pepCode, year),  
+    if year == "*" and vol != "*":
+        # specified only volume
+        field="art_vol"
+        searchVal = vol
+    else:  #Just do year
+        field="art_year"
+        searchVal = "*"
+        
+    results = solrDocs.query(q = "art_pepsrccode:{} && {}:{}".format(pepCode, field, searchVal),  
                              fields = "art_id, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml",
                              sort="art_year, art_pgrg", sort_order="asc",
                              rows=limit, start=offset
                              )
 
     responseInfo = ResponseInfo(
+                     count = len(results.results),
                      fullCount = results._numFound,
                      limit = limit,
                      offset = offset,
@@ -278,7 +404,9 @@ def metadataGetContents(pepCode, year="*", limit=100, offset=0):
         
         pgRg = result.get("art_pgrg", None)
         pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
-            
+        citeAs = result.get("art_citeas_xml", None)  
+        citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
+        
         item = DocumentListItem(PEPCode = pepCode, 
                                 year = result.get("art_year", None),
                                 vol = result.get("art_vol", None),
@@ -287,7 +415,8 @@ def metadataGetContents(pepCode, year="*", limit=100, offset=0):
                                 pgEnd = pgEnd,
                                 authorMast = authorMast,
                                 documentID = result.get("art_id", None),
-                                documentRef = result.get("art_citeas_xml", None),
+                                documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=""),
+                                documentRefHTML = citeAs,
                                 score = result.get("score", None)
                                 )
         print (item)
@@ -305,7 +434,7 @@ def metadataGetContents(pepCode, year="*", limit=100, offset=0):
     
     return retVal
 
-def metadataGetSourceByType(sourceType=None):
+def metadataGetSourceByType(sourceType=None, limit=100, offset=0):
     """
     Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
     
@@ -339,19 +468,91 @@ def metadataGetSourceByType(sourceType=None):
         }
     }
     
-    >>> metadataGetSourceByType("journal")
-    3
-    >>> metadataGetSourceByType()
+    >>> returnData = metadataGetSourceByType("journal")
+    75
+
+    >>> returnData = metadataGetSourceByType("book")
+    75
+
+    >>> returnData = metadataGetSourceByType("journals", limit=5, offset=0)
+    
+    >>> returnData = metadataGetSourceByType("journals", limit=5, offset=6)
     
     """
     retVal = []
+    sourceInfoDBList = []
+    # standardize Source type, allow plural, different cases, but code below this part accepts only those three.
+    if sourceType not in ["journal", "book", "video"]:
+        if re.match("vid.*", sourceType, re.IGNORECASE):
+            sourceType = "video"
+        elif re.match("boo.*", sourceType, re.IGNORECASE):
+            sourceType = "book"
+        else: # default
+            sourceType = "journal"
+            
     for sourceInfoDict in sourceDB.sourceData.values():
         if sourceInfoDict["pep_class"] == sourceType:
             # match
-            retVal += sourceInfoDict
-
+            sourceInfoDBList.append(sourceInfoDict)
     
+    count = len(sourceInfoDBList)
+    print ("Number found: %s" % count)
+
+    responseInfo = ResponseInfo(
+                     count = count,
+                     fullCount = count,
+                     limit = limit,
+                     offset = offset,
+                     listLabel = "{} List".format(sourceType),
+                     listType = "sourceinfolist",
+                     scopeQuery = "*",
+                     fullCountComplete = True,
+                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
+                   )
+
+    sourceInfoListItems = []
+    counter = 0
+    for source in sourceInfoDBList:
+        counter += 1
+        if counter < offset:
+            continue
+        if counter > limit:
+            break
+        try:
+            item = SourceInfoListItem( ISSN = source.get("ISSN"),
+                                       PEPCode = source.get("pepsrccode"),
+                                       abbrev = source.get("sourcetitleabbr"),
+                                       bannerURL = "http://{}/{}/banner{}.logo.gif".format(opasConfig.BASEURL, opasConfig.IMAGES, source.get("pepsrccode")),
+                                       displayTitle = source.get("sourcetitlefull"),
+                                       language = source.get("language"),
+                                       yearFirst = source.get("start_year"),
+                                       yearLast = source.get("end_year"),
+                                       sourceType = sourceType,
+                                       title = source.get("pepsrccode")
+                                       ) 
+        except ValidationError as e:
+            print ("SourceInfoListItem Validation Error:")
+            print(e.json())        
+
+        sourceInfoListItems.append(item)
+        
+    try:
+        sourceInfoStruct = SourceInfoStruct( responseInfo = responseInfo, 
+                                             responseSet = sourceInfoListItems
+                                            )
+    except ValidationError as e:
+        print ("SourceInfoStruct Validation Error:")
+        print(e.json())        
+    
+    try:
+        sourceInfoList = SourceInfoList(sourceInfo = sourceInfoStruct)
+    except ValidationError as e:
+        print ("SourceInfoList Validation Error:")
+        print(e.json())        
+    
+    retVal = sourceInfoList
     return retVal
+
 
 
 def metadataGetSourceByCode(pepCode=None):
@@ -412,11 +613,11 @@ def authorsGetAuthorInfo(authorNamePartial, limit=10, offset=0):
     Returns a list of matching names (per authors last name), and the number of articles
     in PEP found by that author.
     
-    >>> getAuthorInfo("Tuck")
+    >>> authorsGetAuthorInfo("Tuck")
     
-    >>> getAuthorInfo("Fonag")
+    >>> authorsGetAuthorInfo("Fonag")
     
-    >>> getAuthorInfo("Levinson, Nadine A.")
+    >>> authorsGetAuthorInfo("Levinson, Nadine A.")
     
     
     Current API Example Return:
@@ -456,6 +657,7 @@ def authorsGetAuthorInfo(authorNamePartial, limit=10, offset=0):
     print ("Number found: %s" % results._numFound)
     
     responseInfo = ResponseInfo(
+                     count = len(results.results),
                      fullCount = results._numFound,
                      limit = limit,
                      offset = offset,
@@ -493,9 +695,9 @@ def authorsGetAuthorPublications(authorNamePartial, limit=10, offset=0):
     Returns a list of publications (published on PEP-Web (per authors partial name), and the number of articles
     in PEP found by that author.
     
-    >>> getAuthorPublications("Tuck")
-    >>> getAuthorPublications("Fonag")
-    >>> getAuthorPublications("Levinson, Nadine A.")
+    >>> authorsGetAuthorPublications("Tuck")
+    >>> authorsGetAuthorPublications("Fonag")
+    >>> authorsGetAuthorPublications("Levinson, Nadine A.")
     
     Current API Example Return:
         {
@@ -537,6 +739,7 @@ def authorsGetAuthorPublications(authorNamePartial, limit=10, offset=0):
     print ("Number found: %s" % results._numFound)
     
     responseInfo = ResponseInfo(
+                     count = len(results.results),
                      fullCount = results._numFound,
                      limit = limit,
                      offset = offset,
@@ -547,12 +750,16 @@ def authorsGetAuthorPublications(authorNamePartial, limit=10, offset=0):
 
     authorPubListItems = []
     for result in results.results:
+        citeAs = result.get("art_citeas_xml", None)
+        citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
+        
         item = AuthorPubListItem( authorID = result.get("art_author_id", None), 
                                   documentID = result.get("art_id", None),
-                                  documentRef = result.get("art_citeas_xml", None),
+                                  documentRefHTML = citeAs,
+                                  documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=""),
                                   documentURL = documentURL + result.get("art_id", None),
                                   year = result.get("art_year", None),
-                                  score = result.get("score", None)
+                                  score = result.get("score", 0)
                               ) 
         authorPubListItems.append(item)
         #debug status
@@ -569,7 +776,41 @@ def authorsGetAuthorPublications(authorNamePartial, limit=10, offset=0):
     retVal = authorPubList
     return retVal
 
-def getDocumentAbstracts(documentID):
+def getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocument):
+   
+    retVal = None
+    # see if there's an abstract
+    retVal = forceStringReturnFromVariousReturnTypes(xmlAbstract)
+    if retVal is None:
+        # try the summary
+        retVal = forceStringReturnFromVariousReturnTypes(xmlSummary)
+        if retVal is None:
+            # get excerpt from the document
+            if xmlDocument is None:
+                # we fail.  Return None
+                logging.warn("No excerpt can be found or generated.")
+            else:
+                # extract the first 10 paras
+                retVal = forceStringReturnFromVariousReturnTypes(xmlDocument)
+                retVal = opasxmllib.removeEncodingString(retVal)
+                # deal with potentially broken XML excerpts
+                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
+                #root = etree.parse(StringIO(retVal), parser)
+                root = etree.fromstring(retVal, parser)
+                body = root.xpath("//*[self::h1 or self::p or self::p2 or self::pb]")
+                retVal = ""
+                count = 0
+                for elem in body:
+                    if elem.tag == "pb" or count > 10:
+                        # we're done.
+                        retVal = "%s%s%s" % ("<abs><unit type='excerpt'>", retVal, "</unit></abs>")
+                        break
+                    else:
+                        retVal  += etree.tostring(elem, encoding='utf8').decode('utf8')
+
+    return retVal
+    
+def documentsGetAbstracts(documentID, retFormat="HTML", limit=100, offset=0):
     """
     Returns an abstract or summary for the specified document
     If part of a documentID is supplied, multiple abstracts will be returned.
@@ -577,130 +818,124 @@ def getDocumentAbstracts(documentID):
     The endpoint reminds me that we should be using documentID instead of "art" for article perhaps.
       Not thrilled about the prospect of changing it, but probably the right thing to do.
       
-    >>> getDocumentAbstracts("IJP.075")
-    >>> getDocumentAbstracts("AIM.038.0279A")  # no abstract on this one
-    >>> getDocumentAbstracts("AIM.040.0311A")
-    
-    Current API Return Schema:
-         [
-          {
-            "responseInfo": {
-              "count": 0,
-              "fullCount": 0,
-              "fullCountComplete": true,
-              "listLabel": "string",
-              "listType": "string",
-              "scopeQuery": "string",
-              "request": "string",
-              "timeStamp": "string"
-            },
-            "responseSet": [
-              {
-                "ISSN": "string",
-                "PEPCode": "string",
-                "abbrev": "string",
-                "bannerURL": "string",
-                "language": "string",
-                "yearFirst": "string",
-                "yearLast": "string"
-              }
-            ]
-          }
-        ]
-    
+    >>> abstracts = documentsGetAbstracts("IJP.075")
+    100 document matches for getAbstracts
+    >>> abstracts = documentsGetAbstracts("AIM.038.0279A")  # no abstract on this one
+    1 document matches for getAbstracts
+    >>> abstracts = documentsGetAbstracts("AIM.040.0311A")
+    1 document matches for getAbstracts
+      
     """
-    retVal = {}
+    retVal = None
     results = solrDocs.query(q = "art_id:%s*" % (documentID),  
-                                fields = "art_id, art_citeas_xml, abstracts_xml, summaries_xml, text_xml"
+                                fields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml",
+                                sort="art_year, art_pgrg", sort_order="asc",
+                                rows=limit, start=offset
                              )
     
-    print (len(results.results))
-
-    try:
-        retVal = results.results[0]["abstracts_xml"]
-    except KeyError as e:
-        try:
-            retVal = results.results[0]["summaries_xml"]
-        except KeyError as e:
+    matches = len(results.results)
+    print ("%s document matches for getAbstracts" % matches)
+    
+    responseInfo = ResponseInfo(
+                     count = len(results.results),
+                     fullCount = results._numFound,
+                     limit = limit,
+                     offset = offset,
+                     listType="documentlist",
+                     fullCountComplete = limit >= results._numFound,
+                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
+                   )
+    
+    documentItemList = []
+    for result in results:
+        if matches > 0:
             try:
-                # Get rid of the encoding for lxml
-                if results.results == []:
-                    logging.warning("No content matched document ID for: %s" % documentID)
-                else:
-                    try:
-                        retVal = results.results[0]["text_xml"]
-                    except KeyError as e:
-                        logging.warning("No content matched document ID for: %s" % documentID)
-                    else:
-                        retVal  = retVal [0]
-                        # extract the first 10 paras
-                        retVal = removeEncodingString(retVal)
-                        root = etree.fromstring(retVal)
-                        body = root.xpath("//*[self::h1 or self::p or self::p2 or self::pb]")
-                        retVal = ""
-                        for elem in body:
-                            if elem.tag == "pb":
-                                # we're done.
-                                retVal = "%s%s%s" % ("<firstpage>", retVal, "</firstpage>")
-                                break
-                            else:
-                                retVal  += etree.tostring(elem, encoding='utf8').decode('utf8')
-                
+                xmlAbstract = result["abstracts_xml"]
             except KeyError as e:
-                print ("No content or abstract found.  Error: %s" % e)
+                xmlAbstract = None
+                logging.info("No abstract for document ID: %s" % documentID)
+        
+            try:
+                xmlSummary = result["summaries_xml"]
+            except KeyError as e:
+                xmlSummary = None
+                logging.info("No summary for document ID: %s" % documentID)
+        
+            try:
+                xmlDocument = result["text_xml"]
+            except KeyError as e:
+                xmlDocument = None
+                logging.error("No content matched document ID for: %s" % documentID)
+
+            authorIDs = result.get("art_author_id", None)
+            if authorIDs is None:
+                authorMast = None
+            else:
+                authorMast = opasgenlib.deriveAuthorMast(authorIDs)
+
+            pgRg = result.get("art_pgrg", None)
+            pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
+
+            abstract = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocument)
+            if abstract == "[]":
+                abstract = None
+            elif retFormat == "HTML":
+                abstractHTML = opasxmllib.convertXMLStringToHTML(abstract)
+                abstract = opasxmllib.extractHTMLFragment(abstractHTML, "//div[@id='abs']")
+
+            citeAs = result.get("art_citeas_xml", None)
+            citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
+            
+            item = DocumentListItem(year = result.get("art_year", None),
+                                    vol = result.get("art_vol", None),
+                                    pgRg = pgRg,
+                                    pgStart = pgStart,
+                                    pgEnd = pgEnd,
+                                    authorMast = authorMast,
+                                    documentID = result.get("art_id", None),
+                                    documentRefHTML = citeAs,
+                                    documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=""),
+                                    accessLimited = False, # Todo
+                                    abstract = abstract,
+                                    score = result.get("score", None)
+                                    )
+        
+            #print (item)
+            documentItemList.append(item)
+
+        responseInfo.count = len(documentItemList)
+        
+        documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+                                                 responseSet=documentItemList
+                                                 )
+        
+        documents = Documents(documents = documentListStruct)
+            
+        retVal = documents
+            
                 
     return retVal
 
 
-def getDocument(documentID, retFormat="XML", authenticated=True):
+def documentsGetDocument(documentID, retFormat="XML", authenticated=True):
     """
    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
    For authenticated users, it returns with the document itself
    
-    >>> getDocument("AIM.038.0279A", retFormat="html") 
-    >>> getDocument("AIM.038.0279A") 
-    >>> getDocument("AIM.040.0311A")
+    >>> documentsGetDocument("AIM.038.0279A", retFormat="html") 
+    >>> documentsGetDocument("AIM.038.0279A") 
+    >>> documentsGetDocument("AIM.040.0311A")
     
-   Example response, nonauthenticated user:
-        {
-           "error": "access_denied",
-           "error_description": "OAuth2 bearer required to access resource."
-        }
-      
-   
-    Current API Return Schema:
-        {
-          "documents": {
-            "responseInfo": {
-              "count": 0,
-              "fullCount": 0,
-              "fullCountComplete": true,
-              "listLabel": "string",
-              "listType": "string",
-              "scopeQuery": "string",
-              "request": "string",
-              "timeStamp": "string"
-            },
-            "responseSet": [
-              {
-                "documentID": "string",
-                "documentRef": "string",
-                "document": "string",
-                "accessLimited": true
-              }
-            ]
-          }
-        }
 
     """
     retVal = {}
     
     if not authenticated:
         #if user is not authenticated, effectively do endpoint for getDocumentAbstracts
-        retVal = getDocumentAbstracts(documentID)
+        retVal = documentsGetAbstracts(documentID, limit=1)
     else:
         results = solrDocs.query(q = "art_id:%s" % (documentID),  
-                                    fields = "art_id, art_citeas_xml, text_xml"
+                                    fields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml"
                                  )
         try:
             retVal = results.results[0]["text_xml"]
@@ -714,11 +949,93 @@ def getDocument(documentID, retFormat="XML", authenticated=True):
         
             try:    
                 if retFormat.lower() == "html":
-                    retVal = removeEncodingString(retVal)
-                    retVal = convertXMLStringToHTML(retVal)
+                    retVal = opasxmllib.removeEncodingString(retVal)
+                    retVal = opasxmllib.convertXMLStringToHTML(retVal)
                     
             except Exception as e:
                 logging.warning("Can't convert data: %s" % e)
+ 
+            responseInfo = ResponseInfo(
+                             count = len(results.results),
+                             fullCount = results._numFound,
+                             limit = 1,
+                             offset = 0,
+                             listType="documentlist",
+                             fullCountComplete = results._numFound <= 1,
+                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
+                           )
+
+            if results._numFound > 0:
+                result = results.results[0]
+                try:
+                    xmlAbstract = result["abstracts_xml"]
+                except KeyError as e:
+                    xmlAbstract = None
+                    logging.info("No abstract for document ID: %s" % documentID)
+            
+                try:
+                    xmlSummary = result["summaries_xml"]
+                except KeyError as e:
+                    xmlSummary = None
+                    logging.info("No summary for document ID: %s" % documentID)
+            
+                try:
+                    xmlDocument = forceStringReturnFromVariousReturnTypes(result["text_xml"])
+                except KeyError as e:
+                    xmlDocument = None
+                    logging.error("No content matched document ID for: %s" % documentID)
+    
+                authorIDs = result.get("art_author_id", None)
+                if authorIDs is None:
+                    authorMast = None
+                else:
+                    authorMast = opasgenlib.deriveAuthorMast(authorIDs)
+    
+                pgRg = result.get("art_pgrg", None)
+                pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
+    
+                abstract = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocument)
+                if abstract == "[]":
+                    abstract = None
+                elif retFormat == "HTML":
+                    abstractHTML = opasxmllib.convertXMLStringToHTML(abstract)
+                    abstract = opasxmllib.extractHTMLFragment(abstractHTML, "//div[@id='abs']")
+                if xmlDocument == "[]":
+                    documentText = xmlDocument = None
+                elif retFormat == "HTML":
+                    documentText  = opasxmllib.removeEncodingString(xmlDocument)
+                    documentText = opasxmllib.convertXMLStringToHTML(documentText)
+                else:
+                    documentText = None
+
+                citeAs = result.get("art_citeas_xml", None)
+                citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
+                
+                item = DocumentListItem(year = result.get("art_year", None),
+                                        vol = result.get("art_vol", None),
+                                        pgRg = pgRg,
+                                        pgStart = pgStart,
+                                        pgEnd = pgEnd,
+                                        authorMast = authorMast,
+                                        documentID = result.get("art_id", None),
+                                        documentRefHTML = citeAs,
+                                        documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=""),
+                                        accessLimited = False, # Todo
+                                        abstract = abstract,
+                                        documentText = documentText,
+                                        score = result.get("score", None)
+                                        )
+            
+            
+            documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+                                                     responseSet=[item]
+                                                     )
+            
+            documents = Documents(documents = documentListStruct)
+                
+            retVal = documents
+            
+            
         
     return retVal
 
@@ -741,7 +1058,7 @@ def prepDocumentDownload(documentID, retFormat="HTML", authenticated=True, baseF
     
     if not authenticated:
         #if user is not authenticated, effectively do endpoint for getDocumentAbstracts
-        getDocumentAbstracts(documentID)
+        documentsGetAbstracts(documentID, limit=1)
     else:
         results = solrDocs.query(q = "art_id:%s" % (documentID),  
                                     fields = "art_id, art_citeas_xml, text_xml"
@@ -760,14 +1077,14 @@ def prepDocumentDownload(documentID, retFormat="HTML", authenticated=True, baseF
             else:
                 try:    
                     if retFormat.lower() == "html":
-                        retVal = removeEncodingString(retVal)
+                        retVal = opasxmllib.removeEncodingString(retVal)
                         filename = convertXMLToHTMLFile(retVal, outputFilename=documentID + ".html")  # returns filename
                         retVal = filename
                     elif retFormat.lower() == "epub":
-                        retVal = removeEncodingString(retVal)
-                        htmlString = convertXMLStringToHTML(retVal)
+                        retVal = opasxmllib.removeEncodingString(retVal)
+                        htmlString = opasxmllib.convertXMLStringToHTML(retVal)
                         htmlString = addEPUBElements(htmlString)
-                        filename = convertHTMLToEPUB(htmlString, documentID, documentID)
+                        filename = opasxmllib.convertHTMLToEPUB(htmlString, documentID, documentID)
                         retVal = filename
                         
                 except Exception as e:
@@ -782,94 +1099,12 @@ def convertXMLToHTMLFile(xmlTextStr, xsltFile=r"../styles/pepkbd3-html.xslt", ou
         filenameBase = "_".join([basename, suffix]) # e.g. 'mylogfile_120508_171442'        
         outputFilename = filenameBase + ".html"
 
-    htmlString = convertXMLStringToHTML(xmlTextStr, xsltFile=xsltFile)
+    htmlString = opasxmllib.convertXMLStringToHTML(xmlTextStr, xsltFile=xsltFile)
     fo = open(outputFilename, "w")
     fo.write(str(htmlString))
     fo.close()
     
     return outputFilename
-
-def convertHTMLToEPUB(htmlString, outputFilenameBase, artID, lang="en", htmlTitle=None, styleSheet="../styles/pep-html-preview.css"):
-    """
-    uses ebooklib
-    
-    """
-    if htmlTitle is None:
-        htmlTitle = artID
-        
-    root = etree.HTML(htmlString)
-    try:
-        title = root.xpath("//title/text()")
-        title = title[0]
-    except:
-        title = artID
-        
-    headings = root.xpath("//*[self::h1|h2|h3]")
-
-        
-    basename = os.path.basename(outputFilenameBase)
-    
-    book = epub.EpubBook()
-    book.set_identifier('basename')
-    book.set_title(htmlTitle)
-    book.set_language('en')
-    
-    book.add_author('PEP')    
-    book.add_metadata('DC', 'description', 'This is description for my book')
-
-    # main chapter
-    c1 = epub.EpubHtml(title=title,
-                       file_name= artID + '.xhtml',
-                       lang=lang)
-
-    c1.set_content(htmlString)
-    
-    # copyright page / chapter
-    c2 = epub.EpubHtml(title='Copyright',
-                       file_name='copyright.xhtml')
-    c2.set_content(copyrightPageHTML)   
-    
-    book.add_item(c1)
-    book.add_item(c2)    
-    
-    style = 'body { font-family: Times, Times New Roman, serif; }'
-    try:
-        styleFile = open(styleSheet, "r")
-        style = styleFile.read()
-        styleFile.close()
-        
-    except OSError as e:
-        logging.warning("Cannot open stylesheet %s" % e)
-    
-    
-    nav_css = epub.EpubItem(uid="style_nav",
-                            file_name="style/pepkbd3-html.css",
-                            media_type="text/css",
-                            content=style)
-    book.add_item(nav_css)    
-    
-    book.toc = (epub.Link(title, 'Introduction', 'intro'),
-                (
-                    epub.Section(title),
-                    (c1, c2)
-                )
-                )    
-
-    book.spine = ['nav', c1, c2]
-    book.add_item(epub.EpubNcx())
-    book.add_item(epub.EpubNav())    
-    filename = basename + '.epub'
-    epub.write_epub(filename, book)
-    return filename
-
-
-def convertXMLStringToHTML(xmlTextStr, xsltFile=r"../styles/pepkbd3-html.xslt"):
-    xsltFile = etree.parse(xsltFile)
-    xsltTransformer = etree.XSLT(xsltFile)
-    sourceFile = etree.parse(StringIO.StringIO(xmlTextStr))
-    transformedData = xsltTransformer(sourceFile)
-    
-    return str(transformedData)
 
 def getImageBinary(imageID):
     """
@@ -934,59 +1169,152 @@ def getImageBinary(imageID):
         logging.warning("Image File ID %s not found", imageID)
   
     return retVal
+
+def getKwicList(markedUpText, extraContextLen=20, startHitTag=opasConfig.HITMARKERSTART, endHitTag=opasConfig.HITMARKEREND):
+    """
+    Find all nonoverlapping 
+    """
+    retVal = []
+    emMarks = re.compile("(.{0,20}%s.*/%s.{0,20})" % (startHitTag, endHitTag))
+    for n in emMarks.finditer(markedUpText):
+        retVal.append(n.group(0))
+        print ("Match {}".format(n.group(0)))
+    matchCount = len(retVal)
     
-def searchText(query, summaryFields='art_id, art_citeas_xml', highlightFields='art_title_xml', returnStartAt=0, returnLimit=10):
+    return retVal    
+                         
+def searchText(query, 
+               summaryFields="art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
+               highlightFields='art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
+               fullTextRequested=True, userLoggedIn=False, limit=0, offset=10):
+    """
+    Full-text search
+
+    >>> searchText(query="art_title_xml:'ego identity'", limit=10, offset=0, fullTextRequested=False)
+    
+        Original Parameters in API
+        Original API return model example, needs to be supported:
+    
+                "authormast": "Ringstrom, P.A.",
+				"documentID": "IJPSP.005.0257A",
+				"documentRef": "Ringstrom, P.A. (2010). Commentary on Donna Orange's, &#8220;Recognition as: Intersubjective Vulnerability in the Psychoanalytic Dialogue&#8221;. Int. J. Psychoanal. Self Psychol., 5(3):257-273.",
+				"issue": "3",
+				"PEPCode": "IJPSP",
+				"pgStart": "257",
+				"pgEnd": "273",
+				"title": "Commentary on Donna Orange's, &#8220;Recognition as: Intersubjective Vulnerability in the Psychoanalytic Dialogue&#8221;",
+				"vol": "5",
+				"year": "2010",
+				"rank": "100",
+				"citeCount5": "1",
+				"citeCount10": "3",
+				"citeCount20": "3",
+				"citeCountAll": "3",
+				"kwic": ". . . \r\n        
+
+    
+    """
     results = solrDocs.query(query,  
+                             fields = summaryFields,
                              hl= 'true', 
-                             hl_fragsize = 125, 
+                             hl_fragsize = 1520000, 
                              hl_fl = highlightFields,
-                             rows = returnLimit,
-                             hl_simple_pre = '<em>',
-                             hl_simplepost = '</em>')
-    print ("\n\n")
-    print (80*"*")
+                             rows = limit,
+                             start = offset,
+                             hl_simple_pre = opasConfig.HITMARKERSTART,
+                             hl_simplepost = opasConfig.HITMARKEREND)
+
     print ("Search Performed: %s" % query)
     print ("Result  Set Size: %s" % results._numFound)
-    print ("Return set limit: %s" % returnLimit)
-    print ("\n")
+    print ("Return set limit: %s" % limit)
     
-    #print ("Start return  at: %s" % returnStartAt)
-    #print ("Highlight Fields: %s" % highlightFields)
+    responseInfo = ResponseInfo(
+                     count = len(results.results),
+                     fullCount = results._numFound,
+                     limit = limit,
+                     offset = offset,
+                     listType="documentlist",
+                     scopeQuery=query,
+                     fullCountComplete = limit >= results._numFound,
+                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
+                   )
 
-    # Just loop over it to access the results.
+
     retVal = {}
-    for result in results:
-        #retVal.append(("\tauthors: ", result["art_authors_xml"][0], "\n\ttitle: ", result["art_title_xml"], "{0}: '{1}'.".format(summaryField, result[summaryField])))
-        #print ("\tauthors: ", result["art_authors_xml"][0], "\n\ttitle: ", result["art_title_xml"], "{0}: '{1}'.".format(summaryField, result[summaryField]))
-        retVal[result["art_id"]] = {}
-        retVal[result["art_id"]]["art_citeas"]  = opasxmllib.xmlElemOrStrToText(result["art_citeas_xml"])
-        retVal[result["art_id"]]["art_citeasxml"]  = result["art_citeas_xml"]
-        try:
-            retVal[result["art_id"]]["abstracts_xml"]  = result["abstracts_xml"][0]
-        except KeyError as e:
-            retVal[result["art_id"]]["abstracts_xml"] = ""
-        except IndexError as e:
-            retVal[result["art_id"]]["abstracts_xml"] = ""
-                                                                       
-        #for key, val in result.items():
-            #print key, val
+    documentItemList = []
+    rowCount = 0
+    rowOffset = 0
+    for result in results.results:
+        authorIDs = result.get("art_author_id", None)
+        if authorIDs is None:
+            authorMast = None
+        else:
+            authorMast = opasgenlib.deriveAuthorMast(authorIDs)
 
-    for key, val in results.highlighting.items():
-        #print (key)
-        retVal[key]["highlights"] = {}
-        for key2, val2 in val.items():
-            retVal[key]["highlights"][key2] = val2
-
-    for key in retVal.keys():
-        print (80*"-")
-        print (key, retVal[key]["art_citeas"])
-        for key2, val2 in retVal[key]["highlights"].items():
-            print (key2, val2)
-        if retVal[key]["abstracts_xml"] != "":
-            print ("Abstract")
-            print ("   ", retVal[key]["abstracts_xml"])
-        print (80*"-", "\n")
+        pgRg = result.get("art_pgrg", None)
+        if pgRg is not None:
+            pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
+            
+        documentID = result.get("art_id", None)        
+        titleXml = results.highlighting[documentID].get("art_title_xml", None)
+        titleXml = forceStringReturnFromVariousReturnTypes(titleXml)
+        abstractsXml = results.highlighting[documentID].get("abstracts_xml", None)
+        abstractsXml  = forceStringReturnFromVariousReturnTypes(abstractsXml )
+        summariesXml = results.highlighting[documentID].get("abstracts_xml", None)
+        summariesXml  = forceStringReturnFromVariousReturnTypes(summariesXml)
+        textXml = results.highlighting[documentID].get("text_xml", None)
+        textXml  = forceStringReturnFromVariousReturnTypes(textXml)
+        if textXml is not None:
+            kwicList = getKwicList(textXml)  # an alternate way making it easier for clients
+            kwic = " . . . ".join(kwicList)  # how its done at GVPi, for compatibility.
+            print ("Length of document: {}".format(len(textXml)))
+        else:
+            kwicList = []
+            kwic = None
+            print ("No hits in document {}".format(documentID))            
         
+        if not userLoggedIn or not fullTextRequested:
+            textXml = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract=abstractsXml, xmlSummary=summariesXml, xmlDocument=textXml)
+
+        citeAs = result.get("art_citeas_xml", None)
+        citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
+        try:
+            item = DocumentListItem(PEPCode = result.get("art_pepsrccode", None), 
+                                    year = result.get("art_year", None),
+                                    vol = result.get("art_vol", None),
+                                    pgRg = pgRg,
+                                    pgStart = pgStart,
+                                    pgEnd = pgEnd,
+                                    authorMast = authorMast,
+                                    documentID = documentID,
+                                    documentRefHTML = citeAs,
+                                    documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=""),
+                                    kwic = kwic,
+                                    kwicList = kwicList,
+                                    title = titleXml,
+                                    abstract = abstractsXml,
+                                    documentText = textXml,
+                                    score = result.get("score", None)
+                                    )
+        except ValidationError as e:
+            print(e.json())        
+        else:
+            rowCount += 1
+            print ("{}:{}".format(rowCount, citeAs))
+            documentItemList.append(item)
+            if rowCount > limit:
+                break
+
+    responseInfo.count = len(documentItemList)
+    
+    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+                                             responseSet = documentItemList
+                                             )
+    
+    documentList = DocumentList(documentList = documentListStruct)
+    
+    retVal = documentList
+    
     return retVal
 
 
@@ -1011,8 +1339,9 @@ if __name__ == "__main__":
     #authorsGetAuthorPublications("Tuck", limit=40, offset=0)    
     #databaseGetMostCited(limit=10, offset=0)
     #getArticleData("PAQ.073.0005A")
-    
+    #databaseWhatsNew()
     # docstring tests
+    
     import doctest
     doctest.testmod()    
     main()
