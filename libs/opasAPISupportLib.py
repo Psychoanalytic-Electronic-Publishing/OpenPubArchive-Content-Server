@@ -882,7 +882,11 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=100, offset=0):
             elif retFormat == "HTML":
                 abstractHTML = opasxmllib.convertXMLStringToHTML(abstract)
                 abstract = opasxmllib.extractHTMLFragment(abstractHTML, "//div[@id='abs']")
-
+            elif retFormat == "TEXTONLY":
+                abstract = opasxmllib.xmlElemOrStrToText(abstract)
+            #else: # xml  # not necessary, let it fall through
+                #pass
+            
             citeAs = result.get("art_citeas_xml", None)
             citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
             

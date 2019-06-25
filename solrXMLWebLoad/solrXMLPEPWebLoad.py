@@ -70,10 +70,8 @@ import config
 from OPASFileTracker import FileTracker, FileTrackingInfo
 import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
-
-import imp
-SourceInfoDB = imp.load_source('sourceInfoDB', '../libs/sourceInfoDB.py')
-#opasxmllib = imp.load_source('opasxmllib', '../libs/opasXMLHelper.py')
+import sourceInfoDB as SourceInfoDB
+from sourceInfoDB import sourceInfoDBData
 
 # Module Globals
 #authorTracker = AuthorTracker()

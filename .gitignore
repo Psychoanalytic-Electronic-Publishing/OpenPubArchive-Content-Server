@@ -27,3 +27,7 @@ styles/IJP.051.0175A(bEXP_ARCH1).html
 styles/IJP.051.0175A.epub
 schemas/opasCenter - not Open Source Yet/opasCenter.mwb
 *.bak
+schemas/pepwebdownloadcounts.sql
+schemas/pepwebdownloads.sql
+libs/pepsolrtest.log
+libs/recreateUsers.py
