@@ -76,8 +76,10 @@
       <title class="head title">
           <xsl:value-of select="pepkbd3/artinfo/arttitle"/>
       </title>
-      <link rel="stylesheet" type="text/css" href="{$css}">
-      </link>
+      <link rel="stylesheet" type="text/css" href="{$css}"></link>
+      <link rel="stylesheet" type="text/css" href="{$css2}"></link>
+      <link rel="stylesheet" type="text/css" href="{$css3}"></link>
+      
       <!-- When importing jats-oasis-html.xsl, we can call a template to insert CSS for our tables. -->
       <!--<xsl:call-template name="p:table-css" xmlns:p="http://www.wendellpiez.com/oasis-tables/util"/>-->
     </head>
@@ -93,13 +95,7 @@
       <xsl:call-template name="make-article"/>
     </div>
   </xsl:template>
-  
-<!--  <xsl:template match="sub-article | response">
-    <hr class="part-rule"/>
-    <xsl:call-template name="make-article"/>
-  </xsl:template>
 
--->
   <!-- ============================================================= -->
   <!--  "make-article" for the document architecture                 -->
   <!-- ============================================================= -->
@@ -127,7 +123,7 @@
     <div id="{$this-article}-front" class="front">
       <xsl:apply-templates select="front | front-stub"/>
       <p class="banner"><a name="{$document-id}" id="{$document-id}"></a>
-        <a href="search.php?journal=ijp"><img src="images/banner{$journal-code}logo.gif" alt="International Journal of Psycho-Analysis" /></a>
+        <a href="search.php?journal=ijp"><img src="images/banner{$journal-code}logo.gif" alt="International Journal of Psycho-Analysis"></img></a>
       </p>
  
       <xsl:for-each select="artinfo">
@@ -330,7 +326,7 @@
 
   <xsl:template match="artkwds" mode="metadata">
     <div class="artkwds nrs">
-      <xsl:value-of select="."/>
+      <xsl:apply-templates />
     </div>
   </xsl:template>
   
@@ -737,8 +733,9 @@
   
   <xsl:template match="pb">
     <p class="pb pagebreak nrs">
-      <xsl:call-template name="assign-id"/>
-      <xsl:apply-templates select="@content-type"/>
+      <xsl:call-template name="named-anchor"/>
+<!--      <xsl:call-template name="assign-id"/>
+-->      <xsl:apply-templates select="@content-type"/>
       <xsl:apply-templates/>
     </p>
   </xsl:template>
@@ -760,7 +757,7 @@
         </span>
       </xsl:when>
       <xsl:otherwise> <!-- sometimes impx is manually tagged -->
-        <span class="impx nrsmbee" data-type="{@type}">
+        <span class="impx nrs" data-type="{@type}">
           <xsl:value-of select="."/>
         </span>
       </xsl:otherwise>

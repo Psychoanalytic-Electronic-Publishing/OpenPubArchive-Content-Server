@@ -20,7 +20,7 @@ from datetime import datetime
 from typing import List
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Schema
 from pydantic.types import EmailStr
 from opasCentralModels import User
 
@@ -43,16 +43,17 @@ class ListTypeEnum(Enum):
     
     
 class ResponseInfo(BaseModel):
-    count: int = 0
-    limit: int = None
-    offset: int = None
-    fullCount: int = None
-    fullCountComplete: bool = None
-    listLabel: str = None
-    listType: ListTypeEnum = None
+    count: int = Schema(0, title="The number of return items the data list")
+    limit: int = Schema(0, title="Limit the results to a subsset of this many items, starting at offset")
+    offset: int = Schema(None, title="Used to index into the full set of results for returning subsets")
+    fullCount: int = Schema(None, title="The number of items that could be returned without a limit set")
+    fullCountComplete: bool = Schema(None, title="Deprecated.  This was for the GVPi server, when not all items could be returned")
+    listLabel: str = Schema(None, title="Descriptive title of data return for SourceInfoList, e.g., Book List, Journal List, Video List. Should be used elsewhere too.")
+    listType: ListTypeEnum = Schema(None, title="Identifier of return structure from enum list mndel, ListTypeEnum, e.g., ")
     scopeQuery: str = None
     request: str = None
-    timeStamp: str = None
+    solrParams: dict = Schema(None, title="The set of parameters passed to the Solr search engine")
+    timeStamp: str = None   
 
 class ResponseInfoLoginStatus(BaseModel):
     loggedIn: bool = False
@@ -110,6 +111,10 @@ class DocumentListItem(BaseModel):
     score: float = None
     rank: int = None
     instanceCount: int = None
+    similarDocs: list = None
+    similarMaxScore: float = None
+    similarNumFound: int = None
+    
     
 class ImageURLListItem(BaseModel):    
     PEPCode: str

@@ -22,6 +22,15 @@ class SourceInfoDB (object):
                 self.sourceData[n["pepsrccode"]] = n
             except KeyError as e:
                 print ("Missing Source Code Value in %s" % n)
+
+    def lookupSourceCode(self, sourceCode):
+        """
+        Returns the dictionary entry for the source code or None
+          if it doesn't exist.
+        """
+        dbEntry = self.sourceData.get(sourceCode, None)
+        retVal = dbEntry
+        return retVal
         
 
 def main():

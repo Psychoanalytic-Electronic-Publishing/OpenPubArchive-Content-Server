@@ -907,21 +907,21 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=100, offset=0):
             #print (item)
             documentItemList.append(item)
 
-        responseInfo.count = len(documentItemList)
+    responseInfo.count = len(documentItemList)
+    
+    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+                                             responseSet=documentItemList
+                                             )
+    
+    documents = Documents(documents = documentListStruct)
         
-        documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
-                                                 responseSet=documentItemList
-                                                 )
-        
-        documents = Documents(documents = documentListStruct)
-            
-        retVal = documents
+    retVal = documents
             
                 
     return retVal
 
 
-def documentsGetDocument(documentID, retFormat="XML", authenticated=True):
+def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=1, offset=0):
     """
    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
    For authenticated users, it returns with the document itself
@@ -936,11 +936,26 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True):
     
     if not authenticated:
         #if user is not authenticated, effectively do endpoint for getDocumentAbstracts
-        retVal = documentsGetAbstracts(documentID, limit=1)
-    else:
-        results = solrDocs.query(q = "art_id:%s" % (documentID),  
-                                    fields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml"
-                                 )
+        return documentsGetAbstracts(documentID, limit=1)
+
+    results = solrDocs.query(q = "art_id:%s" % (documentID),  
+                                fields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml"
+                             )
+    matches = len(results.results)
+    print ("%s document matches for getAbstracts" % matches)
+    
+    responseInfo = ResponseInfo(
+                     count = len(results.results),
+                     fullCount = results._numFound,
+                     limit = limit,
+                     offset = offset,
+                     listType="documentlist",
+                     fullCountComplete = limit >= results._numFound,
+                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
+                   )
+    
+    documentItemList = []
+    if matches >= 1:
         try:
             retVal = results.results[0]["text_xml"]
         except KeyError as e:
@@ -958,7 +973,7 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True):
                     
             except Exception as e:
                 logging.warning("Can't convert data: %s" % e)
- 
+    
             responseInfo = ResponseInfo(
                              count = len(results.results),
                              fullCount = results._numFound,
@@ -968,7 +983,7 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True):
                              fullCountComplete = results._numFound <= 1,
                              timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
                            )
-
+    
             if results._numFound > 0:
                 result = results.results[0]
                 try:
@@ -1008,7 +1023,7 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True):
                     abstract = opasxmllib.xmlElemOrStrToText(abstract)
                 #else: # not needed
                     #abstract = abstract
-
+    
                 if xmlDocument == "[]":
                     documentText = xmlDocument = None
                 elif retFormat == "HTML":
@@ -1019,7 +1034,7 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True):
                     documentText  = opasxmllib.xmlElemOrStrToText(documentText)
                 else: # XML
                     documentText = xmlDocument
-
+    
                 citeAs = result.get("art_citeas_xml", None)
                 citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
                 
@@ -1037,18 +1052,19 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True):
                                         document = documentText,
                                         score = result.get("score", None)
                                         )
+
+                documentItemList.append(item)
+
+    responseInfo.count = len(documentItemList)  # will be ONE or ZERO
             
-            
-            documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
-                                                     responseSet=[item]
-                                                     )
-            
-            documents = Documents(documents = documentListStruct)
-                
-            retVal = documents
-            
-            
+    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+                                             responseSet=documentItemList
+                                             )
+    
+    documents = Documents(documents = documentListStruct)
         
+    retVal = documents
+    
     return retVal
 
 def prepDocumentDownload(documentID, retFormat="HTML", authenticated=True, baseFilename="opasDoc"):
@@ -1194,8 +1210,51 @@ def getKwicList(markedUpText, extraContextLen=20, startHitTag=opasConfig.HITMARK
     matchCount = len(retVal)
     
     return retVal    
+
+def yearArgParser(yearArg):
+    retVal = None
+    yearQuery = re.match("[ ]*(?P<option>[\>\^\<\=])?[ ]*(?P<start>[12][0-9]{3,3})?[ ]*(?P<separator>([-]|TO))*[ ]*(?P<end>[12][0-9]{3,3})?[ ]*", yearArg, re.IGNORECASE)            
+    if yearQuery is None:
+        logging("Search - StartYear bad argument {}".format(yearArg))
+    else:
+        option = yearQuery.group("option")
+        start = yearQuery.group("start")
+        end = yearQuery.group("end")
+        separator = yearQuery.group("separator")
+        if start is None and end is None:
+            logging("Search - StartYear bad argument {}".format(yearArg))
+        else:
+            if option == "^":
+                # between
+                # find endyear by parsing
+                searchClause = "&& art_year_int:[{} TO {}] ".format(start, end)
+            elif option == ">":
+                # greater
+                searchClause = "&& art_year_int:[{} TO {}] ".format(start, "*")
+            elif option == "<":
+                # less than
+                searchClause = "&& art_year_int:[{} TO {}] ".format("*", end)
+            else: # on
+                if start is not None and end is not None:
+                    # they specified a range anyway
+                    searchClause = "&& art_year_int:[{} TO {}] ".format(start, end)
+                elif start is None and end is not None:
+                    # they specified '- endyear' without the start, so less than
+                    searchClause = "&& art_year_int:[{} TO {}] ".format("*", end)
+                elif start is not None and separator is not None:
+                    # they mean greater than
+                    searchClause = "&& art_year_int:[{} TO {}] ".format(start, "*")
+                else: # they mean on
+                    searchClause = "&& art_year_int:{} ".format(yearArg)
+
+            retVal = searchClause
+
+    return retVal
                          
 def searchText(query, 
+               filterQuery = None,
+               moreLikeThese = False,
+               queryAnalysis = False,
                summaryFields="art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
                highlightFields='art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
                fullTextRequested=True, userLoggedIn=False, limit=0, offset=10):
@@ -1226,15 +1285,36 @@ def searchText(query,
 
     
     """
+    if moreLikeThese:
+        mlt_fl = "text_xml, headings_xml, terms_xml, references_xml"
+        mlt = "true"
+        mlt_minwl = 8
+    else:
+        mlt_fl = None
+        mlt = "false"
+        mlt_minwl = None
+    
+    if queryAnalysis:
+        queryDebug = "on"
+    else:
+        queryDebug = "off"
+        
+        
     results = solrDocs.query(query,  
+                             fq = filterQuery,
+                             debugQuery = queryDebug,
                              fields = summaryFields,
                              hl= 'true', 
                              hl_fragsize = 1520000, 
                              hl_fl = highlightFields,
+                             mlt = mlt,
+                             mlt_fl = mlt_fl,
+                             mlt_count = 2,
+                             mlt_minwl = mlt_minwl,
                              rows = limit,
                              start = offset,
                              hl_simple_pre = opasConfig.HITMARKERSTART,
-                             hl_simplepost = opasConfig.HITMARKEREND)
+                             hl_simple_post = opasConfig.HITMARKEREND)
 
     print ("Search Performed: %s" % query)
     print ("Result  Set Size: %s" % results._numFound)
@@ -1248,6 +1328,7 @@ def searchText(query,
                      listType="documentlist",
                      scopeQuery=query,
                      fullCountComplete = limit >= results._numFound,
+                     solrParams = results._params,
                      timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
                    )
 
@@ -1282,7 +1363,7 @@ def searchText(query,
             print ("Length of document: {}".format(len(textXml)))
         else:
             kwicList = []
-            kwic = None
+            kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
             print ("No hits in document {}".format(documentID))            
         
         if not userLoggedIn or not fullTextRequested:
@@ -1290,6 +1371,16 @@ def searchText(query,
 
         citeAs = result.get("art_citeas_xml", None)
         citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
+        
+        if moreLikeThese:
+            similarDocs = results.moreLikeThis[documentID]
+            similarMaxScore = results.moreLikeThis[documentID].maxScore
+            similarNumFound = results.moreLikeThis[documentID].numFound
+        else:
+            similarDocs = None
+            similarMaxScore = None
+            similarNumFound = None
+        
         try:
             item = DocumentListItem(PEPCode = result.get("art_pepsrccode", None), 
                                     year = result.get("art_year", None),
@@ -1305,8 +1396,11 @@ def searchText(query,
                                     kwicList = kwicList,
                                     title = titleXml,
                                     abstract = abstractsXml,
-                                    documentText = textXml,
-                                    score = result.get("score", None)
+                                    documentText = None, #textXml,
+                                    score = result.get("score", None), 
+                                    similarDocs = similarDocs,
+                                    similarMaxScore = similarMaxScore,
+                                    similarNumFound = similarNumFound
                                     )
         except ValidationError as e:
             print(e.json())        

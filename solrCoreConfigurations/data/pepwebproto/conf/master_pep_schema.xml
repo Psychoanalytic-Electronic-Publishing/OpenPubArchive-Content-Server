@@ -66,6 +66,9 @@
   <!-- journal, book, or video title -->
   <field name="art_pepsourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_pepsourcetitlefull" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!-- Added this 6/25 to allow any part of a journal name to be searched.-->
+  <field name="art_pepsourcetitle_fulltext" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <copyField source="art_pepsourcetitlefull" dest="art_pepsourcetitle_fulltext"/>
   <!-- journal, book, or video -->
   <field name="art_pepsourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_type" type="string" indexed="true" stored="true" multiValued="false" docValues="true" />
