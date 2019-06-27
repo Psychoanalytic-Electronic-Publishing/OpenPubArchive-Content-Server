@@ -105,7 +105,7 @@ def main():
     print ("Logfile: ", logFilename)
     print ("Solr solrAPIURL: ", solrAPIURL)
 
-    solrGlossary = solr.SolrConnection(solrAPIURL)
+    solrGlossary = solr.SolrConnection(solrAPIURL, http_user=options.httpUserID, http_pass=options.httpPassword)
     time_start = time.time()
 
     # Reset core's data if requested (mainly for early development)

@@ -22,7 +22,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Schema
 from pydantic.types import EmailStr
-from opasCentralModels import User
+from modelsOpasCentralPydantic import User
 
 #-------------------------------------------------------
 #
@@ -128,6 +128,12 @@ class LoginReturnItem(BaseModel):
     session_expires_time: datetime = None
     authenticated: bool = False
     scope: str = None
+    
+class ServerStatusItem(BaseModel):
+    text_server_ok: bool = None
+    db_server_ok: bool = None
+    user_ip: str = None
+    timeStamp: str = None
     
 class SourceInfoListItem(BaseModel):    
     ISSN: str = None

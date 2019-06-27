@@ -18,7 +18,13 @@ __version__     = "2019.0619.1"
 __status__      = "Development"
 
 import sys
-sys.path.append(r'/usr3/keys')  # Private encryption keys
+sys.path.append('../libs')
+sys.path.append('../config')
+
+import opasConfig
+import localsecrets
+from localsecrets import DBHOST, DBUSER, DBPW, DBNAME
+
 import os.path
 import re
 import logging
@@ -33,12 +39,12 @@ from pydantic import ValidationError
 import pymysql
 
 #import opasAuthBasic
-from PEPWebKeys import SECRET_KEY, ALGORITHM
+from localsecrets import SECRET_KEY, ALGORITHM
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # All opasCentral Database Models here
-import opasCentralModels
-from opasCentralModels import User, UserInDB
+import modelsOpasCentralPydantic
+from modelsOpasCentralPydantic import User, UserInDB
 
 DEFAULTSESSIONLENGTH = 1800 # seconds (timeout)
 
@@ -88,28 +94,50 @@ def getPasswordHash(password):
     return pwd_context.hash(password)
 
 class opasCentralDB(object):
-    def __init__(self, host="localhost", user="root", userpw="", dbname="opascentral"):
-        self.db = None
-        self.connected = False
+    def __init__(self):
+        self.openConnection()
         self.sessionStateReinitialize()
-        try:
-            self.db = pymysql.connect(host, user, userpw, dbname)
-            self.connected = True
-        except Exception as e:
-            logging.error("Cannot connect to database %s for host %s and user %s" % (dbname, host, user))
-        else:
-            print ("Connected to database {}.".format(host))
         
+    def openConnection(self):
+        """
+        Opens a connection if it's not already open.
+        If already open, no changes.
+        
+        """
+        try:
+            status = self.db.open
+        except:
+            # not open reopen it.
+            status = False
+        
+        if status == False:
+            try:
+                self.db = pymysql.connect(host=DBHOST, user=DBUSER, password=DBPW, database=DBNAME)
+                self.connected = True
+            except:
+                logging.error("Cannot connect to database {} for host {} and user {}".format(DBNAME, DBHOST, DBUSER))
+                self.connected = False
+
+        return self.connected
+
+    def closeConnection(self):
+        if self.db.open:
+            self.db.close()
+
+        # make sure to mark the connection false in any case
+        self.connected = False           
+
     def sessionStateReinitialize(self):
         self.currentSession = None
         self.currentUser = None
         self.sessionID = None # this is also a subfield of currentSession
         self.sessionToken = None
-        
+               
     def endSession(self, sessionToken, sessionEnd=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')):
         """
         >>> ocd = opasCentralDB()
-        Connected!
+        >>> ocd.connected
+        True
         >>> sessionInfo = ocd.startSession()
         >>> ocd.endSession(sessionInfo.session_token)
         True
@@ -151,11 +179,12 @@ class opasCentralDB(object):
         Returns the token or None.
         
         >>> ocd = opasCentralDB()
-        Connected!
         >>> sessionInfo = ocd.startSession()
         >>> sessionInfo.authenticated
         False
         """
+        self.openConnection() # make sure connection is open
+            
         retVal = None
         if self.currentSession is not None:
             # session already open.  Close the old one
@@ -205,7 +234,7 @@ class opasCentralDB(object):
                     sessionRow = cursor.fetchone()
                     if sessionRow is not None:
                         try:
-                            self.currentSession = opasCentralModels.Session(**sessionRow)
+                            self.currentSession = modelsOpasCentralPydantic.Session(**sessionRow)
                             self.currentSession.session_expires_time = datetime.now() + timedelta(0, DEFAULTSESSIONLENGTH) 
                         except ValidationError as e:
                             print(e.json())        
@@ -229,13 +258,14 @@ class opasCentralDB(object):
         """
         Track endpoint calls
         >>> ocd = opasCentralDB()
-        Connected!
         >>> sessionInfo = ocd.startSession()
         >>> ocd.recordSessionEndpoint(apiEndpointID=API_AUTHORS_INDEX, documentID="IJP.001.0001A", statusMessage="Testing")
         1
 
         """
         retVal = None
+
+        self.openConnection() # make sure connection is open
 
         if self.sessionID == None:
             # no session open!
@@ -271,12 +301,13 @@ class opasCentralDB(object):
     def updateDocumentViewCount(self, articleID, account="NotLoggedIn", title=None, viewType="Online"):
         """
         >>> ocd = opasCentralDB()
-        Connected!
         >>> ocd.updateDocumentViewCount("IJP.001.0001A")
         1
         """
         retVal = None
-        if self.db != None:
+        self.openConnection() # make sure connection is open
+
+        try:
             cursor = self.db.cursor()
             sql = """INSERT INTO 
                         doc_viewcounts(account, 
@@ -298,6 +329,10 @@ class opasCentralDB(object):
             self.db.commit()
             cursor.close()
 
+        except Exception as e:
+            logging.warn("recordSessionEndpoint: {}".format(e))
+            
+
         return retVal
             
     def getUser(self, username: str):
@@ -306,6 +341,7 @@ class opasCentralDB(object):
         >>> ocd.getUser("demo")
         
         """
+        self.openConnection() # make sure connection is open
         curs = self.db.cursor(pymysql.cursors.DictCursor)
         
         sql = """SELECT *
@@ -342,6 +378,7 @@ class opasCentralDB(object):
           
         """
         retVal = None
+        self.openConnection() # make sure connection is open
         curs = self.db.cursor(pymysql.cursors.DictCursor)
     
         admin = self.verifyAdmin(adminUsername, adminPassword)
@@ -406,6 +443,7 @@ class opasCentralDB(object):
         >>> sessionInfo.authenticated
         True
         """
+        self.openConnection() # make sure connection is open
         print ("Authenticating user: {}".format(username))
         user = self.getUser(username)  # returns a UserInDB object
         if not user:
@@ -433,6 +471,10 @@ class opasCentralDB(object):
 if __name__ == "__main__":
     print (40*"*", "opasCentralDBLib Tests", 40*"*")
     print ("Running in Python %s" % sys.version_info[0])
+    
+    #ocd = opasCentralDB()
+    #ocd.connected
+
     
     # docstring tests
     import doctest

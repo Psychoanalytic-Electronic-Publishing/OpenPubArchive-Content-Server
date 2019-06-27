@@ -14,11 +14,15 @@ functions.
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0614.1"
+__version__     = "2019.0625.1"
 __status__      = "Development"
 
 import sys
 sys.path.append('../libs')
+sys.path.append('../config')
+
+import opasConfig
+from localsecrets import SOLRURL, SOLRUSER, SOLRPW
 
 import re
 import os.path
@@ -50,11 +54,9 @@ from pydantic import ValidationError
 
 from ebooklib import epub
 
-import imp
+#import imp
 
 from stdMessageLib import copyrightPageHTML  # copyright page text to be inserted in ePubs and PDFs
-
-import opasConfig
 
 # note: documents and documentList share the same internals, except the first level json label (documents vs documentlist)
 from models import ListTypeEnum, \
@@ -83,14 +85,9 @@ from models import ListTypeEnum, \
                    AuthorIndexItem, \
                    SearchFormFields
 
-try:
-    import opasXMLHelper as opasxmllib
-    import opasGenSupportlib as opasgenlib
-    import sourceInfoDB as SourceInfoDB
-except Exception as e:
-    opasxmllib = imp.load_source('opasxmllib', '../libs/opasXMLHelper.py')
-    opasgenlib = imp.load_source('opasgenlib', '../libs/opasGenSupportLib.py')
-    SourceInfoDB = imp.load_source('sourceInfoDB', '../libs/sourceInfoDB.py')
+import opasXMLHelper as opasxmllib
+import opasGenSupportLib as opasgenlib
+import sourceInfoDB as SourceInfoDB
     
 sourceDB = SourceInfoDB.SourceInfoDB()
 logging.basicConfig(filename='pepsolrtest.log', format="%(asctime)s %(message)s", level=logging.INFO)
@@ -100,15 +97,28 @@ import json
 
 # Setup a Solr instance. The timeout is optional.
 #solr = pysolr.Solr('http://localhost:8983/solr/pepwebproto', timeout=10)
-solrDocs = solr.SolrConnection('http://localhost:8983/solr/pepwebproto')
-solrRefs = solr.SolrConnection('http://localhost:8983/solr/pepwebrefsproto')
-solrGloss = solr.SolrConnection('http://localhost:8983/solr/pepwebglossary')
-solrAuthors = solr.SolrConnection('http://localhost:8983/solr/pepwebauthors')
+#This is the old way -- should switch to class Solr per https://pythonhosted.org/solrpy/reference.html
+if SOLRUSER is not None:
+    solrDocs = solr.SolrConnection(SOLRURL + 'pepwebproto', http_user=SOLRUSER, http_pass=SOLRPW)
+    solrRefs = solr.SolrConnection(SOLRURL + 'pepwebrefsproto', http_user=SOLRUSER, http_pass=SOLRPW)
+    solrGloss = solr.SolrConnection(SOLRURL + 'pepwebglossary', http_user=SOLRUSER, http_pass=SOLRPW)
+    solrAuthors = solr.SolrConnection(SOLRURL + 'pepwebauthors', http_user=SOLRUSER, http_pass=SOLRPW)
+
+else:
+    solrDocs = solr.SolrConnection(SOLRURL + 'pepwebproto')
+    solrRefs = solr.SolrConnection(SOLRURL + 'pepwebrefsproto')
+    solrGloss = solr.SolrConnection(SOLRURL + 'pepwebglossary')
+    solrAuthors = solr.SolrConnection(SOLRURL + 'pepwebauthors')
 
 #API endpoints
 documentURL = "/v1/Documents/"
 
-    
+def checkSolrDocsConnection():
+    if solrDocs is None:
+        return False
+    else:
+        return True
+
 def forceStringReturnFromVariousReturnTypes(theText, minLength=5):
     retVal = None
     if theText is not None:
@@ -1203,7 +1213,7 @@ def getKwicList(markedUpText, extraContextLen=20, startHitTag=opasConfig.HITMARK
     Find all nonoverlapping 
     """
     retVal = []
-    emMarks = re.compile("(.{0,20}%s.*/%s.{0,20})" % (startHitTag, endHitTag))
+    emMarks = re.compile("(.{0,20}%s.*%s.{0,20})" % (startHitTag, endHitTag))
     for n in emMarks.finditer(markedUpText):
         retVal.append(n.group(0))
         print ("Match {}".format(n.group(0)))
@@ -1227,12 +1237,20 @@ def yearArgParser(yearArg):
             if option == "^":
                 # between
                 # find endyear by parsing
+                if start is None:
+                    start = end # they put > in start rather than end.
+                elif end is None:
+                    end = start # they put < in start rather than end.
                 searchClause = "&& art_year_int:[{} TO {}] ".format(start, end)
             elif option == ">":
                 # greater
+                if start is None:
+                    start = end # they put > in start rather than end.
                 searchClause = "&& art_year_int:[{} TO {}] ".format(start, "*")
             elif option == "<":
                 # less than
+                if end is None:
+                    end = start # they put < in start rather than end.
                 searchClause = "&& art_year_int:[{} TO {}] ".format("*", end)
             else: # on
                 if start is not None and end is not None:
@@ -1360,11 +1378,11 @@ def searchText(query,
         if textXml is not None:
             kwicList = getKwicList(textXml)  # an alternate way making it easier for clients
             kwic = " . . . ".join(kwicList)  # how its done at GVPi, for compatibility.
-            print ("Length of document: {}".format(len(textXml)))
+            print ("Length of document: {} Number of matches to show: {}".format(len(textXml), len(kwicList)))
         else:
             kwicList = []
             kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
-            print ("No hits in document {}".format(documentID))            
+            print ("No matches to show in document {}".format(documentID))            
         
         if not userLoggedIn or not fullTextRequested:
             textXml = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract=abstractsXml, xmlSummary=summariesXml, xmlDocument=textXml)

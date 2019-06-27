@@ -71,7 +71,9 @@ from OPASFileTracker import FileTracker, FileTrackingInfo
 import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
 import sourceInfoDB as SourceInfoDB
-from sourceInfoDB import sourceInfoDBData
+#from sourceInfoDB import sourceInfoDBData
+from sourceInfoDB import SourceInfoDB
+
 
 # Module Globals
 #authorTracker = AuthorTracker()

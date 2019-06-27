@@ -1,6 +1,8 @@
+
 BASEURL = "127.0.0.1:8000"
+
 IMAGES = "images"
-HITMARKERSTART = "[[starthit]]"
+HITMARKERSTART = "[[starthit]]"  # using non xml type so we can remove all tags but leave these!
 HITMARKEREND = "[[endhit]]"
 
 # parameter descriptions for documentation

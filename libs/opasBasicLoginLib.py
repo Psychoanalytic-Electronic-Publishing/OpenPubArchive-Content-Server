@@ -34,7 +34,7 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Basic"},
         )
-    return userSession  # pydantic model based user.  See opasCentralModels.py
+    return userSession  # pydantic model based user.  See modelsOpasCentralPydantic.py
 
 @app.get("/users/login")
 def read_current_user(username: str = Depends(get_current_user)):

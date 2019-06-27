@@ -49,12 +49,16 @@ __version__     = "2019.0617.4"
 __status__      = "Development"
 
 import sys
+sys.path.append('../libs')
+sys.path.append('../config')
+
+import opasConfig
+import localsecrets
+
 import time
 import datetime
 from datetime import datetime
 import re
-
-sys.path.append('../libs')
 
 from enum import Enum
 import uvicorn
@@ -71,16 +75,13 @@ import json
 import logging
 
 import opasConfig
+
 import opasAPISupportLib
 import opasBasicLoginLib
 from opasBasicLoginLib import get_current_user
 
-#opasxmllib = imp.load_source('opasxmllib', '../libs/opasXMLHelper.py')
-#SourceInfoDB = imp.load_source('sourceInfoDB', '../libs/sourceInfoDB.py')
-
-solr = pysolr.Solr('http://localhost:8983/solr/pepwebproto', timeout=10)
 import models
-import opasCentralModels
+import modelsOpasCentralPydantic
 import opasCentralDBLib
 from sourceInfoDB import SourceInfoDB
 
@@ -90,7 +91,7 @@ gCurrentDevelopmentStatus = "TestingOnly"
 
 def getSession():
     if currentSession == None:
-        currentSession = opasCentralModels.Session()
+        currentSession = modelsOpasCentralPydantic.Session()
 
 #app = FastAPI(debug=True)
 app = FastAPI(
@@ -122,6 +123,30 @@ def checkIfUserLoggedIn():
     resp = login_user()
     return resp.licenseInfo.responseInfo.loggedIn
     
+@app.get("/v1/Status/", response_model=models.ServerStatusItem)
+def get_the_server_status(request: Request    ):
+    """
+    Return the status of the database and text server
+    
+    Status: In Development
+    """
+    SolrOK = opasAPISupportLib.checkSolrDocsConnection()
+    DbOK = gOCDatabase.openConnection()
+    gOCDatabase.closeConnection()
+
+    try:
+        serverStatusItem = models.ServerStatusItem(text_server_ok = SolrOK, 
+                                                   db_server_ok = DbOK,
+                                                   user_ip = request.client.host,
+                                                   timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
+                                          )
+    except ValidationError as e:
+        print(e.json())             
+    
+    
+    return serverStatusItem
+
+
 #@app.get("/v1/Users/Login/")
 @app.get("/v1/Token/")  # used by PEP-Easy for login, for some reason.
 @app.get("/v1/Login/")
@@ -386,10 +411,10 @@ def search_the_document_database(request: Request,
                 codeForQuery = " OR ".join(journalCodeList)
                 filterQ += "&& art_pepsourcetitlefull:{} ".format(codeForQuery)
             else:
-                sourceInfo = sourceInfoDB.lookupSourceCode(journal)
+                sourceInfo = sourceInfoDB.lookupSourceCode(journal.upper())
                 if sourceInfo is not None:
                     # it's a single source code
-                    codeForQuery = journal
+                    codeForQuery = journal.upper()
                     filterQ += "&& art_pepsrccode:{} ".format(codeForQuery)
                 else: # not a pattern, or a code, or a list of codes.
                     # must be a name
@@ -426,11 +451,10 @@ def search_the_document_database(request: Request,
             filterQ += "&& art_year_int:[{} TO {}] ".format(startyear, endyear)
 
     if startyear is None and endyear is not None:
-        parsedYearSearch = opasAPISupportLib.yearArgParser(endyear)
-        if parsedYearSearch is not None:
-            filterQ += parsedYearSearch
+        if re.match("[12][0-9]{3,3}", endyear) is None:
+            logging("Search - Endyear {} bad argument".format(endyear))
         else:
-            logging("Search - EndYear bad argument {}".format(endyear))
+            filterQ += "&& art_year_int:[{} TO {}] ".format("*", endyear)
 
     if fulltext1 is not None:
         searchQ += "&& text:{} ".format(fulltext1)
@@ -504,6 +528,7 @@ def get_the_most_cited_articles(request: Request,
     retVal.documentList.responseInfo.request = request.url._url
 
     return retVal
+
 @app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList)
 def get_the_newest_documents(request: Request, 
                              limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),

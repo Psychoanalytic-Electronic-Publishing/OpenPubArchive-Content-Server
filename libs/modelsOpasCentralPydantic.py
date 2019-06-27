@@ -36,6 +36,7 @@ class UserInDB(User):
 class Session(BaseModel):
     api_session_id: int = None
     user_id: int = None
+    user_ip: str = None
     authenticated: bool = False
     session_start: datetime = None
     session_end: datetime = None
