@@ -676,22 +676,24 @@ def main():
     if options.httpUserID is not None and options.httpPassword is not None:
         if options.fullTextCoreName is not None:
             solrDocs = solr.SolrConnection(solrAPIURL, http_user=options.httpUserID, http_pass=options.httpPassword)
-            solrAuthor = solr.SolrConnection(options.solrURL + config.AUTHORCORENAME, http_user=options.httpUserID, http_pass=options.httpPassword)
+            solrAuthors = solr.SolrConnection(options.solrURL + config.AUTHORCORENAME, http_user=options.httpUserID, http_pass=options.httpPassword)
         if options.biblioCoreName is not None:
             solrBib = solr.SolrConnection(solrAPIURLRefs, http_user=options.httpUserID, http_pass=options.httpPassword)
     else:
         if options.fullTextCoreName is not None:
             solrDocs = solr.SolrConnection(solrAPIURL)
-            solrAuthor = solr.SolrConnection(options.solrURL + config.AUTHORCORENAME)
+            solrAuthors = solr.SolrConnection(options.solrURL + config.AUTHORCORENAME)
         if options.biblioCoreName is not None:
             solrBib = solr.SolrConnection(solrAPIURLRefs)
 
     # Reset core's data if requested (mainly for early development)
     if options.resetCoreData:
         if options.fullTextCoreName is not None:
-            print ("*** Deleting all data from the full text core ***")
+            print ("*** Deleting all data from the docs and author cores ***")
             solrDocs.delete_query("*:*")
             solrDocs.commit()
+            solrAuthors.delete_query("*:*")
+            solrAuthors.commit()
         if options.biblioCoreName is not None:
             print ("*** Deleting all data from the References core ***")
             solrBib.delete_query("*:*")
@@ -840,11 +842,11 @@ def main():
         if solrAPIURL is not None:
             # this option will also load the biblio and authors cores.
             processArticleForDocCore(pepxml, artInfo, solrDocs, fileXMLContents)
-            processInfoForAuthorCore(pepxml, artInfo, solrAuthor)
+            processInfoForAuthorCore(pepxml, artInfo, solrAuthors)
             if preCommitFileCount > config.COMMITLIMIT:
                 preCommitFileCount = 0
                 solrDocs.commit()
-                solrAuthor.commit()
+                solrAuthors.commit()
                 fileTracker.commit()
 
         # input to the references core
@@ -873,7 +875,7 @@ def main():
     try:
         if solrAPIURL is not None:
             solrDocs.commit()
-            solrAuthor.commit()
+            solrAuthors.commit()
             fileTracker.commit()
     except Exception as e:
         print ("Exception: ", e)

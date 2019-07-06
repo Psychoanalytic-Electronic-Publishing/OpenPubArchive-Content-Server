@@ -11,3 +11,6 @@ DEFAULTDATAROOT = r"C:\solr-8.0.0\server\solr\pepwebproto\sampledata\_PEPA1"
 DEFAULTSOLRHOME = "http://localhost:8983/solr/"
 
 AUTHORCORENAME = "pepwebauthors"
+DOCSCORENAME = "pepwebdocs"
+REFSCORENAME = "pepwebrefs"
+GLOSSARYCORENAME = "pepwebglossary"

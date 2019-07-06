@@ -16,6 +16,12 @@
   <fieldType name="plongs" class="solr.LongPointField" docValues="true" multiValued="true"/>
   <fieldType name="random" class="solr.RandomSortField" indexed="true"/>
   <fieldType name="string" class="solr.StrField" sortMissingLast="true"/>
+  <fieldType name="string_ci" class="solr.TextField" omitNorms="true" sortMissingLast="true">
+    <analyzer>
+      <tokenizer class="solr.KeywordTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
   <fieldType name="text_general" class="solr.TextField" positionIncrementGap="100" multiValued="true">
     <analyzer type="index">
       <charFilter class="solr.HTMLStripCharFilterFactory"/>
@@ -38,10 +44,10 @@
     </analyzer>
   </fieldType>
   <field name="_version_" type="plong" indexed="false" stored="false"/>
-  <field name="art_author_affil" type="text_simple" multiValued="false" indexed="true" stored="true"/>
+  <field name="art_author_affil_xml" type="text_simple" multiValued="false" indexed="true" stored="true"/>
   <field name="art_author_bio" type="text_simple" multiValued="false" indexed="true" stored="true"/>
-  <field name="art_author_id" type="string" multiValued="false" indexed="true" stored="true"/>
-  <field name="art_author_listed" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="art_author_id" type="string_ci" multiValued="false" indexed="true" stored="true"/>
+  <field name="art_author_listed" type="string_ci" multiValued="false" indexed="true" stored="true"/>
   <field name="art_author_pos_int" type="pint" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="art_author_role" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="art_author_xml" type="text_simple" multiValued="false" indexed="true" stored="true"/>

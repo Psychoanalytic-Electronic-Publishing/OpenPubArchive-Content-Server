@@ -103,6 +103,22 @@
   <!-- The StrField type is not analyzed, but is indexed/stored verbatim. -->
   <fieldType name="string" class="solr.StrField" sortMissingLast="true"/>
 
+  <!-- The String case insensitive field.
+       From: http://pietervogelaar.nl/solr-3-5-search-case-insensitive-on-a-string-field-for-exact-match
+
+      With this field type case is preserved for stored values, but a case insensitive field will
+      be provided to search on. Caveat: case insensitive wildcard search cannot be done since
+      wild card phrases bypass the query analyzer and will not be lowercased before matching
+      against the index. This means that the characters in wildcard phrases must be lowercase in
+      order to match.       
+  -->
+    <fieldType name="string_ci" class="solr.TextField" sortMissingLast="true" omitNorms="true">
+    <analyzer type="query">
+        <tokenizer class="solr.KeywordTokenizerFactory"/>
+        <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>  
+
   <!-- A basic text field that has reasonable, generic
    cross-language defaults: it tokenizes with StandardTokenizer,
    and down cases. It does not deal with stopwords or other issues.
