@@ -33,28 +33,6 @@ else:
 import opasAPISupportLib
 
 # -------------------------------------------------------------------------------------------------------
-# run it! (for testing)
-# 
-# nrs note - Trying main at the top, for function refactors (wing moves to the bottom of the file.
-
-if __name__ == "__main__":
-    print ("Running in Python %s" % sys.version_info[0])
-    import doctest
-
-    testXML = """
-              <test>
-                <author role="writer">this is just authoring test stuff</author>
-                <p id="1">A random paragraph</p>
-                <p id="2" type="speech">Another random paragraph</p>
-                <p id="3">Another <b>random</b> paragraph</p>
-                <p id="4">Another random paragraph</p>
-                <p id="5">Another <b>random</b> paragraph with multiple <b>subelements</b></p>
-              </test>
-              """
-    doctest.testmod()
-    print ("Tests Completed")
-
-# -------------------------------------------------------------------------------------------------------
 
 def authorDeriveMastFromXMLStr(authorXMLStr, listed=True):
     """
@@ -221,6 +199,7 @@ def xmlGetSubElementTextSingleton(elementNode, subElementName, defaultReturn="")
     >>> root = etree.fromstring('<p>Another <b>random</b> paragraph with multiple <b>subelements</b></p>')
     >>> xmlGetSubElementTextSingleton(root, "b")
     'random'
+    >>> xmlGetSubElementTextSingleton(root, "bxxx", None)
     """
     retVal = defaultReturn
     try:
@@ -234,6 +213,7 @@ def xmlGetSubElementTextSingleton(elementNode, subElementName, defaultReturn="")
 def xmlGetSubElementXMLSingleton(elementNode, subElementName, defaultReturn=""):
     """
     Returns the marked up XML text for elements (including subelements)
+    If it doesn't exist or is empty, return the defaultReturn
     
     subElementName cannot be an xpath
     
@@ -243,11 +223,13 @@ def xmlGetSubElementXMLSingleton(elementNode, subElementName, defaultReturn=""):
     >>> root = etree.fromstring('<p>Another <b>random</b> paragraph with multiple <b>subelements</b></p>')
     >>> xmlGetSubElementXMLSingleton(root, "b")
     '<b>random</b>'
+    >>> xmlGetSubElementXMLSingleton(root, "bxxxx", None)
     """
     retVal = defaultReturn
     try:
         retVal = etree.tostring(elementNode.find(subElementName), with_tail=False, encoding="unicode")
-            
+        if retVal == "":
+            retVal = defaultReturn
     except Exception as err:
         retVal = defaultReturn
 
@@ -274,13 +256,14 @@ def xmlGetSubElementXMLSingleton(elementNode, subElementName, defaultReturn=""):
 
 def xmlGetElementAttr(elementNode, attrName, defaultReturn=""):
     """
-    Get an attribute from the lxml elementNode
+    Get an attribute from the lxml elementNode.  
+    If it doesn't exist or is empty, return the defaultReturn
 
     >>> root = etree.fromstring(testXML)
     >>> currElement = xmlGetElements(root, "p[@id=2]", None)
     >>> xmlGetElementAttr(currElement[0], "type")
     'speech'
-    
+    >>> xmlGetElementAttr(currElement[0], "typeaaa", None)
     """
     retVal = defaultReturn
     try:
@@ -293,7 +276,7 @@ def xmlGetElementAttr(elementNode, attrName, defaultReturn=""):
     return retVal
 
 
-def xmlGetElements(elementNode, xPathDef, defaultReturn=[]):
+def xmlGetElements(elementNode, xPathDef, defaultReturn=list()):
     """
     Return a list of XML ELEMENTS from the specified xPath
 
@@ -303,10 +286,14 @@ def xmlGetElements(elementNode, xPathDef, defaultReturn=[]):
     >>> root = etree.fromstring(testXML)
     >>> len(xmlGetElements(root, "p[@id=2]", None))
     1
+    >>> xmlGetElements(root, "//pxxxx", None)    # test default return
     """
     retVal = defaultReturn
     try:
         retVal = elementNode.xpath(xPathDef)
+        if retVal == []:
+            retVal = defaultReturn
+        
     except Exception as err:
         print (err)
 
@@ -366,25 +353,30 @@ def xmlElemOrStrToXMLString(elemOrXMLStr, defaultReturn=""):
 def xmlElemOrStrToText(elemOrXMLStr, defaultReturn=""):
     """
     Return string with all tags stripped out from either etree element or xml marked up string
+    
+    If string is empty or None, return the defaultReturn
 
     >>> root = etree.fromstring(testXML)
     >>> xmlElemOrStrToText(testXML, None)[0:100]
     'this is just authoring test stuff\\n                A random paragraph\\n                Another random '
     >>> xmlElemOrStrToText(root, None)[0:100]
     'this is just authoring test stuff\\n                A random paragraph\\n                Another random '
-    >>> root = etree.fromstring("<myxml>this <b>is <i>really</i></b> xml.</myxml>", None)  #mixed content element
+    >>> root = etree.fromstring("<myxml>this <b>is <i>really</i><empty/></b> xml.</myxml>", None)  #mixed content element
     >>> xmlElemOrStrToText(root, None)
     'this is really xml.'
     >>> isinstance(xmlElemOrStrToText(root, None), str)  # make sure it's string
     True
+    >>> xmlElemOrStrToText(xmlXPathReturnTextSingleton(root, "pxxx", ""), None)
     """
     retVal = defaultReturn
-    if isinstance(elemOrXMLStr, lxml.etree._ElementUnicodeResult):
+    if elemOrXMLStr is None or elemOrXMLStr == "":
+        retVal = defaultReturn
+    elif isinstance(elemOrXMLStr, lxml.etree._ElementUnicodeResult):
         retVal = "%s" % elemOrXMLStr # convert to string
     # just in case the caller sent a string.
     else:
         try:
-            if type(elemOrXMLStr) == type(""):
+            if isinstance(elemOrXMLStr, str):
                 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
                 elem = etree.fromstring(elemOrXMLStr, parser)
             else:
@@ -404,9 +396,12 @@ def xmlElemOrStrToText(elemOrXMLStr, defaultReturn=""):
             print ("xmlElemOrStrToText: %s" % err)
             retVal = defaultReturn
 
+    if retVal == "":
+        retVal = defaultReturn
+        
     return retVal
 
-def xmlXPathReturnTextList(elementNode, xpath, defaultReturn=[]):
+def xmlXPathReturnTextList(elementNode, xpath, defaultReturn=list()):
     """
     Return text of element specified by xpath (with Node() as final part of path)
     
@@ -415,11 +410,14 @@ def xmlXPathReturnTextList(elementNode, xpath, defaultReturn=[]):
     ['A random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph with multiple subelements']
     >>> xmlXPathReturnTextList(root, "p", None)
     ['A random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph with multiple subelements']
+    >>> xmlXPathReturnTextList(root, "pxxx", None) # check default return
     """
     retVal = defaultReturn
     try:
         retVal = elementNode.xpath(xpath)
         retVal = [xmlElemOrStrToText(n) for n in retVal]
+        if retVal == []:
+            retVal = defaultReturn
     except IndexError:
         retVal = defaultReturn
     
@@ -436,7 +434,7 @@ def xmlXPathReturnTextSingleton(elementNode, xpath, defaultReturn=""):
     'Another random paragraph'
     >>> xmlXPathReturnTextSingleton(root, "p", None)
     'A random paragraph'
-    
+    >>> xmlXPathReturnTextSingleton(root, "pxxxx", None) # check default return
     """
     retVal = defaultReturn
     try:
@@ -472,7 +470,7 @@ def xmlXPathReturnXMLSingleton(elementNode, xPathDef, defaultReturn=""):
 
     return retVal
 
-def xmlXPathReturnXMLStringList(elementNode, xPathDef):
+def xmlXPathReturnXMLStringList(elementNode, xPathDef, defaultReturn=list()):
     """
     Return a list of XML tagged strings from the nodes in the specified xPath
 
@@ -485,14 +483,17 @@ def xmlXPathReturnXMLStringList(elementNode, xPathDef):
     5
     >>> stringList[0]
     '<p id="1">A random paragraph</p>'
+    >>> xmlXPathReturnXMLStringList(root, "pxxxx", None)  # check default return
     """
+    retVal = defaultReturn
     try:
         retVal = [etree.tostring(n, with_tail=False, encoding="unicode") for n in elementNode.xpath(xPathDef)]
+        if len(retVal) == 0:
+            retVal = defaultReturn
     except:
-        retVal = []
+        retVal = defaultReturn
         
-    return retVal
-    
+    return retVal   
 
 def extractHTMLFragment(strHTML, xpathToExtract="//div[@id='abs']"):
     # parse HTML
@@ -595,5 +596,27 @@ def removeEncodingString(xmlString):
     return retVal
 
 
+
+# -------------------------------------------------------------------------------------------------------
+# run it! (for testing)
+# 
+# nrs note - Trying main at the top, for function refactors (wing moves to the bottom of the file.
+
+if __name__ == "__main__":
+    print ("Running in Python %s" % sys.version_info[0])
+    import doctest
+
+    testXML = """
+              <test>
+                <author role="writer">this is just authoring test stuff</author>
+                <p id="1">A random paragraph</p>
+                <p id="2" type="speech">Another random paragraph</p>
+                <p id="3">Another <b>random</b> paragraph</p>
+                <p id="4">Another random paragraph</p>
+                <p id="5">Another <b>random</b> paragraph with multiple <b>subelements</b></p>
+              </test>
+              """
+    doctest.testmod()
+    print ("Tests Completed")
 
 

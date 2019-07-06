@@ -20,12 +20,19 @@ __status__      = "Development"
 import sys
 sys.path.append('../libs')
 sys.path.append('../config')
+from typing import Union, Optional, Tuple
+import http.cookies
 
 import opasConfig
+from opasConfig import *
 from localsecrets import SOLRURL, SOLRUSER, SOLRPW
+from starlette.requests import Request
+from starlette.responses import Response
 
 import re
 import os.path
+import secrets
+from starlette.responses import JSONResponse, Response
 
 import time
 import datetime
@@ -59,6 +66,7 @@ from ebooklib import epub
 from stdMessageLib import copyrightPageHTML  # copyright page text to be inserted in ePubs and PDFs
 
 # note: documents and documentList share the same internals, except the first level json label (documents vs documentlist)
+import models
 from models import ListTypeEnum, \
                    ResponseInfo, \
                    DocumentList, \
@@ -83,10 +91,12 @@ from models import ListTypeEnum, \
                    AuthorIndex, \
                    AuthorIndexStruct, \
                    AuthorIndexItem, \
+                   LoginReturnItem, \
                    SearchFormFields
 
 import opasXMLHelper as opasxmllib
 import opasGenSupportLib as opasgenlib
+import opasCentralDBLib
 import sourceInfoDB as SourceInfoDB
     
 sourceDB = SourceInfoDB.SourceInfoDB()
@@ -100,18 +110,127 @@ import json
 #This is the old way -- should switch to class Solr per https://pythonhosted.org/solrpy/reference.html
 if SOLRUSER is not None:
     solrDocs = solr.SolrConnection(SOLRURL + 'pepwebproto', http_user=SOLRUSER, http_pass=SOLRPW)
-    solrRefs = solr.SolrConnection(SOLRURL + 'pepwebrefsproto', http_user=SOLRUSER, http_pass=SOLRPW)
+    solrRefs = solr.SolrConnection(SOLRURL + 'pepwebrefs', http_user=SOLRUSER, http_pass=SOLRPW)
     solrGloss = solr.SolrConnection(SOLRURL + 'pepwebglossary', http_user=SOLRUSER, http_pass=SOLRPW)
     solrAuthors = solr.SolrConnection(SOLRURL + 'pepwebauthors', http_user=SOLRUSER, http_pass=SOLRPW)
 
 else:
     solrDocs = solr.SolrConnection(SOLRURL + 'pepwebproto')
-    solrRefs = solr.SolrConnection(SOLRURL + 'pepwebrefsproto')
+    solrRefs = solr.SolrConnection(SOLRURL + 'pepwebrefs')
     solrGloss = solr.SolrConnection(SOLRURL + 'pepwebglossary')
     solrAuthors = solr.SolrConnection(SOLRURL + 'pepwebauthors')
 
 #API endpoints
 documentURL = "/v1/Documents/"
+
+def getMaxAge(keepActive=None):
+    if keepActive is not None:    
+        retVal = COOKIE_MAX_KEEP_TIME    
+    else:
+        retVal = COOKIE_MIN_KEEP_TIME     
+
+    return retVal  # maxAge
+
+def getSessionInfo(request: Request, resp: Response, sessionID=None, accessToken=None, expiresTime=None, keepActive=None):
+    """
+    Get session info from cookies, or create a new session if one doesn't exist.
+    Return a sessionInfo object with all of that info, and a database handle
+    
+    """
+    sessionID = getSessionID(request)
+    accessToken = getAccessToken(request)
+    expirationTime = getExpirationTime(request)
+    
+    if sessionID is None:  # we need to set it
+        # get new sessionID...even if they already had one, this call forces a new one
+        ocd = startNewSession(resp, accessToken, keepActive=keepActive)  
+        sessionInfo = models.LoginReturnItem(    session_id = ocd.sessionID, 
+                                                 access_token = ocd.accessToken, 
+                                                 authenticated = ocd.accessToken is not None, 
+                                                 session_expires_time = ocd.expiresTime)
+        
+    else: # we already have a sessionID, no need to recreate it.
+        try:
+            ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime)
+            sessionInfo = models.LoginReturnItem(    session_id = sessionID, 
+                                                     access_token = accessToken, 
+                                                     authenticated = accessToken is not None, 
+                                                     session_expires_time = expirationTime)
+        except ValidationError as e:
+            print(e.json())             
+    
+    return ocd, sessionInfo
+    
+def startNewSession(resp: Response, accessToken=None, keepActive=None):
+    """
+    Create a new session record and set cookies with the session
+    Returns the database library instance, for convenience of subsequent calls
+      in that endpoint
+    """
+    expirationTime = getExpirationCookieStr(keepActive=keepActive)
+    sessionID = secrets.token_urlsafe(16)
+    setCookies(resp, sessionID, accessToken, expiresTime=expirationTime)
+    ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime)
+    session = ocd.startSession(sessionID)
+    return ocd
+
+def setCookies(resp: Response, sessionID, accessToken, expiresTime):
+   
+    if sessionID is not None:
+        set_cookie(resp, "opasSessionID", sessionID)
+        #resp.raw_headers.append(
+            #("Set-Cookie", "opasSessionID={}; path=/".format(sessionID)))
+    if accessToken is not None:
+        set_cookie(resp, "opasAccessToken", accessToken)
+        #resp.raw_headers.append(
+            #("Set-Cookie", "opasAccessToken={}; Max-Age=300; path=/".format(accessToken)))
+    
+    if expiresTime is not None:
+        set_cookie(resp, "expiresTime", expiresTime)
+        #resp.raw_headers.append(
+            #("Set-Cookie", "opasSessionExpirestime={}; Max-Age=300; path=/".format(expiresTime)))
+
+    return resp
+    
+def getExpirationCookieStr(keepActive=None):
+    maxAge = getMaxAge(keepActive)
+    retVal = datetime.utcfromtimestamp(time.time() + maxAge).strftime('%Y-%m-%d %H:%M:%S')
+    #retVal = "opasSessionExpirestime={}; Max-Age={}".format(retVal, maxAge)
+    # Return response cookie string for header
+    return retVal #expiration cookie str
+    
+#def getSessionInfoCookieStr(sessionID, keepActive=None):
+    #"""
+    #Create a sessionID and if specified, an accessToken and put cookie 
+      #creation info in response header.
+    #"""
+    #maxAge = getMaxAge(keepActive)
+    #retVal = "opasSessionID={}; Max-Age={}".format(sessionID, maxAge)
+    ## Return response cookie string for header
+    #return retVal
+
+#def getAccessTokenCookieStr(sessionID, keepActive=None):
+    #"""
+    #Create a sessionID and if specified, an accessToken and put cookie 
+      #creation info in response header.
+    #"""
+    #maxAge = getMaxAge(keepActive)
+    #accessToken = opasCentralDBLib.getPasswordHash(sessionID)
+    #retVal = "opasAccessToken={}; Max-Age={}".format(accessToken, maxAge)
+    ## Return response cookie string for header
+    #return retVal
+
+def getSessionID(request):
+    retVal = request.cookies.get("opasSessionID", None)
+    return retVal
+
+def getAccessToken(request):
+    retVal = request.cookies.get("opasAccessToken", None)
+    return retVal
+
+def getExpirationTime(request):
+    retVal = request.cookies.get("opasSessionExpirestime", None)
+    return retVal
 
 def checkSolrDocsConnection():
     if solrDocs is None:
@@ -159,15 +278,34 @@ def getArticleData(articleID):
         
     return retVal
 
-def databaseGetMostCited(limit=50, offset=0):
-    results = solrRefs.query(q = "art_year_int:[2014 TO 2019]",  
-                             facet_field = "bib_ref_rx",
-                             facet_sort = "count",
-                             fl = "art_id, id, bib_ref_id, art_pepsrccode, bib_ref_rx_sourcecode",
-                             rows = "0",
-                             facet = "on"
-                             )
+def databaseGetMostCited(period='5', limit=50, offset=0):
+    """
+    Return the most cited journal articles duing the prior period years.
     
+    period must be either '5', 10, '20', or 'all'
+
+    """
+    #results = solrRefs.query(q = "art_year_int:[2014 TO 2019]",  
+                             #facet_field = "bib_ref_rx",
+                             #facet_sort = "count",
+                             #fl = "art_id, id, bib_ref_id, art_pepsrccode, bib_ref_rx_sourcecode",
+                             #rows = "0",
+                             #facet = "on"
+                             #)
+
+    if period.lower() not in ['5', '10', '20', 'all']:
+        period = '5'
+    
+    results = solrDocs.query(q = "*:*",  
+                             fl = "art_id, title, art_vol, art_iss, art_year,  art_pepsrccode, \
+                                   art_cited_{}, art_cited_all, timestamp, art_pepsrccode, \
+                                   art_pepsourcetype, art_pepsourcetitleabbr, art_pgrg, art_citeas_xml, art_authors_mast, \
+                                   abstract_xml, text_xml".format(period),
+                             fq = "art_pepsourcetype: journal",
+                             sort = "art_cited_{} desc".format(period),
+                             limit = limit
+                             )
+
     print ("Number found: %s" % results._numFound)
     
     responseInfo = ResponseInfo(
@@ -184,39 +322,43 @@ def databaseGetMostCited(limit=50, offset=0):
     documentListItems = []
     rowCount = 0
     rowOffset = 0
-    for artID, count in results.facet_counts["facet_fields"]["bib_ref_rx"].items():
-        rowOffset += 1
-        if rowOffset < offset:  # for paging
-            continue
-        artInfo = getArticleData(artID)
-        if artInfo is None:
-            continue
-        PEPCode = artInfo.get("art_pepsrccode", None)
-        if PEPCode is None or PEPCode in ["SE", "GW", "ZBK", "IPL"]:  # no books
-            continue
-        pgRg =  artInfo.get("art_pgrg", None)
-        if pgRg is not None:
-            pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
-        else:
-            pgStart, pgEnd = None
 
-        citeAs = artInfo.get("art_citeas_xml", None)
-        citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
+    for result in results:
+        PEPCode = result.get("art_pepsrccode", None)
+        #if PEPCode is None or PEPCode in ["SE", "GW", "ZBK", "IPL"]:  # no books
+            #continue
+
+        PEPCode = result.get("art_pepsrccode", None)
+        authorMast = result.get("art_authors_mast", None)
+        volume = result.get("art_vol", None)
+        issue = result.get("art_iss", "")
+        year = result.get("art_year", None)
+        abbrev = result.get("art_pepsourcetitleabbr", "")
+        updated = result.get("timestamp", None)
+        updated = updated.strftime('%Y-%m-%d')
+        pgRg = result.get("art_pgrg", None)
+        pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
         
-        item = DocumentListItem( documentID = artID,
-                                 instanceCount = count,
-                                 title = opasgenlib.getFirstValueOfDictItemList(artInfo, "title"),
-                                 PEPCode = artInfo.get("art_pepsrccode", None), 
-                                 authorMast = artInfo.get("art_authors_mast", None),
-                                 year = artInfo.get("art_year", None),
-                                 vol = artInfo.get("art_vol", None),
+        displayTitle = abbrev + " v%s.%s (%s) (Added: %s)" % (volume, issue, year, updated)
+        volumeURL = "/v1/Metadata/Contents/%s/%s" % (PEPCode, issue)
+        srcTitle = result.get("art_pepsourcetitlefull", "")
+        citeAs = result.get("art_citeas_xml", None)
+        artAbstract = result.get("art_abstract", None)
+        
+        item = DocumentListItem( documentID = result.get("art_id", None),
+                                 instanceCount = result.get("art_cited_5", None),
+                                 title = srcTitle,
+                                 PEPCode = PEPCode, 
+                                 authorMast = authorMast,
+                                 year = year,
+                                 vol = volume,
                                  pgRg = pgRg,
-                                 issue = artInfo.get("art_iss", None),
+                                 issue = issue,
                                  pgStart = pgStart,
                                  pgEnd = pgEnd,
-                                 documentRefHTML = artInfo.get("art_citeas_xml", None),
+                                 documentRefHTML = citeAs,
                                  documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=None),
-                                 abstract = opasgenlib.getFirstValueOfDictItemList(artInfo, "abstracts_xml"),
+                                 abstract = artAbstract,
                               ) 
         rowCount += 1
         print (item)
@@ -239,7 +381,7 @@ def databaseGetMostCited(limit=50, offset=0):
     
     return retVal   
 
-def databaseWhatsNew(limit=15, offset=0):
+def databaseWhatsNew(limit=DEFAULT_LIMIT_FOR_WHATS_NEW, offset=0):
     """
     Return a what's been updated in the last week
     
@@ -323,7 +465,7 @@ def databaseWhatsNew(limit=15, offset=0):
 def searchLikeThePEPAPI():
     pass  # later
 
-def metadataGetVolumes(pepCode, year="*", limit=100, offset=0):
+def metadataGetVolumes(pepCode, year="*", limit=DEFAULT_LIMIT_FOR_VOLUME_LISTS, offset=0):
     """
     """
     retVal = []
@@ -369,7 +511,7 @@ def metadataGetVolumes(pepCode, year="*", limit=100, offset=0):
     retVal = volumeList
     return retVal
 
-def metadataGetContents(pepCode, year="*", vol="*", limit=100, offset=0):
+def metadataGetContents(pepCode, year="*", vol="*", limit=DEFAULT_LIMIT_FOR_CONTENTS_LISTS, offset=0):
     """
     Return a jounals contents
     
@@ -444,7 +586,7 @@ def metadataGetContents(pepCode, year="*", vol="*", limit=100, offset=0):
     
     return retVal
 
-def metadataGetSourceByType(sourceType=None, limit=100, offset=0):
+def metadataGetSourceByType(sourceType=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
     
@@ -618,7 +760,7 @@ def metadataGetSourceByCode(pepCode=None):
     
     return retVal
 
-def authorsGetAuthorInfo(authorNamePartial, limit=10, offset=0):
+def authorsGetAuthorInfo(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns a list of matching names (per authors last name), and the number of articles
     in PEP found by that author.
@@ -655,7 +797,8 @@ def authorsGetAuthorInfo(authorNamePartial, limit=10, offset=0):
     
     """
     retVal = {}
-    results = solrAuthors.query(q = "art_author_id:/%s.*/" % (authorNamePartial),  
+    query = "art_author_id:/%s.*/" % (authorNamePartial)
+    results = solrAuthors.query(q = query,  
                                 fields = "authors, art_author_id",
                                 facet_field = "art_author_id",
                                 facet = "on",
@@ -673,6 +816,8 @@ def authorsGetAuthorInfo(authorNamePartial, limit=10, offset=0):
                      offset = offset,
                      listType="authorindex",
                      fullCountComplete = limit >= results._numFound,
+                     scopeQuery=query,
+                     solrParams = results._params,
                      timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
                    )
 
@@ -700,7 +845,7 @@ def authorsGetAuthorInfo(authorNamePartial, limit=10, offset=0):
     retVal = authorIndex
     return retVal
 
-def authorsGetAuthorPublications(authorNamePartial, limit=10, offset=0):
+def authorsGetAuthorPublications(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns a list of publications (published on PEP-Web (per authors partial name), and the number of articles
     in PEP found by that author.
@@ -740,7 +885,8 @@ def authorsGetAuthorPublications(authorNamePartial, limit=10, offset=0):
     
     """
     retVal = {}
-    results = solrAuthors.query(q = "art_author_id:/%s.*/" % (authorNamePartial),  
+    query = "art_author_id:/{}.*/".format(authorNamePartial)
+    results = solrAuthors.query(q = "art_author_id:/%s.*/" ,  
                                 fields = "art_author_id, art_year_int, art_id, art_citeas_xml",
                                 sort="art_author_id, art_year_int", sort_order="asc",
                                 rows=limit, start=offset
@@ -754,6 +900,8 @@ def authorsGetAuthorPublications(authorNamePartial, limit=10, offset=0):
                      limit = limit,
                      offset = offset,
                      listType="authorpublist",
+                     scopeQuery=query,
+                     solrParams = results._params,
                      fullCountComplete = limit >= results._numFound,
                      timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
                    )
@@ -820,7 +968,7 @@ def getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocume
 
     return retVal
     
-def documentsGetAbstracts(documentID, retFormat="HTML", limit=100, offset=0):
+def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns an abstract or summary for the specified document
     If part of a documentID is supplied, multiple abstracts will be returned.
@@ -931,7 +1079,7 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=100, offset=0):
     return retVal
 
 
-def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=1, offset=0):
+def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS, offset=0):
     """
    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
    For authenticated users, it returns with the document itself
@@ -1109,7 +1257,8 @@ def prepDocumentDownload(documentID, retFormat="HTML", authenticated=True, baseF
             logging.warning("No content or abstract found for %s.  Error: %s" % (documentID, e))
         else:
             try:    
-                retVal = retVal[0]
+                if isinstance(retVal, list):
+                    retVal = retVal[0]
             except Exception as e:
                 logging.warning("Empty return: %s" % e)
             else:
@@ -1208,15 +1357,16 @@ def getImageBinary(imageID):
   
     return retVal
 
-def getKwicList(markedUpText, extraContextLen=20, startHitTag=opasConfig.HITMARKERSTART, endHitTag=opasConfig.HITMARKEREND):
+def getKwicList(markedUpText, extraContextLen=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, startHitTag=opasConfig.HITMARKERSTART, endHitTag=opasConfig.HITMARKEREND):
     """
     Find all nonoverlapping 
     """
+    
     retVal = []
-    emMarks = re.compile("(.{0,20}%s.*%s.{0,20})" % (startHitTag, endHitTag))
+    emMarks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extraContextLen, startHitTag, endHitTag, extraContextLen))
     for n in emMarks.finditer(markedUpText):
         retVal.append(n.group(0))
-        print ("Match {}".format(n.group(0)))
+        print ("Match: '...{}...'".format(n.group(0)))
     matchCount = len(retVal)
     
     return retVal    
@@ -1273,9 +1423,11 @@ def searchText(query,
                filterQuery = None,
                moreLikeThese = False,
                queryAnalysis = False,
+               disMax = None,
                summaryFields="art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
                highlightFields='art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
-               fullTextRequested=True, userLoggedIn=False, limit=0, offset=10):
+               fullTextRequested=True, userLoggedIn=False, 
+               limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Full-text search
 
@@ -1321,6 +1473,7 @@ def searchText(query,
     results = solrDocs.query(query,  
                              fq = filterQuery,
                              debugQuery = queryDebug,
+                             disMax = disMax,
                              fields = summaryFields,
                              hl= 'true', 
                              hl_fragsize = 1520000, 
@@ -1378,11 +1531,11 @@ def searchText(query,
         if textXml is not None:
             kwicList = getKwicList(textXml)  # an alternate way making it easier for clients
             kwic = " . . . ".join(kwicList)  # how its done at GVPi, for compatibility.
-            print ("Length of document: {} Number of matches to show: {}".format(len(textXml), len(kwicList)))
+            #print ("Document Length: {}; Matches to show: {}".format(len(textXml), len(kwicList)))
         else:
             kwicList = []
             kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
-            print ("No matches to show in document {}".format(documentID))            
+            #print ("No matches to show in document {}".format(documentID))            
         
         if not userLoggedIn or not fullTextRequested:
             textXml = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract=abstractsXml, xmlSummary=summariesXml, xmlDocument=textXml)
@@ -1441,6 +1594,47 @@ def searchText(query,
     
     return retVal
 
+def set_cookie(response: Response, name: str, value: Union[str, bytes], *, domain: Optional[str] = None,
+               path: str = '/', expires: Optional[Union[float, Tuple, datetime]] = None,
+               expires_days: Optional[int] = None, max_age: Optional[int] = None, secure=False, httponly=True,
+               samesite: Optional[str] = 'Lax') -> None:
+    """Sets an outgoing cookie name/value with the given options.
+
+    Newly-set cookies are not immediately visible via `get_cookie`;
+    they are not present until the next request.
+
+    expires may be a numeric timestamp as returned by `time.time`,
+    a time tuple as returned by `time.gmtime`, or a
+    `datetime.datetime` object.
+    """
+    if not name.isidentifier():
+        # Don't let us accidentally inject bad stuff
+        raise ValueError(f'Invalid cookie name: {repr(name)}')
+    if value is None:
+        raise ValueError(f'Invalid cookie value: {repr(value)}')
+    #value = unicode(value)
+    cookie = http.cookies.SimpleCookie()
+    cookie[name] = value
+    morsel = cookie[name]
+    if domain:
+        morsel['domain'] = domain
+    if path:
+        morsel['path'] = path
+    if expires_days is not None and not expires:
+        expires = datetime.utcnow() + timedelta(days=expires_days)
+    if expires:
+        morsel['expires'] = format_http_timestamp(expires)
+    if max_age is not None:
+        morsel['max-age'] = max_age
+    parts = [cookie.output(header='').strip()]
+    if secure:
+        parts.append('Secure')
+    if httponly:
+        parts.append('HttpOnly')
+    if samesite:
+        parts.append(f'SameSite={http.cookies._quote(samesite)}')
+    cookie_val = '; '.join(parts)
+    response.raw_headers.append((b'set-cookie', cookie_val.encode('latin-1')))
 
 
 #================================================================================================================================

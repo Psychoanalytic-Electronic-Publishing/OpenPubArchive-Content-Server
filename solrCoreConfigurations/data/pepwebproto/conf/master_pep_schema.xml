@@ -7,6 +7,8 @@
                 full PEP Data set.
     2019-06-*:  Tuning:
                 Added text_offsite, so we can search but not store offsite text and there's no danger of returning it
+    2019-07-*:  Added art_body_xml, to allow search to easily exclude abstract, summaries, and references (as our current full article search does!)          
+            
    
    Schema version attribute note: 
    
@@ -36,7 +38,7 @@
   <field name="_version_" type="plong" indexed="false" stored="false"/>
 
   <!-- field "text" the FULL source document, searchable and stored -->
-  <field name="text_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+  <field name="text_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!--Offsite text is searchable but not store in its entirety by our contractual rules only citation style info and fields will be store -->
   <field name="text_offsite" type="text_simple" indexed="true" stored="false" multiValued="false"/>
   <field name="text" type="text_general" indexed="true" stored="false" multiValued="true"/>
@@ -61,6 +63,7 @@
   <field name="art_authors_mast" type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="art_authors_unlisted" type="string" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_body_xml" type="text_simple" indexed="true" stored="false" multiValued="false"/>
 
   <field name="art_pepsrccode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <!-- journal, book, or video title -->
@@ -75,6 +78,10 @@
   <field name="art_vol" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_year" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_year_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_cited_all" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_cited_5" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_cited_10" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_cited_20" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
 
   <!-- title plus subtitle -->
   <field name="art_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>

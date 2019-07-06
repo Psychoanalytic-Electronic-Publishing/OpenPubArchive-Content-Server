@@ -2,6 +2,15 @@
 <!--
     PEP Author Database Schema v.01
     for core PEPWebAuthors
+    
+    2019-07-*:  Added string_ci, to allow case insensitive search    
+
+    
+   Schema version attribute note: 
+   
+   The default values for each property depend on the underlying FieldType class, which in turn may depend on the version 
+   attribute of the <schema/>. Keep version to standard values.
+    
 -->
 <!-- Schema name just for labeling, the managed-schema file name is what Solr looks for -->
 <schema name="pepwebauthors" version="1.61">
@@ -28,7 +37,7 @@
   <field name="timestamp" type="pdate" indexed="true" stored="true" multiValued="false"/>
 
   <!-- ID = PEP articleID + authorID  is Unique-->
-  <field name="id" type="string" indexed="true" stored="true"/>
+  <field name="id" type="string_ci" indexed="true" stored="true"/>
   <!-- this will be the biblio reference document authors -->
   <field name="authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!-- this will be the article title -->
@@ -46,14 +55,14 @@
   <!-- ********************************* -->
   <!--art_author_id is not unique, nor is art_id.  id is the unique combo.-->
   <field name="art_id" type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_author_id" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_author_id" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <field name="art_author_bio" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_author_listed" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_author_listed" type="string_ci" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_author_pos_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_author_role" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_author_affil" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_pepsourcetitlefull" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_pepsourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_author_role" type="string_ci" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_author_affil_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_pepsourcetitlefull" type="string_ci" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_pepsourcetype" type="string_ci" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_year_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <!--full xml text of this singular author info-->
   <field name="art_author_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
@@ -72,6 +81,22 @@
 
   <!-- The StrField type is not analyzed, but is indexed/stored verbatim. -->
   <fieldType name="string" class="solr.StrField" sortMissingLast="true"/>
+
+  <!-- The String case insensitive field.
+       From: http://pietervogelaar.nl/solr-3-5-search-case-insensitive-on-a-string-field-for-exact-match
+
+      With this field type case is preserved for stored values, but a case insensitive field will
+      be provided to search on. Caveat: case insensitive wildcard search cannot be done since
+      wild card phrases bypass the query analyzer and will not be lowercased before matching
+      against the index. This means that the characters in wildcard phrases must be lowercase in
+      order to match.       
+  -->
+    <fieldType name="string_ci" class="solr.TextField" sortMissingLast="true" omitNorms="true">
+    <analyzer type="query">
+        <tokenizer class="solr.KeywordTokenizerFactory"/>
+        <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>  
 
   <!-- A basic text field that has reasonable, generic
    cross-language defaults: it tokenizes with StandardTokenizer,

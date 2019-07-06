@@ -94,13 +94,33 @@ def getPasswordHash(password):
     return pwd_context.hash(password)
 
 class opasCentralDB(object):
-    def __init__(self):
-        self.openConnection()
-        self.sessionStateReinitialize()
+    """
+    >>> ocd = opasCentralDB()
+    >>> 
+    """
+    def __init__(self, sessionID=None, accessToken=None, expiresTime=None, userName="NotLoggedIn", user=None):
+        self.authenticated = False
+        self.sessionID = sessionID
+        self.accessToken = accessToken
+        self.expiresTime = expiresTime
+        self.user = user
+        if user:
+            self.userName = user.username 
+            self.userID = user.user_id # "NotLoggedIn"
+            self.connected = False
+            self.authenticated = user.enabled
+        else:
+            self.userName = userName 
+            self.userID = 0 # "NotLoggedIn"
+            self.connected = False
+
+        if self.accessToken is not None:
+            self.authenticated = True
         
     def openConnection(self):
         """
         Opens a connection if it's not already open.
+        
         If already open, no changes.
         
         """
@@ -114,6 +134,8 @@ class opasCentralDB(object):
             try:
                 self.db = pymysql.connect(host=DBHOST, user=DBUSER, password=DBPW, database=DBNAME)
                 self.connected = True
+                print ("Database Open")
+                # get userID if there's a name, otherwise it's 0
             except:
                 logging.error("Cannot connect to database {} for host {} and user {}".format(DBNAME, DBHOST, DBUSER))
                 self.connected = False
@@ -123,17 +145,12 @@ class opasCentralDB(object):
     def closeConnection(self):
         if self.db.open:
             self.db.close()
+            print ("Database Closed")
 
         # make sure to mark the connection false in any case
         self.connected = False           
 
-    def sessionStateReinitialize(self):
-        self.currentSession = None
-        self.currentUser = None
-        self.sessionID = None # this is also a subfield of currentSession
-        self.sessionToken = None
-               
-    def endSession(self, sessionToken, sessionEnd=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')):
+    def endSession(self, sessionID, sessionEnd=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')):
         """
         >>> ocd = opasCentralDB()
         >>> ocd.connected
@@ -143,19 +160,15 @@ class opasCentralDB(object):
         True
         """
         retVal = None
+        self.openConnection() # make sure connection is open
 
-        if self.currentSession == None:
-            # no session open!
-            logging.warn("endSession: No session is open")
-            return retVal
-        
         if self.db != None:
             cursor = self.db.cursor()
             sql = """UPDATE api_sessions
                      SET session_end = '%s'
-                     WHERE session_token = '%s'
+                     WHERE session_id = '%s'
                   """ % (sessionEnd,
-                         sessionToken
+                         sessionID
                         )
             success = cursor.execute(sql)
             self.db.commit()
@@ -166,95 +179,83 @@ class opasCentralDB(object):
                 logging.warn("Could not record close session per token={} in DB".format(sessionToken))
                 retVal = False
                 
-        self.sessionStateReinitialize()
-
         return retVal
         
-    def getCurrentSession(self):
-        return self.currentSession # Session model object
+    def getUserID(self, userName):
+        retVal = 0
+        if self.db != None:
+            # get the user ID
+            cursor = self.db.cursor(pymysql.cursors.DictCursor)
+            sql = """
+                  SELECT user_id from user WHERE username = '{}';
+                  """.format(self.userName)
+            
+            success = cursor.execute(sql)
+            if success:
+                userDict = cursor.fetchone()
+                retVal = self.userID = userDict.get("user_id", 0)
+            else:
+                retVal = self.userID = 0
+
+            cursor.close()
+
+        return retVal # userID
         
-    def startSession(self, newUsersID=None, sessionStart=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'), apiClientID=0):
+    def startSession(self, sessionID, apiClientID=0):
         """
-        Start a session and generate a session token.  
-        Returns the token or None.
+        Start a session
         
-        >>> ocd = opasCentralDB()
+        >>> ocd = opasCentralDB(secrets.token_urlsafe(16), secrets.token_urlsafe(16), datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
         >>> sessionInfo = ocd.startSession()
         >>> sessionInfo.authenticated
         False
         """
         self.openConnection() # make sure connection is open
-            
         retVal = None
-        if self.currentSession is not None:
-            # session already open.  Close the old one
-            self.endSession(sessionToken=self.currentSession.session_token)
-            
-        sessionToken = secrets.token_urlsafe(16)
-        if newUsersID is None:
-            usersID = 0 # no one is logged in
-        else:
-            try:
-                usersID = newUsersID.user_id
-            except Exception as e:
-                print ("Session start error: ", e)
-            
-        sessionExpires = datetime.now() + timedelta(0, DEFAULTSESSIONLENGTH)
+        sessionStart=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+
         if self.db != None:
             cursor = self.db.cursor()
-            sql = """INSERT INTO api_sessions(user_id, 
+            #if userName != "NotLoggedIn":
+                #userID = self.getUserID(userName=userName)
+
+            # now insert the session
+            sql = """INSERT INTO api_sessions(session_id,
+                                              user_id, 
                                               session_start, 
                                               session_expires_time,
-                                              session_token, 
+                                              access_token, 
+                                              authenticated,
                                               api_client_id
                                       )
                                       VALUES 
-                                        ('%s', '%s', '%s', '%s', '%s') """ % \
-                                        (usersID,
+                                        ('%s', '%s', '%s', '%s', '%s', '%s', '%s') """ % \
+                                        (sessionID, 
+                                         self.userID,
                                          sessionStart, 
-                                         sessionExpires,
-                                         sessionToken, 
+                                         self.expiresTime,
+                                         self.accessToken,
+                                         (1 if self.authenticated else 0),
                                          apiClientID
                                          )
             
             success = cursor.execute(sql)
-            self.db.commit()
+            retVal = self.db.commit()
             cursor.close()
-            if success:
-                #retVal = self.sessionToken
-                cursor = self.db.cursor(pymysql.cursors.DictCursor)
-                sql = """SELECT * FROM api_sessions
-                         WHERE session_token = '{}'
-                      """.format(sessionToken)
-                try:
-                    sess = cursor.execute(sql)
-                except Exception as e:
-                    print ("Can't get to Sessions DB: {}".format(e))
-                else:
-                    sessionRow = cursor.fetchone()
-                    if sessionRow is not None:
-                        try:
-                            self.currentSession = modelsOpasCentralPydantic.Session(**sessionRow)
-                            self.currentSession.session_expires_time = datetime.now() + timedelta(0, DEFAULTSESSIONLENGTH) 
-                        except ValidationError as e:
-                            print(e.json())        
-                            retVal = None
-                        else:
-                            retVal = self.currentSession
-                    else:
-                        logging.error("Database fetch error.  Could not find sessionToken which should have been saved.")
-                    
-                # redundant, but convenient second copy of api_session_id
-                self.sessionID = sessionRow["api_session_id"]
-                if self.sessionID != self.currentSession.api_session_id:
-                    raise ValueError("SessionIDs should have been the same")
-                
-                cursor.close()
+            retVal = modelsOpasCentralPydantic.Session(api_session_id = sessionID,
+                             user_id = self.userID,
+                             session_start = sessionStart,
+                             session_expires_time = self.expiresTime,
+                             authenticated = self.authenticated,
+                             api_client_id = apiClientID
+                             )
+
+        self.closeConnection() # make sure connection is closed
 
         # return session model object
-        return retVal # Session()
+        return retVal # None or Session Object
     
-    def recordSessionEndpoint(self, apiEndpointID=0, params=None, documentID=None, statusMessage=None):
+    def recordSessionEndpoint(self, apiEndpointID=0, params=None, documentID=None, returnStatusCode=0, statusMessage=None):
         """
         Track endpoint calls
         >>> ocd = opasCentralDB()
@@ -280,15 +281,17 @@ class opasCentralDB(object):
                                               api_endpoint_id,
                                               params, 
                                               documentid, 
+                                              return_status_code,
                                               return_added_status_message
                                              )
                                              VALUES 
-                                             ('%s', '%s', '%s', '%s', '%s')""" % \
+                                             ('%s', '%s', '%s', '%s', '%s', '%s')""" % \
                                              (
                                               self.sessionID, 
                                               apiEndpointID, 
                                               params,
                                               documentID,
+                                              returnStatusCode,
                                               statusMessage
                                              )
     
@@ -296,6 +299,8 @@ class opasCentralDB(object):
             self.db.commit()
             cursor.close()
         
+        self.closeConnection() # make sure connection is closed
+
         return retVal
 
     def updateDocumentViewCount(self, articleID, account="NotLoggedIn", title=None, viewType="Online"):
@@ -333,6 +338,8 @@ class opasCentralDB(object):
             logging.warn("recordSessionEndpoint: {}".format(e))
             
 
+        self.closeConnection() # make sure connection is closed
+
         return retVal
             
     def getUser(self, username: str):
@@ -345,15 +352,18 @@ class opasCentralDB(object):
         curs = self.db.cursor(pymysql.cursors.DictCursor)
         
         sql = """SELECT *
-                 FROM user
+                 FROM user_active_subscriptions
                  WHERE username = '{}'""" .format(username)
         
         res = curs.execute(sql)
         if res == 1:
             user = curs.fetchone()
-            return UserInDB(**user)
+            retVal = modelsOpasCentralPydantic.UserSubscriptions(**user)
         else:
-            return None
+            retVal = None
+
+        self.closeConnection() # make sure connection is closed
+        return retVal
     
     def verifyAdmin(self, username, password):
         """
@@ -433,6 +443,7 @@ class opasCentralDB(object):
                 logging.error(err)
                 print (err)
     
+        self.closeConnection() # make sure connection is closed
         return retVal
         
     
@@ -440,7 +451,6 @@ class opasCentralDB(object):
         """
         >>> ocd = opasCentralDB()
         >>> sessionInfo = ocd.authenticateUser("TemporaryDeveloper", "temporaryLover")  # Need to disable this account when system is online!
-        >>> sessionInfo.authenticated
         True
         """
         self.openConnection() # make sure connection is open
@@ -448,22 +458,17 @@ class opasCentralDB(object):
         user = self.getUser(username)  # returns a UserInDB object
         if not user:
             print ("User: {} turned away".format(username))
-            return False
-        if not verifyPassword(password, user.password):
+            retVal = False
+        elif not verifyPassword(password, user.password):
             print ("User: {} turned away with incorrect password".format(username))
-            return False
+            retVal = False
+        else:
+            retVal = True
+
         # start session for the new user
-        self.startSession(newUsersID=user)  # keeps current session as self object attr
-        self.currentSession.authenticated = True
-        cursor = self.db.cursor(pymysql.cursors.DictCursor)
-        sql = """UPDATE api_sessions
-                 SET authenticated = {}
-                 WHERE session_token = '{}';
-              """.format(self.currentSession.authenticated, self.currentSession.session_token)
-        sess = cursor.execute(sql)
-        self.db.commit()
-        
-        return self.currentSession  # return the Users session model.  This user is already authenticated. 
+
+        self.closeConnection() # make sure connection is closed
+        return user  
 
     
 #================================================================================================================================
@@ -472,11 +477,22 @@ if __name__ == "__main__":
     print (40*"*", "opasCentralDBLib Tests", 40*"*")
     print ("Running in Python %s" % sys.version_info[0])
     
-    #ocd = opasCentralDB()
+    sessionID = secrets.token_urlsafe(16)
+    ocd = opasCentralDB(sessionID, 
+                        secrets.token_urlsafe(16), 
+                        datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'),
+                        userName = "gvpi")
+
+    session = ocd.startSession(sessionID)
+    ocd.recordSessionEndpoint(apiEndpointID=API_AUTHORS_INDEX, documentID="IJP.001.0001A", statusMessage="Testing")
+    ocd.updateDocumentViewCount("IJP.001.0001A")
+    session = ocd.endSession(sessionID)
+    ocd.closeConnection()
+    
     #ocd.connected
 
     
     # docstring tests
-    import doctest
-    doctest.testmod()    
+    #import doctest
+    #doctest.testmod()    
     print ("Tests complete.")

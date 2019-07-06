@@ -31,11 +31,13 @@ __status__      = "Development"
 
 #Revision Notes:
     #2019-05-16: Addded command line options to specify a different path for PEPSourceInfo.json
-                 #Added error logging using python's built-in logging library default INFO level
+                 #Added error logging using python's built-in logging library default INFO level - nrs
 
     #2019-06-05: added int fields for year as they are needeed to do faceting ranges (though that's
-                 #beginning to be unclear)
+                 #beginning to be unclear) - nrs
 
+    #2019-07-05: added citedCounts processing to load the Solr core from the mySQL database 
+                 #table which calculates these. - nrs
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
@@ -49,6 +51,7 @@ import os.path
 import time
 import logging
 import urllib
+import modelsOpasCentralPydantic
 
 pyVer = 2
 if (sys.version_info > (3, 0)):
@@ -65,6 +68,7 @@ from optparse import OptionParser
 
 from lxml import etree
 import solr     # supports a number of types of authentication, including basic.  This is "solrpy"
+import pymysql
 
 import config
 from OPASFileTracker import FileTracker, FileTrackingInfo
@@ -73,9 +77,11 @@ import opasXMLHelper as opasxmllib
 import sourceInfoDB as SourceInfoDB
 #from sourceInfoDB import sourceInfoDBData
 from sourceInfoDB import SourceInfoDB
-
+import opasCentralDBLib
 
 # Module Globals
+gCitedTable = dict() # large table of citation counts, too slow to run one at a time.
+
 #authorTracker = AuthorTracker()
 
 class ExitOnExceptionHandler(logging.StreamHandler):
@@ -138,7 +144,7 @@ class ArticleInfo(object):
         self.artVol = opasxmllib.xmlXPathReturnTextSingleton(pepxml, '//artinfo/artvol/node()', defaultReturn=None)
         self.artIssue = opasxmllib.xmlXPathReturnTextSingleton(pepxml, '//artinfo/artiss/node()', defaultReturn=None)
         self.artIssueTitle = opasxmllib.xmlXPathReturnTextSingleton(pepxml, '//artinfo/isstitle/node()', defaultReturn=None)
-        self.artYear = opasxmllib.xmlXPathReturnTextSingleton(pepxml, '//artinfo/artyear/node()')
+        self.artYear = opasxmllib.xmlXPathReturnTextSingleton(pepxml, '//artinfo/artyear/node()', defaultReturn=None)
         try:
             artYearForInt = re.sub("[^0-9]", "", self.artYear)
             self.artYearInt = int(artYearForInt)
@@ -147,12 +153,12 @@ class ArticleInfo(object):
             self.artYearInt = 0
 
         artInfoNode = pepxml.xpath('//artinfo')[0]
-        self.artType = opasxmllib.xmlGetElementAttr(artInfoNode, "arttype") 
-        self.artDOI = opasxmllib.xmlGetElementAttr(artInfoNode, "doi") 
-        self.artISSN = opasxmllib.xmlGetElementAttr(artInfoNode, "ISSN") 
+        self.artType = opasxmllib.xmlGetElementAttr(artInfoNode, "arttype", defaultReturn=None) 
+        self.artDOI = opasxmllib.xmlGetElementAttr(artInfoNode, "doi", defaultReturn=None) 
+        self.artISSN = opasxmllib.xmlGetElementAttr(artInfoNode, "ISSN", defaultReturn=None) 
         self.artOrigRX = opasxmllib.xmlGetElementAttr(artInfoNode, "origrx", defaultReturn=None) 
         self.newSecNm = opasxmllib.xmlGetElementAttr(artInfoNode, "newsecnm", defaultReturn=None) 
-        self.artPgrg = opasxmllib.xmlGetSubElementTextSingleton(artInfoNode, "artpgrg")  # note: getSingleSubnodeText(pepxml, "artpgrg"),
+        self.artPgrg = opasxmllib.xmlGetSubElementTextSingleton(artInfoNode, "artpgrg", defaultReturn=None)  # note: getSingleSubnodeText(pepxml, "artpgrg"),
 
         self.artTitle = opasxmllib.xmlGetSubElementTextSingleton(artInfoNode, "arttitle")
         if self.artTitle == "-": # weird title in ANIJP-CHI
@@ -188,7 +194,7 @@ class ArticleInfo(object):
         self.authorMastStringUnlisted, self.authorMastListUnlisted = opasxmllib.authorDeriveMastFromXMLStr(self.authorXML, listed=False)
         self.authorCount = len(self.authorXMLList)
         self.artAllAuthors = self.authorMast + " (" + self.authorMastStringUnlisted + ")"
-        self.artKwds = opasxmllib.xmlXPathReturnTextSingleton(pepxml, "//artinfo/artkwds/node()")
+        self.artKwds = opasxmllib.xmlXPathReturnTextSingleton(pepxml, "//artinfo/artkwds/node()", None)
 
         # Usually we put the abbreviated title here, but that won't always work here.
         self.artCiteAsXML = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="sourcetitle">%s</span> <span class="pgrg">%s</span>:<span class="pgrg">%s</span></p>""" \
@@ -200,9 +206,11 @@ class ArticleInfo(object):
                                  self.artPgrg)
 
         artQualNode = pepxml.xpath("//artinfo/artqual")
-        self.artQual = opasxmllib.xmlGetElementAttr(artQualNode, "rx") 
+        self.artQual = opasxmllib.xmlGetElementAttr(artQualNode, "rx", defaultReturn=None) 
         bibReferences = pepxml.xpath("/pepkbd3//be")
         self.artBibReferenceCount = len(bibReferences)
+        if bibReferences == []:
+            bibReferences = None
 
 def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
     """
@@ -219,6 +227,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
 
     """
     #------------------------------------------------------------------------------------------------------
+    #globals gCitedTable 
     if options.displayVerbose:
         print("   ...Processing main file content for the %s core." % options.fullTextCoreName)
 
@@ -230,12 +239,12 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
     # the solr schema names are in snake_case; variables in the code here are camelCase
     # by my own coding habits.
 
-    headings = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h1")
-    headings += opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h2")
-    headings += opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h3")
-    headings += opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h4")
-    headings += opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h5")
-    headings += opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h6")
+    headings = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h1", defaultReturn=[])
+    headings += opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h2", defaultReturn=[])
+    headings += opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h3", defaultReturn=[])
+    headings += opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h4", defaultReturn=[])
+    headings += opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h5", defaultReturn=[])
+    headings += opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//h6", defaultReturn=[])
   
     # see if this is an offsite article
     if artInfo.fileClassification == "pepoffsite":
@@ -255,20 +264,25 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
     else: # other PEP classified files, peparchive, pepcurrent, pepfree can have the full-text
         offsiteContents = ""
         #TODO: Later, it may be that we don't need Solr to store these, just index them.  If so, the schema can be changed.
-        dialogsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//dialog"),
-        dreamsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//dream"),
-        notesXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//note"),
-        panelsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//panel"),
-        poemsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//poem"),
-        quotesXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//quote"),
-        referencesXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "/pepkbd3//be"),
-        summariesXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//summaries"),
-        abstractsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//abs")
-        if abstractsXml == "":
-            if summariesXml == "":
+        dialogsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//dialog", defaultReturn=None)
+        dreamsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//dream", defaultReturn=None)
+        notesXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//note", defaultReturn=None)
+        panelsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//panel", defaultReturn=None)
+        poemsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//poem", defaultReturn=None)
+        quotesXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//quote", defaultReturn=None)
+        bodyXml = opasxmllib.xmlXPathReturnTextSingleton(pepxml, "//body", defaultReturn=None)
+        referencesXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//be", defaultReturn=None)
+        summariesXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//summaries", defaultReturn=None)
+        abstractsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//abs", defaultReturn=None)
+        if abstractsXml is None:
+            if summariesXml is None:
                 abstractsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//p")[0:20]
+                if abstractsXml == []:
+                    abstractsXml = None
             else:
                 abstractsXml = summariesXml
+
+    citedCounts = gCitedTable.get(artInfo.artID, modelsOpasCentralPydantic.MostCitedArticles())   
         
     #save main article info    
     if pyVer == 2:
@@ -283,8 +297,9 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                                       file_size = artInfo.fileSize,
                                       file_name = artInfo.fileName,
                                       timestamp = artInfo.processedDateTime,  # When batch was entered into core
-                                      art_title_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//arttitle"),
-                                      art_subtitle_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//artsubtitle"),
+                                      art_title_xml = opasxmllib.xmlXPathReturnTextSingleton(pepxml, "//arttitle"),
+                                      art_body_xml = bodyXml,
+                                      art_subtitle_xml = opasxmllib.xmlXPathReturnTextSingleton(pepxml, "//artsubtitle", defaultReturn=None),
                                       title = artInfo.artTitle,
                                       art_pepsrccode = artInfo.artPepSrcCode,
                                       art_pepsourcetitleabbr = artInfo.artPepSourceTitleAbbr,
@@ -293,7 +308,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                                       art_authors = artInfo.authorList,
                                       art_authors_mast = artInfo.authorMast,
                                       art_authors_unlisted = pepxml.xpath('//artinfo/artauth/aut[@listed="false"]/@authindexid'),
-                                      art_authors_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//aut"),
+                                      art_authors_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//aut", defaultReturn=None),
                                       art_year = artInfo.artYear,
                                       art_year_int = artInfo.artYearInt,
                                       art_vol = artInfo.artVol,
@@ -309,18 +324,22 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                                       art_type = artInfo.artType,
                                       art_newsecnm = artInfo.newSecNm,
                                       art_citeas_xml = artInfo.artCiteAsXML,
+                                      art_cited_all = citedCounts.countAll,
+                                      art_cited_5 = citedCounts.count5,
+                                      art_cited_10 = citedCounts.count10,
+                                      art_cited_20 = citedCounts.count20,
                                       # this produces errors because the solrpy library is looking for these and thinks its a mistake.
                                       #bib_entries_json = " " + ','.join(['='.join(i) for i in bib_refentries_struct.items()]), #bib_refentries_struct,  # hmm, I wonder if we should type suffix other fields?
                                       authors =  artInfo.artAllAuthors,         # for common names convenience
-                                      author_bio_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//nbio"),
-                                      author_aff_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//autaff"),
-                                      bk_title_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//artbkinfo/bktitle"),
-                                      bk_alsoknownas_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//artbkinfo/bkalsoknownas"),
-                                      bk_editors_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//bkeditors"),
-                                      bk_seriestitle_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//bkeditors"),
+                                      author_bio_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//nbio", defaultReturn=None),
+                                      author_aff_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//autaff", defaultReturn=None),
+                                      bk_title_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//artbkinfo/bktitle", defaultReturn=None),
+                                      bk_alsoknownas_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//artbkinfo/bkalsoknownas", defaultReturn=None),
+                                      bk_editors_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//bkeditors", defaultReturn=None),
+                                      bk_seriestitle_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//bkeditors", defaultReturn=None),
                                       bk_pubyear = pepxml.xpath("//bkpubyear/node()"),
-                                      caption_text_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//caption"),
-                                      caption_title_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//ctitle"),
+                                      caption_text_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//caption", defaultReturn=None),
+                                      caption_title_xml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//ctitle", defaultReturn=None),
                                       headings_xml = headings,
                                       abstracts_xml = abstractsXml,
                                       summaries_xml = summariesXml,
@@ -378,9 +397,9 @@ def processInfoForAuthorCore(pepxml, artInfo, solrAuthor):
             if authorListed.lower() == "true":
                 authorPos += 1
             authorRole = author.attrib.get('role', None)
-            authorXML = etree.tostring(author)
+            authorXML = opasxmllib.xmlElemOrStrToXMLString(author)
             authorDocid = artInfo.artID + "." + ''.join(e for e in authorID if e.isalnum())
-            authorBio = opasxmllib.xmlXPathReturnXMLStringList(author, "nbio")
+            authorBio = opasxmllib.xmlXPathReturnTextSingleton(author, "nbio")
             try:
                 authorAffID = author.attrib['affid']
             except KeyError as e:
@@ -399,7 +418,7 @@ def processInfoForAuthorCore(pepxml, artInfo, solrAuthor):
                                               art_author_pos_int = authorPos,
                                               art_author_role = authorRole,
                                               art_author_bio = authorBio,
-                                              art_author_affil = authorAffil,
+                                              art_author_affil_xml = authorAffil,
                                               art_year_int = artInfo.artYearInt,
                                               art_pepsourcetype = artInfo.artPepSourceType,
                                               art_pepsourcetitlefull = artInfo.artPepSourceTitleFull,
@@ -650,7 +669,7 @@ def main():
 
     # import data about the PEP codes for journals and books.
     #  Codes are like APA, PAH, ... and special codes like ZBK000 for a particular book
-    sourceDB = SourceInfoDB.SourceInfoDB()
+    sourceDB = SourceInfoDB()
 
     #TODO: Try without the None test, the library should not try to use None as user name or password, so only the first case may be needed
     # The connection call is to solrpy (import was just solr)
@@ -694,37 +713,79 @@ def main():
     skippedFiles = 0
     newFiles = 0
     totalFiles = 0
-    # get a list of all the XML files that are new
-    for root, d_names, f_names in os.walk(options.rootFolder):
-        for f in f_names:
-            if filePatternMatch.match(f):
-                totalFiles += 1
-                filename = os.path.join(root, f)
-                currFileInfo = FileTrackingInfo()
-                currFileInfo.loadForFile(filename, options.solrURL)  # mod 2019-06-05 Just the base URL, not the core
-                isModified = fileTracker.isFileModified(currFileInfo)
-                if options.forceRebuildAllFiles:
-                    # fake it, make it look modified!
-                    isModified = True
-                if not isModified:
-                    # file seen before, need to compare.
-                    #print "File is the same!  Skipping..."
-                    skippedFiles += 1
-                    continue
-                else:
-                    newFiles += 1
-                    #print "File is NOT the same!  Scanning the data..."
-                    filenames.append(filename)
+    currFileInfo = FileTrackingInfo()
+    if re.match(".*\.xml$", options.rootFolder, re.IGNORECASE):
+        # single file mode.
+        singleFileMode = True
+        if os.path.exists(options.rootFolder):
+            filenames.append(options.rootFolder)
+            totalFiles = 1
+            newFiles = 1
+        else:
+            print ("Error: Single file mode name: {} does not exist.".format(options.rootfolder))
+    else:
+        # get a list of all the XML files that are new
+        singleFileMode = False
+        for root, d_names, f_names in os.walk(options.rootFolder):
+            for f in f_names:
+                if filePatternMatch.match(f):
+                    totalFiles += 1
+                    filename = os.path.join(root, f)
+                    #currFileInfo = FileTrackingInfo()
+                    currFileInfo.loadForFile(filename, options.solrURL)  # mod 2019-06-05 Just the base URL, not the core
+                    isModified = fileTracker.isFileModified(currFileInfo)
+                    if options.forceRebuildAllFiles:
+                        # fake it, make it look modified!
+                        isModified = True
+                    if not isModified:
+                        # file seen before, need to compare.
+                        #print "File is the same!  Skipping..."
+                        skippedFiles += 1
+                        continue
+                    else:
+                        newFiles += 1
+                        #print "File is NOT the same!  Scanning the data..."
+                        filenames.append(filename)
     
     print (80*"-")
-    print ("Ready to import records from %s files of %s at path: %s." % (newFiles, totalFiles, options.rootFolder))
-    print ("%s Skipped files (those not modified since the last run)" % (skippedFiles))
-    print ("%s Files to process" % (newFiles ))
+    if singleFileMode:
+        print ("Single File Mode Selected.  Only file {} will be imported".format(options.rootFolder))
+    else:
+        print ("Ready to import records from %s files of %s at path: %s." % (newFiles, totalFiles, options.rootFolder))
+        print ("%s Skipped files (those not modified since the last run)" % (skippedFiles))
+        print ("%s Files to process" % (newFiles ))
     print (80*"-")
     bibTotalReferenceCount = 0
     preCommitFileCount = 0
     processedFilesCount = 0
     
+    try:
+        ocd =  opasCentralDBLib.opasCentralDB()
+        ocd.openConnection()
+        # Get citation lookup table
+        try:
+            cursor = ocd.db.cursor(pymysql.cursors.DictCursor)
+            sql = """
+                  SELECT rxCode, count5, count10, count20, countAll from mostcitedarticles; 
+                  """
+            success = cursor.execute(sql)
+            if success:
+                for n in cursor.fetchall():
+                    row = modelsOpasCentralPydantic.MostCitedArticles(**n)
+                    gCitedTable[row.rxCode] = row
+                cursor.close()
+            else:
+                retVal = 0
+        except MemoryError as e:
+            print ("Memory error loading table: {}".format(e))
+        except Exception as e:
+            print ("Table Query Error: {}".format(e))
+        
+        ocd.closeConnection()
+    except Exception as e:
+        print ("Database Connect Error: {}".format(e))
+        gCitedTable["dummy"] = modelsOpasCentralPydantic.MostCitedArticles()
+        
 
     for n in filenames:
         fileTimeStart = time.time()
@@ -818,6 +879,7 @@ def main():
         print ("Exception: ", e)
 
     timeEnd = time.time()
+    ocd.closeConnection()
 
     if bibTotalReferenceCount > 0:
         msg = "Finished! Imported %s documents and %s references. Elapsed time: %s secs" % (len(filenames), bibTotalReferenceCount, timeEnd-timeStart)

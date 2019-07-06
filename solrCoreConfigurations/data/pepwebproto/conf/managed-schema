@@ -43,7 +43,12 @@
   <field name="art_authors_mast" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="art_authors_unlisted" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="art_authors_xml" type="text_simple" multiValued="true" indexed="true" stored="true"/>
+  <field name="art_body_xml" type="text_simple" multiValued="false" indexed="true" stored="false"/>
   <field name="art_citeas_xml" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="art_cited_10" type="pint" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="art_cited_20" type="pint" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="art_cited_5" type="pint" docValues="true" multiValued="false" indexed="true" stored="true"/>
+  <field name="art_cited_all" type="pint" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="art_doi" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="art_id" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="art_iss" type="string" multiValued="false" indexed="true" stored="true"/>
@@ -53,6 +58,7 @@
   <field name="art_lang" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="art_newsecnm" type="text_simple" multiValued="false" indexed="true" stored="true"/>
   <field name="art_origrx" type="string" multiValued="false" indexed="true" stored="true"/>
+  <field name="art_pepsourcetitle_fulltext" type="text_simple" multiValued="false" indexed="true" stored="true"/>
   <field name="art_pepsourcetitleabbr" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="art_pepsourcetitlefull" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
   <field name="art_pepsourcetype" type="string" docValues="true" multiValued="false" indexed="true" stored="true"/>
@@ -108,8 +114,9 @@
   <field name="terms_xml" type="text_simple" multiValued="true" indexed="true" stored="true"/>
   <field name="text" type="text_general" multiValued="true" indexed="true" stored="false"/>
   <field name="text_offsite" type="text_simple" multiValued="false" indexed="true" stored="false"/>
-  <field name="text_xml" type="text_simple" multiValued="true" indexed="true" stored="true"/>
+  <field name="text_xml" type="text_simple" multiValued="false" indexed="true" stored="true"/>
   <field name="timestamp" type="pdate" multiValued="false" indexed="true" stored="true"/>
   <field name="title" type="text_simple" multiValued="true" indexed="true" stored="true"/>
+  <copyField source="art_pepsourcetitlefull" dest="art_pepsourcetitle_fulltext"/>
   <copyField source="text_*" dest="text"/>
 </schema>

@@ -17,18 +17,20 @@ import os.path
 import time
 import datetime
 from datetime import datetime
-from typing import List
+from typing import List, Generic, TypeVar, Optional
 from enum import Enum
 
 from pydantic import BaseModel, Schema
 from pydantic.types import EmailStr
 from modelsOpasCentralPydantic import User
+from opasCentralDBLib import opasCentralDB
 
 #-------------------------------------------------------
 #
 # Detail level schema structures
 #
 #-------------------------------------------------------
+OpasDB = TypeVar('OpasDB')
    
 class ListTypeEnum(Enum):
     volumelist = "volumelist"
@@ -114,8 +116,7 @@ class DocumentListItem(BaseModel):
     similarDocs: list = None
     similarMaxScore: float = None
     similarNumFound: int = None
-    
-    
+        
 class ImageURLListItem(BaseModel):    
     PEPCode: str
     imageURL: str
@@ -123,9 +124,19 @@ class ImageURLListItem(BaseModel):
     title: str
     
 class LoginReturnItem(BaseModel):    
-    token_type: str
+    session_id: str = None
+    token_type: str = None
     access_token: str = None
-    session_expires_time: datetime = None
+    session_expires_time: str = None
+    authenticated: bool = False
+    scope: str = None
+
+class SessionInfo(BaseModel):    
+    ocd: Optional[OpasDB]
+    session_id: str = None
+    token_type: str = None
+    access_token: str = None
+    session_expires_time: str = None
     authenticated: bool = False
     scope: str = None
     
