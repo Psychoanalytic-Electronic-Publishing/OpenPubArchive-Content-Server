@@ -449,7 +449,7 @@ def xmlXPathReturnTextSingleton(elementNode, xpath, defaultReturn=""):
 
 def xmlXPathReturnXMLSingleton(elementNode, xPathDef, defaultReturn=""):
     """
-    Return a list of XML ELEMENTS from the specified xPath
+    Return a singleton XML ELEMENT from the specified xPath
 
     Example:
     strList = xmlXPathReturnXMLSingleton(treeRoot, "//artauth")
@@ -502,6 +502,26 @@ def extractHTMLFragment(strHTML, xpathToExtract="//div[@id='abs']"):
     # make sure it's a string
     retVal = opasAPISupportLib.forceStringReturnFromVariousReturnTypes(retVal)
     
+    return retVal
+
+def addHeadingsToAbstractHTML(abstract, sourceTitle=None, pubYear=None, vol=None, issue=None, pgRg=None, title=None, authorMast=None, citeas=None):
+    """
+    Format the top portion of the Abstracts presented by the client per the original GVPi model
+    """
+
+    if issue is not None:
+        issue = "({})".format(issue)
+    else:
+        issue = ""
+        
+    heading = "({}). {}, {}{}:{}".format(pubYear, sourceTitle, vol, issue, pgRg)
+    retVal = """
+            <p class="heading">{}</p>
+            <p class="title">{}</p>
+            <p class="title_author">{}</p>
+            <div class="abstract">{}</p>
+            """.format(heading, title, authorMast, abstract)
+
     return retVal
 
 def convertXMLStringToHTML(xmlTextStr, xsltFile=r"../styles/pepkbd3-html.xslt"):

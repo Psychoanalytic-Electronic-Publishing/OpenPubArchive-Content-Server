@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
-from __future__ import print_function
+#from __future__ import print_function
 print(
     """ 
     OPAS - Open Publications-Archive Software - Document, Authors, and References Core Loader
@@ -18,7 +18,7 @@ print(
         
                 Use -h for help on arguments.
                 
-                (Requires Python 2.7)
+                (Requires Python 3.7)
         
     """
 )
@@ -26,7 +26,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "0.1.24"
+__version__     = "2019.0707.1"
 __status__      = "Development"
 
 #Revision Notes:
@@ -270,7 +270,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
         panelsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//panel", defaultReturn=None)
         poemsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//poem", defaultReturn=None)
         quotesXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//quote", defaultReturn=None)
-        bodyXml = opasxmllib.xmlXPathReturnTextSingleton(pepxml, "//body", defaultReturn=None)
+        bodyXml = opasxmllib.xmlXPathReturnXMLSingleton(pepxml, "//body", defaultReturn=None)  # used to search body only
         referencesXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//be", defaultReturn=None)
         summariesXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//summaries", defaultReturn=None)
         abstractsXml = opasxmllib.xmlXPathReturnXMLStringList(pepxml, "//abs", defaultReturn=None)
@@ -597,7 +597,7 @@ def main():
     scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
     logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
 
-    parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.13")
+    parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.14")
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
                       help="Option to force all files to be updated on the specified cores.  This does not reset the file tracker but updates it as files are processed.")
     parser.add_option("-b", "--bibliocorename", dest="biblioCoreName", default=None,

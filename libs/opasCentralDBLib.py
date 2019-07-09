@@ -99,25 +99,29 @@ class opasCentralDB(object):
     >>> 
     """
     def __init__(self, sessionID=None, accessToken=None, expiresTime=None, userName="NotLoggedIn", user=None):
-        self.authenticated = False
-        self.sessionID = sessionID
-        self.accessToken = accessToken
-        self.expiresTime = expiresTime
-        self.user = user
-        if user:
-            self.userName = user.username 
-            self.userID = user.user_id # "NotLoggedIn"
-            self.connected = False
-            self.authenticated = user.enabled
-        else:
-            self.userName = userName 
-            self.userID = 0 # "NotLoggedIn"
-            self.connected = False
-
-        if self.accessToken is not None:
-            self.authenticated = True
+        pass
+        # Try getting rid of all this
         
-    def openConnection(self):
+        #self.authenticated = False
+        #self.sessionID = sessionID
+        #self.accessToken = accessToken
+        #self.expiresTime = expiresTime
+        #self.user = user
+        ## this global object info probably won't work for shared server instance, but leave it for now.
+        #if user:
+            #self.userName = user.username 
+            #self.userID = user.user_id # "NotLoggedIn"
+            #self.connected = False
+            #self.authenticated = user.enabled
+        #else:
+            #self.userName = userName 
+            #self.userID = opasConfig.USER_NOT_LOGGED_IN_ID # "NotLoggedIn"
+            #self.connected = False
+
+        #if self.accessToken is not None:
+            #self.authenticated = True
+        
+    def openConnection(self, callerName=""):
         """
         Opens a connection if it's not already open.
         
@@ -134,18 +138,28 @@ class opasCentralDB(object):
             try:
                 self.db = pymysql.connect(host=DBHOST, user=DBUSER, password=DBPW, database=DBNAME)
                 self.connected = True
-                print ("Database Open")
-                # get userID if there's a name, otherwise it's 0
+                if opasConfig.CONSOLE_DEBUG_MESSAGES_ON:
+                    print ("Database connection opened {}".format("(" + callerName + ")"))
             except:
-                logging.error("Cannot connect to database {} for host {} and user {}".format(DBNAME, DBHOST, DBUSER))
+                errMsg = "Cannot connect to database {} for host {} and user {}".format(DBNAME, DBHOST, DBUSER)
+                logging.error(errMsg)
+                if opasConfig.CONSOLE_DEBUG_MESSAGES_ON:
+                    print (errMsg)
                 self.connected = False
 
         return self.connected
 
-    def closeConnection(self):
-        if self.db.open:
-            self.db.close()
-            print ("Database Closed")
+    def closeConnection(self, callerName=""):
+        try:
+            if self.db.open:
+                self.db.close()
+                if opasConfig.CONSOLE_DEBUG_MESSAGES_ON:
+                    print ("Database connection closed {}".format("(" + callerName + ")"))
+        except:
+            errMsg = "closeConnection: The db is not open {}".format("(" + callerName + ")")
+            if opasConfig.CONSOLE_DEBUG_MESSAGES_ON:
+                print (errMsg)
+            logging.error(errMsg)
 
         # make sure to mark the connection false in any case
         self.connected = False           
@@ -161,7 +175,6 @@ class opasCentralDB(object):
         """
         retVal = None
         self.openConnection() # make sure connection is open
-
         if self.db != None:
             cursor = self.db.cursor()
             sql = """UPDATE api_sessions
@@ -178,7 +191,8 @@ class opasCentralDB(object):
             else:
                 logging.warn("Could not record close session per token={} in DB".format(sessionToken))
                 retVal = False
-                
+
+        self.closeConnection() # make sure connection is closed
         return retVal
         
     def getUserID(self, userName):
@@ -201,11 +215,38 @@ class opasCentralDB(object):
 
         return retVal # userID
         
-    def startSession(self, sessionID, apiClientID=0):
+    def getSession(self, sessionID):
+        """
+        Get the session record info for session sessionID
+        
+        >>> sessionInfo = ocd.getSession(sessionID = "_JustATestSessionID")
+        >>> sessionInfo.authenticated
+        False
+        """
+        self.openConnection() # make sure connection is open
+        retVal = None
+        if self.db != None:
+            curs = self.db.cursor()
+            # now insert the session
+            sql = "SELECT * FROM api_sessions";
+            res = curs.execute(sql)
+            if res == 1:
+                session = curs.fetchone()
+                # sessionRecord
+                retVal = modelsOpasCentralPydantic.Session(**session)
+            else:
+                retVal = None
+            
+        self.closeConnection() # make sure connection is closed
+
+        # return session model object
+        return retVal # None or Session Object
+        
+    def startSession(self, sessionID=None, expiresTime=None, userName="NotLoggedIn", apiClientID=0):
         """
         Start a session
         
-        >>> ocd = opasCentralDB(secrets.token_urlsafe(16), secrets.token_urlsafe(16), datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+        >>> ocd = opasCentralDB()
         >>> sessionInfo = ocd.startSession()
         >>> sessionInfo.authenticated
         False
@@ -213,11 +254,17 @@ class opasCentralDB(object):
         self.openConnection() # make sure connection is open
         retVal = None
         sessionStart=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+        if sessionID == None:
+            # create a session ID
+            print ("startSession creating a session ID, none supplied: {}".format(sessionID))
+            sessionID = secrets.token_urlsafe(16)
 
         if self.db != None:
             cursor = self.db.cursor()
-            #if userName != "NotLoggedIn":
-                #userID = self.getUserID(userName=userName)
+            if userName != "NotLoggedIn":
+                userID = self.getUserID(userName=userName)
+            else:
+                userID = opasConfig.USER_NOT_LOGGED_IN_ID
 
             # now insert the session
             sql = """INSERT INTO api_sessions(session_id,
@@ -231,7 +278,7 @@ class opasCentralDB(object):
                                       VALUES 
                                         ('%s', '%s', '%s', '%s', '%s', '%s', '%s') """ % \
                                         (sessionID, 
-                                         self.userID,
+                                         userID, 
                                          sessionStart, 
                                          self.expiresTime,
                                          self.accessToken,
@@ -453,8 +500,8 @@ class opasCentralDB(object):
         >>> sessionInfo = ocd.authenticateUser("TemporaryDeveloper", "temporaryLover")  # Need to disable this account when system is online!
         True
         """
-        self.openConnection() # make sure connection is open
         print ("Authenticating user: {}".format(username))
+        self.openConnection() # make sure connection is open
         user = self.getUser(username)  # returns a UserInDB object
         if not user:
             print ("User: {} turned away".format(username))
@@ -477,22 +524,21 @@ if __name__ == "__main__":
     print (40*"*", "opasCentralDBLib Tests", 40*"*")
     print ("Running in Python %s" % sys.version_info[0])
     
-    sessionID = secrets.token_urlsafe(16)
-    ocd = opasCentralDB(sessionID, 
-                        secrets.token_urlsafe(16), 
-                        datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'),
-                        userName = "gvpi")
+    #sessionID = secrets.token_urlsafe(16)
+    #ocd = opasCentralDB(sessionID, 
+                        #secrets.token_urlsafe(16), 
+                        #datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'),
+                        #userName = "gvpi")
 
-    session = ocd.startSession(sessionID)
-    ocd.recordSessionEndpoint(apiEndpointID=API_AUTHORS_INDEX, documentID="IJP.001.0001A", statusMessage="Testing")
-    ocd.updateDocumentViewCount("IJP.001.0001A")
-    session = ocd.endSession(sessionID)
-    ocd.closeConnection()
+    #session = ocd.startSession(sessionID)
+    #ocd.recordSessionEndpoint(apiEndpointID=API_AUTHORS_INDEX, documentID="IJP.001.0001A", statusMessage="Testing")
+    #ocd.updateDocumentViewCount("IJP.001.0001A")
+    #session = ocd.endSession(sessionID)
+    #ocd.closeConnection()
     
     #ocd.connected
-
     
-    # docstring tests
-    #import doctest
-    #doctest.testmod()    
+    #docstring tests
+    import doctest
+    doctest.testmod()    
     print ("Tests complete.")

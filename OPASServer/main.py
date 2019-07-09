@@ -45,7 +45,7 @@ Endpoint and structure documentation automatically available when server is runn
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0617.4"
+__version__     = "2019.0709.1"
 __status__      = "Development"
 
 import sys
@@ -92,7 +92,7 @@ from sourceInfoDB import SourceInfoDB
 sourceInfoDB = SourceInfoDB()
 #gSessions = {}
 #gOCDatabase = None # opasCentralDBLib.opasCentralDB()
-gCurrentDevelopmentStatus = "TestingOnly"
+gCurrentDevelopmentStatus = "Developing"
 
 #def getSession():
     #if currentSession == None:
@@ -100,7 +100,10 @@ gCurrentDevelopmentStatus = "TestingOnly"
 
 app = FastAPI(
         debug=True,
-        static_directory=r"E:\usr3\GitHub\openpubarchive\OPASServer\docs",
+        title="OPAS API for PEP-Web",
+        description = "Open Publications Archive Software API",
+        version = "1.0.0.Alpha",
+        static_directory=r"./docs",
         swagger_static={
             "favicon": "pepfavicon.gif"
         },
@@ -112,12 +115,16 @@ app = FastAPI(
     #)
 
 origins = [
+    "http://pepeasy.pep-web.info",
+    "http://api.pep-web.info",
+    "http://pep-web.info",
     "http:localhost",
     "http:localhost:8080",
     "http://webfaction",
     "http://127.0.0.1",
     "http://127.0.0.1:8000",
     "http://api.mypep.info",
+    "http://www.pep-web.info"
 ]
 
 app.add_middleware(
@@ -136,7 +143,7 @@ def checkIfUserLoggedIn():
     resp = login_user()
     return resp.licenseInfo.responseInfo.loggedIn
 
-@app.get("/v1/Status/", response_model=models.ServerStatusItem)
+@app.get("/v1/Status/", response_model=models.ServerStatusItem, tags=["Session"])
 def get_the_server_status(resp: Response, 
                           request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
                           ):
@@ -165,7 +172,7 @@ def get_the_server_status(resp: Response,
 
 from http import cookies
 
-@app.get("/WhoAmI")
+@app.get("/WhoAmI", tags=["Session"])
 def temp_call_for_debugging_to_check_session_information(request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) ):
     
     return {"client_host": request.client.host, 
@@ -177,7 +184,7 @@ def temp_call_for_debugging_to_check_session_information(request: Request=Query(
 
 
 #@app.get("/v1/Session/") # at least start a session (getting a sessionID)
-@app.get("/v1/Token/")  # used by PEP-Easy for login, for some reason.
+@app.get("/v1/Token/", tags=["Session"])  # used by PEP-Easy for login, for some reason.
 def get_token(request: Request,
               resp: Response, 
               ka=None):
@@ -187,14 +194,49 @@ def get_token(request: Request,
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     return sessionInfo
 
-@app.get("/v1/Login/")
+@app.get("/v1/License/Status/Login/", tags=["Session"])
+def get_license_status(resp: Response, 
+                       request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST)):
+    """
+    Return a LicenseStatusInfo object showing the user's license status info.
+    {
+        "licenseInfo": {
+            "responseInfo": {
+                "loggedIn": true,
+                "userName": "p.e.p.a.NeilRShapiro",
+                "request": "\/api\/v1\/License\/Status\/Login",
+                "timeStamp": "2019-07-09T09:54:10-04:00"
+            },
+            "responseSet": null
+        }
+    }
+    """
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    # get session info database record if there is one
+    # is the user authenticated? if so, loggedIn is true
+    
+    responseInfo = models.ResponseInfoLoginStatus(
+    
+    )
+    
+    responseInfo.loggedIn = False
+    
+    licenseInfoStruct = models.LicenseInfoStruct( responseInfo = responseInfo, 
+                                                  responseSet = []
+                                                  )
+    
+    licenseInfo = models.LicenseStatusInfo(licenseInfo = licenseInfoStruct)
+    return licenseInfo
+
+@app.get("/v1/Login/", tags=["Session"])
 def login_user(resp: Response, 
                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                grant_type=None, 
                username=None, 
                password=None, 
                ka=None, 
-               user: bool = Depends(get_current_user)):
+               #user: bool = Depends(get_current_user)
+               ):
     """
     Login the user, via the URL per the GVPi API/PEPEasy interaction.
     
@@ -212,30 +254,34 @@ def login_user(resp: Response,
           
     """
     
-    print ("Login via: /v1/(Users)?/Login/")
+    print ("Login via: /v1/(Users)?/Login/", username, password)
     
-    sessionID = opasAPISupportLib.getSessionID(request)
-    accessToken = opasAPISupportLib.getAccessToken(request)
-    expirationTime = opasAPISupportLib.getExpirationTime(request)
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    sessionID = sessionInfo.session_id
+    accessToken = sessionInfo.access_token
+    expirationTime = sessionInfo.session_expires_time
 
     if accessToken is None:
         # not logged in, try to login
         # if username and password are not supplied, uses browser basic auth via the Depends(get_current_user)
         # get new sessionID, we're logging in
-        sessionID = secrets.token_urlsafe(16)
-        expirationTime = opasAPISupportLib.getExpirationCookieStr(keepActive=ka)
-        ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime)    
-        if user:
-            accessToken = opasCentralDBLib.getPasswordHash(sessionID)
-            
-        elif username is not None and password is not None:
-            if ocd.authenticateUser(username, password):
+        #sessionID = secrets.token_urlsafe(16)
+        #expirationTime = opasAPISupportLib.getExpirationCookieStr(keepActive=ka)
+        #ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime)    
+        #if user:
+            #accessToken = opasCentralDBLib.getPasswordHash(sessionID)
+
+        user = None
+        if username is not None and password is not None:
+            user = ocd.authenticateUser(username, password)
+            if user:
                 accessToken = opasCentralDBLib.getPasswordHash(sessionID)
             else:
                 accessToken = None # rejected
-        opasAPISupportLib.setCookies(resp, sessionID, accessToken, expiresTime=expirationTime)
-        ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime, user=user)
-        session = ocd.startSession(sessionID)
+          
+        # We DONT WANT ALL COOKIES RESET HERE!        
+        #opasAPISupportLib.setCookies(resp, sessionID, accessToken, expiresTime=expirationTime)
+        #ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime, user=user)
  
     else: # already logged in with accessToken
         pass
@@ -254,7 +300,7 @@ def login_user(resp: Response,
     return loginReturnItem
 
 #@app.get("/v1/Users/Logout/") # I like it under Users so I did them both.
-@app.get("/v1/Logout/")  # The original GVPi URL
+@app.get("/v1/Logout/", tags=["Session"])  # The original GVPi URL
 def logout_user(request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST)):
     """
     Close the user's session, and log them out.
@@ -281,81 +327,9 @@ def logout_user(request: Request=Query(None, title="HTTP Request", description=o
     licenseInfo = models.LicenseStatusInfo(licenseInfo = licenseInfoStruct)
     return licenseInfo
 
-#@app.get("/v1/Login/BasicExample/")
-#def login_user(sessionInfo: str = Depends(get_current_user)):
-    #"""
-    #This login uses the browser's basic authentication model 
-      #which is nicely supported by FastAPI.
-      
-    #It should be upgraded to a more secure and cleaner method,
-      #per the excellent instructions on the FastAPI site.
-      
-    #/v1/License/Status/Login/ is used by the GVPi/PEPEasy original config.
-                              #It can be removed when we move off the GVPi server.
-                              
-    #/v1/Users/Login/ is the newer path, parallels logout /v1/Users/Logout/ for clarity.
-    
-    #The two paths work equivalently for now.
-      
-    #"""
-    #print ("Login via: /v1/User/Login/BasicExample")
-    #if sessionInfo != None:
-        #try:
-            #loginReturnItem = models.LoginReturnItem(token_type = "bearer", 
-                                                 #access_token = sessionInfo.session_token,
-                                                 #authenticated = sessionInfo.authenticated,
-                                                 #session_expires_time = sessionInfo.session_expires_time,
-                                                 #scope = None
-                                          #)
-        #except ValidationError as e:
-            #print(e.json())             
-
-    #return loginReturnItem
-
-#@app.get("/v1/License/Status/Login/")
-#def get_login_status():
-    #"""
-    #Get current session information and login status.
-    
-    #"""
-    #print ("Login Status via: /v1/License/Status/Login/")
-    #sessionInfo = gOCDatabase.currentSession
-    #if sessionInfo != None:
-        #try:
-            #responseInfo = models.ResponseInfoLoginStatus(loggedIn = sessionInfo.authenticated)
-            
-            #loginReturnItem = models.LoginReturnItem(token_type = "bearer", 
-                                                 #access_token = sessionInfo.session_token,
-                                                 #authenticated = sessionInfo.authenticated,
-                                                 #session_expires_time = sessionInfo.session_expires_time,
-                                                 #scope = None
-                                          #)
-        #except ValidationError as e:
-            #print(e.json())             
-    #else:
-        #try:
-            #responseInfo = models.ResponseInfoLoginStatus(loggedIn = False)
-            #loginReturnItem = models.LoginReturnItem(token_type = "bearer", 
-                                                 #access_token = None,
-                                                 #authenticated = False,
-                                                 #session_expires_time = None,
-                                                 #scope = None
-                                          #)
-        #except ValidationError as e:
-            #print(e.json())             
-        
-    #licenseInfoStruct = models.LicenseInfoStruct( responseInfo = responseInfo, 
-                                                  #responseSet = loginReturnItem
-                                                  #)
-    
-    #licenseInfo = models.LicenseStatusInfo(licenseInfo = licenseInfoStruct)
-    
-
-    #return licenseInfo
-
-@app.get("/v1/Database/MoreLikeThese/", response_model=models.DocumentList)
-@app.get("/v1/Database/SearchAnalyses/", response_model=models.DocumentList)
-@app.get("/v1/Database/Search/", response_model=models.DocumentList)
+@app.get("/v1/Database/MoreLikeThese/", response_model=models.DocumentList, tags=["Database"])
+@app.get("/v1/Database/SearchAnalysis/", response_model=models.DocumentList, tags=["Database"])
+@app.get("/v1/Database/Search/", response_model=models.DocumentList, tags=["Database"])
 def search_the_document_database(resp: Response, 
                                  request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
                                  journalName: str=Query(None, title="Match PEP Journal or Source Name", description="PEP part of a Journal, Book, or Video name (e.g., 'international'),", min_length=2),  
@@ -408,14 +382,12 @@ def search_the_document_database(resp: Response,
     
     """
 
-    #if gOCDatabase.sessionID == None:  # make sure there's an open session for stat.
-        #gOCDatabase.startSession()
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)   
-
     print ("Request: ", request.url._url)
     searchQ = "*:* "
     filterQ = "*:* "
+    searchAnalysisTermList = []
     
     if re.search(r"/SearchAnalyses/", request.url._url):
         analysisMode = True
@@ -430,47 +402,64 @@ def search_the_document_database(resp: Response,
     currentYear = datetime.utcfromtimestamp(time.time()).strftime('%Y')
         
     if title is not None:
-        searchQ += "&& art_title_xml:{} ".format(title)
+        analyzeThis = "&& art_title_xml:{} ".format(title)
+        filterQ += analyzeThis
+        searchAnalysisTermList.append(analyzeThis)  
 
     if journalName is not None:
-        searchQ += "&& art_pepsourcetitle_fulltext:{} ".format(journalName)
+        analyzeThis = "&& art_pepsourcetitle_fulltext:{} ".format(journalName)
+        filterQ += analyzeThis
+        searchAnalysisTermList.append(analyzeThis)  
         
     if journal is not None:
         codeForQuery = ""
+        analyzeThis = ""
         journalCodeListPattern = "((?P<namelist>[A-z0-9]*[ ]*\+or\+[ ]*)+|(?P<namelist>[A-z0-9]))"
         journalWildcardPattern = r".*\*[ ]*"  # see if it ends in a * (wildcard)
         if re.match(journalWildcardPattern, journal):
             # it's a wildcard pattern
             codeForQuery = journal
-            filterQ += "&& art_pepsourcetitlefull:{} ".format(codeForQuery)
+            analyzeThis = "&& art_pepsourcetitlefull:{} ".format(codeForQuery)
+            filterQ += analyzeThis
         else:
             journalCodeList = journal.split("+or+")
             if len(journalCodeList) > 1:
                 # it was a list.
                 codeForQuery = " OR ".join(journalCodeList)
-                filterQ += "&& art_pepsourcetitlefull:{} ".format(codeForQuery)
+                analyzeThis = "&& art_pepsourcetitlefull:{} ".format(codeForQuery)
+                filterQ += analyzeThis
             else:
                 sourceInfo = sourceInfoDB.lookupSourceCode(journal.upper())
                 if sourceInfo is not None:
                     # it's a single source code
                     codeForQuery = journal.upper()
-                    filterQ += "&& art_pepsrccode:{} ".format(codeForQuery)
+                    analyzeThis = "&& art_pepsrccode:{} ".format(codeForQuery)
+                    filterQ += analyzeThis
                 else: # not a pattern, or a code, or a list of codes.
                     # must be a name
                     codeForQuery = journal
-                    filterQ += "&& art_pepsourcetitlefull:{} ".format(codeForQuery)
+                    analyzeThis = "&& art_pepsourcetitlefull:{} ".format(codeForQuery)
+                    filterQ += analyzeThis
         
+        searchAnalysisTermList.append(analyzeThis)
         # or it could be an abbreviation #TODO
         # or it counld be a complete name #TODO
             
     if vol is not None:
-        filterQ += "&& art_vol:{} ".format(vol)
+        analyzeThis = "&& art_vol:{} ".format(vol)
+        filterQ += analyzeThis
+        #searchAnalysisTermList.append(analyzeThis)  # Not collecting this!
         
     if issue is not None:
-        filterQ += "&& art_vol:{} ".format(issue)
+        analyzeThis = "&& art_iss:{} ".format(issue)
+        filterQ += analyzeThis
+        #searchAnalysisTermList.append(analyzeThis)  # Not collecting this!
             
     if author is not None:
-        searchQ += "&& art_authors_xml:{} ".format(author)
+        author = author.replace('"', '')
+        analyzeThis = "&& art_authors_xml:{} ".format(author)
+        filterQ += analyzeThis
+        searchAnalysisTermList.append(analyzeThis)  
 
     if startyear is not None and endyear is None:
         # put this in the filter query
@@ -478,6 +467,7 @@ def search_the_document_database(resp: Response,
         parsedYearSearch = opasAPISupportLib.yearArgParser(startyear)
         if parsedYearSearch is not None:
             filterQ += parsedYearSearch
+            searchAnalysisTermList.append(parsedYearSearch)  
         else:
             logging("Search - StartYear bad argument {}".format(startyear))
         
@@ -487,13 +477,17 @@ def search_the_document_database(resp: Response,
         if re.match("[12][0-9]{3,3}", startyear) is None or re.match("[12][0-9]{3,3}", endyear) is None:
             logging("Search - StartYear {} /Endyear {} bad arguments".format(startyear, endyear))
         else:
-            filterQ += "&& art_year_int:[{} TO {}] ".format(startyear, endyear)
+            analyzeThis = "&& art_year_int:[{} TO {}] ".format(startyear, endyear)
+            filterQ += analyzeThis
+            searchAnalysisTermList.append(analyzeThis)
 
     if startyear is None and endyear is not None:
         if re.match("[12][0-9]{3,3}", endyear) is None:
             logging("Search - Endyear {} bad argument".format(endyear))
         else:
-            filterQ += "&& art_year_int:[{} TO {}] ".format("*", endyear)
+            analyzeThis = "&& art_year_int:[{} TO {}] ".format("*", endyear)
+            filterQ += analyzeThis
+            searchAnalysisTermList.append(analyzeThis)
 
     if citecount is not None:
         # This is the only query handled by GVPi and the current API.  But
@@ -519,31 +513,48 @@ def search_the_document_database(resp: Response,
         if period is None:
             period = '5'
             
-        filterQ += "&& art_cited_{}:[{} TO *] ".format(period.lower(), val)
+        analyzeThis = "&& art_cited_{}:[{} TO *] ".format(period.lower(), val)
+        filterQ += analyzeThis
+        searchAnalysisTermList.append(analyzeThis)
 
     if fulltext1 is not None:
-        searchQ += "&& text:{} ".format(fulltext1)
+        analyzeThis = "&& text:{} ".format(fulltext1)
+        searchQ += analyzeThis
+        searchAnalysisTermList.append(analyzeThis)
 
     if fulltext2 is not None:
-        searchQ += "&& text:{} ".format(fulltext2)
+        analyzeThis = "&& text:{} ".format(fulltext2)
+        searchQ += analyzeThis
+        searchAnalysisTermList.append(analyzeThis)
     
     if dreams is not None:
-        searchQ += "&& dreams_xml:{} ".format(dreams)
+        analyzeThis = "&& dreams_xml:{} ".format(dreams)
+        searchQ += analyzeThis
+        searchAnalysisTermList.append(analyzeThis)
 
     if quotes is not None:
-        searchQ += "&& quotes_xml:{} ".format(quotes)
+        analyzeThis = "&& quotes_xml:{} ".format(quotes)
+        searchQ += analyzeThis
+        searchAnalysisTermList.append(analyzeThis)
 
     if abstracts is not None:
-        searchQ += "&& abstracts_xml:{} ".format(abstracts)
+        analyzeThis = "&& abstracts_xml:{} ".format(abstracts)
+        searchQ += analyzeThis
+        searchAnalysisTermList.append(analyzeThis)
     
     if dialogs is not None:
-        searchQ += "&& dialogs_xml:{} ".format(dialogs)
+        analyzeThis = "&& dialogs_xml:{} ".format(dialogs)
+        searchQ += analyzeThis
+        searchAnalysisTermList.append(analyzeThis)
 
     if references is not None:
-        searchQ += "&& references_xml:{} ".format(references)
+        analyzeThis = "&& references_xml:{} ".format(references)
+        searchQ += analyzeThis
+        searchAnalysisTermList.append(analyzeThis)
 
     if solrQ is not None:
         searchQ = solrQ # (overrides fields) # search = solrQ
+        searchAnalysisTermList = [solrQ]
 
     if disMax is not None:
         searchQ = disMax # (overrides fields) # search = solrQ
@@ -560,38 +571,50 @@ def search_the_document_database(resp: Response,
     if sortBy is not None: #TODO - might want to change this to match PEP-Web best
         solrSort = sortBy # (overrides fields) # search = solrQ
 
- 
-    
     # for debug:
     
     # We don't always need full-text, but if we need to request the doc later we'll need to repeat the search parameters plus the docID
-    retVal = documentList = opasAPISupportLib.searchText(query=searchQ, 
-                                                         filterQuery = filterQ,
-                                                         disMax = disMax,
-                                                         queryAnalysis=analysisMode,
-                                                         moreLikeThese = moreLikeTheseMode,
-                                                         limit=limit, offset=offset,
-                                                         fullTextRequested=False,
-                                                         )
+    if analysisMode:
+        retVal = documentList = opasAPISupportLib.searchAnalysis(queryList=searchAnalysisTermList, 
+                                                                filterQuery = None,
+                                                                disMax = disMax,
+                                                                queryAnalysis=analysisMode,
+                                                                moreLikeThese = None,
+                                                                limit=limit, offset=offset,
+                                                                fullTextRequested=False,
+                                                                )
+        statusMsg = "{} terms/clauses; queryAnalysis: {}".format(len(searchAnalysisTermList), moreLikeTheseMode, analysisMode)
+        print ("Done with search analysis.")
+    else:
+        retVal = documentList = opasAPISupportLib.searchText(query=searchQ, 
+                                                             filterQuery = filterQ,
+                                                             disMax = disMax,
+                                                             queryAnalysis=analysisMode,
+                                                             moreLikeThese = moreLikeTheseMode,
+                                                             limit=limit, offset=offset,
+                                                             fullTextRequested=False,
+                                                             )
 
-    matches = len(documentList.documentList.responseSet)
-    print ("searchQ = {}".format(searchQ))
-    print ("filterQ = {}".format(filterQ))
-    print ("matches = {}".format(matches))
-    # fill in additional return structure status info
+        matches = len(documentList.documentList.responseSet)
+        print ("searchQ = {}".format(searchQ))
+        print ("filterQ = {}".format(filterQ))
+        print ("matches = {}".format(matches))
+        # fill in additional return structure status info
+        statusMsg = "{} hits; moreLikeThese:{}; queryAnalysis: {}".format(matches, moreLikeTheseMode, analysisMode)
+        print ("Done with search.")
+
     client_host = request.client.host
     retVal.documentList.responseInfo.request = request.url._url
-    print ("Done with search.")
-    statusMsg = "{} hits; moreLikeThese:{}; queryAnalysis: {}".format(matches, moreLikeTheseMode, analysisMode)
 
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_SEARCH,
                               params=request.url._url,
-                              statusMessage=gCurrentDevelopmentStatus
+                              statusMessage=statusMsg
                               )
 
     return retVal
     
-@app.get("/v1/Database/MostCited/", response_model=models.DocumentList)
+    
+@app.get("/v1/Database/MostCited/", response_model=models.DocumentList, tags=["Database"])
 def get_the_most_cited_articles(resp: Response,
                                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                 period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
@@ -606,9 +629,11 @@ def get_the_most_cited_articles(resp: Response,
     Status: this endpoint is working.         
     """
     
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     #if gOCDatabase.sessionID == None:  # make sure there's an open session for stat.
         #gOCDatabase.startSession()
 
+    print ("in mostcited")
     try:
         retVal = documentList = opasAPISupportLib.databaseGetMostCited(period=period, limit=limit, offset=offset)
         # fill in additional return structure status info
@@ -617,20 +642,23 @@ def get_the_most_cited_articles(resp: Response,
     except Exception as e:
         statusMessage = "Error: {}".format(e)
         statusCode = 400
+        retVal = None
     else:
         statusMessage = "Success"
         statusCode = 200
 
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
-    ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_MOSTCITED,
-                                      params=request.url._url,
-                                      returnStatusCode = statusCode,
-                                      statusMessage=statusMessage
-                                      )
+    # Don't record
+    #ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    #ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_MOSTCITED,
+                                      #params=request.url._url,
+                                      #returnStatusCode = statusCode,
+                                      #statusMessage=statusMessage
+                                      #)
 
+    print ("out mostcited")
     return retVal
 
-@app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList)
+@app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, tags=["Database"])
 def get_the_newest_documents(resp: Response,
                              request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
                              limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -642,31 +670,33 @@ def get_the_newest_documents(resp: Response,
     Status: this endpoint is working.          
     """
     
-    #if gOCDatabase.sessionID == None:  # make sure there's an open session for stat.
-        #gOCDatabase.startSession()
-       
+    print ("In whatsNew")
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:
         retVal = whatsNewList = opasAPISupportLib.databaseWhatsNew(limit=limit, offset=offset)
         # fill in additional return structure status info
         client_host = request.client.host
     except Exception as e:
-        statusMessage = "Error: {}".format(e)
+        e = str(e)
+        statusMessage = "Error: {}".format(e.replace("'", "\\'"))
         statusCode = 400
+        retVal = None
     else:
         statusMessage = "Success"
         statusCode = 200
+        retVal.whatsNew.responseInfo.request = request.url._url
 
-    retVal.whatsNew.responseInfo.request = request.url._url
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
-    ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_WHATSNEW,
-                                      params=request.url._url,
-                                      returnStatusCode = statusCode,
-                                      statusMessage=statusMessage
-                                      )
+    # Don't record endpoint what's New
+    #ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_WHATSNEW,
+                                      #params=request.url._url,
+                                      #returnStatusCode = statusCode,
+                                      #statusMessage=statusMessage
+                                      #)
 
+    print ("Out whatsNew")
     return retVal
 
-@app.get("/v1/Metadata/Contents/{PEPCode}/", response_model=models.DocumentList)
+@app.get("/v1/Metadata/Contents/{PEPCode}/", response_model=models.DocumentList, tags=["Metadata"])
 def get_journal_content_lists(resp: Response,
                               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                               PEPCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_PEPCODE), 
@@ -683,9 +713,7 @@ def get_journal_content_lists(resp: Response,
     
     """
     
-    #if gOCDatabase.sessionID == None:  # make sure there's an open session for stat.
-        #gOCDatabase.startSession()
-
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:       
         retVal = documentList = opasAPISupportLib.metadataGetContents(PEPCode, year, limit=limit, offset=offset)
         # fill in additional return structure status info
@@ -693,13 +721,12 @@ def get_journal_content_lists(resp: Response,
     except Exception as e:
         statusMessage = "Error: {}".format(e)
         statusCode = 400
+        retVal = None
     else:
         statusMessage = "Success"
         statusCode = 200
-        
-    retVal.documentList.responseInfo.request = request.url._url
+        retVal.documentList.responseInfo.request = request.url._url
 
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_METADATA_CONTENTS,
                                       params=request.url._url,
                                       documentID="{}.{}".format(PEPCode, year), 
@@ -709,7 +736,7 @@ def get_journal_content_lists(resp: Response,
 
     return retVal
 
-@app.get("/v1/Metadata/Contents/{PEPCode}/{srcVol}/", response_model=models.DocumentList)
+@app.get("/v1/Metadata/Contents/{PEPCode}/{srcVol}/", response_model=models.DocumentList, tags=["Metadata"])
 def get_journal_content_lists_for_volume(PEPCode: str, 
                                          srcVol: str, 
                                          resp: Response,
@@ -727,32 +754,34 @@ def get_journal_content_lists_for_volume(PEPCode: str,
     
     """
        
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:
         retVal = documentList = opasAPISupportLib.metadataGetContents(PEPCode, year, vol=srcVol, limit=limit, offset=offset)
         # fill in additional return structure status info
         client_host = request.client.host
     except Exception as e:
         statusMessage = "Error: {}".format(e)
+        print (statusMessage)
         statusCode = 400
+        retVal = None
     else:
         statusMessage = "Success"
         statusCode = 200
+        retVal.documentList.responseInfo.request = request.url._url
     
-    retVal.documentList.responseInfo.request = request.url._url
-    
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_METADATA_CONTENTS_FOR_VOL,
                                       documentID="{}.{}".format(PEPCode, srcVol), 
                                       params=request.url._url,
-                                      statusMessage=gCurrentDevelopmentStatus
+                                      returnStatusCode = statusCode,
+                                      statusMessage=statusMessage
                                       )
     return retVal
 
-@app.get("/v1/Metadata/{SourceType}/", response_model=models.SourceInfoList)
+@app.get("/v1/Metadata/{SourceType}/", response_model=models.SourceInfoList, tags=["Metadata"])
 def get_a_list_of_source_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                SourceType: str=Path(..., title="Source Type", description=opasConfig.DESCRIPTION_SOURCETYPE), 
-                               limit: int=Query(15, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                               limit: int=Query(105, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                                offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                                ):
     """
@@ -760,20 +789,21 @@ def get_a_list_of_source_names(resp: Response,
     
     """
                
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:    
-        retVal = sourceInfoList = opasAPISupportLib.metadataGetSourceByType(SourceType)
-        # fill in additional return structure status info
-        client_host = request.client.host
+        retVal = sourceInfoList = opasAPISupportLib.metadataGetSourceByType(SourceType, limit=limit, offset=offset)
     except Exception as e:
         statusMessage = "Error: {}".format(e)
         statusCode = 400
+        retVal = None
     else:
         statusMessage = "Success"
         statusCode = 200
+        # fill in additional return structure status info
+        client_host = request.client.host
+        retVal.sourceInfo.responseInfo.request = request.url._url
 
-    retVal.sourceInfo.responseInfo.request = request.url._url
 
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_METADATA_SOURCEINFO,
                                       params=request.url._url,
                                       documentID="{}".format(SourceType), 
@@ -783,7 +813,7 @@ def get_a_list_of_source_names(resp: Response,
 
     return retVal
 
-@app.get("/v1/Metadata/Volumes/{PEPCode}/", response_model=models.VolumeList)
+@app.get("/v1/Metadata/Volumes/{PEPCode}/", response_model=models.VolumeList, tags=["Metadata"])
 def get_a_list_of_volumes_for_a_journal(resp: Response,
                                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                         PEPCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_PEPCODE), 
@@ -800,6 +830,7 @@ def get_a_list_of_volumes_for_a_journal(resp: Response,
        
     """
     
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:
         retVal = volumeList = opasAPISupportLib.metadataGetVolumes(PEPCode, limit=limit, offset=offset)
         
@@ -808,13 +839,12 @@ def get_a_list_of_volumes_for_a_journal(resp: Response,
     except Exception as e:
         statusMessage = "Error: {}".format(e)
         statusCode = 400
+        retVal = None
     else:
         statusMessage = "Success"
         statusCode = 200
-        
-    retVal.volumeList.responseInfo.request = request.url._url
+        retVal.volumeList.responseInfo.request = request.url._url
 
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_METADATA_VOLUME_INDEX,
                                       params=request.url._url,
                                       documentID="{}".format(PEPCode), 
@@ -824,10 +854,10 @@ def get_a_list_of_volumes_for_a_journal(resp: Response,
 
     return retVal
 #-----------------------------------------------------------------------------
-@app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex)
-def getAuthorsIndex(resp: Response,
+@app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, tags=["Authors"])
+def get_the_author_index_entries_for_matching_author_names(resp: Response,
                     request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
-                    authorNamePartial: str=Path(..., title="Author name or Partial Name", description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
+                    authorNamePartial: str=Path(..., title="Author name or Partial Name", description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIALNOWILD), 
                     limit: int=Query(15, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                     offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                     ):
@@ -847,30 +877,37 @@ def getAuthorsIndex(resp: Response,
 
     """
 
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:
         retVal = opasAPISupportLib.authorsGetAuthorInfo(authorNamePartial, limit=limit, offset=offset)
     except Exception as e:
-        statusMessage = "Error: {}".format(e)
-        statusCode = 400
+        try:
+            statusMessage = "Error: {}".format(e.body.decode("utf8"))
+            statusMessage = re.sub("(\tat( org.apache.*\n)|(org.eclipse.*\n))", "", statusMessage)
+            statusMessage = re.sub("\t?at[ ]+", "", statusMessage)
+            print ("get_the_author_index_entries_for_matching_author_names", statusMessage)
+            statusCode = 400
+            retVal = None
+        except:
+            statusMessage = "Error: {}".format(e)
     else:
         statusMessage = "Success"
         statusCode = 200
+        # fill in additional return structure status info
+        client_host = request.client.host
+        retVal.authorIndex.responseInfo.request = request.url._url
 
-    # fill in additional return structure status info
-    client_host = request.client.host
-    retVal.authorIndex.responseInfo.request = request.url._url
-
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_AUTHORS_INDEX,
                                       params=request.url._url,
-                                      statusMessage=gCurrentDevelopmentStatus
+                                      returnStatusCode = statusCode,
+                                      statusMessage=statusMessage
                                       )
 
     return retVal
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList)
-def getAuthorsPublications(resp: Response,
+@app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, tags=["Authors"])
+def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
                            request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                            authorNamePartial: str=Path(..., title="Author name or Partial Name", description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
                            limit: int=Query(15, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -891,20 +928,35 @@ def getAuthorsPublications(resp: Response,
        http://localhost:8000/v1/Authors/Publications/Tuck/
 
     """
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:
         retVal = opasAPISupportLib.authorsGetAuthorPublications(authorNamePartial, limit=limit, offset=offset)
     except Exception as e:
         statusMessage = "Error: {}".format(e)
         statusCode = 400
+        authorPubListStruct = \
+            models.AuthorPubListStruct( 
+                responseInfo = models.ResponseInfo(
+                                            count = 0,
+                                            limit = limit,
+                                            offset = offset,
+                                            listType ="authorpublist",
+                                            listLabel = "Search Error: {}".format(e),
+                                            timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
+                                           ),
+                responseSet = list()
+            )
+        
+        retVal = authorPubList = models.AuthorPubList(authorPubList = authorPubListStruct)
+        
     else:
         statusMessage = "Success"
+        retVal.authorPubList.responseInfo.request = request.url._url
         statusCode = 200
     
     # fill in additional return structure status info
     client_host = request.client.host
-    retVal.authorPubList.responseInfo.request = request.url._url
     
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_AUTHORS_PUBLICATIONS,
                                       params=request.url._url,
                                       statusMessage=gCurrentDevelopmentStatus
@@ -912,7 +964,7 @@ def getAuthorsPublications(resp: Response,
 
     return retVal
 
-@app.get("/v1/Documents/Abstracts/{documentID}/", response_model=models.Documents)
+@app.get("/v1/Documents/Abstracts/{documentID}/", response_model=models.Documents, tags=["Documents"])
 def view_an_abstract(resp: Response,
                      request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                      documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
@@ -924,39 +976,36 @@ def view_an_abstract(resp: Response,
     Return an abstract for the requested documentID (e.g., IJP.077.0001A, or multiple abstracts for a partial ID (e.g., IJP.077)
     """
 
-    sessionID = opasAPISupportLib.getSessionID(request)
-    accessToken = opasAPISupportLib.getAccessToken(request)
-    expirationTime = opasAPISupportLib.getExpirationTime(request)
-
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:
         retVal = documents = opasAPISupportLib.documentsGetAbstracts(documentID, retFormat=retFormat, limit=limit, offset=offset)
     except Exception as e:
         statusMessage = "Error: {}".format(e)
+        logging.error(statusMessage)
+        print ("View an Abstract: " + statusMessage)
         statusCode = 400
+        retVal = None
     else:
         statusMessage = "Success"
         statusCode = 200
-
-    # fill in additional return structure status info
-    if retVal is not None:
         client_host = request.client.host
         retVal.documents.responseInfo.request = request.url._url
 
-    ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime)    
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DOCUMENTS_ABSTRACTS,
                                       params=request.url._url,
-                                      statusMessage=gCurrentDevelopmentStatus
+                                      returnStatusCode = statusCode,
+                                      statusMessage=statusMessage
                                       )
     return retVal
 
-@app.get("/v1/Documents/{documentID}/", response_model=models.Documents)  # the current PEP API
-@app.get("/v1/Documents/Document/{documentID}/", response_model=models.Documents)
+@app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["Documents"])  # the current PEP API
+@app.get("/v1/Documents/Document/{documentID}/", response_model=models.Documents, tags=["Documents"]) # more consistent with the model grouping
 def view_a_document(resp: Response,
                     request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                     documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
                     retFormat: str=Query("HTML", title="Document return format", description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                    limit: int=Query(15, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
-                    offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
+                    offset: int=Query(0, title="Document Page offset", description=opasConfig.DESCRIPTION_PAGEOFFSET),
+                    page: int=Query(None, title="Document Page Request (from document pagination)", description=opasConfig.DESCRIPTION_PAGEREQUEST),
                     ):
     """
     Return a document for the requested documentID (e.g., IJP.077.0001A, or multiple documents for a partial ID (e.g., IJP.077)
@@ -985,7 +1034,7 @@ def view_a_document(resp: Response,
                                       )
     return retVal
 
-@app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/")
+@app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", tags=["Documents"])
 def download_a_document(resp: Response,
                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                         documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
@@ -993,11 +1042,11 @@ def download_a_document(resp: Response,
                         ):
 
      
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     isAuthenticated = checkIfUserLoggedIn()  
 
     opasAPISupportLib.prepDocumentDownload(documentID, retFormat=retFormat, authenticated=True, baseFilename="opasDoc")    
 
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DOCUMENTS_EPUB,
                                       params=request.url._url,
                                       statusMessage=gCurrentDevelopmentStatus
@@ -1007,4 +1056,5 @@ def download_a_document(resp: Response,
 
     
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8005, debug=True)
+    print("Server Running")
+    uvicorn.run(app, host="127.0.0.1", port=8000, debug=True)

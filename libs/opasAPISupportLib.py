@@ -14,7 +14,7 @@ functions.
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0625.1"
+__version__     = "2019.0709.1"
 __status__      = "Development"
 
 import sys
@@ -25,7 +25,7 @@ import http.cookies
 
 import opasConfig
 from opasConfig import *
-from localsecrets import SOLRURL, SOLRUSER, SOLRPW
+from localsecrets import SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, CONFIG
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -109,13 +109,13 @@ import json
 #solr = pysolr.Solr('http://localhost:8983/solr/pepwebproto', timeout=10)
 #This is the old way -- should switch to class Solr per https://pythonhosted.org/solrpy/reference.html
 if SOLRUSER is not None:
-    solrDocs = solr.SolrConnection(SOLRURL + 'pepwebproto', http_user=SOLRUSER, http_pass=SOLRPW)
+    solrDocs = solr.SolrConnection(SOLRURL + 'pepwebdocs', http_user=SOLRUSER, http_pass=SOLRPW)
     solrRefs = solr.SolrConnection(SOLRURL + 'pepwebrefs', http_user=SOLRUSER, http_pass=SOLRPW)
     solrGloss = solr.SolrConnection(SOLRURL + 'pepwebglossary', http_user=SOLRUSER, http_pass=SOLRPW)
     solrAuthors = solr.SolrConnection(SOLRURL + 'pepwebauthors', http_user=SOLRUSER, http_pass=SOLRPW)
 
 else:
-    solrDocs = solr.SolrConnection(SOLRURL + 'pepwebproto')
+    solrDocs = solr.SolrConnection(SOLRURL + 'pepwebdocs')
     solrRefs = solr.SolrConnection(SOLRURL + 'pepwebrefs')
     solrGloss = solr.SolrConnection(SOLRURL + 'pepwebglossary')
     solrAuthors = solr.SolrConnection(SOLRURL + 'pepwebauthors')
@@ -138,11 +138,13 @@ def getSessionInfo(request: Request, resp: Response, sessionID=None, accessToken
     
     """
     sessionID = getSessionID(request)
+    print ("Get Session Info, Session ID via GetSessionID: ", sessionID)
     accessToken = getAccessToken(request)
     expirationTime = getExpirationTime(request)
     
     if sessionID is None:  # we need to set it
         # get new sessionID...even if they already had one, this call forces a new one
+        print ("sessionID is none.  We need to start a new session.")
         ocd = startNewSession(resp, accessToken, keepActive=keepActive)  
         sessionInfo = models.LoginReturnItem(    session_id = ocd.sessionID, 
                                                  access_token = ocd.accessToken, 
@@ -150,6 +152,7 @@ def getSessionInfo(request: Request, resp: Response, sessionID=None, accessToken
                                                  session_expires_time = ocd.expiresTime)
         
     else: # we already have a sessionID, no need to recreate it.
+        print ("sessionID is already set.")
         try:
             ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime)
             sessionInfo = models.LoginReturnItem(    session_id = sessionID, 
@@ -159,6 +162,7 @@ def getSessionInfo(request: Request, resp: Response, sessionID=None, accessToken
         except ValidationError as e:
             print(e.json())             
     
+    print (sessionInfo)
     return ocd, sessionInfo
     
 def startNewSession(resp: Response, accessToken=None, keepActive=None):
@@ -167,6 +171,7 @@ def startNewSession(resp: Response, accessToken=None, keepActive=None):
     Returns the database library instance, for convenience of subsequent calls
       in that endpoint
     """
+    print ("************** Starting a new SESSION!!!! *************")
     expirationTime = getExpirationCookieStr(keepActive=keepActive)
     sessionID = secrets.token_urlsafe(16)
     setCookies(resp, sessionID, accessToken, expiresTime=expirationTime)
@@ -175,18 +180,20 @@ def startNewSession(resp: Response, accessToken=None, keepActive=None):
     return ocd
 
 def setCookies(resp: Response, sessionID, accessToken, expiresTime):
-   
+    
+    print ("Setting cookies for {}".format(COOKIE_DOMAIN))
     if sessionID is not None:
-        set_cookie(resp, "opasSessionID", sessionID)
+        print ("Session Cookie being Written from SetCookies")
+        set_cookie(resp, "opasSessionID", sessionID, domain=COOKIE_DOMAIN, httponly=False)
         #resp.raw_headers.append(
             #("Set-Cookie", "opasSessionID={}; path=/".format(sessionID)))
     if accessToken is not None:
-        set_cookie(resp, "opasAccessToken", accessToken)
+        set_cookie(resp, "opasAccessToken", accessToken, domain=COOKIE_DOMAIN, httponly=False)
         #resp.raw_headers.append(
             #("Set-Cookie", "opasAccessToken={}; Max-Age=300; path=/".format(accessToken)))
     
     if expiresTime is not None:
-        set_cookie(resp, "expiresTime", expiresTime)
+        set_cookie(resp, "expiresTime", expiresTime, domain=COOKIE_DOMAIN, httponly=False)
         #resp.raw_headers.append(
             #("Set-Cookie", "opasSessionExpirestime={}; Max-Age=300; path=/".format(expiresTime)))
 
@@ -220,8 +227,28 @@ def getExpirationCookieStr(keepActive=None):
     ## Return response cookie string for header
     #return retVal
 
+def parseCookiesFromHeader(request):
+    retVal = {}
+    clientSuppliedCookies = request.headers.get("cookie", None)
+    if clientSuppliedCookies is not None:
+        cookieStatements = clientSuppliedCookies.split(";")
+        for n in cookieStatements:
+            cookie, value = n.split("=")
+            retVal[cookie] = value
+
+    return retVal
+
 def getSessionID(request):
-    retVal = request.cookies.get("opasSessionID", None)
+    sessionCookieName = "opasSessionID"
+    retVal = request.cookies.get(sessionCookieName, None)
+    
+    if retVal is None:
+        cookieDict = parseCookiesFromHeader(request)
+        retVal = cookieDict.get(sessionCookieName, None)
+        if retVal is not None:
+            print ("Session cookie had to be retrieved from header: {}".format(retVal))
+    else:
+        print ("Session cookie from client: {}".format(retVal))
     return retVal
 
 def getAccessToken(request):
@@ -233,12 +260,42 @@ def getExpirationTime(request):
     return retVal
 
 def checkSolrDocsConnection():
+    """
+    Queries the solrDocs core (i.e., pepwebdocs) to see if the server is up and running.
+    Solr also supports a ping, at the corename + "/ping", but that doesn't work through pysolr as far as I can tell,
+    so it was more straightforward to just query the Core. 
+    
+    Note that this only checks one core, since it's only checking if the Solr server is running.
+    
+    >>> checkSolrDocsConnection()
+    True
+    
+    """
     if solrDocs is None:
         return False
     else:
+        try:
+            results = solrDocs.query(q = "art_id:{}".format("APA.009.0331A"),  fields = "art_id, art_vol, art_year")
+        except Exception as e:
+            logging.error("Solr Connection Error: {}".format(e))
+            return False
+        else:
+            if len(results.results) == 0:
+                return False
         return True
 
 def forceStringReturnFromVariousReturnTypes(theText, minLength=5):
+    """
+    Sometimes the return isn't a string (it seems to often be "bytes") 
+      and depending on the schema, from Solr it can be a list.  And when it
+      involves lxml, it could even be an Element node or tree.
+      
+    This checks the type and returns a string, converting as necessary.
+    
+    >>> forceStringReturnFromVariousReturnTypes(["this is really a list",], minLength=5)
+    'this is really a list'
+
+    """
     retVal = None
     if theText is not None:
         if isinstance(theText, str):
@@ -266,16 +323,144 @@ def forceStringReturnFromVariousReturnTypes(theText, minLength=5):
             print (err)
             
     return retVal        
+def getArticleDataRaw(articleID, fields=None):
+    """
+    Fetch an article "Doc" from the Solr solrDocs core.  If fields is none, it fetches all fields.
+
+    This returns a dictionary--the one returned by Solr 
+      (hence why the function is Raw rather than Pydantic like getArticleData)
+      
+    >>> result = getArticleDataRaw("APA.009.0331A")
+    >>> result["article_id"]
+    APA.009.0331A
     
-def getArticleData(articleID):
+    """
     retVal = None
     if articleID != "":
-        results = solrDocs.query(q = "art_id:%s" % articleID)
-        if results._numFound == 0:
+        try:
+            results = solrDocs.query(q = "art_id:{}".format(articleID),  fields = fields)
+        except Exception as e:
+            logging.error("Solr Error: {}".format(e))
             retVal = None
         else:
-            retVal = results.results[0]
+            if results._numFound == 0:
+                retVal = None
+            else:
+                retVal = results.results[0]
+
+    return retVal
+                
+def getArticleData(articleID, fields=None):
+    """
+    Fetch an article "Doc" from the Solr solrDocs core.  If fields is none, it fetches all fields.
+
+    Returns the pydantic model object for a document in a regular documentListStruct
+
+    >>> result = getArticleData("APA.009.0331A")
+    >>> result.documentList.responseSet[0].documentID
+    APA.009.0331A
+    
+    """
+    retVal = None
+    if articleID != "":
+        try:
+            results = solrDocs.query(q = "art_id:{}".format(articleID),  fields = fields)
+        except Exception as e:
+            logging.error("Solr Error: {}".format(e))
+            retVal = None
+        else:
+            if results._numFound == 0:
+                retVal = None
+            else:
+                retVal = results.results[0]
+    limit = 5 # for now, we may make this 1
+    offset = 0
+    responseInfo = ResponseInfo(
+                     count = len(results.results),
+                     fullCount = results._numFound,
+                     totalMatchCount = results._numFound,
+                     limit = limit,
+                     offset = offset,
+                     listType="documentlist",
+                     scopeQuery=None,
+                     fullCountComplete = limit >= results._numFound,
+                     solrParams = results._params,
+                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
+                   )
+
+    documentItemList = []
+    rowCount = 0
+    rowOffset = 0
+    for result in results.results:
+        authorIDs = result.get("art_authors", None)
+        if authorIDs is None:
+            authorMast = None
+        else:
+            authorMast = opasgenlib.deriveAuthorMast(authorIDs)
+
+        pgRg = result.get("art_pgrg", None)
+        if pgRg is not None:
+            pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
+            
+        documentID = result.get("art_id", None)        
+        #titleXml = results.highlighting[documentID].get("art_title_xml", None)
+        titleXml = result.get("art_title_xml", None)
+        titleXml = forceStringReturnFromVariousReturnTypes(titleXml)
+        #abstractsXml = results.highlighting[documentID].get("abstracts_xml", None)
+        abstractsXml = result.get("abstracts_xml", None)
+        abstractsXml  = forceStringReturnFromVariousReturnTypes(abstractsXml )
+        #summariesXml = results.highlighting[documentID].get("abstracts_xml", None)
+        summariesXml = result.get("abstracts_xml", None)
+        summariesXml  = forceStringReturnFromVariousReturnTypes(summariesXml)
+        #textXml = results.highlighting[documentID].get("text_xml", None)
+        textXml = result.get("text_xml", None)
+        textXml  = forceStringReturnFromVariousReturnTypes(textXml)
+        kwicList = []
+        kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
+    
+        if DEBUG_DOCUMENTS != 1:
+            if not userLoggedIn or not fullTextRequested:
+                textXml = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract=abstractsXml, xmlSummary=summariesXml, xmlDocument=textXml)
+
+        citeAs = result.get("art_citeas_xml", None)
+        citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
         
+        try:
+            item = DocumentListItem(PEPCode = result.get("art_pepsrccode", None), 
+                                    year = result.get("art_year", None),
+                                    vol = result.get("art_vol", None),
+                                    pgRg = pgRg,
+                                    pgStart = pgStart,
+                                    pgEnd = pgEnd,
+                                    authorMast = authorMast,
+                                    documentID = documentID,
+                                    documentRefHTML = citeAs,
+                                    documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=""),
+                                    title = titleXml,
+                                    abstract = abstractsXml,
+                                    documentText = None, #textXml,
+                                    score = result.get("score", None), 
+                                    )
+        except ValidationError as e:
+            logging.error(e.json())  
+            #print (e.json())
+        else:
+            rowCount += 1
+            print ("{}:{}".format(rowCount, citeAs))
+            documentItemList.append(item)
+            if rowCount > limit:
+                break
+
+    responseInfo.count = len(documentItemList)
+    
+    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+                                             responseSet = documentItemList
+                                             )
+    
+    documentList = DocumentList(documentList = documentListStruct)
+    
+    retVal = documentList
+    
     return retVal
 
 def databaseGetMostCited(period='5', limit=50, offset=0):
@@ -283,8 +468,14 @@ def databaseGetMostCited(period='5', limit=50, offset=0):
     Return the most cited journal articles duing the prior period years.
     
     period must be either '5', 10, '20', or 'all'
+    
+    >>> result = databaseGetMostCited()
+    Number found: 114589
+    >>> result.documentList.responseSet[0].documentID
+    'IJP.027.0099A'
 
     """
+    # old way...
     #results = solrRefs.query(q = "art_year_int:[2014 TO 2019]",  
                              #facet_field = "bib_ref_rx",
                              #facet_sort = "count",
@@ -361,7 +552,7 @@ def databaseGetMostCited(period='5', limit=50, offset=0):
                                  abstract = artAbstract,
                               ) 
         rowCount += 1
-        print (item)
+        #print (item)
         documentListItems.append(item)
         if rowCount > limit:
             break
@@ -385,8 +576,8 @@ def databaseWhatsNew(limit=DEFAULT_LIMIT_FOR_WHATS_NEW, offset=0):
     """
     Return a what's been updated in the last week
     
-    >>> databaseWhatsNew()
-    
+    >>> result = databaseWhatsNew()
+    Number found: 91
     """    
     results = solrDocs.query(q = "timestamp:[NOW-7DAYS TO NOW]",  
                              fl = "art_id, title, art_vol, art_iss, art_pepsrccode, timestamp, art_pepsourcetype",
@@ -444,7 +635,7 @@ def databaseWhatsNew(limit=DEFAULT_LIMIT_FOR_WHATS_NEW, offset=0):
                                  volumeURL = volumeURL,
                                  updated = updated
                               ) 
-        print (item.displayTitle)
+        #print (item.displayTitle)
         whatsNewListItems.append(item)
         rowCount += 1
         if rowCount > limit:
@@ -497,7 +688,7 @@ def metadataGetVolumes(pepCode, year="*", limit=DEFAULT_LIMIT_FOR_VOLUME_LISTS, 
                               score = result.get("score", None)
                              )
     
-        print (item)
+        #print (item)
         volumeItemList.append(item)
        
     responseInfo.count = len(volumeItemList)
@@ -516,9 +707,9 @@ def metadataGetContents(pepCode, year="*", vol="*", limit=DEFAULT_LIMIT_FOR_CONT
     Return a jounals contents
     
     >>> metadataGetContents("IJP", "1993", limit=5, offset=0)
-    
+    <DocumentList documentList=<DocumentListStruct responseInfo=<ResponseInfo count=5 limit=5 offset=0 page=No…>
     >>> metadataGetContents("IJP", "1993", limit=5, offset=5)
-    
+    <DocumentList documentList=<DocumentListStruct responseInfo=<ResponseInfo count=5 limit=5 offset=5 page=No…>
     """
     retVal = []
     if year == "*" and vol != "*":
@@ -571,7 +762,7 @@ def metadataGetContents(pepCode, year="*", vol="*", limit=DEFAULT_LIMIT_FOR_CONT
                                 documentRefHTML = citeAs,
                                 score = result.get("score", None)
                                 )
-        print (item)
+        #print (item)
         documentItemList.append(item)
 
     responseInfo.count = len(documentItemList)
@@ -592,48 +783,23 @@ def metadataGetSourceByType(sourceType=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURN
     
     No attempt here to map to the correct structure, just checking what field/data items we have in sourceInfoDB.
     
-    Current API Example Return:
-    {
-        "sourceInfo": {
-          "responseInfo": {
-            "count": 1,
-            "fullCount": 1,
-            "fullCountComplete": true,
-            "listLabel": "Journal List",
-            "listType": "srclist",
-            "scopeQuery": "AJP",
-            "request": "/api/v1/Metadata/Journals/AJP/",
-            "timeStamp": "2019-06-07T19:30:27-04:00"
-          },
-          "responseSet": [
-            {
-              "ISSN": "0002-9548",
-              "PEPCode": "AJP",
-              "abbrev": "Am. J. Psychoanal.",
-              "bannerURL": "http://stage.pep.gvpi.net/images/BannerAJPLogo.gif",
-              "displayTitle": "American Journal of Psychoanalysis",
-              "language": "en",
-              "yearFirst": "1941",
-              "yearLast": "2018"
-            }
-          ]
-        }
-    }
-    
     >>> returnData = metadataGetSourceByType("journal")
-    75
+    Number found: 75
 
     >>> returnData = metadataGetSourceByType("book")
-    75
+    Number found: 6
 
-    >>> returnData = metadataGetSourceByType("journals", limit=5, offset=0)
+    >>> metadataGetSourceByType("journals", limit=5, offset=0)
+    Number found: 75
     
-    >>> returnData = metadataGetSourceByType("journals", limit=5, offset=6)
+    >>> metadataGetSourceByType("journals", limit=5, offset=6)
+    Number found: 75
     
     """
     retVal = []
     sourceInfoDBList = []
     # standardize Source type, allow plural, different cases, but code below this part accepts only those three.
+    sourceType = sourceType.lower()
     if sourceType not in ["journal", "book", "video"]:
         if re.match("vid.*", sourceType, re.IGNORECASE):
             sourceType = "video"
@@ -705,8 +871,6 @@ def metadataGetSourceByType(sourceType=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURN
     retVal = sourceInfoList
     return retVal
 
-
-
 def metadataGetSourceByCode(pepCode=None):
     """
     Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
@@ -715,34 +879,6 @@ def metadataGetSourceByCode(pepCode=None):
     
     The sourceType is listed as part of the endpoint path, but I wonder if we should really do this 
     since it isn't needed, the pepCodes are unique.
-    
-    Current API Example Return:
-    {
-        "sourceInfo": {
-          "responseInfo": {
-            "count": 1,
-            "fullCount": 1,
-            "fullCountComplete": true,
-            "listLabel": "Journal List",
-            "listType": "srclist",
-            "scopeQuery": "AJP",
-            "request": "/api/v1/Metadata/Journals/AJP/",
-            "timeStamp": "2019-06-07T19:30:27-04:00"
-          },
-          "responseSet": [
-            {
-              "ISSN": "0002-9548",
-              "PEPCode": "AJP",
-              "abbrev": "Am. J. Psychoanal.",
-              "bannerURL": "http://stage.pep.gvpi.net/images/BannerAJPLogo.gif",
-              "displayTitle": "American Journal of Psychoanalysis",
-              "language": "en",
-              "yearFirst": "1941",
-              "yearLast": "2018"
-            }
-          ]
-        }
-    }
     
     curl -X GET "http://stage.pep.gvpi.net/api/v1/Metadata/Journals/AJP/" -H "accept: application/json"
     
@@ -765,36 +901,12 @@ def authorsGetAuthorInfo(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS
     Returns a list of matching names (per authors last name), and the number of articles
     in PEP found by that author.
     
-    >>> authorsGetAuthorInfo("Tuck")
-    
-    >>> authorsGetAuthorInfo("Fonag")
-    
-    >>> authorsGetAuthorInfo("Levinson, Nadine A.")
-    
-    
-    Current API Example Return:
-        {
-            "authorindex": {
-              "responseInfo": {
-                "count": 0,
-                "fullCount": 0,
-                "fullCountComplete": true,
-                "listLabel": "string",
-                "listType": "string",
-                "scopeQuery": "string",
-                "request": "string",
-                "timeStamp": "string"
-              },
-              "responseSet": [
-                {
-                  "authorID": "string",
-                  "publicationsURL": "string"
-                }
-              ]
-            }
-         }
-
-    
+    >>> resp = authorsGetAuthorInfo("Tuck")
+    Number found: 72
+    >>> resp = authorsGetAuthorInfo("Fonag")
+    Number found: 134
+    >>> resp = authorsGetAuthorInfo("Levinson, Nadine A.")
+    Number found: 8   
     """
     retVal = {}
     query = "art_author_id:/%s.*/" % (authorNamePartial)
@@ -802,7 +914,6 @@ def authorsGetAuthorInfo(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS
                                 fields = "authors, art_author_id",
                                 facet_field = "art_author_id",
                                 facet = "on",
-                                #facet_query = "art_author_id:%s*" % authorNamePartial,
                                 facet_prefix = "%s" % authorNamePartial,
                                 rows=100
                              )
@@ -827,12 +938,12 @@ def authorsGetAuthorInfo(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS
             #retVal[key] = value
 
             item = AuthorIndexItem( authorID = key, 
-                                    publicationsURL = "",
+                                    publicationsURL = "/v1/Authors/Publications/{}/".format(key),
                                     publicationsCount = value,
                                   ) 
             authorIndexItems.append(item)
             #debug status
-            print (item)
+            print ("authorsGetAuthorInfo", item)
        
     responseInfo.count = len(authorIndexItems)
     
@@ -850,49 +961,47 @@ def authorsGetAuthorPublications(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR
     Returns a list of publications (published on PEP-Web (per authors partial name), and the number of articles
     in PEP found by that author.
     
-    >>> authorsGetAuthorPublications("Tuck")
-    >>> authorsGetAuthorPublications("Fonag")
-    >>> authorsGetAuthorPublications("Levinson, Nadine A.")
-    
-    Current API Example Return:
-        {
-          "authorPubList": {
-            "responseInfo": {
-              "count": 0,
-              "fullCount": 0,
-              "fullCountComplete": true,
-              "offset": 0,
-              "limit": null,
-              "request": "/api/v1/Authors/Publications/tuckett/",
-              "timeStamp": "2019-06-08T23:31:56-04:00"
-            },
-            "responseSet": []
-          }
-        }
-
-        The endpoint doesn't seem to work on stage or prod...but here's what should be in responseSet per the API doc.
-        respSetAuthPubListItem:
-          type: object
-          properties:
-            authorID:
-              type: string
-            documentID:
-              type: string
-            documentRef:
-              type: string
-            documentURL:
-              type: string
-    
+    >>> resp = authorsGetAuthorPublications("Tuck")
+    Number found: 0
+    Query didn't work - art_author_id:/Tuck/
+    trying again - art_author_id:/Tuck[ ]?.*/
+    Number found: 72
+    >>> resp = authorsGetAuthorPublications("Fonag")
+    Number found: 0
+    Query didn't work - art_author_id:/Fonag/
+    trying again - art_author_id:/Fonag[ ]?.*/
+    Number found: 134    
+    >>> resp = authorsGetAuthorPublications("Levinson, Nadine A.")
+    Number found: 8
     """
     retVal = {}
-    query = "art_author_id:/{}.*/".format(authorNamePartial)
-    results = solrAuthors.query(q = "art_author_id:/%s.*/" ,  
+    query = "art_author_id:/{}/".format(authorNamePartial)
+    # wildcard in case nothing found for #1
+    results = solrAuthors.query(q = "{}".format(query),   
                                 fields = "art_author_id, art_year_int, art_id, art_citeas_xml",
                                 sort="art_author_id, art_year_int", sort_order="asc",
                                 rows=limit, start=offset
                              )
 
     print ("Number found: %s" % results._numFound)
+    if results._numFound == 0:
+        print ("Query didn't work - {}".format(query))
+        query = "art_author_id:/{}[ ]?.*/".format(authorNamePartial)
+        print ("trying again - {}".format(query))
+        results = solrAuthors.query(q = "{}".format(query),  
+                                    fields = "art_author_id, art_year_int, art_id, art_citeas_xml",
+                                    sort="art_author_id, art_year_int", sort_order="asc",
+                                    rows=limit, start=offset
+                                 )
+        print ("Number found: %s" % results._numFound)
+        if results._numFound == 0:
+            query = "art_author_id:/(.*[ ])?{}[ ]?.*/".format(authorNamePartial)
+            print ("trying again - {}".format(query))
+            results = solrAuthors.query(q = "{}".format(query),  
+                                        fields = "art_author_id, art_year_int, art_id, art_citeas_xml",
+                                        sort="art_author_id, art_year_int", sort_order="asc",
+                                        rows=limit, start=offset
+                                     )
     
     responseInfo = ResponseInfo(
                      count = len(results.results),
@@ -921,7 +1030,7 @@ def authorsGetAuthorPublications(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR
                               ) 
         authorPubListItems.append(item)
         #debug status
-        print (item)
+        #print (item)
        
     responseInfo.count = len(authorPubListItems)
     
@@ -977,7 +1086,7 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_
       Not thrilled about the prospect of changing it, but probably the right thing to do.
       
     >>> abstracts = documentsGetAbstracts("IJP.075")
-    100 document matches for getAbstracts
+    10 document matches for getAbstracts
     >>> abstracts = documentsGetAbstracts("AIM.038.0279A")  # no abstract on this one
     1 document matches for getAbstracts
     >>> abstracts = documentsGetAbstracts("AIM.040.0311A")
@@ -986,7 +1095,7 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_
     """
     retVal = None
     results = solrDocs.query(q = "art_id:%s*" % (documentID),  
-                                fields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml",
+                                fields = "art_id, art_pepsourcetitlefull, art_vol, art_year, art_citeas_xml, art_pgrg, art_title_xml, art_authors, abstracts_xml, summaries_xml, text_xml",
                                 sort="art_year, art_pgrg", sort_order="asc",
                                 rows=limit, start=offset
                              )
@@ -1025,7 +1134,7 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_
                 xmlDocument = None
                 logging.error("No content matched document ID for: %s" % documentID)
 
-            authorIDs = result.get("art_author_id", None)
+            authorIDs = result.get("art_authors", None)
             if authorIDs is None:
                 authorMast = None
             else:
@@ -1033,6 +1142,14 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_
 
             pgRg = result.get("art_pgrg", None)
             pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
+            
+            sourceTitle = result.get("art_pepsourcetitlefull", None)
+            title = result.get("art_title_xml", "")  # name is misleading, it's not xml.
+            artYear = result.get("art_year", None)
+            artVol = result.get("art_vol", None)
+
+            citeAs = result.get("art_citeas_xml", None)
+            citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
 
             abstract = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocument)
             if abstract == "[]":
@@ -1040,16 +1157,22 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_
             elif retFormat == "HTML":
                 abstractHTML = opasxmllib.convertXMLStringToHTML(abstract)
                 abstract = opasxmllib.extractHTMLFragment(abstractHTML, "//div[@id='abs']")
+                abstract = opasxmllib.addHeadingsToAbstractHTML(abstract=abstract, 
+                                                                    sourceTitle=sourceTitle,
+                                                                    pubYear=artYear,
+                                                                    vol=artVol, 
+                                                                    pgRg=pgRg, 
+                                                                    citeas=citeAs, 
+                                                                    title=title,
+                                                                    authorMast=authorMast )
             elif retFormat == "TEXTONLY":
                 abstract = opasxmllib.xmlElemOrStrToText(abstract)
             #else: # xml  # not necessary, let it fall through
                 #pass
             
-            citeAs = result.get("art_citeas_xml", None)
-            citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
-            
-            item = DocumentListItem(year = result.get("art_year", None),
-                                    vol = result.get("art_vol", None),
+            item = DocumentListItem(year = artYear,
+                                    vol = artVol,
+                                    sourceTitle = sourceTitle,
                                     pgRg = pgRg,
                                     pgStart = pgStart,
                                     pgEnd = pgEnd,
@@ -1084,9 +1207,11 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=
    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
    For authenticated users, it returns with the document itself
    
-    >>> documentsGetDocument("AIM.038.0279A", retFormat="html") 
-    >>> documentsGetDocument("AIM.038.0279A") 
-    >>> documentsGetDocument("AIM.040.0311A")
+    >> resp = documentsGetDocument("AIM.038.0279A", retFormat="html") 
+    
+    >> resp = documentsGetDocument("AIM.038.0279A") 
+    
+    >> resp = documentsGetDocument("AIM.040.0311A")
     
 
     """
@@ -1094,6 +1219,7 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=
     
     if not authenticated:
         #if user is not authenticated, effectively do endpoint for getDocumentAbstracts
+        print ("User not authenticated...fetching abstracts instead")
         return documentsGetAbstracts(documentID, limit=1)
 
     results = solrDocs.query(q = "art_id:%s" % (documentID),  
@@ -1366,6 +1492,7 @@ def getKwicList(markedUpText, extraContextLen=opasConfig.DEFAULT_KWIC_CONTENT_LE
     emMarks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extraContextLen, startHitTag, endHitTag, extraContextLen))
     for n in emMarks.finditer(markedUpText):
         retVal.append(n.group(0))
+        #logging.info("Match: '...{}...'".format(n.group(0)))
         print ("Match: '...{}...'".format(n.group(0)))
     matchCount = len(retVal)
     
@@ -1418,16 +1545,75 @@ def yearArgParser(yearArg):
             retVal = searchClause
 
     return retVal
-                         
+                        
+def searchAnalysis(queryList, 
+                   filterQuery = None,
+                   moreLikeThese = False,
+                   queryAnalysis = False,
+                   disMax = None,
+                   summaryFields="art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
+                   highlightFields='art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
+                   fullTextRequested=True, userLoggedIn=False, 
+                   limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+    """
+    Analyze the search clauses in the query list
+	"""
+    retVal = {}
+    documentItemList = []
+    rowCount = 0
+    for n in queryList:
+        n = n[3:]
+        results = solrDocs.query(n,
+                                 disMax = disMax,
+                                 queryAnalysis = True,
+                                 fields = summaryFields,
+                                 rows = 1,
+                                 start = 0)
+    
+        print ("Analysis: Term %s, matches %s" % (n, results._numFound))
+        item = DocumentListItem(term = n, 
+                                termCount = results._numFound
+                                )
+        documentItemList.append(item)
+        rowCount += 1
+        
+    if rowCount == 0:
+        fullCountComplete = True
+    else:
+        fullCountComplete = limit >= results._numFound
+        
+    responseInfo = ResponseInfo(count = rowCount,
+                                fullCount = rowCount,
+                                listType="srclist",
+                                fullCountComplete = fullCountComplete,
+                                timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
+                                )
+    
+    responseInfo.count = len(documentItemList)
+    
+    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+                                             responseSet = documentItemList
+                                             )
+    
+    retVal = documentList = DocumentList(documentList = documentListStruct)
+    
+    return retVal
+
+#================================================================================================================
+# SEARCHTEXT
+#================================================================================================================
 def searchText(query, 
                filterQuery = None,
                moreLikeThese = False,
                queryAnalysis = False,
                disMax = None,
-               summaryFields="art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
-               highlightFields='art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
-               fullTextRequested=True, userLoggedIn=False, 
-               limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+               summaryFields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
+               highlightFields = 'art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
+               fullTextRequested = True, 
+               userLoggedIn = False, 
+               extraContextLen = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+               limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
+               offset=0):
     """
     Full-text search
 
@@ -1476,7 +1662,7 @@ def searchText(query,
                              disMax = disMax,
                              fields = summaryFields,
                              hl= 'true', 
-                             hl_fragsize = 1520000, 
+                             hl_fragsize = opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
                              hl_fl = highlightFields,
                              mlt = mlt,
                              mlt_fl = mlt_fl,
@@ -1494,6 +1680,7 @@ def searchText(query,
     responseInfo = ResponseInfo(
                      count = len(results.results),
                      fullCount = results._numFound,
+                     totalMatchCount = results._numFound,
                      limit = limit,
                      offset = offset,
                      listType="documentlist",
@@ -1529,8 +1716,8 @@ def searchText(query,
         textXml = results.highlighting[documentID].get("text_xml", None)
         textXml  = forceStringReturnFromVariousReturnTypes(textXml)
         if textXml is not None:
-            kwicList = getKwicList(textXml)  # an alternate way making it easier for clients
-            kwic = " . . . ".join(kwicList)  # how its done at GVPi, for compatibility.
+            kwicList = getKwicList(textXml, extraContextLen=extraContextLen)  # returning context matches as a list, making it easier for clients to work with
+            kwic = " . . . ".join(kwicList)  # how its done at GVPi, for compatibility (as used by PEPEasy)
             #print ("Document Length: {}; Matches to show: {}".format(len(textXml), len(kwicList)))
         else:
             kwicList = []
@@ -1574,10 +1761,12 @@ def searchText(query,
                                     similarNumFound = similarNumFound
                                     )
         except ValidationError as e:
-            print(e.json())        
+            logging.error(e.json())  
+            #print (e.json())
         else:
             rowCount += 1
             print ("{}:{}".format(rowCount, citeAs))
+            #logging.info("{}:{}".format(rowCount, citeAs.decode("utf8")))
             documentItemList.append(item)
             if rowCount > limit:
                 break
