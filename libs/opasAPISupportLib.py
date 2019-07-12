@@ -36,7 +36,7 @@ from starlette.responses import JSONResponse, Response
 
 import time
 import datetime
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 from enum import Enum
 import pymysql
@@ -54,6 +54,7 @@ else:
 import solr
 import lxml
 import logging
+logger = logging.getLogger(__name__)
 
 from lxml import etree
 from pydantic import BaseModel
@@ -100,7 +101,6 @@ import opasCentralDBLib
 import sourceInfoDB as SourceInfoDB
     
 sourceDB = SourceInfoDB.SourceInfoDB()
-logging.basicConfig(filename='pepsolrtest.log', format="%(asctime)s %(message)s", level=logging.INFO)
 
 #from solrq import Q
 import json
@@ -123,15 +123,16 @@ else:
 #API endpoints
 documentURL = "/v1/Documents/"
 
-def getMaxAge(keepActive=None):
-    if keepActive is not None:    
-        retVal = COOKIE_MAX_KEEP_TIME    
+def getMaxAge(keepActive=False):
+    if keepActive:    
+        retVal = opasConfig.COOKIE_MAX_KEEP_TIME    
     else:
-        retVal = COOKIE_MIN_KEEP_TIME     
-
+        retVal = opasConfig.COOKIE_MIN_KEEP_TIME     
     return retVal  # maxAge
 
-def getSessionInfo(request: Request, resp: Response, sessionID=None, accessToken=None, expiresTime=None, keepActive=None):
+def getSessionInfo(request: Request, resp: Response, 
+                   sessionID=None, accessToken=None, expiresTime=None, 
+                   keepActive=False, forceNewSession=False, user=None):
     """
     Get session info from cookies, or create a new session if one doesn't exist.
     Return a sessionInfo object with all of that info, and a database handle
@@ -139,94 +140,126 @@ def getSessionInfo(request: Request, resp: Response, sessionID=None, accessToken
     """
     sessionID = getSessionID(request)
     print ("Get Session Info, Session ID via GetSessionID: ", sessionID)
-    accessToken = getAccessToken(request)
-    expirationTime = getExpirationTime(request)
     
-    if sessionID is None:  # we need to set it
+    if sessionID is None or sessionID=='' or forceNewSession:  # we need to set it
         # get new sessionID...even if they already had one, this call forces a new one
-        print ("sessionID is none.  We need to start a new session.")
-        ocd = startNewSession(resp, accessToken, keepActive=keepActive)  
-        sessionInfo = models.LoginReturnItem(    session_id = ocd.sessionID, 
-                                                 access_token = ocd.accessToken, 
-                                                 authenticated = ocd.accessToken is not None, 
-                                                 session_expires_time = ocd.expiresTime)
+        print ("sessionID is none (or forcedNewSession).  We need to start a new session.")
+        ocd, sessionInfo = startNewSession(resp, request, accessToken, keepActive=keepActive, user=user)  
+        #sessionInfo = models.SessionInfo(session_id = sessionID, 
+                                         #access_token = ocd.accessToken, 
+                                         #authenticated = ocd.accessToken is not None, 
+                                         #session_expires_time = ocd.tokenExpiresTime)
         
     else: # we already have a sessionID, no need to recreate it.
+        # see if an accessToken is already in cookies
+        accessToken = getAccessToken(request)
+        expirationTime = getExpirationTime(request)
         print ("sessionID is already set.")
         try:
             ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime)
-            sessionInfo = models.LoginReturnItem(    session_id = sessionID, 
-                                                     access_token = accessToken, 
-                                                     authenticated = accessToken is not None, 
-                                                     session_expires_time = expirationTime)
+            sessionInfo = ocd.getSessionFromDB(sessionID)
+            if sessionInfo is None:
+                # this is an error, and means there's no recorded session info.  Should we create a s
+                #  session record, return an error, or ignore? #TODO
+                # try creating a record
+                username="NotLoggedIn"
+                retVal, sessionInfo = ocd.saveSession(sessionID, 
+                                                      userID=0,
+                                                      userIP=request.client.host, 
+                                                      connectedVia=request.headers["user-agent"],
+                                                      username=username)  # returns save status and a session object (matching what was sent to the db)
+
         except ValidationError as e:
-            print(e.json())             
+            print("Validation Error: ", e.json())             
     
     print (sessionInfo)
     return ocd, sessionInfo
     
-def startNewSession(resp: Response, accessToken=None, keepActive=None):
+def extractHTMLFragment(strHTML, xpathToExtract="//div[@id='abs']"):
+    # parse HTML
+    htree = etree.HTML(strHTML)
+    retVal = htree.xpath(xpathToExtract)
+    # make sure it's a string
+    retVal = forceStringReturnFromVariousReturnTypes(retVal)
+    
+    return retVal
+
+def startNewSession(resp: Response, request: Request, sessionID=None, accessToken=None, keepActive=None, user=None):
     """
     Create a new session record and set cookies with the session
-    Returns the database library instance, for convenience of subsequent calls
-      in that endpoint
+
+    Returns database object, and the sessionInfo object
+    
+    If user is supplied, that means they've been authenticated.
+      
+    This should be the only place to generate and start a new session.
     """
     print ("************** Starting a new SESSION!!!! *************")
-    expirationTime = getExpirationCookieStr(keepActive=keepActive)
-    sessionID = secrets.token_urlsafe(16)
-    setCookies(resp, sessionID, accessToken, expiresTime=expirationTime)
-    ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime)
-    session = ocd.startSession(sessionID)
-    return ocd
+    sessionStart=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+    maxAge = getMaxAge(keepActive)
+    tokenExpirationTime=datetime.utcfromtimestamp(time.time() + maxAge).strftime('%Y-%m-%d %H:%M:%S')
+    if sessionID == None:
+        sessionID = secrets.token_urlsafe(16)
+        logger.info("startNewSession assigning New Session ID: {}".format(sessionID))
 
-def setCookies(resp: Response, sessionID, accessToken, expiresTime):
+    setCookies(resp, sessionID, accessToken, tokenExpiresTime=tokenExpirationTime)
+    # get the database Object
+    ocd = opasCentralDBLib.opasCentralDB()
+    # save the session info
+    if user:
+        username=user.username
+        retVal, sessionInfo = ocd.saveSession(sessionID=sessionID, 
+                                              username=user.username,
+                                              userID=user.user_id,
+                                              userIP=request.client.host, 
+                                              connectedVia=request.headers["user-agent"],
+                                              accessToken = accessToken
+                                              )
+    else:
+        username="NotLoggedIn"
+        retVal, sessionInfo = ocd.saveSession(sessionID, 
+                                              userID=0,
+                                              userIP=request.client.host, 
+                                              connectedVia=request.headers["user-agent"],
+                                              username=username)  # returns save status and a session object (matching what was sent to the db)
+
+    # return the object so the caller can get the details of the session
+    return ocd, sessionInfo
+
+def deleteCookies(resp: Response, sessionID=None, accessToken=None, tokenExpiresTime=None):
+    """
+    Delete the session and or accessToken cookies in the response header 
+   
+    """
+
+    print ("Setting specified cookies to empty to delete them")
+    expires = datetime.utcnow() - timedelta(days=365)
+    if sessionID is not None:
+        set_cookie(resp, "opasSessionID", value='', domain=COOKIE_DOMAIN, path="/", expires=expires, max_age=0)
+
+    if accessToken is not None:
+        set_cookie(resp, "opasAccessToken", value='', domain=COOKIE_DOMAIN, path="/", expires=expires, max_age=0)
+        #set_cookie(resp, name, value='', domain=domain, path=path, expires=expires, max_age=0)
+    return resp
+    
+def setCookies(resp: Response, sessionID, accessToken=None, maxAge=None, tokenExpiresTime=None):
+    """
+    Set the session and or accessToken cookies in the response header 
+    
+    if accessToken isn't supplied, it is not set.
+    
+    """
     
     print ("Setting cookies for {}".format(COOKIE_DOMAIN))
     if sessionID is not None:
         print ("Session Cookie being Written from SetCookies")
         set_cookie(resp, "opasSessionID", sessionID, domain=COOKIE_DOMAIN, httponly=False)
-        #resp.raw_headers.append(
-            #("Set-Cookie", "opasSessionID={}; path=/".format(sessionID)))
+
     if accessToken is not None:
-        set_cookie(resp, "opasAccessToken", accessToken, domain=COOKIE_DOMAIN, httponly=False)
-        #resp.raw_headers.append(
-            #("Set-Cookie", "opasAccessToken={}; Max-Age=300; path=/".format(accessToken)))
-    
-    if expiresTime is not None:
-        set_cookie(resp, "expiresTime", expiresTime, domain=COOKIE_DOMAIN, httponly=False)
-        #resp.raw_headers.append(
-            #("Set-Cookie", "opasSessionExpirestime={}; Max-Age=300; path=/".format(expiresTime)))
+        set_cookie(resp, "opasAccessToken", accessToken, domain=COOKIE_DOMAIN, httponly=False, max_age=maxAge) #, expires=tokenExpiresTime)
 
     return resp
     
-def getExpirationCookieStr(keepActive=None):
-    maxAge = getMaxAge(keepActive)
-    retVal = datetime.utcfromtimestamp(time.time() + maxAge).strftime('%Y-%m-%d %H:%M:%S')
-    #retVal = "opasSessionExpirestime={}; Max-Age={}".format(retVal, maxAge)
-    # Return response cookie string for header
-    return retVal #expiration cookie str
-    
-#def getSessionInfoCookieStr(sessionID, keepActive=None):
-    #"""
-    #Create a sessionID and if specified, an accessToken and put cookie 
-      #creation info in response header.
-    #"""
-    #maxAge = getMaxAge(keepActive)
-    #retVal = "opasSessionID={}; Max-Age={}".format(sessionID, maxAge)
-    ## Return response cookie string for header
-    #return retVal
-
-#def getAccessTokenCookieStr(sessionID, keepActive=None):
-    #"""
-    #Create a sessionID and if specified, an accessToken and put cookie 
-      #creation info in response header.
-    #"""
-    #maxAge = getMaxAge(keepActive)
-    #accessToken = opasCentralDBLib.getPasswordHash(sessionID)
-    #retVal = "opasAccessToken={}; Max-Age={}".format(accessToken, maxAge)
-    ## Return response cookie string for header
-    #return retVal
-
 def parseCookiesFromHeader(request):
     retVal = {}
     clientSuppliedCookies = request.headers.get("cookie", None)
@@ -277,7 +310,7 @@ def checkSolrDocsConnection():
         try:
             results = solrDocs.query(q = "art_id:{}".format("APA.009.0331A"),  fields = "art_id, art_vol, art_year")
         except Exception as e:
-            logging.error("Solr Connection Error: {}".format(e))
+            logger.error("Solr Connection Error: {}".format(e))
             return False
         else:
             if len(results.results) == 0:
@@ -307,7 +340,7 @@ def forceStringReturnFromVariousReturnTypes(theText, minLength=5):
             if retVal == [] or retVal == '[]':
                 retVal = None
         else:
-            logging.error("Type mismatch on Solr Data")
+            logger.error("Type mismatch on Solr Data")
             print ("ERROR: %s" % type(retVal))
 
         try:
@@ -315,11 +348,11 @@ def forceStringReturnFromVariousReturnTypes(theText, minLength=5):
                 retVal = etree.tostring(retVal)
             
             if isinstance(retVal, bytes) or isinstance(retVal, bytearray):
-                logging.error("Byte Data")
+                logger.error("Byte Data")
                 retVal = retVal.decode("utf8")
         except Exception as e:
             err = "Error forcing conversion to string: %s / %s" % (type(retVal), e)
-            logging.error(err)
+            logger.error(err)
             print (err)
             
     return retVal        
@@ -340,7 +373,7 @@ def getArticleDataRaw(articleID, fields=None):
         try:
             results = solrDocs.query(q = "art_id:{}".format(articleID),  fields = fields)
         except Exception as e:
-            logging.error("Solr Error: {}".format(e))
+            logger.error("Solr Error: {}".format(e))
             retVal = None
         else:
             if results._numFound == 0:
@@ -366,7 +399,7 @@ def getArticleData(articleID, fields=None):
         try:
             results = solrDocs.query(q = "art_id:{}".format(articleID),  fields = fields)
         except Exception as e:
-            logging.error("Solr Error: {}".format(e))
+            logger.error("Solr Error: {}".format(e))
             retVal = None
         else:
             if results._numFound == 0:
@@ -442,7 +475,7 @@ def getArticleData(articleID, fields=None):
                                     score = result.get("score", None), 
                                     )
         except ValidationError as e:
-            logging.error(e.json())  
+            logger.error(e.json())  
             #print (e.json())
         else:
             rowCount += 1
@@ -1055,7 +1088,7 @@ def getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocume
             # get excerpt from the document
             if xmlDocument is None:
                 # we fail.  Return None
-                logging.warn("No excerpt can be found or generated.")
+                logger.warning("No excerpt can be found or generated.")
             else:
                 # extract the first 10 paras
                 retVal = forceStringReturnFromVariousReturnTypes(xmlDocument)
@@ -1120,19 +1153,19 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_
                 xmlAbstract = result["abstracts_xml"]
             except KeyError as e:
                 xmlAbstract = None
-                logging.info("No abstract for document ID: %s" % documentID)
+                logger.info("No abstract for document ID: %s" % documentID)
         
             try:
                 xmlSummary = result["summaries_xml"]
             except KeyError as e:
                 xmlSummary = None
-                logging.info("No summary for document ID: %s" % documentID)
+                logger.info("No summary for document ID: %s" % documentID)
         
             try:
                 xmlDocument = result["text_xml"]
             except KeyError as e:
                 xmlDocument = None
-                logging.error("No content matched document ID for: %s" % documentID)
+                logger.error("No content matched document ID for: %s" % documentID)
 
             authorIDs = result.get("art_authors", None)
             if authorIDs is None:
@@ -1156,7 +1189,7 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_
                 abstract = None
             elif retFormat == "HTML":
                 abstractHTML = opasxmllib.convertXMLStringToHTML(abstract)
-                abstract = opasxmllib.extractHTMLFragment(abstractHTML, "//div[@id='abs']")
+                abstract = extractHTMLFragment(abstractHTML, "//div[@id='abs']")
                 abstract = opasxmllib.addHeadingsToAbstractHTML(abstract=abstract, 
                                                                     sourceTitle=sourceTitle,
                                                                     pubYear=artYear,
@@ -1243,12 +1276,12 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=
         try:
             retVal = results.results[0]["text_xml"]
         except KeyError as e:
-            logging.warning("No content or abstract found.  Error: %s" % e)
+            logger.warning("No content or abstract found.  Error: %s" % e)
         else:
             try:    
                 retVal = retVal[0]
             except Exception as e:
-                logging.warning("Empty return: %s" % e)
+                logger.warning("Empty return: %s" % e)
         
             try:    
                 if retFormat.lower() == "html":
@@ -1256,7 +1289,7 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=
                     retVal = opasxmllib.convertXMLStringToHTML(retVal)
                     
             except Exception as e:
-                logging.warning("Can't convert data: %s" % e)
+                logger.warning("Can't convert data: %s" % e)
     
             responseInfo = ResponseInfo(
                              count = len(results.results),
@@ -1274,19 +1307,19 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=
                     xmlAbstract = result["abstracts_xml"]
                 except KeyError as e:
                     xmlAbstract = None
-                    logging.info("No abstract for document ID: %s" % documentID)
+                    logger.info("No abstract for document ID: %s" % documentID)
             
                 try:
                     xmlSummary = result["summaries_xml"]
                 except KeyError as e:
                     xmlSummary = None
-                    logging.info("No summary for document ID: %s" % documentID)
+                    logger.info("No summary for document ID: %s" % documentID)
             
                 try:
                     xmlDocument = forceStringReturnFromVariousReturnTypes(result["text_xml"])
                 except KeyError as e:
                     xmlDocument = None
-                    logging.error("No content matched document ID for: %s" % documentID)
+                    logger.error("No content matched document ID for: %s" % documentID)
     
                 authorIDs = result.get("art_author_id", None)
                 if authorIDs is None:
@@ -1378,15 +1411,15 @@ def prepDocumentDownload(documentID, retFormat="HTML", authenticated=True, baseF
         try:
             retVal = results.results[0]["text_xml"]
         except IndexError as e:
-            logging.warning("No matching document for %s.  Error: %s" % (documentID, e))
+            logger.warning("No matching document for %s.  Error: %s" % (documentID, e))
         except KeyError as e:
-            logging.warning("No content or abstract found for %s.  Error: %s" % (documentID, e))
+            logger.warning("No content or abstract found for %s.  Error: %s" % (documentID, e))
         else:
             try:    
                 if isinstance(retVal, list):
                     retVal = retVal[0]
             except Exception as e:
-                logging.warning("Empty return: %s" % e)
+                logger.warning("Empty return: %s" % e)
             else:
                 try:    
                     if retFormat.lower() == "html":
@@ -1401,7 +1434,7 @@ def prepDocumentDownload(documentID, retFormat="HTML", authenticated=True, baseF
                         retVal = filename
                         
                 except Exception as e:
-                    logging.warning("Can't convert data: %s" % e)
+                    logger.warning("Can't convert data: %s" % e)
         
     return retVal
 
@@ -1479,7 +1512,7 @@ def getImageBinary(imageID):
         else:
             retVal = imageBytes
     else:
-        logging.warning("Image File ID %s not found", imageID)
+        logger.warning("Image File ID %s not found", imageID)
   
     return retVal
 
@@ -1492,7 +1525,7 @@ def getKwicList(markedUpText, extraContextLen=opasConfig.DEFAULT_KWIC_CONTENT_LE
     emMarks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extraContextLen, startHitTag, endHitTag, extraContextLen))
     for n in emMarks.finditer(markedUpText):
         retVal.append(n.group(0))
-        #logging.info("Match: '...{}...'".format(n.group(0)))
+        #logger.info("Match: '...{}...'".format(n.group(0)))
         print ("Match: '...{}...'".format(n.group(0)))
     matchCount = len(retVal)
     
@@ -1502,14 +1535,14 @@ def yearArgParser(yearArg):
     retVal = None
     yearQuery = re.match("[ ]*(?P<option>[\>\^\<\=])?[ ]*(?P<start>[12][0-9]{3,3})?[ ]*(?P<separator>([-]|TO))*[ ]*(?P<end>[12][0-9]{3,3})?[ ]*", yearArg, re.IGNORECASE)            
     if yearQuery is None:
-        logging("Search - StartYear bad argument {}".format(yearArg))
+        logger.warning("Search - StartYear bad argument {}".format(yearArg))
     else:
         option = yearQuery.group("option")
         start = yearQuery.group("start")
         end = yearQuery.group("end")
         separator = yearQuery.group("separator")
         if start is None and end is None:
-            logging("Search - StartYear bad argument {}".format(yearArg))
+            logger.warning("Search - StartYear bad argument {}".format(yearArg))
         else:
             if option == "^":
                 # between
@@ -1761,12 +1794,12 @@ def searchText(query,
                                     similarNumFound = similarNumFound
                                     )
         except ValidationError as e:
-            logging.error(e.json())  
+            logger.error(e.json())  
             #print (e.json())
         else:
             rowCount += 1
             print ("{}:{}".format(rowCount, citeAs))
-            #logging.info("{}:{}".format(rowCount, citeAs.decode("utf8")))
+            #logger.info("{}:{}".format(rowCount, citeAs.decode("utf8")))
             documentItemList.append(item)
             if rowCount > limit:
                 break
@@ -1812,7 +1845,7 @@ def set_cookie(response: Response, name: str, value: Union[str, bytes], *, domai
     if expires_days is not None and not expires:
         expires = datetime.utcnow() + timedelta(days=expires_days)
     if expires:
-        morsel['expires'] = format_http_timestamp(expires)
+        morsel['expires'] = opasgenlib.format_http_timestamp(expires)
     if max_age is not None:
         morsel['max-age'] = max_age
     parts = [cookie.output(header='').strip()]
@@ -1824,6 +1857,21 @@ def set_cookie(response: Response, name: str, value: Union[str, bytes], *, domai
         parts.append(f'SameSite={http.cookies._quote(samesite)}')
     cookie_val = '; '.join(parts)
     response.raw_headers.append((b'set-cookie', cookie_val.encode('latin-1')))
+
+def delete_cookie(response: Response, name: str, *, domain: Optional[str] = None, path: str = '/') -> None:
+    """Deletes the cookie with the given name.
+
+    Due to limitations of the cookie protocol, you must pass the same
+    path and domain to clear a cookie as were used when that cookie
+    was set (but there is no way to find out on the server side
+    which values were used for a given cookie).
+
+    Similar to `set_cookie`, the effect of this method will not be
+    seen until the following request.
+    """
+    expires = datetime.utcnow() - timedelta(days=365)
+    set_cookie(response, name, value='', domain=domain, path=path, expires=expires, max_age=0)
+
 
 
 #================================================================================================================================

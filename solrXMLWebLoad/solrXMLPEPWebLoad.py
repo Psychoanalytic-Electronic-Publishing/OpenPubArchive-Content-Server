@@ -116,9 +116,9 @@ class ArticleInfo(object):
             self.artIDFromFile = self.artIDFromFile.upper()
 
             if self.artIDFromFile != self.artID:
-                logger.warn("File name ID tagged and artID disagree.  %s vs %s", self.artID, self.artIDFromFile)
+                logger.warning("File name ID tagged and artID disagree.  %s vs %s", self.artID, self.artIDFromFile)
         except Exception as err:
-            logger.warn("Issue reading file's article id. (%s)", err)
+            logger.warning("Issue reading file's article id. (%s)", err)
 
         # Containing Article data
         #<!-- Common fields -->
@@ -135,7 +135,7 @@ class ArticleInfo(object):
             self.artPepSourceTitleFull = None
             self.artPepSourceType = None
             self.artPepSrcEmbargo = None
-            logger.warn("Error: PEP Source %s not found in source info db.  Use the 'PEPSourceInfo export' after fixing the issn table in MySQL DB", self.artPepSrcCode)
+            logger.warning("Error: PEP Source %s not found in source info db.  Use the 'PEPSourceInfo export' after fixing the issn table in MySQL DB", self.artPepSrcCode)
 
         except Exception as err:
             logger.error("Error: Problem with this files source info. File skipped. (%s)", err)

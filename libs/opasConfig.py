@@ -1,10 +1,19 @@
 import sys
+import logging
+import datetime
 
 sys.path.append('../config')
 from localsecrets import CONFIG
 
 BASEURL = "127.0.0.1:8000"
+CONSOLE_DEBUG_MESSAGES_ON = True
+CONSOLE_DB_DEBUG_MESSAGES_ON = True
 
+BASELOGFILENAME = "opasAPI"
+LOGLEVEL = "DEBUG"
+logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
+logging.basicConfig(filename=logFilename, level=LOGLEVEL)
+#logger = logging.getLogger(programNameShort)
 
 IMAGES = "images"
 HITMARKERSTART = "{{"  # using non xml type so we can remove all tags but leave these!
@@ -44,3 +53,4 @@ DESCRIPTION_SOURCETYPE = "The class of source type for the metadata.  One of: 'J
 DESCRIPTION_MOST_CITED_PERIOD = "Look for citations during this Period (5, 10, 20, or all)"
 DESCRIPTION_PAGEREQUEST = "The page or page range (from the document's numbering) to return (e.g., 215, or 215-217)"
 DESCRIPTION_PAGEOFFSET = "The relative page number (1 is the first) to return"
+

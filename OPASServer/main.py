@@ -64,11 +64,12 @@ import json
 
 from enum import Enum
 import uvicorn
-from fastapi import FastAPI, Query, Path, Cookie, Header, Depends
+from fastapi import FastAPI, Query, Path, Cookie, Header, Depends, HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
 
 from pydantic import BaseModel
 from pydantic.types import EmailStr
@@ -77,6 +78,7 @@ from pydantic import ValidationError
 import pysolr
 import json
 import logging
+logger = logging.getLogger(__name__)
 
 import opasConfig
 
@@ -84,6 +86,7 @@ import opasAPISupportLib
 import opasBasicLoginLib
 from opasBasicLoginLib import get_current_user
 
+from errorMessages import *
 import models
 import modelsOpasCentralPydantic
 import opasCentralDBLib
@@ -135,6 +138,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
+
+def getExpirationCookieStr(keepActive=False):
+    maxAge = opasAPISupportLib.getMaxAge(keepActive)
+    retVal = datetime.utcfromtimestamp(time.time() + maxAge).strftime('%Y-%m-%d %H:%M:%S')
+    return retVal #expiration cookie str
+
 def checkIfUserLoggedIn():
     """
     
@@ -184,15 +195,24 @@ def temp_call_for_debugging_to_check_session_information(request: Request=Query(
 
 
 #@app.get("/v1/Session/") # at least start a session (getting a sessionID)
-@app.get("/v1/Token/", tags=["Session"])  # used by PEP-Easy for login, for some reason.
-def get_token(request: Request,
-              resp: Response, 
-              ka=None):
+@app.get("/v1/Token/", tags=["Session"], description="Used by PEP-Easy to login; will be deprecated in V2")  
+def get_token(resp: Response, 
+              request: Request,
+              grant_type=None, 
+              username=None, 
+              password=None, 
+              ka=False):
     """
     Get the current sessionID, or generate one.  User by PEP-Easy from v1
     """
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
-    return sessionInfo
+    if grant_type=="password" and username is not None and password is not None:
+        loginReturnItem = login_user(resp, request, grant_type, username, password, ka)
+        return loginReturnItem
+    else:
+        errCode = resp.status_code = HTTP_400_BAD_REQUEST
+        errReturn = models.ErrorReturn(error = ERR_CREDENTIALS, error_message = ERR_MSG_INSUFFICIENT_INFO)
+        return errReturn
 
 @app.get("/v1/License/Status/Login/", tags=["Session"])
 def get_license_status(resp: Response, 
@@ -211,18 +231,31 @@ def get_license_status(resp: Response,
         }
     }
     """
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     # get session info database record if there is one
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    sessionID = sessionInfo.session_id
     # is the user authenticated? if so, loggedIn is true
+    loggedIn = sessionInfo.authenticated
+    userID = sessionInfo.user_id
+    username = None
+    user = None
+    if userID == 0:
+        user = ocd.getUser(userID=userID)
+        username = "NotLoggedIn"
+        loggedIn = False
+    elif userID is not None:
+        user = ocd.getUser(userID=userID)
+        username = user.username
     
-    responseInfo = models.ResponseInfoLoginStatus(
-    
-    )
-    
-    responseInfo.loggedIn = False
+    responseInfo = models.ResponseInfoLoginStatus(loggedIn = loggedIn,
+                                                  userName = username,
+                                                  request = request.url._url,
+                                                  user=user,
+                                                  timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
+                                                  )
     
     licenseInfoStruct = models.LicenseInfoStruct( responseInfo = responseInfo, 
-                                                  responseSet = []
+                                                  responseSet = None
                                                   )
     
     licenseInfo = models.LicenseStatusInfo(licenseInfo = licenseInfoStruct)
@@ -234,7 +267,7 @@ def login_user(resp: Response,
                grant_type=None, 
                username=None, 
                password=None, 
-               ka=None, 
+               ka=False, 
                #user: bool = Depends(get_current_user)
                ):
     """
@@ -256,52 +289,72 @@ def login_user(resp: Response,
     
     print ("Login via: /v1/(Users)?/Login/", username, password)
     
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
-    sessionID = sessionInfo.session_id
-    accessToken = sessionInfo.access_token
-    expirationTime = sessionInfo.session_expires_time
+    sessionID = opasAPISupportLib.getSessionID(request)
+    accessToken = opasAPISupportLib.getAccessToken(request)
+    expirationTime = datetime.utcfromtimestamp(time.time() + opasAPISupportLib.getMaxAge(keepActive=ka))
 
-    if accessToken is None:
-        # not logged in, try to login
-        # if username and password are not supplied, uses browser basic auth via the Depends(get_current_user)
-        # get new sessionID, we're logging in
-        #sessionID = secrets.token_urlsafe(16)
-        #expirationTime = opasAPISupportLib.getExpirationCookieStr(keepActive=ka)
-        #ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime)    
-        #if user:
-            #accessToken = opasCentralDBLib.getPasswordHash(sessionID)
+    #ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    #sessionID = sessionInfo.session_id
+    #expirationTime = sessionInfo.session_expires_time
 
-        user = None
-        if username is not None and password is not None:
-            user = ocd.authenticateUser(username, password)
-            if user:
-                accessToken = opasCentralDBLib.getPasswordHash(sessionID)
-            else:
-                accessToken = None # rejected
-          
-        # We DONT WANT ALL COOKIES RESET HERE!        
-        #opasAPISupportLib.setCookies(resp, sessionID, accessToken, expiresTime=expirationTime)
-        #ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime, user=user)
- 
-    else: # already logged in with accessToken
-        pass
+    # if username and password are not supplied, uses browser basic auth via the Depends(get_current_user)
+    if username is not None and password is not None:
+        ocd = opasCentralDBLib.opasCentralDB()    
+        # now try to login (authenticate)
+        status, user = ocd.authenticateUser(username, password)
+        if user:
+            # user is authenticated
+            # we need to close any open sessions.
+            if sessionID is not None and accessToken is not None:
+                # do a logout
+                sessionEndTime = datetime.utcfromtimestamp(time.time())
+                success = ocd.updateSession(sessionID=sessionID, 
+                                            sessionEnd=sessionEndTime
+                                            )    
+                #opasAPISupportLib.deleteCookies(resp, sessionID="", accessToken="")
+
+            # NOW lets give them a new session
+            # new session and then token
+            sessionID = secrets.token_urlsafe(16)
+            maxAge = opasAPISupportLib.getMaxAge(ka)
+            accessToken = opasCentralDBLib.getPasswordHash(sessionID + user.username)
+            # start a new session, with this user (could even still be the old user
+            ocd, sessionInfo = opasAPISupportLib.startNewSession(resp, request, sessionID=sessionID, accessToken=accessToken, user=user)
+            # set accessTokenCookie!
+            opasAPISupportLib.setCookies(resp, sessionID, accessToken=accessToken, maxAge=maxAge) #tokenExpiresTime=expirationTime)
+            errCode = None
+        else:
+            accessToken = None # user rejected
+            errCode = resp.status_code = HTTP_400_BAD_REQUEST
+            errReturn = models.ErrorReturn(error = ERR_CREDENTIALS, error_message = ERR_MSG_LOGIN_CREDENTIALS)
+     
+    else: # Can't log in!
+        errCode = resp.status_code = HTTP_400_BAD_REQUEST
+        errReturn = models.ErrorReturn(error = ERR_CREDENTIALS, error_message = ERR_MSG_INSUFFICIENT_INFO)
     
-    try:
-        loginReturnItem = models.LoginReturnItem(token_type = "bearer", 
-                                                 session_id = sessionID,
-                                                 access_token = accessToken,
-                                                 authenticated = accessToken is not None,
-                                                 session_expires_time = expirationTime,
-                                                 scope = None
-                                          )
-    except ValidationError as e:
-        print(e.json())             
+    # this simple return without responseInfo matches the GVPi server return.
+    if errCode != None:
+        return errReturn
+    else:
+        try:
+            loginReturnItem = models.LoginReturnItem(token_type = "bearer", 
+                                                     session_id = sessionID,
+                                                     access_token = accessToken,
+                                                     authenticated = accessToken is not None,
+                                                     session_expires_time = expirationTime,
+                                                     keep_active = ka,
+                                                     error_message = None,
+                                                     scope = None
+                                              )
+        except ValidationError as e:
+            print(e.json())             
 
-    return loginReturnItem
+        return loginReturnItem
 
 #@app.get("/v1/Users/Logout/") # I like it under Users so I did them both.
 @app.get("/v1/Logout/", tags=["Session"])  # The original GVPi URL
-def logout_user(request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST)):
+def logout_user(resp: Response, 
+                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST)):
     """
     Close the user's session, and log them out.
     
@@ -312,20 +365,37 @@ def logout_user(request: Request=Query(None, title="HTTP Request", description=o
     
 
     """
-    #if gOCDatabase.sessionID == None:
-        #logging.warn("Session logout, but no session open.")
-    #else:
-        #gOCDatabase.endSession(sessionToken=gOCDatabase.sessionToken)
-    
-    responseInfo = models.ResponseInfoLoginStatus()
-    responseInfo.loggedIn = False
-    
-    licenseInfoStruct = models.LicenseInfoStruct( responseInfo = responseInfo, 
-                                                  responseSet = []
-                                                  )
-    
-    licenseInfo = models.LicenseStatusInfo(licenseInfo = licenseInfoStruct)
-    return licenseInfo
+
+    sessionID = opasAPISupportLib.getSessionID(request)
+    ocd = opasCentralDBLib.opasCentralDB()
+    errCode = None
+    if sessionID is not None:
+        sessionInfo = ocd.getSessionFromDB(sessionID)
+        sessionEndTime = datetime.utcfromtimestamp(time.time())
+        success = ocd.updateSession(sessionID=sessionID, 
+                                    sessionEnd=sessionEndTime
+                                    )    
+        if not success:
+            #responseInfo = models.ResponseInfoLoginStatus(session_id = sessionID)
+            errReturn = models.ErrorReturn(error = ERR_CONDITIONS, error_message = ERR_MSG_RECOVERABLE_CONDITION + " (SSave)")
+            responseInfo = models.ResponseInfoLoginStatus(session_id = sessionID, errors = errReturn)
+        else:    # all is well.
+            responseInfo = models.ResponseInfoLoginStatus(session_id = sessionID)
+            responseInfo.loggedIn = False
+            opasAPISupportLib.deleteCookies(resp, sessionID="", accessToken="")
+    else:
+        responseInfo = models.ResponseInfoLoginStatus(session_id = sessionID)
+        errCode = resp.status_code = HTTP_400_BAD_REQUEST
+        errReturn = models.ErrorReturn(error = ERR_CONDITIONS, error_message = ERR_MSG_LOGOUT_UNSUPPORTED)
+
+    if errCode != None:
+        return errReturn
+    else:
+        licenseInfoStruct = models.LicenseInfoStruct( responseInfo = responseInfo, 
+                                                      responseSet = []
+                                                      )
+        licenseInfo = models.LicenseStatusInfo(licenseInfo = licenseInfoStruct)
+        return licenseInfo
 
 @app.get("/v1/Database/MoreLikeThese/", response_model=models.DocumentList, tags=["Database"])
 @app.get("/v1/Database/SearchAnalysis/", response_model=models.DocumentList, tags=["Database"])
@@ -469,13 +539,13 @@ def search_the_document_database(resp: Response,
             filterQ += parsedYearSearch
             searchAnalysisTermList.append(parsedYearSearch)  
         else:
-            logging("Search - StartYear bad argument {}".format(startyear))
+            logger.info("Search - StartYear bad argument {}".format(startyear))
         
     if startyear is not None and endyear is not None:
         # put this in the filter query
         # should check to see if they are each dates
         if re.match("[12][0-9]{3,3}", startyear) is None or re.match("[12][0-9]{3,3}", endyear) is None:
-            logging("Search - StartYear {} /Endyear {} bad arguments".format(startyear, endyear))
+            logger.info("Search - StartYear {} /Endyear {} bad arguments".format(startyear, endyear))
         else:
             analyzeThis = "&& art_year_int:[{} TO {}] ".format(startyear, endyear)
             filterQ += analyzeThis
@@ -483,7 +553,7 @@ def search_the_document_database(resp: Response,
 
     if startyear is None and endyear is not None:
         if re.match("[12][0-9]{3,3}", endyear) is None:
-            logging("Search - Endyear {} bad argument".format(endyear))
+            logger.info("Search - Endyear {} bad argument".format(endyear))
         else:
             analyzeThis = "&& art_year_int:[{} TO {}] ".format("*", endyear)
             filterQ += analyzeThis
@@ -981,7 +1051,7 @@ def view_an_abstract(resp: Response,
         retVal = documents = opasAPISupportLib.documentsGetAbstracts(documentID, retFormat=retFormat, limit=limit, offset=offset)
     except Exception as e:
         statusMessage = "Error: {}".format(e)
-        logging.error(statusMessage)
+        logger.error(statusMessage)
         print ("View an Abstract: " + statusMessage)
         statusCode = 400
         retVal = None

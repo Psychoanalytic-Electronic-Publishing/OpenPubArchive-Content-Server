@@ -8,11 +8,18 @@ OPAS - General Support Function Library
 2019.0614.1 - Python 3.7 compatible
     
 """
+from typing import Union, Optional, Tuple
 import sys
 import string
 import logging
+logger = logging.getLogger(__name__)
+
 from lxml import etree
 import opasXMLHelper as opasxmllib
+import time
+from datetime import datetime, timedelta
+import calendar
+import email.utils
 
 pyVer = 2
 if (sys.version_info > (3, 0)):
@@ -80,6 +87,23 @@ def pgRgSplitter(pgRg):
     retVal = (pgStart, pgEnd)    
     return retVal
     
+def format_http_timestamp(ts: Union[int, float, tuple, time.struct_time, datetime]) -> str:
+    """Formats a timestamp in the format used by HTTP.
+    The argument may be a numeric timestamp as returned by `time.time`,
+    a time tuple as returned by `time.gmtime`, or a `datetime.datetime`
+    object.
+    >>> format_http_timestamp(1359312200)
+    'Sun, 27 Jan 2013 18:43:20 GMT'
+    """
+    if isinstance(ts, (int, float)):
+        time_num = ts
+    elif isinstance(ts, (tuple, time.struct_time)):
+        time_num = calendar.timegm(ts)
+    elif isinstance(ts, datetime):
+        time_num = calendar.timegm(ts.utctimetuple())
+    else:
+        raise TypeError(f'unknown timestamp type: {repr(ts)}')
+    return email.utils.formatdate(time_num, usegmt=True)
 
 def deriveAuthorMast(authorIDList):
     """

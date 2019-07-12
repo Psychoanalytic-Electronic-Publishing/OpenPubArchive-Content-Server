@@ -17,6 +17,7 @@ import re
 import os
 import stdMessageLib
 import logging
+logger = logging.getLogger(__name__)
 
 import lxml
 from lxml import etree
@@ -30,7 +31,6 @@ if (sys.version_info > (3, 0)):
 else:
     # Python 2 code in this block
     import StringIO
-import opasAPISupportLib
 
 # -------------------------------------------------------------------------------------------------------
 
@@ -66,7 +66,7 @@ def authorDeriveMastFromXMLStr(authorXMLStr, listed=True):
     elif listed == "All":
         authorXMLList = pepxml.xpath(rootFlag + 'aut')
     else:
-        logging.error("authorDeriveMast: Bad value supplied for listed: %s" % listed)
+        logger.error("authorDeriveMast: Bad value supplied for listed: %s" % listed)
 
     authorCount = len(authorXMLList)
     authorsMast = ""
@@ -139,7 +139,7 @@ def authorsInCitationFormatFromXMLStr(authorXMLStr, listed=True):
         elif listed == "All":
             authorXMLList = pepxml.xpath(rootFlag + 'aut')
         else:
-            logging.error("authorDeriveMast: Bad value supplied for listed: %s" % listed)
+            logger.error("authorDeriveMast: Bad value supplied for listed: %s" % listed)
 
 
         authorCount = len(authorXMLList)
@@ -495,15 +495,6 @@ def xmlXPathReturnXMLStringList(elementNode, xPathDef, defaultReturn=list()):
         
     return retVal   
 
-def extractHTMLFragment(strHTML, xpathToExtract="//div[@id='abs']"):
-    # parse HTML
-    htree = etree.HTML(strHTML)
-    retVal = htree.xpath(xpathToExtract)
-    # make sure it's a string
-    retVal = opasAPISupportLib.forceStringReturnFromVariousReturnTypes(retVal)
-    
-    return retVal
-
 def addHeadingsToAbstractHTML(abstract, sourceTitle=None, pubYear=None, vol=None, issue=None, pgRg=None, title=None, authorMast=None, citeas=None):
     """
     Format the top portion of the Abstracts presented by the client per the original GVPi model
@@ -584,7 +575,7 @@ def convertHTMLToEPUB(htmlString, outputFilenameBase, artID, lang="en", htmlTitl
         styleFile.close()
         
     except OSError as e:
-        logging.warning("Cannot open stylesheet %s" % e)
+        logger.warning("Cannot open stylesheet %s" % e)
     
     
     nav_css = epub.EpubItem(uid="style_nav",

@@ -32,6 +32,10 @@ from opasCentralDBLib import opasCentralDB
 #-------------------------------------------------------
 OpasDB = TypeVar('OpasDB')
    
+class ErrorReturn(BaseModel):
+    error: str = Schema(None, title="Error class or title")
+    error_message: str = Schema(None, title="Error description")
+    
 class ListTypeEnum(Enum):
     volumelist = "volumelist"
     documentList = "documentlist"
@@ -57,13 +61,15 @@ class ResponseInfo(BaseModel):
     scopeQuery: str = Schema(None, title="")
     request: str = Schema(None, title="The URL request (endpoint) that resulted in this response.")
     solrParams: dict = Schema(None, title="A dictionary based set of the parameters passed to the Solr search engine for this request.")
+    errors: ErrorReturn = Schema(None, title="Any Error information")
     timeStamp: str = Schema(None, title="Server timestamp of return data.")   
 
 class ResponseInfoLoginStatus(BaseModel):
-    loggedIn: bool = Schema(False, title="")
-    userName: str = Schema(None, title="")
-    request: str = Schema(None, title="")
-    user: User = Schema(None, title="")
+    loggedIn: bool = Schema(False, title="Whether the user is logged in or not")
+    userName: str = Schema(None, title="The logged in user's name")
+    request: str = Schema(None, title="The URL of the request")
+    user: User = Schema(None, title="A user object for the user")
+    error_message: str = Schema(None, title="If an error occurred, description")
     timeStamp: str = Schema(None, title="Server timestamp of return data.")   
 
 class AlertListItem(BaseModel):
@@ -130,18 +136,28 @@ class LoginReturnItem(BaseModel):
     session_id: str = Schema(None, title="")
     token_type: str = Schema(None, title="")
     access_token: str = Schema(None, title="")
-    session_expires_time: str = Schema(None, title="")
+    session_expires_time: datetime = Schema(None, title="")
     authenticated: bool = Schema(False, title="")
+    keep_active: bool = Schema(False, title="Extend the token retention time")
+    error_message: str = Schema(None, title="Error description if login failed")
     scope: str = Schema(None, title="")
 
 class SessionInfo(BaseModel):    
-    ocd: Optional[OpasDB]
+    #ocd: Optional[OpasDB]
     session_id: str = Schema(None, title="A generated session Identifier number the client passes in the header to identify the session")
-    token_type: str = Schema(None, title="")
+    user_id: int = Schema(None, title="User ID (numeric)")
+    username: str = Schema(None, title="Registered user name, for convenience here")
+    user_ip: str = None
+    connected_via: str = None
+    session_start: datetime = None
+    session_end: datetime = None
+    session_expires_time: datetime = Schema(None, title="The limit on the user's session information without renewing")
     access_token: str = Schema(None, title="A generated session token identifying the client's access privileges")
-    session_expires_time: str = Schema(None, title="The limit on the user's session information without renewing")
+    token_type: str = Schema(None, title="")
     authenticated: bool = Schema(False, title="")
+    keep_active: bool = False
     scope: str = Schema(None, title="")
+    api_client_id: int = None            
     
 class ServerStatusItem(BaseModel):
     text_server_ok: bool = Schema(None, title="")

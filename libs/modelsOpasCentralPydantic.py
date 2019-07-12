@@ -54,16 +54,19 @@ class UserSubscriptions(UserInDB):
     content_end_date: datetime = None
     perpetual: bool = None
 
-class Session(BaseModel):
-    api_session_id: str = None
+class Session(BaseModel):  # subset of sessionInfo
+    session_id: str = None
     user_id: int = None
     user_ip: str = None
     connected_via: str = None
+    referrer: str = None
     session_start: datetime = None
     session_end: datetime = None
     session_expires_time: datetime = None
     access_token: str = None
+    token_type: str = None
     authenticated: bool = False
+    keep_active: bool = False
     api_client_id: int = None            
     
 class Subscriptions(BaseModel):
