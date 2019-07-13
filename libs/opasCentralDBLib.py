@@ -47,7 +47,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # All opasCentral Database Models here
 import modelsOpasCentralPydantic
 from modelsOpasCentralPydantic import User, UserInDB
-import models
+#from models import SessionInfo
 
 DEFAULTSESSIONLENGTH = 1800 # seconds (timeout)
 
@@ -243,6 +243,7 @@ class opasCentralDB(object):
         
         Tested in main instance docstring
         """
+        from models import SessionInfo
         self.openConnection(callerName="getSession") # make sure connection is open
         retVal = None
         if self.db != None:
@@ -253,7 +254,7 @@ class opasCentralDB(object):
             if res == 1:
                 session = curs.fetchone()
                 # sessionRecord
-                retVal = models.SessionInfo(**session)
+                retVal = SessionInfo(**session)
                 if retVal.access_token == "None":
                     retVal.access_token = None
                 
@@ -501,6 +502,41 @@ class opasCentralDB(object):
             self.closeConnection(callerName="recordSessionEndpoint") # make sure connection is closed
 
         return retVal
+
+    def getSources(self, source=None, sourceType=None):
+        """
+        >>> ocd = opasCentralDB()
+        >>> sources = ocd.getSources()
+
+        """
+        self.openConnection(callerName="getSources") # make sure connection is open
+        retVal = None
+        if self.db != None:
+            try:
+                curs = self.db.cursor(pymysql.cursors.DictCursor)
+                if source is not None:
+                    sql = "SELECT * FROM vw_opas_sources WHERE src_code = %s"
+                    res = curs.execute(sql, source)
+                elif sourceType is not None:
+                    sql = "SELECT * FROM vw_opas_sources WHERE src_type = %s"
+                    res = curs.execute(sql, sourceType)
+                else:  # bring them all back
+                    sql = "SELECT * FROM vw_opas_sources"
+                    res = curs.execute(sql)
+            except Exception as e:
+                msg = "getSources Error querying vw_opas_sources: {}".format(e)
+                logger.error(msg)
+                print (msg)
+            else:
+                if res:
+                    retVal = curs.fetchall()
+                else:
+                    retVal = None
+            
+        self.closeConnection(callerName="getSources") # make sure connection is closed
+
+        # return session model object
+        return retVal # None or Session Object
 
     def updateDocumentViewCount(self, articleID, account="NotLoggedIn", title=None, viewType="Online"):
         """

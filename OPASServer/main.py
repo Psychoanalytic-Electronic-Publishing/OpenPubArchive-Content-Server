@@ -183,11 +183,15 @@ def get_the_server_status(resp: Response,
 
 from http import cookies
 
-@app.get("/WhoAmI", tags=["Session"])
-def temp_call_for_debugging_to_check_session_information(request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) ):
-    
+
+@app.get("/v1/WhoAmI/", tags=["Session"])
+def who_am_i(resp: Response,
+             request: Request):
+    """
+    Temporary endpoint for debugging purposes
+    """
     return {"client_host": request.client.host, 
-            "referrer": request.headers['referer'], 
+            "referrer": request.headers.get('referrer', None), 
             "opasSessionID": request.cookies.get("opasSessionID", None), 
             "opasAccessToken": request.cookies.get("opasAccessToken", None),
             "opasSessionExpire": request.cookies.get("opasSessionExpire", None), 
@@ -766,6 +770,45 @@ def get_the_newest_documents(resp: Response,
     print ("Out whatsNew")
     return retVal
 
+#-----------------------------------------------------------------------------
+@app.get("/v1/Metadata/Banners/", tags=["Metadata"])
+def get_banners(resp: Response, 
+               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
+               ):
+    """
+    Return information on the location of a source's banner.
+    This v1 endpoint has not yet been used by a client.  
+    DEPRECATED.
+    Use /v1/Metadata/{SourceType}/ instead
+          
+    """
+    errCode = resp.status_code = HTTP_400_BAD_REQUEST
+    errorMessage = "Error: {}".format("This endpoint is was unused and is now deprecated. Use /v1/Metadata/{SourceType}/ instead")
+    errReturn = models.ErrorReturn(error = ERR_MSG_DEPRECATED, error_message = errorMessage)
+
+    return errReturn
+
+#-----------------------------------------------------------------------------
+@app.get("/v1/Metadata/Banners/{PEPCode}", tags=["Metadata"])
+def get_banners(resp: Response, 
+               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
+               PEPCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_PEPCODE), 
+               ):
+    """
+    Return information on the location of a source's banner.
+    This v1 endpoint has not yet been used by a client.  
+    DEPRECATED.
+    Use /v1/Metadata/{SourceType}/ instead
+          
+    """
+    errCode = resp.status_code = HTTP_400_BAD_REQUEST
+    errorMessage = "Error: {}".format("This endpoint is was unused and is now deprecated. Use /v1/Metadata/{SourceType}/ instead")
+    errReturn = models.ErrorReturn(error = ERR_MSG_DEPRECATED, error_message = errorMessage)
+
+    return errReturn
+
+    
+#-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Contents/{PEPCode}/", response_model=models.DocumentList, tags=["Metadata"])
 def get_journal_content_lists(resp: Response,
                               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
@@ -806,6 +849,7 @@ def get_journal_content_lists(resp: Response,
 
     return retVal
 
+#-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Contents/{PEPCode}/{srcVol}/", response_model=models.DocumentList, tags=["Metadata"])
 def get_journal_content_lists_for_volume(PEPCode: str, 
                                          srcVol: str, 
@@ -816,9 +860,9 @@ def get_journal_content_lists_for_volume(PEPCode: str,
                                          offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                                          ):
     """
-    Return a list of documents for a PEPCode source (and optional year specified in query params).  
+    Return a list of documents for a PEPCode and Source Volume (required).  
     
-    Note: The GVPi implementation does not appear to support the limit and offset parameter
+    Year can also be optionally specified in query params.  
     
     Status: this endpoint is working.     
     
@@ -847,10 +891,82 @@ def get_journal_content_lists_for_volume(PEPCode: str,
                                       )
     return retVal
 
-@app.get("/v1/Metadata/{SourceType}/", response_model=models.SourceInfoList, tags=["Metadata"])
+##-----------------------------------------------------------------------------
+#@app.get("/v1/Metadata/{PEPCode}/", response_model=models.SourceInfoList, tags=["Metadata"])
+#def get_a_list_of_source_names_by_code(resp: Response,
+                               #request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                               #PEPCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_PEPCODE), 
+                               #limit: int=Query(105, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                               #offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
+                               #):
+    #"""
+    #Return a list of information about a source type, e.g., journal names 
+    
+    #"""
+               
+    #ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    #try:    
+        #retVal = sourceInfoList = opasAPISupportLib.metadataGetSourceByCode(pepCode=PEPCode, limit=limit, offset=offset)
+    #except Exception as e:
+        #statusMessage = "Error: {}".format(e)
+        #statusCode = 400
+        #retVal = None
+    #else:
+        #statusMessage = "Success"
+        #statusCode = 200
+        ## fill in additional return structure status info
+        #client_host = request.client.host
+        #retVal.sourceInfo.responseInfo.request = request.url._url
+
+
+    #ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_METADATA_SOURCEINFO,
+                                      #params=request.url._url,
+                                      #documentID="{}".format(PEPCode), 
+                                      #returnStatusCode = statusCode,
+                                      #statusMessage=statusMessage
+                                      #)
+
+    #return retVal
+
+#-----------------------------------------------------------------------------
+@app.get("/v1/Metadata/Journals/", response_model=models.SourceInfoList, tags=["Metadata"])
+def get_a_list_of_journal_names(resp: Response,
+                               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                               PEPCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_PEPCODE), 
+                               limit: int=Query(105, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                               offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
+                               ):
+    """
+    Get a complete list of journal names
+    
+    Status: this endpoint is working.     
+    """
+    retVal = get_a_list_of_source_names(resp, request, SourceType="Journal", PEPCode=PEPCode, limit=limit, offset=offset)
+    return retVal
+
+#-----------------------------------------------------------------------------
+@app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, tags=["Metadata"])
+def get_a_list_of_book_names(resp: Response,
+                               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                               PEPCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_PEPCODE), 
+                               limit: int=Query(105, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                               offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
+                               ):
+    """
+    Get a complete list of Book names
+    
+    Status: this endpoint is working.     
+    """
+
+    retVal = get_a_list_of_source_names(resp, request, SourceType="Book", PEPCode=PEPCode, limit=limit, offset=offset)
+    return retVal
+
+#-----------------------------------------------------------------------------
+@app.get("/v1/Metadata/{SourceType}/{PEPCode}/", response_model=models.SourceInfoList, tags=["Metadata"])
 def get_a_list_of_source_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                SourceType: str=Path(..., title="Source Type", description=opasConfig.DESCRIPTION_SOURCETYPE), 
+                               PEPCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_PEPCODE), 
                                limit: int=Query(105, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                                offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                                ):
@@ -861,7 +977,11 @@ def get_a_list_of_source_names(resp: Response,
                
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:    
-        retVal = sourceInfoList = opasAPISupportLib.metadataGetSourceByType(SourceType, limit=limit, offset=offset)
+        if PEPCode == "*":
+            retVal = sourceInfoList = opasAPISupportLib.metadataGetSourceByType(SourceType, limit=limit, offset=offset)
+        else:
+            retVal = sourceInfoList = opasAPISupportLib.metadataGetSourceByCode(PEPCode, limit=limit, offset=offset)            
+
     except Exception as e:
         statusMessage = "Error: {}".format(e)
         statusCode = 400
@@ -883,6 +1003,7 @@ def get_a_list_of_source_names(resp: Response,
 
     return retVal
 
+#-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Volumes/{PEPCode}/", response_model=models.VolumeList, tags=["Metadata"])
 def get_a_list_of_volumes_for_a_journal(resp: Response,
                                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
@@ -923,6 +1044,8 @@ def get_a_list_of_volumes_for_a_journal(resp: Response,
                                       )
 
     return retVal
+
+
 #-----------------------------------------------------------------------------
 @app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, tags=["Authors"])
 def get_the_author_index_entries_for_matching_author_names(resp: Response,
@@ -1124,6 +1247,7 @@ def download_a_document(resp: Response,
 
     return True
 
+    
     
 if __name__ == "__main__":
     print("Server Running")

@@ -67,7 +67,7 @@ from ebooklib import epub
 from stdMessageLib import copyrightPageHTML  # copyright page text to be inserted in ePubs and PDFs
 
 # note: documents and documentList share the same internals, except the first level json label (documents vs documentlist)
-import models
+#import models
 from models import ListTypeEnum, \
                    ResponseInfo, \
                    DocumentList, \
@@ -123,6 +123,7 @@ else:
 #API endpoints
 documentURL = "/v1/Documents/"
 
+#-----------------------------------------------------------------------------
 def getMaxAge(keepActive=False):
     if keepActive:    
         retVal = opasConfig.COOKIE_MAX_KEEP_TIME    
@@ -130,6 +131,7 @@ def getMaxAge(keepActive=False):
         retVal = opasConfig.COOKIE_MIN_KEEP_TIME     
     return retVal  # maxAge
 
+#-----------------------------------------------------------------------------
 def getSessionInfo(request: Request, resp: Response, 
                    sessionID=None, accessToken=None, expiresTime=None, 
                    keepActive=False, forceNewSession=False, user=None):
@@ -145,7 +147,7 @@ def getSessionInfo(request: Request, resp: Response,
         # get new sessionID...even if they already had one, this call forces a new one
         print ("sessionID is none (or forcedNewSession).  We need to start a new session.")
         ocd, sessionInfo = startNewSession(resp, request, accessToken, keepActive=keepActive, user=user)  
-        #sessionInfo = models.SessionInfo(session_id = sessionID, 
+        #sessionInfo = SessionInfo(session_id = sessionID, 
                                          #access_token = ocd.accessToken, 
                                          #authenticated = ocd.accessToken is not None, 
                                          #session_expires_time = ocd.tokenExpiresTime)
@@ -184,6 +186,7 @@ def extractHTMLFragment(strHTML, xpathToExtract="//div[@id='abs']"):
     
     return retVal
 
+#-----------------------------------------------------------------------------
 def startNewSession(resp: Response, request: Request, sessionID=None, accessToken=None, keepActive=None, user=None):
     """
     Create a new session record and set cookies with the session
@@ -226,6 +229,7 @@ def startNewSession(resp: Response, request: Request, sessionID=None, accessToke
     # return the object so the caller can get the details of the session
     return ocd, sessionInfo
 
+#-----------------------------------------------------------------------------
 def deleteCookies(resp: Response, sessionID=None, accessToken=None, tokenExpiresTime=None):
     """
     Delete the session and or accessToken cookies in the response header 
@@ -242,6 +246,7 @@ def deleteCookies(resp: Response, sessionID=None, accessToken=None, tokenExpires
         #set_cookie(resp, name, value='', domain=domain, path=path, expires=expires, max_age=0)
     return resp
     
+#-----------------------------------------------------------------------------
 def setCookies(resp: Response, sessionID, accessToken=None, maxAge=None, tokenExpiresTime=None):
     """
     Set the session and or accessToken cookies in the response header 
@@ -260,6 +265,7 @@ def setCookies(resp: Response, sessionID, accessToken=None, maxAge=None, tokenEx
 
     return resp
     
+#-----------------------------------------------------------------------------
 def parseCookiesFromHeader(request):
     retVal = {}
     clientSuppliedCookies = request.headers.get("cookie", None)
@@ -271,6 +277,7 @@ def parseCookiesFromHeader(request):
 
     return retVal
 
+#-----------------------------------------------------------------------------
 def getSessionID(request):
     sessionCookieName = "opasSessionID"
     retVal = request.cookies.get(sessionCookieName, None)
@@ -284,14 +291,17 @@ def getSessionID(request):
         print ("Session cookie from client: {}".format(retVal))
     return retVal
 
+#-----------------------------------------------------------------------------
 def getAccessToken(request):
     retVal = request.cookies.get("opasAccessToken", None)
     return retVal
 
+#-----------------------------------------------------------------------------
 def getExpirationTime(request):
     retVal = request.cookies.get("opasSessionExpirestime", None)
     return retVal
 
+#-----------------------------------------------------------------------------
 def checkSolrDocsConnection():
     """
     Queries the solrDocs core (i.e., pepwebdocs) to see if the server is up and running.
@@ -317,6 +327,7 @@ def checkSolrDocsConnection():
                 return False
         return True
 
+#-----------------------------------------------------------------------------
 def forceStringReturnFromVariousReturnTypes(theText, minLength=5):
     """
     Sometimes the return isn't a string (it seems to often be "bytes") 
@@ -356,6 +367,8 @@ def forceStringReturnFromVariousReturnTypes(theText, minLength=5):
             print (err)
             
     return retVal        
+
+#-----------------------------------------------------------------------------
 def getArticleDataRaw(articleID, fields=None):
     """
     Fetch an article "Doc" from the Solr solrDocs core.  If fields is none, it fetches all fields.
@@ -383,6 +396,7 @@ def getArticleDataRaw(articleID, fields=None):
 
     return retVal
                 
+#-----------------------------------------------------------------------------
 def getArticleData(articleID, fields=None):
     """
     Fetch an article "Doc" from the Solr solrDocs core.  If fields is none, it fetches all fields.
@@ -496,6 +510,7 @@ def getArticleData(articleID, fields=None):
     
     return retVal
 
+#-----------------------------------------------------------------------------
 def databaseGetMostCited(period='5', limit=50, offset=0):
     """
     Return the most cited journal articles duing the prior period years.
@@ -605,6 +620,7 @@ def databaseGetMostCited(period='5', limit=50, offset=0):
     
     return retVal   
 
+#-----------------------------------------------------------------------------
 def databaseWhatsNew(limit=DEFAULT_LIMIT_FOR_WHATS_NEW, offset=0):
     """
     Return a what's been updated in the last week
@@ -686,9 +702,11 @@ def databaseWhatsNew(limit=DEFAULT_LIMIT_FOR_WHATS_NEW, offset=0):
     
     return retVal   
 
+#-----------------------------------------------------------------------------
 def searchLikeThePEPAPI():
     pass  # later
 
+#-----------------------------------------------------------------------------
 def metadataGetVolumes(pepCode, year="*", limit=DEFAULT_LIMIT_FOR_VOLUME_LISTS, offset=0):
     """
     """
@@ -735,6 +753,7 @@ def metadataGetVolumes(pepCode, year="*", limit=DEFAULT_LIMIT_FOR_VOLUME_LISTS, 
     retVal = volumeList
     return retVal
 
+#-----------------------------------------------------------------------------
 def metadataGetContents(pepCode, year="*", vol="*", limit=DEFAULT_LIMIT_FOR_CONTENTS_LISTS, offset=0):
     """
     Return a jounals contents
@@ -810,6 +829,7 @@ def metadataGetContents(pepCode, year="*", vol="*", limit=DEFAULT_LIMIT_FOR_CONT
     
     return retVal
 
+#-----------------------------------------------------------------------------
 def metadataGetSourceByType(sourceType=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
@@ -831,6 +851,7 @@ def metadataGetSourceByType(sourceType=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURN
     """
     retVal = []
     sourceInfoDBList = []
+    ocd = opasCentralDBLib.opasCentralDB()
     # standardize Source type, allow plural, different cases, but code below this part accepts only those three.
     sourceType = sourceType.lower()
     if sourceType not in ["journal", "book", "video"]:
@@ -840,14 +861,20 @@ def metadataGetSourceByType(sourceType=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURN
             sourceType = "book"
         else: # default
             sourceType = "journal"
-            
-    for sourceInfoDict in sourceDB.sourceData.values():
-        if sourceInfoDict["pep_class"] == sourceType:
-            # match
-            sourceInfoDBList.append(sourceInfoDict)
     
-    count = len(sourceInfoDBList)
-    print ("Number found: %s" % count)
+    try:
+        sourceData = ocd.getSources(sourceType = sourceType)
+        for sourceInfoDict in sourceData:
+            if sourceInfoDict["src_type"] == sourceType:
+                # match
+                sourceInfoDBList.append(sourceInfoDict)
+        count = len(sourceInfoDBList)
+        print ("Number found: %s" % count)
+    except Exception as e:
+        errMsg = "MetadataGetSourceByType: Error getting source information.  {}".format(e)
+        count = 0
+        print ("Number found: %s" % count)
+        
 
     responseInfo = ResponseInfo(
                      count = count,
@@ -870,16 +897,40 @@ def metadataGetSourceByType(sourceType=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURN
         if counter > limit:
             break
         try:
-            item = SourceInfoListItem( ISSN = source.get("ISSN"),
-                                       PEPCode = source.get("pepsrccode"),
-                                       abbrev = source.get("sourcetitleabbr"),
-                                       bannerURL = "http://{}/{}/banner{}.logo.gif".format(opasConfig.BASEURL, opasConfig.IMAGES, source.get("pepsrccode")),
-                                       displayTitle = source.get("sourcetitlefull"),
+            title = source.get("title")
+            authors = source.get("author")
+            pub_year = source.get("pub_year")
+            publisher = source.get("publisher")
+            bookCode = None
+            if sourceType == "book":
+                bookCode = source.get("base_code")
+                m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", bookCode, re.IGNORECASE)
+                if m is not None:
+                    code = m.group("code")
+                    num = m.group("num")
+                    bookCode = code + "." + num
+                
+                artCiteAs = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="publisher">%s</span>.""" \
+                    %                   (authors,
+                                         source.get("pub_year"),
+                                         title,
+                                         publisher
+                                        )
+            else:
+                artCiteAs = None
+            
+            item = SourceInfoListItem( sourceType = sourceType,
+                                       ISSN = source.get("ISSN"),
+                                       PEPCode = source.get("src_code"),
+                                       bookCode = bookCode,
+                                       abbrev = source.get("bib_abbrev"),
+                                       bannerURL = "http://{}/{}/banner{}.logo.gif".format(opasConfig.BASEURL, opasConfig.IMAGES, source.get("src_code")),
+                                       title = title,
+                                       displayTitle = artCiteAs,
                                        language = source.get("language"),
                                        yearFirst = source.get("start_year"),
                                        yearLast = source.get("end_year"),
-                                       sourceType = sourceType,
-                                       title = source.get("pepsrccode")
+                                       embargoYears = source.get("embargo_yrs")
                                        ) 
         except ValidationError as e:
             print ("SourceInfoListItem Validation Error:")
@@ -904,7 +955,8 @@ def metadataGetSourceByType(sourceType=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURN
     retVal = sourceInfoList
     return retVal
 
-def metadataGetSourceByCode(pepCode=None):
+#-----------------------------------------------------------------------------
+def metadataGetSourceByCode(PEPCode=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
     
@@ -921,14 +973,75 @@ def metadataGetSourceByCode(pepCode=None):
     
     """
     retVal = []
-    # would need to add URL for the banner
-    if pepCode is not None:
-        retVal = sourceDB.sourceData[pepCode]
-    else:
-        retVal = sourceDB.sourceData
+    ocd = opasCentralDBLib.opasCentralDB()
     
+    # would need to add URL for the banner
+    if PEPCode is not None:
+        sourceInfoDBList = ocd.getSources(PEPCode)    #sourceDB.sourceData[pepCode]
+        #sourceType = sourceInfoDBList.get("src_type", None)
+    else:
+        sourceInfoDBList = ocd.getSources(PEPCode)    #sourceDB.sourceData
+        sourceType = "All"
+            
+    count = len(sourceInfoDBList)
+    print ("Number found: %s" % count)
+
+    responseInfo = ResponseInfo(
+                     count = count,
+                     fullCount = count,
+                     limit = limit,
+                     offset = offset,
+                     #listLabel = "{} List".format(sourceType),
+                     listType = "sourceinfolist",
+                     scopeQuery = "*",
+                     fullCountComplete = True,
+                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
+                   )
+
+    sourceInfoListItems = []
+    counter = 0
+    for source in sourceInfoDBList:
+        counter += 1
+        if counter < offset:
+            continue
+        if counter > limit:
+            break
+        try:
+            item = SourceInfoListItem( ISSN = source.get("ISSN"),
+                                       PEPCode = source.get("src_code"),
+                                       abbrev = source.get("bib_abbrev"),
+                                       bannerURL = "http://{}/{}/banner{}.logo.gif".format(opasConfig.BASEURL, opasConfig.IMAGES, source.get("src_code")),
+                                       displayTitle = source.get("title"),
+                                       language = source.get("language"),
+                                       yearFirst = source.get("start_year"),
+                                       yearLast = source.get("end_year"),
+                                       sourceType = source.get("src_type"),
+                                       title = source.get("title")
+                                       ) 
+        except ValidationError as e:
+            print ("SourceInfoListItem Validation Error:")
+            print(e.json())        
+
+        sourceInfoListItems.append(item)
+        
+    try:
+        sourceInfoStruct = SourceInfoStruct( responseInfo = responseInfo, 
+                                             responseSet = sourceInfoListItems
+                                            )
+    except ValidationError as e:
+        print ("SourceInfoStruct Validation Error:")
+        print(e.json())        
+    
+    try:
+        sourceInfoList = SourceInfoList(sourceInfo = sourceInfoStruct)
+    except ValidationError as e:
+        print ("SourceInfoList Validation Error:")
+        print(e.json())        
+    
+    retVal = sourceInfoList
     return retVal
 
+#-----------------------------------------------------------------------------
 def authorsGetAuthorInfo(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns a list of matching names (per authors last name), and the number of articles
@@ -989,6 +1102,7 @@ def authorsGetAuthorInfo(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS
     retVal = authorIndex
     return retVal
 
+#-----------------------------------------------------------------------------
 def authorsGetAuthorPublications(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns a list of publications (published on PEP-Web (per authors partial name), and the number of articles
@@ -1076,6 +1190,7 @@ def authorsGetAuthorPublications(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR
     retVal = authorPubList
     return retVal
 
+#-----------------------------------------------------------------------------
 def getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocument):
    
     retVal = None
@@ -1110,6 +1225,7 @@ def getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocume
 
     return retVal
     
+#-----------------------------------------------------------------------------
 def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns an abstract or summary for the specified document
@@ -1235,6 +1351,7 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_
     return retVal
 
 
+#-----------------------------------------------------------------------------
 def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS, offset=0):
     """
    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
@@ -1384,6 +1501,7 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=
     
     return retVal
 
+#-----------------------------------------------------------------------------
 def prepDocumentDownload(documentID, retFormat="HTML", authenticated=True, baseFilename="opasDoc"):
     """
    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
@@ -1438,6 +1556,7 @@ def prepDocumentDownload(documentID, retFormat="HTML", authenticated=True, baseF
         
     return retVal
 
+#-----------------------------------------------------------------------------
 def convertXMLToHTMLFile(xmlTextStr, xsltFile=r"../styles/pepkbd3-html.xslt", outputFilename=None):
     if outputFilename is None:
         basename = "opasDoc"
@@ -1452,6 +1571,7 @@ def convertXMLToHTMLFile(xmlTextStr, xsltFile=r"../styles/pepkbd3-html.xslt", ou
     
     return outputFilename
 
+#-----------------------------------------------------------------------------
 def getImageBinary(imageID):
     """
     Return a binary object of the image, e.g.,
@@ -1516,6 +1636,7 @@ def getImageBinary(imageID):
   
     return retVal
 
+#-----------------------------------------------------------------------------
 def getKwicList(markedUpText, extraContextLen=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, startHitTag=opasConfig.HITMARKERSTART, endHitTag=opasConfig.HITMARKEREND):
     """
     Find all nonoverlapping 
@@ -1531,6 +1652,7 @@ def getKwicList(markedUpText, extraContextLen=opasConfig.DEFAULT_KWIC_CONTENT_LE
     
     return retVal    
 
+#-----------------------------------------------------------------------------
 def yearArgParser(yearArg):
     retVal = None
     yearQuery = re.match("[ ]*(?P<option>[\>\^\<\=])?[ ]*(?P<start>[12][0-9]{3,3})?[ ]*(?P<separator>([-]|TO))*[ ]*(?P<end>[12][0-9]{3,3})?[ ]*", yearArg, re.IGNORECASE)            
@@ -1579,6 +1701,7 @@ def yearArgParser(yearArg):
 
     return retVal
                         
+#-----------------------------------------------------------------------------
 def searchAnalysis(queryList, 
                    filterQuery = None,
                    moreLikeThese = False,
@@ -1816,6 +1939,7 @@ def searchText(query,
     
     return retVal
 
+#-----------------------------------------------------------------------------
 def set_cookie(response: Response, name: str, value: Union[str, bytes], *, domain: Optional[str] = None,
                path: str = '/', expires: Optional[Union[float, Tuple, datetime]] = None,
                expires_days: Optional[int] = None, max_age: Optional[int] = None, secure=False, httponly=True,
@@ -1858,6 +1982,7 @@ def set_cookie(response: Response, name: str, value: Union[str, bytes], *, domai
     cookie_val = '; '.join(parts)
     response.raw_headers.append((b'set-cookie', cookie_val.encode('latin-1')))
 
+#-----------------------------------------------------------------------------
 def delete_cookie(response: Response, name: str, *, domain: Optional[str] = None, path: str = '/') -> None:
     """Deletes the cookie with the given name.
 

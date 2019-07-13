@@ -23,7 +23,7 @@ from enum import Enum
 from pydantic import BaseModel, Schema
 from pydantic.types import EmailStr
 from modelsOpasCentralPydantic import User
-from opasCentralDBLib import opasCentralDB
+#from opasCentralDBLib import opasCentralDB
 
 #-------------------------------------------------------
 #
@@ -168,12 +168,15 @@ class ServerStatusItem(BaseModel):
 class SourceInfoListItem(BaseModel):    
     ISSN: str = Schema(None, title="")
     PEPCode: str = Schema(None, title="")
+    bookCode: str = Schema(None, title="Like PEPCode (srcCode) but specialized for books where many books fall under the same src_code")
+    documentID: str = Schema(None, title="")
     abbrev: str = Schema(None, title="")
     bannerURL: str = Schema(None, title="")
-    displayTitle: str = Schema(None, title="")
+    displayTitle: str = Schema(None, title="Reference format for this source")
     language: str = Schema(None, title="")
     yearFirst: str = Schema(None, title="")
     yearLast: str = Schema(None, title="")
+    embargoYears: str = Schema(None, title="")
     sourceType: str = Schema(None, title="")
     title: str = Schema(None, title="")
 
