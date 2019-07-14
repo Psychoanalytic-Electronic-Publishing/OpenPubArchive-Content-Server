@@ -31,3 +31,9 @@ schemas/pepwebdownloadcounts.sql
 schemas/pepwebdownloads.sql
 libs/pepsolrtest.log
 libs/recreateUsers.py
+config/localsecrets.py
+libs/examples/basicPWExample.py
+libs/examples/simplePWExample.py
+libs/examples/
+*.log
+OpenPubArchive.wpu
