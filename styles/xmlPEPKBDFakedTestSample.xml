@@ -1,0 +1,265 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">
+<pepkbd3>
+    <artinfo arttype="ART" artsource="A1V2" j="IJP" artsubtype="ART" id="IJP.001.0196A"
+        ISSN="0020-7578">
+        <artyear>1920</artyear>
+        <artvol>1</artvol>
+        <artpgrg style="arabic" prefixused="">196-199</artpgrg>
+        <arttitle>A Note on William Blake's Lyrics</arttitle>
+        <artauth hidden="false">
+            <aut role="author" alias="false" listed="true" asis="false" authindexid="Preger, J. W.">
+                <nfirst type="FIRST">J.</nfirst>
+                <nmid>W.</nmid>
+                <nlast>Preger</nlast>
+                <nti>Dr.</nti>
+            </aut>
+            <autaff>
+                <addr>
+                    <ln>J. W. Preger, Dr.</ln>
+                    <ln>Hilversum, Holland.</ln>
+                </addr>
+            </autaff>
+        </artauth>
+    </artinfo>
+    <body>
+        <p>Much of <b>Blake's poetry</b> labours under an obscureness that deprives it of any lasting human
+            interest. The literary world, it is true, greeted his disinternment with unmistakable
+            enthusiasm, but this, to a great extent, was due to the <so>originality and unconventional</so>
+            nature of his <u>illustrative etchings</u>, whilst the very obscurity of his poetical work will
+            have stirred the interest and whetted the curiosity of many. But though many attempts
+            have been made to illuminate these obscurities, the interest once felt in Blake as a
+            poet has died a natural <impx type="TERM2" rx="ZBK.069.0001d.YN0013300865870"
+                grpname="DEATH">death</impx>.</p>
+        <h1 id="123A">Test h1</h1>
+        <h2>test h2</h2>
+        <h3>Test h3</h3>
+        <h4>test h4</h4>
+        
+        <list type="BUL1">
+            <li><p>First </p></li>
+            <li><p>Next</p></li>
+        </list>
+        <list type="DASH">
+            <li><p>First </p></li>
+            <li><p>Next</p></li>
+        </list>
+        <list type="NNP">
+            <li><p>First </p></li>
+            <li><p>Next</p></li>
+        </list>        
+        <p>His early and strictly lyrical work, however, gained and has maintained a well deserved
+            popularity among lovers of poetry. This (his "Poetical Sketches", "The Songs of
+            Innocence and Experience", and "Ideas of Good and Evil") is as remarkable for its human
+            interest and simplicity as the rest of his poetry — the "Prophetic Books", for example —
+            is remarkable for its obscure mysticism and, general diffuseness. Yet, among the many
+            gems of the former there are a few which, though they sometimes charm the ear, rarely
+            convey anything to the understanding.</p>
+        <p>Two of these, however, ought to interest students of <impx type="TERM2"
+                rx="ZBK.069.0001p.YN0004507089640" grpname="Psycho-Analysis; PSYCHOANALYSIS"
+                >Psycho-Analysis</impx> for the Cameo-clearness with which they reflect certain
+            typical fancies and which, though of an incestuous kind, show no traces of "<impx
+                type="TERM2" rx="ZBK.069.0001g.YP0006494278780"
+                grpname="GAIN; PRIMARYGain; Secondary">secondary</impx>-manipulation".</p>
+        <p>Here <b>it may be of interest to mention</b> that in both his life and work Blake betrayed
+            unmistakable evidence of having suffered from some form of insanity, at least in his
+            later years.</p>
+        <p>The first of the lyrics in question, "The Garden of Love", for any but the
+            psycho-analytically informed can have but little meaning. It belongs to the series,
+            "Songs of Experience", and runs as follows:</p>
+        <pb>
+            <n nextpgnum="P0197" prefixused="">196</n>
+        </pb>
+        <poem>
+            <verse>
+                <p> I went to the Garden of Love,</p>
+            </verse>
+            <verse>
+                <p> And saw what I never had seen:</p>
+            </verse>
+        </poem>
+         <pb>
+            <ftr>
+                <ftn type="PG" id="F00001" label="1">
+                    <p>What this meant for him is obvious from: The Daughters of Albion, where he
+                        puts into the mouth of Oothoon: <impx type="TERM2"
+                            rx="ZBK.069.0001i.YP0000087690250" grpname="INFANCY">Infancy</impx>,
+                        fearless, lustful, happy, nestling for delight in laps of</p>
+                </ftn>
+                <ftn type="PG" id="F00002" label="2">
+                    <p>See: Stekel, Die Sprache der Träume.</p>
+                </ftn>
+            </ftr>
+            <n nextpgnum="P0198" prefixused="">197</n>
+        </pb>
+        <p2>and the briers he identifies himself with Christ who was crowned with thorns and
+            crucified by the priests that here stand for Blake's <impx type="TERM2"
+                rx="ZBK.069.0001f.YP0001157120520" grpname="FATHER">father</impx>, whose <impx
+                type="TERM2" rx="ZBK.069.0001e.YP0017512081750" grpname="EXISTENCE">existence</impx>
+            meant the Crucifixion of his son's "joys and desires". The identity between the
+            priests and Blake's father becomes closer if we remember that priests are
+            ministers of the Church (Chapel) and minister to the spiritual wants of their flock,
+            whilst a father holds a similar in relation to the mundane
+            desires of his wife and children.</p2>
+        <p>The second lyric belongs to the series, "Ideas of Good and Evil" and is entitled "The
+            Defiled Sanctuary". Though beautiful in itself, its images fail to convey, except to
+            those acquainted with <impx type="TERM2" rx="ZBK.069.0001p.YN0004507089640"
+                grpname="Psycho-Analysis; PSYCHOANALYSIS">psycho-analysis</impx>, any idea bearing
+            on human experience; it runs</p>
+        <quote>
+            <p> And laid me down among the swine.</p>
+            <list type="ASTERISK">
+                <li>
+                    <p>Hello computer</p>
+                </li>
+            </list>
+        </quote>
+        <list type="BUL1">
+            <li><p>First </p></li>
+            <li><p>Next</p></li>
+        </list>
+
+        <pb>
+            <n nextpgnum="P0199" prefixused="">198</n>
+        </pb>
+        <p>The key to the <impx type="TERM2" rx="ZBK.069.0001c.YP0009492907080" grpname="CHARACTER"
+                >character</impx> of this lyric is <impx type="TERM2"
+                rx="ZBK.069.0001c.YN0007336649800" grpname="CONTAINER; CONTAINED; Containing"
+                >contained</impx> in its two last lines:</p>
+        <p>This sketchy analysis, though it may seem somewhat arbitrary, is fully endorsed by the
+            rest of the poem. This can obviously have been inspired by one thing only: the
+            reminiscence of his parents' cohabitation<ftnx r="F00005" type="PG">5</ftnx>, which
+            influenced him to react in no unusual manner<ftnx r="F00005" type="PG">5</ftnx>, a
+            reminiscence of which the whole poem is a clear and beautiful dramatization.</p>
+        <p>The study of Blake's pictorial and poetical work in <impx type="TERM2"
+                rx="ZBK.069.0001r.YN0013074626040" grpname="RELATION">relation</impx> to his
+            insanity ought amply to repay one for the labour involved. A rich field awaits the
+            competent prospector.</p>
+        <pb>
+            <ftr>
+                <ftn type="PG" id="F00003" label="3">
+                    <p>In a <impx type="TERM2" rx="ZBK.069.0001d.YP0010931565630"
+                            grpname="DREAMS; DREAMING">dream</impx> of the writer's, semen was once
+                        symbolized by "migraine"=my grain=seed=semen.</p>
+                </ftn>
+                <ftn type="PG" id="F00004" label="4">
+                    <p>The serpent forcing its way through the forbidden door.</p>
+                </ftn>
+                <ftn type="PG" id="F00005" label="5">
+                    <p>See: <impx type="TERM2" rx="ZBK.069.0001j.YP0019066385930"
+                            grpname="JONES, ERNEST; ERNEST JONES">Ernest Jones</impx>, "Einige Fälle
+                        von Zwangsneurose", <i>Fahrbuch der Psychoanalyse</i> 1912.</p>
+                </ftn>
+            </ftr>
+            <n prefixused="">199</n>
+        </pb>
+        <grp name="TOC" id="G0001">
+            <h1 c="u" align="center" class="sect" id="ZBK.042.0000A.H00001">Contents</h1>
+            <tbl id="T001" type="TOC" align="center" ewide="false">
+                <table>
+                    <tgroup cols="2">
+                        <colspec colnum="1" colname="title" colwidth="2*" align="left"/>
+                        <colspec colnum="2" colname="pgnum" colwidth="1*" align="right"/>
+                        <tbody>
+                            <row>
+                                <entry>Preface</entry>
+                                <entry><pgx rx="ZBK.042.0000A.PR0009">ix</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Note on Method</entry>
+                                <entry><pgx rx="ZBK.042.0000A.PR0013">xiii</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Abbreviations of Works Cited</entry>
+                                <entry><pgx rx="ZBK.042.0000A.PR0018">xviii</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Introduction</entry>
+                                <entry><pgx rx="ZBK.042.0001A.P0001">1</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Beginnings of the Friendship</entry>
+                                <entry><pgx rx="ZBK.042.0015A.P0015">15</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Treatment of Hysteria</entry>
+                                <entry><pgx rx="ZBK.042.0049A.P0049">49</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Intensification of the Friendship</entry>
+                                <entry><pgx rx="ZBK.042.0073A.P0073">73</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>The Emma Eckstein Episode</entry>
+                                <entry><pgx rx="ZBK.042.0106A.P0106">106</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Neuroses Redefined</entry>
+                                <entry><pgx rx="ZBK.042.0154A.P0154">154</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Isolation from the Scientific Community</entry>
+                                <entry><pgx rx="ZBK.042.0183A.P0183">183</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Periodicity and Self-Analysis</entry>
+                                <entry><pgx rx="ZBK.042.0207A.P0207">207</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Theory Transformed</entry>
+                                <entry><pgx rx="ZBK.042.0264A.P0264">264</pgx></entry>
+                            </row>
+                            <row>
+                                <entry><i>The Interpretation of Dreams</i></entry>
+                                <entry><pgx rx="ZBK.042.0303A.P0303">303</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Fantasy or Reality?</entry>
+                                <entry><pgx rx="ZBK.042.0340A.P0340">340</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Decline of the Friendship</entry>
+                                <entry><pgx rx="ZBK.042.0402A.P0402">402</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Dora and <i>The Psychopathology of Everyday Life</i></entry>
+                                <entry><pgx rx="ZBK.042.0426A.P0426">426</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>End of the Relationship</entry>
+                                <entry><pgx rx="ZBK.042.0449A.P0449">449</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Aftermath</entry>
+                                <entry><pgx rx="ZBK.042.0459A.P0459">459</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Appendix</entry>
+                                <entry><pgx rx="ZBK.042.0471A.P0471">471</pgx></entry>
+                            </row>
+                            <row>
+                                <entry>Pricipal Works Cited</entry>
+                                <entry><pgx rx="ZBK.042.0000A.P0483">483</pgx></entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table>
+            </tbl>
+        </grp>        
+    </body>
+    <bib alpha="true">
+        <h1 align="center" id="IJP.096.0065A.H00003" c="t">References</h1>
+        <be id="B0001"><a><l>Agamben</l> G</a> (<y>1978</y>). <bst>Infancy and history</bst>, <bsa><a><l>Heron</l> J</a></bsa>, translator. London: <bp>Verso</bp>, <bpd>1993</bpd>.</be>
+        <be id="B0002">Alliance of Psychoanalytic Oreganizations (<y>2008</y>). <bst>Psychodynamic diagnostic manual (PDM)</bst>. Chicago: <bp>IPG</bp>.</be>
+        <be id="B0003"><a><l>Bloom</l> H</a> (<y>2008</y>). <t>The glories of Yiddish.</t> <j>New York Review of Books</j>, 6 Nov 2008, 26.</be>
+        <be id="B0004"><a><l>Botella</l> C</a>, <a><l>Botella</l> S</a> (<y>2001</y>). <bst>La Figurabilité psychique</bst>. Paris: <bp>Delachaux et Niestlé</bp>. <binc class="na">[(<y>2004</y>). <bst>The work of psychic figurability</bst>. London: <bp>Routledge &amp; the Institute of Psychoanalysis</bp>. (The New Library of Psychoanalysis.)]</binc></be>
+        <be id="B0005"><a><l>Bucci</l> W</a> (<y>1997</y>). <bst>Psychoanalysis and cognitive science: A multiple code theory</bst>. New York, NY: <bp>Guilford</bp>.</be>
+        <be id="B0006"><a><l>Butler</l> J</a> (<y>1990</y>). <bst>Gender trouble: Feminism and the subversion of identity</bst>. New York, NY: <bp>Routledge</bp>.</be>
+        <be id="B0007"><a><l>Butler</l> J</a> (<y>2011</y>). <t>Your behavior creates your gender, transcript of interview.</t> Available from: <webx url="http://www.bigthink.com/videos/your-behavior-creates-your-gender">http://www.bigthink.com/videos/your-behavior-creates-your-gender</webx>.</be>
+        <be id="B0008" rxcf="CPS.024.0196A"><a><l>Ferenczi</l> S</a> (<y>1933</y>). <t>Confusion of tongues between adults and the child.</t> In: Final contributions to the problems and methods of psycho-analysis, <pp>156-67</pp>. London: 1988.</be>
+        <be id="B0009"><a><l>Fink</l> B</a> (<y>2007</y>). <bst>Fundamentals of psychoanalytic technique for practitioners: A Lacanian approach</bst>. New York, NY: <bp>Norton</bp>.</be>
+        <be id="B0010"><a><l>Foucault</l> M</a> (<y>1979</y>). <t>Lectures on biopolitics.</t> In: <bst>La Naissance de la biopolitique</bst>. Paris: <bp>Seuil</bp>, <bpd>2003</bpd>.</be>
+        <be id="B0011"><a><l>Freud</l> S</a> (<y>1905</y>). <t>footnote added 1914, in The Interpretation of Dreams,</t> p. <pp>98</pp>, trans <binc class="na"><a><l>Strachey</l>, J.</a> (<y>1953</y>). <bst>The Standard Edition of the Complete Psychological Works of Sigmund Freud, V 4-5 1900-01</bst>, London: <bp>The Hogarth Press and the Institute of Psycho-analysis</bp>.</binc></be>
+        <pb><n prefixused="">81</n></pb>
+    </bib>
+</pepkbd3>

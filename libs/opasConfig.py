@@ -35,13 +35,14 @@ DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS = 1
 DEFAULT_LIMIT_FOR_WHATS_NEW = 5
 DEFAULT_LIMIT_FOR_VOLUME_LISTS = 100
 DEFAULT_LIMIT_FOR_CONTENTS_LISTS = 100
+DEFAULT_LIMIT_FOR_METADATA_LISTS = 100
 
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 1520000 # to get a complete document from SOLR, with highlights, needs to be large.
 
 # parameter descriptions for documentation
 DESCRIPTION_LIMIT = "Number of items to return"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)"
-DESCRIPTION_PEPCODE = "The 2-8 character assigned PEP Code for source (e.g., APA, CPS, IJP, ANIJP-FR)"
+DESCRIPTION_SOURCECODE = "The 2-8 character assigned PEP Code for source (e.g., APA, CPS, IJP, ANIJP-FR)"
 DESCRIPTION_YEAR = "The year for which to return data"
 DESCRIPTION_REQUEST = "The request object, passed in automatically by FastAPI"
 DESCRIPTION_AUTHORNAMEORPARTIAL = "The author name or a partial name (regex type wildcards [.*] permitted EXCEPT at the end of the string--the system will try that automatically)"

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN"
+  "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1" xml:lang="en" dir="ltr">
+	<head>
+		<meta name="dtb:uid" content="ijp.051.0175a" />
+		<meta name="dtb:depth" content="2" />
+		<meta name="dtb:totalPageCount" content="0" />
+		<meta name="dtb:maxPageNumber" content="0" />
+	</head>
+
+	<docTitle>
+		<text>Discussion of 'The Self: A Contribution to its Place in Theory and Technique'</text>
+	</docTitle>
+
+	<docAuthor>
+		<text>Laplanche, J., Kohut, H.</text>
+	</docAuthor>
+
+	<navMap>
+		<navPoint id="chapter1" playOrder="1">
+			<navLabel>
+				<text>Discussion of 'The Self: A Contribution to its Place in Theory and Technique'</text>
+			</navLabel>
+			<content src="article.html" />
+			<navPoint id="chapter2" playOrder="2">
+				<navLabel>
+					<text>SUMMARY OF THE INTRODUCTORY REMARKS BY THE AUTHOR (DOUGLAS C. LEVIN)</text>
+				</navLabel>
+				<content src="article.html#heading1" />
+			</navPoint>
+			<navPoint id="chapter3" playOrder="3">
+				<navLabel>
+					<text>OPENING REMARKS OF THE MODERATOR (H. KOHUT)</text>
+				</navLabel>
+				<content src="article.html#heading2" />
+			</navPoint>
+			<navPoint id="chapter4" playOrder="4">
+				<navLabel>
+					<text>CLOSING REMARKS OF THE MODERATOR (H. KOHUT)</text>
+				</navLabel>
+				<content src="article.html#heading3" />
+			</navPoint>
+			<navPoint id="chapter5" playOrder="5">
+				<navLabel>
+					<text>SUMMARY OF CONCLUDING REMARKS OF THE AUTHOR (DOUGLAS C. LEVIN)</text>
+				</navLabel>
+				<content src="article.html#heading4" />
+			</navPoint>
+			<navPoint id="chapter6" playOrder="6">
+				<navLabel>
+					<text>REFERENCES</text>
+				</navLabel>
+				<content src="article.html#heading5" />
+			</navPoint>
+			<navPoint id="chapter7" playOrder="7">
+				<navLabel>
+					<text>Article Citation [Who Cited This?]</text>
+				</navLabel>
+				<content src="article.html#heading6" />
+			</navPoint>
+		</navPoint>
+	</navMap>
+</ncx>

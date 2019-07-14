@@ -518,7 +518,7 @@ class opasCentralDB(object):
                     sql = "SELECT * FROM vw_opas_sources WHERE src_code = %s order by title"
                     res = curs.execute(sql, source)
                 elif sourceType is not None:
-                    sql = "SELECT * FROM vw_opas_sources WHERE src_type = %s order by title"
+                    sql = "SELECT * FROM vw_opas_sources WHERE src_type = %s and src_type_qualifier <> 'multivolumesubbook' order by title"
                     res = curs.execute(sql, sourceType)
                 else:  # bring them all back
                     sql = "SELECT * FROM vw_opas_sources order by title"

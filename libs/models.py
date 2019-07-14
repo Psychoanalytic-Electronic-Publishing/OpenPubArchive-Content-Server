@@ -174,7 +174,6 @@ class SourceInfoListItem(BaseModel):
     displayTitle: str = Schema(None, title="Reference format for this source")
     srcTitle: str = Schema(None, title="Title of this source (from V1. Deprecated)")
     title: str = Schema(None, title="Title of this source")
-    title: str = Schema(None, title="")
     authors: str = Schema(None, title="")
     pub_year: str = Schema(None, title="")
     abbrev: str = Schema(None, title="")

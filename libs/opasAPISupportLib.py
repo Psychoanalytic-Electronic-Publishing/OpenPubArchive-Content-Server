@@ -14,7 +14,7 @@ functions.
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0709.1"
+__version__     = "2019.0714.1"
 __status__      = "Development"
 
 import sys
@@ -830,10 +830,10 @@ def metadataGetContents(pepCode, year="*", vol="*", limit=DEFAULT_LIMIT_FOR_CONT
     return retVal
 
 #-----------------------------------------------------------------------------
-def metadataGetVideos(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+def metadataGetVideos(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0):
     """
     Fill out a sourceInfoDBList which can be used for a getSources return, but return individual 
-      videos, as is done for books.  This provides more information 
+      videos, as is done for books.  This provides more information than the 
       original API which returned video "journals" names.  
       
     """
@@ -883,10 +883,10 @@ def metadataGetVideos(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_FOR_SOL
         print (sourceInfoRecord)
         sourceInfoDBList.append(sourceInfoRecord)
 
-    return sourceInfoDBList
+    return totalCount, sourceInfoDBList
 
 #-----------------------------------------------------------------------------
-def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0):
     """
     Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
     
@@ -911,62 +911,19 @@ def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_F
     # standardize Source type, allow plural, different cases, but code below this part accepts only those three.
     sourceType = sourceType.lower()
     if sourceType not in ["journal", "book", "video"]:
-        if re.match("vid.*", sourceType, re.IGNORECASE):
-            sourceType = "videostream"
+        if re.match("videos.*", sourceType, re.IGNORECASE):
+            sourceType = "videos"
         elif re.match("boo.*", sourceType, re.IGNORECASE):
             sourceType = "book"
         else: # default
             sourceType = "journal"
    
-
-    if sourceType == "video":        
-        sourceInfoDBList = metadataGetVideos(sourceType, PEPCode, limit, offset)
-
-    #if sourceType == "video":  # get these from Solr, they are not in the ISSN table.
-        #if PEPCode != None:
-            #query = "art_pepsourcetype:video* AND art_pepsrccode:{}".format(PEPCode)
-        #else:
-            #query = "art_pepsourcetype:video*"
-        #try:
-            #srcList = solrDocs.query(q = query,  
-                                        #fields = "art_id, art_issn, art_pepsrccode, art_authors, title, art_pepsourcetitlefull, art_pepsourcetitleabbr, art_vol, art_year, art_citeas_xml, art_lang, art_pgrg",
-                                        #sort="art_citeas_xml", sort_order="asc",
-                                        #rows=limit, start=offset
-                                     #)
-        #except Exception as e:
-            #print ("Error: {}".format(e))
-        #sourceInfoDBList = []
-        #count = len(srcList.results)
-        #totalCount = int(srcList.results.numFound)
-        
-        #for result in srcList.results:
-            #sourceInfoRecord = {}
-            #authors = result.get("art_authors")
-            #if authors is None:
-                #sourceInfoRecord["author"] = None
-            #elif len(authors) > 1:
-                #sourceInfoRecord["author"] = "; ".join(authors)
-            #else:    
-                #sourceInfoRecord["author"] = authors[0]
-                
-            #sourceInfoRecord["src_code"] = result.get("art_pepsrccode")
-            #sourceInfoRecord["ISSN"] = result.get("art_issn")
-            #sourceInfoRecord["documentID"] = result.get("art_id")
-            #try:
-                #sourceInfoRecord["title"] = result.get("title")[0]
-            #except:
-                #sourceInfoRecord["title"] = ""
-                
-            #sourceInfoRecord["art_citeas"] = result.get("art_citeas_xml")
-            #sourceInfoRecord["pub_year"] = result.get("art_year")
-            #sourceInfoRecord["bib_abbrev"] = result.get("art_year")
-            #try:
-                #sourceInfoRecord["language"] = result.get("art_lang")[0]
-            #except:
-                #sourceInfoRecord["language"] = "EN"
-
-            #print (sourceInfoRecord)
-            #sourceInfoDBList.append(sourceInfoRecord)
+    # This is not part of the original API, it brings back individual videos rather than the videostreams
+    # but here in case we need it.  In that case, your source must be videos.*, like videostream, in order
+    # to load individual videos rather than the video journals
+    if sourceType == "videos":        
+        totalCount, sourceInfoDBList = metadataGetVideos(sourceType, PEPCode, limit, offset)
+        count = len(sourceInfoDBList)
         
     else: # get from mySQL
         try:
