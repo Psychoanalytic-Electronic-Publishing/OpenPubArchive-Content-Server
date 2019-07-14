@@ -927,13 +927,28 @@ def get_journal_content_lists_for_volume(PEPCode: str,
                                       #)
 
     #return retVal
+#-----------------------------------------------------------------------------
+@app.get("/v1/Metadata/Videos/", response_model=models.SourceInfoList, tags=["Metadata"])
+def get_a_list_of_video_names(resp: Response,
+                               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                               PEPCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_PEPCODE), 
+                               limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                               offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
+                               ):
+    """
+    Get a complete list of journal names
+    
+    Status: this endpoint is working.     
+    """
+    retVal = get_a_list_of_source_names(resp, request, SourceType="Video", PEPCode=PEPCode, limit=limit, offset=offset)
+    return retVal
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Journals/", response_model=models.SourceInfoList, tags=["Metadata"])
 def get_a_list_of_journal_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                PEPCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_PEPCODE), 
-                               limit: int=Query(105, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                               limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                                offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                                ):
     """
@@ -949,7 +964,7 @@ def get_a_list_of_journal_names(resp: Response,
 def get_a_list_of_book_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                PEPCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_PEPCODE), 
-                               limit: int=Query(105, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                               limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                                offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                                ):
     """
@@ -967,7 +982,7 @@ def get_a_list_of_source_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                SourceType: str=Path(..., title="Source Type", description=opasConfig.DESCRIPTION_SOURCETYPE), 
                                PEPCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_PEPCODE), 
-                               limit: int=Query(105, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                               limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                                offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                                ):
     """
@@ -977,8 +992,8 @@ def get_a_list_of_source_names(resp: Response,
                
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:    
-        if PEPCode == "*":
-            retVal = sourceInfoList = opasAPISupportLib.metadataGetSourceByType(SourceType, limit=limit, offset=offset)
+        if PEPCode == "*" or SourceType != "Journal":
+            retVal = sourceInfoList = opasAPISupportLib.metadataGetSourceByType(SourceType, PEPCode, limit=limit, offset=offset)
         else:
             retVal = sourceInfoList = opasAPISupportLib.metadataGetSourceByCode(PEPCode, limit=limit, offset=offset)            
 

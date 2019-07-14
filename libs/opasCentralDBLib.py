@@ -485,17 +485,17 @@ class opasCentralDB(object):
                                                   return_added_status_message
                                                  )
                                                  VALUES 
-                                                 ('%s', '%s', '%s', '%s', '%s', '%s')""" % \
-                                                 (
+                                                 (%s, %s, %s, %s, %s, %s)"""
+                                                 
+        
+                retVal = cursor.execute(sql, (
                                                   sessionID, 
                                                   apiEndpointID, 
                                                   params,
                                                   documentID,
                                                   returnStatusCode,
                                                   statusMessage
-                                                 )
-        
-                retVal = cursor.execute(sql)
+                                                 ))
                 self.db.commit()
                 cursor.close()
             
@@ -515,13 +515,13 @@ class opasCentralDB(object):
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
                 if source is not None:
-                    sql = "SELECT * FROM vw_opas_sources WHERE src_code = %s"
+                    sql = "SELECT * FROM vw_opas_sources WHERE src_code = %s order by title"
                     res = curs.execute(sql, source)
                 elif sourceType is not None:
-                    sql = "SELECT * FROM vw_opas_sources WHERE src_type = %s"
+                    sql = "SELECT * FROM vw_opas_sources WHERE src_type = %s order by title"
                     res = curs.execute(sql, sourceType)
                 else:  # bring them all back
-                    sql = "SELECT * FROM vw_opas_sources"
+                    sql = "SELECT * FROM vw_opas_sources order by title"
                     res = curs.execute(sql)
             except Exception as e:
                 msg = "getSources Error querying vw_opas_sources: {}".format(e)

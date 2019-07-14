@@ -37,6 +37,12 @@ class TestAPIResponses(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
+    def test_get_most_cited(self):
+        # Send a request to the API server and store the response.
+        response = requests.get(baseAPI + '/v1/Database/MostCited/?period=5')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
     def test_get_license_status(self):
         # Send a request to the API server and store the response.
         response = requests.get(baseAPI + '/v1/License/Status/Login/')
@@ -46,7 +52,7 @@ class TestAPIResponses(unittest.TestCase):
     def test_get_login_good(self):
         # Send a request to the API server and store the response.
         fullURL = basePlusEndpointEncoded('/v1/Login/?grant_type=password&username=gvpi&password=fish88')
-        response = requests.get(fullURL, he)
+        response = requests.get(fullURL)
         # Confirm that the request-response cycle completed successfully.
         print (response.ok)
         assert(response.ok == True)

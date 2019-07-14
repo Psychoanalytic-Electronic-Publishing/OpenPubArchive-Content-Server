@@ -830,7 +830,63 @@ def metadataGetContents(pepCode, year="*", vol="*", limit=DEFAULT_LIMIT_FOR_CONT
     return retVal
 
 #-----------------------------------------------------------------------------
-def metadataGetSourceByType(sourceType=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+def metadataGetVideos(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+    """
+    Fill out a sourceInfoDBList which can be used for a getSources return, but return individual 
+      videos, as is done for books.  This provides more information 
+      original API which returned video "journals" names.  
+      
+    """
+    
+    if PEPCode != None:
+        query = "art_pepsourcetype:video* AND art_pepsrccode:{}".format(PEPCode)
+    else:
+        query = "art_pepsourcetype:video*"
+    try:
+        srcList = solrDocs.query(q = query,  
+                                    fields = "art_id, art_issn, art_pepsrccode, art_authors, title, art_pepsourcetitlefull, art_pepsourcetitleabbr, art_vol, art_year, art_citeas_xml, art_lang, art_pgrg",
+                                    sort="art_citeas_xml", sort_order="asc",
+                                    rows=limit, start=offset
+                                 )
+    except Exception as e:
+        print ("Error: {}".format(e))
+    sourceInfoDBList = []
+    count = len(srcList.results)
+    totalCount = int(srcList.results.numFound)
+    
+    for result in srcList.results:
+        sourceInfoRecord = {}
+        authors = result.get("art_authors")
+        if authors is None:
+            sourceInfoRecord["author"] = None
+        elif len(authors) > 1:
+            sourceInfoRecord["author"] = "; ".join(authors)
+        else:    
+            sourceInfoRecord["author"] = authors[0]
+            
+        sourceInfoRecord["src_code"] = result.get("art_pepsrccode")
+        sourceInfoRecord["ISSN"] = result.get("art_issn")
+        sourceInfoRecord["documentID"] = result.get("art_id")
+        try:
+            sourceInfoRecord["title"] = result.get("title")[0]
+        except:
+            sourceInfoRecord["title"] = ""
+            
+        sourceInfoRecord["art_citeas"] = result.get("art_citeas_xml")
+        sourceInfoRecord["pub_year"] = result.get("art_year")
+        sourceInfoRecord["bib_abbrev"] = result.get("art_year")
+        try:
+            sourceInfoRecord["language"] = result.get("art_lang")[0]
+        except:
+            sourceInfoRecord["language"] = "EN"
+
+        print (sourceInfoRecord)
+        sourceInfoDBList.append(sourceInfoRecord)
+
+    return sourceInfoDBList
+
+#-----------------------------------------------------------------------------
+def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
     
@@ -856,35 +912,89 @@ def metadataGetSourceByType(sourceType=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURN
     sourceType = sourceType.lower()
     if sourceType not in ["journal", "book", "video"]:
         if re.match("vid.*", sourceType, re.IGNORECASE):
-            sourceType = "video"
+            sourceType = "videostream"
         elif re.match("boo.*", sourceType, re.IGNORECASE):
             sourceType = "book"
         else: # default
             sourceType = "journal"
-    
-    try:
-        sourceData = ocd.getSources(sourceType = sourceType)
-        for sourceInfoDict in sourceData:
-            if sourceInfoDict["src_type"] == sourceType:
-                # match
-                sourceInfoDBList.append(sourceInfoDict)
-        count = len(sourceInfoDBList)
-        print ("Number found: %s" % count)
-    except Exception as e:
-        errMsg = "MetadataGetSourceByType: Error getting source information.  {}".format(e)
-        count = 0
-        print ("Number found: %s" % count)
+   
+
+    if sourceType == "video":        
+        sourceInfoDBList = metadataGetVideos(sourceType, PEPCode, limit, offset)
+
+    #if sourceType == "video":  # get these from Solr, they are not in the ISSN table.
+        #if PEPCode != None:
+            #query = "art_pepsourcetype:video* AND art_pepsrccode:{}".format(PEPCode)
+        #else:
+            #query = "art_pepsourcetype:video*"
+        #try:
+            #srcList = solrDocs.query(q = query,  
+                                        #fields = "art_id, art_issn, art_pepsrccode, art_authors, title, art_pepsourcetitlefull, art_pepsourcetitleabbr, art_vol, art_year, art_citeas_xml, art_lang, art_pgrg",
+                                        #sort="art_citeas_xml", sort_order="asc",
+                                        #rows=limit, start=offset
+                                     #)
+        #except Exception as e:
+            #print ("Error: {}".format(e))
+        #sourceInfoDBList = []
+        #count = len(srcList.results)
+        #totalCount = int(srcList.results.numFound)
+        
+        #for result in srcList.results:
+            #sourceInfoRecord = {}
+            #authors = result.get("art_authors")
+            #if authors is None:
+                #sourceInfoRecord["author"] = None
+            #elif len(authors) > 1:
+                #sourceInfoRecord["author"] = "; ".join(authors)
+            #else:    
+                #sourceInfoRecord["author"] = authors[0]
+                
+            #sourceInfoRecord["src_code"] = result.get("art_pepsrccode")
+            #sourceInfoRecord["ISSN"] = result.get("art_issn")
+            #sourceInfoRecord["documentID"] = result.get("art_id")
+            #try:
+                #sourceInfoRecord["title"] = result.get("title")[0]
+            #except:
+                #sourceInfoRecord["title"] = ""
+                
+            #sourceInfoRecord["art_citeas"] = result.get("art_citeas_xml")
+            #sourceInfoRecord["pub_year"] = result.get("art_year")
+            #sourceInfoRecord["bib_abbrev"] = result.get("art_year")
+            #try:
+                #sourceInfoRecord["language"] = result.get("art_lang")[0]
+            #except:
+                #sourceInfoRecord["language"] = "EN"
+
+            #print (sourceInfoRecord)
+            #sourceInfoDBList.append(sourceInfoRecord)
+        
+    else: # get from mySQL
+        try:
+            if PEPCode != "*":
+                sourceData = ocd.getSources(sourceType = sourceType, source=PEPCode)
+            else:
+                sourceData = ocd.getSources(sourceType = sourceType)
+            for sourceInfoDict in sourceData:
+                if sourceInfoDict["src_type"] == sourceType:
+                    # match
+                    sourceInfoDBList.append(sourceInfoDict)
+            totalCount = len(sourceInfoDBList)
+            print ("Number found: %s" % count)
+        except Exception as e:
+            errMsg = "MetadataGetSourceByType: Error getting source information.  {}".format(e)
+            count = 0
+            print ("Number found: %s" % count)
         
 
     responseInfo = ResponseInfo(
                      count = count,
-                     fullCount = count,
+                     fullCount = totalCount,
+                     fullCountComplete = count == totalCount,
                      limit = limit,
                      offset = offset,
                      listLabel = "{} List".format(sourceType),
                      listType = "sourceinfolist",
                      scopeQuery = "*",
-                     fullCountComplete = True,
                      timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
                    )
 
@@ -916,25 +1026,38 @@ def metadataGetSourceByType(sourceType=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURN
                                          title,
                                          publisher
                                         )
+            elif sourceType == "video":
+                artCiteAs = source.get("art_citeas")
             else:
-                artCiteAs = None
+                artCiteAs = title # journals just should show display title
+
+
+            try:
+                item = SourceInfoListItem( sourceType = sourceType,
+                                           PEPCode = source.get("src_code"),
+                                           authors = authors,
+                                           pub_year = pub_year,
+                                           documentID = source.get("art_id"),
+                                           displayTitle = artCiteAs,
+                                           title = title,
+                                           srcTitle = title,  # v1 Deprecated for future
+                                           bookCode = bookCode,
+                                           abbrev = source.get("bib_abbrev"),
+                                           bannerURL = "http://{}/{}/banner{}.logo.gif".format(opasConfig.BASEURL, opasConfig.IMAGES, source.get("src_code")),
+                                           language = source.get("language"),
+                                           ISSN = source.get("ISSN"),
+                                           yearFirst = source.get("start_year"),
+                                           yearLast = source.get("end_year"),
+                                           embargoYears = source.get("embargo_yrs")
+                                           ) 
+                print (item)
+            except ValidationError as e:
+                print ("SourceInfoListItem Validation Error:")
+                print(e.json())        
+
+        except Exception as e:
+                print(e)        
             
-            item = SourceInfoListItem( sourceType = sourceType,
-                                       ISSN = source.get("ISSN"),
-                                       PEPCode = source.get("src_code"),
-                                       bookCode = bookCode,
-                                       abbrev = source.get("bib_abbrev"),
-                                       bannerURL = "http://{}/{}/banner{}.logo.gif".format(opasConfig.BASEURL, opasConfig.IMAGES, source.get("src_code")),
-                                       title = title,
-                                       displayTitle = artCiteAs,
-                                       language = source.get("language"),
-                                       yearFirst = source.get("start_year"),
-                                       yearLast = source.get("end_year"),
-                                       embargoYears = source.get("embargo_yrs")
-                                       ) 
-        except ValidationError as e:
-            print ("SourceInfoListItem Validation Error:")
-            print(e.json())        
 
         sourceInfoListItems.append(item)
         

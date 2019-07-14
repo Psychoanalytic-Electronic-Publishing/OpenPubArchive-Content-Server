@@ -166,19 +166,23 @@ class ServerStatusItem(BaseModel):
     timeStamp: str = Schema(None, title="")
     
 class SourceInfoListItem(BaseModel):    
-    ISSN: str = Schema(None, title="")
+    sourceType: str = Schema(None, title="")
     PEPCode: str = Schema(None, title="")
     bookCode: str = Schema(None, title="Like PEPCode (srcCode) but specialized for books where many books fall under the same src_code")
     documentID: str = Schema(None, title="")
-    abbrev: str = Schema(None, title="")
     bannerURL: str = Schema(None, title="")
     displayTitle: str = Schema(None, title="Reference format for this source")
+    srcTitle: str = Schema(None, title="Title of this source (from V1. Deprecated)")
+    title: str = Schema(None, title="Title of this source")
+    title: str = Schema(None, title="")
+    authors: str = Schema(None, title="")
+    pub_year: str = Schema(None, title="")
+    abbrev: str = Schema(None, title="")
+    ISSN: str = Schema(None, title="")
     language: str = Schema(None, title="")
     yearFirst: str = Schema(None, title="")
     yearLast: str = Schema(None, title="")
     embargoYears: str = Schema(None, title="")
-    sourceType: str = Schema(None, title="")
-    title: str = Schema(None, title="")
 
 class VolumeListItem(BaseModel):
     PEPCode: str = Schema(None, title="")
