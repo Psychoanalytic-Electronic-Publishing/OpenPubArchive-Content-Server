@@ -503,26 +503,37 @@ class opasCentralDB(object):
 
         return retVal
 
-    def getSources(self, source=None, sourceType=None):
+    def getSources(self, source=None, sourceType=None, limit=None, offset=0):
         """
         >>> ocd = opasCentralDB()
         >>> sources = ocd.getSources()
 
         """
         self.openConnection(callerName="getSources") # make sure connection is open
+        totalCount = 0
         retVal = None
+        limitClause = ""
+        if limit is not None:
+            limitClause = "LIMIT {}".format(limit)
+            if offset != 0:
+                limitClause += "OFFSET {}".format(offset)
+
         if self.db != None:
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
                 if source is not None:
-                    sql = "SELECT * FROM vw_opas_sources WHERE src_code = %s order by title"
-                    res = curs.execute(sql, source)
-                elif sourceType is not None:
-                    sql = "SELECT * FROM vw_opas_sources WHERE src_type = %s and src_type_qualifier <> 'multivolumesubbook' order by title"
-                    res = curs.execute(sql, sourceType)
-                else:  # bring them all back
-                    sql = "SELECT * FROM vw_opas_sources order by title"
+                    sqlAll = "FROM vw_opas_sources WHERE active = 1 and src_code = '%s'" % source
+                    sql = "SELECT * " + sqlAll + "ORDER BY title {}".format(limitClause)
                     res = curs.execute(sql)
+                elif sourceType is not None:
+                    sqlAll = "FROM vw_opas_sources WHERE active = 1 and src_type = '%s' and (src_type_qualifier <> 'multivolumesubbook' or src_type_qualifier IS NULL)" % sourceType
+                    sql = "SELECT * " + sqlAll + "ORDER BY title {}".format(limitClause)
+                    res = curs.execute(sql)
+                else:  # bring them all back
+                    sqlAll = "FROM vw_opas_sources active = 1 and (src_type_qualifier <> 'multivolumesubbook' or src_type_qualifier IS NULL)"
+                    sql = "SELECT * " + sqlAll + "ORDER BY title {}".format(limitClause)
+                    res = curs.execute(sql)
+                    
             except Exception as e:
                 msg = "getSources Error querying vw_opas_sources: {}".format(e)
                 logger.error(msg)
@@ -530,13 +541,26 @@ class opasCentralDB(object):
             else:
                 if res:
                     retVal = curs.fetchall()
+                    if limitClause != None:
+                        # do another query to count possil
+                        curs2 = self.db.cursor()
+                        sqlCount = "SELECT COUNT(*) " + sqlAll
+                        countCur = curs2.execute(sqlCount)
+                        try:
+                            totalCount = curs2.fetchone()[0]
+                        except:
+                            totalCount  = 0
+                        curs2.close()
+                        curs.close()
+                    else:
+                        totalCount = len(retVal)
                 else:
                     retVal = None
             
         self.closeConnection(callerName="getSources") # make sure connection is closed
 
         # return session model object
-        return retVal # None or Session Object
+        return totalCount, retVal # None or Session Object
 
     def updateDocumentViewCount(self, articleID, account="NotLoggedIn", title=None, viewType="Online"):
         """

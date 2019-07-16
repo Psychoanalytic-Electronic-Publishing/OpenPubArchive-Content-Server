@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 import lxml
 from lxml import etree
+import lxml.html as lhtml
+
 from ebooklib import epub
 
 pyVer = 2
@@ -350,6 +352,11 @@ def xmlElemOrStrToXMLString(elemOrXMLStr, defaultReturn=""):
         
     return retVal
 
+def xmlStringToText(xmlString, defaultReturn=""):
+    clearText = lhtml.fromstring(xmlString)
+    retVal = clearText.text_content()
+    return retVal
+    
 def xmlElemOrStrToText(elemOrXMLStr, defaultReturn=""):
     """
     Return string with all tags stripped out from either etree element or xml marked up string
@@ -515,14 +522,28 @@ def addHeadingsToAbstractHTML(abstract, sourceTitle=None, pubYear=None, vol=None
 
     return retVal
 
-def convertXMLStringToHTML(xmlTextStr, xsltFile=r"../styles/pepkbd3-html.xslt"):
+def convertXMLStringToHTML(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
     retVal = None
+    try:
+        if not os.path.exists(xsltFile):
+            alt = "../styles/pepkbd3-html.xslt"
+            if os.path.exists("./styles/pepkbd3-html.xslt"):
+                xsltFile = alt
+    except Exception as e:
+        print ("Exception finding style sheet: ", e)
+
+        
     if xmlTextStr is not None and xmlTextStr != "[]":
-        xsltFile = etree.parse(xsltFile)
-        xsltTransformer = etree.XSLT(xsltFile)
-        sourceFile = etree.fromstring(xmlTextStr)
-        transformedData = xsltTransformer(sourceFile)
-        retVal = str(transformedData)
+        try:
+            xsltFile = etree.parse(xsltFile)
+            xsltTransformer = etree.XSLT(xsltFile)
+            sourceFile = etree.fromstring(xmlTextStr)
+            transformedData = xsltTransformer(sourceFile)
+        except Exception as e:
+            logger.error("ConvertXMLString XSLT Transform Error: ", e)
+            print ("ConvertXMLString XSLT Transform Error: ", e)
+        else:
+            retVal = str(transformedData)
     
     return retVal
 def convertHTMLToEPUB(htmlString, outputFilenameBase, artID, lang="en", htmlTitle=None, styleSheet="../styles/pep-html-preview.css"):

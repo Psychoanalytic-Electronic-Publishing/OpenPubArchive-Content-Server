@@ -2,34 +2,30 @@ import sys
 import logging
 import datetime
 
-sys.path.append('../config')
-from localsecrets import CONFIG
-
-BASEURL = "127.0.0.1:8000"
 CONSOLE_DEBUG_MESSAGES_ON = True
 CONSOLE_DB_DEBUG_MESSAGES_ON = True
 
 BASELOGFILENAME = "opasAPI"
 LOGLEVEL = "DEBUG"
 logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
-logging.basicConfig(filename=logFilename, level=LOGLEVEL)
+FORMAT = "%(asctime)-15s %(message)s"
+logging.basicConfig(filename=logFilename, format=FORMAT,level=logging.INFO,datefmt='%Y-%m-%d %H:%M:%S')
+
 #logger = logging.getLogger(programNameShort)
 
 IMAGES = "images"
-HITMARKERSTART = "{{"  # using non xml type so we can remove all tags but leave these!
+HITMARKERSTART = "{{"  # using non html/xml default markers, so we can strip all tags but leave the hitmarkers!
 HITMARKEREND = "}}"
-
-if CONFIG == "Local":
-    COOKIE_DOMAIN = "127.0.0.1"
-else:
-    COOKIE_DOMAIN = ".pep-web.info"
+HITMARKERSTART_OUTPUTHTML = '<span class="searchhit">'  # to convert the non-markup HIT markers to HTML, supply values here.  These match the current PEPEasy stylesheet.
+HITMARKEREND_OUTPUTHTML = "</span>"
     
 USER_NOT_LOGGED_IN_ID = 0
     
 COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
 COOKIE_MAX_KEEP_TIME = 86400 # 24 hours in seconds
 
-DEFAULT_KWIC_CONTENT_LENGTH = 40  # On each side of match (so use 1/2 of the total you want)
+DEFAULT_KWIC_CONTENT_LENGTH = 20  # On each side of match (so use 1/2 of the total you want)
+DEFAULT_MAX_KWIC_RETURNS = 5
 DEFAULT_LIMIT_FOR_SOLR_RETURNS = 10
 DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS = 1
 DEFAULT_LIMIT_FOR_WHATS_NEW = 5
@@ -41,6 +37,7 @@ SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 1520000 # to get a complete document from 
 
 # parameter descriptions for documentation
 DESCRIPTION_LIMIT = "Number of items to return"
+DESCRIPTION_DAYSBACK = "Number of days to look back to assess what's new"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)"
 DESCRIPTION_SOURCECODE = "The 2-8 character assigned PEP Code for source (e.g., APA, CPS, IJP, ANIJP-FR)"
 DESCRIPTION_YEAR = "The year for which to return data"

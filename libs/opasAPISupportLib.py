@@ -18,28 +18,31 @@ __version__     = "2019.0714.1"
 __status__      = "Development"
 
 import sys
-sys.path.append('../libs')
+#sys.path.append('../libs')
 sys.path.append('../config')
-from typing import Union, Optional, Tuple
 import http.cookies
-
-import opasConfig
-from opasConfig import *
-from localsecrets import SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, CONFIG
-from starlette.requests import Request
-from starlette.responses import Response
-
 import re
+import os
 import os.path
 import secrets
 from starlette.responses import JSONResponse, Response
-
+from starlette.requests import Request
+from starlette.responses import Response
 import time
 import datetime
 from datetime import datetime, timedelta
-from typing import List
+from typing import Union, Optional, Tuple, List
 from enum import Enum
 import pymysql
+
+import opasConfig as opasConfig
+import stdMessageLib as stdMessageLib
+import localsecrets as localsecrets
+from localsecrets import BASEURL
+#from libs.opasConfig import *
+
+from stdMessageLib import copyrightPageHTML  # copyright page text to be inserted in ePubs and PDFs
+from localsecrets import SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, CONFIG, COOKIE_DOMAIN
 
 pyVer = 2
 if (sys.version_info > (3, 0)):
@@ -63,8 +66,6 @@ from pydantic import ValidationError
 from ebooklib import epub
 
 #import imp
-
-from stdMessageLib import copyrightPageHTML  # copyright page text to be inserted in ePubs and PDFs
 
 # note: documents and documentList share the same internals, except the first level json label (documents vs documentlist)
 #import models
@@ -174,8 +175,18 @@ def getSessionInfo(request: Request, resp: Response,
         except ValidationError as e:
             print("Validation Error: ", e.json())             
     
-    print (sessionInfo)
+    print ("getSessionInfo: ", sessionInfo)
     return ocd, sessionInfo
+    
+def isSessionAuthenticated(request, resp):
+    """
+    Look to see if the session has been marked authenticated in the database
+    """
+    ocd, sessionInfo = getSessionInfo(request, resp)
+    sessionID = sessionInfo.session_id
+    # is the user authenticated? if so, loggedIn is true
+    retVal = sessionInfo.authenticated
+    return retVal
     
 def extractHTMLFragment(strHTML, xpathToExtract="//div[@id='abs']"):
     # parse HTML
@@ -286,9 +297,9 @@ def getSessionID(request):
         cookieDict = parseCookiesFromHeader(request)
         retVal = cookieDict.get(sessionCookieName, None)
         if retVal is not None:
-            print ("Session cookie had to be retrieved from header: {}".format(retVal))
+            print ("getSessionID: Session cookie had to be retrieved from header: {}".format(retVal))
     else:
-        print ("Session cookie from client: {}".format(retVal))
+        print ("getSessionID: Session cookie from client: {}".format(retVal))
     return retVal
 
 #-----------------------------------------------------------------------------
@@ -352,7 +363,7 @@ def forceStringReturnFromVariousReturnTypes(theText, minLength=5):
                 retVal = None
         else:
             logger.error("Type mismatch on Solr Data")
-            print ("ERROR: %s" % type(retVal))
+            print ("forceStringReturn ERROR: %s" % type(retVal))
 
         try:
             if isinstance(retVal, lxml.etree._Element):
@@ -362,7 +373,7 @@ def forceStringReturnFromVariousReturnTypes(theText, minLength=5):
                 logger.error("Byte Data")
                 retVal = retVal.decode("utf8")
         except Exception as e:
-            err = "Error forcing conversion to string: %s / %s" % (type(retVal), e)
+            err = "forceStringReturn Error forcing conversion to string: %s / %s" % (type(retVal), e)
             logger.error(err)
             print (err)
             
@@ -545,7 +556,7 @@ def databaseGetMostCited(period='5', limit=50, offset=0):
                              limit = limit
                              )
 
-    print ("Number found: %s" % results._numFound)
+    print ("databaseGetMostCited Number found: %s" % results._numFound)
     
     responseInfo = ResponseInfo(
                      count = len(results.results),
@@ -621,21 +632,22 @@ def databaseGetMostCited(period='5', limit=50, offset=0):
     return retVal   
 
 #-----------------------------------------------------------------------------
-def databaseWhatsNew(limit=DEFAULT_LIMIT_FOR_WHATS_NEW, offset=0):
+def databaseWhatsNew(daysBack=7, limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS_NEW, offset=0):
     """
     Return a what's been updated in the last week
     
     >>> result = databaseWhatsNew()
     Number found: 91
     """    
-    results = solrDocs.query(q = "timestamp:[NOW-7DAYS TO NOW]",  
+    
+    results = solrDocs.query(q = "timestamp:[NOW-{}DAYS TO NOW]".format(daysBack),  
                              fl = "art_id, title, art_vol, art_iss, art_pepsrccode, timestamp, art_pepsourcetype",
                              fq = "{!collapse field=art_pepsrccode max=art_year_int}",
                              sort="timestamp", sort_order="desc",
-                             rows=150, offset=0,
+                             rows=25, offset=0,
                              )
     
-    print ("Number found: %s" % results._numFound)
+    print ("databaseWhatsNew Number found: %s" % results._numFound)
     
     responseInfo = ResponseInfo(
                      count = len(results.results),
@@ -707,7 +719,7 @@ def searchLikeThePEPAPI():
     pass  # later
 
 #-----------------------------------------------------------------------------
-def metadataGetVolumes(pepCode, year="*", limit=DEFAULT_LIMIT_FOR_VOLUME_LISTS, offset=0):
+def metadataGetVolumes(pepCode, year="*", limit=opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, offset=0):
     """
     """
     retVal = []
@@ -720,7 +732,7 @@ def metadataGetVolumes(pepCode, year="*", limit=DEFAULT_LIMIT_FOR_VOLUME_LISTS, 
                              rows=limit, start=offset
                              )
 
-    print ("Number found: %s" % results._numFound)
+    print ("metadataGetVolumes Number found: %s" % results._numFound)
     responseInfo = ResponseInfo(
                      count = len(results.results),
                      fullCount = results._numFound,
@@ -754,7 +766,7 @@ def metadataGetVolumes(pepCode, year="*", limit=DEFAULT_LIMIT_FOR_VOLUME_LISTS, 
     return retVal
 
 #-----------------------------------------------------------------------------
-def metadataGetContents(pepCode, year="*", vol="*", limit=DEFAULT_LIMIT_FOR_CONTENTS_LISTS, offset=0):
+def metadataGetContents(pepCode, year="*", vol="*", limit=opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, offset=0):
     """
     Return a jounals contents
     
@@ -830,7 +842,7 @@ def metadataGetContents(pepCode, year="*", vol="*", limit=DEFAULT_LIMIT_FOR_CONT
     return retVal
 
 #-----------------------------------------------------------------------------
-def metadataGetVideos(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0):
+def metadataGetVideos(sourceType=None, PEPCode=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0):
     """
     Fill out a sourceInfoDBList which can be used for a getSources return, but return individual 
       videos, as is done for books.  This provides more information than the 
@@ -849,7 +861,7 @@ def metadataGetVideos(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_FOR_MET
                                     rows=limit, start=offset
                                  )
     except Exception as e:
-        print ("Error: {}".format(e))
+        print ("metadataGetVideos Error: {}".format(e))
     sourceInfoDBList = []
     count = len(srcList.results)
     totalCount = int(srcList.results.numFound)
@@ -880,13 +892,13 @@ def metadataGetVideos(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_FOR_MET
         except:
             sourceInfoRecord["language"] = "EN"
 
-        print (sourceInfoRecord)
+        print ("metadataGetVideos: ", sourceInfoRecord)
         sourceInfoDBList.append(sourceInfoRecord)
 
     return totalCount, sourceInfoDBList
 
 #-----------------------------------------------------------------------------
-def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0):
+def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0):
     """
     Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
     
@@ -924,24 +936,26 @@ def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_F
     if sourceType == "videos":        
         totalCount, sourceInfoDBList = metadataGetVideos(sourceType, PEPCode, limit, offset)
         count = len(sourceInfoDBList)
-        
     else: # get from mySQL
         try:
             if PEPCode != "*":
-                sourceData = ocd.getSources(sourceType = sourceType, source=PEPCode)
+                totalCount, sourceData = ocd.getSources(sourceType = sourceType, source=PEPCode, limit=limit, offset=offset)
             else:
-                sourceData = ocd.getSources(sourceType = sourceType)
+                totalCount, sourceData = ocd.getSources(sourceType = sourceType, limit=limit, offset=offset)
+                
             for sourceInfoDict in sourceData:
                 if sourceInfoDict["src_type"] == sourceType:
                     # match
                     sourceInfoDBList.append(sourceInfoDict)
-            totalCount = len(sourceInfoDBList)
-            print ("Number found: %s" % count)
+            if limit < totalCount:
+                count = limit
+            else:
+                count = totalCount
+            print ("MetadataGetSourceByType: Number found: %s" % count)
         except Exception as e:
             errMsg = "MetadataGetSourceByType: Error getting source information.  {}".format(e)
             count = 0
-            print ("Number found: %s" % count)
-        
+            print (errMsg)
 
     responseInfo = ResponseInfo(
                      count = count,
@@ -1000,20 +1014,20 @@ def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_F
                                            srcTitle = title,  # v1 Deprecated for future
                                            bookCode = bookCode,
                                            abbrev = source.get("bib_abbrev"),
-                                           bannerURL = "http://{}/{}/banner{}.logo.gif".format(opasConfig.BASEURL, opasConfig.IMAGES, source.get("src_code")),
+                                           bannerURL = "http://{}/{}/banner{}.logo.gif".format(BASEURL, opasConfig.IMAGES, source.get("src_code")),
                                            language = source.get("language"),
                                            ISSN = source.get("ISSN"),
                                            yearFirst = source.get("start_year"),
                                            yearLast = source.get("end_year"),
                                            embargoYears = source.get("embargo_yrs")
                                            ) 
-                print (item)
+                print ("metadataGetSourceByType SourceInfoListItem: ", item)
             except ValidationError as e:
-                print ("SourceInfoListItem Validation Error:")
+                print ("metadataGetSourceByType SourceInfoListItem Validation Error:")
                 print(e.json())        
 
         except Exception as e:
-                print(e)        
+                print("metadataGetSourceByType: ", e)        
             
 
         sourceInfoListItems.append(item)
@@ -1036,7 +1050,7 @@ def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=DEFAULT_LIMIT_F
     return retVal
 
 #-----------------------------------------------------------------------------
-def metadataGetSourceByCode(PEPCode=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+def metadataGetSourceByCode(PEPCode=None, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
     
@@ -1057,18 +1071,18 @@ def metadataGetSourceByCode(PEPCode=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
     
     # would need to add URL for the banner
     if PEPCode is not None:
-        sourceInfoDBList = ocd.getSources(PEPCode)    #sourceDB.sourceData[pepCode]
+        totalCount, sourceInfoDBList = ocd.getSources(PEPCode)    #sourceDB.sourceData[pepCode]
         #sourceType = sourceInfoDBList.get("src_type", None)
     else:
-        sourceInfoDBList = ocd.getSources(PEPCode)    #sourceDB.sourceData
+        totalCount, sourceInfoDBList = ocd.getSources(PEPCode)    #sourceDB.sourceData
         sourceType = "All"
             
     count = len(sourceInfoDBList)
-    print ("Number found: %s" % count)
+    print ("metadataGetSourceByCode: Number found: %s" % count)
 
     responseInfo = ResponseInfo(
                      count = count,
-                     fullCount = count,
+                     fullCount = totalCount,
                      limit = limit,
                      offset = offset,
                      #listLabel = "{} List".format(sourceType),
@@ -1090,7 +1104,7 @@ def metadataGetSourceByCode(PEPCode=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
             item = SourceInfoListItem( ISSN = source.get("ISSN"),
                                        PEPCode = source.get("src_code"),
                                        abbrev = source.get("bib_abbrev"),
-                                       bannerURL = "http://{}/{}/banner{}.logo.gif".format(opasConfig.BASEURL, opasConfig.IMAGES, source.get("src_code")),
+                                       bannerURL = "http://{}/{}/banner{}.logo.gif".format(BASEURL, opasConfig.IMAGES, source.get("src_code")),
                                        displayTitle = source.get("title"),
                                        language = source.get("language"),
                                        yearFirst = source.get("start_year"),
@@ -1099,8 +1113,10 @@ def metadataGetSourceByCode(PEPCode=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
                                        title = source.get("title")
                                        ) 
         except ValidationError as e:
-            print ("SourceInfoListItem Validation Error:")
+            print (80*"-")
+            print ("metadataGetSourceByCode: SourceInfoListItem Validation Error:")
             print(e.json())        
+            print (80*"-")
 
         sourceInfoListItems.append(item)
         
@@ -1109,20 +1125,24 @@ def metadataGetSourceByCode(PEPCode=None, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
                                              responseSet = sourceInfoListItems
                                             )
     except ValidationError as e:
-        print ("SourceInfoStruct Validation Error:")
+        print (80*"-")
+        print ("metadataGetSourceByCode: SourceInfoStruct Validation Error:")
         print(e.json())        
+        print (80*"-")
     
     try:
         sourceInfoList = SourceInfoList(sourceInfo = sourceInfoStruct)
     except ValidationError as e:
-        print ("SourceInfoList Validation Error:")
+        print (80*"-")
+        print ("metadataGetSourceByCode: SourceInfoList Validation Error:")
         print(e.json())        
+        print (80*"-")
     
     retVal = sourceInfoList
     return retVal
 
 #-----------------------------------------------------------------------------
-def authorsGetAuthorInfo(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+def authorsGetAuthorInfo(authorNamePartial, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns a list of matching names (per authors last name), and the number of articles
     in PEP found by that author.
@@ -1144,7 +1164,7 @@ def authorsGetAuthorInfo(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS
                                 rows=100
                              )
 
-    print ("Number found: %s" % results._numFound)
+    print ("authorsGetAuthorInfo: Number found: %s" % results._numFound)
     
     responseInfo = ResponseInfo(
                      count = len(results.results),
@@ -1183,7 +1203,7 @@ def authorsGetAuthorInfo(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS
     return retVal
 
 #-----------------------------------------------------------------------------
-def authorsGetAuthorPublications(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+def authorsGetAuthorPublications(authorNamePartial, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns a list of publications (published on PEP-Web (per authors partial name), and the number of articles
     in PEP found by that author.
@@ -1210,17 +1230,17 @@ def authorsGetAuthorPublications(authorNamePartial, limit=DEFAULT_LIMIT_FOR_SOLR
                                 rows=limit, start=offset
                              )
 
-    print ("Number found: %s" % results._numFound)
+    print ("authorsGetAuthorPublications: Number found: %s" % results._numFound)
     if results._numFound == 0:
-        print ("Query didn't work - {}".format(query))
+        print ("authorsGetAuthorPublications Query didn't work - {}".format(query))
         query = "art_author_id:/{}[ ]?.*/".format(authorNamePartial)
-        print ("trying again - {}".format(query))
+        print ("authorsGetAuthorPublications trying again - {}".format(query))
         results = solrAuthors.query(q = "{}".format(query),  
                                     fields = "art_author_id, art_year_int, art_id, art_citeas_xml",
                                     sort="art_author_id, art_year_int", sort_order="asc",
                                     rows=limit, start=offset
                                  )
-        print ("Number found: %s" % results._numFound)
+        print ("authorsGetAuthorPublications Number found: %s" % results._numFound)
         if results._numFound == 0:
             query = "art_author_id:/(.*[ ])?{}[ ]?.*/".format(authorNamePartial)
             print ("trying again - {}".format(query))
@@ -1306,7 +1326,7 @@ def getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocume
     return retVal
     
 #-----------------------------------------------------------------------------
-def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+def documentsGetAbstracts(documentID, retFormat="TEXTONLY", limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns an abstract or summary for the specified document
     If part of a documentID is supplied, multiple abstracts will be returned.
@@ -1330,6 +1350,8 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_
                              )
     
     matches = len(results.results)
+    cwd = os.getcwd()    
+    print ("GetAbstract: Current Directory {}".format(cwd))
     print ("%s document matches for getAbstracts" % matches)
     
     responseInfo = ResponseInfo(
@@ -1383,22 +1405,21 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_
             abstract = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocument)
             if abstract == "[]":
                 abstract = None
+            elif retFormat == "TEXTONLY":
+                abstract = opasxmllib.xmlElemOrStrToText(abstract)
             elif retFormat == "HTML":
                 abstractHTML = opasxmllib.convertXMLStringToHTML(abstract)
                 abstract = extractHTMLFragment(abstractHTML, "//div[@id='abs']")
-                abstract = opasxmllib.addHeadingsToAbstractHTML(abstract=abstract, 
-                                                                    sourceTitle=sourceTitle,
-                                                                    pubYear=artYear,
-                                                                    vol=artVol, 
-                                                                    pgRg=pgRg, 
-                                                                    citeas=citeAs, 
-                                                                    title=title,
-                                                                    authorMast=authorMast )
-            elif retFormat == "TEXTONLY":
-                abstract = opasxmllib.xmlElemOrStrToText(abstract)
-            #else: # xml  # not necessary, let it fall through
-                #pass
-            
+
+            abstract = opasxmllib.addHeadingsToAbstractHTML(abstract=abstract, 
+                                                                sourceTitle=sourceTitle,
+                                                                pubYear=artYear,
+                                                                vol=artVol, 
+                                                                pgRg=pgRg, 
+                                                                citeas=citeAs, 
+                                                                title=title,
+                                                                authorMast=authorMast )
+
             item = DocumentListItem(year = artYear,
                                     vol = artVol,
                                     sourceTitle = sourceTitle,
@@ -1432,7 +1453,7 @@ def documentsGetAbstracts(documentID, retFormat="HTML", limit=DEFAULT_LIMIT_FOR_
 
 
 #-----------------------------------------------------------------------------
-def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS, offset=0):
+def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=opasConfig.DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS, offset=0):
     """
    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
    For authenticated users, it returns with the document itself
@@ -1449,14 +1470,14 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=
     
     if not authenticated:
         #if user is not authenticated, effectively do endpoint for getDocumentAbstracts
-        print ("User not authenticated...fetching abstracts instead")
+        print ("documentsGetDocument: User not authenticated...fetching abstracts instead")
         return documentsGetAbstracts(documentID, limit=1)
 
     results = solrDocs.query(q = "art_id:%s" % (documentID),  
                                 fields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml"
                              )
     matches = len(results.results)
-    print ("%s document matches for getAbstracts" % matches)
+    print ("documentsGetDocument %s document matches" % matches)
     
     responseInfo = ResponseInfo(
                      count = len(results.results),
@@ -1473,12 +1494,12 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=
         try:
             retVal = results.results[0]["text_xml"]
         except KeyError as e:
-            logger.warning("No content or abstract found.  Error: %s" % e)
+            logger.warning("documentsGetDocument: No content or abstract found.  Error: %s" % e)
         else:
-            try:    
-                retVal = retVal[0]
-            except Exception as e:
-                logger.warning("Empty return: %s" % e)
+            #try:    
+                #retVal = retVal[0]
+            #except Exception as e:
+                #logger.warning("documentsGetDocument: Empty return: %s" % e)
         
             try:    
                 if retFormat.lower() == "html":
@@ -1486,7 +1507,7 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=
                     retVal = opasxmllib.convertXMLStringToHTML(retVal)
                     
             except Exception as e:
-                logger.warning("Can't convert data: %s" % e)
+                logger.warning("documentsGetDocument: Can't convert data: %s" % e)
     
             responseInfo = ResponseInfo(
                              count = len(results.results),
@@ -1504,19 +1525,19 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=
                     xmlAbstract = result["abstracts_xml"]
                 except KeyError as e:
                     xmlAbstract = None
-                    logger.info("No abstract for document ID: %s" % documentID)
+                    logger.info("documentsGetDocument: No abstract for document ID: %s" % documentID)
             
                 try:
                     xmlSummary = result["summaries_xml"]
                 except KeyError as e:
                     xmlSummary = None
-                    logger.info("No summary for document ID: %s" % documentID)
+                    logger.info("documentsGetDocument: No summary for document ID: %s" % documentID)
             
                 try:
                     xmlDocument = forceStringReturnFromVariousReturnTypes(result["text_xml"])
                 except KeyError as e:
                     xmlDocument = None
-                    logger.error("No content matched document ID for: %s" % documentID)
+                    logger.error("documentsGetDocument: No content matched document ID for: %s" % documentID)
     
                 authorIDs = result.get("art_author_id", None)
                 if authorIDs is None:
@@ -1532,7 +1553,7 @@ def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=
                     abstract = None
                 elif retFormat == "HTML":
                     abstractHTML = opasxmllib.convertXMLStringToHTML(abstract)
-                    abstract = opasxmllib.extractHTMLFragment(abstractHTML, "//div[@id='abs']")
+                    abstract = extractHTMLFragment(abstractHTML, "//div[@id='abs']")
                 elif retFormat == "TEXTONLY":
                     abstract = opasxmllib.xmlElemOrStrToText(abstract)
                 #else: # not needed
@@ -1706,9 +1727,9 @@ def getImageBinary(imageID):
             imageBytes = f.read()
             f.close()    
         except OSError as e:
-            print ("File Open Error: %s", e)
+            print ("getImageBinary: File Open Error: %s", e)
         except Exception as e:
-            print ("Error: %s", e)
+            print ("getImageBinary: Error: %s", e)
         else:
             retVal = imageBytes
     else:
@@ -1717,17 +1738,41 @@ def getImageBinary(imageID):
     return retVal
 
 #-----------------------------------------------------------------------------
-def getKwicList(markedUpText, extraContextLen=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, startHitTag=opasConfig.HITMARKERSTART, endHitTag=opasConfig.HITMARKEREND):
+def getKwicList(markedUpText, extraContextLen=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, 
+                solrStartHitTag=opasConfig.HITMARKERSTART, # supply whatever the start marker that solr was told to use
+                solrEndHitTag=opasConfig.HITMARKEREND,     # supply whatever the end marker that solr was told to use
+                outputStartHitTagMarker=opasConfig.HITMARKERSTART_OUTPUTHTML, # the default output marker, in HTML
+                outputEndHitTagMarker=opasConfig.HITMARKEREND_OUTPUTHTML,
+                limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS):
     """
-    Find all nonoverlapping 
+    Find all nonoverlapping matches, using Solr's return.  Limit the number.
     """
     
     retVal = []
-    emMarks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extraContextLen, startHitTag, endHitTag, extraContextLen))
+    emMarks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extraContextLen, solrStartHitTag, solrEndHitTag, extraContextLen))
+    count = 0
     for n in emMarks.finditer(markedUpText):
-        retVal.append(n.group(0))
-        #logger.info("Match: '...{}...'".format(n.group(0)))
-        print ("Match: '...{}...'".format(n.group(0)))
+        count += 1
+        match = n.group(0)
+        try:
+            # strip xml
+            match = opasxmllib.xmlStringToText(match)
+            # change the tags the user told Solr to use to the final output tags they want
+            #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
+            match = re.sub(solrStartHitTag, outputStartHitTagMarker, match)
+            match = re.sub(solrEndHitTag, outputEndHitTagMarker, match)
+        except Exception as e:
+            logging.error("Error stripping xml from kwic entry {}".format(e))
+               
+        retVal.append(match)
+        try:
+            logger.info("getKwicList Match: '...{}...'".format(match))
+            print ("getKwicListMatch: '...{}...'".format(match))
+        except Exception as e:
+            print ("getKwicList Error printing or logging matches. {}".format(e))
+        if count >= limit:
+            break
+        
     matchCount = len(retVal)
     
     return retVal    
@@ -1790,7 +1835,7 @@ def searchAnalysis(queryList,
                    summaryFields="art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
                    highlightFields='art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
                    fullTextRequested=True, userLoggedIn=False, 
-                   limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+                   limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Analyze the search clauses in the query list
 	"""
@@ -1848,7 +1893,7 @@ def searchText(query,
                fullTextRequested = True, 
                userLoggedIn = False, 
                extraContextLen = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
-               limit=DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
+               limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
                offset=0):
     """
     Full-text search
@@ -2001,7 +2046,7 @@ def searchText(query,
             #print (e.json())
         else:
             rowCount += 1
-            print ("{}:{}".format(rowCount, citeAs))
+            # print ("{}:{}".format(rowCount, citeAs))
             #logger.info("{}:{}".format(rowCount, citeAs.decode("utf8")))
             documentItemList.append(item)
             if rowCount > limit:

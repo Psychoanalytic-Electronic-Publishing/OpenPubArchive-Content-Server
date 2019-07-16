@@ -15,7 +15,7 @@ such as PEP-Easy.
 
 
 Run with:
-    uvicorn main:app --reload
+    uvicorn server:app --reload
     
     or for debug:
     
@@ -49,6 +49,8 @@ __version__     = "2019.0709.1"
 __status__      = "Development"
 
 import sys
+sys.path.append('./config')
+sys.path.append('./libs')
 
 import time
 import datetime
@@ -75,8 +77,8 @@ import json
 import logging
 logger = logging.getLogger(__name__)
 
-import opasConfig
-import localsecrets
+import localsecrets as localsecrets
+import libs.opasConfig as opasConfig
 
 import libs.opasAPISupportLib as opasAPISupportLib
 import libs.opasBasicLoginLib as opasBasicLoginLib
@@ -245,10 +247,11 @@ def get_license_status(resp: Response,
         loggedIn = False
     elif userID is not None:
         user = ocd.getUser(userID=userID)
+        user.password = "Hidden"
         username = user.username
     
+    print (userID, user)
     # hide the password hash
-    user.password = "Hidden"
     responseInfo = models.ResponseInfoLoginStatus(loggedIn = loggedIn,
                                                   userName = username,
                                                   request = request.url._url,
@@ -732,7 +735,8 @@ def get_the_most_cited_articles(resp: Response,
 
 @app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, tags=["Database"])
 def get_the_newest_documents(resp: Response,
-                             request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
+                             request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                             daysBack: int=Query(14, title="Number of days to look back", description=opasConfig.DESCRIPTION_DAYSBACK),
                              limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                              offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                             ):
@@ -745,7 +749,7 @@ def get_the_newest_documents(resp: Response,
     print ("In whatsNew")
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:
-        retVal = whatsNewList = opasAPISupportLib.databaseWhatsNew(limit=limit, offset=offset)
+        retVal = whatsNewList = opasAPISupportLib.databaseWhatsNew(limit=limit, offset=offset, daysBack=daysBack)
         # fill in additional return structure status info
         client_host = request.client.host
     except Exception as e:
@@ -1140,7 +1144,7 @@ def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
 def view_an_abstract(resp: Response,
                      request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                      documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
-                     retFormat: str=Query("HTML", title="Document return format", description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                     retFormat: str=Query("TEXTONLY", title="Document return format", description=opasConfig.DESCRIPTION_RETURNFORMATS),
                      limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                      offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                      ):
@@ -1165,6 +1169,7 @@ def view_an_abstract(resp: Response,
 
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DOCUMENTS_ABSTRACTS,
                                       params=request.url._url,
+                                      documentID="{}".format(documentID), 
                                       returnStatusCode = statusCode,
                                       statusMessage=statusMessage
                                       )
@@ -1183,26 +1188,28 @@ def view_a_document(resp: Response,
     Return a document for the requested documentID (e.g., IJP.077.0001A, or multiple documents for a partial ID (e.g., IJP.077)
     """
     retVal = None
-    sessionID = opasAPISupportLib.getSessionID(request)
-    accessToken = opasAPISupportLib.getAccessToken(request)
-    expirationTime = opasAPISupportLib.getExpirationTime(request)
-    ocd = opasCentralDBLib.opasCentralDB(sessionID, accessToken, expirationTime)    
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    sessionID = sessionInfo.session_id
+    # is the user authenticated? 
     try:
-        retVal = documents = opasAPISupportLib.documentsGetDocument(documentID, retFormat=retFormat, authenticated = ocd.currentSession.authenticated)
+        print ("USER IS AUTHENTICATED for document download")
+        retVal = documents = opasAPISupportLib.documentsGetDocument(documentID, retFormat=retFormat, authenticated = sessionInfo.authenticated)
     except Exception as e:
-        statusMessage = "Error: {}".format(e)
+        statusMessage = "View Document Error: {}".format(e)
+        print (statusMessage)
         statusCode = 400
+        retVal = None
     else:
         statusMessage = "Success"
         statusCode = 200
-
         # fill in additional return structure status info
         client_host = request.client.host
         retVal.documents.responseInfo.request = request.url._url
 
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DOCUMENTS_PDF,
                                       params=request.url._url,
-                                      statusMessage=gCurrentDevelopmentStatus
+                                      documentID="{}".format(documentID), 
+                                      statusMessage=statusMessage
                                       )
     return retVal
 
@@ -1221,6 +1228,7 @@ def download_a_document(resp: Response,
 
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DOCUMENTS_EPUB,
                                       params=request.url._url,
+                                      documentID="{}".format(documentID), 
                                       statusMessage=gCurrentDevelopmentStatus
                                       )
 

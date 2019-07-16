@@ -9,6 +9,42 @@ document which is to be formatted. It takes an XPath expression.
 In our case, it is matching document root element and will 
 tell processor to process the entire document with this template. 
 --> 
+    
+    <!-- variable to be used in div id's to keep them unique -->
+    <xsl:variable name="this-article">
+        <xsl:apply-templates select="." mode="id"/>
+    </xsl:variable>
+    
+    <xsl:template name="metadata-labeled-entry">
+        <xsl:param name="label"/>
+        <xsl:param name="contents">
+            <span class="{$label}">
+                <xsl:apply-templates/>
+            </span>
+        </xsl:param>
+        <xsl:call-template name="metadata-entry">
+            <xsl:with-param name="contents">
+                <xsl:if test="normalize-space(string($label))">
+                    <span class="label generated">
+                        <xsl:copy-of select="$label"/>
+                        <xsl:text>: </xsl:text>
+                    </span>
+                </xsl:if>
+                <xsl:copy-of select="$contents"/>
+            </xsl:with-param>
+        </xsl:call-template>
+    </xsl:template>
+    
+    <xsl:template name="metadata-entry">
+        <xsl:param name="contents">
+            <xsl:apply-templates/>
+        </xsl:param>
+        <p class="metadata-entry">
+            <xsl:copy-of select="$contents"/>
+        </p>
+    </xsl:template>
+    
+
     <xsl:template match = "/"> 
         <!-- HTML tags 
          Used for formatting purpose. Processor will skip them and browser 
