@@ -32,6 +32,22 @@ from modelsOpasCentralPydantic import User
 #-------------------------------------------------------
 OpasDB = TypeVar('OpasDB')
    
+   
+class QueryParameters(BaseModel):
+    analyzeThis: str = ""
+    searchQ: str = ""
+    filterQ: str = ""
+    searchAnalysisTermList: List[str] = []
+    solrMax: str = None
+    solrSortBy: str = None
+    urlRequest: str = ""
+
+class SearchModeEnum(Enum):
+    searchMode = "Searching"
+    documentFetchMode = "DocumentFetch"
+    moreLikeTheseMode = "MoreLikeThese"
+    queryAnalysisMode = "QueryAnalysis"
+   
 class ErrorReturn(BaseModel):
     error: str = Schema(None, title="Error class or title")
     error_message: str = Schema(None, title="Error description")

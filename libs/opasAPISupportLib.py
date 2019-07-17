@@ -70,6 +70,7 @@ from ebooklib import epub
 # note: documents and documentList share the same internals, except the first level json label (documents vs documentlist)
 #import models
 from models import ListTypeEnum, \
+                   SearchModeEnum, \
                    ResponseInfo, \
                    DocumentList, \
                    Documents, \
@@ -1453,7 +1454,7 @@ def documentsGetAbstracts(documentID, retFormat="TEXTONLY", limit=opasConfig.DEF
 
 
 #-----------------------------------------------------------------------------
-def documentsGetDocument(documentID, retFormat="XML", authenticated=True, limit=opasConfig.DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS, offset=0):
+def documentsGetDocument(documentID, solrQueryParams=None, retFormat="XML", authenticated=True, limit=opasConfig.DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS, offset=0):
     """
    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
    For authenticated users, it returns with the document itself
@@ -1905,8 +1906,9 @@ def searchAnalysis(queryList,
                    disMax = None,
                    summaryFields="art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
                    highlightFields='art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
-                   fullTextRequested=True, userLoggedIn=False, 
-                   limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+                   fullTextRequested=True, 
+                   userLoggedIn=False
+                   ):
     """
     Analyze the search clauses in the query list
 	"""
@@ -1956,15 +1958,19 @@ def searchAnalysis(queryList,
 #================================================================================================================
 def searchText(query, 
                filterQuery = None,
+               queryDebug = False,
                moreLikeThese = False,
-               queryAnalysis = False,
+               fullTextRequested = False, 
                disMax = None,
                # bring text_xml back in summary fields in case it's missing in highlights! I documented a case where this happens!
-               summaryFields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml, text_xml", 
-               highlightFields = 'art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
-               fullTextRequested = True, 
+               #summaryFields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml, text_xml", 
+               #highlightFields = 'art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
+               summaryFields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, abstracts_xml, art_title, art_author_id, art_citeas_xml", 
+               highlightFields = 'text_xml', 
+               sortBy="score desc",
                userLoggedIn = False, 
                extraContextLen = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+               maxKWICReturns = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
                limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
                offset=0):
     """
@@ -1994,6 +2000,7 @@ def searchText(query,
 
     
     """
+    
     if moreLikeThese:
         mlt_fl = "text_xml, headings_xml, terms_xml, references_xml"
         mlt = "true"
@@ -2003,7 +2010,7 @@ def searchText(query,
         mlt = "false"
         mlt_minwl = None
     
-    if queryAnalysis:
+    if queryDebug:
         queryDebug = "on"
     else:
         queryDebug = "off"
@@ -2014,15 +2021,21 @@ def searchText(query,
                              debugQuery = queryDebug,
                              disMax = disMax,
                              fields = summaryFields,
-                             hl= 'true', 
-                             hl_fragsize = opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
+                             hl='true', 
+                             hl_fragsize = extraContextLen, # 0 means use the whole field!  opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
+                             hl_multiterm='true',
                              hl_fl = highlightFields,
+                             hl_usePhraseHighlighter = 'true',
+                             hl_snippets = maxKWICReturns,
+                             #hl_method="unified",  # these don't work
+                             #hl_encoder="HTML",
                              mlt = mlt,
                              mlt_fl = mlt_fl,
                              mlt_count = 2,
                              mlt_minwl = mlt_minwl,
                              rows = limit,
                              start = offset,
+                             sort=sortBy,
                              hl_simple_pre = opasConfig.HITMARKERSTART,
                              hl_simple_post = opasConfig.HITMARKEREND)
 
@@ -2060,16 +2073,26 @@ def searchText(query,
             pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
             
         documentID = result.get("art_id", None)        
-        titleXml = results.highlighting[documentID].get("art_title_xml", None)
-        titleXml = forceStringReturnFromVariousReturnTypes(titleXml)
-        abstractsXml = results.highlighting[documentID].get("abstracts_xml", None)
-        abstractsXml  = forceStringReturnFromVariousReturnTypes(abstractsXml )
-        summariesXml = results.highlighting[documentID].get("abstracts_xml", None)
-        summariesXml  = forceStringReturnFromVariousReturnTypes(summariesXml)
+        #titleXml = results.highlighting[documentID].get("art_title_xml", None)
+        #titleXml = forceStringReturnFromVariousReturnTypes(titleXml)
+        #abstractsXml = results.highlighting[documentID].get("abstracts_xml", None)
+        #abstractsXml  = forceStringReturnFromVariousReturnTypes(abstractsXml )
+        #summariesXml = results.highlighting[documentID].get("abstracts_xml", None)
+        #summariesXml  = forceStringReturnFromVariousReturnTypes(summariesXml)
         textXml = results.highlighting[documentID].get("text_xml", None)
-        textXml  = forceStringReturnFromVariousReturnTypes(textXml)
+        #textXml  = forceStringReturnFromVariousReturnTypes(textXml)
         if textXml is not None:
-            kwicList = getKwicList(textXml, extraContextLen=extraContextLen)  # returning context matches as a list, making it easier for clients to work with
+            #kwicList = getKwicList(textXml, extraContextLen=extraContextLen)  # returning context matches as a list, making it easier for clients to work with
+            kwicList = []
+            for n in textXml:
+                # strip all tags
+                match = opasxmllib.xmlStringToText(n)
+                # change the tags the user told Solr to use to the final output tags they want
+                #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
+                match = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, match)
+                match = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, match)
+                kwicList.append(match)
+                
             kwic = " . . . ".join(kwicList)  # how its done at GVPi, for compatibility (as used by PEPEasy)
             #print ("Document Length: {}; Matches to show: {}".format(len(textXml), len(kwicList)))
         else:
@@ -2077,7 +2100,7 @@ def searchText(query,
             kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
             #print ("No matches to show in document {}".format(documentID))            
         
-        if not userLoggedIn or not fullTextRequested:
+        if not userLoggedIn and fullTextRequested:
             textXml = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract=abstractsXml, xmlSummary=summariesXml, xmlDocument=textXml)
 
         citeAs = result.get("art_citeas_xml", None)
@@ -2105,10 +2128,12 @@ def searchText(query,
                                     documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=""),
                                     kwic = kwic,
                                     kwicList = kwicList,
-                                    title = titleXml,
-                                    abstract = abstractsXml,
+                                    title = result.get("art_title", None),
+                                    #title = titleXml, # these were highlight versions, not needed
+                                    #abstract = abstractsXml, # these were highlight versions, not needed
                                     documentText = None, #textXml,
                                     score = result.get("score", None), 
+                                    rank = rowCount + 1,
                                     similarDocs = similarDocs,
                                     similarMaxScore = similarMaxScore,
                                     similarNumFound = similarNumFound

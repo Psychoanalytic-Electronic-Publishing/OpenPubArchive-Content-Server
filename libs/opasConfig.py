@@ -24,7 +24,7 @@ USER_NOT_LOGGED_IN_ID = 0
 COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
 COOKIE_MAX_KEEP_TIME = 86400 # 24 hours in seconds
 
-DEFAULT_KWIC_CONTENT_LENGTH = 10  # On each side of match (so use 1/2 of the total you want)
+DEFAULT_KWIC_CONTENT_LENGTH = 200  # On each side of match (so use 1/2 of the total you want)
 DEFAULT_MAX_KWIC_RETURNS = 5
 DEFAULT_LIMIT_FOR_SOLR_RETURNS = 10
 DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS = 1
