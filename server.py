@@ -153,7 +153,7 @@ def checkIfUserLoggedIn():
     return resp.licenseInfo.responseInfo.loggedIn
 
 @app.get("/v1/Status/", response_model=models.ServerStatusItem, tags=["Session"])
-def get_the_server_status(resp: Response, 
+async def get_the_server_status(resp: Response, 
                           request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
                           ):
     """
@@ -183,7 +183,7 @@ from http import cookies
 
 
 @app.get("/v1/WhoAmI/", tags=["Session"])
-def who_am_i(resp: Response,
+async def who_am_i(resp: Response,
              request: Request):
     """
     Temporary endpoint for debugging purposes
@@ -267,7 +267,7 @@ def get_license_status(resp: Response,
     return licenseInfo
 
 @app.get("/v1/Login/", tags=["Session"])
-def login_user(resp: Response, 
+async def login_user(resp: Response, 
                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                grant_type=None, 
                username=None, 
@@ -358,7 +358,7 @@ def login_user(resp: Response,
 
 #@app.get("/v1/Users/Logout/") # I like it under Users so I did them both.
 @app.get("/v1/Logout/", tags=["Session"])  # The original GVPi URL
-def logout_user(resp: Response, 
+async def logout_user(resp: Response, 
                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST)):
     """
     Close the user's session, and log them out.
@@ -405,7 +405,7 @@ def logout_user(resp: Response,
 @app.get("/v1/Database/MoreLikeThese/", response_model=models.DocumentList, tags=["Database"])
 @app.get("/v1/Database/SearchAnalysis/", response_model=models.DocumentList, tags=["Database"])
 @app.get("/v1/Database/Search/", response_model=models.DocumentList, tags=["Database"])
-def search_the_document_database(resp: Response, 
+async def search_the_document_database(resp: Response, 
                                  request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
                                  journalName: str=Query(None, title="Match PEP Journal or Source Name", description="PEP part of a Journal, Book, or Video name (e.g., 'international'),", min_length=2),  
                                  journal: str=Query(None, title="Match PEP Journal or Source Code", description="PEP Journal Code (e.g., APA, CPS, IJP, PAQ),", min_length=2), 
@@ -464,7 +464,7 @@ def search_the_document_database(resp: Response,
     filterQ = "*:* "
     searchAnalysisTermList = []
     
-    if re.search(r"/SearchAnalyses/", request.url._url):
+    if re.search(r"/SearchAnalysis/", request.url._url):
         analysisMode = True
     else:
         analysisMode = False
@@ -690,7 +690,7 @@ def search_the_document_database(resp: Response,
     
     
 @app.get("/v1/Database/MostCited/", response_model=models.DocumentList, tags=["Database"])
-def get_the_most_cited_articles(resp: Response,
+async def get_the_most_cited_articles(resp: Response,
                                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                 period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
                                 limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -734,7 +734,7 @@ def get_the_most_cited_articles(resp: Response,
     return retVal
 
 @app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, tags=["Database"])
-def get_the_newest_documents(resp: Response,
+async def get_the_newest_documents(resp: Response,
                              request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                              daysBack: int=Query(14, title="Number of days to look back", description=opasConfig.DESCRIPTION_DAYSBACK),
                              limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -774,7 +774,7 @@ def get_the_newest_documents(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Banners/", tags=["Metadata"])
-def get_banners(resp: Response, 
+async def get_banners(resp: Response, 
                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                ):
     """
@@ -792,7 +792,7 @@ def get_banners(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Banners/{SourceCode}", tags=["Metadata"])
-def get_banners(resp: Response, 
+async def get_banners(resp: Response, 
                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                SourceCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                ):
@@ -812,7 +812,7 @@ def get_banners(resp: Response,
     
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Contents/{SourceCode}/", response_model=models.DocumentList, tags=["Metadata"])
-def get_journal_content_lists(resp: Response,
+async def get_journal_content_lists(resp: Response,
                               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                               SourceCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                               year: str=Query("*", title="Contents Year", description="Year of source contents to return"),
@@ -853,7 +853,7 @@ def get_journal_content_lists(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Contents/{SourceCode}/{srcVol}/", response_model=models.DocumentList, tags=["Metadata"])
-def get_journal_content_lists_for_volume(SourceCode: str, 
+async def get_journal_content_lists_for_volume(SourceCode: str, 
                                          srcVol: str, 
                                          resp: Response,
                                          request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
@@ -895,7 +895,7 @@ def get_journal_content_lists_for_volume(SourceCode: str,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Videos/", response_model=models.SourceInfoList, tags=["Metadata"])
-def get_a_list_of_video_names(resp: Response,
+async def get_a_list_of_video_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                SourceCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                                limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -911,7 +911,7 @@ def get_a_list_of_video_names(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Journals/", response_model=models.SourceInfoList, tags=["Metadata"])
-def get_a_list_of_journal_names(resp: Response,
+async def get_a_list_of_journal_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                SourceCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                                limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -927,7 +927,7 @@ def get_a_list_of_journal_names(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Volumes/{SourceCode}/", response_model=models.VolumeList, tags=["Metadata"])
-def get_a_list_of_volumes_for_a_journal(resp: Response,
+async def get_a_list_of_volumes_for_a_journal(resp: Response,
                                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                         SourceCode: str=Path(..., title="Code for a Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -968,7 +968,7 @@ def get_a_list_of_volumes_for_a_journal(resp: Response,
     return retVal
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, tags=["Metadata"])
-def get_a_list_of_book_names(resp: Response,
+async def get_a_list_of_book_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                SourceCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                                limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -989,7 +989,7 @@ def get_a_list_of_book_names(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, tags=["Metadata"])
-def get_a_list_of_source_names(resp: Response,
+async def get_a_list_of_source_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                SourceType: str=Path(..., title="Source Type", description=opasConfig.DESCRIPTION_SOURCETYPE), 
                                SourceCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
@@ -1031,7 +1031,7 @@ def get_a_list_of_source_names(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, tags=["Authors"])
-def get_the_author_index_entries_for_matching_author_names(resp: Response,
+async def get_the_author_index_entries_for_matching_author_names(resp: Response,
                     request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                     authorNamePartial: str=Path(..., title="Author name or Partial Name", description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIALNOWILD), 
                     limit: int=Query(15, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -1083,7 +1083,7 @@ def get_the_author_index_entries_for_matching_author_names(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, tags=["Authors"])
-def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
+async def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
                            request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                            authorNamePartial: str=Path(..., title="Author name or Partial Name", description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
                            limit: int=Query(15, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -1141,7 +1141,7 @@ def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
     return retVal
 
 @app.get("/v1/Documents/Abstracts/{documentID}/", response_model=models.Documents, tags=["Documents"])
-def view_an_abstract(resp: Response,
+async def view_an_abstract(resp: Response,
                      request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                      documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
                      retFormat: str=Query("TEXTONLY", title="Document return format", description=opasConfig.DESCRIPTION_RETURNFORMATS),
@@ -1177,7 +1177,7 @@ def view_an_abstract(resp: Response,
 
 @app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["Documents"])  # the current PEP API
 @app.get("/v1/Documents/Document/{documentID}/", response_model=models.Documents, tags=["Documents"]) # more consistent with the model grouping
-def view_a_document(resp: Response,
+async def view_a_document(resp: Response,
                     request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                     documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
                     retFormat: str=Query("HTML", title="Document return format", description=opasConfig.DESCRIPTION_RETURNFORMATS),
@@ -1214,7 +1214,7 @@ def view_a_document(resp: Response,
     return retVal
 
 @app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", tags=["Documents"])
-def download_a_document(resp: Response,
+async def download_a_document(resp: Response,
                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                         documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
                         retFormat=Path(..., title="Download Format", description=opasConfig.DESCRIPTION_DOCDOWNLOADFORMAT),

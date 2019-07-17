@@ -1738,7 +1738,78 @@ def getImageBinary(imageID):
     return retVal
 
 #-----------------------------------------------------------------------------
-def getKwicList(markedUpText, extraContextLen=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, 
+def getKwicList(markedUpText, 
+                extraContextLen=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, 
+                solrStartHitTag=opasConfig.HITMARKERSTART, # supply whatever the start marker that solr was told to use
+                solrEndHitTag=opasConfig.HITMARKEREND,     # supply whatever the end marker that solr was told to use
+                outputStartHitTagMarker=opasConfig.HITMARKERSTART_OUTPUTHTML, # the default output marker, in HTML
+                outputEndHitTagMarker=opasConfig.HITMARKEREND_OUTPUTHTML,
+                limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS):
+    """
+    Find all nonoverlapping matches, using Solr's return.  Limit the number.
+    """
+    
+    retVal = []
+    emMarks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extraContextLen, solrStartHitTag, solrEndHitTag, extraContextLen))
+    markedUp = re.compile(".*(%s.*%s).*" % (solrStartHitTag, solrEndHitTag))
+    markedUpText = opasxmllib.xmlStringToText(markedUpText) # remove markup except match tags which shouldn't be XML
+
+    matchTextPattern = "({{.*?}})"
+    patCompiled = re.compile(matchTextPattern)
+    wordList = patCompiled.split(markedUpText) # split all the words
+    listOfMatches = []
+    index = 0
+    count = 0
+    #TODO may have problems with adjacent matches!
+    skipNext = False
+    for n in wordList:
+        if patCompiled.match(n) and skipNext == False:
+            # we have a match
+            try:
+                textBefore = wordList[index-1]
+                textBeforeWords = textBefore.split(" ")[-extraContextLen:]
+                textBeforePhrase = " ".join(textBeforeWords)
+            except:
+                textBefore = ""
+            try:
+                textAfter = wordList[index+1]
+                textAfterWords = textAfter.split(" ")[:extraContextLen]
+                textAfterPhrase = " ".join(textAfterWords)
+                if patCompiled.search(textAfterPhrase):
+                    skipNext = True
+            except:
+                textAfter = ""
+
+            # change the tags the user told Solr to use to the final output tags they want
+            #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
+            match = re.sub(solrStartHitTag, outputStartHitTagMarker, n)
+            match = re.sub(solrEndHitTag, outputEndHitTagMarker, match)
+
+            contextPhrase = textBeforePhrase + match + textAfterPhrase
+
+            retVal.append(contextPhrase)
+
+            try:
+                logger.info("getKwicList Match: '...{}...'".format(contextPhrase))
+                print ("getKwicListMatch: '...{}...'".format(contextPhrase))
+            except Exception as e:
+                print ("getKwicList Error printing or logging matches. {}".format(e))
+            
+            index += 1
+            count += 1
+            if count >= limit:
+                break
+        else:
+            skipNext = False
+            index += 1
+        
+    matchCount = len(retVal)
+    
+    return retVal    
+
+
+#-----------------------------------------------------------------------------
+def getKwicListOld(markedUpText, extraContextLen=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, 
                 solrStartHitTag=opasConfig.HITMARKERSTART, # supply whatever the start marker that solr was told to use
                 solrEndHitTag=opasConfig.HITMARKEREND,     # supply whatever the end marker that solr was told to use
                 outputStartHitTagMarker=opasConfig.HITMARKERSTART_OUTPUTHTML, # the default output marker, in HTML
@@ -1888,7 +1959,8 @@ def searchText(query,
                moreLikeThese = False,
                queryAnalysis = False,
                disMax = None,
-               summaryFields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
+               # bring text_xml back in summary fields in case it's missing in highlights! I documented a case where this happens!
+               summaryFields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml, text_xml", 
                highlightFields = 'art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
                fullTextRequested = True, 
                userLoggedIn = False, 

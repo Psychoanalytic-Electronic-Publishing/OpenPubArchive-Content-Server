@@ -353,6 +353,7 @@ def xmlElemOrStrToXMLString(elemOrXMLStr, defaultReturn=""):
     return retVal
 
 def xmlStringToText(xmlString, defaultReturn=""):
+    xmlString = xmlRemoveEncodingString(xmlString)
     clearText = lhtml.fromstring(xmlString)
     retVal = clearText.text_content()
     return retVal
