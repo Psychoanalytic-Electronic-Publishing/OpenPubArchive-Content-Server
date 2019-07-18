@@ -270,7 +270,11 @@ class DocumentListStruct(BaseModel):
 class DocumentList(BaseModel):
     documentList: DocumentListStruct
     
-class Documents(BaseModel):        # this shouldnt be needed, should be able to use DocumentList. But for v1 API compat, included.
+class DocumentStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: DocumentListItem
+
+class Documents(BaseModel):        # For the GVPi server, it returns a single object not an array of documents. But that's inconsistent with the abstract return.  Need to modify PEP-Easy and unify as a list.
     documents: DocumentListStruct
 
 class ImageURLListStruct(BaseModel):

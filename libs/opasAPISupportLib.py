@@ -76,6 +76,7 @@ from models import ListTypeEnum, \
                    Documents, \
                    DocumentListStruct, \
                    DocumentListItem, \
+                   DocumentStruct, \
                    ImageURLList, \
                    ImageURLListStruct, \
                    ImageURLListItem, \
@@ -1327,7 +1328,7 @@ def getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocume
     return retVal
     
 #-----------------------------------------------------------------------------
-def documentsGetAbstracts(documentID, retFormat="TEXTONLY", limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+def documentsGetAbstracts(documentID, retFormat="TEXTONLY", authenticated=None, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns an abstract or summary for the specified document
     If part of a documentID is supplied, multiple abstracts will be returned.
@@ -1431,7 +1432,7 @@ def documentsGetAbstracts(documentID, retFormat="TEXTONLY", limit=opasConfig.DEF
                                     documentID = result.get("art_id", None),
                                     documentRefHTML = citeAs,
                                     documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=""),
-                                    accessLimited = False, # Todo
+                                    accessLimited = authenticated,
                                     abstract = abstract,
                                     score = result.get("score", None)
                                     )
@@ -1472,134 +1473,79 @@ def documentsGetDocument(documentID, solrQueryParams=None, retFormat="XML", auth
     if not authenticated:
         #if user is not authenticated, effectively do endpoint for getDocumentAbstracts
         print ("documentsGetDocument: User not authenticated...fetching abstracts instead")
-        return documentsGetAbstracts(documentID, limit=1)
+        retVal = documentListStruct = documentsGetAbstracts(documentID, authenticated=authenticated, limit=1)
+        return retVal
 
-    results = solrDocs.query(q = "art_id:%s" % (documentID),  
-                                fields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml"
-                             )
-    matches = len(results.results)
-    print ("documentsGetDocument %s document matches" % matches)
-    
-    responseInfo = ResponseInfo(
-                     count = len(results.results),
-                     fullCount = results._numFound,
-                     limit = limit,
-                     offset = offset,
-                     listType="documentlist",
-                     fullCountComplete = limit >= results._numFound,
-                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
-                   )
-    
-    documentItemList = []
-    if matches >= 1:
-        try:
-            retVal = results.results[0]["text_xml"]
-        except KeyError as e:
-            logger.warning("documentsGetDocument: No content or abstract found.  Error: %s" % e)
-        else:
+    if solrQueryParams is not None:
+        # repeat the query that the user had done when retrieving the document
+        query = "art_id:{} && {}".format(documentID, solrQueryParams.searchQ)
+        documentList = searchText(query, 
+                                  filterQuery = solrQueryParams.filterQ,
+                                  fullTextRequested=True,
+                                  authenticated=authenticated,
+                                  queryDebug = False,
+                                  disMax = solrQueryParams.solrMax,
+                                  limit=limit, 
+                                  offset=offset
+                                  )
+        
+    else:
+        query = "art_id:{}".format(documentID)
+        summaryFields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml"
+        documentList = searchText(query, 
+                                  summaryFields = summaryFields,
+                                  fullTextRequested=True,
+                                  authenticated=authenticated,
+                                  queryDebug = False,
+                                  limit=limit, 
+                                  offset=offset
+                                  )
+
+    try:
+        matches = documentList.documentList.responseInfo.count
+        fullCount = documentList.documentList.responseInfo.fullCount
+        fullCountComplete = documentList.documentList.responseInfo.fullCountComplete
+        documentListItem = documentList.documentList.responseSet[0]
+        print ("documentsGetDocument %s document matches" % matches)
+    except Exception as e:
+        print ("No matches or error: {}").format(e)
+    else:
+        responseInfo = ResponseInfo(
+                         count = matches,
+                         fullCount = fullCount,
+                         limit = limit,
+                         offset = offset,
+                         listType="documentlist",
+                         fullCountComplete = fullCountComplete,
+                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
+                       )
+        
+        if matches >= 1:
             #try:    
-                #retVal = retVal[0]
+                #if retFormat.lower() == "html":
+                    #retVal = opasxmllib.removeEncodingString(retVal)
+                    #retVal = opasxmllib.convertXMLStringToHTML(retVal)
             #except Exception as e:
-                #logger.warning("documentsGetDocument: Empty return: %s" % e)
+                #logger.warning("documentsGetDocument: Can't convert data: %s" % e)
+            #else:
+                    #if xmlDocument == "[]":
+                        #documentText = xmlDocument = None
+                    #elif retFormat == "HTML":
+                        #documentText  = opasxmllib.removeEncodingString(xmlDocument)
+                        #documentText = opasxmllib.convertXMLStringToHTML(documentText)
+                    #elif retFormat == "TEXTONLY":
+                        #documentText  = opasxmllib.removeEncodingString(xmlDocument)
+                        #documentText  = opasxmllib.xmlElemOrStrToText(documentText)
+                    #else: # XML
+                        #documentText = xmlDocument
         
-            try:    
-                if retFormat.lower() == "html":
-                    retVal = opasxmllib.removeEncodingString(retVal)
-                    retVal = opasxmllib.convertXMLStringToHTML(retVal)
-                    
-            except Exception as e:
-                logger.warning("documentsGetDocument: Can't convert data: %s" % e)
-    
-            responseInfo = ResponseInfo(
-                             count = len(results.results),
-                             fullCount = results._numFound,
-                             limit = 1,
-                             offset = 0,
-                             listType="documentlist",
-                             fullCountComplete = results._numFound <= 1,
-                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
-                           )
-    
-            if results._numFound > 0:
-                result = results.results[0]
-                try:
-                    xmlAbstract = result["abstracts_xml"]
-                except KeyError as e:
-                    xmlAbstract = None
-                    logger.info("documentsGetDocument: No abstract for document ID: %s" % documentID)
-            
-                try:
-                    xmlSummary = result["summaries_xml"]
-                except KeyError as e:
-                    xmlSummary = None
-                    logger.info("documentsGetDocument: No summary for document ID: %s" % documentID)
-            
-                try:
-                    xmlDocument = forceStringReturnFromVariousReturnTypes(result["text_xml"])
-                except KeyError as e:
-                    xmlDocument = None
-                    logger.error("documentsGetDocument: No content matched document ID for: %s" % documentID)
-    
-                authorIDs = result.get("art_author_id", None)
-                if authorIDs is None:
-                    authorMast = None
-                else:
-                    authorMast = opasgenlib.deriveAuthorMast(authorIDs)
-    
-                pgRg = result.get("art_pgrg", None)
-                pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
-    
-                abstract = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract, xmlSummary, xmlDocument)
-                if abstract == "[]":
-                    abstract = None
-                elif retFormat == "HTML":
-                    abstractHTML = opasxmllib.convertXMLStringToHTML(abstract)
-                    abstract = extractHTMLFragment(abstractHTML, "//div[@id='abs']")
-                elif retFormat == "TEXTONLY":
-                    abstract = opasxmllib.xmlElemOrStrToText(abstract)
-                #else: # not needed
-                    #abstract = abstract
-    
-                if xmlDocument == "[]":
-                    documentText = xmlDocument = None
-                elif retFormat == "HTML":
-                    documentText  = opasxmllib.removeEncodingString(xmlDocument)
-                    documentText = opasxmllib.convertXMLStringToHTML(documentText)
-                elif retFormat == "TEXTONLY":
-                    documentText  = opasxmllib.removeEncodingString(xmlDocument)
-                    documentText  = opasxmllib.xmlElemOrStrToText(documentText)
-                else: # XML
-                    documentText = xmlDocument
-    
-                citeAs = result.get("art_citeas_xml", None)
-                citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
+            documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+                                                     responseSet = [documentListItem]
+                                                     )
                 
-                item = DocumentListItem(year = result.get("art_year", None),
-                                        vol = result.get("art_vol", None),
-                                        pgRg = pgRg,
-                                        pgStart = pgStart,
-                                        pgEnd = pgEnd,
-                                        authormast = authorMast,  #TODO fix data model case to authorMast, but GVPi did it like this in their server
-                                        documentID = result.get("art_id", None),
-                                        documentRefHTML = citeAs,
-                                        documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=""),
-                                        accessLimited = False, # Todo
-                                        abstract = abstract,
-                                        document = documentText,
-                                        score = result.get("score", None)
-                                        )
-
-                documentItemList.append(item)
-
-    responseInfo.count = len(documentItemList)  # will be ONE or ZERO
-            
-    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
-                                             responseSet=documentItemList
-                                             )
-    
-    documents = Documents(documents = documentListStruct)
-        
-    retVal = documents
+            documents = Documents(documents = documentListStruct)
+                    
+            retVal = documents
     
     return retVal
 
@@ -1907,7 +1853,8 @@ def searchAnalysis(queryList,
                    summaryFields="art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
                    highlightFields='art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
                    fullTextRequested=True, 
-                   userLoggedIn=False
+                   userLoggedIn=False,
+                   limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS
                    ):
     """
     Analyze the search clauses in the query list
@@ -1965,10 +1912,10 @@ def searchText(query,
                # bring text_xml back in summary fields in case it's missing in highlights! I documented a case where this happens!
                #summaryFields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml, text_xml", 
                #highlightFields = 'art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
-               summaryFields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, abstracts_xml, art_title, art_author_id, art_citeas_xml", 
+               summaryFields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, abstracts_xml, art_title, art_author_id, art_citeas_xml, text_xml", 
                highlightFields = 'text_xml', 
                sortBy="score desc",
-               userLoggedIn = False, 
+               authenticated = None, 
                extraContextLen = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                maxKWICReturns = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
                limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
@@ -2015,6 +1962,10 @@ def searchText(query,
     else:
         queryDebug = "off"
         
+    if fullTextRequested:
+        fragSize = 0 # 0 means use the whole field!  opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
+    else:
+        fragSize = extraContextLen
         
     results = solrDocs.query(query,  
                              fq = filterQuery,
@@ -2022,7 +1973,7 @@ def searchText(query,
                              disMax = disMax,
                              fields = summaryFields,
                              hl='true', 
-                             hl_fragsize = extraContextLen, # 0 means use the whole field!  opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
+                             hl_fragsize = fragSize, 
                              hl_multiterm='true',
                              hl_fl = highlightFields,
                              hl_usePhraseHighlighter = 'true',
@@ -2061,6 +2012,13 @@ def searchText(query,
     documentItemList = []
     rowCount = 0
     rowOffset = 0
+    # if we're not authenticated, then turn off the full-text request and behave as if we didn't try
+    if not authenticated:
+        if fullTextRequested:
+            logger.warning("Fulltext requested--by API--but not authenticated.")
+
+        fullTextRequested = False
+        
     for result in results.results:
         authorIDs = result.get("art_author_id", None)
         if authorIDs is None:
@@ -2073,15 +2031,9 @@ def searchText(query,
             pgStart, pgEnd = opasgenlib.pgRgSplitter(pgRg)
             
         documentID = result.get("art_id", None)        
-        #titleXml = results.highlighting[documentID].get("art_title_xml", None)
-        #titleXml = forceStringReturnFromVariousReturnTypes(titleXml)
-        #abstractsXml = results.highlighting[documentID].get("abstracts_xml", None)
-        #abstractsXml  = forceStringReturnFromVariousReturnTypes(abstractsXml )
-        #summariesXml = results.highlighting[documentID].get("abstracts_xml", None)
-        #summariesXml  = forceStringReturnFromVariousReturnTypes(summariesXml)
         textXml = results.highlighting[documentID].get("text_xml", None)
-        #textXml  = forceStringReturnFromVariousReturnTypes(textXml)
-        if textXml is not None:
+        # no kwic list when full-text is requested.
+        if textXml is not None and not fullTextRequested:
             #kwicList = getKwicList(textXml, extraContextLen=extraContextLen)  # returning context matches as a list, making it easier for clients to work with
             kwicList = []
             for n in textXml:
@@ -2094,14 +2046,29 @@ def searchText(query,
                 kwicList.append(match)
                 
             kwic = " . . . ".join(kwicList)  # how its done at GVPi, for compatibility (as used by PEPEasy)
+            textXml = None
             #print ("Document Length: {}; Matches to show: {}".format(len(textXml), len(kwicList)))
-        else:
+        else: # either fulltext requested, or no document
             kwicList = []
             kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
-            #print ("No matches to show in document {}".format(documentID))            
         
-        if not userLoggedIn and fullTextRequested:
-            textXml = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract=abstractsXml, xmlSummary=summariesXml, xmlDocument=textXml)
+        if fullTextRequested:
+            if textXml is None:  # no highlights, so get it from the main area
+                try:
+                    textXml = result.get("text_xml", None)
+                    textXml = forceStringReturnFromVariousReturnTypes(textXml)
+                except:
+                    textXml = None
+
+        if fullTextRequested and not authenticated: # don't do this when textXml is a fragment from kwiclist!
+            try:
+                abstractsXml = results.highlighting[documentID].get("abstracts_xml", None)
+                abstractsXml  = forceStringReturnFromVariousReturnTypes(abstractsXml )
+                summariesXml = results.highlighting[documentID].get("abstracts_xml", None)
+                summariesXml  = forceStringReturnFromVariousReturnTypes(summariesXml)
+                textXml = getExcerptFromAbstractOrSummaryOrDocument(xmlAbstract=abstractsXml, xmlSummary=summariesXml, xmlDocument=textXml)
+            except:
+                textXml = None
 
         citeAs = result.get("art_citeas_xml", None)
         citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
@@ -2129,9 +2096,8 @@ def searchText(query,
                                     kwic = kwic,
                                     kwicList = kwicList,
                                     title = result.get("art_title", None),
-                                    #title = titleXml, # these were highlight versions, not needed
-                                    #abstract = abstractsXml, # these were highlight versions, not needed
-                                    documentText = None, #textXml,
+                                    abstract = forceStringReturnFromVariousReturnTypes(result.get("abstracts_xml", None)), # these were highlight versions, not needed
+                                    document = textXml,
                                     score = result.get("score", None), 
                                     rank = rowCount + 1,
                                     similarDocs = similarDocs,

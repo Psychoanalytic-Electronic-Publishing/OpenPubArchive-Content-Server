@@ -58,6 +58,7 @@ from datetime import datetime
 import re
 import secrets
 import json
+from urllib import parse
 
 from enum import Enum
 import uvicorn
@@ -115,18 +116,27 @@ app = FastAPI(
                    #session_cookie = secrets.token_urlsafe(16)
     #)
 
+#origins = [
+    #"http://pepeasy.pep-web.info",
+    #"http://api.pep-web.info",
+    #"http://pep-web.info",
+    #"http://*.pep-web.info",
+    #"http://localhost",
+    #"http://development",
+    #"http://localhost:8080",
+    #"http://webfaction",
+    #"http://127.0.0.1",
+    #"http://127.0.0.1:8000",
+    #"http://api.mypep.info",
+    #"http://www.pep-web.info"
+#]
+
 origins = [
-    "http://pepeasy.pep-web.info",
-    "http://api.pep-web.info",
-    "http://pep-web.info",
-    "http:localhost",
-    "http:localhost:8080",
-    "http://webfaction",
-    "http://127.0.0.1",
-    "http://127.0.0.1:8000",
-    "http://api.mypep.info",
-    "http://www.pep-web.info"
+    "http://development",
+    "http://development.org",
+    "http://.development.org",
 ]
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -144,16 +154,17 @@ def getExpirationCookieStr(keepActive=False):
     retVal = datetime.utcfromtimestamp(time.time() + maxAge).strftime('%Y-%m-%d %H:%M:%S')
     return retVal #expiration cookie str
 
-def checkIfUserLoggedIn():
+def checkIfUserLoggedIn(req:Request, 
+                        response:Response):
     """
     
     """
     #TBD: Should just check token cookie here.
-    resp = login_user()
+    resp = login_user(req, resp)
     return resp.licenseInfo.responseInfo.loggedIn
 
 @app.get("/v1/Status/", response_model=models.ServerStatusItem, tags=["Session"])
-async def get_the_server_status(resp: Response, 
+def get_the_server_status(resp: Response, 
                           request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
                           ):
     """
@@ -183,7 +194,7 @@ from http import cookies
 
 
 @app.get("/v1/WhoAmI/", tags=["Session"])
-async def who_am_i(resp: Response,
+def who_am_i(resp: Response,
              request: Request):
     """
     Temporary endpoint for debugging purposes
@@ -267,7 +278,7 @@ def get_license_status(resp: Response,
     return licenseInfo
 
 @app.get("/v1/Login/", tags=["Session"])
-async def login_user(resp: Response, 
+def login_user(resp: Response, 
                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                grant_type=None, 
                username=None, 
@@ -358,7 +369,7 @@ async def login_user(resp: Response,
 
 #@app.get("/v1/Users/Logout/") # I like it under Users so I did them both.
 @app.get("/v1/Logout/", tags=["Session"])  # The original GVPi URL
-async def logout_user(resp: Response, 
+def logout_user(resp: Response, 
                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST)):
     """
     Close the user's session, and log them out.
@@ -404,32 +415,31 @@ async def logout_user(resp: Response,
 
 #---------------------------------------------------------------------------------------------------------
 # this function lets various endpoints like search, searchanalysis, and document, share this large parameter set.
-def parseSearchQueryParameters(search: str=Query(None, title="Document request, with a search", description="This is a document request, with a search"),
-                               journalName: str=Query(None, title="Match PEP Journal or Source Name", description="PEP part of a Journal, Book, or Video name (e.g., 'international'),", min_length=2),  
-                               journal: str=Query(None, title="Match PEP Journal or Source Code", description="PEP Journal Code (e.g., APA, CPS, IJP, PAQ),", min_length=2), 
-                               fulltext1: str=Query(None, title="Search for Words or phrases", description="Words or phrases (in quotes) anywhere in the document"),
-                               fulltext2: str=Query(None, title="Search for Words or phrases", description="Words or phrases (in quotes) anywhere in the document"),
-                               vol: str=Query(None, title="Match Volume Number", description="The volume number if the source has one"), 
-                               issue: str=Query(None, title="Match Issue Number", description="The issue number if the source has one"),
-                               author: str=Query(None, title="Match Author name", description="Author name, use wildcard * for partial entries (e.g., Johan*)"), 
-                               title: str=Query(None, title="Search Document Title", description="The title of the document (article, book, video)"),
-                               startyear: str=Query(None, title="First year to match or a range", description="First year of documents to match (e.g, 1999).  Range query: ^1999-2010 means between 1999-2010.  >1999 is after 1999 <1999 is before 1999"), 
-                               endyear: str=Query(None, title="Last year to match", description="Last year of documents to match (e.g, 2001)"), 
-                               dreams: str=Query(None, title="Search Text within 'Dreams'", description="Words or phrases (in quotes) to match within dreams"),  
-                               quotes: str=Query(None, title="Search Text within 'Quotes'", description="Words or phrases (in quotes) to match within quotes"),  
-                               abstracts: str=Query(None, title="Search Text within 'Abstracts'", description="Words or phrases (in quotes) to match within abstracts"),  
-                               dialogs: str=Query(None, title="Search Text within 'Dialogs'", description="Words or phrases (in quotes) to match within dialogs"),  
-                               references: str=Query(None, title="Search Text within 'References'", description="Words or phrases (in quotes) to match within references"),  
-                               citecount: str=Query(None, title="Find Documents cited this many times", description="Filter for documents cited more than the specified times in the past 5 years"),   
-                               viewcount: str=Query(None, title="Find Documents viewed this many times", description="Not yet implemented"),    
-                               viewedWithin: str=Query(None, title="Find Documents viewed this many times", description="Not yet implemented"),     
-                               solrQ: str=Query(None, title="Advanced Query (Solr Syntax)", description="Advanced Query in Solr Q syntax (see schema names)"),
-                               disMax: str=Query(None, title="Advanced Query (Solr disMax Syntax)", description="Solr disMax syntax - more like Google search"),
-                               edisMax: str=Query(None, title="Advanced Query (Solr edisMax Syntax) ", description="Solr edisMax syntax - more like Google search, better than disMax"), 
-                               quickSearch: str=Query(None, title="Advanced Query (Solr edisMax Syntax)", description="Advanced Query in Solr syntax (see schema names)"),
-                               sortBy: str=Query(None, title="Field names to sort by", description="Comma separated list of field names to sort by, each with the keyword asc or desc"),
-                               #limit: int=Query(15, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
-                               #offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
+def parseSearchQueryParameters(search=None,
+                               journalName=None,
+                               journal=None,
+                               fulltext1=None,
+                               fulltext2=None,
+                               vol=None,
+                               issue=None,
+                               author=None,
+                               title=None,
+                               datetype=None,
+                               startyear=None,
+                               endyear=None,
+                               dreams=None,
+                               quotes=None,
+                               abstracts=None,
+                               dialogs=None,
+                               references=None,
+                               citecount=None, 
+                               viewcount=None, 
+                               viewedWithin=None, 
+                               solrQ=None, 
+                               disMax=None, 
+                               edisMax=None, 
+                               quickSearch=None, 
+                               sort=None, 
                             ):
 
     # initialize accumulated variables
@@ -438,6 +448,16 @@ def parseSearchQueryParameters(search: str=Query(None, title="Document request, 
     analyzeThis = ""
     solrMax = None
     searchAnalysisTermList = []
+    
+    if sort is not None:  # not sure why this seems to have a slash, but remove it
+        sort = re.sub("\/", "", sort)
+        
+    #if search is not None:
+        #argDict = dict(parse.parse_qsl(parse.urlsplit(search).query))
+        ## this is going to be a document ID
+        #analyzeThis = "&& art_id:{} ".format(search)
+        ##filterQ += analyzeThis
+        #searchAnalysisTermList.append(analyzeThis)  
     
     if title is not None:
         analyzeThis = "&& art_title_xml:{} ".format(title)
@@ -498,6 +518,10 @@ def parseSearchQueryParameters(search: str=Query(None, title="Document request, 
         analyzeThis = "&& art_authors_xml:{} ".format(author)
         filterQ += analyzeThis
         searchAnalysisTermList.append(analyzeThis)  
+    
+    if datetype is not None:
+        #TODO for now, lets see if we need this. (We might)
+        pass
     
     if startyear is not None and endyear is None:
         # put this in the filter query
@@ -612,16 +636,16 @@ def parseSearchQueryParameters(search: str=Query(None, title="Document request, 
                                     filterQ = filterQ,
                                     solrMax = solrMax,
                                     searchAnalysisTermList = searchAnalysisTermList,
-                                    solrSortBy = sortBy
+                                    solrSortBy = sort
                                     )
     
     return retVal
     
 #---------------------------------------------------------------------------------------------------------
 @app.get("/v1/Database/MoreLikeThese/", response_model=models.DocumentList, tags=["Database"])
-@app.get("/v1/Database/SearchAnalysis/", response_model=models.DocumentList, tags=["Database"])
+@app.get("/v1/Database/SearchAnalyses/", response_model=models.DocumentList, tags=["Database"])
 @app.get("/v1/Database/Search/", response_model=models.DocumentList, tags=["Database"])
-async def search_the_document_database(resp: Response, 
+def search_the_document_database(resp: Response, 
                                  request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
                                  search: str=Query(None, title="Document request, with a search", description="This is a document request, with a search"),  
                                  journalName: str=Query(None, title="Match PEP Journal or Source Name", description="PEP part of a Journal, Book, or Video name (e.g., 'international'),", min_length=2),  
@@ -718,7 +742,7 @@ async def search_the_document_database(resp: Response,
                                                  disMax=disMax,
                                                  edisMax=edisMax,
                                                  quickSearch=quickSearch,
-                                                 sortBy = sortBy
+                                                 sort = sortBy
                                              )
 
     solrQueryParams.urlRequest = request.url._url
@@ -731,6 +755,7 @@ async def search_the_document_database(resp: Response,
                                                                  queryAnalysis=analysisMode,
                                                                  moreLikeThese = None,
                                                                  fullTextRequested=False,
+                                                                 limit=limit
                                                                  )
         
         statusMsg = "{} terms/clauses; queryAnalysis: {}".format(len(solrQueryParams.searchAnalysisTermList), 
@@ -770,7 +795,7 @@ async def search_the_document_database(resp: Response,
     
     
 @app.get("/v1/Database/MostCited/", response_model=models.DocumentList, tags=["Database"])
-async def get_the_most_cited_articles(resp: Response,
+def get_the_most_cited_articles(resp: Response,
                                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                 period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
                                 limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -814,7 +839,7 @@ async def get_the_most_cited_articles(resp: Response,
     return retVal
 
 @app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, tags=["Database"])
-async def get_the_newest_documents(resp: Response,
+def get_the_newest_documents(resp: Response,
                              request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                              daysBack: int=Query(14, title="Number of days to look back", description=opasConfig.DESCRIPTION_DAYSBACK),
                              limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -854,7 +879,7 @@ async def get_the_newest_documents(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Banners/", tags=["Metadata"])
-async def get_banners(resp: Response, 
+def get_banners(resp: Response, 
                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                ):
     """
@@ -872,7 +897,7 @@ async def get_banners(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Banners/{SourceCode}", tags=["Metadata"])
-async def get_banners(resp: Response, 
+def get_banners(resp: Response, 
                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                SourceCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                ):
@@ -892,7 +917,7 @@ async def get_banners(resp: Response,
     
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Contents/{SourceCode}/", response_model=models.DocumentList, tags=["Metadata"])
-async def get_journal_content_lists(resp: Response,
+def get_journal_content_lists(resp: Response,
                               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                               SourceCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                               year: str=Query("*", title="Contents Year", description="Year of source contents to return"),
@@ -933,7 +958,7 @@ async def get_journal_content_lists(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Contents/{SourceCode}/{srcVol}/", response_model=models.DocumentList, tags=["Metadata"])
-async def get_journal_content_lists_for_volume(SourceCode: str, 
+def get_journal_content_lists_for_volume(SourceCode: str, 
                                          srcVol: str, 
                                          resp: Response,
                                          request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
@@ -975,7 +1000,7 @@ async def get_journal_content_lists_for_volume(SourceCode: str,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Videos/", response_model=models.SourceInfoList, tags=["Metadata"])
-async def get_a_list_of_video_names(resp: Response,
+def get_a_list_of_video_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                SourceCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                                limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -991,7 +1016,7 @@ async def get_a_list_of_video_names(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Journals/", response_model=models.SourceInfoList, tags=["Metadata"])
-async def get_a_list_of_journal_names(resp: Response,
+def get_a_list_of_journal_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                SourceCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                                limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -1007,7 +1032,7 @@ async def get_a_list_of_journal_names(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Volumes/{SourceCode}/", response_model=models.VolumeList, tags=["Metadata"])
-async def get_a_list_of_volumes_for_a_journal(resp: Response,
+def get_a_list_of_volumes_for_a_journal(resp: Response,
                                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                         SourceCode: str=Path(..., title="Code for a Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -1048,7 +1073,7 @@ async def get_a_list_of_volumes_for_a_journal(resp: Response,
     return retVal
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, tags=["Metadata"])
-async def get_a_list_of_book_names(resp: Response,
+def get_a_list_of_book_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                SourceCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                                limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -1069,7 +1094,7 @@ async def get_a_list_of_book_names(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, tags=["Metadata"])
-async def get_a_list_of_source_names(resp: Response,
+def get_a_list_of_source_names(resp: Response,
                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                SourceType: str=Path(..., title="Source Type", description=opasConfig.DESCRIPTION_SOURCETYPE), 
                                SourceCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
@@ -1111,7 +1136,7 @@ async def get_a_list_of_source_names(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, tags=["Authors"])
-async def get_the_author_index_entries_for_matching_author_names(resp: Response,
+def get_the_author_index_entries_for_matching_author_names(resp: Response,
                     request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                     authorNamePartial: str=Path(..., title="Author name or Partial Name", description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIALNOWILD), 
                     limit: int=Query(15, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -1163,7 +1188,7 @@ async def get_the_author_index_entries_for_matching_author_names(resp: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, tags=["Authors"])
-async def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
+def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
                            request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                            authorNamePartial: str=Path(..., title="Author name or Partial Name", description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
                            limit: int=Query(15, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -1221,7 +1246,7 @@ async def get_a_list_of_author_publications_for_matching_author_names(resp: Resp
     return retVal
 
 @app.get("/v1/Documents/Abstracts/{documentID}/", response_model=models.Documents, tags=["Documents"])
-async def view_an_abstract(resp: Response,
+def view_an_abstract(resp: Response,
                      request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                      documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
                      retFormat: str=Query("TEXTONLY", title="Document return format", description=opasConfig.DESCRIPTION_RETURNFORMATS),
@@ -1257,7 +1282,7 @@ async def view_an_abstract(resp: Response,
 
 @app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["Documents"])  # the current PEP API
 @app.get("/v1/Documents/Document/{documentID}/", response_model=models.Documents, tags=["Documents"]) # more consistent with the model grouping
-async def view_a_document(resp: Response,
+def view_a_document(resp: Response,
                           request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                           documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
                           offset: int=Query(0, title="Document Page offset", description=opasConfig.DESCRIPTION_PAGEOFFSET),
@@ -1297,32 +1322,35 @@ async def view_a_document(resp: Response,
     # is the user authenticated? 
     try:
         print ("USER IS AUTHENTICATED for document download")
-        solrQueryParams = parseSearchQueryParameters(search=search,
-                                                     journalName=journalName,
-                                                     journal=journal,
-                                                     fulltext1=fulltext1,
-                                                     fulltext2=fulltext2,
-                                                     vol=vol,
-                                                     issue=issue,
-                                                     author=author,
-                                                     title=title,
-                                                     startyear=startyear,
-                                                     endyear=endyear,
-                                                     dreams=dreams,
-                                                     quotes=quotes,
-                                                     abstracts=abstracts,
-                                                     dialogs=dialogs,
-                                                     references=references,
-                                                     citecount=citecount,
-                                                     viewcount=viewcount,
-                                                     viewedWithin=viewedWithin,
-                                                     solrQ=solrQ,
-                                                     disMax=disMax,
-                                                     edisMax=edisMax,
-                                                     quickSearch=quickSearch,
-                                                     sortBy = sortBy
-                                                 )
+        #solrQueryParams = parseSearchQueryParameters(search=search,
+                                                     #journalName=journalName,
+                                                     #journal=journal,
+                                                     #fulltext1=fulltext1,
+                                                     #fulltext2=fulltext2,
+                                                     #vol=vol,
+                                                     #issue=issue,
+                                                     #author=author,
+                                                     #title=title,
+                                                     #startyear=startyear,
+                                                     #endyear=endyear,
+                                                     #dreams=dreams,
+                                                     #quotes=quotes,
+                                                     #abstracts=abstracts,
+                                                     #dialogs=dialogs,
+                                                     #references=references,
+                                                     #citecount=citecount,
+                                                     #viewcount=viewcount,
+                                                     #viewedWithin=viewedWithin,
+                                                     #solrQ=solrQ,
+                                                     #disMax=disMax,
+                                                     #edisMax=edisMax,
+                                                     #quickSearch=quickSearch,
+                                                     #sortBy = sortBy
+                                                 #)
 
+        argDict = dict(parse.parse_qsl(parse.urlsplit(search).query))
+        solrQueryParams = parseSearchQueryParameters(**argDict)
+        
         retVal = documents = opasAPISupportLib.documentsGetDocument(documentID, 
                                                                     solrQueryParams,
                                                                     retFormat=retFormat, 
@@ -1348,7 +1376,7 @@ async def view_a_document(resp: Response,
     return retVal
 
 @app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", tags=["Documents"])
-async def download_a_document(resp: Response,
+def download_a_document(resp: Response,
                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                         documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
                         retFormat=Path(..., title="Download Format", description=opasConfig.DESCRIPTION_DOCDOWNLOADFORMAT),
@@ -1356,7 +1384,7 @@ async def download_a_document(resp: Response,
 
      
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
-    isAuthenticated = checkIfUserLoggedIn()  
+    isAuthenticated = checkIfUserLoggedIn(request, resp)  
 
     opasAPISupportLib.prepDocumentDownload(documentID, retFormat=retFormat, authenticated=True, baseFilename="opasDoc")    
 
