@@ -180,6 +180,33 @@ class ServerStatusItem(BaseModel):
     db_server_ok: bool = Schema(None, title="")
     user_ip: str = Schema(None, title="")
     timeStamp: str = Schema(None, title="")
+
+class JournalInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few fields
+    sourceType: str = Schema(None, title="")
+    PEPCode: str = Schema(None, title="")
+    bannerURL: str = Schema(None, title="")
+    displayTitle: str = Schema(None, title="Reference format for this source")
+    srcTitle: str = Schema(None, title="Title of this source (from V1. Deprecated)")
+    title: str = Schema(None, title="Title of this source")
+    abbrev: str = Schema(None, title="")
+    ISSN: str = Schema(None, title="")
+    language: str = Schema(None, title="")
+    yearFirst: str = Schema(None, title="")
+    yearLast: str = Schema(None, title="")
+    embargoYears: str = Schema(None, title="")
+    
+class VideoInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few fields
+    sourceType: str = Schema(None, title="")
+    PEPCode: str = Schema(None, title="")
+    bannerURL: str = Schema(None, title="")
+    displayTitle: str = Schema(None, title="Reference format for this source")
+    title: str = Schema(None, title="Title of this source")
+    abbrev: str = Schema(None, title="")
+    ISSN: str = Schema(None, title="")
+    language: str = Schema(None, title="")
+    yearFirst: str = Schema(None, title="")
+    yearLast: str = Schema(None, title="")
+    embargoYears: str = Schema(None, title="")
     
 class SourceInfoListItem(BaseModel):    
     sourceType: str = Schema(None, title="")
@@ -294,6 +321,20 @@ class LicenseStatusInfo(BaseModel):
 class SourceInfoStruct(BaseModel):
     responseInfo: ResponseInfo
     responseSet: List[SourceInfoListItem] = []
+
+class JournalInfoStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[JournalInfoListItem] = []
+
+class VideoInfoStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[VideoInfoListItem] = []
+
+class JournalInfoList(BaseModel):
+    sourceInfo: JournalInfoStruct
+
+class VideoInfoList(BaseModel):
+    sourceInfo: VideoInfoStruct
 
 class SourceInfoList(BaseModel):
     sourceInfo: SourceInfoStruct

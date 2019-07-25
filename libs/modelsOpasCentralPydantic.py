@@ -53,6 +53,7 @@ class UserSubscriptions(UserInDB):
     content_start_date: datetime = None
     content_end_date: datetime = None
     perpetual: bool = None
+    referrer: str = None
 
 class Session(BaseModel):  # subset of sessionInfo
     session_id: str = None

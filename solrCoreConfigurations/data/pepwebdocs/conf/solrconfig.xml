@@ -65,6 +65,24 @@
       </lst>
   </requestHandler>
 
+  <!-- Terms Component
+
+       http://wiki.apache.org/solr/TermsComponent
+
+       A component to return terms and document frequency of those
+       terms
+       
+       http://localhost:8983/solr/pepwebdocs/terms?terms.fl=text_xml&terms.prefix=feel
+    -->
+  <searchComponent name="terms" class="solr.TermsComponent"/>
+
+  <!-- A request handler for the terms component -->
+  <requestHandler name="/terms" class="solr.SearchHandler" startup="lazy">
+    <arr name="components">
+      <str>terms</str>
+    </arr>
+  </requestHandler>
+
   <!-- NRS: Added this as required for updates, but updates still not working -->
   <updateHandler class="solr.DirectUpdateHandler2">
 

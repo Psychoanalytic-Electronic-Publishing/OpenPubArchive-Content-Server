@@ -59,6 +59,26 @@
       <!--</lst>-->
   <!--</requestHandler>-->
 
+  <!-- Terms Component
+
+       http://wiki.apache.org/solr/TermsComponent
+
+       A component to return terms and document frequency of those
+       terms
+    -->
+  <searchComponent name="terms" class="solr.TermsComponent"/>
+
+  <!-- A request handler for the terms component -->
+  <requestHandler name="/terms" class="solr.SearchHandler" startup="lazy">
+     <lst name="defaults">
+      <bool name="terms">true</bool>
+      <bool name="distrib">false</bool>
+    </lst>
+    <arr name="components">
+      <str>terms</str>
+    </arr>
+  </requestHandler>
+
   <!-- NRS: Added this as required for updates, but updates still not working -->
   <updateHandler class="solr.DirectUpdateHandler2">
 

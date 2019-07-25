@@ -41,8 +41,11 @@ from pydantic import ValidationError
 import pymysql
 
 #import opasAuthBasic
-from localsecrets import SECRET_KEY, ALGORITHM
+from localsecrets import SECRET_KEY, ALGORITHM, urlPaDS, soapTest
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+import requests
+import xml.etree.ElementTree as ET
 
 # All opasCentral Database Models here
 import modelsOpasCentralPydantic
@@ -212,31 +215,7 @@ class opasCentralDB(object):
         self.closeConnection(callerName="endSession") # make sure connection is closed
         return retVal
         
-    #def getUserID(self, userName):
-        #"""
-        #Tested in main instance docstring
-        #"""
-        #self.openConnection(callerName="getUserID") # make sure connection is open
-        #retVal = 0
-        #if self.db != None:
-            ## get the user ID
-            #cursor = self.db.cursor(pymysql.cursors.DictCursor)
-            #sql = """
-                  #SELECT user_id from user WHERE username = '{}';
-                  #""".format(self.userName)
-            
-            #success = cursor.execute(sql)
-            #if success:
-                #userDict = cursor.fetchone()
-                #retVal = self.userID = userDict.get("user_id", 0)
-            #else:
-                #retVal = self.userID = 0
-
-            #cursor.close()
-            #self.closeConnection(callerName="getUserID") # make sure connection is closed
-
-        #return retVal # userID
-        
+       
     def getSessionFromDB(self, sessionID):
         """
         Get the session record info for session sessionID
@@ -451,6 +430,82 @@ class opasCentralDB(object):
     
         # return session model object
         return retVal, sessionInfo #True or False, and SessionInfo Object
+
+    def closeExpiredSessions(self, expireTime=30):
+        """
+        Retire any expire sessions
+        """
+        retVal = None
+        self.openConnection(callerName="closeExpiredSessions") # make sure connection is open
+        setClause = "SET "
+        added = 0
+        if self.db != None:
+            try:
+                cursor = self.db.cursor()
+                sql = """ UPDATE api_sessions
+                          SET session_end = NOW()
+                          WHERE session_id IN
+                          (SELECT
+                            vw_latest_session_activity.session_id
+                             FROM
+                             vw_latest_session_activity
+                             WHERE latest_activity < DATE_SUB(NOW(), INTERVAL {} MINUTE))        
+                      """.format(expireTime)
+                success = cursor.execute(sql)
+            except pymysql.InternalError as error:
+                code, message = error.args
+                print (">>>>>>>>>>>>> %s %s", code, message)
+                logger.error(code, message)
+            else:
+                self.db.commit()
+            
+            cursor.close()
+            if success:
+                retVal = True
+                print ("Closed {} expired sessions".format(int(success)))
+            else:
+                retVal = False
+                print ("Closed expired sessions did not work")
+                logger.warning("Could not retire sessions in DB")
+
+        self.closeConnection(callerName="closeExpiredSessions") # make sure connection is closed
+        return retVal
+
+    def retireExpiredSessions(self):
+        """
+        Retire any expire sessions
+        """
+        retVal = None
+        self.openConnection(callerName="retireExpiredSessions") # make sure connection is open
+        setClause = "SET "
+        added = 0
+        if self.db != None:
+            try:
+                cursor = self.db.cursor()
+                sql = """UPDATE api_sessions
+                         SET session_end = NOW()
+                         WHERE session_expires_time < NOW()
+                         AND session_end is NULL
+                      """
+                success = cursor.execute(sql)
+            except pymysql.InternalError as error:
+                code, message = error.args
+                print (">>>>>>>>>>>>> %s %s", code, message)
+                logger.error(code, message)
+            else:
+                self.db.commit()
+            
+            cursor.close()
+            if success:
+                retVal = True
+                print ("Retired {} expired sessions".format(int(success)))
+            else:
+                retVal = False
+                print ("Retired expired sessions did not work")
+                logger.warning("Could not retire sessions in DB")
+
+        self.closeConnection(callerName="retireExpiredSessions") # make sure connection is closed
+        return retVal
     
     def recordSessionEndpoint(self, sessionID=None, apiEndpointID=0, params=None, documentID=None, returnStatusCode=0, statusMessage=None):
         """
@@ -770,9 +825,124 @@ class opasCentralDB(object):
             print (msg)
             retVal = (True, user)
 
+        if retVal == (False, None):
+            # try PaDSlogin
+            user = self.authViaPaDS(username, password)
+            if user == None:
+                # Not a PaDS account
+                retVal = (False, None)
+            else:
+                retVal = (True, user)
+                
         # start session for the new user
 
+        if dbOpened: # if we opened it, close it.
+            self.closeConnection(callerName="authenticateReferrer") # make sure connection is closed
+
         self.closeConnection(callerName="authenticateUser") # make sure connection is closed
+        return retVal
+
+    def authenticateReferrer(self, referrer: str):
+        """
+        Authenticate a referrer (e.g., from PaDS). 
+        
+        >>> ocd = opasCentralDB()
+        >>> refToCheck = "http://www.psychoanalystdatabase.com/PEPWeb/PEPWeb{}Gateway.asp".format(13)
+        >>> status, userInfo = ocd.authenticateReferrer(refToCheck)  # Need to disable this account when system is online!
+        >>> status
+        True
+
+        """
+        retVal = (False, None)
+        print ("Authenticating user by referrer: {}".format(referrer))
+        try:
+            dbOpened = not self.db.open
+        except:
+            self.openConnection(callerName="authenticateReferrer") # make sure connection is open
+            dbOpened=True
+    
+        curs = self.db.cursor(pymysql.cursors.DictCursor)
+        if referrer is not None:
+            sql = """SELECT *
+                     FROM vw_referrer_users
+                     WHERE referrer_url = %s
+                     AND enabled = 1
+                     """ 
+
+            res = curs.execute(sql, referrer)
+            if res == 1:
+                refUser = curs.fetchone()
+                user = modelsOpasCentralPydantic.UserSubscriptions(**refUser)
+                self.user = user
+                msg = "Authenticated (with active subscription) referrer: {}".format(referrer)
+                logger.info(msg)
+                print (msg)
+                retVal = (True, user)
+            else:
+                retVal = (False, None)
+                msg = "Referrer: {} turned away".format(referrer)
+                logger.warning(msg)
+                print (msg)
+
+        if dbOpened: # if we opened it, close it.
+            self.closeConnection(callerName="authenticateReferrer") # make sure connection is closed
+
+        return retVal
+
+    def authViaPaDS(self, username, password):
+        """
+        Check to see if username password is in PaDS
+        
+        """
+        authenticateMore = """<?xml version="1.0" encoding="utf-8"?>
+                                <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+                                  <soap12:Body>
+                                    <AuthenticateUserAndReturnExtraInfo xmlns="http://localhost/PEPProduct/PEPProduct">
+                                        <UserName>{}</UserName>
+                                        <Password>{}</Password>
+                                    </AuthenticateUserAndReturnExtraInfo>                
+                                  </soap12:Body>
+                              </soap12:Envelope>
+        """
+
+        retVal = None
+        headers = {'content-type': 'text/xml'}
+        ns = {"pepprod": "http://localhost/PEPProduct/PEPProduct"}
+        soapMessage = authenticateMore.format(username, password)
+        response = requests.post(urlPaDS, data=soapMessage, headers=headers)
+        #print (response.content)
+        root = ET.fromstring(response.content)
+        # parse XML return
+        AuthenticateUserAndReturnExtraInfoResultNode = root.find('.//pepprod:AuthenticateUserAndReturnExtraInfoResult', ns)
+        productCodeNode = root.find('.//pepprod:ProductCode', ns)
+        GatewayIdNode = root.find('.//pepprod:GatewayId', ns)
+        SubscriberNameNode = root.find('.//pepprod:SubscriberName', ns)
+        SubscriberEmailAddressNode = root.find('.//pepprod:SubscriberEmailAddress', ns)
+        # assign data
+        AuthenticateUserAndReturnExtraInfoResult = AuthenticateUserAndReturnExtraInfoResultNode.text
+        if AuthenticateUserAndReturnExtraInfoResult:
+            productCode = productCodeNode.text
+            gatewayID = GatewayIdNode.text
+            SubscriberName = SubscriberNameNode.text
+            SubscriberEmailAddress = SubscriberEmailAddressNode.text
+            
+            refToCheck = "http://www.psychoanalystdatabase.com/PEPWeb/PEPWeb{}Gateway.asp".format(gatewayID)
+            possibleUser = self.authenticateReferrer(refToCheck)
+            # would need to add new extended info here
+            if possibleUser is not None:
+                retVal = possibleUser
+                retVal = {
+                            "authenticated" : AuthenticateUserAndReturnExtraInfoResult,
+                            "userName" : SubscriberName,
+                            "userEmail" : SubscriberEmailAddress,
+                            "gatewayID" : gatewayID,
+                            "productCode" : productCode
+                        }
+            else:
+                retVal = None
+        
+        print (retVal)
+    
         return retVal
 
     
@@ -795,6 +965,11 @@ if __name__ == "__main__":
     #ocd.closeConnection()
     
     #ocd.connected
+    
+    ocd = opasCentralDB()
+    refToCheck = "http://www.psychoanalystdatabase.com/PEPWeb/PEPWeb{}Gateway.asp".format(13)
+    ocd.authenticateReferrer(refToCheck)
+    sys.exit()
     
     #docstring tests
     import doctest

@@ -68,35 +68,7 @@ from ebooklib import epub
 #import imp
 
 # note: documents and documentList share the same internals, except the first level json label (documents vs documentlist)
-#import models
-from models import ListTypeEnum, \
-                   SearchModeEnum, \
-                   ResponseInfo, \
-                   DocumentList, \
-                   Documents, \
-                   DocumentListStruct, \
-                   DocumentListItem, \
-                   DocumentStruct, \
-                   ImageURLList, \
-                   ImageURLListStruct, \
-                   ImageURLListItem, \
-                   SourceInfoList, \
-                   SourceInfoStruct, \
-                   SourceInfoListItem, \
-                   VolumeList, \
-                   VolumeListStruct, \
-                   VolumeListItem, \
-                   WhatsNewList, \
-                   WhatsNewListStruct, \
-                   WhatsNewListItem, \
-                   AuthorPubListStruct, \
-                   AuthorPubListItem, \
-                   AuthorPubList, \
-                   AuthorIndex, \
-                   AuthorIndexStruct, \
-                   AuthorIndexItem, \
-                   LoginReturnItem, \
-                   SearchFormFields
+import models
 
 import opasXMLHelper as opasxmllib
 import opasGenSupportLib as opasgenlib
@@ -116,12 +88,14 @@ if SOLRUSER is not None:
     solrRefs = solr.SolrConnection(SOLRURL + 'pepwebrefs', http_user=SOLRUSER, http_pass=SOLRPW)
     solrGloss = solr.SolrConnection(SOLRURL + 'pepwebglossary', http_user=SOLRUSER, http_pass=SOLRPW)
     solrAuthors = solr.SolrConnection(SOLRURL + 'pepwebauthors', http_user=SOLRUSER, http_pass=SOLRPW)
+    solrAuthorTermSearch = solr.SearchHandler(solrAuthors, "/terms")
 
 else:
     solrDocs = solr.SolrConnection(SOLRURL + 'pepwebdocs')
     solrRefs = solr.SolrConnection(SOLRURL + 'pepwebrefs')
     solrGloss = solr.SolrConnection(SOLRURL + 'pepwebglossary')
     solrAuthors = solr.SolrConnection(SOLRURL + 'pepwebauthors')
+    solrAuthorTermSearch = solr.SearchHandler(solrAuthors, "/terms")
 
 #API endpoints
 documentURL = "/v1/Documents/"
@@ -435,7 +409,7 @@ def getArticleData(articleID, fields=None):
                 retVal = results.results[0]
     limit = 5 # for now, we may make this 1
     offset = 0
-    responseInfo = ResponseInfo(
+    responseInfo = models.ResponseInfo (
                      count = len(results.results),
                      fullCount = results._numFound,
                      totalMatchCount = results._numFound,
@@ -486,7 +460,7 @@ def getArticleData(articleID, fields=None):
         citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
         
         try:
-            item = DocumentListItem(PEPCode = result.get("art_pepsrccode", None), 
+            item = models.DocumentListItem(PEPCode = result.get("art_pepsrccode", None), 
                                     year = result.get("art_year", None),
                                     vol = result.get("art_vol", None),
                                     pgRg = pgRg,
@@ -513,11 +487,11 @@ def getArticleData(articleID, fields=None):
 
     responseInfo.count = len(documentItemList)
     
-    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+    documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
                                              responseSet = documentItemList
                                              )
     
-    documentList = DocumentList(documentList = documentListStruct)
+    documentList = models.DocumentList(documentList = documentListStruct)
     
     retVal = documentList
     
@@ -560,7 +534,7 @@ def databaseGetMostCited(period='5', limit=50, offset=0):
 
     print ("databaseGetMostCited Number found: %s" % results._numFound)
     
-    responseInfo = ResponseInfo(
+    responseInfo = models.ResponseInfo(
                      count = len(results.results),
                      fullCount = results._numFound,
                      limit = limit,
@@ -597,7 +571,7 @@ def databaseGetMostCited(period='5', limit=50, offset=0):
         citeAs = result.get("art_citeas_xml", None)
         artAbstract = result.get("art_abstract", None)
         
-        item = DocumentListItem( documentID = result.get("art_id", None),
+        item = models.DocumentListItem( documentID = result.get("art_id", None),
                                  instanceCount = result.get("art_cited_5", None),
                                  title = srcTitle,
                                  PEPCode = PEPCode, 
@@ -623,11 +597,11 @@ def databaseGetMostCited(period='5', limit=50, offset=0):
     
     responseInfo.count = len(documentListItems)
     
-    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+    documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
                                              responseSet = documentListItems
                                              )
     
-    documentList = DocumentList(documentList = documentListStruct)
+    documentList = models.DocumentList(documentList = documentListStruct)
     
     retVal = documentList
     
@@ -651,7 +625,7 @@ def databaseWhatsNew(daysBack=7, limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS_NEW, o
     
     print ("databaseWhatsNew Number found: %s" % results._numFound)
     
-    responseInfo = ResponseInfo(
+    responseInfo = models.ResponseInfo(
                      count = len(results.results),
                      fullCount = results._numFound,
                      limit = limit,
@@ -687,7 +661,7 @@ def databaseWhatsNew(daysBack=7, limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS_NEW, o
         volumeURL = "/v1/Metadata/Contents/%s/%s" % (PEPCode, issue)
         srcTitle = sourceDB.sourceData[PEPCode].get("sourcetitlefull", "")
             
-        item = WhatsNewListItem( documentID = result.get("art_id", None),
+        item = models.WhatsNewListItem( documentID = result.get("art_id", None),
                                  displayTitle = displayTitle,
                                  abbrev = abbrev,
                                  volume = volume,
@@ -706,11 +680,11 @@ def databaseWhatsNew(daysBack=7, limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS_NEW, o
 
     responseInfo.count = len(whatsNewListItems)
     
-    whatsNewListStruct = WhatsNewListStruct( responseInfo = responseInfo, 
+    whatsNewListStruct = models.WhatsNewListStruct( responseInfo = responseInfo, 
                                              responseSet = whatsNewListItems
                                              )
     
-    whatsNewList = WhatsNewList(whatsNew = whatsNewListStruct)
+    whatsNewList = models.WhatsNewList(whatsNew = whatsNewListStruct)
     
     retVal = whatsNewList
     
@@ -735,7 +709,7 @@ def metadataGetVolumes(pepCode, year="*", limit=opasConfig.DEFAULT_LIMIT_FOR_VOL
                              )
 
     print ("metadataGetVolumes Number found: %s" % results._numFound)
-    responseInfo = ResponseInfo(
+    responseInfo = models.ResponseInfo(
                      count = len(results.results),
                      fullCount = results._numFound,
                      limit = limit,
@@ -747,7 +721,7 @@ def metadataGetVolumes(pepCode, year="*", limit=opasConfig.DEFAULT_LIMIT_FOR_VOL
 
     volumeItemList = []
     for result in results.results:
-        item = VolumeListItem(PEPCode = pepCode, 
+        item = models.VolumeListItem(PEPCode = pepCode, 
                               year = result.get("art_year", None),
                               vol = result.get("art_vol", None),
                               score = result.get("score", None)
@@ -758,11 +732,11 @@ def metadataGetVolumes(pepCode, year="*", limit=opasConfig.DEFAULT_LIMIT_FOR_VOL
        
     responseInfo.count = len(volumeItemList)
     
-    volumeListStruct = VolumeListStruct( responseInfo = responseInfo, 
+    volumeListStruct = models.VolumeListStruct( responseInfo = responseInfo, 
                                          responseSet = volumeItemList
                                          )
     
-    volumeList = VolumeList(volumeList = volumeListStruct)
+    volumeList = models.VolumeList(volumeList = volumeListStruct)
     
     retVal = volumeList
     return retVal
@@ -773,9 +747,9 @@ def metadataGetContents(pepCode, year="*", vol="*", limit=opasConfig.DEFAULT_LIM
     Return a jounals contents
     
     >>> metadataGetContents("IJP", "1993", limit=5, offset=0)
-    <DocumentList documentList=<DocumentListStruct responseInfo=<ResponseInfo count=5 limit=5 offset=0 page=No…>
+    <DocumentList documentList=<DocumentListStruct responseInfo=<models.ResponseInfo count=5 limit=5 offset=0 page=No…>
     >>> metadataGetContents("IJP", "1993", limit=5, offset=5)
-    <DocumentList documentList=<DocumentListStruct responseInfo=<ResponseInfo count=5 limit=5 offset=5 page=No…>
+    <DocumentList documentList=<DocumentListStruct responseInfo=<models.ResponseInfo count=5 limit=5 offset=5 page=No…>
     """
     retVal = []
     if year == "*" and vol != "*":
@@ -792,7 +766,7 @@ def metadataGetContents(pepCode, year="*", vol="*", limit=opasConfig.DEFAULT_LIM
                              rows=limit, start=offset
                              )
 
-    responseInfo = ResponseInfo(
+    responseInfo = models.ResponseInfo(
                      count = len(results.results),
                      fullCount = results._numFound,
                      limit = limit,
@@ -816,7 +790,7 @@ def metadataGetContents(pepCode, year="*", vol="*", limit=opasConfig.DEFAULT_LIM
         citeAs = result.get("art_citeas_xml", None)  
         citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
         
-        item = DocumentListItem(PEPCode = pepCode, 
+        item = models.DocumentListItem(PEPCode = pepCode, 
                                 year = result.get("art_year", None),
                                 vol = result.get("art_vol", None),
                                 pgRg = result.get("art_pgrg", None),
@@ -833,11 +807,11 @@ def metadataGetContents(pepCode, year="*", vol="*", limit=opasConfig.DEFAULT_LIM
 
     responseInfo.count = len(documentItemList)
     
-    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+    documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
                                              responseSet=documentItemList
                                              )
     
-    documentList = DocumentList(documentList = documentListStruct)
+    documentList = models.DocumentList(documentList = documentListStruct)
     
     retVal = documentList
     
@@ -924,9 +898,11 @@ def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=opasConfig.DEFA
     ocd = opasCentralDBLib.opasCentralDB()
     # standardize Source type, allow plural, different cases, but code below this part accepts only those three.
     sourceType = sourceType.lower()
-    if sourceType not in ["journal", "book", "video"]:
+    if sourceType not in ["journal", "book"]:
         if re.match("videos.*", sourceType, re.IGNORECASE):
             sourceType = "videos"
+        elif re.match("video", sourceType, re.IGNORECASE):
+            sourceType = "videostream"
         elif re.match("boo.*", sourceType, re.IGNORECASE):
             sourceType = "book"
         else: # default
@@ -959,7 +935,7 @@ def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=opasConfig.DEFA
             count = 0
             print (errMsg)
 
-    responseInfo = ResponseInfo(
+    responseInfo = models.ResponseInfo(
                      count = count,
                      fullCount = totalCount,
                      fullCountComplete = count == totalCount,
@@ -1006,7 +982,7 @@ def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=opasConfig.DEFA
 
 
             try:
-                item = SourceInfoListItem( sourceType = sourceType,
+                item = models.SourceInfoListItem( sourceType = sourceType,
                                            PEPCode = source.get("src_code"),
                                            authors = authors,
                                            pub_year = pub_year,
@@ -1035,20 +1011,21 @@ def metadataGetSourceByType(sourceType=None, PEPCode=None, limit=opasConfig.DEFA
         sourceInfoListItems.append(item)
         
     try:
-        sourceInfoStruct = SourceInfoStruct( responseInfo = responseInfo, 
+        sourceInfoStruct = models.SourceInfoStruct( responseInfo = responseInfo, 
                                              responseSet = sourceInfoListItems
                                             )
     except ValidationError as e:
-        print ("SourceInfoStruct Validation Error:")
+        print ("models.SourceInfoStruct Validation Error:")
         print(e.json())        
     
     try:
-        sourceInfoList = SourceInfoList(sourceInfo = sourceInfoStruct)
+        sourceInfoList = models.SourceInfoList(sourceInfo = sourceInfoStruct)
     except ValidationError as e:
         print ("SourceInfoList Validation Error:")
         print(e.json())        
     
     retVal = sourceInfoList
+
     return retVal
 
 #-----------------------------------------------------------------------------
@@ -1082,7 +1059,7 @@ def metadataGetSourceByCode(PEPCode=None, limit=opasConfig.DEFAULT_LIMIT_FOR_SOL
     count = len(sourceInfoDBList)
     print ("metadataGetSourceByCode: Number found: %s" % count)
 
-    responseInfo = ResponseInfo(
+    responseInfo = models.ResponseInfo(
                      count = count,
                      fullCount = totalCount,
                      limit = limit,
@@ -1103,7 +1080,7 @@ def metadataGetSourceByCode(PEPCode=None, limit=opasConfig.DEFAULT_LIMIT_FOR_SOL
         if counter > limit:
             break
         try:
-            item = SourceInfoListItem( ISSN = source.get("ISSN"),
+            item = models.SourceInfoListItem( ISSN = source.get("ISSN"),
                                        PEPCode = source.get("src_code"),
                                        abbrev = source.get("bib_abbrev"),
                                        bannerURL = "http://{}/{}/banner{}.logo.gif".format(BASEURL, opasConfig.IMAGES, source.get("src_code")),
@@ -1123,7 +1100,7 @@ def metadataGetSourceByCode(PEPCode=None, limit=opasConfig.DEFAULT_LIMIT_FOR_SOL
         sourceInfoListItems.append(item)
         
     try:
-        sourceInfoStruct = SourceInfoStruct( responseInfo = responseInfo, 
+        sourceInfoStruct = models.SourceInfoStruct( responseInfo = responseInfo, 
                                              responseSet = sourceInfoListItems
                                             )
     except ValidationError as e:
@@ -1133,7 +1110,7 @@ def metadataGetSourceByCode(PEPCode=None, limit=opasConfig.DEFAULT_LIMIT_FOR_SOL
         print (80*"-")
     
     try:
-        sourceInfoList = SourceInfoList(sourceInfo = sourceInfoStruct)
+        sourceInfoList = models.SourceInfoList(sourceInfo = sourceInfoStruct)
     except ValidationError as e:
         print (80*"-")
         print ("metadataGetSourceByCode: SourceInfoList Validation Error:")
@@ -1144,7 +1121,7 @@ def metadataGetSourceByCode(PEPCode=None, limit=opasConfig.DEFAULT_LIMIT_FOR_SOL
     return retVal
 
 #-----------------------------------------------------------------------------
-def authorsGetAuthorInfo(authorNamePartial, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+def authorsGetAuthorInfo(authorNamePartial, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, authorOrder="index"):
     """
     Returns a list of matching names (per authors last name), and the number of articles
     in PEP found by that author.
@@ -1157,49 +1134,79 @@ def authorsGetAuthorInfo(authorNamePartial, limit=opasConfig.DEFAULT_LIMIT_FOR_S
     Number found: 8   
     """
     retVal = {}
-    query = "art_author_id:/%s.*/" % (authorNamePartial)
-    results = solrAuthors.query(q = query,  
-                                fields = "authors, art_author_id",
-                                facet_field = "art_author_id",
-                                facet = "on",
-                                facet_prefix = "%s" % authorNamePartial,
-                                rows=100
-                             )
-
-    print ("authorsGetAuthorInfo: Number found: %s" % results._numFound)
+    method = 2
     
-    responseInfo = ResponseInfo(
-                     count = len(results.results),
-                     fullCount = results._numFound,
-                     limit = limit,
-                     offset = offset,
-                     listType="authorindex",
-                     fullCountComplete = limit >= results._numFound,
-                     scopeQuery=query,
-                     solrParams = results._params,
-                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
-                   )
+    if method == 1:
+        query = "art_author_id:/%s.*/" % (authorNamePartial)
+        results = solrAuthors.query(q=query,
+                                    fields="authors, art_author_id",
+                                    facet_field="art_author_id",
+                                    facet="on",
+                                    facet_sort="index",
+                                    facet_prefix="%s" % authorNamePartial,
+                                    facet_limit=limit,
+                                    facet_offset=offset,
+                                    rows=0
+                                    )       
 
+    if method == 2:
+        # should be faster way, but about the same measuring tuck (method1) vs tuck.* (method2) both about 2 query time.  However, allowing regex here.
+        if "*" in authorNamePartial or "?" in authorNamePartial or "." in authorNamePartial:
+            results = solrAuthorTermSearch(terms_fl="art_author_id",
+                                           terms_limit=limit,  # this causes many regex expressions to fail
+                                           terms_regex=authorNamePartial + ".*",
+                                           terms_sort=authorOrder  # index or count
+                                           )           
+        else:
+            results = solrAuthorTermSearch(terms_fl="art_author_id",
+                                           terms_prefix=authorNamePartial,
+                                           terms_sort=authorOrder,  # index or count
+                                           terms_limit=limit
+                                           )
+
+    
+    responseInfo = models.ResponseInfo(
+                                limit=limit,
+                                offset=offset,
+                                listType="authorindex",
+                                scopeQuery="Terms: %s" % authorNamePartial,
+                                solrParams=results._params,
+                                timeStamp=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
+    )
+    
     authorIndexItems = []
-    for key, value in results.facet_counts["facet_fields"]["art_author_id"].items():
-        if value > 0:
-            #retVal[key] = value
+    if method == 1:
+        for key, value in results.facet_counts["facet_fields"]["art_author_id"].items():
+            if value > 0:
+                #retVal[key] = value
+    
+                item = models.AuthorIndexItem( authorID = key, 
+                                        publicationsURL = "/v1/Authors/Publications/{}/".format(key),
+                                        publicationsCount = value,
+                                      ) 
+                authorIndexItems.append(item)
+                #debug status
+                print ("authorsGetAuthorInfo", item)
 
-            item = AuthorIndexItem( authorID = key, 
-                                    publicationsURL = "/v1/Authors/Publications/{}/".format(key),
-                                    publicationsCount = value,
-                                  ) 
-            authorIndexItems.append(item)
-            #debug status
-            print ("authorsGetAuthorInfo", item)
+    if method == 2:  # faster way
+        for key, value in results.terms["art_author_id"].items():
+            if value > 0:
+                item = models.AuthorIndexItem( authorID = key, 
+                                        publicationsURL = "/v1/Authors/Publications/{}/".format(key),
+                                        publicationsCount = value,
+                                      ) 
+                authorIndexItems.append(item)
+                #debug status
+                print ("authorsGetAuthorInfo", item)
        
     responseInfo.count = len(authorIndexItems)
-    
-    authorIndexStruct = AuthorIndexStruct( responseInfo = responseInfo, 
+    responseInfo.fullCountComplete = limit >= responseInfo.count
+        
+    authorIndexStruct = models.AuthorIndexStruct( responseInfo = responseInfo, 
                                            responseSet = authorIndexItems
                                            )
     
-    authorIndex = AuthorIndex(authorIndex = authorIndexStruct)
+    authorIndex = models.AuthorIndex(authorIndex = authorIndexStruct)
     
     retVal = authorIndex
     return retVal
@@ -1252,7 +1259,7 @@ def authorsGetAuthorPublications(authorNamePartial, limit=opasConfig.DEFAULT_LIM
                                         rows=limit, start=offset
                                      )
     
-    responseInfo = ResponseInfo(
+    responseInfo = models.ResponseInfo(
                      count = len(results.results),
                      fullCount = results._numFound,
                      limit = limit,
@@ -1269,7 +1276,7 @@ def authorsGetAuthorPublications(authorNamePartial, limit=opasConfig.DEFAULT_LIM
         citeAs = result.get("art_citeas_xml", None)
         citeAs = forceStringReturnFromVariousReturnTypes(citeAs)
         
-        item = AuthorPubListItem( authorID = result.get("art_author_id", None), 
+        item = models.AuthorPubListItem( authorID = result.get("art_author_id", None), 
                                   documentID = result.get("art_id", None),
                                   documentRefHTML = citeAs,
                                   documentRef = opasxmllib.xmlElemOrStrToText(citeAs, defaultReturn=""),
@@ -1283,11 +1290,11 @@ def authorsGetAuthorPublications(authorNamePartial, limit=opasConfig.DEFAULT_LIM
        
     responseInfo.count = len(authorPubListItems)
     
-    authorPubListStruct = AuthorPubListStruct( responseInfo = responseInfo, 
+    authorPubListStruct = models.AuthorPubListStruct( responseInfo = responseInfo, 
                                            responseSet = authorPubListItems
                                            )
     
-    authorPubList = AuthorPubList(authorPubList = authorPubListStruct)
+    authorPubList = models.AuthorPubListItem(authorPubList = authorPubListStruct)
     
     retVal = authorPubList
     return retVal
@@ -1356,7 +1363,7 @@ def documentsGetAbstracts(documentID, retFormat="TEXTONLY", authenticated=None, 
     print ("GetAbstract: Current Directory {}".format(cwd))
     print ("%s document matches for getAbstracts" % matches)
     
-    responseInfo = ResponseInfo(
+    responseInfo = models.ResponseInfo(
                      count = len(results.results),
                      fullCount = results._numFound,
                      limit = limit,
@@ -1422,7 +1429,7 @@ def documentsGetAbstracts(documentID, retFormat="TEXTONLY", authenticated=None, 
                                                                 title=title,
                                                                 authorMast=authorMast )
 
-            item = DocumentListItem(year = artYear,
+            item = models.DocumentListItem(year = artYear,
                                     vol = artVol,
                                     sourceTitle = sourceTitle,
                                     pgRg = pgRg,
@@ -1442,11 +1449,11 @@ def documentsGetAbstracts(documentID, retFormat="TEXTONLY", authenticated=None, 
 
     responseInfo.count = len(documentItemList)
     
-    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+    documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
                                              responseSet=documentItemList
                                              )
     
-    documents = Documents(documents = documentListStruct)
+    documents = models.Documents(documents = documentListStruct)
         
     retVal = documents
             
@@ -1482,6 +1489,7 @@ def documentsGetDocument(documentID, solrQueryParams=None, retFormat="XML", auth
         documentList = searchText(query, 
                                   filterQuery = solrQueryParams.filterQ,
                                   fullTextRequested=True,
+                                  fullTextFormatRequested = retFormat,
                                   authenticated=authenticated,
                                   queryDebug = False,
                                   disMax = solrQueryParams.solrMax,
@@ -1495,6 +1503,7 @@ def documentsGetDocument(documentID, solrQueryParams=None, retFormat="XML", auth
         documentList = searchText(query, 
                                   summaryFields = summaryFields,
                                   fullTextRequested=True,
+                                  fullTextFormatRequested = retFormat,
                                   authenticated=authenticated,
                                   queryDebug = False,
                                   limit=limit, 
@@ -1510,7 +1519,7 @@ def documentsGetDocument(documentID, solrQueryParams=None, retFormat="XML", auth
     except Exception as e:
         print ("No matches or error: {}").format(e)
     else:
-        responseInfo = ResponseInfo(
+        responseInfo = models.ResponseInfo(
                          count = matches,
                          fullCount = fullCount,
                          limit = limit,
@@ -1539,11 +1548,11 @@ def documentsGetDocument(documentID, solrQueryParams=None, retFormat="XML", auth
                     #else: # XML
                         #documentText = xmlDocument
         
-            documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
-                                                     responseSet = [documentListItem]
-                                                     )
+            documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
+                                                            responseSet = [documentListItem]
+                                                            )
                 
-            documents = Documents(documents = documentListStruct)
+            documents = models.Documents(documents = documentListStruct)
                     
             retVal = documents
     
@@ -1850,9 +1859,10 @@ def searchAnalysis(queryList,
                    moreLikeThese = False,
                    queryAnalysis = False,
                    disMax = None,
-                   summaryFields="art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
-                   highlightFields='art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
-                   fullTextRequested=True, 
+                   #summaryFields="art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
+                   summaryFields="art_id",                    
+                   #highlightFields='art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
+                   fullTextRequested=False, 
                    userLoggedIn=False,
                    limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS
                    ):
@@ -1864,6 +1874,10 @@ def searchAnalysis(queryList,
     rowCount = 0
     for n in queryList:
         n = n[3:]
+        n = n.strip(" ")
+        if n == "" or n is None:
+            continue
+
         results = solrDocs.query(n,
                                  disMax = disMax,
                                  queryAnalysis = True,
@@ -1871,32 +1885,42 @@ def searchAnalysis(queryList,
                                  rows = 1,
                                  start = 0)
     
+        termField, termValue = n.split(":")
+        if termField == "art_author_xml":
+            term = termValue + " ( in author)"
+        elif termField == "text_xml":
+            term = termValue + " ( in text)"
+            
         print ("Analysis: Term %s, matches %s" % (n, results._numFound))
-        item = DocumentListItem(term = n, 
+        item = models.DocumentListItem(term = n, 
                                 termCount = results._numFound
                                 )
         documentItemList.append(item)
         rowCount += 1
-        
-    if rowCount == 0:
-        fullCountComplete = True
-    else:
-        fullCountComplete = limit >= results._numFound
-        
-    responseInfo = ResponseInfo(count = rowCount,
+
+    if rowCount > 0:
+        numFound = 0
+        item = models.DocumentListItem(term = "combined",
+                                termCount = numFound
+                                )
+        documentItemList.append(item)
+        rowCount += 1
+        print ("Analysis: Term %s, matches %s" % ("combined: ", numFound))
+
+    responseInfo = models.ResponseInfo(count = rowCount,
                                 fullCount = rowCount,
                                 listType="srclist",
-                                fullCountComplete = fullCountComplete,
+                                fullCountComplete = True,
                                 timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')                     
                                 )
     
     responseInfo.count = len(documentItemList)
     
-    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+    documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
                                              responseSet = documentItemList
                                              )
     
-    retVal = documentList = DocumentList(documentList = documentListStruct)
+    retVal = documentList = models.DocumentList(documentList = documentListStruct)
     
     return retVal
 
@@ -1908,6 +1932,7 @@ def searchText(query,
                queryDebug = False,
                moreLikeThese = False,
                fullTextRequested = False, 
+               fullTextFormatRequested = "HTML",
                disMax = None,
                # bring text_xml back in summary fields in case it's missing in highlights! I documented a case where this happens!
                #summaryFields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml, text_xml", 
@@ -1994,7 +2019,7 @@ def searchText(query,
     print ("Result  Set Size: %s" % results._numFound)
     print ("Return set limit: %s" % limit)
     
-    responseInfo = ResponseInfo(
+    responseInfo = models.ResponseInfo(
                      count = len(results.results),
                      fullCount = results._numFound,
                      totalMatchCount = results._numFound,
@@ -2060,6 +2085,10 @@ def searchText(query,
                 except:
                     textXml = None
 
+            if fullTextFormatRequested == "HTML":
+                if textXml is not None:
+                    textXml = opasxmllib.convertXMLStringToHTML(textXml)
+
         if fullTextRequested and not authenticated: # don't do this when textXml is a fragment from kwiclist!
             try:
                 abstractsXml = results.highlighting[documentID].get("abstracts_xml", None)
@@ -2083,7 +2112,7 @@ def searchText(query,
             similarNumFound = None
         
         try:
-            item = DocumentListItem(PEPCode = result.get("art_pepsrccode", None), 
+            item = models.DocumentListItem(PEPCode = result.get("art_pepsrccode", None), 
                                     year = result.get("art_year", None),
                                     vol = result.get("art_vol", None),
                                     pgRg = pgRg,
@@ -2117,11 +2146,11 @@ def searchText(query,
 
     responseInfo.count = len(documentItemList)
     
-    documentListStruct = DocumentListStruct( responseInfo = responseInfo, 
+    documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
                                              responseSet = documentItemList
                                              )
     
-    documentList = DocumentList(documentList = documentListStruct)
+    documentList = models.DocumentList(documentList = documentListStruct)
     
     retVal = documentList
     

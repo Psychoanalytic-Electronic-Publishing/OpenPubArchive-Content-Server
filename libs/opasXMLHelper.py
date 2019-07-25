@@ -538,6 +538,7 @@ def convertXMLStringToHTML(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
         try:
             xsltFile = etree.parse(xsltFile)
             xsltTransformer = etree.XSLT(xsltFile)
+            xmlTextStr = removeEncodingString(xmlTextStr)
             sourceFile = etree.fromstring(xmlTextStr)
             transformedData = xsltTransformer(sourceFile)
         except Exception as e:
