@@ -1,0 +1,892 @@
+openapi: 3.0.0
+info:
+  description: >
+    API for PEP-Web, provides access to all the current search and retrieval
+    functionality of PEP-Web. 
+
+    [http://pep-web.org/api/](http://pep-web.org/api/).
+  version: 1.0.0
+  title: PEP-Web API
+  termsOfService: http://swagger.io/terms/
+  contact:
+    email: support@pep-web.org
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+tags:
+  - name: Metadata
+    description: Get Information about the PEP-Web Objects
+  - name: Authors
+    description: Get Information about the PEP-Web Authors
+  - name: Abstracts
+    description: Abstract only for document instances
+  - name: Documents
+    description: Full document access when logged in
+  - name: Database
+    description: Searches of the sources
+    externalDocs:
+      description: Find out more about PEP-Web
+      url: http://www.pep-web.org
+paths:
+  /Metadata/Banners/:
+    get:
+      tags:
+        - Metadata
+      summary: Get Banners for all pep sources
+      description: Returns the graphic banner for all current pep sources
+      operationId: getPEPSourceBanners
+      responses:
+        "200":
+          description: An imageURL object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imageURL:
+                    $ref: "#/components/schemas/imageURL"
+        "400":
+          description: Invalid status value
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Metadata/Banners/{pepCode}/":
+    get:
+      tags:
+        - Metadata
+      summary: Get Banners for all pep sources
+      description: Returns the graphic banner for a specific pep source
+      operationId: getPEPSourceBanner
+      parameters:
+        - name: pepCode
+          in: path
+          description: ID of journal to return
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: An imageURL object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imageURL:
+                    $ref: "#/components/schemas/imageURL"
+        "400":
+          description: Invalid status value
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Metadata/{sourceType}/":
+    get:
+      tags:
+        - Metadata
+      summary: Get Information on all journals
+      description: Returns information on all current journals
+      operationId: getJournalInfo
+      parameters:
+        - $ref: "#/components/parameters/paramSourceType"
+      responses:
+        "200":
+          description: A sourceInfo object
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/sourceInfo"
+        "400":
+          description: Invalid status value
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Metadata/{sourceType}/{pepCode}/":
+    get:
+      tags:
+        - Metadata
+      summary: Get Information on a specific journals
+      description: Returns information on a specific journal
+      operationId: getSpecificJournalInfo
+      parameters:
+        - $ref: "#/components/parameters/paramSourceType"
+        - $ref: "#/components/parameters/paramPEPCode"
+      responses:
+        "200":
+          description: A sourceInfo object
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/sourceInfo"
+        "400":
+          description: Invalid status value
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Metadata/Volumes/{pepCode}/":
+    get:
+      tags:
+        - Metadata
+      summary: Return a list of volumes
+      description: Return a list of volumes for a given PEPCode
+      operationId: getSourceVolumes
+      parameters:
+        - $ref: "#/components/parameters/paramPEPCode"
+      responses:
+        "200":
+          description: A volumeList object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  volumeList:
+                    $ref: "#/components/schemas/volumeList"
+        "400":
+          description: Invalid PEP Code
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Metadata/Contents/{pepCode}/":
+    get:
+      tags:
+        - Metadata
+      summary: Return a list of documents for a source and volume
+      description: Return a list of documents for a source and volume
+      operationId: getSourceContentsForYear
+      parameters:
+        - $ref: "#/components/parameters/paramPEPCode"
+        - name: year
+          in: query
+          description: Volume year
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A documentList object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documentList:
+                    $ref: "#/components/schemas/documentList"
+        "400":
+          description: Invalid PEP Code
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Metadata/Contents/{pepCode}/{pepVol}/":
+    get:
+      tags:
+        - Metadata
+      summary: Return a list of documents for a source and volume
+      description: Return a list of documents for a source and volume
+      operationId: getSourceContents
+      parameters:
+        - $ref: "#/components/parameters/paramPEPCode"
+        - $ref: "#/components/parameters/paramPEPVol"
+      responses:
+        "200":
+          description: A documentList Object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documentList:
+                    $ref: "#/components/schemas/documentList"
+        "400":
+          description: Invalid PEP Code
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Metadata/Contents/Books/{bookBaseDocumentID}/":
+    get:
+      tags:
+        - Metadata
+      summary: Return a list of documents for a source and volume
+      description: Return a list of documents for a source and volume
+      operationId: getBookBaseDocument
+      parameters:
+        - name: bookBaseDocumentID
+          in: path
+          description: ID of source book
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A documentList Object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documentList:
+                    $ref: "#/components/schemas/documentList"
+        "400":
+          description: Invalid PEP Code
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Authors/Index/{authNamePartial}/":
+    get:
+      tags:
+        - Authors
+      summary: Return a list of documents for a source and volume
+      description: Return a list of documents for a source and volume
+      operationId: getAuthorInfo
+      parameters:
+        - name: authNamePartial
+          in: path
+          description: ID of source to return
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: An authorIndex object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authorindex:
+                    $ref: "#/components/schemas/authorIndex"
+        "400":
+          description: Invalid PEP Code
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Authors/Publications/{authNamePartial}/":
+    get:
+      tags:
+        - Authors
+      summary: Return a list of documents published by the matching author names
+      description: Return a list of documents for a source and volume
+      operationId: getAuthorPublications
+      parameters:
+        - name: authNamePartial
+          in: path
+          description: ID of source to return
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: An authorPublist Object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authorPubList:
+                    $ref: "#/components/schemas/authorPubList"
+        "400":
+          description: Invalid PEP Code
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Documents/Abstracts/{documentID}/":
+    get:
+      tags:
+        - Documents
+        - Abstracts
+      summary: Return the abstract of the document
+      description: Returns information on all current journals
+      operationId: getDocumentAbstract
+      parameters:
+        - name: documentID
+          in: path
+          description: PEP Locator (ID) of journal to return
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A sourceInfo object
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/sourceInfo"
+        "400":
+          description: Invalid status value
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Documents/{documentID}/":
+    get:
+      tags:
+        - Documents
+      summary: Return Document information or the document itself
+      description: Returns information on all current journals
+      operationId: getDocument
+      parameters:
+        - name: documentID
+          in: path
+          description: PEP Locator (ID) of journal to return
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A document object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents:
+                    $ref: "#/components/schemas/documents"
+        "400":
+          description: Invalid status value
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Documents/Downloads/PDF/{documentID}/":
+    get:
+      tags:
+        - Documents
+      summary: Initiates download of the document in PDF format, if logged in
+      description: Initiates download of the document in PDF format, if logged in
+      operationId: getDocumentPDF
+      parameters:
+        - name: documentID
+          in: path
+          description: PEP Locator (ID) of journal to return
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A PDF file
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid status value
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Documents/Downloads/EPUB/{documentID}/":
+    get:
+      tags:
+        - Documents
+      summary: Initiates download of the document in EPUB format, if logged in
+      description: Initiates download of the document in EPUB format, if logged in
+      operationId: getDocumentEPUB
+      parameters:
+        - name: documentID
+          in: path
+          description: PEP Locator (ID) of journal to return
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A EPub File
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid status value
+      security:
+        - pepweb_auth:
+            - read:docs
+  "/Database/SearchAnalysis/{searchTerm}/":
+    get:
+      tags:
+        - Database
+      summary: Return term and term count info for searchTerm
+      description: Return term and termcount info for searchTerm
+      operationId: getDatabaseSearchAnalysisTerm
+      parameters:
+        - name: searchTerm
+          in: path
+          description: Search term to analyze
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A documentList object
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/documentList"
+        "400":
+          description: Invalid status value
+      security:
+        - pepweb_auth:
+            - read:docs
+  /Database/Search/:
+    get:
+      tags:
+        - Database
+      summary: Return term and term count info for search Terms
+      description: Return term and termcount info for search Term
+      operationId: getDatabaseSearch
+      parameters:
+        - $ref: "#/components/parameters/paramAuthor"
+        - $ref: "#/components/parameters/paramTitle"
+        - $ref: "#/components/parameters/paramJournal"
+        - $ref: "#/components/parameters/paramLanguage"
+        - $ref: "#/components/parameters/paramType"
+        - $ref: "#/components/parameters/paramZone1"
+        - $ref: "#/components/parameters/paramFullText1"
+        - $ref: "#/components/parameters/paramFullText2"
+        - $ref: "#/components/parameters/paramConnector"
+        - $ref: "#/components/parameters/paramZone2"
+        - $ref: "#/components/parameters/paramCiteCount"
+        - $ref: "#/components/parameters/paramViewCount"
+        - $ref: "#/components/parameters/paramViewPeriod"
+        - $ref: "#/components/parameters/paramDateType"
+        - $ref: "#/components/parameters/paramStartYear"
+        - $ref: "#/components/parameters/paramEndYear"
+      responses:
+        "200":
+          description: A documentList object
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/documentList"
+        "400":
+          description: Invalid status value
+      security:
+        - pepweb_auth:
+            - read:docs
+  /Database/SearchAnalysis/:
+    get:
+      tags:
+        - Database
+      summary: Return term and term count info for search Terms
+      description: Return term and termcount info for search Term
+      operationId: getDatabaseSearchAnalysis
+      parameters:
+        - $ref: "#/components/parameters/paramAuthor"
+        - $ref: "#/components/parameters/paramTitle"
+        - $ref: "#/components/parameters/paramJournal"
+        - $ref: "#/components/parameters/paramLanguage"
+        - $ref: "#/components/parameters/paramType"
+        - $ref: "#/components/parameters/paramZone1"
+        - $ref: "#/components/parameters/paramFullText1"
+        - $ref: "#/components/parameters/paramFullText2"
+        - $ref: "#/components/parameters/paramConnector"
+        - $ref: "#/components/parameters/paramZone2"
+        - $ref: "#/components/parameters/paramCiteCount"
+        - $ref: "#/components/parameters/paramViewCount"
+        - $ref: "#/components/parameters/paramViewPeriod"
+        - $ref: "#/components/parameters/paramDateType"
+        - $ref: "#/components/parameters/paramStartYear"
+        - $ref: "#/components/parameters/paramEndYear"
+      responses:
+        "200":
+          description: A documentList object
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/documentList"
+        "400":
+          description: Invalid status value
+      security:
+        - pepweb_auth:
+            - read:docs
+externalDocs:
+  description: PEP-Web API
+  url: http://pep-web.org
+servers:
+  - url: https://virtserver.swaggerhub.com/nrshapiro/PEP-Web-API-1.0/1.0.0
+  - url: http://virtserver.swaggerhub.com/nrshapiro/PEP-Web-API-1.0/1.0.0
+components:
+  parameters:
+    paramSourceType:
+      name: sourceType
+      in: path
+      description: Type of Source
+      required: true
+      schema:
+        type: string
+        enum:
+          - Journals
+          - Books
+          - Videos
+          - Specials
+    paramPEPCode:
+      name: pepCode
+      in: path
+      description: PEP code / acronym of source
+      required: true
+      schema:
+        type: string
+    paramPEPVol:
+      name: pepVol
+      in: path
+      description: Vol Num. of source to return
+      required: true
+      schema:
+        type: string
+    paramZone1:
+      name: zone1
+      in: query
+      description: Document Area to find the terms in fulltext1
+      required: false
+      schema:
+        type: string
+        enum:
+          - article
+          - para
+          - quote
+          - dream
+          - dialog
+          - reference
+    paramFullText1:
+      name: fulltext1
+      in: query
+      description: One or more search terms or a phrase with optional wildcards
+      required: false
+      schema:
+        type: string
+    paramConnector:
+      name: connector
+      in: query
+      description: boolean connector for fulltext1 and fulltext2
+      required: false
+      schema:
+        type: string
+        enum:
+          - and
+          - or
+          - not
+    paramFullText2:
+      name: fulltext2
+      in: query
+      description: One or more search terms or a phrase with optional wildcards
+      required: false
+      schema:
+        type: string
+    paramZone2:
+      name: zone2
+      in: query
+      description: Document Area to find the terms in fulltext2
+      required: false
+      schema:
+        type: string
+        enum:
+          - article
+          - para
+          - quote
+          - dream
+          - dialog
+          - reference
+          - null
+    paramAuthor:
+      name: author
+      in: query
+      description: Author name
+      required: false
+      schema:
+        type: string
+    paramTitle:
+      name: title
+      in: query
+      description: one or more words from title or phrase, with optional wildcards
+      required: false
+      schema:
+        type: string
+    paramJournal:
+      name: journal
+      in: query
+      description: one or more PEPCodes (source) codes separated by +
+      required: false
+      schema:
+        type: string
+    paramLanguage:
+      name: language
+      in: query
+      description: Two letter ISO 639-1 code to match document language
+      required: false
+      schema:
+        type: string
+    paramType:
+      name: type
+      in: query
+      description: Document type
+      required: false
+      schema:
+        type: string
+        enum:
+          - abstract
+          - article
+          - announcement
+          - commentary
+          - errata
+          - profile
+          - report
+          - review
+          - null
+    paramCiteCount:
+      name: citecount
+      in: query
+      description: Minimum Number of times document has been cited in other PEP documents
+      required: false
+      schema:
+        type: integer
+    paramViewCount:
+      name: viewcount
+      in: query
+      description: Minimum Number of times document has been viewed within specified
+        viewperiod
+      required: false
+      schema:
+        type: integer
+    paramViewPeriod:
+      name: viewperiod
+      in: query
+      description: Period of time, context to assess viewcount
+      required: false
+      schema:
+        type: string
+        enum:
+          - week
+          - month
+          - six+months
+          - year
+    paramDateType:
+      name: datetype
+      in: query
+      description: Search range modifier (date) for startyear and endyear
+      required: false
+      schema:
+        type: string
+        enum:
+          - since
+          - anytime
+          - on
+          - before
+          - between
+    paramEndYear:
+      name: endyear
+      in: query
+      description: Latest year of publication for matching documents
+      required: false
+      schema:
+        type: string
+    paramStartYear:
+      name: startyear
+      in: query
+      description: Earliest year of publication for matching documents
+      required: false
+      schema:
+        type: string
+  securitySchemes:
+    pepweb_auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: http://Login
+          scopes:
+            read:docs: read full documents
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
+  schemas:
+    documents:
+      type: object
+      properties:
+        responseInfo:
+          $ref: "#/components/schemas/respInfo"
+        responseSet:
+          type: array
+          items:
+            $ref: "#/components/schemas/respSetDocument"
+    imageURL:
+      type: object
+      properties:
+        responseInfo:
+          $ref: "#/components/schemas/respInfo"
+        responseSet:
+          type: array
+          items:
+            $ref: "#/components/schemas/respSetImageItem"
+    volumeList:
+      type: object
+      properties:
+        responseInfo:
+          $ref: "#/components/schemas/respInfo"
+        responseSet:
+          type: array
+          items:
+            $ref: "#/components/schemas/respSetVolListItem"
+    documentList:
+      type: object
+      properties:
+        responseInfo:
+          $ref: "#/components/schemas/respInfo"
+        responseSet:
+          type: array
+          items:
+            $ref: "#/components/schemas/respSetDocListItem"
+    sourceInfo:
+      type: object
+      properties:
+        responseInfo:
+          $ref: "#/components/schemas/respInfo"
+        responseSet:
+          type: array
+          items:
+            $ref: "#/components/schemas/respSetItem"
+    authorIndex:
+      type: object
+      properties:
+        responseInfo:
+          $ref: "#/components/schemas/respInfo"
+        responseSet:
+          type: array
+          items:
+            $ref: "#/components/schemas/respSetAuthIndexItem"
+    authorPubList:
+      type: object
+      properties:
+        responseInfo:
+          $ref: "#/components/schemas/respInfo"
+        responseSet:
+          type: array
+          items:
+            $ref: "#/components/schemas/respSetAuthPubListItem"
+    respInfo:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+        fullCount:
+          type: integer
+          format: int32
+        fullCountComplete:
+          type: boolean
+        listLabel:
+          type: string
+        listType:
+          type: string
+        scopeQuery:
+          type: string
+        request:
+          type: string
+        timeStamp:
+          type: string
+    respSetDocument:
+      type: object
+      properties:
+        documentID:
+          type: string
+        documentRef:
+          type: string
+        document:
+          type: string
+          format: html
+        accessLimited:
+          type: boolean
+    respSetItem:
+      type: object
+      properties:
+        ISSN:
+          type: string
+        PEPCode:
+          type: string
+        abbrev:
+          type: string
+        bannerURL:
+          type: string
+        language:
+          type: string
+        yearFirst:
+          type: string
+        yearLast:
+          type: string
+    respSetImageItem:
+      type: object
+      properties:
+        PEPCode:
+          type: string
+        imageURL:
+          type: string
+        sourceType:
+          type: string
+        title:
+          type: string
+    respSetVolListItem:
+      type: object
+      properties:
+        PEPCode:
+          type: string
+        vol:
+          type: string
+        year:
+          type: string
+    respSetAuthIndexItem:
+      type: object
+      properties:
+        authorID:
+          type: string
+        publicationsURL:
+          type: string
+    respSetAuthPubListItem:
+      type: object
+      properties:
+        authorID:
+          type: string
+        documentID:
+          type: string
+        documentRef:
+          type: string
+        documentURL:
+          type: string
+    respSetDocListItem:
+      type: object
+      properties:
+        PEPCode:
+          type: string
+        authMast:
+          type: string
+        documentID:
+          type: string
+        documentRef:
+          type: string
+        issue:
+          type: string
+        issueTitle:
+          type: string
+        newSectionName:
+          type: string
+        pgStart:
+          type: string
+        pgEnd:
+          type: string
+        title:
+          type: string
+        vol:
+          type: string
+        year:
+          type: string
+        term:
+          type: string
+        termCount:
+          type: string

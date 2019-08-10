@@ -1,0 +1,55 @@
+/*Blue Theme*/
+
+.ui-accordion-header-active {
+  /*background-color: light-blue !important;*/
+  background-color: #68c !important;
+}
+
+.ui-widget-content, #searchFormResults, #whatsNew, .issueList, #welcome, .pepsection, #newsDiv {
+  background-image:none;
+  background-color: white;
+}
+
+p {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.articleListItem:first-line {
+  text-shadow : 0 0 0 black;
+}
+
+.search-btn-group > button {
+  color: white; /* White text */
+  background-color: #6688cc;
+  border-color: #6688cc;
+}
+
+/*Buttons General*/
+.btn-primary {
+  background-color: #6688cc;
+  border-color: #6688cc;
+}
+
+/*Button Group in Abstract Area */
+div.doc-btn-group a {
+  color: white; /* White text */
+  background-color: #6688cc;
+  border-color: #6688cc;
+}
+
+.pep-round-button {
+  color: #6688cc;
+}
+
+/*reverse colors for clicking*/
+a:active, span:active, span.pep-round-button:active {
+  background-color: cornflowerblue;
+  color: white;
+}
+
+.searchhit {
+  font-weight: bolder;
+  background-color: cornflowerblue;
+  color: white;
+}
+

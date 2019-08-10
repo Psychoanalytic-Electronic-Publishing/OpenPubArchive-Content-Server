@@ -39,10 +39,9 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
     return user  # pydantic model based user.  See modelsOpasCentralPydantic.py
 
 @app.get("/users/login")
-def read_current_user(request: Request, username: str = Depends(get_current_user)):
-    request.cookies["mytest"] = "gsd567f"
-    return {"username": username}
+def read_current_user(request: Request, user: str = Depends(get_current_user)):
+    return {"username": user}
 
 if __name__ == "__main__":
-  uvicorn.run(app, host="127.0.0.1", port=8003, debug=True)
+  uvicorn.run(app, host="127.0.0.1", port=8005, debug=True)
   

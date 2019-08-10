@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <title>PEP Easy Search</title>
+  <!-- Latest Minimum Configuration for Homescreen Launch Experience per Google Developer 192x192-->
+  <meta charset="UTF-8" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" sizes="192x192" href="./images/PEPEasy.png" />
+  <link rel="shortcut icon" href="./images/favicon.ico" type="image/x-icon" />
+  <meta name="viewport" content="width=device-width" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <!-- End Latest Minimum Configuration for Homescreen Launch Experience per Google Developer 192x192-->
+  <!-- Apple touch config (minimum config above is not engough! -->
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="57x57" href="images/apple-touch-icon-57x57.png" />
+  <link rel="apple-touch-icon" sizes="72x72" href="images/apple-touch-icon-72x72.png" />
+  <link rel="apple-touch-icon" sizes="76x76" href="images/apple-touch-icon-76x76.png" />
+  <link rel="apple-touch-icon" sizes="114x114" href="images/apple-touch-icon-114x114.png" />
+  <link rel="apple-touch-icon" sizes="120x120" href="images/apple-touch-icon-120x120.png" />
+  <link rel="apple-touch-icon" sizes="144x144" href="images/apple-touch-icon-144x144.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="images/apple-touch-icon-152x152.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon-180x180.png" />
+
+  <link rel="shortcut icon" href="images/favicon.ico" />
+  <!-- Google Analytics -->
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-5560269-12', 'auto');
+    <!-- Set anonymize to comply with GDPR -->
+    ga('set', 'anonymizeIp', true);
+    ga('send', 'pageview');
+  </script>
+  <!-- End Google Analytics -->
+  <!-- <script type="text/javascript" src="js/jquery-3.1.1.min.js"></script> -->
+  <script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+  <!--  <script type="text/javascript" src="js/jquery.cookie-1.4.1.min.js"></script>-->
+
+  <!-- WARNING: Needs to between the two jquery loads, or we get an error:
+        selector option must be specified when initializing tooltip on the windows.document object -->
+  <script type="text/javascript" src="js/bootstrap3.3.5.min.js"></script>
+  <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.js"></script> -->
+  <script type="text/javascript" src="js/jquery-ui-1.12.1.min.js"></script>
+  <!-- <script src="js/jquery.ui.touch-punch-improved.js"></script> -->
+  <script src="js/jquery.ui.touch-punch.min.js"></script>
+
+  <!-- <script type="text/javascript" src="http://knockoutjs.com/downloads/knockout-3.2.0.js"></script> -->
+  <script type="text/javascript" src="js/knockout-3.2.0.min.js"></script>
+  <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/knockout.mapping/2.4.1/knockout.mapping.min.js"></script> -->
+  <script type="text/javascript" src="js/knockout.mapping-2.4.1.min.js"></script>
+  <!-- <script src="js/highlight.pack.js"></script> -->
+  <!-- Sammy provides client side routes that let you use back/forward navigation -->
+  <script type="text/javascript" src="js/sammy-0.7.6.min.js"></script>
+
+  <!-- <script type="text/javascript" src="js/knockout.bootstrap.modal.js"></script> -->
+  <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.css" /> -->
+  <link rel="stylesheet" href="css/jquery-ui.min.1.12.1.css" />
+
+  <link href="https://fonts.googleapis.com/css?family=Droid+Serif|Roboto" rel="stylesheet">
+
+  <!-- <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-XdYbMnZ/QjLh6iI4ogqCTaIjrFk87ip+ekIjefZch0Y+PvJ8CDYtEs1ipDmPorQ+" crossorigin="anonymous" /> -->
+  <link href="css/font-awesome-4.5.0.min.css" rel="stylesheet" integrity="sha384-XdYbMnZ/QjLh6iI4ogqCTaIjrFk87ip+ekIjefZch0Y+PvJ8CDYtEs1ipDmPorQ+" crossorigin="anonymous" />
+  <!-- <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet" /> -->
+  <link href="css/bootstrap.min.3.3.5.css" rel="stylesheet" />
+
+  <!-- Bootstrap select, extended selection for bootstrap! -->
+  <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.2/css/bootstrap-select.min.css"> -->
+  <link rel="stylesheet" href="css/bootstrap-select-1.12.2.min.css">
+  <!--  <link rel="stylesheet" href="css/scrollTo.css">-->
+
+  <script src="js/bootstrap-select-1.12.2.min.js"></script>
+
+  <!-- Document styles for text and server returned objects -->
+  <link rel="stylesheet" type="text/css" href="../PEPCommonLibrary2/PEPDocumentStyles.min.css" />
+  <!-- Project specific libraries -->
+  <link rel="stylesheet" type="text/css" href="PEPEasy.min.css" />
+  <link rel="stylesheet" type="text/css" href="themes/BlueTheme.min.css" title="blue" />
+  <link rel="alternate stylesheet" type="text/css" href="themes/MetalTheme.min.css" title="metal" />
+  <link rel="alternate stylesheet" type="text/css" href="themes/MetalTheme2.min.css" title="metal2" />
+  <link rel="alternate stylesheet" type="text/css" href="themes/BlueTheme.min.css" title="blue" />
+  <link rel="alternate stylesheet" type="text/css" href="themes/BlueTheme2.min.css" title="blue2" />
+  <link rel="alternate stylesheet" type="text/css" href="themes/BlueThemeHC.min.css" title="blueHC" />
+  <link rel="alternate stylesheet" type="text/css" href="themes/Colorful1.css" title="colorful1" />
+  <link rel="alternate stylesheet" type="text/css" href="themes/Colorful2.css" title="colorful2" />
+  <link rel="alternate stylesheet" type="text/css" href="themes/Colorful3.css" title="colorful3" />
+  <link rel="alternate stylesheet" type="text/css" href="themes/NightTime1.css" title="nighttime1" />
+  <link rel="prefetch" type="application/l10n" href="l10n/locales.ini" />
+  <!-- Convenience library to access PEP-Web API Code  -->
+  <script type="text/javascript" src="js/l10n.min.js"></script>
+  <script src="js/switchStyle.js" type="text/javascript"></script>
+  <!-- Cookie Consent Call -->
+<link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/cookieconsent2/3.0.3/cookieconsent.min.css" />
+<script src="//cdnjs.cloudflare.com/ajax/libs/cookieconsent2/3.0.3/cookieconsent.min.js"></script>
+<script>
+    window.addEventListener("load", function(){
+    window.cookieconsent.initialise({
+      "palette": {
+        "popup": {
+          "background": "#000"
+        },
+        "button": {
+          "background": "#f1d600"
+        }
+      },
+      "content": {
+        "message": "PEPEasy uses cookies to store your preferences and session information if you are logged in to PEP-Web ",
+        "dismiss": "Got it!",
+        "href": "http://support.pep-web.org/pep-web-pep-easy-cookie-policy/"
+      }
+    })});
+</script>
+  </script>
+
+</head>
+
+<body onload="set_style_from_cookie('style')">
+  <!-- Banner -->
+  <nav class="navbar navbar-default navbar-fixed-top hidden-print">
+    <div class="col-xs-2 col-md-1 col-lg-1 imageContainer">
+      <img src="./images/PEPFingertips60px.png" class="bannerImage" />
+    </div>
+    <div class="col-xs-8 col-md-10 col-lg-10">
+      <div class="row">
+        <span class="bannerText" data-before="Psychoanalytic"><span data-l10n-id="Search">Search</span>&nbsp;<i data-l10n-id="at-your-fingertips" class='bannerText_after'>at your fingertips</i></span>
+      </div>
+      <div class="row">
+        <div class="col-xs-10 pull-left">
+          <h1 data-l10n-id="by-Psychoanalytic-Electronic-Publishing" class="subBannerText">by Psychoanalytic Electronic Publishing</h1>
+        </div>
+      </div>
+    </div>
+    <div class="col-xs-2 col-md-1 col-lg-1">
+      <div class="dropdown col-xs-12 col-md-12 col-lg-12 pull-right">
+        <button class="btn btn-primary btn-xs" onclick="openTopMenu()"><b>&nbsp;<i class="fa fa-bars" aria-hidden="true"></i>&nbsp;<b data-l10n-id="Menu">Menu</b></b></button>
+        <div id="topMenu" class="dropdown-content">
+          <!-- <input type="text" placeholder="Search.." id="myInput" onkeyup="filterFunction()"> -->
+          <ul id="menuList">
+            <li class="menuItem"><a data-bind="html: $root.loginMenuState, click: loginStateToggle">Log out</a></li>
+            <li class="menuItem"><a data-l10n-id="FederationLogin" onclick="gotoFederationLoginDialog();event.preventDefault();">Federation Login</a></li>
+            <li class="menuItem"><a data-l10n-id="FederationLogout" href="https://www.pep-web.org/logout.php">Federation Logout</a></li>
+            <li class="menuItem divider"></li>
+            <li class="menuItem"><span data-l10n-id="Sections" class="menuLabel">Sections</span></li>
+            <li class="menuItem"><a data-l10n-id="News-and-Info" onclick="openStart();event.preventDefault();">Start</a></li>
+            <li class="menuItem"><a data-l10n-id="Search" onclick="openSearchTab();event.preventDefault();">Search</a></li>
+            <li class="menuItem"><a data-l10n-id="Read" onclick="openAbstractTab();event.preventDefault();">Read</a></li>
+            <!-- +++++++++++++++++++++++ -->
+            <li role="separator" class="menuItem divider" role="separator"></li>
+            <li class="menuItem"><span data-l10n-id="Navigation" class="menuLabel">Navigation</span></li>
+            <li class="menuItem"><a data-l10n-id="JumpToPrevHit" onclick="hitCursor.prevHit();event.preventDefault();">Jump To Prev Hit</a></li>
+            <li class="menuItem"><a data-l10n-id="JumpToNextHit" onclick="hitCursor.nextHit();event.preventDefault();">Jump To Next Hit</a></li>
+            <!-- +++++++++++++++++++++++ -->
+            <li role="separator" class="menuItem divider" role="separator"></li>
+            <li class="menuItem"><span data-l10n-id="Options" class="menuLabel">Options</span></li>
+            <li class="menuItem"><a data-l10n-id="Preferences" onclick="gotoOptionsDialog();event.preventDefault();">Preferences</a></li>
+            <li class="menuItem"><a data-l10n-id="SortOrder" onclick="gotoSelectSortOrder();event.preventDefault();">Results Sort Order</a></li>
+            <!-- +++++++++++++++++++++++ -->
+            <li role="separator" class="menuItem divider" role="separator"></li>
+            <li class="menuItem"><span data-l10n-id="Support-pages" class="menuLabel">Support Web Pages</span></li>
+            <li class="menuItem"><a href="http://support.pep-web.org/helptoc/customer-service" data-l10n-id="Help" target="_blank" onclick="closeTopMenu();">Help</a></li>
+            <li class="menuItem"><a href="http://support.pep-web.org/helptoc/help/faq/" target="_blank">FAQ</a></li>
+            <li class="menuItem"><a href="http://support.pep-web.org/betareport/" target="_blank">Report a Problem</a></li>
+            <li class="menuItem"><a href="http://support.pep-web.org/helptoc/help/aboutpepeasy/" data-l10n-id="PEP-Easy-Help"  target="_blank">PEP-Easy Help</a></li>
+            <!-- +++++++++++++++++++++++ -->
+            <li role="separator" class="menuItem divider" role="separator"></li>
+            <li class="menuItem"><a data-l10n-id="About-PEP-Easy" onclick="gotoAboutPEPEasy();event.preventDefault();">About PEP-Easy...</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="divJustUnderNavbar">
+    <div id="accordion" class="row accordion" onclick="closeTopMenu();">
+      <!-- ********************************************************************* -->
+      <!-- *****NEWS AND INFO TAB ********************************************** -->
+      <!-- ********************************************************************* -->
+      <h3 data-l10n-id="News-and-Info" class="hidden-print">Start</h3>
+      <div id="startPanel" class="hidden-print">
+        <div id="welcome" class="well">
+          <p id="supportInfo"><span data-l10n-id="For-more-information-about-PEP-Web">For more information about PEP-Web, click to go to </span>&nbsp;<a class="supportLink" target="_blank" rel="noopener noreferrer" href="http://support.pep-web.org/helptoc/customer-service/"><span data-l10n-id="Customer-Service">Customer Service</span></a>&nbsp;
+            <span data-l10n-id="or-to-the">or to the</span>&nbsp;
+            <a data-l10n-id="PEP-Frequently-Asked-Questions" class="supportLink" target="_blank" rel="noopener noreferrer" href="http://support.pep-web.org/helptoc/help/faq/">PEP Frequently Asked Questions (FAQ)</a>
+          </p>
+          <!-- ********************************************************************* -->
+          <div>
+            <h5 class="listSectionHeading" style="font-size:125%;"><span data-l10n-id="News-Bulletins">News Bulletins</span>&nbsp;<i>(<span data-l10n-id="click-the-headline-of-the-story-to-expand">click the headline of the story to expand or contract</span>)</i></h5>
+            <div id="newsDIV">
+              News Loads Here!
+            </div>
+            <a class="linkVisible" data-l10n-id="More-News" style="font-weight:bold;" href="http://support.pep-web.org/" target="_blank">More News (on PEP-Web)</a>
+          </div>
+        </div>
+        <!-- ********************************************************************* -->
+        <div class="panel pepsection">
+          <div id="whatsNew" class="row col-sm-12">
+            <h5 data-l10n-id="Recently-Added-Content" class="listSectionHeading">Recently Added Content</h5>
+            <ul class="issueList" data-bind="foreach: currWhatsNewList ">
+              <li class="issueListItem" data-bind="attr: {id: volumeURL},
+                                       click: $root.gotoIssueContents;">
+                <span class="clickableReference" data-bind="text: displayTitle"></span> (<span data-l10n-id="Added">Added</span>: <span class="fmtData2ColRight" data-bind="text: updated"></span>)
+              </li>
+            </ul>
+          </div>
+          <!-- end what's new -->
+        </div>
+        <!-- ********************************************************************* -->
+        <div class="panel pepsection">
+          <div id="MostPopular" class="row col-sm-12">
+            <h5 data-l10n-id="Most-Popular-Journal-Articles" class="listSectionHeading">Most Popular Journal Articles</h5>
+            <span data-bind="text: statusMessageLocal"></span>
+            <ul class="articleList" data-bind="foreach: currMostDownloadedData">
+              <!-- Data List -->
+              <li class="articleListItem" data-bind="attr: {id:documentID},
+                           click: $root.gotoArticleAbstract;">
+                <span class="clickableReference" data-bind="text: documentRef"></span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      <!-- ********************************************************************* -->
+        <div class="panel pepsection">
+          <div id="MostCited" class="row col-sm-12">
+            <h5 data-l10n-id="Most-Cited-Journal-Articles" class="listSectionHeading">Most Cited Journal Articles</h5>
+            <ul class="articleList" data-bind="foreach: currMostCitedData ">
+              <li class="articleListItem" data-bind="attr: {id: documentID},
+                             click: $root.gotoArticleAbstract;">
+                <span class="clickableReference" data-bind="text: documentRef"></span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- ********************************************************************* -->
+      <!-- *****SEARCH TAB ***************************************************** -->
+      <!-- ********************************************************************* -->
+      <h3 data-l10n-id="Search" class="hidden-print">Search</h3>
+      <div id="searchPanel">
+        <div class="panel-collapse collapse in" id="searchFormOuter" role="tabpanel" aria-labelledby="headingOne">
+          <div class="panel-body responsive">
+            <div id="searchCriteriaArea" class="row responsive hidden-print">
+              <div class="row">
+                <p class="row criteriaMore" data-bind="click: $root.expandSearchForm" style="display:block"><span data-l10n-id="Enter-criteria-for-search-more">Enter criteria for search (click for more):</span>&nbsp;
+                  <i class="fa fa-plus-circle" aria-hidden="true"></i>
+                </p>
+                <p class="row criteriaLess" data-bind="click: $root.expandSearchForm" style="display:none"><span data-l10n-id="Enter-criteria-for-search-less">Enter criteria for search (click for less):</span>&nbsp;
+                  <i class="fa fa-minus-circle" aria-hidden="true"></i>
+                </p>
+              </div>
+              <form class="row form-vertical responsive" role="search" data-bind="submit: $root.doSearch">
+                <div id="wordsField" class="form-group searchFormFields searchWordsField row">
+                  <div>
+                    <label data-l10n-id="Search-for-Words-or-phrases-in-Context" class="control-label">Search for Words or phrases in Context:</label>
+                    <input data-l10n-id="Search-for-Words-or-phrases-in-Context-input" type="text" class="form-control" id="searchWords1" placeholder="Words or Phrases (in quotes)" data-bind="value: $root.searchWordsText" onblur="doSearchAnalysis()">
+                  </div>
+                </div>
+                <div id="jrnlField" class="form-group searchFormFields searchJournalField row">
+                  <div>
+                    <label for="searchJournal" data-l10n-id="Journal" class="row control-label col-xs-12">Source:</label>
+<!--
+                    <select id="searchJournal" class="row input-small col-xs-12" onblur="doSearchAnalysis()" data-bind="value: $root.searchJournal, foreach: $root.journals">
+				    <option class="journalOptions form-control col-xs-6" data-bind="attr: {value:PEPCode}, html:title">Server supplied...</option>
+			        </select>
+-->
+                    <select id="searchJournal" class="row input-small col-xs-12" onblur="doSearchAnalysis()"
+                    data-bind="value: searchJournal,
+                               options: journals,
+                               optionsText: 'title',
+                               optionsValue: 'PEPCode',
+                               optionsCaption: ''
+                               ">
+                    </select>
+                  </div>
+                </div>
+                <div id="authorField" class="form-group searchFormFields searchAuthorField row">
+                  <div>
+                    <label for="searchAuthor1" data-l10n-id="Author" class="control-label">Author:</label>
+                    <input id="searchAuthor1" data-l10n-id="Author-input" type="text" class="form-control" placeholder="Author" data-bind="value: $root.searchAuthorText, valueUpdate: 'keyup'" onblur="doSearchAnalysis()" list="authoridx">
+                  </div>
+                </div>
+                <div class="row">
+                  <datalist id="authoridx" data-bind="foreach: indexResults.currAuthorIndexData">
+                  <option data-bind="html: authorID">Author</option>
+                  </datalist>
+                </div>
+
+                <div id="titleField" class="form-group searchFormFields searchTitleField row">
+                  <label for="searchTitle1" data-l10n-id="Title" class="control-label">Title:</label>
+                  <input id="searchTitle1" data-l10n-id="Title-input" type="text" class="form-control" placeholder="Title" data-bind="value: $root.searchTitleText" onblur="doSearchAnalysis()">
+                  <!-- <input type="checkbox" id="autoTitleWildcard"> -->
+                  <!-- <label for="autoTitleWildcard">Broaden Search</label> -->
+                </div>
+                <div id="yearField" class="form-group searchFormFields searchYearField row">
+                  <div>
+                    <label for="searchYear1" data-l10n-id="Year" class="control-label">Year:</label>
+                    <input id="searchYear1" data-l10n-id="Year-input" type="text" class="form-control" placeholder="Year or Range, e.g., =1970, <1980, >1980, or ^1960-1970" data-bind="value: $root.searchYearText" onblur="doSearchAnalysis()">
+                  </div>
+                </div>
+                <div class="form-group inlineHelpButtons row">
+                  <!-- help area -->
+                  <span onclick="gotoHelpSearchDialog();event.preventDefault();"><span data-l10n-id="Search-tips">Search Tips</span>&nbsp;<i class="fa fa-info-circle" aria-hidden="true"></i></span>
+                </div>
+                <div class="form-group row command-center">
+                  <div data-bind="style: { display: searchAnalysisArray().length > 0 ? 'block' : 'none' }">
+                    <div id="termMatchStatArea" style="display:none" class="well well-sm">
+                      <div class="pepfieldset" data-bind="style: { display: searchAnalysisArray().length > 0 ? 'block' : 'none' }">
+                        <fieldset id="termMatches">
+                          <legend class="searchBoxLegend" data-l10n-id="Term-Matches">Term matches</legend>
+                          <!-- <h5 data-l10n-id="Term-Matches" >Term matches</h5> -->
+                          <ul id="searchTerms" class="termList" data-bind="foreach: searchAnalysisArray">
+                            <!-- Data List -->
+                            <li class="termListItem" data-bind="style: { display: term !== undefined ? 'block' : 'none' }">
+                              <span class="termListItemText" data-bind="html: term"></span>&nbsp;-&nbsp;<span data-bind="text: termCount"></span>
+                            </li>
+                            <li class="termListItem" data-bind="style: { display: combined !== undefined ? 'block' : 'none'}">
+                              <span><b>Combined: </b></span><span class="termListItemText" data-bind="text: combined"></span>&nbsp;-&nbsp;<span data-bind="text: combinedCount"></span>
+                            </li>
+                          </ul>
+                        </fieldset>
+                      </div>
+                    </div>
+                    <!-- end termMatchStatArea -->
+                  </div>
+                  <div id="searchButtonRow" class="row">
+                    <div class="rightAlignedButtons search-btn-group pull-right">
+                      <button data-l10n-id="Search" type="submit" class="btn btn-sm btn-responsive btn-success" data-bind="click: doSearch, clickBubble: false">Search</button>
+                      <!--                      <button data-l10n-id="Clear" class="btn btn-sm btn-responsive btn-primary" onclick="gotoNewSearch()">Clear</button>-->
+                      <button data-l10n-id="Clear" class="btn btn-sm btn-responsive btn-primary" data-bind="click: doClear, clickBubble: false">Clear</button>
+
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div id="searchMessageArea" class="row hidden-print">
+              <span class="searchProgress" data-bind="html: $root.currentSearchProgress(), visible: $root.currentSearchProgress().length > 0">Fetching Article List</span>
+              <p id="noResultsLabel" class="statusEmphasized" data-bind="html: $root.noMatchesFoundMessage, visible: noMatchesFoundMessage().length > 0"></p>
+            </div>
+            <div id="searchFormResults" class="responsive row">
+              <div class="row col-sm-12">
+                <div class="col-sm-6">
+                  <span class="searchLabel" data-bind="html: $root.currentSearchDisplayString"></span>
+                </div>
+                <div class="col-sm-6" data-bind="visible: $root.isValidKWIC">
+                  <div class="pull-right">
+                    <input type="checkbox" data-bind="checked: showKWIC" /> <span class="myFormCheckboxLegend" data-l10n-id="Show-match-text" data-bind="click: toggleKWICCheck">Show Match Text</span>
+                  </div>
+                </div>
+              </div>
+              <div style="text-align: center" class="resultsPager row col-sm-12">
+                <span type="button" class="previous pep-round-button glyphicon glyphicon-circle-arrow-left" data-bind="click: $root.articleListPager1.goToPrevPage" id="prevSet"></span>
+                <span class="resultsPagerLabel" data-bind="html: $root.articleListPager1.displayString()"></span>
+                <span type="button" class="previous pep-round-button glyphicon glyphicon-circle-arrow-right" data-bind="click: $root.articleListPager1.goToNextPage" id="nextSet"></span>
+              </div>
+              <div id="resultsPaging" class="row col-sm-12">
+                <ul id="idxjournals" class="articleList" data-bind="foreach: articleList">
+                  <!-- Data List -->
+                  <li class="articleListItem">
+                    <span class="clickableReference" data-bind="attr: {id:documentID},
+                                     html:documentRef,
+                                     click: $root.gotoArticleAbstract;"></span><span id='displayRank' data-bind="visible: $root.showRanks()===true">(<span data-l10n-id="Rank" >Rank</span>: <span data-bind="text: searchRank"></span>)</span>
+                    <div class='kwicList' style="display:block">
+                      <ul>
+                        <li data-bind="attr: {id:documentID}, html:kwic, visible: kwic.length > 0">
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+                <div class="row col-sm-12" data-bind="style: { display: articleList().length > 10 ? 'block' : 'none' }">
+                  <div style="text-align: center" class="resultsPager col-sm-12">
+                    <span type="button" class="previous pep-round-button glyphicon glyphicon-circle-arrow-left" data-bind="click: $root.articleListPager1.goToPrevPage" id="prevSet"></span>
+                    <span class="resultsPagerLabel" data-bind="html: $root.articleListPager1.displayString()"></span>
+                    <span type="button" class="previous pep-round-button glyphicon glyphicon-circle-arrow-right" data-bind="click: $root.articleListPager1.goToNextPage" id="nextSet"></span>
+                  </div>
+                </div> <!-- resultsPagingControls -->
+              </div>
+            </div>
+          </div> <!-- Panel body -->
+        </div> <!-- Main search criteria -->
+      </div> <!-- end search panel-->
+      <!-- ********************************************************************* -->
+      <!-- ***** ABSTRACT/DOCUMENT READ TAB ************************************ -->
+      <!-- ********************************************************************* -->
+      <h3 data-l10n-id="Read" id="abstractTitle" class="hidden-print">Read</h3>
+      <div id="detailPanel">
+        <div id="documentArea" class="row col-sm-12" data-bind="html: $root.articleAbstract">
+          Let's put the abstract details here first
+        </div>
+        <div class="btn-group-wrap row col-sm-12">
+          <p class="errorStatus" data-bind="html: $root.extendedLoginStatus"></p>
+          <p><span class="currentStatus" data-bind="html: $root.currentStatusLine, visible: loggedInToServerObs() === false"></span>&nbsp;</p>
+          <p data-bind="visible: loggedInToServerObs() === false">To login, use the menu or click <a data-bind="click: $root.loginStateToggle"><b><i>here</i></b></a></p>
+          <p data-bind="visible: loggedInToServerObs() === false">For <a data-l10n-id="FederationLogin" onclick="gotoFederationLoginDialog();event.preventDefault();">Federation Login Click Here</a></p>
+          <div id="authenticatedButtonFunctions" class="row doc-btn-group col-sm-12" data-bind="visible: loggedInToServerObs">
+            <!-- <a href="#" class="btn btn-sm btn-primary" data-bind="click: $root.login"><span class="glyphicon glyphicon-user"></span> <span data-l10n-id="jsLogIn" >Login</span></a> -->
+            <button href="#" class="btn btn-sm btn-primary" data-bind="click: $root.gotoArticleFullText, visible: readModeIsDocument()==false"><i class="glyphicon glyphicon-eye-open"></i> <b data-l10n-id="Read">Read</b></button>
+            <button href="#" class="btn btn-sm btn-primary" data-bind="click: $root.getDownloadEPUB"><i class="glyphicon glyphicon-download-alt"></i> <b data-l10n-id="ePub">ePub</b></button>
+            <button href="#" class="btn btn-sm btn-primary" data-bind="click: $root.getDownloadPDF"><i class="glyphicon glyphicon-download-alt"></i> <b data-l10n-id="PDF">PDF</b></button>
+            <p>&nbsp;</p>
+          </div>
+          <div class="row btn-group doc-btn-group col-sm-12" style="display: block;">
+            <p>&nbsp;</p>
+          </div>
+          <div class="app-footer row btn-group doc-btn-group col-sm-12">
+            <p>&nbsp;</p>
+            <p data-l10n-id="Copyright-Psychoanalytic-Electronic-Publishing" class="copyright">Copyright 2018 Psychoanalytic Electronic Publishing</p>
+            <p><a target="_blank" class="btn btn-sm btn-primary" data-bind="attr: {href: '//www.pep-web.org/document.php?id=' + $root.currAbstractDocumentID() }">
+                <b data-l10n-id="View-on-PEP-Web-Desktop-Site">View on PEP-Web Desktop Site</b></a></p>
+          </div>
+          <!-- sharingbuttons.io -->
+          <div>
+          </div>
+          <!-- sharing buttons.io -->
+        </div>
+      </div>
+    </div>
+    <!-- end id="accordion" -->
+  </div>
+  <!-- ********************************************************************* -->
+  <!-- ******************* MODAL DIALOG SECTION! *************************** -->
+  <!-- ********************************************************************* -->
+  <div>
+    <!-- to fold modals -->
+    <div class="modal fade bannerformodal" id="loginModal" role="dialog">
+      <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header" style="padding:35px 50px;">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4><span class="glyphicon glyphicon-lock"></span> <span data-l10n-id="jsLogIn">Login</span></h4>
+          </div>
+          <div class="modal-body" style="padding:20px 30px;">
+            <form role="form" data-bind="submit:$root.acceptCredentials">
+              <div class="form-group">
+                <label for="usrname"><span class="glyphicon glyphicon-user"></span> <span data-l10n-id="Username" >Username</span></label>
+                <input data-l10n-id="Username-input" type="text" class="form-control" id="usrname" data-bind="value: $root.userName, valueUpdate: 'afterkeydown'">
+              </div>
+              <div class="form-group">
+                <label for="psw"><span class="glyphicon glyphicon-eye-open"></span> <span data-l10n-id="Password">Password</span></label>
+                <input data-l10n-id="Password-input" type="password" class="form-control" id="psw" data-bind="value: $root.userPassword, valueUpdate: 'afterkeydown'">
+              </div>
+              <div>
+                <input type="checkbox" id="stayLoggedIn" data-bind="checked: $root.stayLoggedIn, click: $root.changedStayLoggedIn" />
+                <label class="subtleLabel" for="stayLoggedIn" data-l10n-id="Stay-logged-in">Stay Logged In (while app is open)</label>
+              </div>
+              <button type="btn" class="btn btn-success btn-block" data-bind="click:$root.acceptCredentials"><span class="glyphicon glyphicon-off"></span> <span data-l10n-id="jsLogIn" >Login</span></button>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-danger btn-default pull-left" data-dismiss="modal"><span class="glyphicon glyphicon-remove"></span> <span data-l10n-id="Cancel">Cancel</span></button>
+            <p><span data-l10n-id="Not-subscribed">Not a member?</span> <a data-l10n-id="Sign-up" href="https://www.psychoanalystdatabase.com/Pages/pg070Logon.aspx">Sign Up</a></p>
+            <p style="text-align:right"><a data-l10n-id="Sign-up" href="https://www.psychoanalystdatabase.com/Pages/pg070Logon.aspx">Login Help</a> or <a data-l10n-id="Forgot-password" href="https://www.psychoanalystdatabase.com/Pages/pg070Logon.aspx">Forgot password</a></p>
+
+            <!-- <p><span data-l10n-id="Forgot-password">Forgot</span> <a data-l10n-id="Password" href="#">Password?</a></p> -->
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Modal -->
+    <div id="glossayModal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 data-l10n-id="PEP-Consolidated-Glossary" class="modal-title">PEP Consolidated Glossary</h4>
+          </div>
+          <div class="modal-body" data-bind="html:$root.currGlossaryEntryHTML">
+            <p>Some text in the modal.</p>
+          </div>
+          <div class="modal-footer">
+            <span data-bind="value:$root.currGlossaryTermID">
+            </span>
+            <button data-l10n-id="Close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- *** Reference Modal Popup Dialog *** -->
+    <div id="refModal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 data-l10n-id="References" class="modal-title">Reference</h4>
+          </div>
+          <div id="refContent" class="refContent">
+            <p>Reference goes here.</p>
+          </div>
+          <div class="modal-footer">
+            <button data-l10n-id="Close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- *** Footnote Modal Popup Dialog *** -->
+    <div id="ftnModal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 data-l10n-id="Footnotes" class="modal-title">Footnotes</h4>
+          </div>
+          <div id="ftnContent" class="ftnContent">
+            <p>Footnotes go here.</p>
+          </div>
+          <div class="modal-footer">
+            <button data-l10n-id="Close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- *** Note Modal Popup Dialog *** -->
+    <div id="noteModal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 data-l10n-id="Notes" class="modal-title">Notes</h4>
+          </div>
+          <div id="noteContent" class="noteContent">
+            <p>Notes go here.</p>
+          </div>
+          <div class="modal-footer">
+            <button data-l10n-id="Close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- *** Author Info Modal Popup Dialog *** -->
+    <div id="autModal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 data-l10n-id="Author-Information" class="modal-title">Author Information</h4>
+          </div>
+          <div id="autContent" class="autContent">
+            <p>Author bio goes here.</p>
+          </div>
+          <div class="modal-footer">
+            <button data-l10n-id="Close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- *** More Info Modal Popup Dialog *** -->
+    <div id="moreInfoModal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 data-l10n-id="More-Information" class="modal-title">More Information</h4>
+          </div>
+          <div id="moreInfoContent" class="moreInfoContent">
+            <p>more info goes here.</p>
+          </div>
+          <div class="modal-footer">
+            <button data-l10n-id="Close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="federationLoginModal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 data-l10n-id="Federation Login" class="modal-title">Federation Login</h4>
+          </div>
+          <div id="federationLoginContent" class="moreInfoContent">
+            <p>PEP-Web supports logins from the following federations and institutions.  If you have a login through one of these services please click on the link to gain access to your PEP-Web subscription:</p>
+            <form name="login" action="https://oa.pep-web.org/Default.aspx?requested=https%3A%2F%2Fpepeasy.pep-web.org" method="post">
+                <input type="hidden" name="entityID" value="">
+            </form>
+            <ul>
+              <li><a href="#" onclick="document.login.entityID.value = 'https://idp.eduserv.org.uk/openathens'; document.login.submit(); return false;">OpenAthens</a></li><li><a href="#" onclick="document.login.entityID.value = 'https://idp.aud.ac.in/idp/shibboleth'; document.login.submit(); return false;">Ambedkar University Delhi</a></li>
+              <li><a href="#" onclick="document.login.entityID.value = 'https://kclidp.kcl.ac.uk/idp/shibboleth'; document.login.submit(); return false;">King's College London</a></li>
+              <li><a href="#" onclick="document.login.entityID.value = 'https://shib-idp.ucl.ac.uk/shibboleth'; document.login.submit(); return false;">University College London</a></li><li><a href="#" onclick="document.login.entityID.value = 'https://shibidp.uclan.ac.uk/idp/shibboleth'; document.login.submit(); return false;">University of Central Lancashire</a></li>
+              <li><a href="#" onclick="document.login.entityID.value = 'https://idp.roehampton.ac.uk/shibboleth'; document.login.submit(); return false;">University of Roehampton</a></li>
+              <li><a href="#" onclick="document.login.entityID.value = 'https://oala.surrey.ac.uk/oala/metadata'; document.login.submit(); return false;">University of Surrey</a></li>
+            </ul>
+          </div>
+          <div class="modal-footer">
+            <button data-l10n-id="Close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="optionsModal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 data-l10n-id="Preferences" class="modal-title">Preferences</h4>
+          </div>
+          <!-- Modal content-->
+          <form class="optionForm">
+            <p><label class="subtleLabel" for="selectedStyleSheet" data-l10n-id="Display-theme">Display Theme</label>:&nbsp;
+              <select id="selectedStyleSheet" data-bind="value: $root.selectedStyleSheet, event:{ change: $root.styleSelectionChanged}, optionsCaption: 'Choose a style'">
+                    <option data-l10n-id="Blue" value="blue">Blue</option>
+                    <option data-l10n-id="Blue-alt-fonts" value="blue2">Blue (alt fonts)</option>
+                    <option data-l10n-id="Metal" value="metal">Metal</option>
+                    <option data-l10n-id="Metal-alt-fonts" value="metal2">Metal (alt fonts)</option>
+                    <option value="blueHC">Blue (High Contrast)</option>
+                    <option value="colorful1">Colorful 1</option>
+                    <option value="colorful2">Colorful 2</option>
+                    <option value="colorful3">Colorful 3</option>
+                    <option value="nighttime1">Nighttime</option>
+                  </select>
+            </p>
+            <p>
+              <label class="subtleLabel" for="selectedFontSize" data-l10n-id="Font-size">Font size</label>:&nbsp;
+              <select id="selectedFontSize" name="fontSizeSelector" data-bind="value: $root.selectedFontSize, event:{ change: $root.fontSizeChanged}, optionsCaption: 'Choose a font size'">
+                    <option data-l10n-id="Very-small" value="1">Very small</option>
+                    <option data-l10n-id="Small" value="1.25">Small</option>
+                    <option data-l10n-id="Medium" value="1.35">Medium</option>
+                    <option data-l10n-id="Normal" selected value="1.5">Normal</option>
+                    <option data-l10n-id="Large" value="1.75">Large</option>
+                    <option data-l10n-id="Extra-large" value="2">Extra-large</option>
+                    <option data-l10n-id="Very-large" value="2.5">Very-large</option>
+                  </select>
+            </p>
+            <p>
+              <label class="subtleLabel" for="selectedReturnSetSize" data-l10n-id="How-many-articles-to-return-at-a-time-for-searches">Select the number of articles to return at a time for searches</label>:&nbsp;
+              <select id="selectedReturnSetSize" name="returnSetSizeSelector" style="width:5em;" data-bind="value: $root.selectedReturnSetSize, optionsCaption: 'Choose the number of articles returned from a search at a time'">
+                    <option selected value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                    <option value="100">100</option>
+                    <option value="125">125</option>
+                    <option value="150">150</option>
+                  </select>
+            </p>
+            <p>
+              <label class="subtleLabel" for="languageSelector" data-l10n-id="Language-selection">Select the language for the application</label>:&nbsp;
+              <select id="languageSelector" data-bind="value: $root.selectedLanguage">        <!-- onchange="document.webL10n.setLanguage(this.value || this.options[this.selectedIndex].text);" -->
+                    <option disabled selected></option>
+                    <option data-l10n-id="English" value="en">English</option>
+                    <option data-l10n-id="French" value="fr">French</option>
+                    <option data-l10n-id="Spanish" value="es">Spanish</option>
+                    <option data-l10n-id="German" value="de">German</option>
+                    <option data-l10n-id="Russian" value="ru">Russian</option>
+                    <!-- <option>de</option>
+                    <option>sq</option> -->
+                  </select>
+            </p>
+            <p>
+              <input id="showGlossaryTerms" type="checkbox" data-bind="checked: $root.showGlossaryTerms, click: $root.changedGlossaryStyle" />
+              <label class="subtleLabel" for="showGlossaryTerms" data-l10n-id="Underline-Glossary-Terms">Underline Glossary Terms</label>
+            </p>
+
+            <p>
+              <input id="justifyText" type="checkbox" data-bind="checked: $root.justifyText, click: $root.changedJustifyStyle" />
+              <label class="subtleLabel" for="justifyText" data-l10n-id="Justify-Text">Justify Text</label>
+            </p>
+            <p>
+              <input type="checkbox" id="autoTitleWildcard" data-bind="checked: $root.broadenSearch, click: $root.changedBroadenSearch" />
+              <label class="subtleLabel" for="autoTitleWildcard" data-l10n-id="automatically-broaden-author-title-search">Automatically broaden author/title search</label>
+            </p>
+            <p>
+              <input type="checkbox" id="skipAbstracts" data-bind="checked: $root.skipAbstractMode, click: $root.changedAbstractMode" />
+              <label class="subtleLabel" for="skipAbstracts" data-l10n-id="Skip-Abstracts">Skip Abstracts (e.g., for wifi)</label>
+            </p>
+            <p>
+              <label class="subtleLabel" for="compactSearchModeSelector" data-l10n-id="Compact-search-mode">Compact search mode</label>:&nbsp;
+              <select id="compactSearchModeSelector" data-bind="value: $root.compactSearchModeSelected">
+                    <!-- <option disabled selected></option> -->
+                    <option data-l10n-id="Compact-Mode-Author-Title" value="authorTitleSearch">Author-Title Search</option>
+                    <option data-l10n-id="Compact-Mode-Author-Words" value="authorWordsSearch">Author-Words Search</option>
+                    <option data-l10n-id="Compact-Mode-Author-Title-Words" value="authorTitleWordsSearch">Author-Title-Words Search</option>
+                    <option data-l10n-id="Compact-Mode-Words-Journal" value="wordsJournalSearch" selected>Word-Journal Search</option>
+                    <option data-l10n-id="Compact-Mode-Words" value="wordsSearch">Word Search</option>
+                  </select>
+            </p>
+          </form>
+          <div class="modal-footer">
+            <button data-l10n-id="Close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="sortSelectionModal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 data-l10n-id="selectSortOrder" class="modal-title">Select Sort Order</h4>
+          </div>
+          <!-- Modal content-->
+          <form class="sortOrderForm">
+            <div class="form-group">
+              <label id="sortOrderSelectionLabel" for="sortOrderSelection" class="subtleLabel" data-l10n-id="Select-the-sort-order-for-results">Select the sort order for results</label>:&nbsp;
+              <select id="sortOrderSelection" data-bind="value: $root.searchSortOrder, event:{ change: $root.sortOrderChanged}, optionsCaption: 'Choose an the order of the result list.'">
+                    <option data-l10n-id="Author" value="author">Author</option>
+                    <option data-l10n-id="Citation5" selected="selected" value="citeCount">Citation Count (last 5 yrs)</option>
+                    <option data-l10n-id="CitationAll" value="citeCountAll">Citation Count (All yrs)</option>
+                    <option data-l10n-id="Source" value="source">Source</option>
+                    <option data-l10n-id="Rank" value="rank,d">Rank</option>
+                    <option data-l10n-id="Title" value="title">Title</option>
+                    <option data-l10n-id="YearAsc" value="year">Year</option>
+                    <option data-l10n-id="YearDesc" value="year,d">Year</option>
+                  </select>
+            </div>
+          </form>
+          <div class="modal-footer">
+            <button data-l10n-id="Close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="aboutPEPEasyModal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 data-l10n-id="About-PEP-Easy" class="modal-title">About PEP-Easy</h4>
+            <p id="versionInfo">Version 1.02beta1c</p>
+            <!-- Ver 1.02beta:
+                Added IP based login per SecureCenter.
+                Changed some links from http:// to // so it can use secure http where applicable
+                                                              -->
+            <!-- Ver 1.01a:
+                Added IP based login per SecureCenter. -->
+
+            <!-- Ver 1.00b:
+                Added Russian and German translation files. -->
+
+            <!-- Ver 1.00c:
+                Added Anonymizer to Google anayltics. -->
+
+            <!-- Current Beta fixes:
+                Local only BetaCandidate.01.20171207a
+                 - changed the way the source pulldown worked, since it did not include a category for "all journals", and "all sources" includes
+                 everything.
+                      a) added journals only as a search source
+                      b) added a blank initially, but it gets changed to all sources
+                      c) tried to translate the "all" source entries to the current language, but it was unreliable, sometimes giving translations not found errors.  Reverted it to english only, which is sort of in sync with the list
+                      d) Fixed the way all sources is populated in index and moved the all entrie pushes to the callback so timings are right.
+                      e) One diff from PEP-Web...all journals does not include videostreams, since it's in its own category.  Not sure why we included it on PEP-Web.  Should check that.
+            -->
+            <p class="clarifying-text"> (Feature changes affect version number, minor fixes just change suffix letter)</p>
+          </div>
+          <div class="moreInfoContent">
+            <p>
+              <span data-l10n-id="About-PEPEasy-Dialog-Text">PEP-Easy is a simple application which provides the core
+                 functionality of PEP-Web to the mobile platform.
+               </span> <a target="_blank" href="http://support.pep-web.org/aboutpepeasy"> <span data-l10n-id="About-PEPEasy-Dialog-Text2"> Click here for more information.</span></a>
+            </p>
+            <p id="provideFeedbackLink"><a href="http://support.pep-web.org/about-the-pep-archive/" data-l10n-id="About-PEP-Web" target="_blank">About-PEP-Web</a></p>
+            <p id="provideFeedbackLink"><a href="http://support.pep-web.org/betareport/" data-l10n-id="Feedback-About-PEP-Easy" target="_blank">Provide Feedback about PEP-Easy</a></p>
+
+          </div>
+          <div class="modal-footer">
+            <button data-l10n-id="Close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="helpDialog">
+      Help Loads Here!
+    </div>
+  </div>
+<script>
+  //$( "#accordion" ).accordion();
+  $("#accordion").accordion({
+    active: 1,
+    collapsible: true,
+    fillSpace: true,
+    heightStyle: "content",
+    clearStyle: true
+  });
+
+  $(window).resize(function() {
+    $("#accordion").accordion("refresh");
+  });
+
+  $(window).load(function() {
+    cookie = getCookie("language", document.documentElement.lang);
+    document.webL10n.setLanguage(cookie);
+    $("#accordion").accordion("refresh");
+  });
+
+  (window).onload(function() {
+    cookie = getCookie("language", document.documentElement.lang);
+    document.webL10n.setLanguage(cookie);
+    console.log(_("jsAllJournals") + " in onload 2");
+  })
+
+  // Load modular external inserts
+  $(function() {
+    $('#newsDIV').load('PEPNews.inc.html');
+    $('#helpDialog').load('PEPEasy.help.inc.html');
+  });
+
+  // $(document).ready(function() {
+  //   console.log("Ready!");
+  // })
+
+</script>
+
+<script src="./PEPCommonLibrary2/pepwebapi.js" type="text/javascript"></script>
+<script src="PEPEasy.js" type="text/javascript"></script>
+<!--<script src="js/postscribe-2.0.8.min.js"></script>-->
+<!--<script src="PEPEasy.min.js" type="text/javascript"></script>-->
+<script type="text/javascript" src="js/jquery.scrollTo.min.js"></script>
+
+</body>
+</html>

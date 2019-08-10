@@ -1,0 +1,65 @@
+/*Metal Theme 2 (serif fonts) */
+.ui-accordion-header {
+    background-color: darkgray   !important;
+    font-size: 3em;
+}
+
+.ui-accordion-header-active {
+    /*background-color: light-blue !important;*/
+    background-color: gray !important;
+}
+
+#abstractArea>h1, #abstractArea>h2, #abstractArea>h3, p.title, p.title_author, p.title_contributor {
+  font-family: 'Droid Serif', serif !important;
+}
+
+p {
+  font-family: 'Roboto', sans-serif !important;
+}
+
+.articleListItem:first-line {
+  text-shadow : 0 0 0 black;
+}
+
+.search-btn-group > button {
+    color: white; /* White text */
+    background-color: gray;
+    border-color: gray;
+}
+
+/*Buttons General*/
+.btn-primary {
+    background-color: gray;
+    border-color: gray;
+}
+
+/*Button Group in Abstract Area */
+div.doc-btn-group a {
+    color: white; /* White text */
+    background-color: gray;
+    border-color: gray;
+}
+
+.pep-round-button {
+    color: gray;
+}
+
+#searchPanel input, #searchJournal {
+    background-color: #F8F8F8; /* Gainsboro */
+    box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    border-radius: 1px;
+    -webkit-border-radius:2px;
+    -moz-border-radius:2px;
+    border: 1px solid #fff;
+    box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.33);
+    -moz-box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.33);
+    -webkit-box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.33);
+}
+
+/*reverse colors for clicking*/
+a:active, span:active, span.pep-round-button:active {
+  background-color: dimgray;
+  color: white;
+}

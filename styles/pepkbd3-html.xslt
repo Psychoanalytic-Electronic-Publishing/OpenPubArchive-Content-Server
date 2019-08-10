@@ -2,7 +2,7 @@
 <!-- ============================================================= -->
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
 <!--     BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML   -->
-<!--  DATE:      April 24, 2019                                    -->
+<!--  DATE:      August 6, 2019                                    -->
 <!--                                                               -->
 <!-- ============================================================= -->
 <!--
@@ -17,20 +17,21 @@
     - this is by no means a complete conversion of the 
        whole DTD, just sampling as a quick test.
     - the class tagging is just temporary to keep track of what I add
+    - 2019-08
+      - Fixed functions by adding fn namespace missing from declaration
+      - Added some cases of list types found.
     TBD:
     - I've yet to remove the irrelevant JATS rules
     - I haven't implemented or even checked on many structures like tables, figures, footnotes ... 
     - Bib processing is basically per JATs and not what we'd want (e.g., not sure why they do it as a table)
 -->
 
-<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:fn="http://www.w3.org/2005/xpath-functions" 
   xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mml="http://www.w3.org/1998/Math/MathML"
   exclude-result-prefixes="xlink mml">
 
   <xsl:output doctype-public="-//W3C//DTD HTML 4.01 Transitional//EN"
     doctype-system="http://www.w3.org/TR/html4/loose.dtd" encoding="UTF-8"/>
-
-  <xsl:strip-space elements="*"/>
 
   <!-- Space is preserved in all elements allowing #PCDATA -->
   <xsl:preserve-space
@@ -39,11 +40,14 @@
               p
               h1 h2 h3 h4 h5
               "/>
-
-  <xsl:param name="transform" select="'pepkbd3-html.xsl'"/>
-  <xsl:param name="css" select="'./pep-html-preview.css'"/>
-  <xsl:param name="css2" select="'./pep.css'"/>
-  <xsl:param name="css3" select="'./pepepub.css'"/>
+  
+  <xsl:strip-space elements="*"/>
+    
+  <!--<xsl:param name="transform" select="'pepkbd3-html.xsl'"/>-->
+  <!--<xsl:param name="css" select="'./pep-html-preview.css'"/>-->
+<!--  <xsl:param name="css" select="'pep.css'"/>-->
+  <xsl:param name="css2" select="'pep.css'"/>
+  <xsl:param name="css3" select="'pepepub.css'"/>
   <xsl:param name="report-warnings" select="'no'"/>
 
   <xsl:variable name="verbose" select="$report-warnings = 'yes'"/>
@@ -62,9 +66,10 @@
   <!-- ============================================================= -->
 
   <xsl:template match="/">
-    <html class="pepkbd3html u20190624">
+    <html class="pepkbd3html u20190807">
       <!-- HTML header -->
       <xsl:call-template name="make-html-header"/>
+      <!--      <xsl:call-template name="make-article"/>-->
       <xsl:apply-templates/>
       <div id="putciteashere"></div>
       
@@ -76,7 +81,7 @@
       <title class="head title">
           <xsl:value-of select="pepkbd3/artinfo/arttitle"/>
       </title>
-      <link rel="stylesheet" type="text/css" href="{$css}"></link>
+      <!-- <link rel="stylesheet" type="text/css" href="{$css}"></link>-->
       <link rel="stylesheet" type="text/css" href="{$css2}"></link>
       <link rel="stylesheet" type="text/css" href="{$css3}"></link>
       
@@ -90,6 +95,30 @@
   <!--  TOP LEVEL                                                    -->
   <!-- ============================================================= -->
 
+  <!--Global Variables-->
+  <!--  used with translate to convert between case, since this is for XSLT 1.0 -->
+  <xsl:variable name="lowercase" select="'abcdefghijklmnopqrstuvwxyz'" />
+  <xsl:variable name="uppercase" select="'ABCDEFGHIJKLMNOPQRSTUVWXYZ'" />
+  <xsl:variable name="baseurl">www.pep-web.org</xsl:variable>
+  <xsl:variable name="document-id">
+    <xsl:apply-templates select="//artinfo/@id"/>
+  </xsl:variable>
+  <xsl:variable name="journal-code">
+    <xsl:apply-templates select="//artinfo/@j"/>
+  </xsl:variable>
+  <xsl:variable name="authors">
+    <xsl:apply-templates select="//aut/@authindexid"/>
+  </xsl:variable>
+  <xsl:variable name="artvol">
+    <xsl:apply-templates select="//artinfo/artvol"/>
+  </xsl:variable>
+  <xsl:variable name="artpgrg">
+    <xsl:apply-templates select="//artinfo/artpgrg"/>
+  </xsl:variable>
+  <xsl:variable name="artstartpg">
+    <xsl:value-of select="substring-before(($artpgrg), '-')"/>
+  </xsl:variable> 
+  
   <xsl:template match="pepkbd3">
     <div class="pepkbd3" lang="{@lang}">
       <xsl:call-template name="make-article"/>
@@ -99,41 +128,24 @@
   <!-- ============================================================= -->
   <!--  "make-article" for the document architecture                 -->
   <!-- ============================================================= -->
-
   <xsl:template name="make-article">
-    <!-- Generates a series of (flattened) divs for contents of any
-	       article, sub-article or response -->
-    <!-- variable for the pep host url -->
-    <xsl:variable name="baseurl">www.pep-web.org</xsl:variable>
-    <xsl:variable name="document-id">
-      <xsl:apply-templates select="//artinfo/@id" mode="id"/>
-    </xsl:variable>
-    <xsl:variable name="journal-code">
-      <xsl:apply-templates select="//artinfo/@j" mode="id"/>
-    </xsl:variable>
-    <xsl:variable name="authors">
-      <xsl:apply-templates select="//aut/@authindexid" mode="id"/>
-    </xsl:variable>
-        
     <!-- variable to be used in div id's to keep them unique -->
     <xsl:variable name="this-article">
       <xsl:apply-templates select="." mode="id"/>
     </xsl:variable>
 
     <div id="{$this-article}-front" class="front">
-      <xsl:apply-templates select="front | front-stub"/>
-      <p class="banner"><a name="{$document-id}" id="{$document-id}"></a>
-        <a href="search.php?journal=ijp"><img src="images/banner{$journal-code}logo.gif" alt="International Journal of Psycho-Analysis"></img></a>
+      <xsl:apply-templates select="front | front-stub" mode="metadata"/>
+      <p class="banner">
+        <a class="anchor" name="{$document-id}" id="{$document-id}"/>
+        <a class="toc-link" href="search.php?journal={$journal-code}">
+          <img src="/images/banner{$journal-code}logo.gif" alt=""/>
+        </a>
       </p>
  
       <xsl:for-each select="artinfo">
         <div id="{$this-article}-artinfo" class="artinfo" data-arttype="{@arttype}" data-journal="{@j}">
-          <div class="topciteas">
-            <span class="artyear"><xsl:value-of select="artyear"/></span>
-            <span class="title"><xsl:value-of select="arttitle"/></span>.
-            <span class="artvol"><a class="volx" href="http://www.pep-web.org/search.php?volume=51&amp;journal=ijp"><xsl:value-of select="artvol"/></a><span class="pgrg"><xsl:value-of select="artpgrg"/></span></span>
-          </div>
-          
+        
           <xsl:apply-templates mode="metadata" select="arttitle"/>
           <xsl:apply-templates mode="metadata" select="artsub"/>
           <xsl:apply-templates mode="metadata" select="artauth"/>
@@ -158,6 +170,13 @@
       </div>
     </xsl:for-each>
 
+    <!-- summaries -->
+    <xsl:for-each select="summaries">
+      <div id="{$this-article}-summaries" class="summaries nrs">
+        <xsl:apply-templates/>
+      </div>
+    </xsl:for-each>
+    
     <!-- body -->
     <xsl:for-each select="bib">
       <div id="{$this-article}-bib" class="biblio nrs">
@@ -171,25 +190,11 @@
         <xsl:apply-templates/>
       </div>
     </xsl:for-each>
-
-
-<!--    <xsl:for-each select="floats-group | floats-wrap">
-      <!-\- floats-wrap is from 2.3 -\->
-      <div id="{$this-article}-floats" class="back">
-        <xsl:call-template name="main-title">
-          <xsl:with-param name="contents">
-            <span class="generated">Floating objects</span>
-          </xsl:with-param>
-        </xsl:call-template>
-        <xsl:apply-templates/>
-      </div>
-    </xsl:for-each>-->
-
-    <!-- sub-article or response (recursively calls
-		     this template) -->
-    <xsl:apply-templates select="sub-article | response"/>
   </xsl:template>
 
+  <!-- ============================================================= -->
+  <!--  "artinfo" for the document metadata                          -->
+  <!-- ============================================================= -->  
   <xsl:template match="artinfo">
     <!-- First: journal and article metadata -->
     <div class="metadata two-column table">
@@ -313,8 +318,12 @@
   </xsl:template>
 
   <xsl:template match="arttitle" mode="metadata">
-    <p class="arttitle">
-      <xsl:value-of select="."/>
+    <p class="title arttitle">
+      <a href="/#/ArticleList/?journal={$journal-code}&amp;vol={$artvol}&amp;page={$artstartpg}">
+        <xsl:apply-templates select="(text())[not(self::ftnx)]"/>
+        <xsl:apply-templates select="i"/>
+      </a>
+      <xsl:apply-templates select="ftnx"/>
     </p>
   </xsl:template>
 
@@ -347,12 +356,12 @@
   
   <!--PEPKBD3 Author Information-->
   <xsl:template match="aut" mode="metadata">
-    <div class="aut nrs" data-listed="{@listed}" data-authindexid="{@authindexid}" data-role="{@role}" data-alias="{@alias}" data-asis="{@asis}">
+    <p class="title_author" data-listed="{@listed}" data-authindexid="{@authindexid}" data-role="{@role}" data-alias="{@alias}" data-asis="{@asis}">
       <xsl:apply-templates mode="metadata" select="nfirst"/>
       <xsl:apply-templates mode="metadata" select="nlast"/>
       <xsl:apply-templates mode="metadata" select="ndeg"/>
       <xsl:apply-templates mode="metadata" select="nbio"/>
-    </div>  
+    </p>  
   </xsl:template>
 
 
@@ -361,7 +370,7 @@
     <span class="nfirst" data-type="{@type}" data-initials="{@initials}">
       <xsl:value-of select="."/>
     </span>
-    <!--<xsl:text> </xsl:text>--> <!-- space character -->
+    <xsl:text> </xsl:text> <!-- space character -->
   </xsl:template>
 
 
@@ -373,9 +382,20 @@
 
 
   <xsl:template match="ndeg" mode="metadata">
-    <span class="ndeg" data-dgr="{@dgr}" data-other="{@other}">
-      <xsl:value-of select="."/>
-    </span>
+    <xsl:choose>
+      <xsl:when test="@other"> <!-- then i test if the attr exists -->
+        <span class="ndeg" data-dgr="{@dgr}" data-other="{@other}">
+          <xsl:text> </xsl:text> <!-- space character -->
+          <xsl:value-of select="@other"/>
+        </span>
+      </xsl:when>
+      <xsl:otherwise>
+        <span class="ndeg" data-dgr="{@dgr}" data-other="{@other}">
+          <xsl:text> </xsl:text> <!-- space character -->
+          <xsl:value-of select="."/>
+        </span>
+      </xsl:otherwise>
+    </xsl:choose>
     <xsl:text> </xsl:text> <!-- space character -->
   </xsl:template>
 
@@ -415,6 +435,38 @@
     <span class="generated">]</span>
   </xsl:template>
 
+  <xsl:template match="ftnx">
+    <sup>
+      <span class="ftnx nrs" data-type="{@type}" data-r="{@r}">
+        <xsl:value-of select="."/>
+      </span>
+    </sup>
+  </xsl:template>
+
+  <xsl:template match="ftr">
+    <xsl:text>&#13;</xsl:text>
+    <p class="ftn_top">—————————————</p>
+    <div class="footer nrs">
+      <xsl:apply-templates/>
+    </div>
+  </xsl:template>  
+  
+  <xsl:template match="ftn">
+    <div class="ftn_group">
+      <div class="ftn" id="@id" label="@label"> 
+        <p class="ftn">
+          <span class="ftnlabel">
+            <su>
+              <xsl:value-of select="@label"/>
+            </su>
+          </span>
+          <xsl:value-of select="."/>
+<!--          <xsl:apply-templates/>-->
+        </p>  
+      </div> 
+    </div>
+  </xsl:template>
+  
   <xsl:template match="aff" mode="metadata">
     <xsl:call-template name="metadata-entry">
       <xsl:with-param name="contents">
@@ -437,15 +489,6 @@
   <!--  REGULAR (DEFAULT) MODE                                       -->
   <!-- ============================================================= -->
 
-<!--  <xsl:template match="sec">
-    <div class="section">
-      <xsl:call-template name="named-anchor"/>
-      <xsl:apply-templates select="title"/>
-      <xsl:apply-templates select="sec-meta"/>
-      <xsl:apply-templates mode="drop-title"/>
-    </div>
-  </xsl:template>
--->
   <xsl:template match="caption">
     <p class="caption nrs" data-nbr="{@mbr}">
       <xsl:apply-templates/>
@@ -641,47 +684,20 @@
     <!-- handled with graphic or inline-graphic -->
   </xsl:template>
 
-<!--  <xsl:template match="list">
-    <list>
-      <xsl:attribute name="data-type">
-        <xsl:value-of select="@type"/>
-      </xsl:attribute>      
-      <xsl:call-template name="named-anchor"/>
-      <xsl:apply-templates select="label | title"/>
-      <xsl:text>&#10;</xsl:text>
-      <xsl:apply-templates/>
-    </list>
-  </xsl:template>
-
--->  
-  
-  <xsl:template match="list[matches(@type, '(BUL.*|DASH|DIAMOND|ASTERISK)')]">
+<!--  Since lxml only supports XSLT 1.0, can't use the above functions, so do it the imperfect way!-->
+  <xsl:template match="list[@type = 'ALP' or @type = 'AUP' or @type = 'AUR' or @type = 'ALR' or @type = 'RLP' or @type = 'RUP' or @type = 'NNP' or @type = 'NNB' or @type = 'NNS']" mode="list">
     <xsl:variable name="style">
       <xsl:choose>
-        <xsl:when test="@type = 'DASH'">dash</xsl:when>
-        <xsl:when test="@type = 'DIAMOND'">diamond</xsl:when>
-        <xsl:when test="@type = 'ASTERISK'">asterisk</xsl:when>
-        <xsl:otherwise>Other</xsl:otherwise>
-      </xsl:choose>
-    </xsl:variable>
-    <ul style="list-style-type: {$style}">
-      <xsl:attribute name="data-style">
-        <xsl:value-of select="@type"/>
-      </xsl:attribute>
-      <xsl:apply-templates mode="list"/>
-    </ul>
-  </xsl:template>
-  
-  
-  <xsl:template match="list[matches(@type, '(ALP|AUP|RLP|RUP|NNP)')]">
-    <xsl:variable name="style">
-      <xsl:choose>
-        <xsl:when test="@type = 'ALP'">lower-alpha</xsl:when>
-        <xsl:when test="@type = 'AUP'">upper-alpha</xsl:when>
-        <xsl:when test="@type = 'RLP'">lower-roman</xsl:when>
-        <xsl:when test="@type = 'RUP'">upper-roman</xsl:when>
+        <xsl:when test="@type = 'ALP'">a</xsl:when>
+        <xsl:when test="@type = 'AUP'">A</xsl:when>
+        <xsl:when test="@type = 'AUR'">upper-alpha-right-paren</xsl:when>
+        <xsl:when test="@type = 'ALR'">lower-alpha-right-paren</xsl:when>
+        <xsl:when test="@type = 'RLP'">i</xsl:when>
+        <xsl:when test="@type = 'RUP'">I</xsl:when>
         <xsl:when test="@type = 'NNP'">number-period</xsl:when>
-        <xsl:otherwise>decimal</xsl:otherwise>
+        <xsl:when test="@type = 'NNB'">number-both-parens</xsl:when>
+        <xsl:when test="@type = 'NNS'">number-underscore</xsl:when>
+        <xsl:otherwise>other</xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
     <ol style="list-style-type: {$style}">
@@ -692,6 +708,23 @@
     </ol>
   </xsl:template>
 
+    <xsl:template match="list[@type = 'DASH' or @type = 'DIAMOND' or @type = 'ASTERISK']" mode="list">
+    <xsl:variable name="style">
+      <xsl:choose>
+        <xsl:when test="@type = 'DASH'">dash</xsl:when>
+        <xsl:when test="@type = 'DIAMOND'">diamond</xsl:when>
+        <xsl:when test="@type = 'ASTERISK'">asterisk</xsl:when>
+        <xsl:otherwise>other</xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+    <ul style="list-style-type: {$style}">
+      <xsl:attribute name="data-style">
+        <xsl:value-of select="@type"/>
+      </xsl:attribute>
+      <xsl:apply-templates mode="list"/>
+    </ul>
+  </xsl:template>
+  
   <xsl:template match="li" mode="list">
     <li class="nrs">
       <xsl:apply-templates select="label"/>
@@ -735,13 +768,14 @@
     <p class="pb pagebreak nrs">
       <xsl:call-template name="named-anchor"/>
 <!--      <xsl:call-template name="assign-id"/>
--->      <xsl:apply-templates select="@content-type"/>
+-->     
+      <xsl:apply-templates select="@content-type"/>
       <xsl:apply-templates/>
     </p>
   </xsl:template>
 
   <xsl:template match="bx">
-    <span class="bx biblioref nrs" data-xref="{@r}">
+    <span class="peppopup bibtip" data-type="velcro" data-element="{@r}" data-maxwidth="300" data-direction="southeast">
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates select="@content-type"/>
       <xsl:apply-templates/>
@@ -752,7 +786,7 @@
   <xsl:template match="impx"> <!--when not in metadata mode --> 
     <xsl:choose>
       <xsl:when test="@rx"> <!-- for the generated links -->
-        <span class="impx nrs" data-type="{@type}" data-rx="{@rx}" data-grpname="{@grpname}">
+        <span class="peppopup glosstip impx nrs" data-type="{@type}" data-docid="{@rx}" data-grpname="{@grpname}">
           <xsl:value-of select="."/>
         </span>
       </xsl:when>
@@ -792,19 +826,6 @@
     </div>
   </xsl:template>
 
-  <xsl:template match="src">
-    <p class="src source nrs">
-      <xsl:call-template name="assign-id"/>
-      <xsl:apply-templates/>
-    </p>
-  </xsl:template>
-  
-  <xsl:template match="ftr">
-      <div class="footer nrs">
-        <xsl:apply-templates/>
-      </div>
-  </xsl:template>  
-  
   <xsl:template match="p | p2">
     <p class="para nrs">
       <xsl:if test="not(preceding-sibling::*)">
@@ -822,16 +843,56 @@
     </p>
   </xsl:template>
 
-
-  <xsl:template match="@content-type">
-    <!-- <span class="generated">[</span>
-    <xsl:value-of select="."/>
-    <span class="generated nrsmbee">] </span> -->
+  <xsl:template match="dictentrygrp">
+    <div class="dictentrygrp id='{@id}'">
+      <xsl:apply-templates/>
+    </div>
+  </xsl:template>
+  
+  <xsl:template match="dictalso">
+    <p class="dictentrygrp-dictalso">
+      <img src="images/flag.gif" alt=""/>
+      <xsl:text> </xsl:text>
+      <xsl:apply-templates/>
+    </p>
+  </xsl:template>
+  
+   <xsl:template match="dictalso/term">
+    <span class="dictentrygrp-dictalso-term smallcaps">
+      <!-- xslt 1.0-->
+      <xsl:value-of select="translate(@lang, $lowercase,$uppercase)"/>           
+      <xsl:text>: </xsl:text>
+      <xsl:apply-templates/>
+      <xsl:text>; </xsl:text>
+    </span>
+  </xsl:template>
+  
+  <xsl:template match="def">
+    <div class="def-def body">
+      <xsl:apply-templates/>
+    </div>
   </xsl:template>
 
-
+  <xsl:template match="defrest">
+    <div class="seemore">
+      <xsl:text>&#13;</xsl:text>
+      <details>
+        <summary>...excerpted...click for more...</summary>
+        <div class="def-def body">
+          <xsl:apply-templates/>
+          <a class="seemore">
+            <xsl:attribute name="href">
+              <xsl:value-of select="../../@id"/>
+            </xsl:attribute>
+            Open full glossary entry in main window...
+          </a>
+        </div>
+      </details>      
+    </div>    
+  </xsl:template>
+  
   <xsl:template match="term">
-    <div class="def-term cell nrs">
+    <div class="dictentrygrp-term">
       <xsl:call-template name="assign-id"/>
       <p>
         <xsl:apply-templates/>
@@ -839,33 +900,32 @@
     </div>
   </xsl:template>
 
-
-  <xsl:template match="def">
-    <div class="def-def cell nrs">
+  <xsl:template match="src">
+    <p class="dictentry-src">
       <xsl:call-template name="assign-id"/>
+      <img src="images/book.gif" alt="" />
+      <xsl:text> </xsl:text>
       <xsl:apply-templates/>
-    </div>
-  </xsl:template>
+    </p>
+  </xsl:template> 
+
 
   <xsl:template match="be">
-    <div class="biblio row">
-      <xsl:if test="@rx"> <!--matched reference id-->
-        <xsl:attribute name="data-rx">
-          <xsl:value-of select="@rx"/>
-        </xsl:attribute>
-      </xsl:if>
-      <xsl:if test="@rxcf"> <!--possible matched reference id-->
-        <xsl:attribute name="data-rxcf">
-          <xsl:value-of select="@rxcf"/>
-        </xsl:attribute>
-      </xsl:if>
-      <span class="ref-label cell">
-        <xsl:call-template name="named-anchor"/>
-      </span>
-      <div class="ref-content cell">
-        <xsl:apply-templates/>
+      <div class="bib" id="{@id}">
+        <p class="bib_bib">
+          <span class="ref-content cell">
+            <xsl:apply-templates/>
+          </span>
+          <xsl:if test="@rx"> <!--matched reference id-->
+            <a class="bibx" >
+              <xsl:attribute name="href">
+                <xsl:value-of select="concat('#', '/Document/',@rx)"/>
+              </xsl:attribute>
+              <xsl:text> [→]</xsl:text>
+            </a>
+          </xsl:if>
+       </p>
       </div>
-    </div>
   </xsl:template>
   
   

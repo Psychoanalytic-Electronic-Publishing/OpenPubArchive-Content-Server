@@ -70,6 +70,11 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
 
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+
+app = FastAPI()
+
+
 from pydantic import BaseModel
 from pydantic.types import EmailStr
 from pydantic import ValidationError
@@ -79,6 +84,8 @@ import json
 import logging
 logger = logging.getLogger(__name__)
 
+from localsecrets import SECRET_KEY, ALGORITHM
+import jwt
 import localsecrets as localsecrets
 import libs.opasConfig as opasConfig
 
@@ -234,6 +241,80 @@ def who_am_i(resp: Response,
             }
 
 #-----------------------------------------------------------------------------
+security = HTTPBasic()
+def get_current_username(resp: Response, 
+                         request: Request,
+                         credentials: HTTPBasicCredentials = Depends(security)):
+
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)   
+    status, user = ocd.authenticateUser(credentials.username, credentials.password)
+    if not user:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return user
+
+@app.get("/v2/Token/", tags=["Session"], description="Used for Basic Authentication")
+def read_current_user(resp: Response, 
+                      request: Request,
+                      user: str = Depends(get_current_username), 
+                      ka=False):
+
+    sessionID = opasAPISupportLib.getSessionID(request)
+    accessToken = opasAPISupportLib.getAccessToken(request)
+    expirationTime = datetime.utcfromtimestamp(time.time() + opasAPISupportLib.getMaxAge(keepActive=ka))
+    if sessionID is not None and accessToken is not None:
+        pass
+    else:
+        if user:
+            # user is authenticated
+            # we need to close any open sessions.
+            if sessionID is not None and accessToken is not None:
+                # do a logout
+                sessionEndTime = datetime.utcfromtimestamp(time.time())
+                success = ocd.updateSession(sessionID=sessionID, 
+                                            sessionEnd=sessionEndTime
+                                            )    
+                #opasAPISupportLib.deleteCookies(resp, sessionID="", accessToken="")
+    
+            # NOW lets give them a new session
+            # new session and then token
+            sessionID = secrets.token_urlsafe(16)
+            maxAge = opasAPISupportLib.getMaxAge(ka)
+            user.start_date = user.start_date.timestamp()  # we may just want to null these in the jwt
+            user.end_date = user.end_date.timestamp()
+            user.last_update = user.last_update.timestamp()
+            accessToken = jwt.encode({'exp': expirationTime.timestamp(), 'user': user.dict()}, SECRET_KEY, algorithm='HS256')
+            # start a new session, with this user (could even still be the old user
+            ocd, sessionInfo = opasAPISupportLib.startNewSession(resp, request, sessionID=sessionID, accessToken=accessToken, user=user)
+            # set accessTokenCookie!
+            opasAPISupportLib.setCookies(resp, sessionID, accessToken=accessToken, maxAge=maxAge) #tokenExpiresTime=expirationTime)
+            errCode = None
+        else: # Can't log in!
+            errCode = resp.status_code = HTTP_400_BAD_REQUEST
+            errReturn = models.ErrorReturn(error = ERR_CREDENTIALS, error_message = ERR_MSG_INSUFFICIENT_INFO)
+        
+        # this simple return without responseInfo matches the GVPi server return.
+        if errCode != None:
+            return errReturn
+    try:
+        loginReturnItem = models.LoginReturnItem(token_type = "bearer", 
+                                                 session_id = sessionID,
+                                                 access_token = accessToken,
+                                                 authenticated = accessToken is not None,
+                                                 session_expires_time = expirationTime,
+                                                 keep_active = ka,
+                                                 error_message = None,
+                                                 scope = None
+                                          )
+    except ValidationError as e:
+        print(e.json())             
+
+    return loginReturnItem
+    
+#-----------------------------------------------------------------------------
 #@app.get("/v1/Session/") # at least start a session (getting a sessionID)
 @app.get("/v1/Token/", tags=["Session"], description="Used by PEP-Easy to login; will be deprecated in V2")  
 def get_token(resp: Response, 
@@ -337,10 +418,7 @@ def login_user(resp: Response,
     sessionID = opasAPISupportLib.getSessionID(request)
     accessToken = opasAPISupportLib.getAccessToken(request)
     expirationTime = datetime.utcfromtimestamp(time.time() + opasAPISupportLib.getMaxAge(keepActive=ka))
-
-    #ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
-    #sessionID = sessionInfo.session_id
-    #expirationTime = sessionInfo.session_expires_time
+    print ("Login Request: Expiration Time: {expirationTime}")
 
     # if username and password are not supplied, uses browser basic auth via the Depends(get_current_user)
     if username is not None and password is not None:
@@ -362,7 +440,10 @@ def login_user(resp: Response,
             # new session and then token
             sessionID = secrets.token_urlsafe(16)
             maxAge = opasAPISupportLib.getMaxAge(ka)
-            accessToken = opasCentralDBLib.getPasswordHash(sessionID + user.username)
+            user.start_date = user.start_date.timestamp()  # we may just want to null these in the jwt
+            user.end_date = user.end_date.timestamp()
+            user.last_update = user.last_update.timestamp()
+            accessToken = jwt.encode({'exp': expirationTime.timestamp(), 'user': user.dict()}, SECRET_KEY, algorithm='HS256')
             # start a new session, with this user (could even still be the old user
             ocd, sessionInfo = opasAPISupportLib.startNewSession(resp, request, sessionID=sessionID, accessToken=accessToken, user=user)
             # set accessTokenCookie!
@@ -825,6 +906,47 @@ async def search_the_document_database(resp: Response,
 
     return retVal
     
+@app.get("/v1/Database/MostDownloaded/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
+def get_the_most_viewed_articles(resp: Response,
+                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                                period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
+                                limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                                offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
+                                ):
+    """
+    Return a list of documents which are the most downloaded (viewed)
+    
+    Status: 
+    """
+    
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    #if gOCDatabase.sessionID == None:  # make sure there's an open session for stat.
+        #gOCDatabase.startSession()
+
+    print ("in mostcited")
+    try:
+        retVal = documentList = opasAPISupportLib.databaseGetMostDownloaded(period=period, limit=limit, offset=offset)
+        # fill in additional return structure status info
+        client_host = request.client.host
+        retVal.documentList.responseInfo.request = request.url._url
+    except Exception as e:
+        statusMessage = "Error: {}".format(e)
+        statusCode = 400
+        retVal = None
+    else:
+        statusMessage = "Success"
+        statusCode = 200
+
+    # Don't record
+    #ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    #ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_MOSTCITED,
+                                      #params=request.url._url,
+                                      #returnStatusCode = statusCode,
+                                      #statusMessage=statusMessage
+                                      #)
+
+    print ("out mostcited")
+    return retVal
     
 @app.get("/v1/Database/MostCited/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
 def get_the_most_cited_articles(resp: Response,
@@ -1312,6 +1434,75 @@ def view_an_abstract(resp: Response,
                                       )
     return retVal
 
+@app.get("/v2/Documents/Glossary/{termID}/", response_model=models.Documents, tags=["Documents"], response_model_skip_defaults=True)  # the current PEP API
+def view_a_glossary_entry(resp: Response,
+                          request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                          termID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL),
+                          search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
+                          retFormat: str=Query("HTML", title="Glossary return format", description=opasConfig.DESCRIPTION_RETURNFORMATS)
+                         ):
+    
+    retVal = None
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    sessionID = sessionInfo.session_id
+    # is the user authenticated? 
+    # is this document embargoed?
+    try:
+        print ("TODO: USER NEEDS TO BE AUTHENTICATED for document download")
+        
+        if search is not None:
+            argDict = dict(parse.parse_qsl(parse.urlsplit(search).query))
+            if termID is not None:
+                # make sure this is part of the last search set.
+                j = argDict.get("journal")
+                if j is not None:
+                    if j not in termID:
+                        argDict["journal"] = None
+        else:
+            argDict = {}
+            
+        print ("Glossary View Request: ", termID, retFormat)
+        try:
+            termParts = termID.split(".")
+            if len(termParts) == 4:
+                termID = termParts[-2]
+                print ("Glossary Term Modified: ", termID, retFormat)
+            elif len(termParts) == 3:
+                termID = termParts[-1]
+                print ("Glossary Term Modified: ", termID, retFormat)
+            else:
+                pass
+
+        except Exception as e:
+            print ("Error splitting term:", e)
+            #Keep it as is
+            #termID = termID
+            
+        
+        retVal = documents = opasAPISupportLib.documentsGetGlossaryEntry(termID, 
+                                                                         retFormat=retFormat, 
+                                                                         authenticated = sessionInfo.authenticated)
+        retVal.documents.responseInfo.request = request.url._url
+
+    except Exception as e:
+        statusMessage = "View Glossary Error: {}".format(e)
+        print (statusMessage)
+        statusCode = 400
+        retVal = None
+    else:
+        statusMessage = "Success"
+        statusCode = 200
+        # fill in additional return structure status info
+        client_host = request.client.host
+
+    ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DOCUMENTS,
+                                  params=request.url._url,
+                                  documentID=termID, 
+                                  statusMessage=statusMessage
+                                  )
+    return retVal
+    
+
 @app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["Documents"], response_model_skip_defaults=True)  # the current PEP API
 @app.get("/v1/Documents/Document/{documentID}/", response_model=models.Documents, tags=["Documents"], response_model_skip_defaults=True) # more consistent with the model grouping
 def view_a_document(resp: Response,
@@ -1352,43 +1543,50 @@ def view_a_document(resp: Response,
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     sessionID = sessionInfo.session_id
     # is the user authenticated? 
-    try:
-        print ("USER IS AUTHENTICATED for document download")
-        if search is not None:
-            argDict = dict(parse.parse_qsl(parse.urlsplit(search).query))
-            if documentID is not None:
-                # make sure this is part of the last search set.
-                j = argDict.get("journal")
-                if j is not None:
-                    if j not in documentID:
-                        argDict["journal"] = None
-        else:
-            argDict = {}
-            
-        solrQueryParams = parseSearchQueryParameters(**argDict)
-        print ("Document View Request: ", solrQueryParams, documentID, retFormat)
-        retVal = documents = opasAPISupportLib.documentsGetDocument(documentID, 
-                                                                    solrQueryParams,
-                                                                    retFormat=retFormat, 
-                                                                    authenticated = sessionInfo.authenticated)
-    except Exception as e:
-        statusMessage = "View Document Error: {}".format(e)
-        print (statusMessage)
-        statusCode = 400
-        retVal = None
+    # is this document embargoed?
+    # check if this is a Glossary request, this is per API.v1.
+    m = re.match("(ZBK\.069\..*?)?(?P<termid>(Y.0.*))", documentID)
+    if m is not None:    
+        # this is a glossary request, submit only the termID
+        termID = m.group("termid")
+        retVal = view_a_glossary_entry(Response, request, termID=termID, search=search, retFormat=retFormat)
     else:
-        statusMessage = "Success"
-        statusCode = 200
-        # fill in additional return structure status info
-        client_host = request.client.host
-        retVal.documents.responseInfo.request = request.url._url
-
-
-    ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DOCUMENTS,
-                                      params=request.url._url,
-                                      documentID="{}".format(documentID), 
-                                      statusMessage=statusMessage
-                                      )
+        try:
+            print ("TODO: CHECK IF USER IS AUTHENTICATED for document download")
+            if search is not None:
+                argDict = dict(parse.parse_qsl(parse.urlsplit(search).query))
+                if documentID is not None:
+                    # make sure this is part of the last search set.
+                    j = argDict.get("journal")
+                    if j is not None:
+                        if j not in documentID:
+                            argDict["journal"] = None
+            else:
+                argDict = {}
+                
+            solrQueryParams = parseSearchQueryParameters(**argDict)
+            print ("Document View Request: ", solrQueryParams, documentID, retFormat)
+            retVal = documents = opasAPISupportLib.documentsGetDocument(documentID, 
+                                                                        solrQueryParams,
+                                                                        retFormat=retFormat, 
+                                                                        authenticated = sessionInfo.authenticated)
+        except Exception as e:
+            statusMessage = "View Document Error: {}".format(e)
+            print (statusMessage)
+            statusCode = 400
+            retVal = None
+        else:
+            statusMessage = "Success"
+            statusCode = 200
+            # fill in additional return structure status info
+            client_host = request.client.host
+            retVal.documents.responseInfo.request = request.url._url
+    
+        ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DOCUMENTS,
+                                          params=request.url._url,
+                                          documentID="{}".format(documentID), 
+                                          statusMessage=statusMessage
+                                          )
     return retVal
 
 @app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_skip_defaults=True, tags=["Documents"])
@@ -1417,3 +1615,5 @@ def download_a_document(resp: Response,
 if __name__ == "__main__":
     print("Server Running")
     uvicorn.run(app, host="127.0.0.1", port=8000, debug=True)
+
+    print ("we're still here!")

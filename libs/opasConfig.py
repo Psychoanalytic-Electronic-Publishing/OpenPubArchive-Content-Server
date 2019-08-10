@@ -14,8 +14,8 @@ logging.basicConfig(filename=logFilename, format=FORMAT,level=logging.INFO,datef
 #logger = logging.getLogger(programNameShort)
 
 IMAGES = "images"
-HITMARKERSTART = "{{"  # using non html/xml default markers, so we can strip all tags but leave the hitmarkers!
-HITMARKEREND = "}}"
+HITMARKERSTART = "%##"  # using non html/xml default markers, so we can strip all tags but leave the hitmarkers!
+HITMARKEREND = "##%"
 HITMARKERSTART_OUTPUTHTML = '<span class="searchhit">'  # to convert the non-markup HIT markers to HTML, supply values here.  These match the current PEPEasy stylesheet.
 HITMARKEREND_OUTPUTHTML = "</span>"
     
@@ -33,7 +33,7 @@ DEFAULT_LIMIT_FOR_VOLUME_LISTS = 100
 DEFAULT_LIMIT_FOR_CONTENTS_LISTS = 100
 DEFAULT_LIMIT_FOR_METADATA_LISTS = 100
 
-SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 1520000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
+SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 2520000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
 
 # parameter descriptions for documentation
 DESCRIPTION_LIMIT = "Number of items to return"

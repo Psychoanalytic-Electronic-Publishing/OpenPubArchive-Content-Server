@@ -513,14 +513,13 @@ def addHeadingsToAbstractHTML(abstract, sourceTitle=None, pubYear=None, vol=None
     else:
         issue = ""
         
-    heading = "({}). {}, {}{}:{}".format(pubYear, sourceTitle, vol, issue, pgRg)
-    retVal = """
-            <p class="heading">{}</p>
-            <p class="title">{}</p>
-            <p class="title_author">{}</p>
-            <div class="abstract">{}</p>
-            """.format(heading, title, authorMast, abstract)
-
+    heading = f"({pubYear}). {sourceTitle}, {vol}{issue}:{pgRg}"
+    retVal = f"""
+            <p class="heading">{heading}</p>
+            <p class="title">{title}</p>
+            <p class="title_author">{authorMast}</p>
+            <div class="abstract">{abstract}</p>
+            """
     return retVal
 
 def convertXMLStringToHTML(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
@@ -531,23 +530,40 @@ def convertXMLStringToHTML(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
             if os.path.exists("./styles/pepkbd3-html.xslt"):
                 xsltFile = alt
     except Exception as e:
-        print ("Exception finding style sheet: ", e)
+        # return this error, so it will be displayed (for now) instead of the document
+        retVal = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>Exception finding style sheet: {e}</p>"
+        print (retVal)
 
+    try:
+        if isinstance(xmlTextStr, list) and xmlTextStr != "[]":
+            xmlTextStr = xmlTextStr[0]
+    except Exception as e:
+        logger.error("Problem extracting full-text: ", e)
         
     if xmlTextStr is not None and xmlTextStr != "[]":
         try:
-            xsltFile = etree.parse(xsltFile)
-            xsltTransformer = etree.XSLT(xsltFile)
             xmlTextStr = removeEncodingString(xmlTextStr)
             sourceFile = etree.fromstring(xmlTextStr)
-            transformedData = xsltTransformer(sourceFile)
         except Exception as e:
-            logger.error("ConvertXMLString XSLT Transform Error: ", e)
-            print ("ConvertXMLString XSLT Transform Error: ", e)
+            # return this error, so it will be displayed (for now) instead of the document
+            retVal = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
+            logger.error(retVal)
+            print (retVal)
         else:
-            retVal = str(transformedData)
-    
+            if xmlTextStr is not None and xmlTextStr != "[]":
+                try:
+                    xsltFile = etree.parse(xsltFile)
+                    xsltTransformer = etree.XSLT(xsltFile)
+                    transformedData = xsltTransformer(sourceFile)
+                except Exception as e:
+                    # return this error, so it will be displayed (for now) instead of the document
+                    retVal = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
+                    logger.error(retVal)
+                    print (retVal)
+                else:
+                    retVal = str(transformedData)
     return retVal
+
 def convertHTMLToEPUB(htmlString, outputFilenameBase, artID, lang="en", htmlTitle=None, styleSheet="../styles/pep-html-preview.css"):
     """
     uses ebooklib

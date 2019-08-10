@@ -1,0 +1,105 @@
+<!-- Help Dialogs -->
+<div id="helpSearchSyntax" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <!-- Modal content-->
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 data-l10n-id="PEPEasy-Search-Tips" class="modal-title">Search Tips</h4>
+      </div>
+      <div class="moreInfoContent">
+        <p>
+          You can use these tips to help you find what you are looking for, and often more precisely:
+          <ul>
+            <li>You can type part of the word you're looking for, then an asterisk (*), to find anything starting with those letters, e.g., psycho*</li>
+            <li>To find a phrase (words in order), surround the phrase in quotes, e.g., "primal fear"</li>
+            <li>You can combine multiple terms, requiring both or either to be present (AND and OR respectively.), e.g., fear or loathing</li>
+          </ul></p>
+          <p>
+          See below for a summary of some of the key search operators.  There's a more complete explanation on the help pages. <a target="_blank" href="http://support.pep-web.org/helptoc/help/searching/search-syntax/"> <span data-l10n-id="Click-here-for-more-information"> Click here for more information.</span></a>
+          <div class="searchHelpTable">
+            <table id="tipsTable">
+            <tbody>
+            <tr>
+            <td valign="top" width="19%"><strong>Term</strong></td>
+            <td valign="top" width="28%"><strong>Function</strong></td>
+            <td valign="top" width="28%"><strong>How to Use</strong></td>
+            <td valign="top" width="25%"><strong>Example</strong></td>
+            </tr>
+            <tr>
+            <td valign="top" width="19%"><strong>*</strong> (asterisk)</td>
+            <td valign="top" width="28%">A wildcard, matches one or more characters anywhere in the search term.</td>
+            <td valign="top" width="28%">Add the asterisk to the end of a partial word, or even in the middle</td>
+            <td valign="top" width="25%" style="helpExample">psychoanal* matches psychoanalysis, psychoanalytic, psychoanalyst, …</td>
+            </tr>
+            <!-- <tr>
+            <td valign="top" width="19%"><strong>?</strong></td>
+            <td valign="top" width="28%">Single character wildcard - matches any character in its position in a search word</td>
+            <td valign="top" width="28%">Replace letters with the ? symbol</td>
+            <td valign="top" width="25%" style="helpExample">wom?n returns woman, women</td>
+            </tr> -->
+            <tr>
+            <td valign="top" width="19%"><strong>""</strong> (quotation marks)</td>
+            <td valign="top" width="28%">Finds an exact phrase</td>
+            <td valign="top" width="28%">Use quotation marks around the phrase</td>
+            <td valign="top" width="25%" style="helpExample">“chronic hypochondria”</td>
+            </tr>
+            <tr>
+            <td valign="top" width="19%"><strong>~&nbsp;(tilde) at the start of the word</strong></td>
+            <td valign="top" width="28%">Finds variations of a term using an industry thesaurus</td>
+            <td valign="top" width="28%">Place the <strong>~</strong> at the start&nbsp;of the word.</td>
+            <td valign="top" width="25%" style="helpExample">~trauma Finds all documents matching trauma and all synonyms as derived from an industry dictionary (Klumpner)</td>
+            </tr>
+            <!-- <tr>
+            <td valign="top" width="19%"><strong>~ (tilde) at the end of the word</strong></td>
+            <td valign="top" width="28%">Stemming (word forms)</td>
+            <td valign="top" width="28%">Place the ~ at the end of one of the word forms</td>
+            <td valign="top" width="25%" style="helpExample">apply~ returns matches for apply, applies, applied</td>
+            </tr> -->
+            <!-- <tr>
+            <td valign="top" width="19%"><strong>%%</strong></td>
+            <td valign="top" width="28%">Fuzzy (imprecise) matching</td>
+            <td valign="top" width="28%">Place % in the middle of the word, starting where you want the imprecision. The number of % signs you include determines the number of characters which can differ from the specified word and still constitute a match.</td>
+            <td valign="top" width="25%" style="helpExample">psycho%%%%analysis matches psychoanalysis, psychoanalytic, psychoanalytical, …</td>
+            </tr> -->
+            <tr>
+            <td valign="top" width="19%"><strong>AND</strong></td>
+            <td valign="top" width="28%">Finds matches with BOTH terms</td>
+            <td valign="top" width="28%">Separate the words with AND.  You can also just use a space.</td>
+            <td valign="top" width="25%" style="helpExample">polymer and blue</td>
+            </tr>
+            <tr>
+            <td valign="top" width="19%"><strong>OR</strong></td>
+            <td valign="top" width="28%">Finds one term or another term</td>
+            <td valign="top" width="28%">Separate terms with OR.</td>
+            <td valign="top" width="25%" style="helpExample">hypochondria or feigning</td>
+            </tr>
+            <tr>
+            <td valign="top" width="19%"><strong>NOT</strong></td>
+            <td valign="top" width="28%">Finds one term but not another</td>
+            <td valign="top" width="28%">Separate terms with “not”</td>
+            <td valign="top" width="25%" style="helpExample">House not Senate Hypochondria not chronic</td>
+            </tr>
+            <tr>
+            <td valign="top" width="19%"><strong>"word1 word2"~10</strong></td>
+            <td valign="top" width="28%">Finds terms that are within a certain number of words of each other (e.g. 10)</td>
+            <td valign="top" width="28%">Put words in quotes and add a tilde and the number of words which can occur between the search terms</td>
+            <td valign="top" width="25%" style="helpExample">"smoke transference"~5 "aggressive tobacco"~5 finds “smoke transference ” and “tobacco aggressive ” within 5 words of each other (in either order)</td>
+            </tr>
+            <!-- <tr>
+            <td valign="top" width="19%"><strong>~~ (double tilde)</strong></td>
+            <td valign="top" width="28%">Range</td>
+            <td valign="top" width="28%">Place ~~ between two numbers representing the outside of the range</td>
+            <td valign="top" width="25%" style="helpExample">10~~20 returns matches for any number between 10 and 20, inclusive.</td>
+            </tr> -->
+            </tbody>
+            </table>
+          </div>
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button data-l10n-id="Close" type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

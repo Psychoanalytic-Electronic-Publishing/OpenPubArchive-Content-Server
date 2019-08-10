@@ -1,0 +1,104 @@
+/* Colorful3 Theme 
+   SCSS Controls this themes - Edit the SCSS file, NOT the CSS
+   color 1 is the darkest, and color 5 is the lightest      
+
+   This theme is suggested for use with non-monochromatic coloring 
+*/
+/* Coolors Exported Palette - coolors.co/21343f-3993dd-c699bc-24c9b3-f4ebe8 */
+/* HSL */
+/* RGB */
+/* ColorfulCommon Common File for Colorful Themes */
+/* SCSS Controls this themes - Edit the SCSS file, NOT the CSS */
+.ui-accordion-header-active {
+  background-color: #3993dd !important;
+  color: white; }
+
+/* Accordion non-active */
+.ui-state-default {
+  background-color: #24c9b3;
+  color: white; }
+
+/* Accordion data area */
+.ui-widget-content {
+  background-color: white !important; }
+
+/* Menu area */
+.navbar {
+  background-color: #f6eeeb; }
+
+body {
+  background-color: #F7F7FF; }
+
+body, #topMenu, .modal-content, .modal-header, .modal-footer {
+  background-color: #F7F7FF !important; }
+
+/* Search form results */
+#searchFormOuter {
+  background-color: white; }
+
+/* Search form results */
+#searchFormResults, #termMatchStatArea {
+  background-color: #f7f1ef; }
+
+/* Most text areas */
+#whatsNew, .issueList, #welcome, .pepsection, #newsDiv, #detailPanel {
+  background-image: none;
+  background-color: #f7f1ef !important; }
+
+/* Buttons in search section */
+.search-btn-group > button, .btn-primary {
+  color: white;
+  /* White text */
+  background-color: #c699bc;
+  border-color: gray; }
+
+/* Results Pager icons */
+.pep-round-button {
+  color: #c699bc !important;
+  /* White text */
+  background-color: #f7f1ef; }
+
+p {
+  font-family: Arial, Helvetica, sans-serif; }
+
+.articleListItem:first-line {
+  text-shadow: 0 0 0 black; }
+
+/*reverse colors for clicking*/
+a:active, span:active, span.pep-round-button:active {
+  background-color: #3993dd;
+  color: #f7f1ef; }
+
+.searchhit {
+  font-weight: bolder;
+  background-color: cornflowerblue;
+  color: #f7f1ef; }
+
+.searchHelpTable td {
+  background-color: #3993dd;
+  color: white; }
+
+.bannerText, .bannerText_after, .subBannerText {
+  color: #21343f;
+  text-shadow: 0 1px 0 #3b5d71;
+  border-top: -14px !important; }
+
+#searchCriteriaArea input, #searchCriteriaArea option, #searchCriteriaArea select, #termMatchStatArea {
+  background-color: #f7f1ef !important;
+  color: #2074b9 !important; }
+
+/* Links */
+a.doi:visited, a.bibx:visited, a.pgx:visited, .errorStatus > a:visited, .linkVisible:visited, .clickableReference:visited {
+  color: purple; }
+
+a, p.title a, p.title_author a, a.volx, .bibtip, span.peppopup, span.clickableReference, a.issuex {
+  color: #2074b9 !important; }
+
+a.doi, a.bibx, a.pgx, .errorStatus > a, .linkVisible, .clickableReference {
+  color: #2074b9; }
+
+/*special document elements that are links*/
+p.title a, p.title_author a, a.volx {
+  color: #2074b9; }
+
+/*# sourceMappingURL=Colorful3.css.map */

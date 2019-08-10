@@ -1,0 +1,44 @@
+/* Colorful3 Theme 
+   SCSS Controls this themes - Edit the SCSS file, NOT the CSS
+   color 1 is the darkest, and color 5 is the lightest      
+
+   This theme is suggested for use with non-monochromatic coloring 
+*/
+
+/* Coolors Exported Palette - coolors.co/21343f-3993dd-c699bc-24c9b3-f4ebe8 */
+
+/* HSL */
+$color1: hsla(202%, 31%, 19%, 1);
+$color2: hsla(207%, 71%, 55%, 1);
+$color3: hsla(313%, 28%, 69%, 1);
+$color4: hsla(172%, 70%, 46%, 1);
+$color5: hsla(15%, 35%, 93%, 1);
+
+/* RGB */
+$color1: rgba(33, 52, 63, 1);
+$color2: rgba(57, 147, 221, 1);
+$color3: rgba(198, 153, 188, 1);
+$color4: rgba(36, 201, 179, 1);
+$color5: rgba(244, 235, 232, 1);
+
+
+// just edit these $variables to change the theme colors
+$colorSectionHeadSelected: $color2;    // selected accordion header
+$colorSectionHeadNotSelected: $color4; // other accordion headers
+$colorSectionBaseBackground: lighten($color5, 19%);  // behind any text areas in sections
+$colorTextAreaBackground: lighten($color5, 2%);
+$colorTextAreaDarkerBackground: $color2;
+$colorTextAreaDarkerBackgroundText: lighten($color5, 19%);
+$colorSearchCriteriaForm: lighten($color5, 10%);
+$colorBase: #F7F7FF;  // window inside, between sections and at bottom
+$colorBannerArea: lighten($color5, 1%);     //banner area background
+$colorBannerAreaText: $color1;  // banner
+$colorBannerAreaShadow: lighten($colorBannerAreaText, 15%);  // banner
+$colorControls: $color3; // buttons etc.
+$reverseColorsWhenClicked: $color2;
+$linkVisitedColor: purple;   // standard color is purple
+$linkTextColor: darken($color2, 12%);     // standard color is blue
+$linkSpecialColor: darken($color2, 12%); // a variation on standard link color
+
+// don't edit below here
+@import "ColorfulCommon.scss";

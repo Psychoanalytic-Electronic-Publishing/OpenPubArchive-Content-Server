@@ -1,0 +1,99 @@
+/* Nighttime1 Theme - those who like white on black and those w/ color blindness
+  SCSS Controls this theme - Edit the SCSS file, NOT the CSS 
+  
+  Inverse: color 1 is the lightest, and color 5 is the darkest
+
+  This theme is suggested for use with monochromatic inverse video coloring 
+*/
+
+/* Coolors Exported Palette - coolors.co/ffffff-bfbfbf-7a7a7a-4c4c4c-000000 */
+
+/* HSL */
+$color1: hsla(0%, 0%, 100%, 1);
+$color2: hsla(0%, 0%, 75%, 1);
+$color3: hsla(0%, 0%, 48%, 1);
+$color4: hsla(0%, 0%, 30%, 1);
+$color5: hsla(0%, 0%, 0%, 1);
+
+/* RGB */
+$color1: rgba(255, 255, 255, 1);
+$color2: rgba(191, 191, 191, 1);
+$color3: rgba(122, 122, 122, 1);
+$color4: rgba(76, 76, 76, 1);
+$color5: rgba(0, 0, 0, 1);
+
+/* Manual Version */
+/* RGB */
+//$color5: black;    // black
+//$color4: rgba(107, 72, 72, 1);
+//$color3: rgba(198, 83, 83, 1);
+//$color2: rgba(252, 179, 179, 1);
+//$color1: white;
+
+
+// -----------------------------------------------------------------
+// just edit these $variables to change the theme colors
+//Specific to reverse (night) theme types
+$reverseBackgroundColor: $color5;  // darkest
+$reverseTextColor: $color1;        // lightest
+
+//general values
+$colorSectionHeadSelected: $color2;    // selected accordion header
+$colorSectionHeadNotSelected: $color4; // other accordion headers
+$colorSectionBaseBackground: $reverseBackgroundColor;  // behind any text areas in sections
+$colorTextAreaBackground: $reverseBackgroundColor;
+$colorTextAreaDarkerBackground: $reverseBackgroundColor;
+$colorTextAreaDarkerBackgroundText: $color1;
+$colorSearchCriteriaForm: $reverseBackgroundColor;
+$colorBase: $reverseBackgroundColor;  // window inside, between sections and at bottom
+$colorBannerArea: $color5;
+$colorBannerAreaText: $color2;  // banner
+$colorBannerAreaShadow: darken($colorBannerAreaText, 40%);  // banner
+$colorControls: $color3;
+$reverseColorsWhenClicked: $color2;
+$linkVisitedColor: purple;   // standard color is purple
+$linkTextColor: $color2;     // standard color is blue
+$linkSpecialColor: darken($color2, 12%); // a variation on standard link color
+
+
+// -----------------------------------------------------------------
+
+// don't edit below here
+@import "ColorfulCommon.scss";
+
+/* Search form results */
+#searchFormOuter {
+  background-color: $colorSearchCriteriaForm;
+}
+
+/* Button icons, e.g.,  */
+.glyphicon {
+  color: white !important; /* White text */
+  background-color: $colorTextAreaBackground;
+}
+
+/*reverse colors for clicking*/
+a:active, span:active, span.pep-round-button:active {
+  background-color: $reverseColorsWhenClicked;
+  color: $reverseTextColor;
+}
+
+.searchhit {
+  font-weight: bolder;
+  background-color: cornflowerblue;
+  color: $reverseTextColor;
+}
+
+// invert the text colors!
+.articleListItem, .listSectionHeading, .bannerText, .modal-header, h1, h2, h3, h4, h5, h6, .close, .modal-title, .issueListItem, p, li, span, label, .abs, legend, option {
+  color: $reverseTextColor !important; 
+}
+
+option, select {
+  color: invert($reverseTextColor) !important; 
+}
+
+image {
+  border: 3px, 3px, 3px, 3px;
+  border-color: white;
+}

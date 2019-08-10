@@ -1,0 +1,1308 @@
+body{
+	font-size: 14px;
+	margin-top: 1px;
+	margin-bottom: 1px;
+	margin-left: 0px;
+	margin-right: 0px;
+  padding-right: 16px;
+  padding-left: 16px;
+	overflow-x: hidden;
+	background-color: hsla(0, 0%, 92%, 1);
+}
+
+html {
+	width: 100%;
+	margin: 0px;
+	padding-left: 0px !important;
+  padding-right: 0px !important;
+}
+
+/************************* Accordion Properties *************************/
+#accordion {
+  padding-right: 4px;
+  padding-left: 4px;
+}
+
+.ui-state-active {
+  border-color: hsl(0, 0%, 92%);
+}
+
+.ui-accordion, .ui-accordion-header {
+  padding-left: 0px !important;
+  padding-right: 0px !important;
+}
+
+.ui-accordion-header {
+  font-weight: bold;
+}
+
+.ui-accordion-content {
+  margin: 0px, 0px, 0px, 0px !important;
+  padding-left: 5px !important;
+  padding-right: 5px !important;
+}
+
+.ui-widget-content {
+  color: hsla(0, 0%, 20%, 1);
+  background-color: hsl(0, 0%, 92%);
+  transition: color .2s;
+}
+
+.panel-collapse, .ui-accordion-content, .pepsection {
+  overflow-x:hidden;
+}
+
+/*********************** End Accordion Properties *************************/
+#searchJournal {
+  margin-left: 0px !important
+}
+
+option {
+  padding: 0;
+}
+
+.journalOptions {
+  margin-left: 0 !important;
+  margin-bottom: 0em !important;
+  padding-left: 0 !important;
+  border-left: 0 !important;
+  padding-top: 0;
+  color: blue;
+}
+
+#resultsPaging {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+.navbar {
+	background-color: Gainsboro;
+	/*hsla(0, 0%, 90%, 1);*/
+  padding: 1px;
+}
+
+iframe.videopreview {
+	border:0;
+	margin:0 auto;
+	display:block;
+}
+
+#detailPanel {
+	overflow-x: hidden;
+}
+
+.resultOffsetInput {
+	margin-left: 0px;
+	margin-top: .5em;
+	margin-right:0px;
+	max-width: 40px;
+	text-align: center;
+}
+
+.btn-responsive {
+	padding:2px 4px;
+	font-size:60%;
+	line-height: 1;
+	border-radius:3px;
+}
+
+#documentArea {
+ padding-left: 25px;
+ padding-right: 25px;
+}
+
+#documentArea .list > .li > .li1 {
+ padding-left: 1em;
+ padding-right: 1em;
+ text-indent: -1em;
+}
+
+.dropdown {
+	margin-right: 0.25em;
+}
+
+.criteriaLess, .criteriaMore {
+  margin-left: 0px;
+}
+
+/*Text Sizing and effects*/
+
+/*Fancy heading effect*/
+.bannerText_after {
+  font-style: italic;
+  color: rgba(119, 119, 119, 0.75);
+  text-shadow: 0 1px 0 white;
+}
+
+#newsDIV  li {
+  padding-left: 5px;
+  margin-left: -2em;
+  text-indent: 0em;
+}
+ 
+/*==========  Mobile First Method  ==========*/
+/* Extra Small Devices, Phones
+   Not sure anything qualifies, at least currently in simulation mode
+   Though you get it with responsive.
+*/
+
+/* Very small  */
+@media only screen and (max-width : 319px) {
+    
+  /*Hide menu for now*/
+  b[data-l10n-id="Menu"] {
+    display: none;
+  }
+  
+  .bannerText::before {
+    content: 'Psychoanalytic ';
+  }
+
+  .navbar-fixed-top {
+    top: 0;
+    border-width: 0 0 1px;
+    height: 0.5em;
+    min-height: 40px;
+    max-height: 40px;
+    /* background-color: yellow !important; */
+  }
+
+  .imageContainer {
+	display: block;
+  }
+
+  .divJustUnderNavbar {
+    padding-top: 32px;
+  }
+  
+  .bannerImage {
+    position:relative;
+    width: auto !important;
+    height: 8.5vw !important;
+    margin-left: -2.5vw;
+    margin-top: auto;
+    margin-right: 1vw;
+    padding-right: auto;
+    max-height: 62px !important;
+    min-height: 27px;
+    min-width: 25px;
+  }
+
+  .bannerText {
+    font-size: 4.6vw;
+    font-weight: 800;
+    margin-top: 5px !important;
+    margin-bottom: 5px !important;
+	  margin-left: -4vw !important;
+    padding-bottom: 0em;
+    padding-right: 0em;
+    position: relative;
+/*      color: green;*/
+    width: 100%;
+  }
+  
+   .bannerText_after {
+    display: none;
+  } 
+  
+  .subBannerText {
+    font-size: 2.2vw;
+    font-style: italic;
+	  margin-left: -6.75vw !important;
+    margin-top: 0px !important;
+    margin-bottom: 1px !important;
+    margin-right: 0px !important;
+    padding-right: 0px !important;
+    padding-top: 0em;
+  }
+    
+  .issueListItem {
+    margin-left: 1em;
+  }
+  
+}
+
+
+/* Small Devices, iPhone 5 */
+@media only screen and (min-width : 320px) {
+  /*  iPhone 5 is 320px */
+  /*Hide menu for now*/
+  b[data-l10n-id="Menu"] {
+      display: none;
+  }
+
+  .divJustUnderNavbar {
+    padding-top: 36px;
+  }
+    
+  .navbar-fixed-top {
+    min-height: 40px;
+    max-height: 50px;
+    /* background-color: yellow !important; */
+  }    
+
+  .bannerImage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    margin-left: -2vw;
+    margin-top: 6px;
+    margin-right: auto;
+    padding-right: auto;
+  }
+
+  .bannerText::before {
+    content: 'Psychoanalytic ';
+  }
+
+  .bannerText {
+    font-size: 3.7vw;
+    font-weight: 800;
+    margin-top: auto;
+    margin-bottom: 5px !important;
+	  margin-left: -6vw !important;
+    padding-bottom: 0em;
+    position: relative;
+/*      color: blue;*/
+    width: 100%;
+  }
+  
+  .bannerText_after {
+    display: inline;
+    font-size: 2.6vw;
+    font-style: italic;
+    /*    color: #cccccc;*/
+    color: rgba(119, 119, 119, 0.75);
+    text-shadow: 0 1px 0 white;      
+  }
+    
+  .subBannerText {
+    font-size: 2.3vw;
+    font-style: italic;
+	  margin-left: -7vw !important;
+    margin-top: 0px !important;
+    margin-right: 0px; !important;
+    margin-bottom: 1px !important;
+    padding-top: 0em;
+  }
+  
+  .issueListItem {
+    margin-left: 1em;
+  }
+  
+}
+
+@media only screen and (min-width : 360px) {
+  /*   Galaxy s5 = 360*/
+  .bannerText {
+    font-size: 3.50vw;
+    font-weight: 800;
+    margin-bottom: 5px !important;
+    margin-left: -7vw !important;
+    padding-bottom: 0em;
+    padding-right: 0em;
+    position: relative;
+    width: 100%;
+}
+  
+  .bannerText_after {
+    display: inline;
+    font-size: 3vw;
+    font-style: italic;
+    /*    color: #cccccc;*/
+    color: rgba(119, 119, 119, 0.75);
+    text-shadow: 0 1px 0 white;      
+  }
+    
+  .subBannerText {
+    font-size: 2.3vw;
+    font-style: italic;
+    margin-left: -7vw !important;
+    margin-top: 0px !important;
+    margin-bottom: 1px !important;
+    margin-right: 0px !important;
+    padding-top: 0em;
+    padding-right: 0em;
+
+  }  
+
+  .bannerImage {
+    position:relative;
+    width: auto !important;
+    height: 7.5vw !important;
+    margin-left: -1.8vw;
+    margin-top: 3px;
+    margin-right: auto;
+    padding: 0px,0px,0px,0px;
+    max-height: 62px !important;
+    min-height: 32px;
+    min-width: 27px;
+  }
+    
+  .divJustUnderNavbar {
+    padding-top: 35px;
+  }
+    
+  .navbar-fixed-top {
+    min-height: 44px;
+    max-height: 48px;
+  }
+  
+  .issueListItem {
+    margin-left: 1em;
+  }
+}
+
+/*iPhone 6 Plus*/
+@media only screen and (min-width : 414px) {
+  .bannerImage {
+    position:relative;
+    width: auto !important;
+    height: 9vw !important;
+    margin-left: -1.25vw;
+    margin-top: auto;
+    margin-right: auto;
+    padding-right: auto;
+    max-height: 50px !important;
+    min-height: 30px;
+    min-width: 27px;
+  }
+    
+  .bannerText {
+    font-size: 3.32vw;
+    font-weight: 800;
+    margin-top: 5px !important;
+    margin-bottom: 5px !important;
+    margin-left: -7.5vw !important;
+    margin-right: 0 !important;
+    padding-bottom: 0em;
+    position: relative;
+    /*color: green;*/
+    width: 100%;
+}
+
+  .divJustUnderNavbar {
+    padding-top: 44px;
+  }
+    
+  .navbar-fixed-top {
+    min-height: 50px;
+    max-height: 50px;
+    /* background-color: yellow !important; */
+  }
+    
+}
+
+@media only screen and (min-width : 600px) {
+  /*show menu for now*/
+  b[data-l10n-id="Menu"] {
+      display: block;
+  }
+
+  .bannerImage {
+    position:relative;
+    width: auto !important;
+    height: 7.5vw !important;
+    margin-left: 0vw;
+    margin-top: auto;
+    margin-right: auto;
+    padding-right: auto;
+    max-height: 50px !important;
+    min-height: 30px;
+    min-width: 27px;
+  }
+    
+  .divJustUnderNavbar {
+    padding-top: 48px;
+  }
+    
+  .navbar-fixed-top {
+    min-height: 50px;
+    max-height: 50px;
+    /* background-color: yellow !important; */
+  }
+    
+}
+
+
+/* Medium Devices, Desktops */
+/* Scaling stops at this res */
+@media only screen and (min-width : 700px) {
+
+  .navbar-fixed-top {
+    top: 0;
+    border-width: 0 0 1px;
+    height: 0.5em;
+    min-height: 50px;
+    max-height: 50px;
+    /* background-color: yellow !important; */
+  }
+
+  .bannerImage {
+    position:relative;
+    width: auto !important;
+    height: 7.5vw !important;
+    margin-left: -.5vw;
+    margin-top: auto;
+    margin-right: auto;
+    padding-right: auto;
+    max-height: 50px !important;
+    min-height: 30px;
+    min-width: 27px;
+  }
+
+  .divJustUnderNavbar {
+    padding-top: 48px;
+  }
+
+  .bannerText {
+    font-size: 3vw;
+    font-weight: 800;
+    margin-top: auto;
+    margin-bottom: 5px !important;
+    margin-left: -7.5vw !important;
+    padding-bottom: 0em;
+    position: relative;
+    /*color: green;*/
+    width: 100%;
+  }
+  
+  .subBannerText {
+    font-size: 2vw;
+    font-style: italic;
+    margin-left: -6.8vw !important;
+    margin-top: 0px !important;
+    margin-bottom: 1px !important;
+    padding-top: 0em;
+  }
+}
+
+@media only screen and (min-width : 768px) {
+/*  Weirdly, the right spacing grows significantly over this width, so compensate*/
+  #documentArea, #resultsPaging, #searchFormResults {
+    padding-right: 0px !important;
+  }
+}
+
+@media only screen and (min-width : 800px) {
+
+  .divJustUnderNavbar {
+    padding-top: 52px;
+  }
+    
+  .navbar-fixed-top {
+    top: 0;
+    border-width: 0 0 1px;
+    height: 0.5em;
+    min-height: 60px;
+    max-height: 60px;
+    /* background-color: yellow !important; */
+  }
+    
+}
+
+/* Large Devices, Wide Screens, iPadPro is example (1024) */
+@media only screen and (min-width : 1000px) {
+
+  /*  Wide Screen Adjustment*/
+  .issueListItem {
+    margin-left: 2em;
+  }
+
+  .articleListItem {
+    margin-left: 2.5em;
+    margin-right: 3.5em;
+    margin-bottom: .25em;
+    padding-left: 35px; 
+    text-indent: -35px;
+/*    max-width: 75%;*/
+  }
+
+  /*show menu for now*/
+  b[data-l10n-id="Menu"] {
+      display: block;
+  }
+
+
+  .divJustUnderNavbar {
+    padding-top: 57px;
+  }
+    
+  .bannerImage {
+    position:relative;
+    width: auto !important;
+    height: 7.5vw !important;
+    margin-left: -0.2vw;
+    margin-top: auto;
+    margin-right: auto;
+    padding-right: auto;
+    max-height: 55px !important;
+    min-height: 30px;
+    min-width: 27px;
+    vertical-align: middle;
+  }
+    
+
+  .bannerText {
+    font-size: 22pt;
+    font-weight: 800;
+    margin-top: 5px !important;
+    margin-bottom: 5px !important;
+    margin-left: -11vw !important;
+    padding-bottom: 0em;
+    position: relative;
+    /*color: green;*/
+    width: 100%;
+  }
+  
+  .subBannerText {
+    font-size: 14pt;
+    font-style: italic;
+    margin-left: -9vw !important;
+    margin-top: 0px !important;
+    margin-bottom: 1px !important;
+    padding-top: 0em;
+  }
+}
+
+
+/* Large Devices, Wide Screens, no more scaling */
+@media only screen and (min-width : 1006px) {
+  .bannerText {
+    font-size: 19pt;
+    font-weight: 800;
+    margin-top: 3px !important;
+    margin-bottom: 5px !important;
+    margin-left: -22pt !important;
+    text-align: left;
+    padding-bottom: 15pt;
+    position: relative;
+    /*color: green;*/
+    width: 100%;
+  }
+  
+  .bannerText_after {
+    display: inline;
+    font-size: 16pt;
+    font-style: italic;
+    /*    color: #cccccc;*/
+    color: rgba(119, 119, 119, 0.75);
+    text-shadow: 0 1px 0 white;      
+  }
+  
+  .subBannerText {
+    font-size: 14pt;
+    font-style: italic;
+    margin-left: -15pt !important;
+    margin-top: 0px !important;
+    margin-bottom: 1px !important;
+    padding-top: 0;
+  }
+  
+  
+}
+
+/* Large Devices, Wide Screens */
+@media only screen and (min-width : 1500px) {
+ .bannerText {
+    font-size: 19pt;
+    font-weight: 800;
+    margin-top: 3px !important;
+    margin-bottom: 5px !important;
+    margin-left: -42pt !important;
+    text-align: left;
+    padding-bottom: 15pt;
+    position: relative;
+    /*color: green;*/
+    width: 100%;
+  }
+  
+  .bannerText_after {
+    display: inline;
+    font-size: 16pt;
+    font-style: italic;
+    /*    color: #cccccc;*/
+    color: rgba(119, 119, 119, 0.75);
+    text-shadow: 0 1px 0 white;      
+  }
+  
+  .subBannerText {
+    font-size: 14pt;
+    font-style: italic;
+    margin-left: -37pt !important;
+    margin-top: 0px !important;
+    margin-bottom: 1px !important;
+    padding-top: 0;
+  }
+}
+
+/*Standard link colors */
+
+.pepEasyRefLists {
+  color:darkblue;
+}
+
+/* Doesn't work anyway for local links
+.pepEasyRefLists:visited {
+   color:purple !important;
+}
+*/
+
+.errorStatus {
+  /*  font-weight: bolder;*/
+  color: darkred;
+  text-shadow:1px 1px 1px gray;
+}
+
+a.doi, a.bibx, a.pgx, .errorStatus>a, .linkVisible, .clickableReference {
+  color:darkblue;
+}
+
+/*special document elements that are links*/
+p.title a, p.title_author a, a.volx {
+  color:darkblue;
+}
+
+a.doi:visited, a.bibx:visited, a.pgx:visited, .errorStatus>a:visited, .linkVisible:visited, .clickableReference:visited {
+ color:purple;
+}
+
+a.doi:hover, a.bibx:hover, a.pgx:hover, .errorStatus>a:hover, .linkVisible:hover, .clickableReference:hover {
+  text-decoration:underline;
+}
+
+p.title a:hover, p.title_author a:hover, a.volx {
+  text-decoration:underline;
+}
+
+.pepEasyLists :hover, .mostPopularList :hover, .whatsNewList :hover {
+  cursor: pointer;
+/*  background-color: #68c !important;*/
+  color: White;
+}
+
+
+span.bibtip {
+  color: blue;
+  font-weight: bold;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+span.notetip, span.notelabel {
+  color: blue !important;
+  font-weight: bold;
+  cursor: pointer;
+  font-weight: bold;
+  vertical-align: super;
+  font-size: smaller;    
+}
+
+.ftntip {
+   vertical-align: super;
+   font-size:smaller;
+   color:blue !important;
+}
+
+.bibtip:visited, .ftntip:visited {
+  color:purple !important;
+}
+
+.bibtip:hover, .ftntip:hover {
+  text-decoration: underline;
+}
+
+#ftnContent p.ftn {
+  font-size:smaller;
+  margin-left: 1em;
+  margin-right: 1em;
+}
+
+#moreInfoContent {
+  margin-left: 1em;
+  margin-right: 1em;
+}
+
+.menuLabel {
+  font-weight: 100;
+  font-style: oblique;
+  color: gray;
+}
+
+
+/*.accordion {
+    heightStyle: "fill";
+}*/
+
+ /************************* Pull Down Menu *************************/
+#menuList {
+  padding-left: 0em !important;
+  margin-left: 0em !important;
+  font-family: Tahoma semibold, Geneva, sans-serif;
+  /*  font-weight: 600;*/
+  font-size: 1em;
+}
+
+.menuItem:hover {
+  color: hsla(0, 0%, 20%, 1);
+  text-shadow: hsla(0, 0%, 40%, .5) 0 -1px 0, hsla(0, 0%, 100%, .6) 0 2px 1px;
+  background-color: hsl(0, 0%, 90%);
+}
+
+
+#supportInfo {
+  text-align: center;
+  padding-bottom: 1em;
+}
+
+
+.searchBoxLegend {
+  font-size: 1em !important;
+  font-weight: bold;
+  margin-bottom: .2em;
+}
+
+#sortOrder {
+  margin-top: .5em;
+}
+
+/*#displayOptions, #termMatches {
+   border: 1px inset silver;"
+}*/
+
+.optionForm {
+  margin-left: 1em;
+}
+
+.searchLabel {
+  font-size: 1.1em;
+  font-weight: bolder;
+}
+
+.resultsPager {
+  line-height: 3em;
+  vertical-align: center;
+}
+
+.resultsPagerLabel {
+  font-size: 1em;
+  font-weight: bolder;
+  line-height: 1.1em;
+}
+
+.criteriaLabel {
+  /*background-color: AliceBlue;*/
+  font-size: 1.08em;
+  font-weight: bold;
+}
+
+.kwicList ul {
+  list-style-type: bullet;
+  margin-left: .2em;
+  margin-right: .2em;
+  padding-left: 0em;
+  padding-right: .1em;
+  margin-bottom: .5em;
+  text-indent: 0em;
+}
+
+/* Lists of issues */
+.issueList {
+  list-style-type: bullet;
+  margin-left: 1.35em;
+  margin-right: .25em;
+  padding-left: 0em;
+}
+
+.issueListItem {
+  margin-bottom: .25em;
+  padding-left:  5px; 
+  text-indent: 0px;
+}
+
+
+/* Lists of references */
+.articleList {
+  list-style-type: none;
+  margin-left: .5em;
+  margin-right: .5em;
+  padding-left: 0em;
+}
+
+.articleListItem {
+  margin-bottom: .25em;
+  padding-left: 35px; 
+  text-indent: -35px;
+}
+
+/*Keep scroll bars (inside the document) from appearing.*/
+li.articleList {
+  overflow-y: hidden;
+  overflow-x: hidden;
+}
+
+.articleListItemText:hover {
+  cursor: pointer;
+  background-color: #68c;
+  color: White;
+}
+
+.hiddenFrame {
+  display: none;
+}
+/* **************** Search Area Form ********************************/
+
+.criteriaMore, .criteriaLess {
+  margin-bottom: 0;
+  padding-bottom: .3em;
+  margin-top: -10px;
+}
+
+.form-control {
+  height: 1.5em;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.form-group {
+  margin-bottom: 0;
+  margin-left: .15em;
+  margin-right: .6em;
+  padding-bottom: .3em;
+  padding-top: .2em;
+  width: 99%;
+}
+
+/* Needed because the select doesn't otherwise align properly! */
+#searchJournal {
+  margin-left: .15em;
+  margin-right: .6em;
+  /*margin-left: .205em;*/
+  margin-bottom: 0.5em;
+  height: 1.5em;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-right: .2em !important;
+}
+
+/* inside the accordion section this is the div */
+#searchPanel {
+  width: auto;
+  padding-top: 0;
+  padding-bottom: 2px;
+  padding-left: 1px !important;
+  padding-right: 1px !important;
+}
+
+#startPanel {
+  width: auto;
+  padding-top: 0;
+  padding-bottom: 2px;
+  padding-left: 3px !important;
+  padding-right: 3px !important;
+}
+
+/*#searchWordsGrp {
+  width: 99%;
+  margin-left: .3em;
+  margin-right: .5em;
+}*/
+
+#jrnlGrp {
+  width: 100%;
+  height: auto;
+}
+
+#searchCriteriaArea {
+  padding: .35em;
+  margin-top: 5px;
+  margin-left: 5px;
+  margin-right: 5px;
+}
+
+#searchFormResults {
+  padding: .35em;
+  margin-top: 10px;
+}
+
+/* **************** Dialog Box ********************************/
+input:not([type]), input[type=text], input[type=password], select {
+  background-color: AliceBlue;
+  border: 1px solid gray;
+  padding: 2px;
+  align-items: center;
+}
+
+.menuBar {
+  padding: 0.4em 0.3em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modal-title {
+  text-align: center;
+  font-weight: bolder;
+  font-size: 1.25em !important;
+}
+
+.modal-header, h4, .close {
+  /* background-color: #5cb85c; */
+  color:black !important;
+  text-align: center;
+  font-size: 1.2em;
+}
+
+.modal-footer {
+  background-color: #f9f9f9;
+}
+
+.autContent {
+  margin-left: 2em !important;
+  margin-right: 2em !important;
+}
+
+.no-title .ui-dialog-titlebar {
+    display: none;
+}
+
+.bannerText a {
+  text-decoration: none;
+  color: #666;
+  position: absolute;
+  -webkit-mask-image: -webkit-gradient(linear, left top, left bottom, from(rgba(0, 0, 0, 1)), color-stop(50%, rgba(0, 0, 0, .5)), to(rgba(0, 0, 0, 1)));
+}
+
+.listSectionHeading {
+  font-size: 1.1em;
+  font-weight: 700 !important;
+  text-indent: 4px;
+
+  /* text-decoration: underline !important; */
+}
+
+#welcome {
+  margin-bottom: .2em;
+  padding-top: .2em;
+}
+
+.pepsection, .wellgrp {
+  background-color: hsla(0, 0%, 90%, 1);
+  /*background-image: linear-gradient(-45deg, hsla(0, 0%, 0%, 0), hsla(0, 0%, 0%, .05));*/
+  /*background-size: 5px;*/
+  margin-bottom: .25em;
+  padding-bottom: .1em;
+  padding-top: .1em;
+}
+
+#documentArea>h1 {
+  font-size: 1.18em;
+  font-weight: bold;
+}
+
+#documentArea>.ftn_tip {
+  font-weight: bold;
+  font-style: italic;
+  font-size: 1.15em;
+  text-align: left;
+  vertical-align: sup;
+}
+
+.clarifying-text {
+  font-weight: normal;
+  font-style: italic;
+  font-size: .65em;
+  text-align: center;
+  margin-top: -.5em;
+  margin-bottom: .5em;
+}
+
+#versionInfo {
+  font-size: 0.75em;
+  text-align: center;
+  margin-top: -.25em;
+  margin-bottom: 0.25em;
+}
+
+/* ***************** Images and Frames! ******************************/
+#documentArea img {
+  text-align: left;
+  align: middle;
+  /*max-width: 80%;*/
+  /*max-height: 600px;*/
+  width: auto;
+  height: auto;
+}
+
+.authortip>img {
+  max-width: 100%;
+  vertical-align: super !important;
+
+}
+
+iframe, object, embed, video {
+  max-width: 100%;
+}
+
+img, object {
+  /*width: 100%;*/
+  max-width: 70%;
+}
+
+*.waiting  {
+  cursor: progress;
+}
+
+.volumeListColumnItem:hover {
+  cursor: pointer;
+  background-color: #68c !important;
+  color: White;
+}
+
+.pepfieldset {
+  padding-top: 0;
+  padding-left: 1%;
+  padding-bottom: 0%;
+  margin-bottom: 0px;
+}
+
+.btn-group-wrap {
+  text-align: center;
+}
+
+.search-btn-group {
+  margin-right: 2em;
+  /*text-align: center;*/
+  width: inherit;
+  display: inline-block;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.search-btn-group > button {
+  /*background-color: #3366ff; /* Green background */
+  /*background-color: blue; /* blue background */
+  border: 1px solid blue;
+   /* blue border */
+  color: white; /* White text */
+  /* padding: 10px 24px; */ /* Some padding */
+  cursor: pointer; /* Pointer/hand icon */
+  /*float: left;*/   /* Float the buttons side by side */
+}
+
+div.pep-btn-group {
+  margin: 0 auto;
+  /*text-align: center;*/
+  width: inherit;
+  display: inline-block;
+}
+
+div.doc-btn-group a {
+  border: 1px;
+  color: white; /* White text */
+   /* blue border */
+  /* padding: 10px 24px; */ /* Some padding */
+  cursor: pointer; /* Pointer/hand icon */
+  /*float: left;*/   /* Float the buttons side by side */
+}
+
+div.doc-btn-group {
+  margin: 10 auto;
+  text-align: center;
+  width: inherit;
+  display: inline-block;
+}
+
+a {
+  float: center;
+}
+
+.btn-group a:not(:last-child) {
+  /*border-right: none;*/
+  /* Prevent double borders */
+}
+
+/* Clear floats (clearfix hack) */
+/*.btn-group:after {
+    content: "";
+    clear: both;
+    display: table;
+}*/
+
+/* Add a background color on hover */
+/*.btn-group a:hover {
+    background-color: blue;
+}*/
+
+.pep-round-button {
+  display:inline-block;
+  /*width:2em;*/
+  line-height:1.5em;
+  font-size: 1.55em;
+  font-weight:bold;
+  text-decoration:none;
+  margin: 0px;
+  padding: 0px;
+}
+
+/*.round {
+    border-radius: 50%;
+}*/
+/***********************/
+/*JQUERY Dropdown menu*/
+/***********************/
+.dropbtn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 5px;
+  font-size: 5px;
+  border: none;
+  cursor: pointer;
+}
+
+.dropbtn:hover, .dropbtn:focus {
+  background-color: #3e8e41;
+}
+
+#myInput {
+  border-box: box-sizing;
+  background-image: url('searchicon.png');
+  background-position: 14px 12px;
+  background-repeat: no-repeat;
+  font-size: 16px;
+  padding: 14px 20px 12px 45px;
+  border: none;
+}
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f6f6f6;
+  min-width: 10em;
+  overflow: auto;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 0;
+  right:0;
+  left: auto;
+  margin-left: 0em;
+}
+
+.dropdown-content a {
+  color: black;
+  padding: 2px 1px;
+  margin-left: 0em;
+  text-decoration: none;
+  display: block;
+}
+
+.dropdown-content li {
+  padding-left: 1em !important;
+}
+
+.menuItem {
+  list-style: none;
+  font-size: smaller;
+  margin-bottom: .25em;
+  text-indent: -.35em;
+  margin-left: .25em;
+}
+
+/*
+.menuItem:hover {
+  color: silver;
+}
+*/
+
+.divider {
+  border: .02em solid grey;
+  border-style: ridge;
+}
+
+.moreInfoContent p {
+  margin: 1em;
+}
+
+/*.dropdown a:hover {background-color: #ddd}*/
+
+.show {display:block;}
+/***********************/
+/*END JQUERY Dropdown menu*/
+/***********************/
+
+#optionsModal {
+  z-index: 9999;
+}
+
+#st-1 {
+  z-index: 0 !important;
+}
+
+p.title > [alt="Related Papers"]  {
+  display: none;
+}
+
+.searchHelpTable td
+{
+  border: 1px solid black;
+}
+
+.searchHelpTable td {
+  background-color: #4CAF50;
+  color: white;
+  padding-top: .2em;
+  padding-right: .2em;
+  padding-bottom: .2em;
+  padding-left: .2em;
+}
+
+#tipsTable {
+  font-size: 0.875em;
+  margin: 1em;
+}
+
+#provideFeedbackLink {
+  text-align: right;
+}
+
+/*Form labels by default are in a heavy font I don't like...adjusted below*/
+.subtleLabel {
+  font-weight: normal;
+}
+
+.optionForm p {
+  
+  line-height: 1em;
+  margin: 12px 2px 2px 2px;
+} 
+
+/*Front end news items don't like the indent the li provides.*/
+.newsLevel1 {
+  margin-left: -1.5em;
+}
+.newsLevel2 {
+  margin-left: -1.5em;
+}
+
+/*Add formatting Because on chrome it's tight on the left*/
+#sortOrderSelectionLabel {
+  margin-left: 0.5em;
+}
+
+.inlineHelpButtons {
+
+  padding-bottom: .2em;
+}
+
+.searchhit {
+  font-weight: bolder;
+  color: blue;
+}
+
+.statusEmphasized {
+  font-weight: bolder;
+}
