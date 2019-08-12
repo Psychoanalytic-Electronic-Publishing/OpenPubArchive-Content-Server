@@ -183,6 +183,10 @@ def authorsInCitationFormatFromXMLStr(authorXMLStr, listed=True):
 
     return retVal
 
+def getHTMLCiteAs(authorsBibStyle, artYear, artTitle, artPepSourceTitleFull, artVol, artPgrg):
+    retVal = f"""<p class="citeas"><span class="authors">{authorsBibStyle}</span> (<span class="year">{artYear}</span>) <span class="title">{artTitle}</span>. <span class="sourcetitle">{artPepSourceTitleFull}</span> <span class="pgrg">{artVol}</span>:<span class="pgrg">{artPgrg}</span></p>"""
+    return retVal
+    
 def xmlRemoveEncodingString(xmlString):
     # Get rid of the encoding for lxml
     p=re.compile("\<\?xml version=[\'\"]1.0[\'\"] encoding=[\'\"]UTF-8[\'\"]\?\>\n", re.IGNORECASE)

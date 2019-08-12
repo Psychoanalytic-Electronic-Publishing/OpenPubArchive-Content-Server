@@ -781,7 +781,7 @@ async def search_the_document_database(resp: Response,
                                        disMax: str=Query(None, title="Advanced Query (Solr disMax Syntax)", description="Solr disMax syntax - more like Google search"),
                                        edisMax: str=Query(None, title="Advanced Query (Solr edisMax Syntax) ", description="Solr edisMax syntax - more like Google search, better than disMax"), 
                                        quickSearch: str=Query(None, title="Advanced Query (Solr edisMax Syntax)", description="Advanced Query in Solr syntax (see schema names)"),
-                                       sortBy: str=Query(None, title="Field names to sort by", description="Comma separated list of field names to sort by"),
+                                       sortBy: str=Query("score desc", title="Field names to sort by", description="Comma separated list of field names to sort by"),
                                        limit: int=Query(15, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                                        offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                                        ):
@@ -889,14 +889,17 @@ async def search_the_document_database(resp: Response,
                                                                    extraContextLen=200
                                                                    )
 
-        matches = len(documentList.documentList.responseSet)
-        print ("....matches = {}".format(matches))
+        if retVal != {}:
+            matches = len(documentList.documentList.responseSet)
+            retVal.documentList.responseInfo.request = request.url._url
+        else:
+            matches = 0
+        print (f"....matches = {matches}")
         # fill in additional return structure status info
-        statusMsg = "{} hits; moreLikeThese:{}; queryAnalysis: {}".format(matches, moreLikeTheseMode, analysisMode)
+        statusMsg = f"{matches} hits; moreLikeThese:{moreLikeTheseMode}; queryAnalysis: {analysisMode}"
         print ("Done with search.")
 
     client_host = request.client.host
-    retVal.documentList.responseInfo.request = request.url._url
 
     if not analysisMode: # too slow to do this for that.
         ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_SEARCH,
@@ -925,7 +928,7 @@ def get_the_most_viewed_articles(resp: Response,
 
     print ("in mostcited")
     try:
-        retVal = documentList = opasAPISupportLib.databaseGetMostDownloaded(period=period, limit=limit, offset=offset)
+        retVal = documentList = opasAPISupportLib.getListOfMostDownloaded(viewPeriod=period, limit=limit, offset=offset)
         # fill in additional return structure status info
         client_host = request.client.host
         retVal.documentList.responseInfo.request = request.url._url
@@ -952,7 +955,7 @@ def get_the_most_viewed_articles(resp: Response,
 def get_the_most_cited_articles(resp: Response,
                                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                 period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
-                                limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                                limit: int=Query(10, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                                 offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                                 ):
     """
@@ -962,7 +965,8 @@ def get_the_most_cited_articles(resp: Response,
     
     Status: this endpoint is working.         
     """
-    
+
+    time.sleep(.5)
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     #if gOCDatabase.sessionID == None:  # make sure there's an open session for stat.
         #gOCDatabase.startSession()
@@ -981,19 +985,19 @@ def get_the_most_cited_articles(resp: Response,
         statusMessage = "Success"
         statusCode = 200
 
-    # Don't record
-    #ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
-    #ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_MOSTCITED,
-                                      #params=request.url._url,
-                                      #returnStatusCode = statusCode,
-                                      #statusMessage=statusMessage
-                                      #)
+    # Don't record - (well ok for now during testing)
+    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_MOSTCITED,
+                                      params=request.url._url,
+                                      returnStatusCode = statusCode,
+                                      statusMessage=statusMessage
+                                      )
 
     print ("out mostcited")
     return retVal
 
 @app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_skip_defaults=True, tags=["Database"])
-def get_the_newest_documents(resp: Response,
+def get_the_newest_uploaded_issues(resp: Response,
                              request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                              daysBack: int=Query(14, title="Number of days to look back", description=opasConfig.DESCRIPTION_DAYSBACK),
                              limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -1005,6 +1009,7 @@ def get_the_newest_documents(resp: Response,
     Status: this endpoint is working.          
     """
     
+    time.sleep(.25)
     print ("In whatsNew")
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:

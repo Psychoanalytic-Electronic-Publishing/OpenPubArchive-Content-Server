@@ -215,7 +215,97 @@ class opasCentralDB(object):
         self.closeConnection(callerName="endSession") # make sure connection is closed
         return retVal
         
-       
+    def getMostDownloaded(self, viewPeriod=5, sortByPeriod="last12months", documentType="journals", author=None, title=None, journalName=None, limit=None, offset=0):
+        """
+         Using the api_session_endpoints data, return the most downloaded (viewed) Documents
+           
+         1) Using documents published in the last 5, 10, 20, or all years.  Viewperiod takes an int and covers these or any other period (now - viewPeriod years).
+         2) Filtering videos, journals, books, or all content.  Document type filters this.  Can be: "journals", "books", "videos", or "all" (default)
+         3) Optionally filter for author, title, or specific journal.  Per whatever the caller specifies in parameters.
+         4) show views in last 7 days, last month, last 6 months, last calendar year.  This function returns them all.
+         
+        """
+        retVal = None
+        self.openConnection(callerName="getMostDownloaded") # make sure connection is open
+        if limit is not None:
+            limitClause = f"LIMIT {offset}, {limit}"
+        else:
+            limitClause = ""
+            
+        if self.db != None:
+            cursor = self.db.cursor(pymysql.cursors.DictCursor)
+
+            if documentType == "journals":
+                andDocumentTypeClause = " AND jrnlcode NOT IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW') AND jrnlcode not like '%VS'"
+            elif documentType == "books":
+                andDocumentTypeClause = " AND jrnlcode IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW')"
+            elif documentType == "videos":
+                andDocumentTypeClause = " AND jrnlcode like '%VS'"
+            else:
+                andDocumentTypeClause = ""  # all
+
+            if author is not None:
+                andAuthorClause = f" AND hdgauthor CONTAINS {author}"
+            else:
+                andAuthorClause = ""
+                
+            if title is not None:
+                andTitleClause = f" AND hdgtitle CONTAINS {title}"
+            else:
+                andTitleClause = ""
+
+            if title is not None:
+                andJournalClause = f" AND srctitleseries CONTAINS {journalName}"
+            else:
+                andJournalClause = ""
+                
+            if viewPeriod is not None:
+                if viewPeriod == 0 or str(viewPeriod).upper() == "ALL" or str(viewPeriod).upper()=="ALLTIME":
+                    viewPeriod = 500 # 500 years should cover all time!
+                andPubYearClause = f" AND `pubyear` > YEAR(NOW()) - {viewPeriod}"  # consider only the past viewPeriod years
+            else:
+                andPubYearClause = ""
+
+            if sortByPeriod is not None:
+                # 1 through 5 reps the 5 different values
+                if sortByPeriod == 1 or sortByPeriod == "lastweek":
+                    sortByColName = "lastweek"
+                elif sortByPeriod == 2 or sortByPeriod == "lastmonth":
+                    sortByColName = "lastmonth"
+                elif sortByPeriod == 3 or sortByPeriod == "last6months":
+                    sortByColName = "last6months"
+                elif sortByPeriod == 4 or sortByPeriod == "last12months":
+                    sortByColName = "last12months"
+                elif sortByPeriod == 5 or sortByPeriod == "lastcalendaryear":
+                    sortByColName = "lastcalyear"
+                else:
+                    sortByColName = "last12months"
+            else:
+                sortByColName = "last12months"
+            
+            sortByClause = f" ORDER BY {sortByColName} DESC"
+
+            sql = f"""SELECT * 
+                      FROM vw_stat_most_viewed
+                      WHERE 1 = 1
+                      {andDocumentTypeClause}
+                      {andAuthorClause}
+                      {andTitleClause}
+                      {andJournalClause}
+                      {andPubYearClause}
+                      {sortByClause}
+                      {limitClause}
+                    """
+            rowCount = cursor.execute(sql)
+            if rowCount:
+                retVal = cursor.fetchall()
+                
+            cursor.close()
+        
+        self.closeConnection(callerName="getMostDownloaded") # make sure connection is closed
+        return rowCount, retVal
+        
+        
     def getSessionFromDB(self, sessionID):
         """
         Get the session record info for session sessionID
@@ -964,8 +1054,10 @@ if __name__ == "__main__":
     #ocd.connected
     
     ocd = opasCentralDB()
-    refToCheck = "http://www.psychoanalystdatabase.com/PEPWeb/PEPWeb{}Gateway.asp".format(13)
-    ocd.authenticateReferrer(refToCheck)
+    #refToCheck = "http://www.psychoanalystdatabase.com/PEPWeb/PEPWeb{}Gateway.asp".format(13)
+    #ocd.authenticateReferrer(refToCheck)
+    results = ocd.getMostDownloaded()
+    print (len(results))
     sys.exit()
     
     #docstring tests
