@@ -62,6 +62,7 @@ class ListTypeEnum(Enum):
     sourceInfoList = "sourceinfolist"
     whatsNewList = "newlist"
     mostCitedList = "mostcited"
+    mostViewedList = "mostviewed"
     searchAnalysisList = "srclist"
     
 class ResponseInfo(BaseModel):
@@ -137,7 +138,13 @@ class DocumentListItem(BaseModel):
     accessLimitedCurrentContent: bool = Schema(None, title="")
     score: float = None
     rank: int = Schema(None, title="")
-    instanceCount: int = Schema(None, title="")
+    instanceCount: int = Schema(None, title="Reusable field to return counts requested")
+    count1: int = Schema(None, title="Number of times cited in the past 5 yrs or downloaded in the last week (depending on endpoint)")
+    count2: int = Schema(None, title="Number of times cited in the past 10 yrs or downloaded in the last month (depending on endpoint)")
+    count3: int = Schema(None, title="Number of times cited in the past 20 yrs or downloaded in the last 6 months (depending on endpoint)")
+    count4: int = Schema(None, title="Number of times cited in the past (reserved) yrs or downloaded in the last 12 months (depending on endpoint)")
+    count5: int = Schema(None, title="Number of times cited in the past (reserved) yrs or downloaded in the last calendar year (depending on endpoint)")
+    countAll: int = Schema(None, title="Number of times cited in the past or downloaded (depending on endpoint) in all years")
     similarDocs: list = None
     similarMaxScore: float = None
     similarNumFound: int = Schema(None, title="")
