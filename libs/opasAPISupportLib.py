@@ -2203,6 +2203,10 @@ def searchText(query,
     else:
         fragSize = extraContextLen
 
+    if filterQuery == "*:*":
+        # drop it...it seems to produce problems in simple queries that follow a search.
+        filterQuery = None
+
     try:
         results = solrDocs.query(query,  
                                  fq = filterQuery,
@@ -2234,6 +2238,38 @@ def searchText(query,
         print ("Search Performed: %s" % query)
         print ("Result  Set Size: %s" % results._numFound)
         print ("Return set limit: %s" % limit)
+        if results._numFound == 0:
+            try:
+                # try removing the filter query
+                results = solrDocs.query(query,  
+                                         debugQuery = queryDebug,
+                                         disMax = disMax,
+                                         fields = summaryFields,
+                                         hl='true', 
+                                         hl_fragsize = fragSize, 
+                                         hl_multiterm='true',
+                                         hl_fl = highlightFields,
+                                         hl_usePhraseHighlighter = 'true',
+                                         hl_snippets = maxKWICReturns,
+                                         #hl_method="unified",  # these don't work
+                                         #hl_encoder="HTML",
+                                         mlt = mlt,
+                                         mlt_fl = mlt_fl,
+                                         mlt_count = 2,
+                                         mlt_minwl = mlt_minwl,
+                                         rows = limit,
+                                         start = offset,
+                                         sort=sortBy,
+                                         hl_simple_pre = opasConfig.HITMARKERSTART,
+                                         hl_simple_post = opasConfig.HITMARKEREND)
+            except Exception as e:
+                print ("Solr Search Error.  ", e)
+                #errCode = resp.status_code = HTTP_400_BAD_REQUEST
+                #errReturn = models.ErrorReturn(error = ERR_CREDENTIALS, error_message = ERR_MSG_INSUFFICIENT_INFO)
+            else:
+                print ("Research Performed: %s" % query)
+                print ("New Result Set Size: %s" % results._numFound)
+                print ("Return set limit: %s" % limit)
     
         responseInfo = models.ResponseInfo(
                          count = len(results.results),
