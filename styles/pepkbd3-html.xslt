@@ -344,7 +344,6 @@
       <div class="authorwrapper">
         <xsl:apply-templates mode="metadata" select="aut"/>
       </div>
-      <xsl:apply-templates mode="metadata" select="autaff"/>
     </div>
   </xsl:template>
 
@@ -357,13 +356,27 @@
   <!--PEPKBD3 Author Information-->
   <xsl:template match="aut" mode="metadata">
     <p class="title_author" data-listed="{@listed}" data-authindexid="{@authindexid}" data-role="{@role}" data-alias="{@alias}" data-asis="{@asis}">
-      <xsl:apply-templates mode="metadata" select="nfirst"/>
-      <xsl:apply-templates mode="metadata" select="nlast"/>
+      <a class="author" href="#/Search/?author={@authindexid}">
+        <xsl:apply-templates mode="metadata" select="nfirst"/>
+        <xsl:apply-templates mode="metadata" select="nlast"/>
+      </a>
       <xsl:apply-templates mode="metadata" select="ndeg"/>
-      <xsl:apply-templates mode="metadata" select="nbio"/>
+      <span class="peppopup newauthortip">
+        <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>
+        <!--        <xsl:text>&#13;</xsl:text>-->
+        <div class="peppopuptext" id="autaffinfo" hidden="True">
+          <p>
+            <span class="author">
+              <xsl:apply-templates mode="metadata" select="nfirst"/>
+              <xsl:apply-templates mode="metadata" select="nlast"/>
+            </span>
+            <xsl:apply-templates mode="metadata" select="nbio"/>
+            <xsl:apply-templates mode="metadata" select="../autaff"/>
+          </p>
+        </div>
+      </span>
     </p>  
   </xsl:template>
-
 
   <xsl:template match="nfirst" mode="metadata">
     <xsl:text>&#10;</xsl:text> <!-- newline character -->
