@@ -79,7 +79,12 @@
   <xsl:template name="make-html-header">
     <head>
       <title class="head title">
-          <xsl:value-of select="pepkbd3/artinfo/arttitle"/>
+        <xsl:variable name="authors">
+          <xsl:call-template name="author-string"/>
+        </xsl:variable>
+        <xsl:value-of select="normalize-space(string($authors))"/>
+        <xsl:if test="normalize-space(string($authors))">: </xsl:if>
+        <xsl:value-of select="pepkbd3/artinfo/arttitle"/>
       </title>
       <!-- <link rel="stylesheet" type="text/css" href="{$css}"></link>-->
       <link rel="stylesheet" type="text/css" href="{$css2}"></link>
@@ -334,15 +339,49 @@
   </xsl:template>
 
   <xsl:template match="artkwds" mode="metadata">
-    <div class="artkwds nrs">
-      <xsl:apply-templates />
+    <div class="artkwds">
+      <xsl:for-each select="//impx[@type='KEYWORD']">
+        <xsl:value-of select="."/>
+        <xsl:if test="position() != last()">
+          <xsl:text>, </xsl:text>
+        </xsl:if>
+        <!--        <xsl:apply-templates />-->
+      </xsl:for-each>
     </div>
   </xsl:template>
   
   <xsl:template match="artauth" mode="metadata">
-    <div class="artauth nrs">
-      <div class="authorwrapper">
-        <xsl:apply-templates mode="metadata" select="aut"/>
+    <div class="artauth">
+      <div class="authorwrapper title_author">
+        <xsl:for-each select="aut">
+          <span>
+            <xsl:apply-templates mode="metadata" select="."/>
+          </span>
+          <xsl:choose>
+            <xsl:when test="position() = last() -1 ">
+              <xsl:text> and </xsl:text>
+            </xsl:when>
+            <xsl:when test="position() = last()">
+              <xsl:text> </xsl:text>
+              <span class="peppopup newauthortip">
+                <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>
+                <div class="peppopuptext" id="autaffinfo" hidden="True">
+                  <p>
+                    <span class="author">
+                      <xsl:apply-templates mode="metadata" select="nfirst"/>
+                      <xsl:apply-templates mode="metadata" select="nlast"/>
+                    </span>
+                    <xsl:apply-templates mode="metadata" select="nbio"/>
+                    <xsl:apply-templates mode="metadata" select="../autaff"/>
+                  </p>
+                </div>
+              </span>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:text>, </xsl:text>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:for-each>
       </div>
     </div>
   </xsl:template>
@@ -355,27 +394,14 @@
   
   <!--PEPKBD3 Author Information-->
   <xsl:template match="aut" mode="metadata">
-    <p class="title_author" data-listed="{@listed}" data-authindexid="{@authindexid}" data-role="{@role}" data-alias="{@alias}" data-asis="{@asis}">
+    <span class="title_author" data-listed="{@listed}" data-authindexid="{@authindexid}" data-role="{@role}" data-alias="{@alias}" data-asis="{@asis}">
       <a class="author" href="#/Search/?author={@authindexid}">
         <xsl:apply-templates mode="metadata" select="nfirst"/>
         <xsl:apply-templates mode="metadata" select="nlast"/>
       </a>
       <xsl:apply-templates mode="metadata" select="ndeg"/>
-      <span class="peppopup newauthortip">
-        <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>
-        <!--        <xsl:text>&#13;</xsl:text>-->
-        <div class="peppopuptext" id="autaffinfo" hidden="True">
-          <p>
-            <span class="author">
-              <xsl:apply-templates mode="metadata" select="nfirst"/>
-              <xsl:apply-templates mode="metadata" select="nlast"/>
-            </span>
-            <xsl:apply-templates mode="metadata" select="nbio"/>
-            <xsl:apply-templates mode="metadata" select="../autaff"/>
-          </p>
-        </div>
-      </span>
-    </p>  
+    </span>
+    <xsl:text>&#13;</xsl:text>
   </xsl:template>
 
   <xsl:template match="nfirst" mode="metadata">
@@ -1832,7 +1858,12 @@
         </xsl:if>
         <xsl:if test="position() = count($all-contribs)"> and </xsl:if>
       </xsl:if>
-      <xsl:value-of select="."/>
+      <b>
+        <xsl:apply-templates select="nfirst"/>
+        <xsl:text> </xsl:text>
+        <xsl:apply-templates select="nlast"/>
+      </b>
+      <!--      <xsl:value-of select="."/>-->
     </xsl:for-each>
   </xsl:template>
 
