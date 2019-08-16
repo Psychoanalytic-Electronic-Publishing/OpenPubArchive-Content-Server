@@ -96,14 +96,14 @@ class AlertListItem(BaseModel):
     action: str = Schema(None, title="")
 
 class AuthorIndexItem(BaseModel):
-    authorID: str
+    authorID: str = Schema(None, title="Author ID as indexed by the system.")
     publicationsURL: str = Schema(None, title="Endpoint URL for this API to retrieve a list of this authors publications.")
     publicationsCount: int = Schema(None, title="The number of publications in this database by this author.")
     
 class AuthorPubListItem(BaseModel):
-    authorID: str
-    documentID: str
-    documentRef: str = Schema(..., title="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
+    authorID: str = Schema(None, title="Author ID as indexed by the system.")
+    documentID: str = Schema(None, title="Doc ID for this publication by the author.")
+    documentRef: str = Schema(None, title="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
     documentRefHTML: str = Schema(None, title="Same as documentRef but in HTML.")
     year: str = Schema(None, title="Year of publication of this list item.")
     documentURL: str = Schema(None, title="API Endpoint URL (minus base) to access this document.")

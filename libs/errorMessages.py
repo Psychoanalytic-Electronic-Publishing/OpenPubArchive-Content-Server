@@ -5,6 +5,7 @@
 ERR_CREDENTIALS = "Credentials"
 ERR_CONDITIONS = "Conditions"
 ERR_MSG_RECOVERABLE_CONDITION = "A recoverable error on the server has occurred"
+ERR_MSG_INDEX_SERVER_CONDITION_SOLR = "Part of the PEP-Web Server (search) appears to be offline"
 ERR_MSG_LOGIN_UNSUPPORTED = "Not enough information to log in."
 ERR_MSG_LOGIN_CREDENTIALS = "Credentials incorrect, or not found."
 ERR_MSG_INSUFFICIENT_INFO = "Not enough information for operation"

@@ -1443,7 +1443,7 @@ def authorsGetAuthorPublications(authorNamePartial, limit=opasConfig.DEFAULT_LIM
                                            responseSet = authorPubListItems
                                            )
     
-    authorPubList = models.AuthorPubListItem(authorPubList = authorPubListStruct)
+    authorPubList = models.AuthorPubList(authorPubList = authorPubListStruct)
     
     retVal = authorPubList
     return retVal

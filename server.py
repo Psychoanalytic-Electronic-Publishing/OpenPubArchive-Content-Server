@@ -12,6 +12,16 @@ such as PEP-Easy.
                 converted - nrs
 2019.0617.4 - Changed functions under decorators to snake case since the auto doc uses those 
               as sentences!
+              
+2019.0816.1 - Figured out that I need to return the same model in case of error. 
+              Responseinfo has errors which is a struct with error messages.
+              Setting resp.status_code returns the error code.
+              
+              EXAMPLE in get_the_author_index_entries_for_matching_author_names
+                      Returns the error correctly when Solr is not running.
+                      USE THAT AS A TEMPLATE.
+              
+              #TODO: This now needs to be done to each end point.
 
 
 Run with:
@@ -70,6 +80,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.status import HTTP_400_BAD_REQUEST, \
                              HTTP_401_UNAUTHORIZED, \
+                             HTTP_500_INTERNAL_SERVER_ERROR, \
                              HTTP_503_SERVICE_UNAVAILABLE
 
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -1303,7 +1314,6 @@ def get_the_author_index_entries_for_matching_author_names(resp: Response,
                     offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                     ):
     """
-    ## /v1/Authors/Index/{authorNamePartial}/
     ## Function
     Return a list (index) of authors.  The list shows the author IDs, which are a normalized form of an authors name.
     
@@ -1318,23 +1328,40 @@ def get_the_author_index_entries_for_matching_author_names(resp: Response,
 
     """
     errCode = None
+    retVal = None 
     
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:
-        retVal = opasAPISupportLib.authorsGetAuthorInfo(authorNamePartial, limit=limit, offset=offset)
+        # returns models.AuthorIndex
+        authorNameToCheck = authorNamePartial.lower()  # work with lower case only, since Solr is case sensitive.
+        retVal = opasAPISupportLib.authorsGetAuthorInfo(authorNameToCheck, limit=limit, offset=offset)
     except ConnectionRefusedError as e:
         statusMessage = f"The server is not running or is currently not accepting connections: {e}"
         print (statusMessage)
-        errCode = HTTP_503_SERVICE_UNAVAILABLE
-        errReturn = models.ErrorReturn(error = ERR_CONDITIONS, error_message = ERR_MSG_INDEX_SERVER_CONDITION_SOLR)
+        responseInfo = models.ResponseInfo(errors=models.ErrorReturn(error = ERR_CONDITIONS, 
+                                                                     error_message = ERR_MSG_INDEX_SERVER_CONDITION_SOLR)
+                                           )
+        resp.status_code = HTTP_503_SERVICE_UNAVAILABLE
+        authorIndexStruct = models.AuthorIndexStruct( responseInfo = responseInfo, 
+                                                      responseSet = []
+                                                    )   
+        retVal = authorIndex = models.AuthorIndex(authorIndex = authorIndexStruct)
+        
     except Exception as e:
-        errCode = HTTP_503_SERVICE_UNAVAILABLE
         statusMessage = "Error: {}".format(e)
         print (statusMessage)
-        errReturn = models.ErrorReturn(error = ERR_CONDITIONS, error_message = statusMessage)
+        responseInfo = models.ResponseInfo(errors=models.ErrorReturn(error = ERR_CONDITIONS, 
+                                                                     error_message = statusMessage)
+                                           )
+
+        resp.status_code = HTTP_500_INTERNAL_SERVER_ERROR
+        authorIndexStruct = models.AuthorIndexStruct( responseInfo = responseInfo, 
+                                                      responseSet = []
+                                                    )   
+        retVal = authorIndex = models.AuthorIndex(authorIndex = authorIndexStruct)
     else:
         statusMessage = "Success"
-        statusCode = 200
+        resp.status_code = 200
         # fill in additional return structure status info
         client_host = request.client.host
         retVal.authorIndex.responseInfo.request = request.url._url
@@ -1342,13 +1369,11 @@ def get_the_author_index_entries_for_matching_author_names(resp: Response,
     # for speed since this is used for author pick lists, don't record these
     #ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_AUTHORS_INDEX,
                                       #params=request.url._url,
-                                      #returnStatusCode = statusCode,
+                                      #returnStatusCode = resp.status_code = ,
                                       #statusMessage=statusMessage
                                       #)
-    if errCode != None:
-        return errCode
-    else:
-        return retVal
+                
+    return retVal  # Return author information or error
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, response_model_skip_defaults=True, tags=["Authors"])
@@ -1359,11 +1384,11 @@ def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
                            offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                            ):
     """
-    ## /v1/Authors/Publications/{authorNamePartial}/
+    
     ## Function
     Return a list of the author's publications.  
     
-        ## Return Type
+    ## Return Type
     authorPubList
 
     ## Status
@@ -1373,12 +1398,15 @@ def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
        http://localhost:8000/v1/Authors/Publications/Tuck/
 
     """
+    #Note: (Markup notation in Docstring above is for FastAPI docs page.)
+    
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:
-        retVal = opasAPISupportLib.authorsGetAuthorPublications(authorNamePartial, limit=limit, offset=offset)
+        authorNameToCheck = authorNamePartial.lower()  # work with lower case only, since Solr is case sensitive.
+        retVal = opasAPISupportLib.authorsGetAuthorPublications(authorNameToCheck, limit=limit, offset=offset)
     except Exception as e:
         statusMessage = "Error: {}".format(e)
-        statusCode = 400
+        resp.status_code = HTTP_500_INTERNAL_SERVER_ERROR
         authorPubListStruct = \
             models.AuthorPubListStruct( 
                 responseInfo = models.ResponseInfo(
@@ -1387,6 +1415,9 @@ def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
                                             offset = offset,
                                             listType ="authorpublist",
                                             listLabel = "Search Error: {}".format(e),
+                                            errors=models.ErrorReturn(error = ERR_CONDITIONS, 
+                                                                      error_message = statusMessage 
+                                                                      ),
                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
                                            ),
                 responseSet = list()
@@ -1397,14 +1428,14 @@ def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
     else:
         statusMessage = "Success"
         retVal.authorPubList.responseInfo.request = request.url._url
-        statusCode = 200
+        resp.status_code = 200
     
     # fill in additional return structure status info
     client_host = request.client.host
     
     ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_AUTHORS_PUBLICATIONS,
                                       params=request.url._url,
-                                      statusMessage=gCurrentDevelopmentStatus
+                                      statusMessage=statusMessage
                                       )
 
     return retVal
