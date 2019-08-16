@@ -68,7 +68,9 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_400_BAD_REQUEST, \
+                             HTTP_401_UNAUTHORIZED, \
+                             HTTP_503_SERVICE_UNAVAILABLE
 
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
@@ -1315,20 +1317,21 @@ def get_the_author_index_entries_for_matching_author_names(resp: Response,
        http://localhost:8000/v1/Authors/Index/Tuck/
 
     """
-
+    errCode = None
+    
     ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:
         retVal = opasAPISupportLib.authorsGetAuthorInfo(authorNamePartial, limit=limit, offset=offset)
+    except ConnectionRefusedError as e:
+        statusMessage = f"The server is not running or is currently not accepting connections: {e}"
+        print (statusMessage)
+        errCode = HTTP_503_SERVICE_UNAVAILABLE
+        errReturn = models.ErrorReturn(error = ERR_CONDITIONS, error_message = ERR_MSG_INDEX_SERVER_CONDITION_SOLR)
     except Exception as e:
-        try:
-            statusMessage = "Error: {}".format(e.body.decode("utf8"))
-            statusMessage = re.sub("(\tat( org.apache.*\n)|(org.eclipse.*\n))", "", statusMessage)
-            statusMessage = re.sub("\t?at[ ]+", "", statusMessage)
-            print ("get_the_author_index_entries_for_matching_author_names", statusMessage)
-            statusCode = 400
-            retVal = None
-        except:
-            statusMessage = "Error: {}".format(e)
+        errCode = HTTP_503_SERVICE_UNAVAILABLE
+        statusMessage = "Error: {}".format(e)
+        print (statusMessage)
+        errReturn = models.ErrorReturn(error = ERR_CONDITIONS, error_message = statusMessage)
     else:
         statusMessage = "Success"
         statusCode = 200
@@ -1342,8 +1345,10 @@ def get_the_author_index_entries_for_matching_author_names(resp: Response,
                                       #returnStatusCode = statusCode,
                                       #statusMessage=statusMessage
                                       #)
-
-    return retVal
+    if errCode != None:
+        return errCode
+    else:
+        return retVal
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, response_model_skip_defaults=True, tags=["Authors"])

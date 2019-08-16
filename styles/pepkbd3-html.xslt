@@ -104,7 +104,8 @@
   <!--  used with translate to convert between case, since this is for XSLT 1.0 -->
   <xsl:variable name="lowercase" select="'abcdefghijklmnopqrstuvwxyz'" />
   <xsl:variable name="uppercase" select="'ABCDEFGHIJKLMNOPQRSTUVWXYZ'" />
-  <xsl:variable name="baseurl">www.pep-web.org</xsl:variable>
+  <!--  <xsl:variable name="baseurl">www.pep-web.org</xsl:variable>-->
+  <xsl:variable name="artgraphfolder">g</xsl:variable>
   <xsl:variable name="document-id">
     <xsl:apply-templates select="//artinfo/@id"/>
   </xsl:variable>
@@ -528,13 +529,47 @@
   <!--  REGULAR (DEFAULT) MODE                                       -->
   <!-- ============================================================= -->
 
-  <xsl:template match="caption">
-    <p class="caption nrs" data-nbr="{@mbr}">
+  <xsl:template match="figure">
+    <p class="figure" id="{@id}">
       <xsl:apply-templates/>
+      <!--      <xsl:apply-templates select="graphic"/>-->
+      <!--      <xsl:apply-templates/>-->
     </p>
   </xsl:template>
   
-
+  <xsl:template match="caption">
+    <p class="figtitle caption">
+      <xsl:value-of select="."/>
+    </p>
+  </xsl:template>
+  
+  <xsl:template match="graphic">
+    <xsl:apply-templates/>
+    <p class="figure">
+      <img alt="{@xlink:href}">
+        <xsl:attribute name="align">
+          <xsl:value-of select="@align"/>
+        </xsl:attribute>
+        <xsl:for-each select="alt-text">
+          <xsl:attribute name="alt">
+            <xsl:value-of select="normalize-space(string(.))"/>
+          </xsl:attribute>
+        </xsl:for-each>
+        <!--<xsl:call-template name="assign-src"/>  (This was for JATS)-->
+        <xsl:for-each select="@source">
+          <xsl:attribute name="src">
+            <xsl:variable name="image">
+              <xsl:value-of select="."/>
+            </xsl:variable>
+            <xsl:value-of select="concat('g/', $image, '.jpg')"/>
+            <!--          <xsl:value-of select="."/>-->
+          </xsl:attribute>
+        </xsl:for-each>      
+      </img>
+    </p>
+  </xsl:template>
+  
+  
   <xsl:template match="*" mode="drop-title">
     <xsl:apply-templates select="."/>
   </xsl:template>
@@ -667,6 +702,9 @@
 
   <xsl:template match="h1|h2|h3|h4|h5|h6">
     <xsl:copy>
+      <xsl:attribute name="text-align">
+        <xsl:value-of select="@align"/>  
+      </xsl:attribute>
       <xsl:call-template name="named-anchor"/>
       <xsl:apply-templates/>
     </xsl:copy>
@@ -705,18 +743,6 @@
       <xsl:call-template name="named-anchor"/>
       <xsl:apply-templates/>
     </div>
-  </xsl:template>
-
-  <xsl:template match="graphic">
-    <xsl:apply-templates/>
-    <img alt="{@xlink:href}">
-      <xsl:for-each select="alt-text">
-        <xsl:attribute name="alt">
-          <xsl:value-of select="normalize-space(string(.))"/>
-        </xsl:attribute>
-      </xsl:for-each>
-      <xsl:call-template name="assign-src"/>
-    </img>
   </xsl:template>
 
   <xsl:template match="alt-text">
@@ -1042,8 +1068,7 @@
   
   <xsl:template match="body//tbl">
     <!-- other labels are displayed as blocks -->
-    <div class="tbl nrs">
-      <xsl:apply-templates select="@*" mode="table-copy"/>
+    <div class="table nrs">
       <xsl:attribute name="id">
         <xsl:value-of select="@id"/>
       </xsl:attribute>
@@ -1056,6 +1081,7 @@
       <xsl:attribute name="data-ewide">
         <xsl:value-of select="@ewide"/>
       </xsl:attribute>
+<!--      <xsl:apply-templates select="@*" mode="table-copy"/>-->
       <xsl:apply-templates/>
     </div>
   </xsl:template>
@@ -1103,7 +1129,7 @@
   </xsl:template>
   
   <xsl:template match="
-      table | thead | tbody | tfoot |
+      table | tbl | thead | tbody | tfoot |
       col | colgroup | tr | th | td">
     <xsl:copy>
       <xsl:apply-templates select="@*" mode="table-copy"/> 
