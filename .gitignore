@@ -39,7 +39,9 @@ libs/examples/
 OpenPubArchive.wpu
 venv/
 .vscode/
-global set of requirements/
+global set of requirements.txt
 libs/Garbage*
 GVPI_Data/*
 oauth2Example.py
+*.wpu
+*.wpr
