@@ -92,7 +92,7 @@ from pydantic import BaseModel
 from pydantic.types import EmailStr
 from pydantic import ValidationError
 
-import pysolr
+import solr
 import json
 import logging
 logger = logging.getLogger(__name__)

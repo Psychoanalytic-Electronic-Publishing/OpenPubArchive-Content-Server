@@ -23,25 +23,25 @@ sys.path.append('../config')
 
 import opasConfig
 import localsecrets
-from localsecrets import DBHOST, DBUSER, DBPW, DBNAME
+# from localsecrets import DBHOST, DBUSER, DBPW, DBNAME
 
-import os.path
-import re
+# import os.path
+# import re
 import logging
 logger = logging.getLogger(__name__)
 
-from datetime import datetime, timedelta
+from datetime import datetime # , timedelta
 import time
 
-import secrets
-from pydantic import BaseModel
+# import secrets
+# from pydantic import BaseModel
 from passlib.context import CryptContext
-from pydantic import ValidationError
+# from pydantic import ValidationError
 
 import pymysql
 
 #import opasAuthBasic
-from localsecrets import SECRET_KEY, ALGORITHM, urlPaDS, soapTest
+# from localsecrets import SECRET_KEY, ALGORITHM, urlPaDS, soapTest
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 import requests
@@ -155,7 +155,7 @@ class opasCentralDB(object):
         
         if status == False:
             try:
-                self.db = pymysql.connect(host=DBHOST, user=DBUSER, password=DBPW, database=DBNAME)
+                self.db = pymysql.connect(host=localsecrets.DBHOST, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
                 self.connected = True
                 if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
                     print (f"Database connection was already opened ({callerName})")
@@ -400,7 +400,7 @@ class opasCentralDB(object):
         
         """
         retVal = False
-        session = None
+        #session = None
         if sessionID is None:
             errMsg = "No session ID specified"
             logger.error(errMsg)
@@ -420,8 +420,9 @@ class opasCentralDB(object):
                     sql = """DELETE FROM api_sessions
                              WHERE session_id = '%s'""" % sessionID
                     
-                    success = cursor.execute(sql)
-                    retVal = self.db.commit()
+                    if cursor.execute(sql):
+                        retVal = self.db.commit()
+
                     cursor.close()
                     self.sessionInfo = None
                     self.closeConnection(callerName="deleteSession") # make sure connection is closed

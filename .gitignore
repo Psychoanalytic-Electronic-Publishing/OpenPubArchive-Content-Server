@@ -37,3 +37,9 @@ libs/examples/simplePWExample.py
 libs/examples/
 *.log
 OpenPubArchive.wpu
+venv/
+.vscode/
+global set of requirements/
+libs/Garbage*
+GVPI_Data/*
+oauth2Example.py

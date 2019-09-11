@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,R0914
 from __future__ import print_function
+from __future__ import absolute_import
 print(
     """ 
     OPAS - Open Publications-Archive Software - Glossary Core Loader
@@ -93,7 +94,9 @@ def main():
     processingErrorCount = 0
     processingWarningCount = 0
     processedFilesCount = 0
-    logging.basicConfig(handlers=[ExitOnExceptionHandler()], filename=logFilename, level=options.logLevel)
+    # Python 3 did not like the following...
+    #logging.basicConfig(handlers=[ExitOnExceptionHandler()], filename=logFilename, level=options.logLevel)
+    logging.basicConfig(filename=logFilename, level=options.logLevel)
     logger = logging.getLogger(programNameShort)
     logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
 
@@ -127,7 +130,7 @@ def main():
     print ("Ready to import glossary records from %s files at path: %s" % (countFiles, options.rootFolder))
     bibTotalReferenceCount = 0
     for n in filenames:
-        f = open(n)
+        f = open(n, encoding='utf8')
         fileXMLContents = f.read()
 
         # get file basename without build (which is in paren)
@@ -140,7 +143,8 @@ def main():
         fileTimeStamp = datetime.utcfromtimestamp(os.path.getmtime(n)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
         # import into lxml
-        root = etree.fromstring(fileXMLContents)
+        # root = etree.fromstring(fileXMLContents)
+        root = etree.fromstring(opasxmllib.xmlRemoveEncodingString(fileXMLContents))
         pepxml = root[0]
 
         # Containing Article data

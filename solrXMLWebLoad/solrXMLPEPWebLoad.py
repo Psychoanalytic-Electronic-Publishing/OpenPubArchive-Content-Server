@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
-#from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import print_function
+import six
 print(
     """ 
     OPAS - Open Publications-Archive Software - Document, Authors, and References Core Loader
@@ -46,11 +48,12 @@ import sys
 sys.path.append('../libs')
 import re
 import os
-import random
 import os.path
 import time
 import logging
-import urllib
+import six.moves.urllib.request, six.moves.urllib.parse, six.moves.urllib.error
+import random
+
 import modelsOpasCentralPydantic
 
 pyVer = 2
@@ -72,7 +75,7 @@ import pymysql
 
 import config
 from OPASFileTracker import FileTracker, FileTrackingInfo
-import opasGenSupportLib as opasgenlib
+#import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
 import sourceInfoDB as SourceInfoDB
 #from sourceInfoDB import sourceInfoDBData
@@ -179,8 +182,10 @@ class ArticleInfo(object):
                 self.artSubtitle = ""
                 
         self.artLang = pepxml.xpath('//pepkbd3/@lang')
+        
         if self.artLang == []:
             self.artLang = ['EN']
+        
         self.authorXMLList = pepxml.xpath('//artinfo/artauth/aut')
         self.authorXML = opasxmllib.xmlXPathReturnXMLSingleton(pepxml, '//artinfo/artauth')
         self.authorsBibStyle, self.authorList = opasxmllib.authorsInCitationFormatFromXMLStr(self.authorXML, listed=True)
@@ -229,7 +234,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
     #------------------------------------------------------------------------------------------------------
     #globals gCitedTable 
     if options.displayVerbose:
-        print("   ...Processing main file content for the %s core." % options.fullTextCoreName)
+        print(("   ...Processing main file content for the %s core." % options.fullTextCoreName))
 
     artLang = pepxml.xpath('//@lang')
     if artLang == []:
@@ -257,7 +262,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                                 in another window or tab.
                              </p>
                              </html>
-                          """ % urllib.quote(artInfo.artDOI)
+                          """ % six.moves.urllib.parse.quote(artInfo.artDOI)
         # should we trust clients, or remove this data?  For now, remove.  Need to probably do this in biblio core too
         dialogsXml = dreamsXml = notesXml = panelsXml = poemsXml = quotesXml = None    
         referencesXml = abstractsXml = summariesXml = None
@@ -286,8 +291,8 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
         
     #save main article info    
     if pyVer == 2:
-        fileXMLContents = unicode(fileXMLContents, "utf8")
-        offsiteContents = unicode(offsiteContents, "utf8")
+        fileXMLContents = six.text_type(fileXMLContents, "utf8")
+        offsiteContents = six.text_type(offsiteContents, "utf8")
         
     try:
         response_update = solrcon.add(id = artInfo.artID,                   # important =  note this is unique id for every reference
@@ -392,7 +397,7 @@ def processInfoForAuthorCore(pepxml, artInfo, solrAuthor):
                 try:
                     authorID = authorID[0]
                 except:
-                    authorID = "GenID" + "%05d" % randint(1, 5000)
+                    authorID = "GenID" + "%05d" % random.randint(1, 5000)
             authorListed = author.attrib.get('listed', "true")
             if authorListed.lower() == "true":
                 authorPos += 1
@@ -462,7 +467,7 @@ def processBibForReferencesCore(pepxml, artInfo, solrcon):
     bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
     retVal = artInfo.artBibReferenceCount
     if options.displayVerbose:
-        print("   ...Processing %s references for the references database." % (artInfo.artBibReferenceCount))
+        print(("   ...Processing %s references for the references database." % (artInfo.artBibReferenceCount)))
     #processedFilesCount += 1
 
     allRefs = []
@@ -648,21 +653,21 @@ def main():
     # instantiate the fileTracker.
     fileTracker = FileTracker(options.fileTrackerDBPath)
 
-    print ("Input data Root: ", options.rootFolder)
-    print ("Solr Full-Text Core: ", options.fullTextCoreName)
-    print ("Solr Biblio Core: ", options.biblioCoreName)
-    print ("Reset Core Data: ", options.resetCoreData)
+    print(("Input data Root: ", options.rootFolder))
+    print(("Solr Full-Text Core: ", options.fullTextCoreName))
+    print(("Solr Biblio Core: ", options.biblioCoreName))
+    print(("Reset Core Data: ", options.resetCoreData))
     if options.fullTextCoreName is not None:
-        print ("Solr solrAPIURL: ", solrAPIURL)
+        print(("Solr solrAPIURL: ", solrAPIURL))
     if options.biblioCoreName is not None:
-        print ("Solr solrAPIURLRefs: ", solrAPIURLRefs)
-    print ("Logfile: ", logFilename)
+        print(("Solr solrAPIURLRefs: ", solrAPIURLRefs))
+    print(("Logfile: ", logFilename))
 
     if options.fullTextCoreName is None and options.biblioCoreName is None:
         msg = "No cores specified so no database to update. Use the -f and -b options to specify the core. Use -h for help."
-        print (len(msg)*"-")
+        print((len(msg)*"-"))
         print (msg)
-        print (len(msg)*"-")
+        print((len(msg)*"-"))
         sys.exit(0)
         
     timeStart = time.time()
@@ -724,7 +729,7 @@ def main():
             totalFiles = 1
             newFiles = 1
         else:
-            print ("Error: Single file mode name: {} does not exist.".format(options.rootfolder))
+            print(("Error: Single file mode name: {} does not exist.".format(options.rootfolder)))
     else:
         # get a list of all the XML files that are new
         singleFileMode = False
@@ -749,14 +754,14 @@ def main():
                         #print "File is NOT the same!  Scanning the data..."
                         filenames.append(filename)
     
-    print (80*"-")
+    print((80*"-"))
     if singleFileMode:
-        print ("Single File Mode Selected.  Only file {} will be imported".format(options.rootFolder))
+        print(("Single File Mode Selected.  Only file {} will be imported".format(options.rootFolder)))
     else:
-        print ("Ready to import records from %s files of %s at path: %s." % (newFiles, totalFiles, options.rootFolder))
-        print ("%s Skipped files (those not modified since the last run)" % (skippedFiles))
-        print ("%s Files to process" % (newFiles ))
-    print (80*"-")
+        print(("Ready to import records from %s files of %s at path: %s." % (newFiles, totalFiles, options.rootFolder)))
+        print(("%s Skipped files (those not modified since the last run)" % (skippedFiles)))
+        print(("%s Files to process" % (newFiles )))
+    print((80*"-"))
     bibTotalReferenceCount = 0
     preCommitFileCount = 0
     processedFilesCount = 0
@@ -779,13 +784,13 @@ def main():
             else:
                 retVal = 0
         except MemoryError as e:
-            print ("Memory error loading table: {}".format(e))
+            print(("Memory error loading table: {}".format(e)))
         except Exception as e:
-            print ("Table Query Error: {}".format(e))
+            print(("Table Query Error: {}".format(e)))
         
         ocd.closeConnection()
     except Exception as e:
-        print ("Database Connect Error: {}".format(e))
+        print(("Database Connect Error: {}".format(e)))
         gCitedTable["dummy"] = modelsOpasCentralPydantic.MostCitedArticles()
         
 
@@ -807,7 +812,7 @@ def main():
         currFileInfo.loadForFile(n, options.solrURL)
         fileTracker.setFileDatabaseRecord(currFileInfo)
         fileTimeStamp = datetime.utcfromtimestamp(currFileInfo.fileModDate).strftime('%Y-%m-%dT%H:%M:%SZ')
-        print ("Processing file #%s of %s: %s (%s bytes)." % (processedFilesCount, newFiles, base, currFileInfo.fileSize))
+        print(("Processing file #%s of %s: %s (%s bytes)." % (processedFilesCount, newFiles, base, currFileInfo.fileSize)))
 
         # Note: We could also get the artID from the XML, but since it's also important
         # the file names are correct, we'll do it here.  Also, it "could" have been left out
@@ -836,7 +841,7 @@ def main():
         # walk through bib section and add to refs core database
 
         if preCommitFileCount > config.COMMITLIMIT:
-            print ("Committing info for %s documents/articles" % config.COMMITLIMIT)
+            print(("Committing info for %s documents/articles" % config.COMMITLIMIT))
             
         # input to the full-text code
         if solrAPIURL is not None:
@@ -861,7 +866,7 @@ def main():
         # close the file, and do the next
         f.close()
         if options.displayVerbose:
-            print ("   ...Time: %s seconds." % (time.time() - fileTimeStart))
+            print(("   ...Time: %s seconds." % (time.time() - fileTimeStart)))
 
     # all done with the files.  Do a final commit.
     print ("Performing final commit.")
@@ -870,7 +875,7 @@ def main():
             solrBib.commit()
             fileTracker.commit()
     except Exception as e:
-        print ("Exception: ", e)
+        print(("Exception: ", e))
     
     try:
         if solrAPIURL is not None:
@@ -878,7 +883,7 @@ def main():
             solrAuthors.commit()
             fileTracker.commit()
     except Exception as e:
-        print ("Exception: ", e)
+        print(("Exception: ", e))
 
     timeEnd = time.time()
     ocd.closeConnection()

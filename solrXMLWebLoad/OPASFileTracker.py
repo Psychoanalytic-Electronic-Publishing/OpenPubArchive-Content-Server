@@ -13,6 +13,8 @@ OPASFileTracker.py:    Library for file tracking to skip already processed files
 
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0325,C0326
 
+from __future__ import absolute_import
+from __future__ import print_function
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
@@ -111,7 +113,7 @@ class FileTracker (object):
                     print ("Cannot connect to database")
                     print(e)
             else:
-                print ("%s Processed File Database found - it has %s entries" % (self.sqlDBPath, count))
+                print(("%s Processed File Database found - it has %s entries" % (self.sqlDBPath, count)))
 
         except sqlite3.Error as e:
             self.conn = None
@@ -131,12 +133,12 @@ class FileTracker (object):
         retVal = False
         try:
             count = self.getFileDatabaseRecordCount()
-            print ("Delete Requested,  %s records in database" % count)
+            print(("Delete Requested,  %s records in database" % count))
             c = self.conn.cursor()
             c.execute("DELETE FROM fileTracking;")
             self.commit()
             count = self.getFileDatabaseRecordCount()
-            print ("Delete Performed, now there are %s records in database" % count)
+            print(("Delete Performed, now there are %s records in database" % count))
             retVal = True
         except sqlite3.Error as e:
             print(e)
@@ -189,7 +191,7 @@ class FileTracker (object):
         try:
             self.conn.commit()
         except sqlite3.Error as e:
-            print ("Commit failed!", e)
+            print(("Commit failed!", e))
 
     #----------------------------------------------------------------------------------------
     def setFileDatabaseRecord(self, currentFileInfo):
@@ -233,7 +235,7 @@ class FileTracker (object):
                 c.execute(insertIntoFileInfoSQL)
             retVal = True
         except sqlite3.Error as e:
-            print("SetDatabaseRecord Error: ", e)
+            print(("SetDatabaseRecord Error: ", e))
             #retVal = False #default
 
         c.close()
@@ -288,7 +290,7 @@ class FileTracker (object):
             retVal = True  # file not in database.
         elif format(filesDBRecord.fileModDate, '.2f') != format(currentFileInfo.fileModDate, '.2f'):
             #print filesDBRecord.fileModDate, currentFileInfo.fileModDate
-            print ("File is modified: %s.  %s != %s" % (currentFileInfo.filePath, int(filesDBRecord.fileModDate), int(currentFileInfo.fileModDate)))
+            print(("File is modified: %s.  %s != %s" % (currentFileInfo.filePath, int(filesDBRecord.fileModDate), int(currentFileInfo.fileModDate))))
             retVal = True
         else: #File not modified
             retVal = False
