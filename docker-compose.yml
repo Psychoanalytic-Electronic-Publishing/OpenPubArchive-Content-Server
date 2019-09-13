@@ -23,20 +23,20 @@ services:
 #        command: pep:$$1$$xBD5VtwX$$wbyeEB9mJSD3j5yqyamHA0:e:1001
 #        #  the password in encrypted, but this is still not the best way
 
-    ftp:
-      image: stilliard/pure-ftpd:hardened
-      ports:
-        - "21:21"
-        - "30000-30009:30000-30009"
-      volumes:
-        - ./ftpdata:/home/pep/
-        - ./config/ftp.passwd:/etc/pure-ftpd/pureftpd.passwd
-      environment:
-        PUBLICHOST: "localhost"
-#        FTP_USER_NAME: pep
-#        FTP_USER_PASS: NewPepPasswordIn2019
-        FTP_USER_HOME: /home/pep/
-      restart: always
+#    ftp:
+#      image: stilliard/pure-ftpd:hardened
+#      ports:
+#        - "21:21"
+#        - "30000-30009:30000-30009"
+#      volumes:
+#        - ./ftpdata:/home/pep/
+#        - ./config/ftp.passwd:/etc/pure-ftpd/pureftpd.passwd
+#      environment:
+#        PUBLICHOST: "localhost"
+##        FTP_USER_NAME: pep
+##        FTP_USER_PASS: NewPepPasswordIn2019
+#        FTP_USER_HOME: /home/pep/
+#      restart: always
 
     python2:
         build: solrXMLWebLoad
@@ -49,13 +49,18 @@ services:
         restart: always
         image: mysql:latest
         environment:
-            MYSQL_ROOT_PASSWORD: 'pep_test' # TODO: Change this?
+            MYSQL_DATABASE: 'opascentral'
             MYSQL_USER: 'pep'
-            MYSQL_PASS: 'peppass'
+            MYSQL_PASS: 'pep1pass1'
+            # password for root access
+            MYSQL_ROOT_PASSWORD: 'pep_test' # TODO: Change this?
         volumes:
             - ./mysql-data:/var/lib/mysql
 #            - datavolume:/var/lib/mysql doesn't seem to work!
 
+    python3.7:
+        build: ./python3.7
+        image: tiangolo/uvicorn-gunicorn-fastapi:python3.7
 
 #volumes:
 #    datavolume:

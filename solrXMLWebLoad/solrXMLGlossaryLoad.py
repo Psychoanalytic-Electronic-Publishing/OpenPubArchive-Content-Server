@@ -204,7 +204,7 @@ def main():
                     "group_name"          : glossaryGroupTerm,
                     "group_also"          : glossaryGroupAlso,
                     "group_term_count"    : groupTermCount,
-                    "text"                : glossaryGroupXML,
+                    "text"                : str(glossaryGroupXML, "utf8"),
                     "file_name"           : base,
                     "timestamp"           : processedDateTime,
                     "file_last_modified"  : fileTimeStamp

@@ -182,8 +182,8 @@ def checkIfUserLoggedIn(request:Request,
     
     """
     #TBD: Should just check token cookie here.
-    resp = login_user(request, response)
-    return response.licenseInfo.responseInfo.loggedIn
+    resp = login_user(response, request)
+    return resp.licenseInfo.responseInfo.loggedIn
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Admin/SessionCleanup/", response_model=models.ServerStatusItem, tags=["Admin"])
