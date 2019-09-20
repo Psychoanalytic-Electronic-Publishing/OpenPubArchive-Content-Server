@@ -21,7 +21,7 @@ PyJWT==1.7.1
 PyMySQL==0.9.3
 requests==2.22.0
 six==1.12.0
-solrpy==0.9.9
+#solrpy==0.9.9
 starlette==0.12.8
 urllib3==1.25.3
 uvicorn==0.9.0

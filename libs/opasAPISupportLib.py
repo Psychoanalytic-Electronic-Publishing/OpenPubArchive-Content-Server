@@ -54,7 +54,8 @@ else:
     import StringIO
     
 #import pysolr
-import solr
+import solrpy as solr
+# import solr
 import lxml
 import logging
 logger = logging.getLogger(__name__)
@@ -159,7 +160,7 @@ def isSessionAuthenticated(request, resp):
     Look to see if the session has been marked authenticated in the database
     """
     ocd, sessionInfo = getSessionInfo(request, resp)
-    sessionID = sessionInfo.session_id
+    # sessionID = sessionInfo.session_id
     # is the user authenticated? if so, loggedIn is true
     retVal = sessionInfo.authenticated
     return retVal

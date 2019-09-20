@@ -38,6 +38,15 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
         )
     return user  # pydantic model based user.  See modelsOpasCentralPydantic.py
 
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username != "foo" or credentials.password != "password":
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
 @app.get("/users/login")
 def read_current_user(request: Request, user: str = Depends(get_current_user)):
     return {"username": user}

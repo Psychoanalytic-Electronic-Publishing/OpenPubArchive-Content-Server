@@ -44,23 +44,34 @@ services:
 #        restart: always
 #        please note that at the moment this does nothing
 
-
-    mysql:
-        restart: always
-        image: mysql:latest
-        environment:
-            MYSQL_DATABASE: 'opascentral'
-            MYSQL_USER: 'pep'
-            MYSQL_PASS: 'pep1pass1'
-            # password for root access
-            MYSQL_ROOT_PASSWORD: 'pep_test' # TODO: Change this?
-        volumes:
-            - ./mysql-data:/var/lib/mysql
-#            - datavolume:/var/lib/mysql doesn't seem to work!
-
     python3.7:
         build: ./python3.7
         image: tiangolo/uvicorn-gunicorn-fastapi:python3.7
+
+
+    mysql:
+        image: mysql:latest
+        restart: always
+        environment:
+          MYSQL_DATABASE: 'opascentral'
+          # So you don't have to use root, but you can if you like
+          MYSQL_USER: 'pep_user'
+          # You can use whatever password you like
+          MYSQL_PASSWORD: 'peppass2'
+          # Password for root access
+          MYSQL_ROOT_PASSWORD: 'peppypeppep'
+        ports:
+          # <Port exposed> : < MySQL Port running inside container>
+          - '3308:3306'
+        expose:
+          # Opens port 3306 on the container
+          - '3308'
+          # Where our data will be persisted
+        volumes:
+          - ./my-db:/var/lib/mysql
+#
+#
+#
 
 #volumes:
 #    datavolume:

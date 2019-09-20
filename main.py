@@ -92,7 +92,7 @@ from pydantic import BaseModel
 from pydantic.types import EmailStr
 from pydantic import ValidationError
 
-import solr
+import solrpy as solr
 import json
 import logging
 logger = logging.getLogger(__name__)
@@ -1024,7 +1024,7 @@ def get_the_newest_uploaded_issues(resp: Response,
     
     time.sleep(.25)
     print ("In whatsNew")
-    ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    #ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
     try:
         retVal = whatsNewList = opasAPISupportLib.databaseWhatsNew(limit=limit, offset=offset, daysBack=daysBack)
         # fill in additional return structure status info
