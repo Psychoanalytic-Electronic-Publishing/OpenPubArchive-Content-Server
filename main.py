@@ -75,11 +75,12 @@ from enum import Enum
 import uvicorn
 from fastapi import FastAPI, Query, Path, Cookie, Header, Depends, HTTPException
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse, Response, RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.status import HTTP_400_BAD_REQUEST, \
                              HTTP_401_UNAUTHORIZED, \
+                             HTTP_403_FORBIDDEN, \
                              HTTP_500_INTERNAL_SERVER_ERROR, \
                              HTTP_503_SERVICE_UNAVAILABLE
 
@@ -97,7 +98,7 @@ import json
 import logging
 logger = logging.getLogger(__name__)
 
-from localsecrets import SECRET_KEY, ALGORITHM
+from config.localsecrets import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 import jwt
 import localsecrets as localsecrets
 import libs.opasConfig as opasConfig
@@ -252,6 +253,21 @@ def who_am_i(resp: Response,
             "opasAccessToken": request.cookies.get("opasAccessToken", None),
             "opasSessionExpire": request.cookies.get("opasSessionExpire", None), 
             }
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Admin/WhoAmI2E/", tags=["Admin"])
+def who_am_i(resp: Response,
+             request: Request):
+    """
+    Temporary endpoint for debugging purposes
+    """
+    return {"client_host": request.client.host, 
+            "referrer": request.headers.get('referrer', None), 
+            "opasSessionID": request.cookies.get("opasSessionID", None), 
+            "opasAccessToken": request.cookies.get("opasAccessToken", None),
+            "opasSessionExpire": request.cookies.get("opasSessionExpire", None), 
+            }
+
 
 #-----------------------------------------------------------------------------
 security = HTTPBasic()
@@ -1664,6 +1680,6 @@ def download_a_document(resp: Response,
     
 if __name__ == "__main__":
     print("Server Running")
-    uvicorn.run(app, host="127.0.0.1", port=8000, debug=True)
+    uvicorn.run(app, host="127.0.0.1", port=9100, debug=True)
 
     print ("we're still here!")

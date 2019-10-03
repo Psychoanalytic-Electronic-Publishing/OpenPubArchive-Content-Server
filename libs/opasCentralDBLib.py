@@ -155,12 +155,12 @@ class opasCentralDB(object):
         
         if status == False:
             try:
-                self.db = pymysql.connect(host=localsecrets.DBHOST, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
+                self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
                 self.connected = True
                 if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
                     print (f"Database connection was already opened ({callerName})")
             except:
-                errMsg = f"Cannot connect to database {DBNAME} for host {DBHOST} and user {DBUSER}"
+                errMsg = f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT}"
                 logger.error(errMsg)
                 if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
                     print (errMsg)
