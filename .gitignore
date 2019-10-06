@@ -31,7 +31,15 @@ schemas/pepwebdownloadcounts.sql
 schemas/pepwebdownloads.sql
 libs/pepsolrtest.log
 libs/recreateUsers.py
-config/localsecrets.py
+app/config/localsecrets.py
+app/libs/Garbage*
+app/libs/examples
+app/libs/recreateUsers.py
+app/styles/*.epub
+app/styles/*.html
+app/IJP.*.html
+*.epub
+*Sample*
 libs/examples/basicPWExample.py
 libs/examples/simplePWExample.py
 libs/examples/
