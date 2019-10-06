@@ -29,7 +29,7 @@ security = HTTPBasic()
 
 def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
     ocd = opasCentralDBLib.opasCentralDB()
-    status, user = ocd.authenticateUser(credentials.username, credentials.password)
+    status, user = ocd.authenticate_user(credentials.username, credentials.password)
     if user is None:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,

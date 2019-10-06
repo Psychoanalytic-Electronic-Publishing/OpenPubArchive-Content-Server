@@ -41,7 +41,7 @@ def authViaPaDS(username, password):
         
         retVal = {
                     "authenticated" : AuthenticateUserAndReturnExtraInfoResult,
-                    "userName" : SubscriberName,
+                    "username" : SubscriberName,
                     "userEmail" : SubscriberEmailAddress,
                     "gatewayID" : gatewayID,
                     "productCode" : productCode

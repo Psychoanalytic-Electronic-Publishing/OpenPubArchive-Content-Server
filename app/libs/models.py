@@ -83,7 +83,7 @@ class ResponseInfo(BaseModel):
 
 class ResponseInfoLoginStatus(BaseModel):
     loggedIn: bool = Schema(False, title="Whether the user is logged in or not")
-    userName: str = Schema(None, title="The logged in user's name")
+    username: str = Schema(None, title="The logged in user's name")
     request: str = Schema(None, title="The URL of the request")
     user: User = Schema(None, title="A user object for the user")
     error_message: str = Schema(None, title="If an error occurred, description")
@@ -187,6 +187,8 @@ class ServerStatusItem(BaseModel):
     db_server_ok: bool = Schema(None, title="")
     user_ip: str = Schema(None, title="")
     timeStamp: str = Schema(None, title="")
+    config_name: str= Schema(None, title="Current Configuration Name")
+    solr_url: str= Schema(None, title="Current SOLR URL")
 
 class JournalInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few fields
     sourceType: str = Schema(None, title="")

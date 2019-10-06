@@ -144,7 +144,7 @@ def main():
 
         # import into lxml
         # root = etree.fromstring(fileXMLContents)
-        root = etree.fromstring(opasxmllib.xmlRemoveEncodingString(fileXMLContents))
+        root = etree.fromstring(opasxmllib.xml_remove_encoding_string(fileXMLContents))
         pepxml = root[0]
 
         # Containing Article data
@@ -158,14 +158,14 @@ def main():
         glossaryGroups = pepxml.xpath("/pepkbd3//dictentrygrp")  
         groupCount = len(glossaryGroups)
         print("File %s has %s groups." % (base, groupCount))
-        processedFilesCount += 1
+        # processedFilesCount += 1
 
         allDictEntries = []
         for glossaryGroup in glossaryGroups:
             glossaryGroupXML = etree.tostring(glossaryGroup, with_tail=False)
-            glossaryGroupID = opasxmllib.xmlGetElementAttr(glossaryGroup, "id")
-            glossaryGroupTerm = opasxmllib.xmlGetSubElementTextSingleton(glossaryGroup, "term")
-            glossaryGroupAlso = opasxmllib.xmlGetSubElementXMLSingleton(glossaryGroup, "dictalso")
+            glossaryGroupID = opasxmllib.xml_get_element_attr(glossaryGroup, "id")
+            glossaryGroupTerm = opasxmllib.xml_get_subelement_textsingleton(glossaryGroup, "term")
+            glossaryGroupAlso = opasxmllib.xml_get_subelement_xmlsingleton(glossaryGroup, "dictalso")
             if glossaryGroupAlso == "":
                 glossaryGroupAlso = None
             print ("Processing Term: %s" % glossaryGroupTerm)
@@ -176,7 +176,7 @@ def main():
                 counter += 1
                 thisDictEntry = {}
                 dictEntryID = glossaryGroupID + ".{:03d}".format(counter)
-                dictEntryTerm = opasxmllib.xmlGetSubElementTextSingleton(dictEntry, "term")
+                dictEntryTerm = opasxmllib.xml_get_subelement_textsingleton(dictEntry, "term")
                 if dictEntryTerm == "":
                     dictEntryTerm = glossaryGroupTerm
                 dictEntryTermType = dictEntry.xpath("term/@type")  
@@ -185,12 +185,12 @@ def main():
                 else:
                     dictEntryTermType = "term"
                 
-                dictEntrySrc = opasxmllib.xmlGetSubElementTextSingleton(dictEntry, "src")
-                dictEntryAlso = opasxmllib.xmlGetSubElementXMLSingleton(dictEntry, "dictalso")
+                dictEntrySrc = opasxmllib.xml_get_subelement_textsingleton(dictEntry, "src")
+                dictEntryAlso = opasxmllib.xml_get_subelement_xmlsingleton(dictEntry, "dictalso")
                 if dictEntryAlso == "":
                     dictEntryAlso = None
-                dictEntryDef = opasxmllib.xmlGetSubElementXMLSingleton(dictEntry, "def")
-                dictEntryDefRest = opasxmllib.xmlGetSubElementXMLSingleton(dictEntry, "defrest")
+                dictEntryDef = opasxmllib.xml_get_subelement_xmlsingleton(dictEntry, "def")
+                dictEntryDefRest = opasxmllib.xml_get_subelement_xmlsingleton(dictEntry, "defrest")
                 thisDictEntry = {
                     "term_id"             : dictEntryID,
                     "group_id"            : glossaryGroupID,

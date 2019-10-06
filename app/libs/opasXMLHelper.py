@@ -36,24 +36,24 @@ else:
 
 # -------------------------------------------------------------------------------------------------------
 
-def authorDeriveMastFromXMLStr(authorXMLStr, listed=True):
+def author_derive_mast_from_xmlstr(authorXMLStr, listed=True):
     """
     Parses a string which has the PEP "aut" tag underneath a higher level tag, and returns the article Mast. for authors
     
     Listed can be True (listed authors), False (unlisted authors), or All (all authors)
     
-    >>> authorDeriveMastFromXMLStr('<aut role="author" alias="false" listed="true" asis="false" lang="en"><nfirst>Dana</nfirst><nmid/><nlast>Birksted-Breen</nlast><nti/></aut>')
+    >>> author_derive_mast_from_xmlstr('<aut role="author" alias="false" listed="true" asis="false" lang="en"><nfirst>Dana</nfirst><nmid/><nlast>Birksted-Breen</nlast><nti/></aut>')
     ('Dana Birksted-Breen', ['Dana Birksted-Breen'])
-    >>> authorDeriveMastFromXMLStr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Kristeva, Julia"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast> <nti>Professor</nti></aut><aut role="author" alias="false" listed="false" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> </aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
+    >>> author_derive_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Kristeva, Julia"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast> <nti>Professor</nti></aut><aut role="author" alias="false" listed="false" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> </aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
     ('Julia Kristeva &amp; Michael Marder', ['Julia Kristeva', 'Michael Marder'])
-    >>> authorDeriveMastFromXMLStr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Kristeva, Julia"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast> <nti>Professor</nti></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> <nbio>A Lecturer at the University of Leeds and a Ph.D. candidate in the Department of Romance Languages and Literatures at Harvard University. Her dissertation is on political fiction and art in Latin America and Portugal. Her areas of specialization are Spanish and Lusophone literature, culture, art and film, as well as French and German cultural and literary theory.</nbio></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
+    >>> author_derive_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Kristeva, Julia"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast> <nti>Professor</nti></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> <nbio>A Lecturer at the University of Leeds and a Ph.D. candidate in the Department of Romance Languages and Literatures at Harvard University. Her dissertation is on political fiction and art in Latin America and Portugal. Her areas of specialization are Spanish and Lusophone literature, culture, art and film, as well as French and German cultural and literary theory.</nbio></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
     ('Julia Kristeva, Patricia Vieira &amp; Michael Marder', ['Julia Kristeva', 'Patricia Vieira', 'Michael Marder'])
-    >>> authorDeriveMastFromXMLStr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> <nbio>A Lecturer at the University of Leeds and a Ph.D. candidate in the Department of Romance Languages and Literatures at Harvard University. Her dissertation is on political fiction and art in Latin America and Portugal. Her areas of specialization are Spanish and Lusophone literature, culture, art and film, as well as French and German cultural and literary theory.</nbio></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
+    >>> author_derive_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> <nbio>A Lecturer at the University of Leeds and a Ph.D. candidate in the Department of Romance Languages and Literatures at Harvard University. Her dissertation is on political fiction and art in Latin America and Portugal. Her areas of specialization are Spanish and Lusophone literature, culture, art and film, as well as French and German cultural and literary theory.</nbio></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
     ('Patricia Vieira &amp; Michael Marder', ['Patricia Vieira', 'Michael Marder'])
-    >>> authorDeriveMastFromXMLStr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Boulanger, Ghislaine"><nfirst type="FIRST">Ghislaine</nfirst> <nlast>Boulanger</nlast></aut></artauth>')
+    >>> author_derive_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Boulanger, Ghislaine"><nfirst type="FIRST">Ghislaine</nfirst> <nlast>Boulanger</nlast></aut></artauth>')
     ('Ghislaine Boulanger', ['Ghislaine Boulanger'])
     """
-    retVal = ("", [])
+    ret_val = ("", [])
     pepxml = etree.parse(StringIO(authorXMLStr))
     
     if authorXMLStr[0:4] == "<aut":
@@ -76,9 +76,9 @@ def authorDeriveMastFromXMLStr(authorXMLStr, listed=True):
     currAuthorNumber = 0
     for n in authorXMLList:
         currAuthorNumber += 1
-        authorFirstName = xmlXPathReturnTextSingleton(n, "nfirst", "").strip()
-        authorLastName = xmlXPathReturnTextSingleton(n, "nlast", "").strip()
-        authorMidName = xmlXPathReturnTextSingleton(n, "nmid", "").strip()
+        authorFirstName = xml_xpath_return_textsingleton(n, "nfirst", "").strip()
+        authorLastName = xml_xpath_return_textsingleton(n, "nlast", "").strip()
+        authorMidName = xml_xpath_return_textsingleton(n, "nmid", "").strip()
         if authorMidName != "":
             authorName = " ".join([authorFirstName, authorMidName, authorLastName])
         else:
@@ -94,42 +94,42 @@ def authorDeriveMastFromXMLStr(authorXMLStr, listed=True):
             else:
                 authorsMast += ", " + authorName
     
-    retVal = (authorsMast, authorList)
+    ret_val = (authorsMast, authorList)
 
-    return retVal
+    return ret_val
     
-def authorsInCitationFormatFromXMLStr(authorXMLStr, listed=True):
+def authors_citation_format_from_xmlstr(author_xmlstr, listed=True):
     """
     Parses a string which has the PEP "aut" tag underneath a higher level tag, and returns a citation format list of authors
     
     Listed can be True (listed authors), False (unlisted authors), or All (all authors)
 
-    >>> authorsInCitationFormatFromXMLStr('<aut role="author" alias="false" listed="true" asis="false" lang="en"><nfirst>Dana</nfirst><nmid/><nlast>Birksted-Breen</nlast><nti/></aut>')
+    >>> authors_citation_format_from_xmlstr('<aut role="author" alias="false" listed="true" asis="false" lang="en"><nfirst>Dana</nfirst><nmid/><nlast>Birksted-Breen</nlast><nti/></aut>')
     ('Birksted-Breen, D.', ['Birksted-Breen, Dana'])
-    >>> authorsInCitationFormatFromXMLStr(r'')
+    >>> authors_citation_format_from_xmlstr(r'')
     ('', [])
-    >>> authorsInCitationFormatFromXMLStr(r'<artauth><aut role="author" alias="false" listed="true"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>', listed=True)
+    >>> authors_citation_format_from_xmlstr(r'<artauth><aut role="author" alias="false" listed="true"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>', listed=True)
     ('Kristeva, J., Vieira, P. &amp; Marder, M.', ['Kristeva, Julia', 'Vieira, Patricia', 'Marder, Michael'])
-    >>> authorsInCitationFormatFromXMLStr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
+    >>> authors_citation_format_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
     ('Vieira, P. &amp; Marder, M.', ['Vieira, Patricia', 'Marder, Michael'])
-    >>> authorsInCitationFormatFromXMLStr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Boulanger, Ghislaine"><nfirst type="FIRST">Ghislaine</nfirst> <nlast>Boulanger</nlast></aut></artauth>')
+    >>> authors_citation_format_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Boulanger, Ghislaine"><nfirst type="FIRST">Ghislaine</nfirst> <nlast>Boulanger</nlast></aut></artauth>')
     ('Boulanger, G.', ['Boulanger, Ghislaine'])
     
     """
-    retVal = ("", [])
-    if isinstance(authorXMLStr, lxml.etree._Element):
-        authorXMLStr = etree.tostring(authorXMLStr, with_tail=False, encoding="unicode") 
+    ret_val = ("", [])
+    if isinstance(author_xmlstr, lxml.etree._Element):
+        author_xmlstr = etree.tostring(author_xmlstr, with_tail=False, encoding="unicode") 
 
-    if authorXMLStr != "" and authorXMLStr is not None:
+    if author_xmlstr != "" and author_xmlstr is not None:
     
-        if isinstance(authorXMLStr, list):
-            authorXMLStr = authorXMLStr[0]
+        if isinstance(author_xmlstr, list):
+            author_xmlstr = author_xmlstr[0]
     
-        if isinstance(authorXMLStr, bytes):
-            authorXMLStr = authorXMLStr.decode("utf-8")
+        if isinstance(author_xmlstr, bytes):
+            author_xmlstr = author_xmlstr.decode("utf-8")
             
-        pepxml = etree.parse(StringIO(authorXMLStr))
-        if authorXMLStr[0:4] == "<aut":
+        pepxml = etree.parse(StringIO(author_xmlstr))
+        if author_xmlstr[0:4] == "<aut":
             rootFlag = "/"
         else:
             rootFlag = ""
@@ -150,10 +150,10 @@ def authorsInCitationFormatFromXMLStr(authorXMLStr, listed=True):
         currAuthorNumber = 0
         for n in authorXMLList:
             currAuthorNumber += 1
-            authorFirstName = xmlXPathReturnTextSingleton(n, "nfirst", "")
+            authorFirstName = xml_xpath_return_textsingleton(n, "nfirst", "")
             authorFirstInitial = authorFirstName[0] if len(authorFirstName) > 0 else ""
-            authorLastName = xmlXPathReturnTextSingleton(n, "nlast", "")
-            authorMidName = xmlXPathReturnTextSingleton(n, "nmid", "")
+            authorLastName = xml_xpath_return_textsingleton(n, "nlast", "")
+            authorMidName = xml_xpath_return_textsingleton(n, "nmid", "")
             authorMidInitial = authorMidName[0] if len(authorMidName) > 0 else ""
             authorGivenNames  = ""
             if authorMidName != "":
@@ -179,69 +179,69 @@ def authorsInCitationFormatFromXMLStr(authorXMLStr, listed=True):
                 else:
                     authorsBibStyle += ", " + authorNameInits
 
-            retVal = (authorsBibStyle, authorList)
+            ret_val = (authorsBibStyle, authorList)
 
-    return retVal
+    return ret_val
 
-def getHTMLCiteAs(authorsBibStyle, artYear, artTitle, artPepSourceTitleFull, artVol, artPgrg):
-    retVal = f"""<p class="citeas"><span class="authors">{authorsBibStyle}</span> (<span class="year">{artYear}</span>) <span class="title">{artTitle}</span>. <span class="sourcetitle">{artPepSourceTitleFull}</span> <span class="pgrg">{artVol}</span>:<span class="pgrg">{artPgrg}</span></p>"""
-    return retVal
+def get_html_citeas(authorsBibStyle, artYear, artTitle, artPepSourceTitleFull, artVol, artPgrg):
+    ret_val = f"""<p class="citeas"><span class="authors">{authorsBibStyle}</span> (<span class="year">{artYear}</span>) <span class="title">{artTitle}</span>. <span class="sourcetitle">{artPepSourceTitleFull}</span> <span class="pgrg">{artVol}</span>:<span class="pgrg">{artPgrg}</span></p>"""
+    return ret_val
     
-def xmlRemoveEncodingString(xmlString):
+def xml_remove_encoding_string(xmlString):
     # Get rid of the encoding for lxml
     p=re.compile("\<\?xml version=[\'\"]1.0[\'\"] encoding=[\'\"]UTF-8[\'\"]\?\>\n", re.IGNORECASE)
-    retVal = xmlString
-    retVal = p.sub("", retVal)                
+    ret_val = xmlString
+    ret_val = p.sub("", ret_val)                
     
-    return retVal
+    return ret_val
 
-def xmlGetSubElementTextSingleton(elementNode, subElementName, defaultReturn=""):
+def xml_get_subelement_textsingleton(element_node, subElementName, default_return=""):
     """
     Text for elements with only CDATA underneath
     
-    >>> root = etree.fromstring(testXML)
-    >>> xmlGetSubElementTextSingleton(root, "author")
+    >>> root = etree.fromstring(test_xml)
+    >>> xml_get_subelement_textsingleton(root, "author")
     'this is just authoring test stuff'
     >>> root = etree.fromstring('<p>Another <b>random</b> paragraph with multiple <b>subelements</b></p>')
-    >>> xmlGetSubElementTextSingleton(root, "b")
+    >>> xml_get_subelement_textsingleton(root, "b")
     'random'
-    >>> xmlGetSubElementTextSingleton(root, "bxxx", None)
+    >>> xml_get_subelement_textsingleton(root, "bxxx", None)
     """
-    retVal = defaultReturn
+    ret_val = default_return
     try:
-        retVal = elementNode.find(subElementName).text
-        retVal = retVal.strip()
+        ret_val = element_node.find(subElementName).text
+        ret_val = ret_val.strip()
     except Exception as err:
-        retVal = defaultReturn
+        ret_val = default_return
 
-    return retVal
+    return ret_val
 
-def xmlGetSubElementXMLSingleton(elementNode, subElementName, defaultReturn=""):
+def xml_get_subelement_xmlsingleton(element_node, subElementName, default_return=""):
     """
     Returns the marked up XML text for elements (including subelements)
-    If it doesn't exist or is empty, return the defaultReturn
+    If it doesn't exist or is empty, return the default_return
     
     subElementName cannot be an xpath
     
-    >>> root = etree.fromstring(testXML)
-    >>> xmlGetSubElementXMLSingleton(root, "author", None)
+    >>> root = etree.fromstring(test_xml)
+    >>> xml_get_subelement_xmlsingleton(root, "author", None)
     '<author role="writer">this is just authoring test stuff</author>'
     >>> root = etree.fromstring('<p>Another <b>random</b> paragraph with multiple <b>subelements</b></p>')
-    >>> xmlGetSubElementXMLSingleton(root, "b")
+    >>> xml_get_subelement_xmlsingleton(root, "b")
     '<b>random</b>'
-    >>> xmlGetSubElementXMLSingleton(root, "bxxxx", None)
+    >>> xml_get_subelement_xmlsingleton(root, "bxxxx", None)
     """
-    retVal = defaultReturn
+    ret_val = default_return
     try:
-        retVal = etree.tostring(elementNode.find(subElementName), with_tail=False, encoding="unicode")
-        if retVal == "":
-            retVal = defaultReturn
+        ret_val = etree.tostring(element_node.find(subElementName), with_tail=False, encoding="unicode")
+        if ret_val == "":
+            ret_val = default_return
     except Exception as err:
-        retVal = defaultReturn
+        ret_val = default_return
 
-    return retVal
+    return ret_val
 
-#def xmlFragmentReturnTextOnly(xmlString, defaultReturn=""):
+#def xmlFragmentReturnTextOnly(xmlString, default_return=""):
     #"""
     #Return inner text of XML string element with sub tags stripped out
     
@@ -249,265 +249,265 @@ def xmlGetSubElementXMLSingleton(elementNode, subElementName, defaultReturn=""):
     #'this is really xml.'
 
     #"""
-    #retVal = defaultReturn
+    #ret_val = default_return
     #root = etree.fromstring(xmlString)
     #etree.strip_tags(root, '*')
     #inner_text = root.text
     #if inner_text:
-        #retVal = inner_text.strip()
+        #ret_val = inner_text.strip()
     #else:
-        #retVal = defaultReturn
+        #ret_val = default_return
     
-    #return retVal
+    #return ret_val
 
-def xmlGetElementAttr(elementNode, attrName, defaultReturn=""):
+def xml_get_element_attr(element_node, attrName, default_return=""):
     """
-    Get an attribute from the lxml elementNode.  
-    If it doesn't exist or is empty, return the defaultReturn
+    Get an attribute from the lxml element_node.  
+    If it doesn't exist or is empty, return the default_return
 
-    >>> root = etree.fromstring(testXML)
-    >>> currElement = xmlGetElements(root, "p[@id=2]", None)
-    >>> xmlGetElementAttr(currElement[0], "type")
+    >>> root = etree.fromstring(test_xml)
+    >>> curr_element = xml_get_elements(root, "p[@id=2]", None)
+    >>> xml_get_element_attr(curr_element[0], "type")
     'speech'
-    >>> xmlGetElementAttr(currElement[0], "typeaaa", None)
+    >>> xml_get_element_attr(curr_element[0], "typeaaa", None)
     """
-    retVal = defaultReturn
+    ret_val = default_return
     try:
-        retVal = elementNode.attrib[attrName]
-        if retVal == "":
-            retVal = defaultReturn
+        ret_val = element_node.attrib[attrName]
+        if ret_val == "":
+            ret_val = default_return
     except Exception as err:
-        retVal = defaultReturn
+        ret_val = default_return
 
-    return retVal
+    return ret_val
 
 
-def xmlGetElements(elementNode, xPathDef, defaultReturn=list()):
+def xml_get_elements(element_node, xpath_def, default_return=list()):
     """
     Return a list of XML ELEMENTS from the specified xPath
 
     Example:
-    strList = xmlGetElements(treeRoot, "//p")
+    strList = xml_get_elements(treeRoot, "//p")
     
-    >>> root = etree.fromstring(testXML)
-    >>> len(xmlGetElements(root, "p[@id=2]", None))
+    >>> root = etree.fromstring(test_xml)
+    >>> len(xml_get_elements(root, "p[@id=2]", None))
     1
-    >>> xmlGetElements(root, "//pxxxx", None)    # test default return
+    >>> xml_get_elements(root, "//pxxxx", None)    # test default return
     """
-    retVal = defaultReturn
+    ret_val = default_return
     try:
-        retVal = elementNode.xpath(xPathDef)
-        if retVal == []:
-            retVal = defaultReturn
+        ret_val = element_node.xpath(xpath_def)
+        if ret_val == []:
+            ret_val = default_return
         
     except Exception as err:
         print (err)
 
-    return retVal
+    return ret_val
 
-def xmlGetDirectSubnodeTextSingleton(elementNode, subelementName, defaultReturn=""):
+def xml_get_direct_subnode_textsingleton(element_node, subelementName, default_return=""):
     """
-    Return the text for a direct subnode of the lxml elementTree elementNode.
+    Return the text for a direct subnode of the lxml elementTree element_node.
     Returns ONLY the first node found (Singleton).
     
     Important Note: Looks only at direct subnodes, not all decendents (for max speed)
     
-    >>> root = etree.fromstring(testXML)
-    >>> xmlGetDirectSubnodeTextSingleton(root, "p", None)
+    >>> root = etree.fromstring(test_xml)
+    >>> xml_get_direct_subnode_textsingleton(root, "p", None)
     'A random paragraph'
     """
-    retVal = defaultReturn
+    ret_val = default_return
 
     try:
-        retVal = elementNode.xpath('%s/node()' % subelementName)
-        retVal = retVal[0]
+        ret_val = element_node.xpath('%s/node()' % subelementName)
+        ret_val = ret_val[0]
     except ValueError as err: # try without node
-        retVal = elementNode.xpath('%s' % subelementName)
-        retVal = retVal[0]
+        ret_val = element_node.xpath('%s' % subelementName)
+        ret_val = ret_val[0]
     except IndexError as err:
         pass
-        #retVal = defaultReturn  # empty
+        #ret_val = default_return  # empty
     except Exception as err:
         print ("getSingleSubnodeText Error: ", err)
 
-    if retVal == []:
-        retVal = defaultReturn
+    if ret_val == []:
+        ret_val = default_return
 
-    return retVal
+    return ret_val
 
-def xmlElemOrStrToXMLString(elemOrXMLStr, defaultReturn=""):
+def xml_elem_or_str_to_xmlstring(elemOrXMLStr, default_return=""):
     """
     Return XML string 
 
     >>> root = etree.fromstring("<myxml>this <b>is <i>really</i></b> xml.</myxml>", None)  #mixed content element
-    >>> xmlElemOrStrToXMLString(root, None)
+    >>> xml_elem_or_str_to_xmlstring(root, None)
     '<myxml>this <b>is <i>really</i></b> xml.</myxml>'
     """
-    retVal = defaultReturn
+    ret_val = default_return
     # just in case the caller sent a string.
     try:
         if isinstance(elemOrXMLStr, lxml.etree._Element):
-            retVal = etree.tostring(elemOrXMLStr, encoding="unicode")        
+            ret_val = etree.tostring(elemOrXMLStr, encoding="unicode")        
         else:
-            retVal = elemOrXMLStr
+            ret_val = elemOrXMLStr
     except Exception as err:
         print (err)
-        retVal = defaultReturn
+        ret_val = default_return
         
-    return retVal
+    return ret_val
 
-def xmlStringToText(xmlString, defaultReturn=""):
-    xmlString = xmlRemoveEncodingString(xmlString)
-    clearText = lhtml.fromstring(xmlString)
-    retVal = clearText.text_content()
-    return retVal
+def xml_string_to_text(xml_string, default_return=""):
+    xml_string = xml_remove_encoding_string(xml_string)
+    clearText = lhtml.fromstring(xml_string)
+    ret_val = clearText.text_content()
+    return ret_val
     
-def xmlElemOrStrToText(elemOrXMLStr, defaultReturn=""):
+def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
     """
     Return string with all tags stripped out from either etree element or xml marked up string
     
-    If string is empty or None, return the defaultReturn
+    If string is empty or None, return the default_return
 
-    >>> root = etree.fromstring(testXML)
-    >>> xmlElemOrStrToText(testXML, None)[0:100]
+    >>> root = etree.fromstring(test_xml)
+    >>> xml_elem_or_str_to_text(test_xml, None)[0:100]
     'this is just authoring test stuff\\n                A random paragraph\\n                Another random '
-    >>> xmlElemOrStrToText(root, None)[0:100]
+    >>> xml_elem_or_str_to_text(root, None)[0:100]
     'this is just authoring test stuff\\n                A random paragraph\\n                Another random '
     >>> root = etree.fromstring("<myxml>this <b>is <i>really</i><empty/></b> xml.</myxml>", None)  #mixed content element
-    >>> xmlElemOrStrToText(root, None)
+    >>> xml_elem_or_str_to_text(root, None)
     'this is really xml.'
-    >>> isinstance(xmlElemOrStrToText(root, None), str)  # make sure it's string
+    >>> isinstance(xml_elem_or_str_to_text(root, None), str)  # make sure it's string
     True
-    >>> xmlElemOrStrToText(xmlXPathReturnTextSingleton(root, "pxxx", ""), None)
+    >>> xml_elem_or_str_to_text(xml_xpath_return_textsingleton(root, "pxxx", ""), None)
     """
-    retVal = defaultReturn
-    if elemOrXMLStr is None or elemOrXMLStr == "":
-        retVal = defaultReturn
-    elif isinstance(elemOrXMLStr, lxml.etree._ElementUnicodeResult):
-        retVal = "%s" % elemOrXMLStr # convert to string
+    ret_val = default_return
+    if elem_or_xmlstr is None or elem_or_xmlstr == "":
+        ret_val = default_return
+    elif isinstance(elem_or_xmlstr, lxml.etree._ElementUnicodeResult):
+        ret_val = "%s" % elem_or_xmlstr # convert to string
     # just in case the caller sent a string.
     else:
         try:
-            if isinstance(elemOrXMLStr, str):
+            if isinstance(elem_or_xmlstr, str):
                 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
-                elem = etree.fromstring(elemOrXMLStr, parser)
+                elem = etree.fromstring(elem_or_xmlstr, parser)
             else:
-                elem = elemOrXMLStr
+                elem = elem_or_xmlstr
         except Exception as err:
             print (err)
-            retVal = defaultReturn
+            ret_val = default_return
             
         try:
             etree.strip_tags(elem, '*')
             inner_text = elem.text
             if inner_text:
-                retVal = inner_text.strip()
+                ret_val = inner_text.strip()
             else:
-                retVal = defaultReturn
+                ret_val = default_return
         except Exception as err:
             print ("xmlElemOrStrToText: %s" % err)
-            retVal = defaultReturn
+            ret_val = default_return
 
-    if retVal == "":
-        retVal = defaultReturn
+    if ret_val == "":
+        ret_val = default_return
         
-    return retVal
+    return ret_val
 
-def xmlXPathReturnTextList(elementNode, xpath, defaultReturn=list()):
+def xml_xpath_return_textlist(element_node, xpath, default_return=list()):
     """
     Return text of element specified by xpath (with Node() as final part of path)
     
-    >>> root = etree.fromstring(testXML)
-    >>> xmlXPathReturnTextList(root, "//p", None)
+    >>> root = etree.fromstring(test_xml)
+    >>> xml_xpath_return_textlist(root, "//p", None)
     ['A random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph with multiple subelements']
-    >>> xmlXPathReturnTextList(root, "p", None)
+    >>> xml_xpath_return_textlist(root, "p", None)
     ['A random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph with multiple subelements']
-    >>> xmlXPathReturnTextList(root, "pxxx", None) # check default return
+    >>> xml_xpath_return_textlist(root, "pxxx", None) # check default return
     """
-    retVal = defaultReturn
+    ret_val = default_return
     try:
-        retVal = elementNode.xpath(xpath)
-        retVal = [xmlElemOrStrToText(n) for n in retVal]
-        if retVal == []:
-            retVal = defaultReturn
+        ret_val = element_node.xpath(xpath)
+        ret_val = [xml_elem_or_str_to_text(n) for n in ret_val]
+        if ret_val == []:
+            ret_val = default_return
     except IndexError:
-        retVal = defaultReturn
+        ret_val = default_return
     
-    return retVal    
+    return ret_val    
 
-def xmlXPathReturnTextSingleton(elementNode, xpath, defaultReturn=""):
+def xml_xpath_return_textsingleton(element_node, xpath, default_return=""):
     """
     Return text of element specified by xpath)
     
-    >>> root = etree.fromstring(testXML)
-    >>> xmlXPathReturnTextSingleton(root, "p[@id=2]/node()", None)
+    >>> root = etree.fromstring(test_xml)
+    >>> xml_xpath_return_textsingleton(root, "p[@id=2]/node()", None)
     'Another random paragraph'
-    >>> xmlXPathReturnTextSingleton(root, "p[@id=2]", None)
+    >>> xml_xpath_return_textsingleton(root, "p[@id=2]", None)
     'Another random paragraph'
-    >>> xmlXPathReturnTextSingleton(root, "p", None)
+    >>> xml_xpath_return_textsingleton(root, "p", None)
     'A random paragraph'
-    >>> xmlXPathReturnTextSingleton(root, "pxxxx", None) # check default return
+    >>> xml_xpath_return_textsingleton(root, "pxxxx", None) # check default return
     """
-    retVal = defaultReturn
+    ret_val = default_return
     try:
-        retVal = elementNode.xpath(xpath)[0]
+        ret_val = element_node.xpath(xpath)[0]
     except IndexError:
-        retVal = defaultReturn
+        ret_val = default_return
     
-    if type(retVal) == type(elementNode):  # if it comes back an element
-        retVal = xmlElemOrStrToText(retVal)    
+    if type(ret_val) == type(element_node):  # if it comes back an element
+        ret_val = xml_elem_or_str_to_text(ret_val)    
         
-    return retVal    
+    return ret_val    
 
-def xmlXPathReturnXMLSingleton(elementNode, xPathDef, defaultReturn=""):
+def xml_xpath_return_xmlsingleton(element_node, xPathDef, default_return=""):
     """
     Return a singleton XML ELEMENT from the specified xPath
 
     Example:
-    strList = xmlXPathReturnXMLSingleton(treeRoot, "//artauth")
+    strList = xml_xpath_return_xmlsingleton(treeRoot, "//artauth")
     
-    >>> root = etree.fromstring(testXML)
-    >>> xmlXPathReturnXMLSingleton(root, "p[@id=2]", None)
+    >>> root = etree.fromstring(test_xml)
+    >>> xml_xpath_return_xmlsingleton(root, "p[@id=2]", None)
     '<p id="2" type="speech">Another random paragraph</p>'
     """
-    retVal = defaultReturn
+    ret_val = default_return
     try:
-        retVal = elementNode.xpath(xPathDef)
-        if isinstance(retVal, list) and len(retVal) > 0:
-            retVal = retVal[0]
-        retVal = etree.tostring(retVal, with_tail=False, encoding="unicode") 
+        ret_val = element_node.xpath(xPathDef)
+        if isinstance(ret_val, list) and len(ret_val) > 0:
+            ret_val = ret_val[0]
+        ret_val = etree.tostring(ret_val, with_tail=False, encoding="unicode") 
                 
     except Exception as err:
         print (err)
 
-    return retVal
+    return ret_val
 
-def xmlXPathReturnXMLStringList(elementNode, xPathDef, defaultReturn=list()):
+def xml_xpath_return_xmlstringlist(element_node, xPathDef, default_return=list()):
     """
     Return a list of XML tagged strings from the nodes in the specified xPath
 
     Example:
     strList = elementsToStrings(treeRoot, "//aut[@listed='true']")
 
-    >>> root = etree.fromstring(testXML)
-    >>> stringList = xmlXPathReturnXMLStringList(root, "p")
+    >>> root = etree.fromstring(test_xml)
+    >>> stringList = xml_xpath_return_xmlstringlist(root, "p")
     >>> len(stringList)
     5
     >>> stringList[0]
     '<p id="1">A random paragraph</p>'
-    >>> xmlXPathReturnXMLStringList(root, "pxxxx", None)  # check default return
+    >>> xml_xpath_return_xmlstringlist(root, "pxxxx", None)  # check default return
     """
-    retVal = defaultReturn
+    ret_val = default_return
     try:
-        retVal = [etree.tostring(n, with_tail=False, encoding="unicode") for n in elementNode.xpath(xPathDef)]
-        if len(retVal) == 0:
-            retVal = defaultReturn
+        ret_val = [etree.tostring(n, with_tail=False, encoding="unicode") for n in element_node.xpath(xPathDef)]
+        if len(ret_val) == 0:
+            ret_val = default_return
     except:
-        retVal = defaultReturn
+        ret_val = default_return
         
-    return retVal   
+    return ret_val   
 
-def addHeadingsToAbstractHTML(abstract, sourceTitle=None, pubYear=None, vol=None, issue=None, pgRg=None, title=None, authorMast=None, citeas=None):
+def add_headings_to_abstract_html(abstract, sourceTitle=None, pubYear=None, vol=None, issue=None, pgRg=None, title=None, authorMast=None, citeas=None):
     """
     Format the top portion of the Abstracts presented by the client per the original GVPi model
     """
@@ -518,16 +518,16 @@ def addHeadingsToAbstractHTML(abstract, sourceTitle=None, pubYear=None, vol=None
         issue = ""
         
     heading = f"({pubYear}). {sourceTitle}, {vol}{issue}:{pgRg}"
-    retVal = f"""
+    ret_val = f"""
             <p class="heading">{heading}</p>
             <p class="title">{title}</p>
             <p class="title_author">{authorMast}</p>
             <div class="abstract">{abstract}</p>
             """
-    return retVal
+    return ret_val
 
-def convertXMLStringToHTML(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
-    retVal = None
+def xml_string_to_html(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
+    ret_val = None
     try:
         if not os.path.exists(xsltFile):
             alt = "../styles/pepkbd3-html.xslt"
@@ -535,8 +535,8 @@ def convertXMLStringToHTML(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
                 xsltFile = alt
     except Exception as e:
         # return this error, so it will be displayed (for now) instead of the document
-        retVal = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>Exception finding style sheet: {e}</p>"
-        print (retVal)
+        ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>Exception finding style sheet: {e}</p>"
+        print (ret_val)
 
     try:
         if isinstance(xmlTextStr, list) and xmlTextStr != "[]":
@@ -546,13 +546,13 @@ def convertXMLStringToHTML(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
         
     if xmlTextStr is not None and xmlTextStr != "[]":
         try:
-            xmlTextStr = removeEncodingString(xmlTextStr)
+            xmlTextStr = remove_encoding_string(xmlTextStr)
             sourceFile = etree.fromstring(xmlTextStr)
         except Exception as e:
             # return this error, so it will be displayed (for now) instead of the document
-            retVal = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-            logger.error(retVal)
-            print (retVal)
+            ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
+            logger.error(ret_val)
+            print (ret_val)
         else:
             if xmlTextStr is not None and xmlTextStr != "[]":
                 try:
@@ -561,14 +561,14 @@ def convertXMLStringToHTML(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
                     transformedData = xsltTransformer(sourceFile)
                 except Exception as e:
                     # return this error, so it will be displayed (for now) instead of the document
-                    retVal = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-                    logger.error(retVal)
-                    print (retVal)
+                    ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
+                    logger.error(ret_val)
+                    print (ret_val)
                 else:
-                    retVal = str(transformedData)
-    return retVal
+                    ret_val = str(transformedData)
+    return ret_val
 
-def convertHTMLToEPUB(htmlString, outputFilenameBase, artID, lang="en", htmlTitle=None, styleSheet="../styles/pep-html-preview.css"):
+def html_to_epub(htmlString, outputFilenameBase, artID, lang="en", htmlTitle=None, styleSheet="../styles/pep-html-preview.css"):
     """
     uses ebooklib
     
@@ -641,13 +641,13 @@ def convertHTMLToEPUB(htmlString, outputFilenameBase, artID, lang="en", htmlTitl
     epub.write_epub(filename, book)
     return filename
 
-def removeEncodingString(xmlString):
+def remove_encoding_string(xml_string):
     # Get rid of the encoding for lxml
     p=re.compile("\<\?xml version=\'1.0\' encoding=\'UTF-8\'\?\>\n")  # TODO - Move to module globals to optimize
-    retVal = xmlString
-    retVal = p.sub("", retVal)                
+    ret_val = xml_string
+    ret_val = p.sub("", ret_val)                
     
-    return retVal
+    return ret_val
 
 
 
@@ -660,7 +660,7 @@ if __name__ == "__main__":
     print ("Running in Python %s" % sys.version_info[0])
     import doctest
 
-    testXML = """
+    test_xml = """
               <test>
                 <author role="writer">this is just authoring test stuff</author>
                 <p id="1">A random paragraph</p>

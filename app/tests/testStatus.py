@@ -77,7 +77,6 @@ class TestAPIResponses(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-
     def test_search_lowercase(self):
         fullURL = basePlusEndpointEncoded('/v1/Database/Search/?author=tuckett')
         response = requests.get(fullURL)
@@ -119,24 +118,24 @@ class TestAPIResponses(unittest.TestCase):
         from opasCentralDBLib import opasCentralDB, API_AUTHORS_INDEX
         ocd = opasCentralDB()
         randomSessionID = secrets.token_urlsafe(16)
-        success, sessionInfo = ocd.saveSession(sessionID=randomSessionID)
+        success, sessionInfo = ocd.save_session(sessionID=randomSessionID)
         assert(sessionInfo.authenticated == False)
-        sessionInfo = ocd.getSessionFromDB(sessionID=randomSessionID)
+        sessionInfo = ocd.get_session_from_db(session_id=randomSessionID)
         assert(sessionInfo.authenticated == False)
-        status = ocd.recordSessionEndpoint(sessionID=randomSessionID, apiEndpointID=API_AUTHORS_INDEX, documentID="IJP.001.0001A", statusMessage="Testing")
+        status = ocd.record_session_endpoint(session_id=randomSessionID, api_endpoint_id=API_AUTHORS_INDEX, document_id="IJP.001.0001A", status_message="Testing")
         assert(status == 1)
-        ocd.updateDocumentViewCount("IJP.001.0001A")
-        status = ocd.endSession(sessionInfo.session_id)
+        ocd.update_document_view_count("IJP.001.0001A")
+        status = ocd.end_session(sessionInfo.session_id)
         assert(status == True)
 
     def testOpasDB_getSources(self):
         from opasCentralDBLib import opasCentralDB
         ocd = opasCentralDB()
-        sources = ocd.getSources()
+        sources = ocd.get_sources()
         assert(len(sources)>10)
-        source =  ocd.getSources(source="IJP")
+        source =  ocd.get_sources(source="IJP")
         assert(len(source)==1)
-        sources2 =  ocd.getSources(sourceType="journal")
+        sources2 =  ocd.get_sources(source_type="journal")
         assert(len(sources2)>10)
         
         
