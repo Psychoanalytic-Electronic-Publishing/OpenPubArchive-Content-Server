@@ -118,7 +118,7 @@ class TestAPIResponses(unittest.TestCase):
         from opasCentralDBLib import opasCentralDB, API_AUTHORS_INDEX
         ocd = opasCentralDB()
         randomSessionID = secrets.token_urlsafe(16)
-        success, sessionInfo = ocd.save_session(sessionID=randomSessionID)
+        success, sessionInfo = ocd.save_session(session_id=randomSessionID)
         assert(sessionInfo.authenticated == False)
         sessionInfo = ocd.get_session_from_db(session_id=randomSessionID)
         assert(sessionInfo.authenticated == False)

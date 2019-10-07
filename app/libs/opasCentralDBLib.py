@@ -84,14 +84,14 @@ API_DATABASE_SEARCHANALYSIS = 45	#/Database/SearchAnalysis/
 def verifyAccessToken(sessionID, username, accessToken):
     return pwd_context.verify(sessionID+username, accessToken)
     
-def verifyPassword(plain_password, hashed_password):
+def verify_password(plain_password, hashed_password):
     """
     >>> verifyPassword("secret", getPasswordHash("secret"))
     
     """
     return pwd_context.verify(plain_password, hashed_password)
 
-def getPasswordHash(password):
+def get_password_hash(password):
     """
     (Test disabled, since tested via verify_password docstring)
     >> getPasswordHash("test 1 2 3 ")
@@ -215,14 +215,26 @@ class opasCentralDB(object):
         self.close_connection(caller_name="end_session") # make sure connection is closed
         return ret_val
         
-    def get_most_downloaded(self, view_period=5, sort_by_period="last12months", document_type="journals", author=None, title=None, journal_name=None, limit=None, offset=0):
+    def get_most_downloaded(self,
+                            view_period=5,
+                            sort_by_period="last12months",
+                            document_type="journals",
+                            author=None,
+                            title=None,
+                            journal_name=None,
+                            limit=None,
+                            offset=0):
         """
          Using the api_session_endpoints data, return the most downloaded (viewed) Documents
            
-         1) Using documents published in the last 5, 10, 20, or all years.  Viewperiod takes an int and covers these or any other period (now - viewPeriod years).
-         2) Filtering videos, journals, books, or all content.  Document type filters this.  Can be: "journals", "books", "videos", or "all" (default)
-         3) Optionally filter for author, title, or specific journal.  Per whatever the caller specifies in parameters.
-         4) show views in last 7 days, last month, last 6 months, last calendar year.  This function returns them all.
+         1) Using documents published in the last 5, 10, 20, or all years.
+            Viewperiod takes an int and covers these or any other period (now - viewPeriod years).
+         2) Filtering videos, journals, books, or all content.  Document type filters this.
+            Can be: "journals", "books", "videos", or "all" (default)
+         3) Optionally filter for author, title, or specific journal.
+            Per whatever the caller specifies in parameters.
+         4) show views in last 7 days, last month, last 6 months, last calendar year.
+            This function returns them all.
          
         """
         ret_val = None
@@ -236,35 +248,36 @@ class opasCentralDB(object):
             cursor = self.db.cursor(pymysql.cursors.DictCursor)
 
             if document_type == "journals":
-                and_document_type_clause = " AND jrnlcode NOT IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW') AND jrnlcode not like '%VS'"
+                doc_type_clause = " AND jrnlcode NOT IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW') \
+                                    AND jrnlcode not like '%VS'"
             elif document_type == "books":
-                and_document_type_clause = " AND jrnlcode IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW')"
+                doc_type_clause = " AND jrnlcode IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW')"
             elif document_type == "videos":
-                and_document_type_clause = " AND jrnlcode like '%VS'"
+                doc_type_clause = " AND jrnlcode like '%VS'"
             else:
-                and_document_type_clause = ""  # all
+                doc_type_clause = ""  # all
 
             if author is not None:
-                and_author_clause = f" AND hdgauthor CONTAINS {author}"
+                author_clause = f" AND hdgauthor CONTAINS {author}"
             else:
-                and_author_clause = ""
+                author_clause = ""
                 
             if title is not None:
-                and_title_clause = f" AND hdgtitle CONTAINS {title}"
+                title_clause = f" AND hdgtitle CONTAINS {title}"
             else:
-                and_title_clause = ""
+                title_clause = ""
 
             if title is not None:
-                and_journal_clause = f" AND srctitleseries CONTAINS {journalName}"
+                journal_clause = f" AND srctitleseries CONTAINS {journalName}"
             else:
-                and_journal_clause = ""
+                journal_clause = ""
                 
             if view_period is not None:
                 if view_period == 0 or str(view_period).upper() == "ALL" or str(view_period).upper()=="ALLTIME":
                     view_period = 500 # 500 years should cover all time!
-                and_pub_year_clause = f" AND `pubyear` > YEAR(NOW()) - {view_period}"  # consider only the past viewPeriod years
+                pub_year_clause = f" AND `pubyear` > YEAR(NOW()) - {view_period}"  # consider only the past viewPeriod years
             else:
-                and_pub_year_clause = ""
+                pub_year_clause = ""
 
             if sort_by_period is not None:
                 # 1 through 5 reps the 5 different values
@@ -288,11 +301,11 @@ class opasCentralDB(object):
             sql = f"""SELECT * 
                       FROM vw_stat_most_viewed
                       WHERE 1 = 1
-                      {and_document_type_clause}
-                      {and_author_clause}
-                      {and_title_clause}
-                      {and_journal_clause}
-                      {and_pub_year_clause}
+                      {doc_type_clause}
+                      {author_clause}
+                      {title_clause}
+                      {journal_clause}
+                      {pub_year_clause}
                       {sort_by_clause}
                       {limit_clause}
                     """
@@ -312,7 +325,7 @@ class opasCentralDB(object):
         
         Tested in main instance docstring
         """
-        from models import SessionInfo
+        from models import SessionInfo # do this here to avoid circularity
         self.open_connection(caller_name="get_session_from_db") # make sure connection is open
         ret_val = None
         if self.db != None:
@@ -430,7 +443,7 @@ class opasCentralDB(object):
 
         return ret_val # return true or false, success or failure
         
-    def save_session(self, sessionID, 
+    def save_session(self, session_id, 
                          expiresTime=None, 
                          username="NotLoggedIn", 
                          userID=0,  # can save us a lookup ... #TODO
@@ -447,20 +460,20 @@ class opasCentralDB(object):
         Tested in main instance docstring
         """
         ret_val = False
-        sessionInfo = None
-        if sessionID is None:
-            errMsg = "SaveSession: No session ID specified"
-            logger.error(errMsg)
+        session_info = None
+        if session_id is None:
+            err_msg = "SaveSession: No session ID specified"
+            logger.error(err_msg)
             if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                print (errMsg)
+                print (err_msg)
         else:
             if not self.open_connection(caller_name="save_session"): # make sure connection opens
-                errMsg = "Save session could not open database"
-                logger.error(errMsg)
+                err_msg = "Save session could not open database"
+                logger.error(err_msg)
                 if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                    print (errMsg)
+                    print (err_msg)
             else: # its open
-                sessionStart=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+                session_start=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
                 if self.db != None:  # don't need this check, but leave it.
                     cursor = self.db.cursor()
                     if username != "NotLoggedIn":
@@ -496,13 +509,13 @@ class opasCentralDB(object):
                                                 (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
                     
                     success = cursor.execute(sql, 
-                                             (sessionID, 
+                                             (session_id, 
                                               userID, 
                                               username,
                                               userIP,
                                               connectedVia,
                                               referrer,
-                                              sessionStart, 
+                                              session_start, 
                                               expiresTime,
                                               accessToken,
                                               authenticated,
@@ -510,21 +523,21 @@ class opasCentralDB(object):
                                               )
                                              )
                     if success:
-                        msg = f"save_session: Session {sessionID} Record Saved"
+                        msg = f"save_session: Session {session_id} Record Saved"
                         print (msg)
                     else:
-                        msg = f"save_session {sessionID} Record Could not be Saved"
+                        msg = f"save_session {session_id} Record Could not be Saved"
                         print (msg)
                         logger.warning(msg)
                     
                     ret_val = self.db.commit()
                     cursor.close()
-                    sessionInfo = self.get_session_from_db(sessionID)
-                    self.sessionInfo = sessionInfo
+                    session_info = self.get_session_from_db(session_id)
+                    self.sessionInfo = session_info
                     self.close_connection(caller_name="save_session") # make sure connection is closed
     
         # return session model object
-        return ret_val, sessionInfo #True or False, and SessionInfo Object
+        return ret_val, session_info #True or False, and SessionInfo Object
 
     def close_expired_sessions(self, expire_time=30):
         """
@@ -532,8 +545,7 @@ class opasCentralDB(object):
         """
         ret_val = None
         self.open_connection(caller_name="close_expired_sessions") # make sure connection is open
-        setClause = "SET "
-        added = 0
+
         if self.db != None:
             try:
                 cursor = self.db.cursor()
@@ -572,8 +584,7 @@ class opasCentralDB(object):
         """
         ret_val = None
         self.open_connection(caller_name="retire_expired_sessions") # make sure connection is open
-        setClause = "SET "
-        added = 0
+
         if self.db != None:
             try:
                 cursor = self.db.cursor()
@@ -807,7 +818,7 @@ class opasCentralDB(object):
         admin = self.get_user(username)
         try:
             if admin.enabled and admin.admin:
-                if verifyPassword(password, admin.password):
+                if verify_password(password, admin.password):
                     ret_val = admin
         except:
             errMsg = f"Cannot find admin user {username}"
@@ -836,7 +847,7 @@ class opasCentralDB(object):
             if user is None: # good to go
                 user = UserInDB()
                 user.username = username
-                user.password = getPasswordHash(password)
+                user.password = get_password_hash(password)
                 user.company = company
                 user.enabled = True
                 user.email_address = email
@@ -860,7 +871,7 @@ class opasCentralDB(object):
                             user.email_address,
                             user.enabled,
                             pymysql.escape_string(user.company),
-                            getPasswordHash(user.password),
+                            get_password_hash(user.password),
                             admin.user_id,
                             datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                             datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -905,7 +916,7 @@ class opasCentralDB(object):
             logger.warning(msg)
             print (msg)
             ret_val = (False, None)
-        elif not verifyPassword(password, user.password):
+        elif not verify_password(password, user.password):
             msg = f"User: {username} turned away with incorrect password"
             logger.warning(msg)
             print (msg)
@@ -946,10 +957,10 @@ class opasCentralDB(object):
         ret_val = (False, None)
         print (f"Authenticating user by referrer: {referrer}")
         try:
-            dbOpened = not self.db.open
+            db_opened = not self.db.open
         except:
             self.open_connection(caller_name="authenticate_referrer") # make sure connection is open
-            dbOpened=True
+            db_opened=True
     
         curs = self.db.cursor(pymysql.cursors.DictCursor)
         if referrer is not None:
@@ -974,7 +985,7 @@ class opasCentralDB(object):
                 logger.warning(msg)
                 print (msg)
 
-        if dbOpened: # if we opened it, close it.
+        if db_opened: # if we opened it, close it.
             self.close_connection(caller_name="authenticate_referrer") # make sure connection is closed
 
         return ret_val
@@ -984,7 +995,7 @@ class opasCentralDB(object):
         Check to see if username password is in PaDS
         
         """
-        authenticateMore = f"""<?xml version="1.0" encoding="utf-8"?>
+        authenticate_more = f"""<?xml version="1.0" encoding="utf-8"?>
                                 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
                                   <soap12:Body>
                                     <AuthenticateUserAndReturnExtraInfo xmlns="http://localhost/PEPProduct/PEPProduct">
@@ -998,35 +1009,35 @@ class opasCentralDB(object):
         ret_val = None
         headers = {'content-type': 'text/xml'}
         ns = {"pepprod": "http://localhost/PEPProduct/PEPProduct"}
-        soapMessage = authenticateMore
-        response = requests.post(urlPaDS, data=soapMessage, headers=headers)
+        soap_message = authenticate_more
+        response = requests.post(url_pads, data=soap_message, headers=headers)
         #print (response.content)
         root = ET.fromstring(response.content)
         # parse XML return
-        AuthenticateUserAndReturnExtraInfoResultNode = root.find('.//pepprod:AuthenticateUserAndReturnExtraInfoResult', ns)
-        productCodeNode = root.find('.//pepprod:ProductCode', ns)
-        GatewayIdNode = root.find('.//pepprod:GatewayId', ns)
-        SubscriberNameNode = root.find('.//pepprod:SubscriberName', ns)
-        SubscriberEmailAddressNode = root.find('.//pepprod:SubscriberEmailAddress', ns)
+        authenticate_user_and_return_extra_info_result_node = root.find('.//pepprod:AuthenticateUserAndReturnExtraInfoResult', ns)
+        product_code_node = root.find('.//pepprod:ProductCode', ns)
+        gateway_id_node = root.find('.//pepprod:GatewayId', ns)
+        subscriber_name_node = root.find('.//pepprod:SubscriberName', ns)
+        subscriber_email_address_node = root.find('.//pepprod:SubscriberEmailAddress', ns)
         # assign data
-        authenticateUserAndReturnExtraInfoResult = AuthenticateUserAndReturnExtraInfoResultNode.text
-        if authenticateUserAndReturnExtraInfoResult != "false":
-            productCode = productCodeNode.text
-            gatewayID = GatewayIdNode.text
-            SubscriberName = SubscriberNameNode.text
-            SubscriberEmailAddress = SubscriberEmailAddressNode.text
+        authenticate_user_and_return_extra_info_result = authenticate_user_and_return_extra_info_result_node.text
+        if authenticate_user_and_return_extra_info_result != "false":
+            product_code = product_code_node.text
+            gateway_id = gateway_id_node.text
+            subscriber_name = subscriber_name_node.text
+            subscriber_email_address = subscriber_email_address_node.text
             
             refToCheck = f"http://www.psychoanalystdatabase.com/PEPWeb/PEPWeb{gatewayID}Gateway.asp"
-            possibleUser = self.authenticate_referrer(refToCheck)
+            possible_user = self.authenticate_referrer(refToCheck)
             # would need to add new extended info here
-            if possibleUser is not None:
-                ret_val = possibleUser
+            if possible_user is not None:
+                ret_val = possible_user
                 ret_val = {
-                            "authenticated" : authenticateUserAndReturnExtraInfoResult,
-                            "username" : SubscriberName,
-                            "userEmail" : SubscriberEmailAddress,
-                            "gatewayID" : gatewayID,
-                            "productCode" : productCode
+                            "authenticated" : authenticate_user_and_return_extra_info_result,
+                            "username" : subscriber_name,
+                            "userEmail" : subscriber_email_address,
+                            "gatewayID" : gateway_id,
+                            "productCode" : product_code
                         }
             else:
                 ret_val = None

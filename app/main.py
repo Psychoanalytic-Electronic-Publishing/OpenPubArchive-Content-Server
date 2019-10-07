@@ -56,7 +56,7 @@ Endpoint and structure documentation automatically available when server is runn
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0904.1"
+__version__     = "2019.0906.1"
 __status__      = "Development"
 
 import sys
@@ -319,7 +319,7 @@ def read_current_user(resp: Response,
             user.last_update = user.last_update.timestamp()
             access_token = jwt.encode({'exp': expiration_time.timestamp(), 'user': user.dict()}, SECRET_KEY, algorithm='HS256')
             # start a new session, with this user (could even still be the old user
-            ocd, session_info = opasAPISupportLib.start_new_session(resp, request, sessionID=session_id, accessToken=access_token, user=user)
+            ocd, session_info = opasAPISupportLib.start_new_session(resp, request, session_id=session_id, access_token=access_token, user=user)
             # set accessTokenCookie!
             opasAPISupportLib.set_cookies(resp, session_id, accessToken=access_token, maxAge=max_age) #tokenExpiresTime=expirationTime)
         else: # Can't log in!
@@ -473,7 +473,7 @@ def login_user(resp: Response,
             user.last_update = user.last_update.timestamp()
             access_token = jwt.encode({'exp': expirationTime.timestamp(), 'user': user.dict()}, SECRET_KEY, algorithm='HS256')
             # start a new session, with this user (could even still be the old user
-            ocd, sessionInfo = opasAPISupportLib.start_new_session(resp, request, sessionID=session_id, accessToken=access_token, user=user)
+            ocd, sessionInfo = opasAPISupportLib.start_new_session(resp, request, session_id=session_id, access_token=access_token, user=user)
             # set accessTokenCookie!
             opasAPISupportLib.set_cookies(resp, session_id, accessToken=access_token, maxAge=max_age) #tokenExpiresTime=expirationTime)
             err_code = None
@@ -884,11 +884,11 @@ async def search_the_document_database(resp: Response,
     
     # We don't always need full-text, but if we need to request the doc later we'll need to repeat the search parameters plus the docID
     if analysisMode:
-        ret_val = documentList = opasAPISupportLib.search_analysis(queryList=solr_query_params.searchAnalysisTermList, 
-                                                                 filterQuery = None,
-                                                                 disMax = solr_query_params.solrMax,
-                                                                 queryAnalysis=analysisMode,
-                                                                 moreLikeThese = None,
+        ret_val = documentList = opasAPISupportLib.search_analysis(query_list=solr_query_params.searchAnalysisTermList, 
+                                                                 filter_query = None,
+                                                                 dis_max = solr_query_params.solrMax,
+                                                                 query_analysis=analysisMode,
+                                                                 more_like_these = None,
                                                                  fullTextRequested=False,
                                                                  limit=limit
                                                                  )
@@ -902,11 +902,11 @@ async def search_the_document_database(resp: Response,
         print ("....filterQ = {}".format(solr_query_params.filterQ))
         
         ret_val = documentList = opasAPISupportLib.search_text(query=solr_query_params.searchQ, 
-                                                                   filterQuery = solr_query_params.filterQ,
-                                                                   fullTextRequested=False,
-                                                                   queryDebug = False,
-                                                                   moreLikeThese = moreLikeTheseMode,
-                                                                   disMax = solr_query_params.solrMax,
+                                                                   filter_query = solr_query_params.filterQ,
+                                                                   full_text_requested=False,
+                                                                   query_debug = False,
+                                                                   more_like_these = moreLikeTheseMode,
+                                                                   dis_max = solr_query_params.solrMax,
                                                                    sortBy = sortBy,
                                                                    limit=limit, 
                                                                    offset=offset,
@@ -935,10 +935,10 @@ async def search_the_document_database(resp: Response,
     
 @app.get("/v1/Database/MostDownloaded/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
 def get_the_most_viewed_articles(resp: Response,
-                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
-                                period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
-                                limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
-                                offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
+                                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                                 period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
+                                 limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                                 offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                                 ):
     """
     Return a list of documents which are the most downloaded (viewed)
@@ -948,9 +948,11 @@ def get_the_most_viewed_articles(resp: Response,
     
     ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
 
-    print ("in mostcited")
+    print ("in most viewed")
     try:
-        ret_val = opasAPISupportLib.get_list_of_most_downloaded(viewPeriod=period, limit=limit, offset=offset)
+        ret_val = opasAPISupportLib.get_list_of_most_downloaded(period=period,
+                                                                limit=limit,
+                                                                offset=offset)
         # fill in additional return structure status info
         client_host = request.client.host
         ret_val.documentList.responseInfo.request = request.url._url
@@ -973,7 +975,7 @@ def get_the_most_viewed_articles(resp: Response,
                                       #statusMessage=statusMessage
                                       #)
 
-    print ("out mostcited")
+    print ("out most viewed")
     return ret_val  # document_list
     
 @app.get("/v1/Database/MostCited/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
@@ -996,7 +998,7 @@ def get_the_most_cited_articles(resp: Response,
     #if gOCDatabase.sessionID == None:  # make sure there's an open session for stat.
         #gOCDatabase.startSession()
 
-    print ("in mostcited")
+    print ("in most cited")
     try:
         ret_val = documentList = opasAPISupportLib.database_get_most_cited(period=period, limit=limit, offset=offset)
         # fill in additional return structure status info
@@ -1038,7 +1040,7 @@ def get_the_newest_uploaded_issues(resp: Response,
     """
     
     time.sleep(.25)
-    print ("In whatsNew")
+    print ("In whats New")
     # ocd, session_info = opasAPISupportLib.getSessionInfo(request, resp)
     try:
         ret_val = whatsNewList = opasAPISupportLib.database_whats_new(limit=limit, offset=offset, daysBack=daysback)
@@ -1064,7 +1066,7 @@ def get_the_newest_uploaded_issues(resp: Response,
                                       #statusMessage=statusMessage
                                       #)
 
-    print ("Out whatsNew")
+    print ("Out whats New")
     return ret_val
 
 ##-----------------------------------------------------------------------------

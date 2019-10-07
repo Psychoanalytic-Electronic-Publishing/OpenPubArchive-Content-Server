@@ -20,7 +20,7 @@ def authViaPaDS(username, password):
     headers = {'content-type': 'text/xml'}
     ns = {"pepprod": "http://localhost/PEPProduct/PEPProduct"}
     soapMessage = authenticateMore.format(username, password)
-    response = requests.post(urlPaDS, data=soapMessage, headers=headers)
+    response = requests.post(url_pads, data=soapMessage, headers=headers)
     #print (response.content)
     root = ET.fromstring(response.content)
     # parse XML return

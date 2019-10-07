@@ -42,6 +42,12 @@ class QueryParameters(BaseModel):
     solrSortBy: str = None
     urlRequest: str = ""
 
+class TimePeriod(Enum):
+    five = '5'
+    ten = '10'
+    twenty = '20'
+    alltime = 'all'
+
 class SearchModeEnum(Enum):
     searchMode = "Searching"
     documentFetchMode = "DocumentFetch"
