@@ -41,7 +41,7 @@ from passlib.context import CryptContext
 import pymysql
 
 #import opasAuthBasic
-# from localsecrets import SECRET_KEY, ALGORITHM, urlPaDS, soapTest
+from localsecrets import url_pads
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 import requests
@@ -81,8 +81,8 @@ API_DATABASE_MOSTCITED = 43	#/Database/MostCited/
 API_DATABASE_MOSTDOWNLOADED = 44	#/Database/MostDownloaded/
 API_DATABASE_SEARCHANALYSIS = 45	#/Database/SearchAnalysis/
 
-def verifyAccessToken(sessionID, username, accessToken):
-    return pwd_context.verify(sessionID+username, accessToken)
+def verifyAccessToken(session_id, username, access_token):
+    return pwd_context.verify(session_id+username, access_token)
     
 def verify_password(plain_password, hashed_password):
     """
@@ -130,8 +130,8 @@ class opasCentralDB(object):
         self.db = None
         self.connected = False
         self.authenticated = False
-        self.sessionID = session_id
-        self.accessToken = access_token
+        self.session_id = session_id
+        self.access_token = access_token
         self.tokenExpiresTime = token_expires_time
         self.user = None
         self.sessionInfo = None
@@ -613,7 +613,7 @@ class opasCentralDB(object):
         self.close_connection(caller_name="retire_expired_sessions") # make sure connection is closed
         return ret_val
     
-    def record_session_endpoint(self, session_id=None, api_endpoint_id=0, params=None, document_id=None, return_status_code=0, status_message=None):
+    def record_session_endpoint(self, session_info=None, api_endpoint_id=0, params=None, document_id=None, return_status_code=0, status_message=None):
         """
         Track endpoint calls
         
@@ -626,14 +626,16 @@ class opasCentralDB(object):
             if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
                 print (errMsg)
         else:
-            if session_id is None:
-                if self.sessionID == None:
+            try:
+                session_id = session_info.session_id         
+            except:
+                if self.session_id == None:
                     # no session open!
                     logger.warning("record_session_endpoint: No session is open")
                     return ret_val
                 else:
-                    session_id = self.sessionID
-    
+                    session_id = self.session_id
+                
             if self.db != None:  # shouldn't need this test
                 cursor = self.db.cursor()
                 # TODO: I removed returnStatusCode from here. Remove it from the DB
@@ -687,7 +689,7 @@ class opasCentralDB(object):
                 elif source_type is not None:
                     sqlAll = "FROM vw_opas_sources WHERE active = 1 and src_type = '%s' and (src_type_qualifier <> 'multivolumesubbook' or src_type_qualifier IS NULL)" % source_type
                 else:  # bring them all back
-                    sqlAll = "FROM vw_opas_sources active = 1 and (src_type_qualifier <> 'multivolumesubbook' or src_type_qualifier IS NULL)"
+                    sqlAll = "FROM vw_opas_sources WHERE active = 1 and (src_type_qualifier IS NULL or src_type_qualifier <> 'multivolumesubbook')"
 
                 sql = f"SELECT * {sqlAll} ORDER BY title {limit_clause}"
                 res = curs.execute(sql)
@@ -760,9 +762,9 @@ class opasCentralDB(object):
 
         return ret_val
             
-    def get_user(self, username = None, userID = None):
+    def get_user(self, username = None, user_id = None):
         """
-        If user exists (via username or userID) and has an active subscription
+        If user exists (via username or user_id) and has an active subscription
           Returns userSubscriptions object and saves it to the ocd object properties.
           
         Note: a user cannot login without an active subscription. 
@@ -784,10 +786,10 @@ class opasCentralDB(object):
             sql = f"""SELECT *
                      FROM user_active_subscriptions
                      WHERE username = '{username}'"""
-        elif userID is not None:
+        elif user_id is not None:
             sql = f"""SELECT *
                      FROM user_active_subscriptions
-                     WHERE user_id = '{userID}'"""
+                     WHERE user_id = '{user_id}'"""
 
         if sql is None:
             logger.error("get_user: No user info supplied to search by")
@@ -923,7 +925,7 @@ class opasCentralDB(object):
             ret_val = (False, None)
         else:
             self.user = user
-            msg = f"Authenticated (with active subscription) user: {username}, sessionID: {self.sessionID}"
+            msg = f"Authenticated (with active subscription) user: {username}, sessionID: {self.session_id}"
             logger.info(msg)
             print (msg)
             

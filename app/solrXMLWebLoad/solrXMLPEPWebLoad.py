@@ -513,7 +513,7 @@ def processBibForReferencesCore(pepxml, artInfo, solrcon):
         bibAuthorNameList = [etree.tostring(x, with_tail=False).decode("utf8") for x in ref.findall("a") if x is not None]
         bibAuthorsXml = '; '.join(bibAuthorNameList)
         #Note: Changed to is not None since if x gets warning - FutureWarning: The behavior of this method will change in future versions. Use specific 'len(elem)' or 'elem is not None' test instead
-        authorList = [opasxmllib.opasxmllib.xml_elem_or_str_to_text(x) for x in ref.findall("a") if opasxmllib.opasxmllib.xml_elem_or_str_to_text(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
+        authorList = [opasxmllib.xml_elem_or_str_to_text(x) for x in ref.findall("a") if opasxmllib.xml_elem_or_str_to_text(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
         authorList = '; '.join(authorList)
         bibRefRxCf = opasxmllib.xml_get_element_attr(ref, "rxcf", default_return=None)
         bibRefRx = opasxmllib.xml_get_element_attr(ref, "rx", default_return=None)

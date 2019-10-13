@@ -36,7 +36,7 @@ else:
 
 # -------------------------------------------------------------------------------------------------------
 
-def author_derive_mast_from_xmlstr(authorXMLStr, listed=True):
+def author_derive_mast_from_xmlstr(author_xmlstr, listed=True):
     """
     Parses a string which has the PEP "aut" tag underneath a higher level tag, and returns the article Mast. for authors
     
@@ -54,9 +54,9 @@ def author_derive_mast_from_xmlstr(authorXMLStr, listed=True):
     ('Ghislaine Boulanger', ['Ghislaine Boulanger'])
     """
     ret_val = ("", [])
-    pepxml = etree.parse(StringIO(authorXMLStr))
+    pepxml = etree.parse(StringIO(author_xmlstr))
     
-    if authorXMLStr[0:4] == "<aut":
+    if author_xmlstr[0:4] == "<aut":
         rootFlag = "/"
     else:
         rootFlag = ""
@@ -183,19 +183,19 @@ def authors_citation_format_from_xmlstr(author_xmlstr, listed=True):
 
     return ret_val
 
-def get_html_citeas(authorsBibStyle, artYear, artTitle, artPepSourceTitleFull, artVol, artPgrg):
+def get_html_citeas(authors_bib_style, art_year, art_title, art_pep_sourcetitle_full, art_vol, art_pgrg):
     ret_val = f"""<p class="citeas"><span class="authors">{authorsBibStyle}</span> (<span class="year">{artYear}</span>) <span class="title">{artTitle}</span>. <span class="sourcetitle">{artPepSourceTitleFull}</span> <span class="pgrg">{artVol}</span>:<span class="pgrg">{artPgrg}</span></p>"""
     return ret_val
     
-def xml_remove_encoding_string(xmlString):
+def xml_remove_encoding_string(xmlstr):
     # Get rid of the encoding for lxml
     p=re.compile("\<\?xml version=[\'\"]1.0[\'\"] encoding=[\'\"]UTF-8[\'\"]\?\>\n", re.IGNORECASE)
-    ret_val = xmlString
+    ret_val = xmlstr
     ret_val = p.sub("", ret_val)                
     
     return ret_val
 
-def xml_get_subelement_textsingleton(element_node, subElementName, default_return=""):
+def xml_get_subelement_textsingleton(element_node, subelement_name, default_return=""):
     """
     Text for elements with only CDATA underneath
     
@@ -209,14 +209,14 @@ def xml_get_subelement_textsingleton(element_node, subElementName, default_retur
     """
     ret_val = default_return
     try:
-        ret_val = element_node.find(subElementName).text
+        ret_val = element_node.find(subelement_name).text
         ret_val = ret_val.strip()
     except Exception as err:
         ret_val = default_return
 
     return ret_val
 
-def xml_get_subelement_xmlsingleton(element_node, subElementName, default_return=""):
+def xml_get_subelement_xmlsingleton(element_node, subelement_name, default_return=""):
     """
     Returns the marked up XML text for elements (including subelements)
     If it doesn't exist or is empty, return the default_return
@@ -233,7 +233,7 @@ def xml_get_subelement_xmlsingleton(element_node, subElementName, default_return
     """
     ret_val = default_return
     try:
-        ret_val = etree.tostring(element_node.find(subElementName), with_tail=False, encoding="unicode")
+        ret_val = etree.tostring(element_node.find(subelement_name), with_tail=False, encoding="unicode")
         if ret_val == "":
             ret_val = default_return
     except Exception as err:
@@ -260,7 +260,7 @@ def xml_get_subelement_xmlsingleton(element_node, subElementName, default_return
     
     #return ret_val
 
-def xml_get_element_attr(element_node, attrName, default_return=""):
+def xml_get_element_attr(element_node, attr_name, default_return=""):
     """
     Get an attribute from the lxml element_node.  
     If it doesn't exist or is empty, return the default_return
@@ -273,7 +273,7 @@ def xml_get_element_attr(element_node, attrName, default_return=""):
     """
     ret_val = default_return
     try:
-        ret_val = element_node.attrib[attrName]
+        ret_val = element_node.attrib[attr_name]
         if ret_val == "":
             ret_val = default_return
     except Exception as err:
@@ -305,7 +305,7 @@ def xml_get_elements(element_node, xpath_def, default_return=list()):
 
     return ret_val
 
-def xml_get_direct_subnode_textsingleton(element_node, subelementName, default_return=""):
+def xml_get_direct_subnode_textsingleton(element_node, subelement_name, default_return=""):
     """
     Return the text for a direct subnode of the lxml elementTree element_node.
     Returns ONLY the first node found (Singleton).
@@ -319,10 +319,10 @@ def xml_get_direct_subnode_textsingleton(element_node, subelementName, default_r
     ret_val = default_return
 
     try:
-        ret_val = element_node.xpath('%s/node()' % subelementName)
+        ret_val = element_node.xpath('%s/node()' % subelement_name)
         ret_val = ret_val[0]
     except ValueError as err: # try without node
-        ret_val = element_node.xpath('%s' % subelementName)
+        ret_val = element_node.xpath('%s' % subelement_name)
         ret_val = ret_val[0]
     except IndexError as err:
         pass
@@ -335,7 +335,7 @@ def xml_get_direct_subnode_textsingleton(element_node, subelementName, default_r
 
     return ret_val
 
-def xml_elem_or_str_to_xmlstring(elemOrXMLStr, default_return=""):
+def xml_elem_or_str_to_xmlstring(elem_or_xmlstr, default_return=""):
     """
     Return XML string 
 
@@ -346,19 +346,19 @@ def xml_elem_or_str_to_xmlstring(elemOrXMLStr, default_return=""):
     ret_val = default_return
     # just in case the caller sent a string.
     try:
-        if isinstance(elemOrXMLStr, lxml.etree._Element):
-            ret_val = etree.tostring(elemOrXMLStr, encoding="unicode")        
+        if isinstance(elem_or_xmlstr, lxml.etree._Element):
+            ret_val = etree.tostring(elem_or_xmlstr, encoding="unicode")        
         else:
-            ret_val = elemOrXMLStr
+            ret_val = elem_or_xmlstr
     except Exception as err:
         print (err)
         ret_val = default_return
         
     return ret_val
 
-def xml_string_to_text(xml_string, default_return=""):
-    xml_string = xml_remove_encoding_string(xml_string)
-    clearText = lhtml.fromstring(xml_string)
+def xml_string_to_text(xmlstr, default_return=""):
+    xmlstr = xml_remove_encoding_string(xmlstr)
+    clearText = lhtml.fromstring(xmlstr)
     ret_val = clearText.text_content()
     return ret_val
     
@@ -459,7 +459,7 @@ def xml_xpath_return_textsingleton(element_node, xpath, default_return=""):
         
     return ret_val    
 
-def xml_xpath_return_xmlsingleton(element_node, xPathDef, default_return=""):
+def xml_xpath_return_xmlsingleton(element_node, xpath, default_return=""):
     """
     Return a singleton XML ELEMENT from the specified xPath
 
@@ -472,7 +472,7 @@ def xml_xpath_return_xmlsingleton(element_node, xPathDef, default_return=""):
     """
     ret_val = default_return
     try:
-        ret_val = element_node.xpath(xPathDef)
+        ret_val = element_node.xpath(xpath)
         if isinstance(ret_val, list) and len(ret_val) > 0:
             ret_val = ret_val[0]
         ret_val = etree.tostring(ret_val, with_tail=False, encoding="unicode") 
@@ -482,7 +482,7 @@ def xml_xpath_return_xmlsingleton(element_node, xPathDef, default_return=""):
 
     return ret_val
 
-def xml_xpath_return_xmlstringlist(element_node, xPathDef, default_return=list()):
+def xml_xpath_return_xmlstringlist(element_node, xpath, default_return=list()):
     """
     Return a list of XML tagged strings from the nodes in the specified xPath
 
@@ -499,7 +499,7 @@ def xml_xpath_return_xmlstringlist(element_node, xPathDef, default_return=list()
     """
     ret_val = default_return
     try:
-        ret_val = [etree.tostring(n, with_tail=False, encoding="unicode") for n in element_node.xpath(xPathDef)]
+        ret_val = [etree.tostring(n, with_tail=False, encoding="unicode") for n in element_node.xpath(xpath)]
         if len(ret_val) == 0:
             ret_val = default_return
     except:
@@ -507,7 +507,7 @@ def xml_xpath_return_xmlstringlist(element_node, xPathDef, default_return=list()
         
     return ret_val   
 
-def add_headings_to_abstract_html(abstract, sourceTitle=None, pubYear=None, vol=None, issue=None, pgRg=None, title=None, authorMast=None, citeas=None):
+def add_headings_to_abstract_html(abstract, source_title=None, pub_year=None, vol=None, issue=None, pgrg=None, title=None, author_mast=None, citeas=None):
     """
     Format the top portion of the Abstracts presented by the client per the original GVPi model
     """
@@ -517,7 +517,7 @@ def add_headings_to_abstract_html(abstract, sourceTitle=None, pubYear=None, vol=
     else:
         issue = ""
         
-    heading = f"({pubYear}). {sourceTitle}, {vol}{issue}:{pgRg}"
+    heading = f"({pub_year}). {source_title}, {vol}{issue}:{pgrg}"
     ret_val = f"""
             <p class="heading">{heading}</p>
             <p class="title">{title}</p>
@@ -526,13 +526,13 @@ def add_headings_to_abstract_html(abstract, sourceTitle=None, pubYear=None, vol=
             """
     return ret_val
 
-def xml_string_to_html(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
+def xml_str_to_html(xmlTextStr, xslt_file=r"./styles/pepkbd3-html.xslt"):
     ret_val = None
     try:
-        if not os.path.exists(xsltFile):
+        if not os.path.exists(xslt_file):
             alt = "../styles/pepkbd3-html.xslt"
             if os.path.exists("./styles/pepkbd3-html.xslt"):
-                xsltFile = alt
+                xslt_file = alt
     except Exception as e:
         # return this error, so it will be displayed (for now) instead of the document
         ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>Exception finding style sheet: {e}</p>"
@@ -556,8 +556,8 @@ def xml_string_to_html(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
         else:
             if xmlTextStr is not None and xmlTextStr != "[]":
                 try:
-                    xsltFile = etree.parse(xsltFile)
-                    xsltTransformer = etree.XSLT(xsltFile)
+                    xslt_file = etree.parse(xslt_file)
+                    xsltTransformer = etree.XSLT(xslt_file)
                     transformedData = xsltTransformer(sourceFile)
                 except Exception as e:
                     # return this error, so it will be displayed (for now) instead of the document
@@ -568,29 +568,29 @@ def xml_string_to_html(xmlTextStr, xsltFile=r"./styles/pepkbd3-html.xslt"):
                     ret_val = str(transformedData)
     return ret_val
 
-def html_to_epub(htmlString, outputFilenameBase, artID, lang="en", htmlTitle=None, styleSheet="../styles/pep-html-preview.css"):
+def html_to_epub(htmlString, output_filename_base, art_id, lang="en", html_title=None, stylesheet="../styles/pep-html-preview.css"):
     """
     uses ebooklib
     
     """
-    if htmlTitle is None:
-        htmlTitle = artID
+    if html_title is None:
+        html_title = art_id
         
     root = etree.HTML(htmlString)
     try:
         title = root.xpath("//title/text()")
         title = title[0]
     except:
-        title = artID
+        title = art_id
         
     headings = root.xpath("//*[self::h1|h2|h3]")
 
         
-    basename = os.path.basename(outputFilenameBase)
+    basename = os.path.basename(output_filename_base)
     
     book = epub.EpubBook()
     book.set_identifier('basename')
-    book.set_title(htmlTitle)
+    book.set_title(html_title)
     book.set_language('en')
     
     book.add_author('PEP')    
@@ -598,7 +598,7 @@ def html_to_epub(htmlString, outputFilenameBase, artID, lang="en", htmlTitle=Non
 
     # main chapter
     c1 = epub.EpubHtml(title=title,
-                       file_name= artID + '.xhtml',
+                       file_name= art_id + '.xhtml',
                        lang=lang)
 
     c1.set_content(htmlString)
@@ -613,7 +613,7 @@ def html_to_epub(htmlString, outputFilenameBase, artID, lang="en", htmlTitle=Non
     
     style = 'body { font-family: Times, Times New Roman, serif; }'
     try:
-        styleFile = open(styleSheet, "r")
+        styleFile = open(stylesheet, "r")
         style = styleFile.read()
         styleFile.close()
         
@@ -641,10 +641,10 @@ def html_to_epub(htmlString, outputFilenameBase, artID, lang="en", htmlTitle=Non
     epub.write_epub(filename, book)
     return filename
 
-def remove_encoding_string(xml_string):
+def remove_encoding_string(xmlstr):
     # Get rid of the encoding for lxml
     p=re.compile("\<\?xml version=\'1.0\' encoding=\'UTF-8\'\?\>\n")  # TODO - Move to module globals to optimize
-    ret_val = xml_string
+    ret_val = xmlstr
     ret_val = p.sub("", ret_val)                
     
     return ret_val

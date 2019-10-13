@@ -80,9 +80,11 @@ Docker or similar technology will be used to make deployment and redeployment ea
 
 * [Python 3]
 * [Solr](http://lucene.apache.org/solr/) - Dependency Management
-* Python Web framework - [FastAPI]/[Pydantic]/[SQLAlchemy]/[SolrPy] (see [Requirements.txt] in APP)
-* [MySQL]
-* [XML]/[XSLT] for coding source files and transforming them
+* Python Web framework - [FastAPI](https://github.com/tiangolo/fastapi) (see [Requirements.txt] in APP for complete list)
+* [MySQL](https://dev.mysql.com/downloads/)
+* [XSLT](https://lxml.de/xpathxslt.html) via LXML for coding source files and transforming them
+* [XML/DTD](http://peparchive.org/pepa1dtd/pepkbd3.dtd) The initial (base) version of the server schemas and imports is based on PEP's KBD3 DTD which is the document markup implemented in books and articles in PEP-Web.  It can readily be adapted for other DTDs though.
+* [PEP-Web API](https://app.swaggerhub.com/apis/nrshapiro/PEP-Web/1.1.0) The initial (base) version of the server API will be largely based on the PEP-Web 1.0 Open API implemented in the current PEP-Web system in order to allow a mostly unmodified version of the PEP-Easy front end to work with the server.  As PEP embarks on new, more functional client developments, this will be expanded.  Incompatible endpoints in the expanded API will be V2 endpoints, whereas anything compatible (such as those not used in PEP-Easy) will be marked as V1 endpoints.  Note that the server itself will provide [OpenAPI](https://www.openapis.org/) based documentation via FastAPI's built-in /docs endpoint.
 
 ## Contributing
 

@@ -173,11 +173,6 @@ app.add_middleware(
 
 logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
 
-#def getExpirationCookieStr(keepActive=False):
-    #max_age = opasAPISupportLib.getMaxAge(keepActive)
-    #ret_val = datetime.utcfromtimestamp(time.time() + max_age).strftime('%Y-%m-%d %H:%M:%S')
-    #return ret_val #expiration cookie str
-
 def check_if_user_logged_in(request:Request, 
                         response:Response):
     """
@@ -231,31 +226,39 @@ def get_the_server_status(resp: Response,
 
     try:
         server_status_item = models.ServerStatusItem(text_server_ok = solr_ok, 
-                                                   db_server_ok = db_ok,
-                                                   user_ip = request.client.host,
-                                                   solr_url = localsecrets.SOLRURL,
-                                                   config_name = localsecrets.CONFIG,
-                                                   timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
-                                          )
+                                                     db_server_ok = db_ok,
+                                                     user_ip = request.client.host,
+                                                     solr_url = localsecrets.SOLRURL,
+                                                     config_name = localsecrets.CONFIG,
+                                                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
+                                                    )
     except ValidationError as e:
         print(e.json())             
     
+    resp.set_cookie(key="testtoken", value="testtokenvalue", expires="300")
     
     return server_status_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Admin/WhoAmI/", tags=["Admin"])
+@app.get("/v2/Admin/WhoAmI/", response_model=models.SessionInfo, tags=["Admin"])
+# @app.get("/v2/Admin/WhoAmI/", tags=["Admin"])
 def who_am_i(resp: Response,
              request: Request):
     """
     Temporary endpoint for debugging purposes
     """
-    return {"client_host": request.client.host, 
-            "referrer": request.headers.get('referrer', None), 
-            "opasSessionID": request.cookies.get("opasSessionID", None), 
-            "opasAccessToken": request.cookies.get("opasAccessToken", None),
-            "opasSessionExpire": request.cookies.get("opasSessionExpire", None), 
-            }
+    
+    ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
+    resp.set_cookie(key="testtoken2", value="testtoken2value", expires="300")
+    return(session_info)
+    
+    #return {"client_host": request.client.host, 
+            #"referrer": request.headers.get('referrer', None), 
+            #"session_id": session_info.session_id, 
+            #"user_id": session_info.session_id, 
+            #"access_token": session_info.access_token, 
+            #"authenticated": session_info.authenticated
+            #}
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Admin/WhoAmIGit/", tags=["Admin"])
@@ -294,12 +297,12 @@ def read_current_user(resp: Response,
                       user: str = Depends(get_current_username), 
                       ka=False):
 
-    session_id = opasAPISupportLib.get_session_id(request)
-    access_token = opasAPISupportLib.get_access_token(request)
+    session_id = request.cookies.get('opasSessionID') #  opasAPISupportLib.get_session_id(request)
+    access_token = request.cookies.get('opasAccessToken')   #  opasAPISupportLib.get_access_token(request)
     expiration_time = datetime.utcfromtimestamp(time.time() + opasAPISupportLib.get_max_age(keep_active=ka))
     if session_id is not None and access_token is not None:
-        pass
-    else:
+        pass # we are already logged in
+    else: # 
         if user:
             # user is authenticated
             # we need to close any open sessions.
@@ -307,7 +310,7 @@ def read_current_user(resp: Response,
                 # do a logout
                 session_end_time = datetime.utcfromtimestamp(time.time())
                 success = ocd.update_session(session_id=session_id, 
-                                            session_end=session_end_time
+                                             session_end=session_end_time
                                             )    
     
             # NOW lets give them a new session
@@ -317,11 +320,28 @@ def read_current_user(resp: Response,
             user.start_date = user.start_date.timestamp()  # we may just want to null these in the jwt
             user.end_date = user.end_date.timestamp()
             user.last_update = user.last_update.timestamp()
-            access_token = jwt.encode({'exp': expiration_time.timestamp(), 'user': user.dict()}, SECRET_KEY, algorithm='HS256')
+            access_token = jwt.encode({'exp': expiration_time.timestamp(),
+                                       'user': user.dict()
+                                      },
+                                      key=localsecrets.SECRET_KEY,
+                                      algorithm=localsecrets.ALGORITHM)
+            # access_token = access_token.decode("utf8")
             # start a new session, with this user (could even still be the old user
             ocd, session_info = opasAPISupportLib.start_new_session(resp, request, session_id=session_id, access_token=access_token, user=user)
-            # set accessTokenCookie!
-            opasAPISupportLib.set_cookies(resp, session_id, accessToken=access_token, maxAge=max_age) #tokenExpiresTime=expirationTime)
+            # set accessToken Cookie!
+            resp.set_cookie(key="opasSessionID",
+                            value=session_id,
+                            max_age=max_age, expires=None, 
+                            path="/",
+                            secure=False, 
+                            httponly=False)
+            resp.set_cookie(key="opasSessionID",
+                            value=access_token,
+                            max_age=max_age, expires=None, 
+                            path="/",
+                            secure=False, 
+                            httponly=False)
+            opasAPISupportLib.set_cookies(resp, session_id, access_token=access_token, max_age=max_age) #tokenExpiresTime=expirationTime)
         else: # Can't log in!
             raise HTTPException(
                 status_code=HTTP_401_UNAUTHORIZED, 
@@ -329,19 +349,19 @@ def read_current_user(resp: Response,
             )
        
     try:
-        loginReturnItem = models.LoginReturnItem(token_type = "bearer", 
-                                                 session_id = session_id,
-                                                 access_token = access_token,
-                                                 authenticated = access_token is not None,
-                                                 session_expires_time = expiration_time,
-                                                 keep_active = ka,
-                                                 error_message = None,
-                                                 scope = None
-                                          )
+        login_return_item = models.LoginReturnItem(token_type = "bearer", 
+                                                   session_id = session_id,
+                                                   access_token = access_token,
+                                                   authenticated = access_token is not None,
+                                                   session_expires_time = expiration_time,
+                                                   keep_active = ka,
+                                                   error_message = None,
+                                                   scope = None
+                                                  )
     except ValidationError as e:
         print(e.json())             
 
-    return loginReturnItem
+    return login_return_item
     
 #-----------------------------------------------------------------------------
 #@app.get("/v1/Session/") # at least start a session (getting a sessionID)
@@ -384,28 +404,28 @@ def get_license_status(resp: Response,
     """
     # get session info database record if there is one
     ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
-    session_id = session_info.session_id
+    # session_id = session_info.session_id
     # is the user authenticated? if so, loggedIn is true
     logged_in = session_info.authenticated
     user_id = session_info.user_id
     username = None
     user = None
     if user_id == 0:
-        user = ocd.get_user(userID=user_id)
+        user = ocd.get_user(user_id=user_id)
         username = "NotLoggedIn"
         logged_in = False
     elif user_id is not None:
-        user = ocd.get_user(userID=user_id)
+        user = ocd.get_user(user_id=user_id)
         user.password = "Hidden"
         username = user.username
     
     print (user_id, user)
     # hide the password hash
     response_info = models.ResponseInfoLoginStatus(loggedIn = logged_in,
-                                                  username = username,
-                                                  request = request.url._url,
-                                                  user=user,
-                                                  timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
+                                                   username = username,
+                                                   request = request.url._url,
+                                                   user=user,
+                                                   timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
                                                   )
     
     license_info_struct = models.LicenseInfoStruct(responseInfo = response_info, 
@@ -471,11 +491,15 @@ def login_user(resp: Response,
             user.start_date = user.start_date.timestamp()  # we may just want to null these in the jwt
             user.end_date = user.end_date.timestamp()
             user.last_update = user.last_update.timestamp()
-            access_token = jwt.encode({'exp': expirationTime.timestamp(), 'user': user.dict()}, SECRET_KEY, algorithm='HS256')
+            access_token = jwt.encode({'exp': expiration_time.timestamp(),
+                                       'user': user.dict()
+                                      },
+                                      key=localsecrets.SECRET_KEY,
+                                      algorithm=localsecrets.ALGORITHM)
             # start a new session, with this user (could even still be the old user
-            ocd, sessionInfo = opasAPISupportLib.start_new_session(resp, request, session_id=session_id, access_token=access_token, user=user)
+            ocd, session_info = opasAPISupportLib.start_new_session(resp, request, session_id=session_id, access_token=access_token, user=user)
             # set accessTokenCookie!
-            opasAPISupportLib.set_cookies(resp, session_id, accessToken=access_token, maxAge=max_age) #tokenExpiresTime=expirationTime)
+            opasAPISupportLib.set_cookies(resp, session_id, access_token=access_token, max_age=max_age) #tokenExpiresTime=expirationTime)
             err_code = None
         else:
             access_token = None # user rejected
@@ -539,7 +563,7 @@ def logout_user(resp: Response,
         else:    # all is well.
             response_info = models.ResponseInfoLoginStatus(sessionID = session_id)
             response_info.loggedIn = False
-            opasAPISupportLib.delete_cookies(resp, sessionID="", accessToken="")
+            opasAPISupportLib.delete_cookies(resp, session_id="", access_token="")
     else:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
@@ -558,31 +582,31 @@ def logout_user(resp: Response,
 #---------------------------------------------------------------------------------------------------------
 # this function lets various endpoints like search, searchanalysis, and document, share this large parameter set.
 def parse_search_query_parameters(search=None,
-                               journal_name=None,
-                               journal=None,
-                               fulltext1=None,
-                               fulltext2=None,
-                               vol=None,
-                               issue=None,
-                               author=None,
-                               title=None,
-                               datetype=None,
-                               startyear=None,
-                               endyear=None,
-                               dreams=None,
-                               quotes=None,
-                               abstracts=None,
-                               dialogs=None,
-                               references=None,
-                               citecount=None, 
-                               viewcount=None, 
-                               viewedWithin=None, 
-                               solrQ=None, 
-                               disMax=None, 
-                               edisMax=None, 
-                               quick_search=None, 
-                               sort=None, 
-                            ):
+                                  journal_name=None,
+                                  journal=None,
+                                  fulltext1=None,
+                                  fulltext2=None,
+                                  vol=None,
+                                  issue=None,
+                                  author=None,
+                                  title=None,
+                                  datetype=None,
+                                  startyear=None,
+                                  endyear=None,
+                                  dreams=None,
+                                  quotes=None,
+                                  abstracts=None,
+                                  dialogs=None,
+                                  references=None,
+                                  citecount=None, 
+                                  viewcount=None, 
+                                  viewedWithin=None, 
+                                  solrQ=None, 
+                                  disMax=None, 
+                                  edisMax=None, 
+                                  quick_search=None, 
+                                  sort=None, 
+                                ):
 
     # initialize accumulated variables
     searchQ = "*:* "
@@ -833,23 +857,23 @@ async def search_the_document_database(resp: Response,
     
     """
 
-    ocd, sessionInfo = opasAPISupportLib.get_session_info(request, resp)
-    
+    ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
+    session_id = session_info.session_id 
     
     if re.search(r"/Search/", request.url._url):
         print ("Search Request: ", request.url._url)
 
     if re.search(r"/SearchAnalysis/", request.url._url):
         print ("Analysis Request: ", request.url._url)
-        analysisMode = True
+        analysis_mode = True
     else:
-        analysisMode = False
+        analysis_mode = False
 
     if re.search(r"/MoreLikeThese/", request.url._url):
         print ("MoreLikeThese Request: ", request.url._url)
-        moreLikeTheseMode = True
+        more_like_these_mode = True
     else:
-        moreLikeTheseMode = False
+        more_like_these_mode = False
 
     current_year = datetime.utcfromtimestamp(time.time()).strftime('%Y')
     # this does intelligent processing of the query parameters and returns a smaller set of solr oriented         
@@ -883,53 +907,54 @@ async def search_the_document_database(resp: Response,
     solr_query_params.urlRequest = request.url._url
     
     # We don't always need full-text, but if we need to request the doc later we'll need to repeat the search parameters plus the docID
-    if analysisMode:
-        ret_val = documentList = opasAPISupportLib.search_analysis(query_list=solr_query_params.searchAnalysisTermList, 
-                                                                 filter_query = None,
-                                                                 dis_max = solr_query_params.solrMax,
-                                                                 query_analysis=analysisMode,
-                                                                 more_like_these = None,
-                                                                 fullTextRequested=False,
-                                                                 limit=limit
-                                                                 )
+    if analysis_mode:
+        ret_val = opasAPISupportLib.search_analysis(query_list=solr_query_params.searchAnalysisTermList, 
+                                                    filter_query = None,
+                                                    dis_max = solr_query_params.solrMax,
+                                                    query_analysis=analysis_mode,
+                                                    more_like_these = None,
+                                                    fullTextRequested=False,
+                                                    limit=limit
+                                                    )
         
         statusMsg = "{} terms/clauses; queryAnalysis: {}".format(len(solr_query_params.searchAnalysisTermList), 
-                                                                 moreLikeTheseMode, 
-                                                                 analysisMode)
+                                                                 more_like_these_mode, 
+                                                                 analysis_mode)
         print ("Done with search analysis.")
     else:  # we are going to do a regular search
         print ("....searchQ = {}".format(solr_query_params.searchQ))
         print ("....filterQ = {}".format(solr_query_params.filterQ))
         
-        ret_val = documentList = opasAPISupportLib.search_text(query=solr_query_params.searchQ, 
-                                                                   filter_query = solr_query_params.filterQ,
-                                                                   full_text_requested=False,
-                                                                   query_debug = False,
-                                                                   more_like_these = moreLikeTheseMode,
-                                                                   dis_max = solr_query_params.solrMax,
-                                                                   sortBy = sortBy,
-                                                                   limit=limit, 
-                                                                   offset=offset,
-                                                                   extraContextLen=200
-                                                                   )
+        ret_val = opasAPISupportLib.search_text(query=solr_query_params.searchQ, 
+                                                filter_query = solr_query_params.filterQ,
+                                                full_text_requested=False,
+                                                query_debug = False,
+                                                more_like_these = more_like_these_mode,
+                                                dis_max = solr_query_params.solrMax,
+                                                sort_by = sortBy,
+                                                limit=limit, 
+                                                offset=offset,
+                                                extra_context_len=200
+                                                )
 
         if ret_val != {}:
-            matches = len(documentList.documentList.responseSet)
+            matches = len(ret_val.documentList.responseSet)
             ret_val.documentList.responseInfo.request = request.url._url
         else:
             matches = 0
         print (f"....matches = {matches}")
         # fill in additional return structure status info
-        statusMsg = f"{matches} hits; moreLikeThese:{moreLikeTheseMode}; queryAnalysis: {analysisMode}"
+        statusMsg = f"{matches} hits; moreLikeThese:{more_like_these_mode}; queryAnalysis: {analysis_mode}"
         print ("Done with search.")
 
-    client_host = request.client.host
+    # client_host = request.client.host
 
-    if not analysisMode: # too slow to do this for that.
+    if not analysis_mode: # too slow to do this for that.
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
-                                        params=request.url._url,
-                                        status_message=statusMsg
-                                        )
+                                    session_info=session_info, 
+                                    params=request.url._url,
+                                    status_message=statusMsg
+                                   )
 
     return ret_val
     
@@ -946,7 +971,7 @@ def get_the_most_viewed_articles(resp: Response,
     Status: 
     """
     
-    ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
+    # ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
 
     print ("in most viewed")
     try:
@@ -954,7 +979,7 @@ def get_the_most_viewed_articles(resp: Response,
                                                                 limit=limit,
                                                                 offset=offset)
         # fill in additional return structure status info
-        client_host = request.client.host
+        # client_host = request.client.host
         ret_val.documentList.responseInfo.request = request.url._url
     except Exception as e:
         status_message = "Error: {}".format(e)
@@ -967,13 +992,14 @@ def get_the_most_viewed_articles(resp: Response,
         status_message = "Success"
         status_code = 200
 
-    # Don't record
-    #ocd, sessionInfo = opasAPISupportLib.getSessionInfo(request, resp)
+    # Don't record (not a user request, just a default)
+    #ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
     #ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_MOSTCITED,
-                                      #params=request.url._url,
-                                      #returnStatusCode = statusCode,
-                                      #statusMessage=statusMessage
-                                      #)
+                                #session_info=session_info,
+                                #params=request.url._url,
+                                #returnStatusCode = statusCode,
+                                #statusMessage=statusMessage
+                                #)
 
     print ("out most viewed")
     return ret_val  # document_list
@@ -995,9 +1021,8 @@ def get_the_most_cited_articles(resp: Response,
 
     time.sleep(.5)
     ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
-    #if gOCDatabase.sessionID == None:  # make sure there's an open session for stat.
-        #gOCDatabase.startSession()
-
+    session_id = session_info.session_id 
+    
     print ("in most cited")
     try:
         ret_val = documentList = opasAPISupportLib.database_get_most_cited(period=period, limit=limit, offset=offset)
@@ -1018,10 +1043,11 @@ def get_the_most_cited_articles(resp: Response,
     # Don't record - (well ok for now during testing)
     ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_MOSTCITED,
-                                      params=request.url._url,
-                                      return_status_code = status_code,
-                                      status_message=status_message
-                                      )
+                                session_info=session_info, 
+                                params=request.url._url,
+                                return_status_code = status_code,
+                                status_message=status_message
+                                )
 
     print ("out mostcited")
     return ret_val
@@ -1041,9 +1067,11 @@ def get_the_newest_uploaded_issues(resp: Response,
     
     time.sleep(.25)
     print ("In whats New")
-    # ocd, session_info = opasAPISupportLib.getSessionInfo(request, resp)
+    # ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
     try:
-        ret_val = whatsNewList = opasAPISupportLib.database_whats_new(limit=limit, offset=offset, daysBack=daysback)
+        ret_val = whatsNewList = opasAPISupportLib.database_whats_new(limit=limit, 
+                                                                      offset=offset,
+                                                                      days_back=daysback)
         # fill in additional return structure status info
         # client_host = request.client.host
     except Exception as e:
@@ -1061,10 +1089,11 @@ def get_the_newest_uploaded_issues(resp: Response,
 
     # Don't record endpoint what's New
     #ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_WHATSNEW,
-                                      #params=request.url._url,
-                                      #returnStatusCode = statusCode,
-                                      #statusMessage=statusMessage
-                                      #)
+                                #session_info=session_info,
+                                #params=request.url._url,
+                                #returnStatusCode = statusCode,
+                                #statusMessage=statusMessage
+                                #)
 
     print ("Out whats New")
     return ret_val
@@ -1142,11 +1171,12 @@ def get_journal_content_lists(resp: Response,
         ret_val.documentList.responseInfo.request = request.url._url
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_CONTENTS,
-                                      params=request.url._url,
-                                      document_id="{}.{}".format(SourceCode, year), 
-                                      return_status_code = status_code,
-                                      status_message=status_message
-                                      )
+                                session_info=session_info, 
+                                params=request.url._url,
+                                document_id="{}.{}".format(SourceCode, year), 
+                                return_status_code = status_code,
+                                status_message=status_message
+                                )
 
     return ret_val # document_list
 
@@ -1183,15 +1213,16 @@ def get_journal_content_lists_for_volume(SourceCode: str,
         )
     else:
         status_message = "Success"
-        statusCode = HTTP_200_OK
+        status_code = HTTP_200_OK
         ret_val.documentList.responseInfo.request = request.url._url
     
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_CONTENTS_FOR_VOL,
-                                      document_id="{}.{}".format(SourceCode, SourceVolume), 
-                                      params=request.url._url,
-                                      return_status_code = statusCode,
-                                      status_message=status_message
-                                      )
+                                session_info=session_info, 
+                                document_id="{}.{}".format(SourceCode, SourceVolume), 
+                                params=request.url._url,
+                                return_status_code = status_code,
+                                status_message=status_message
+                                )
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -1261,11 +1292,12 @@ def get_a_list_of_volumes_for_a_journal(resp: Response,
         ret_val.volumeList.responseInfo.request = request.url._url
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_VOLUME_INDEX,
-                                      params=request.url._url,
-                                      document_id="{}".format(SourceCode), 
-                                      return_status_code = status_code,
-                                      status_message=status_message
-                                      )
+                                session_info=session_info, 
+                                params=request.url._url,
+                                document_id="{}".format(SourceCode), 
+                                return_status_code = status_code,
+                                status_message=status_message
+                                )
 
     return ret_val # returns volumeList
 #-----------------------------------------------------------------------------
@@ -1326,11 +1358,12 @@ def get_a_list_of_source_names(resp: Response,
 
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_SOURCEINFO,
-                                      params=request.url._url,
-                                      document_id="{}".format(SourceType), 
-                                      return_status_code = status_code,
-                                      status_message=status_message
-                                      )
+                                session_info=session_info, 
+                                params=request.url._url,
+                                document_id="{}".format(SourceType), 
+                                return_status_code = status_code,
+                                status_message=status_message
+                                )
 
     return ret_val
 #-----------------------------------------------------------------------------
@@ -1440,9 +1473,10 @@ def get_a_list_of_author_publications_for_matching_author_names(resp: Response,
     # client_host = request.client.host
     
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_AUTHORS_PUBLICATIONS,
-                                      params=request.url._url,
-                                      status_message=status_message
-                                      )
+                                session_info=session_info, 
+                                params=request.url._url,
+                                status_message=status_message
+                                )
 
     return ret_val
 
@@ -1475,11 +1509,12 @@ def view_an_abstract(resp: Response,
         ret_val.documents.responseInfo.request = request.url._url
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS_ABSTRACTS,
-                                      params=request.url._url,
-                                      document_id="{}".format(documentID), 
-                                      return_status_code = status_code,
-                                      status_message=status_message
-                                      )
+                                session_info=session_info, 
+                                params=request.url._url,
+                                document_id="{}".format(documentID), 
+                                return_status_code = status_code,
+                                status_message=status_message
+                                )
     return ret_val
 
 @app.get("/v2/Documents/Glossary/{termID}/", response_model=models.Documents, tags=["Documents"], response_model_skip_defaults=True)  # the current PEP API
@@ -1533,26 +1568,29 @@ def view_a_glossary_entry(resp: Response,
             
         
         ret_val = opasAPISupportLib.documents_get_glossary_entry(term_id, 
-                                                              retFormat=return_format, 
-                                                              authenticated = session_info.authenticated)
+                                                                 retFormat=return_format, 
+                                                                 authenticated = session_info.authenticated)
         ret_val.documents.responseInfo.request = request.url._url
 
     except Exception as e:
         status_message = "View Glossary Error: {}".format(e)
-        print (status_message)
-        status_code = 400
-        ret_val = None
+        logger.error(status_message)
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail=status_message
+        )
     else:
         status_message = "Success"
-        status_code = 200
+        # status_code = 200
         # fill in additional return structure status info
-        client_host = request.client.host
+        # client_host = request.client.host
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
-                                  params=request.url._url,
-                                  document_id=term_id, 
-                                  status_message=status_message
-                                  )
+                                session_info=session_info, 
+                                params=request.url._url,
+                                document_id=term_id, 
+                                status_message=status_message
+                                )
     return ret_val
     
 
@@ -1595,7 +1633,7 @@ def view_a_document(resp: Response,
     """
     ret_val = None
     ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
-    #session_id = sessionInfo.session_id
+    #session_id = session_info.session_id
     # is this document embargoed?
     # check if this is a Glossary request, this is per API.v1.
     m = re.match("(ZBK\.069\..*?)?(?P<termid>(Y.0.*))", documentID)
@@ -1624,7 +1662,7 @@ def view_a_document(resp: Response,
                 
                 ret_val = opasAPISupportLib.documents_get_document( documentID, 
                                                                     solr_query_params,
-                                                                    retFormat=return_format, 
+                                                                    ret_format=return_format, 
                                                                     authenticated = session_info.authenticated
                                                                   )
             else:
@@ -1647,16 +1685,17 @@ def view_a_document(resp: Response,
             )
         else:
             status_message = "Success"
-            status_code = HTTP_200_OK
+            # status_code = HTTP_200_OK
             # fill in additional return structure status info
-            client_host = request.client.host
+            # client_host = request.client.host
             ret_val.documents.responseInfo.request = request.url._url
     
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
-                                          params=request.url._url,
-                                          document_id="{}".format(documentID), 
-                                          status_message=status_message
-                                          )
+                                    session_info=session_info, 
+                                    params=request.url._url,
+                                    document_id="{}".format(documentID), 
+                                    status_message=status_message
+                                    )
     return ret_val
 
 @app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_skip_defaults=True, tags=["Documents"])
@@ -1670,13 +1709,14 @@ def download_a_document(resp: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
     is_authenticated = check_if_user_logged_in(request, resp)  
 
-    opasAPISupportLib.prep_document_download(documentID, ret_format=return_format, authenticated=True, baseFilename="opasDoc")    
+    opasAPISupportLib.prep_document_download(documentID, ret_format=return_format, authenticated=True, base_filename="opasDoc")    
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS_EPUB,
-                                      params=request.url._url,
-                                      document_id="{}".format(documentID), 
-                                      status_message=CURRENT_DEVELOPMENT_STATUS
-                                      )
+                                session_info=session_info, 
+                                params=request.url._url,
+                                document_id="{}".format(documentID), 
+                                status_message=CURRENT_DEVELOPMENT_STATUS
+                                )
 
     return True
 
@@ -1684,6 +1724,7 @@ def download_a_document(resp: Response,
     
 if __name__ == "__main__":
     print(f"Server Running ({localsecrets.BASEURL}:{localsecrets.API_PORT_MAIN})")
-    uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
+    uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=True)
+	# uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
 
     print ("we're still here!")

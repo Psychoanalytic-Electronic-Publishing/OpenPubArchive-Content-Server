@@ -63,7 +63,7 @@ def getFirstValueOfDictItemList(dictName, keyName):
             
     return retVal
 
-def pgRgSplitter(pgRg):
+def pgrg_splitter(pgRg):
     """
     Break up a stored page range into its components.
     
