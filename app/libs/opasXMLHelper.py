@@ -24,6 +24,7 @@ from lxml import etree
 import lxml.html as lhtml
 
 from ebooklib import epub
+from opasConfig import TEMPDIRECTORY
 
 pyVer = 2
 if (sys.version_info > (3, 0)):
@@ -34,23 +35,26 @@ else:
     # Python 2 code in this block
     import StringIO
 
+ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n")  # TODO - Move to module globals to optimize
+
+
 # -------------------------------------------------------------------------------------------------------
 
-def author_derive_mast_from_xmlstr(author_xmlstr, listed=True):
+def author_mast_from_xmlstr(author_xmlstr, listed=True):
     """
-    Parses a string which has the PEP "aut" tag underneath a higher level tag, and returns the article Mast. for authors
+    Parses a string which has the PEP "aut" tag underneath a higher level tag, and returns the article mast for authors
     
-    Listed can be True (listed authors), False (unlisted authors), or All (all authors)
+    Listed can be True (show only listed authors), False (include unlisted authors), or All (show all authors)
     
-    >>> author_derive_mast_from_xmlstr('<aut role="author" alias="false" listed="true" asis="false" lang="en"><nfirst>Dana</nfirst><nmid/><nlast>Birksted-Breen</nlast><nti/></aut>')
+    >>> author_mast_from_xmlstr('<aut role="author" alias="false" listed="true" asis="false" lang="en"><nfirst>Dana</nfirst><nmid/><nlast>Birksted-Breen</nlast><nti/></aut>')
     ('Dana Birksted-Breen', ['Dana Birksted-Breen'])
-    >>> author_derive_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Kristeva, Julia"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast> <nti>Professor</nti></aut><aut role="author" alias="false" listed="false" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> </aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
+    >>> author_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Kristeva, Julia"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast> <nti>Professor</nti></aut><aut role="author" alias="false" listed="false" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> </aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
     ('Julia Kristeva &amp; Michael Marder', ['Julia Kristeva', 'Michael Marder'])
-    >>> author_derive_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Kristeva, Julia"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast> <nti>Professor</nti></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> <nbio>A Lecturer at the University of Leeds and a Ph.D. candidate in the Department of Romance Languages and Literatures at Harvard University. Her dissertation is on political fiction and art in Latin America and Portugal. Her areas of specialization are Spanish and Lusophone literature, culture, art and film, as well as French and German cultural and literary theory.</nbio></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
+    >>> author_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Kristeva, Julia"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast> <nti>Professor</nti></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> <nbio>A Lecturer at the University of Leeds and a Ph.D. candidate in the Department of Romance Languages and Literatures at Harvard University. Her dissertation is on political fiction and art in Latin America and Portugal. Her areas of specialization are Spanish and Lusophone literature, culture, art and film, as well as French and German cultural and literary theory.</nbio></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
     ('Julia Kristeva, Patricia Vieira &amp; Michael Marder', ['Julia Kristeva', 'Patricia Vieira', 'Michael Marder'])
-    >>> author_derive_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> <nbio>A Lecturer at the University of Leeds and a Ph.D. candidate in the Department of Romance Languages and Literatures at Harvard University. Her dissertation is on political fiction and art in Latin America and Portugal. Her areas of specialization are Spanish and Lusophone literature, culture, art and film, as well as French and German cultural and literary theory.</nbio></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
+    >>> author_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast> <nbio>A Lecturer at the University of Leeds and a Ph.D. candidate in the Department of Romance Languages and Literatures at Harvard University. Her dissertation is on political fiction and art in Latin America and Portugal. Her areas of specialization are Spanish and Lusophone literature, culture, art and film, as well as French and German cultural and literary theory.</nbio></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
     ('Patricia Vieira &amp; Michael Marder', ['Patricia Vieira', 'Michael Marder'])
-    >>> author_derive_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Boulanger, Ghislaine"><nfirst type="FIRST">Ghislaine</nfirst> <nlast>Boulanger</nlast></aut></artauth>')
+    >>> author_mast_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Boulanger, Ghislaine"><nfirst type="FIRST">Ghislaine</nfirst> <nlast>Boulanger</nlast></aut></artauth>')
     ('Ghislaine Boulanger', ['Ghislaine Boulanger'])
     """
     ret_val = ("", [])
@@ -62,57 +66,57 @@ def author_derive_mast_from_xmlstr(author_xmlstr, listed=True):
         rootFlag = ""
     
     if listed == True:
-        authorXMLList = pepxml.xpath(rootFlag + 'aut[@listed="true"]')
+        author_xml_list = pepxml.xpath(rootFlag + 'aut[@listed="true"]')
     elif listed == False:
-        authorXMLList = pepxml.xpath(rootFlag + 'aut[@listed="false"]')
+        author_xml_list = pepxml.xpath(rootFlag + 'aut[@listed="false"]')
     elif listed == "All":
-        authorXMLList = pepxml.xpath(rootFlag + 'aut')
+        author_xml_list = pepxml.xpath(rootFlag + 'aut')
     else:
         logger.error("authorDeriveMast: Bad value supplied for listed: %s" % listed)
 
-    authorCount = len(authorXMLList)
-    authorsMast = ""
-    authorList = []
-    currAuthorNumber = 0
-    for n in authorXMLList:
-        currAuthorNumber += 1
-        authorFirstName = xml_xpath_return_textsingleton(n, "nfirst", "").strip()
-        authorLastName = xml_xpath_return_textsingleton(n, "nlast", "").strip()
-        authorMidName = xml_xpath_return_textsingleton(n, "nmid", "").strip()
-        if authorMidName != "":
-            authorName = " ".join([authorFirstName, authorMidName, authorLastName])
+    author_count = len(author_xml_list)
+    authors_mast = ""
+    author_list = []
+    curr_author_number = 0
+    for n in author_xml_list:
+        curr_author_number += 1
+        author_first_name = xml_xpath_return_textsingleton(n, "nfirst", "").strip()
+        author_last_name = xml_xpath_return_textsingleton(n, "nlast", "").strip()
+        author_mid_name = xml_xpath_return_textsingleton(n, "nmid", "").strip()
+        if author_mid_name != "":
+            author_name = " ".join([author_first_name, author_mid_name, author_last_name])
         else:
-            authorName = " ".join([authorFirstName, authorLastName])
+            author_name = " ".join([author_first_name, author_last_name])
         
-        if authorsMast == "":
-            authorsMast = authorName
-            authorList = [authorName]
+        if authors_mast == "":
+            authors_mast = author_name
+            author_list = [author_name]
         else:   
-            authorList.append(authorName)
-            if currAuthorNumber == authorCount:
-                authorsMast += " &amp; " + authorName
+            author_list.append(author_name)
+            if curr_author_number == author_count:
+                authors_mast += " &amp; " + author_name
             else:
-                authorsMast += ", " + authorName
+                authors_mast += ", " + author_name
     
-    ret_val = (authorsMast, authorList)
+    ret_val = (authors_mast, author_list)
 
     return ret_val
     
-def authors_citation_format_from_xmlstr(author_xmlstr, listed=True):
+def authors_citation_from_xmlstr(author_xmlstr, listed=True):
     """
     Parses a string which has the PEP "aut" tag underneath a higher level tag, and returns a citation format list of authors
     
     Listed can be True (listed authors), False (unlisted authors), or All (all authors)
 
-    >>> authors_citation_format_from_xmlstr('<aut role="author" alias="false" listed="true" asis="false" lang="en"><nfirst>Dana</nfirst><nmid/><nlast>Birksted-Breen</nlast><nti/></aut>')
+    >>> authors_citation_from_xmlstr('<aut role="author" alias="false" listed="true" asis="false" lang="en"><nfirst>Dana</nfirst><nmid/><nlast>Birksted-Breen</nlast><nti/></aut>')
     ('Birksted-Breen, D.', ['Birksted-Breen, Dana'])
-    >>> authors_citation_format_from_xmlstr(r'')
+    >>> authors_citation_from_xmlstr(r'')
     ('', [])
-    >>> authors_citation_format_from_xmlstr(r'<artauth><aut role="author" alias="false" listed="true"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>', listed=True)
+    >>> authors_citation_from_xmlstr(r'<artauth><aut role="author" alias="false" listed="true"><nfirst type="FIRST">Julia</nfirst> <nlast>Kristeva</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>', listed=True)
     ('Kristeva, J., Vieira, P. &amp; Marder, M.', ['Kristeva, Julia', 'Vieira, Patricia', 'Marder, Michael'])
-    >>> authors_citation_format_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
+    >>> authors_citation_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Vieira, Patricia"><nfirst type="FIRST">Patricia</nfirst> <nlast>Vieira</nlast></aut><aut role="author" alias="false" listed="true" asis="false" authindexid="Marder, Michael"><nfirst type="FIRST">Michael</nfirst> <nlast>Marder</nlast></aut></artauth>')
     ('Vieira, P. &amp; Marder, M.', ['Vieira, Patricia', 'Marder, Michael'])
-    >>> authors_citation_format_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Boulanger, Ghislaine"><nfirst type="FIRST">Ghislaine</nfirst> <nlast>Boulanger</nlast></aut></artauth>')
+    >>> authors_citation_from_xmlstr(r'<artauth hidden="false"><aut role="author" alias="false" listed="true" asis="false" authindexid="Boulanger, Ghislaine"><nfirst type="FIRST">Ghislaine</nfirst> <nlast>Boulanger</nlast></aut></artauth>')
     ('Boulanger, G.', ['Boulanger, Ghislaine'])
     
     """
@@ -135,66 +139,58 @@ def authors_citation_format_from_xmlstr(author_xmlstr, listed=True):
             rootFlag = ""
 
         if listed == True:
-            authorXMLList = pepxml.xpath(rootFlag + 'aut[@listed="true"]')
+            author_xml_list = pepxml.xpath(rootFlag + 'aut[@listed="true"]')
         elif listed == False:
-            authorXMLList = pepxml.xpath(rootFlag + 'aut[@listed="false"]')
+            author_xml_list = pepxml.xpath(rootFlag + 'aut[@listed="false"]')
         elif listed == "All":
-            authorXMLList = pepxml.xpath(rootFlag + 'aut')
+            author_xml_list = pepxml.xpath(rootFlag + 'aut')
         else:
             logger.error("authorDeriveMast: Bad value supplied for listed: %s" % listed)
 
 
-        authorCount = len(authorXMLList)
-        authorList = []
-        authorsBibStyle = ""
-        currAuthorNumber = 0
-        for n in authorXMLList:
-            currAuthorNumber += 1
-            authorFirstName = xml_xpath_return_textsingleton(n, "nfirst", "")
-            authorFirstInitial = authorFirstName[0] if len(authorFirstName) > 0 else ""
-            authorLastName = xml_xpath_return_textsingleton(n, "nlast", "")
-            authorMidName = xml_xpath_return_textsingleton(n, "nmid", "")
-            authorMidInitial = authorMidName[0] if len(authorMidName) > 0 else ""
-            authorGivenNames  = ""
-            if authorMidName != "":
-                authorGivenNames = authorFirstName + " " + authorMidName
-                authorGivenInits = authorFirstInitial + ". " + authorMidInitial + "."
+        author_count = len(author_xml_list)
+        author_list = []
+        authors_bib_style = ""
+        curr_author_number = 0
+        for n in author_xml_list:
+            curr_author_number += 1
+            author_first_name = xml_xpath_return_textsingleton(n, "nfirst", "")
+            author_first_initial = author_first_name[0] if len(author_first_name) > 0 else ""
+            author_last_name = xml_xpath_return_textsingleton(n, "nlast", "")
+            author_mid_name = xml_xpath_return_textsingleton(n, "nmid", "")
+            author_mid_initial = author_mid_name[0] if len(author_mid_name) > 0 else ""
+            author_given_names  = ""
+            if author_mid_name != "":
+                author_given_names = author_first_name + " " + author_mid_name
+                author_given_inits = author_first_initial + ". " + author_mid_initial + "."
             else:
-                authorGivenNames = authorFirstName
-                authorGivenInits = authorFirstInitial + "."
+                author_given_names = author_first_name
+                author_given_inits = author_first_initial + "."
     
-            if authorGivenNames != "":
-                authorName = authorLastName + ", " + authorGivenNames
-                authorNameInits = authorLastName + ", " + authorGivenInits
+            if author_given_names != "":
+                author_name = author_last_name + ", " + author_given_names
+                author_name_inits = author_last_name + ", " + author_given_inits
             else:
-                authorName = authorLastName
-                authorNameInits = ""
+                author_name = author_last_name
+                author_name_inits = ""
     
-            authorList.append(authorName)
-            if authorsBibStyle == "":
-                authorsBibStyle = authorNameInits
+            author_list.append(author_name)
+            if authors_bib_style == "":
+                authors_bib_style = author_name_inits
             else:   
-                if currAuthorNumber == authorCount:
-                    authorsBibStyle += " &amp; " + authorNameInits
+                if curr_author_number == author_count:
+                    authors_bib_style += " &amp; " + author_name_inits
                 else:
-                    authorsBibStyle += ", " + authorNameInits
+                    authors_bib_style += ", " + author_name_inits
 
-            ret_val = (authorsBibStyle, authorList)
+            ret_val = (authors_bib_style, author_list)
 
     return ret_val
 
 def get_html_citeas(authors_bib_style, art_year, art_title, art_pep_sourcetitle_full, art_vol, art_pgrg):
-    ret_val = f"""<p class="citeas"><span class="authors">{authorsBibStyle}</span> (<span class="year">{artYear}</span>) <span class="title">{artTitle}</span>. <span class="sourcetitle">{artPepSourceTitleFull}</span> <span class="pgrg">{artVol}</span>:<span class="pgrg">{artPgrg}</span></p>"""
+    ret_val = f"""<p class="citeas"><span class="authors">{authors_bib_style}</span> (<span class="year">{art_year}</span>) <span class="title">{art_title}</span>. <span class="sourcetitle">{art_pep_sourcetitle_full}</span> <span class="pgrg">{art_vol}</span>:<span class="pgrg">{art_pgrg}</span></p>"""
     return ret_val
     
-def xml_remove_encoding_string(xmlstr):
-    # Get rid of the encoding for lxml
-    p=re.compile("\<\?xml version=[\'\"]1.0[\'\"] encoding=[\'\"]UTF-8[\'\"]\?\>\n", re.IGNORECASE)
-    ret_val = xmlstr
-    ret_val = p.sub("", ret_val)                
-    
-    return ret_val
-
 def xml_get_subelement_textsingleton(element_node, subelement_name, default_return=""):
     """
     Text for elements with only CDATA underneath
@@ -221,7 +217,7 @@ def xml_get_subelement_xmlsingleton(element_node, subelement_name, default_retur
     Returns the marked up XML text for elements (including subelements)
     If it doesn't exist or is empty, return the default_return
     
-    subElementName cannot be an xpath
+    subelement_name cannot be an xpath
     
     >>> root = etree.fromstring(test_xml)
     >>> xml_get_subelement_xmlsingleton(root, "author", None)
@@ -241,24 +237,24 @@ def xml_get_subelement_xmlsingleton(element_node, subelement_name, default_retur
 
     return ret_val
 
-#def xmlFragmentReturnTextOnly(xmlString, default_return=""):
-    #"""
-    #Return inner text of XML string element with sub tags stripped out
+def xml_fragment_text_only(xmlstr, default_return=""):
+    """
+    Return inner text of XML string element with sub tags stripped out
     
-    #>>> xmlFragmentReturnTextOnly("<myxml>this <b>is <i>really</i></b> xml.</myxml>", None)
-    #'this is really xml.'
+    >>> xml_fragment_text_only("<myxml>this <b>is <i>really</i></b> xml.</myxml>", None)
+    'this is really xml.'
 
-    #"""
-    #ret_val = default_return
-    #root = etree.fromstring(xmlString)
-    #etree.strip_tags(root, '*')
-    #inner_text = root.text
-    #if inner_text:
-        #ret_val = inner_text.strip()
-    #else:
-        #ret_val = default_return
+    """
+    ret_val = default_return
+    root = etree.fromstring(xmlstr)
+    etree.strip_tags(root, '*')
+    inner_text = root.text
+    if inner_text:
+        ret_val = inner_text.strip()
+    else:
+        ret_val = default_return
     
-    #return ret_val
+    return ret_val
 
 def xml_get_element_attr(element_node, attr_name, default_return=""):
     """
@@ -521,62 +517,98 @@ def add_headings_to_abstract_html(abstract, source_title=None, pub_year=None, vo
     ret_val = f"""
             <p class="heading">{heading}</p>
             <p class="title">{title}</p>
-            <p class="title_author">{authorMast}</p>
+            <p class="title_author">{author_mast}</p>
             <div class="abstract">{abstract}</p>
             """
     return ret_val
 
-def xml_str_to_html(xmlTextStr, xslt_file=r"./styles/pepkbd3-html.xslt"):
+def xml_file_to_xmlstr(xml_file, remove_encoding=False, resolve_entities=True):
+    """
+    Read XML file and convert it to an XML string, expanding all entities
+    
+    Optionally remove the lead-in encoding string (since some functions trip on that!)
+    
+    """
+    parser = etree.XMLParser(load_dtd=True, resolve_entities=resolve_entities)
+    try:
+        doc_DOM = etree.parse(xml_file, parser=parser)
+    except Exception as e:
+        logger.error(f"Error reading XML file {xml_file}", e)
+        ret_val = ""
+    else:
+        ret_val = etree.tostring(doc_DOM)
+        ret_val = ret_val.decode("utf8")
+        ret_val += "\n"
+        
+    if remove_encoding:
+        ret_val = remove_encoding(ret_val)
+    
+    return ret_val
+
+def xml_str_to_html(xml_text, xslt_file=r"./libs/styles/pepkbd3-html.xslt"):
+    """
+    Convert XML to HTML per XSLT file parameter
+    
+    >>> xml_str_to_html(xml_text=text_xml2)
+    
+    """
     ret_val = None
     try:
         if not os.path.exists(xslt_file):
+            # see if we're too low (e.g., we're already in libs)
             alt = "../styles/pepkbd3-html.xslt"
-            if os.path.exists("./styles/pepkbd3-html.xslt"):
+            if os.path.exists(alt):
                 xslt_file = alt
+            else:
+                raise FileNotFoundError("XSLT file missing") 
     except Exception as e:
         # return this error, so it will be displayed (for now) instead of the document
-        ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>Exception finding style sheet: {e}</p>"
+        ret_val = f"<p align='center'>Sorry, due to a configuration error (xslt missing), we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>Exception finding style sheet: {e}</p>"
         print (ret_val)
 
     try:
-        if isinstance(xmlTextStr, list) and xmlTextStr != "[]":
-            xmlTextStr = xmlTextStr[0]
+        if isinstance(xml_text, list) and xml_text != "[]":
+            xml_text = xml_text[0]
     except Exception as e:
         logger.error("Problem extracting full-text: ", e)
         
-    if xmlTextStr is not None and xmlTextStr != "[]":
+    if xml_text is not None and xml_text != "[]":
         try:
-            xmlTextStr = remove_encoding_string(xmlTextStr)
-            sourceFile = etree.fromstring(xmlTextStr)
+            xml_text = remove_encoding_string(xml_text)
+            sourceFile = etree.fromstring(xml_text)
         except Exception as e:
             # return this error, so it will be displayed (for now) instead of the document
             ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
             logger.error(ret_val)
             print (ret_val)
         else:
-            if xmlTextStr is not None and xmlTextStr != "[]":
+            if xml_text is not None and xml_text != "[]":
                 try:
                     xslt_file = etree.parse(xslt_file)
-                    xsltTransformer = etree.XSLT(xslt_file)
-                    transformedData = xsltTransformer(sourceFile)
+                    xslt_transformer = etree.XSLT(xslt_file)
+                    transformed_data = xslt_transformer(sourceFile)
                 except Exception as e:
                     # return this error, so it will be displayed (for now) instead of the document
                     ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
                     logger.error(ret_val)
                     print (ret_val)
                 else:
-                    ret_val = str(transformedData)
+                    ret_val = str(transformed_data)
     return ret_val
 
-def html_to_epub(htmlString, output_filename_base, art_id, lang="en", html_title=None, stylesheet="../styles/pep-html-preview.css"):
+def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=None, stylesheet="./libs/styles/pep-html-preview.css"):
     """
     uses ebooklib
+    
+    >>> htmlstr = xml_str_to_html(text_xml2)
+    >>> document_id = "epubconversiontest"
+    >>> filename = html_to_epub(htmlstr, output_filename_base=document_id, art_id=document_id)
     
     """
     if html_title is None:
         html_title = art_id
         
-    root = etree.HTML(htmlString)
+    root = etree.HTML(htmlstr)
     try:
         title = root.xpath("//title/text()")
         title = title[0]
@@ -589,7 +621,7 @@ def html_to_epub(htmlString, output_filename_base, art_id, lang="en", html_title
     basename = os.path.basename(output_filename_base)
     
     book = epub.EpubBook()
-    book.set_identifier('basename')
+    book.set_identifier(basename)
     book.set_title(html_title)
     book.set_language('en')
     
@@ -601,7 +633,7 @@ def html_to_epub(htmlString, output_filename_base, art_id, lang="en", html_title
                        file_name= art_id + '.xhtml',
                        lang=lang)
 
-    c1.set_content(htmlString)
+    c1.set_content(htmlstr)
     
     # copyright page / chapter
     c2 = epub.EpubHtml(title='Copyright',
@@ -637,17 +669,27 @@ def html_to_epub(htmlString, output_filename_base, art_id, lang="en", html_title
     book.spine = ['nav', c1, c2]
     book.add_item(epub.EpubNcx())
     book.add_item(epub.EpubNav())    
-    filename = basename + '.epub'
+    filename = TEMPDIRECTORY + "/" + basename + '.epub'
     epub.write_epub(filename, book)
     return filename
 
 def remove_encoding_string(xmlstr):
     # Get rid of the encoding for lxml
-    p=re.compile("\<\?xml version=\'1.0\' encoding=\'UTF-8\'\?\>\n")  # TODO - Move to module globals to optimize
-    ret_val = xmlstr
-    ret_val = p.sub("", ret_val)                
-    
+    ret_val = ENCODER_MATCHER.sub("", xmlstr)                
     return ret_val
+
+#def remove_encoding_string(xmlstr):
+    #"""
+    #Remove the encoding string, as required by lxml in some functions
+    
+    #>>> remove_encoding_string('<?xml version="1.0" encoding="ISO-8859-1" ?>\n<!DOCTYPE pepkbd3></>')
+    
+    #"""
+    #p=re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n")  # TODO - Move to module globals to optimize
+    #ret_val = xmlstr
+    #ret_val = p.sub("", ret_val)                
+    
+    #return ret_val
 
 
 
@@ -670,6 +712,8 @@ if __name__ == "__main__":
                 <p id="5">Another <b>random</b> paragraph with multiple <b>subelements</b></p>
               </test>
               """
+    text_xml2 = xml_file_to_xmlstr("./tstfiles/IJP.051.0175A(bEXP_ARCH1).XML")
+    
     doctest.testmod()
     print ("Tests Completed")
 

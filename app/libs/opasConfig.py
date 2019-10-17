@@ -1,6 +1,7 @@
 import sys
 import logging
 import datetime
+import tempfile
 
 CONSOLE_DEBUG_MESSAGES_ON = True
 CONSOLE_DB_DEBUG_MESSAGES_ON = True
@@ -18,11 +19,17 @@ HITMARKERSTART = "%##"  # using non html/xml default markers, so we can strip al
 HITMARKEREND = "##%"
 HITMARKERSTART_OUTPUTHTML = '<span class="searchhit">'  # to convert the non-markup HIT markers to HTML, supply values here.  These match the current PEPEasy stylesheet.
 HITMARKEREND_OUTPUTHTML = "</span>"
-    
+      
 USER_NOT_LOGGED_IN_ID = 0
     
 COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
 COOKIE_MAX_KEEP_TIME = 86400 # 24 hours in seconds
+
+# cookies
+OPASSESSIONID = "opasSessionID"
+OPASACCESSTOKEN = "opasAccessToken"
+OPASEXPIRES= "OpasExpiresTime"
+
 
 DEFAULT_KWIC_CONTENT_LENGTH = 200  # On each side of match (so use 1/2 of the total you want)
 DEFAULT_MAX_KWIC_RETURNS = 5
@@ -52,3 +59,5 @@ DESCRIPTION_MOST_CITED_PERIOD = "Look for citations during this Period (5, 10, 2
 DESCRIPTION_PAGEREQUEST = "The page or page range (from the document's numbering) to return (e.g., 215, or 215-217)"
 DESCRIPTION_PAGEOFFSET = "The relative page number (1 is the first) to return"
 
+# temp directory used for generated downloads
+TEMPDIRECTORY = tempfile.gettempdir()

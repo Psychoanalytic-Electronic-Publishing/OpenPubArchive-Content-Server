@@ -36,7 +36,7 @@ from typing import Union, Optional, Tuple, List
 from enum import Enum
 import pymysql
 
-import opasConfig as opasConfig
+import opasConfig
 import stdMessageLib as stdMessageLib
 import localsecrets as localsecrets
 from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, CONFIG, COOKIE_DOMAIN
@@ -283,12 +283,12 @@ def get_session_id(request):
 
 #-----------------------------------------------------------------------------
 def get_access_token(request):
-    ret_val = request.cookies.get("opasAccessToken", None)
+    ret_val = request.cookies.get(opasConfig.OPASACCESSTOKEN, None)
     return ret_val
 
 #-----------------------------------------------------------------------------
 def get_expiration_time(request):
-    ret_val = request.cookies.get("opasSessionExpirestime", None)
+    ret_val = request.cookies.get(opasConfig.OPASEXPIRES, None)
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -968,7 +968,7 @@ def metadata_get_videos(source_type=None, pep_code=None, limit=opasConfig.DEFAUL
         print ("metadataGetVideos Error: {}".format(e))
 
     source_info_dblist = []
-    count = len(srcList.results)
+    # count = len(srcList.results)
     total_count = int(srcList.results.numFound)
     
     for result in srcList.results:
@@ -1005,20 +1005,20 @@ def metadata_get_videos(source_type=None, pep_code=None, limit=opasConfig.DEFAUL
 #-----------------------------------------------------------------------------
 def metadata_get_source_by_type(source_type=None, pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0):
     """
-    Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
+    Return a list of source metadata, by type (e.g., journal, video, etc.).
     
     No attempt here to map to the correct structure, just checking what field/data items we have in sourceInfoDB.
     
-    >>> returnData = metadata_get_source_by_type("journal")
+    >>> returnData = metadata_get_source_by_type(source_type="journal")
     Number found: 75
 
-    >>> returnData = metadata_get_source_by_type("book")
+    >>> returnData = metadata_get_source_by_type(source_type="book")
     Number found: 6
 
-    >>> metadata_get_source_by_type("journals", limit=5, offset=0)
+    >>> metadata_get_source_by_type(source_type="journals", limit=5, offset=0)
     Number found: 75
     
-    >>> metadata_get_source_by_type("journals", limit=5, offset=6)
+    >>> metadata_get_source_by_type(source_type="journals", limit=5, offset=6)
     Number found: 75
     
     """
@@ -1040,7 +1040,8 @@ def metadata_get_source_by_type(source_type=None, pep_code=None, limit=opasConfi
     # This is not part of the original API, it brings back individual videos rather than the videostreams
     # but here in case we need it.  In that case, your source must be videos.*, like videostream, in order
     # to load individual videos rather than the video journals
-    if source_type == "videos":        
+    if source_type == "videos":
+        #  gets count of videos and a list of them (from Solr database)
         total_count, source_info_dblist = metadata_get_videos(source_type, pep_code, limit, offset)
         count = len(source_info_dblist)
     else: # get from mySQL
@@ -1168,7 +1169,7 @@ def metadata_get_source_by_code(pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FO
     
     curl -X GET "http://stage.pep.gvpi.net/api/v1/Metadata/Journals/AJP/" -H "accept: application/json"
     
-    >>> metadata_get_source_by_code("APA")["wall"]
+    >>> metadata_get_source_by_code(pep_code="APA")["wall"]
     3
     >>> metadata_get_source_by_code()
     
@@ -1249,15 +1250,15 @@ def metadata_get_source_by_code(pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FO
     return ret_val
 
 #-----------------------------------------------------------------------------
-def authors_get_author_info(author_name_partial, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, author_order="index"):
+def authors_get_author_info(author_partial, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, author_order="index"):
     """
     Returns a list of matching names (per authors last name), and the number of articles in PEP found by that author.
     
     Args:
-        authorNamePartial (str): String prefix of author names to return.
+        author_partial (str): String prefix of author names to return.
         limit (int, optional): Paging mechanism, return is limited to this number of items.
         offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
-        authorOrder (str, optional): Return the list in this order, per Solr documentation.  Defaults to "index", which is the Solr determined indexing order.
+        author_order (str, optional): Return the list in this order, per Solr documentation.  Defaults to "index", which is the Solr determined indexing order.
 
     Returns:
         models.DocumentList: Pydantic structure (dict) for DocumentList.  See models.py
@@ -1274,13 +1275,13 @@ def authors_get_author_info(author_name_partial, limit=opasConfig.DEFAULT_LIMIT_
     method = 2
     
     if method == 1:
-        query = "art_author_id:/%s.*/" % (author_name_partial)
+        query = "art_author_id:/%s.*/" % (author_partial)
         results = solr_authors.query( q=query,
                                       fields="authors, art_author_id",
                                       facet_field="art_author_id",
                                       facet="on",
                                       facet_sort="index",
-                                      facet_prefix="%s" % author_name_partial,
+                                      facet_prefix="%s" % author_partial,
                                       facet_limit=limit,
                                       facet_offset=offset,
                                       rows=0
@@ -1288,15 +1289,15 @@ def authors_get_author_info(author_name_partial, limit=opasConfig.DEFAULT_LIMIT_
 
     if method == 2:
         # should be faster way, but about the same measuring tuck (method1) vs tuck.* (method2) both about 2 query time.  However, allowing regex here.
-        if "*" in author_name_partial or "?" in author_name_partial or "." in author_name_partial:
+        if "*" in author_partial or "?" in author_partial or "." in author_partial:
             results = solr_author_term_search( terms_fl="art_author_id",
                                                terms_limit=limit,  # this causes many regex expressions to fail
-                                               terms_regex=author_name_partial + ".*",
+                                               terms_regex=author_partial + ".*",
                                                terms_sort=author_order  # index or count
                                               )           
         else:
             results = solr_author_term_search( terms_fl="art_author_id",
-                                               terms_prefix=author_name_partial,
+                                               terms_prefix=author_partial,
                                                terms_sort=author_order,  # index or count
                                                terms_limit=limit
                                              )
@@ -1305,7 +1306,7 @@ def authors_get_author_info(author_name_partial, limit=opasConfig.DEFAULT_LIMIT_
     response_info = models.ResponseInfo( limit=limit,
                                          offset=offset,
                                          listType="authorindex",
-                                         scopeQuery="Terms: %s" % author_name_partial,
+                                         scopeQuery="Terms: %s" % author_partial,
                                          solrParams=results._params,
                                          timeStamp=datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
                                        )
@@ -1348,27 +1349,25 @@ def authors_get_author_info(author_name_partial, limit=opasConfig.DEFAULT_LIMIT_
     return ret_val
 
 #-----------------------------------------------------------------------------
-def authors_get_author_publications(authorNamePartial, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+def authors_get_author_publications(author_partial, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns a list of publications (per authors partial name), and the number of articles by that author.
     
-    
-    
-    >>> resp = authors_get_author_publications("Tuck")
+    >>> resp = authors_get_author_publications(author_partial="Tuck")
     Number found: 0
     Query didn't work - art_author_id:/Tuck/
     trying again - art_author_id:/Tuck[ ]?.*/
     Number found: 72
-    >>> resp = authors_get_author_publications("Fonag")
+    >>> resp = authors_get_author_publications(author_partial="Fonag")
     Number found: 0
     Query didn't work - art_author_id:/Fonag/
     trying again - art_author_id:/Fonag[ ]?.*/
     Number found: 134    
-    >>> resp = authors_get_author_publications("Levinson, Nadine A.")
+    >>> resp = authors_get_author_publications(author_partial="Levinson, Nadine A.")
     Number found: 8
     """
     ret_val = {}
-    query = "art_author_id:/{}/".format(authorNamePartial)
+    query = "art_author_id:/{}/".format(author_partial)
     # wildcard in case nothing found for #1
     results = solr_authors.query( q = "{}".format(query),   
                                   fields = "art_author_id, art_year_int, art_id, art_citeas_xml",
@@ -1380,7 +1379,7 @@ def authors_get_author_publications(authorNamePartial, limit=opasConfig.DEFAULT_
     
     if results._numFound == 0:
         print ("authorsGetAuthorPublications Query didn't work - {}".format(query))
-        query = "art_author_id:/{}[ ]?.*/".format(authorNamePartial)
+        query = "art_author_id:/{}[ ]?.*/".format(author_partial)
         print ("authorsGetAuthorPublications trying again - {}".format(query))
         results = solr_authors.query( q = "{}".format(query),  
                                       fields = "art_author_id, art_year_int, art_id, art_citeas_xml",
@@ -1390,7 +1389,7 @@ def authors_get_author_publications(authorNamePartial, limit=opasConfig.DEFAULT_
 
         print ("authorsGetAuthorPublications Number found: %s" % results._numFound)
         if results._numFound == 0:
-            query = "art_author_id:/(.*[ ])?{}[ ]?.*/".format(authorNamePartial)
+            query = "art_author_id:/(.*[ ])?{}[ ]?.*/".format(author_partial)
             print ("trying again - {}".format(query))
             results = solr_authors.query( q = "{}".format(query),  
                                           fields = "art_author_id, art_year_int, art_id, art_citeas_xml",
@@ -1603,11 +1602,11 @@ def documents_get_document(document_id, solr_query_params=None, ret_format="XML"
    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
    For authenticated users, it returns with the document itself
    
-    >> resp = documentsGetDocument("AIM.038.0279A", retFormat="html") 
+    >> resp = documents_get_document("AIM.038.0279A", ret_format="html") 
     
-    >> resp = documentsGetDocument("AIM.038.0279A") 
+    >> resp = documents_get_document("AIM.038.0279A") 
     
-    >> resp = documentsGetDocument("AIM.040.0311A")
+    >> resp = documents_get_document("AIM.040.0311A")
     
 
     """
@@ -1779,8 +1778,8 @@ def prep_document_download(document_id, ret_format="HTML", authenticated=True, b
         #if user is not authenticated, effectively do endpoint for getDocumentAbstracts
         documents_get_abstracts(document_id, limit=1)
     else:
-        results = solr_docs.query(q = "art_id:%s" % (document_id),  
-                                    fields = "art_id, art_citeas_xml, text_xml"
+        results = solr_docs.query( q = "art_id:%s" % (document_id),  
+                                   fields = "art_id, art_citeas_xml, text_xml"
                                  )
         try:
             ret_val = results.results[0]["text_xml"]
@@ -1821,7 +1820,7 @@ def convert_xml_to_html_file(xmltext_str, xslt_file=r"./styles/pepkbd3-html.xslt
         output_filename = filename_base + ".html"
 
     htmlString = opasxmllib.xml_str_to_html(xmltext_str, xslt_file=xslt_file)
-    fo = open(output_filename, "w")
+    fo = open(output_filename, "w", encoding="utf-8")
     fo.write(str(htmlString))
     fo.close()
     
@@ -1847,7 +1846,8 @@ def get_image_binary(image_id):
     
     curl -X GET "http://stage.pep.gvpi.net/api/v1/Documents/Downloads/Images/aim.036.0275a.fig001.jpg" -H "accept: image/jpeg" -H "Authorization: Basic cC5lLnAuYS5OZWlsUlNoYXBpcm86amFDayFsZWdhcmQhNQ=="
     
-    and returns a binary object.  
+    and returns a binary object.
+    
         
     """
     def getImageFilename(image_id):
@@ -1902,51 +1902,52 @@ def get_kwic_list(marked_up_text,
                   limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS):
     """
     Find all nonoverlapping matches, using Solr's return.  Limit the number.
+    
+    (See git version history for an earlier -- and different version)
     """
     
     ret_val = []
-    emMarks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extra_context_len, solr_start_hit_tag, solr_end_hit_tag, extra_context_len))
-    markedUp = re.compile(".*(%s.*%s).*" % (solr_start_hit_tag, solr_end_hit_tag))
+    em_marks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extra_context_len, solr_start_hit_tag, solr_end_hit_tag, extra_context_len))
+    marked_up = re.compile(".*(%s.*%s).*" % (solr_start_hit_tag, solr_end_hit_tag))
     marked_up_text = opasxmllib.xml_string_to_text(marked_up_text) # remove markup except match tags which shouldn't be XML
 
-    matchTextPattern = "({{.*?}})"
-    patCompiled = re.compile(matchTextPattern)
-    wordList = patCompiled.split(marked_up_text) # split all the words
-    listOfMatches = []
+    match_text_pattern = "({{.*?}})"
+    pat_compiled = re.compile(match_text_pattern)
+    word_list = pat_compiled.split(marked_up_text) # split all the words
     index = 0
     count = 0
     #TODO may have problems with adjacent matches!
-    skipNext = False
-    for n in wordList:
-        if patCompiled.match(n) and skipNext == False:
+    skip_next = False
+    for n in word_list:
+        if pat_compiled.match(n) and skip_next == False:
             # we have a match
             try:
-                textBefore = wordList[index-1]
-                textBeforeWords = textBefore.split(" ")[-extra_context_len:]
-                textBeforePhrase = " ".join(textBeforeWords)
+                text_before = word_list[index-1]
+                text_before_words = text_before.split(" ")[-extra_context_len:]
+                text_before_phrase = " ".join(text_before_words)
             except:
-                textBefore = ""
+                text_before = ""
             try:
-                textAfter = wordList[index+1]
-                textAfterWords = textAfter.split(" ")[:extra_context_len]
-                textAfterPhrase = " ".join(textAfterWords)
-                if patCompiled.search(textAfterPhrase):
-                    skipNext = True
+                text_after = word_list[index+1]
+                text_after_words = text_after.split(" ")[:extra_context_len]
+                text_after_phrase = " ".join(text_after_words)
+                if pat_compiled.search(text_after_phrase):
+                    skip_next = True
             except:
-                textAfter = ""
+                text_after = ""
 
             # change the tags the user told Solr to use to the final output tags they want
             #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
             match = re.sub(solr_start_hit_tag, output_start_hit_tag_marker, n)
             match = re.sub(solr_end_hit_tag, output_end_hit_tag_marker, match)
 
-            contextPhrase = textBeforePhrase + match + textAfterPhrase
+            context_phrase = text_before_phrase + match + text_after_phrase
 
-            ret_val.append(contextPhrase)
+            ret_val.append(context_phrase)
 
             try:
-                logger.info("getKwicList Match: '...{}...'".format(contextPhrase))
-                print ("getKwicListMatch: '...{}...'".format(contextPhrase))
+                logger.info("getKwicList Match: '...{}...'".format(context_phrase))
+                print ("getKwicListMatch: '...{}...'".format(context_phrase))
             except Exception as e:
                 print ("getKwicList Error printing or logging matches. {}".format(e))
             
@@ -1955,53 +1956,53 @@ def get_kwic_list(marked_up_text,
             if count >= limit:
                 break
         else:
-            skipNext = False
+            skip_next = False
             index += 1
         
-    matchCount = len(ret_val)
+    # matchCount = len(ret_val)
     
     return ret_val    
 
 
-#-----------------------------------------------------------------------------
-def get_kwic_list_old(marked_up_text, extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, 
-                solr_start_hit_tag=opasConfig.HITMARKERSTART, # supply whatever the start marker that solr was told to use
-                solr_end_hit_tag=opasConfig.HITMARKEREND,     # supply whatever the end marker that solr was told to use
-                output_start_hit_tag_marker=opasConfig.HITMARKERSTART_OUTPUTHTML, # the default output marker, in HTML
-                output_end_hit_tag_marker=opasConfig.HITMARKEREND_OUTPUTHTML,
-                limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS):
-    """
-    Find all nonoverlapping matches, using Solr's return.  Limit the number.
-    """
+##-----------------------------------------------------------------------------
+#def get_kwic_list_old(marked_up_text, extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, 
+                #solr_start_hit_tag=opasConfig.HITMARKERSTART, # supply whatever the start marker that solr was told to use
+                #solr_end_hit_tag=opasConfig.HITMARKEREND,     # supply whatever the end marker that solr was told to use
+                #output_start_hit_tag_marker=opasConfig.HITMARKERSTART_OUTPUTHTML, # the default output marker, in HTML
+                #output_end_hit_tag_marker=opasConfig.HITMARKEREND_OUTPUTHTML,
+                #limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS):
+    #"""
+    #Find all nonoverlapping matches, using Solr's return.  Limit the number.
+    #"""
     
-    ret_val = []
-    em_marks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extra_context_len, solr_start_hit_tag, solr_end_hit_tag, extra_context_len))
-    count = 0
-    for n in em_marks.finditer(marked_up_text):
-        count += 1
-        match = n.group(0)
-        try:
-            # strip xml
-            match = opasxmllib.xml_string_to_text(match)
-            # change the tags the user told Solr to use to the final output tags they want
-            #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
-            match = re.sub(solr_start_hit_tag, output_start_hit_tag_marker, match)
-            match = re.sub(solr_end_hit_tag, output_end_hit_tag_marker, match)
-        except Exception as e:
-            logging.error("Error stripping xml from kwic entry {}".format(e))
+    #ret_val = []
+    #em_marks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extra_context_len, solr_start_hit_tag, solr_end_hit_tag, extra_context_len))
+    #count = 0
+    #for n in em_marks.finditer(marked_up_text):
+        #count += 1
+        #match = n.group(0)
+        #try:
+            ## strip xml
+            #match = opasxmllib.xml_string_to_text(match)
+            ## change the tags the user told Solr to use to the final output tags they want
+            ##   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
+            #match = re.sub(solr_start_hit_tag, output_start_hit_tag_marker, match)
+            #match = re.sub(solr_end_hit_tag, output_end_hit_tag_marker, match)
+        #except Exception as e:
+            #logging.error("Error stripping xml from kwic entry {}".format(e))
                
-        ret_val.append(match)
-        try:
-            logger.info("getKwicList Match: '...{}...'".format(match))
-            print ("getKwicListMatch: '...{}...'".format(match))
-        except Exception as e:
-            print ("getKwicList Error printing or logging matches. {}".format(e))
-        if count >= limit:
-            break
+        #ret_val.append(match)
+        #try:
+            #logger.info("getKwicList Match: '...{}...'".format(match))
+            #print ("getKwicListMatch: '...{}...'".format(match))
+        #except Exception as e:
+            #print ("getKwicList Error printing or logging matches. {}".format(e))
+        #if count >= limit:
+            #break
         
-    match_count = len(ret_val)
+    #match_count = len(ret_val)
     
-    return ret_val    
+    #return ret_val    
 
 #-----------------------------------------------------------------------------
 def year_arg_parser(year_arg):
@@ -2334,7 +2335,7 @@ def search_text(query,
                 if full_text_format_requested == "HTML":
                     if text_xml is not None:
                         text_xml = opasxmllib.xml_str_to_html(text_xml,
-                                                                 xslt_file=r"./styles/pepkbd3-html.xslt")
+                                                                 xslt_file=r"./libs/styles/pepkbd3-html.xslt")
     
             if full_text_requested and not authenticated: # don't do this when textXml is a fragment from kwiclist!
                 try:

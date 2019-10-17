@@ -16,11 +16,9 @@ OpenPubArchiveW7.wpu
 OpenPubArchiveW7.wpr
 scrap.py
 libs/epubExamination/IJP.051.0175A.epub
-OPASServer/.vs/OPASServer/v16/.suo
-OPASServer/.vs/slnx.sqlite
-OPASServer/.vs/VSWorkspaceState.json
-OPASServer/.vscode/launch.json
-OPASServer/pepsolrtest.log
+OPASServer/.vs/*
+OPASServer/.vscode/*
+OPASServer/*.log
 OPASServer/vs_opas.code-workspace
 styles/article.html
 styles/IJP.051.0175A(bEXP_ARCH1).html
@@ -33,19 +31,17 @@ libs/pepsolrtest.log
 libs/recreateUsers.py
 app/config/localsecrets.py
 app/libs/Garbage*
-app/libs/examples
+app/libs/examples/*
 app/libs/recreateUsers.py
 app/styles/*.epub
 app/styles/*.html
 app/IJP.*.html
 *.epub
 *Sample*
-libs/examples/basicPWExample.py
-libs/examples/simplePWExample.py
-libs/examples/
 *.log
 OpenPubArchive.wpu
 venv/
+env/
 .vscode/
 global set of requirements.txt
 libs/Garbage*
@@ -53,3 +49,4 @@ GVPI_Data/*
 oauth2Example.py
 *.wpu
 *.wpr
+*.pdf

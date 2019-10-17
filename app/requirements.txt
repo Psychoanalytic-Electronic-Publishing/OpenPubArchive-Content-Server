@@ -1,3 +1,4 @@
+aiofiles
 asn1crypto==0.24.0
 bcrypt==3.1.7
 certifi==2019.6.16
@@ -26,3 +27,4 @@ starlette==0.12.8
 urllib3==1.25.3
 uvicorn==0.9.0
 websockets==8.0.2
+xhtml2pdf

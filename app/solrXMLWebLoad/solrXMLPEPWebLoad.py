@@ -188,15 +188,15 @@ class ArticleInfo(object):
         
         self.authorXMLList = pepxml.xpath('//artinfo/artauth/aut')
         self.authorXML = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, '//artinfo/artauth')
-        self.authorsBibStyle, self.authorList = opasxmllib.authors_citation_format_from_xmlstr(self.authorXML, listed=True)
+        self.authorsBibStyle, self.authorList = opasxmllib.authors_citation_from_xmlstr(self.authorXML, listed=True)
         # ToDo: I think I should add an author ID to bib aut too.  But that will have
         #  to wait until I rebuild everything in January.
         self.artAuthorIDList = opasxmllib.xml_xpath_return_textlist(pepxml, '//artinfo/artauth/aut[@listed="true"]/@authindexid')
         if self.artAuthorIDList == []: # no authindexid
             logging.warning("This document %s does not have an author list; may be missing authindexids" % artID)
             self.artAuthorIDList = self.authorList
-        self.authorMast, self.authorMastList = opasxmllib.author_derive_mast_from_xmlstr(self.authorXML, listed=True)
-        self.authorMastStringUnlisted, self.authorMastListUnlisted = opasxmllib.author_derive_mast_from_xmlstr(self.authorXML, listed=False)
+        self.authorMast, self.authorMastList = opasxmllib.author_mast_from_xmlstr(self.authorXML, listed=True)
+        self.authorMastStringUnlisted, self.authorMastListUnlisted = opasxmllib.author_mast_from_xmlstr(self.authorXML, listed=False)
         self.authorCount = len(self.authorXMLList)
         self.artAllAuthors = self.authorMast + " (" + self.authorMastStringUnlisted + ")"
         self.artKwds = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/artkwds/node()", None)
@@ -393,7 +393,7 @@ def processInfoForAuthorCore(pepxml, artInfo, solrAuthor):
         for author in artInfo.authorXMLList:
             authorID = author.attrib.get('authindexid', None)
             if authorID is None:
-                authorID = opasxmllib.authors_citation_format_from_xmlstr(author)
+                authorID = opasxmllib.authors_citation_from_xmlstr(author)
                 try:
                     authorID = authorID[0]
                 except:

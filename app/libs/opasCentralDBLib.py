@@ -160,10 +160,10 @@ class opasCentralDB(object):
                 if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
                     print (f"Database connection was already opened ({caller_name})")
             except:
-                errMsg = f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT}"
-                logger.error(errMsg)
+                err_msg = f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT}"
+                logger.error(err_msg)
                 if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                    print (errMsg)
+                    print (err_msg)
                 self.connected = False
                 self.db = None
 
@@ -177,10 +177,10 @@ class opasCentralDB(object):
                     print (f"Database connection closed ({caller_name})")
                 self.db = None
         except:
-            errMsg = f"closeConnection: The db is not open ({caller_name})"
+            err_msg = f"closeConnection: The db is not open ({caller_name})"
             if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                print (errMsg)
-            logger.error(errMsg)
+                print (err_msg)
+            logger.error(err_msg)
 
         # make sure to mark the connection false in any case
         self.connected = False           
@@ -399,11 +399,11 @@ class opasCentralDB(object):
                 cursor.close()
                 if success:
                     ret_val = True
-                    print (f"Updated session record for session: {sessionID}")
+                    print (f"Updated session record for session: {session_id}")
                 else:
                     ret_val = False
-                    print (f"Session close/update did not work for sessionID: {sessionID}")
-                    logger.warning(f"Could not record close session per token={sessionID} in DB")
+                    print (f"Session close/update did not work for sessionID: {session_id}")
+                    logger.warning(f"Could not record close session per token={session_id} in DB")
 
         self.close_connection(caller_name="update_session") # make sure connection is closed
         return ret_val
@@ -416,16 +416,16 @@ class opasCentralDB(object):
         ret_val = False
         #session = None
         if session_id is None:
-            errMsg = "No session ID specified"
-            logger.error(errMsg)
+            err_msg = "No session ID specified"
+            logger.error(err_msg)
             if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                print (errMsg)
+                print (err_msg)
         else:
             if not self.open_connection(caller_name="delete_session"): # make sure connection opens
-                errMsg = "Delete session could not open database"
-                logger.error(errMsg)
+                err_msg = "Delete session could not open database"
+                logger.error(err_msg)
                 if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                    print (errMsg)
+                    print (err_msg)
             else: # its open
                 if self.db != None:  # don't need this check, but leave it.
                     cursor = self.db.cursor()
@@ -580,7 +580,7 @@ class opasCentralDB(object):
 
     def retire_expired_sessions(self):
         """
-        Retire any expire sessions
+        Retire any expired sessions (in the database)
         """
         ret_val = None
         self.open_connection(caller_name="retire_expired_sessions") # make sure connection is open
@@ -621,10 +621,10 @@ class opasCentralDB(object):
         """
         ret_val = None
         if not self.open_connection(caller_name="record_session_endpoint"): # make sure connection is open
-            errMsg = "Save session could not open database"
-            logger.error(errMsg)
+            err_msg = "Save session could not open database"
+            logger.error(err_msg)
             if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                print (errMsg)
+                print (err_msg)
         else:
             try:
                 session_id = session_info.session_id         
@@ -776,10 +776,10 @@ class opasCentralDB(object):
         
         """
         try:
-            dbOpened = not self.db.open
+            db_opened = not self.db.open
         except:
             self.open_connection(caller_name="get_user") # make sure connection is open
-            dbOpened=True
+            db_opened=True
     
         curs = self.db.cursor(pymysql.cursors.DictCursor)
         if username is not None:
@@ -802,7 +802,7 @@ class opasCentralDB(object):
             else:
                 ret_val = None
 
-        if dbOpened: # if we opened it, close it.
+        if db_opened: # if we opened it, close it.
             self.close_connection(caller_name="get_user") # make sure connection is closed
 
         return ret_val
@@ -823,10 +823,10 @@ class opasCentralDB(object):
                 if verify_password(password, admin.password):
                     ret_val = admin
         except:
-            errMsg = f"Cannot find admin user {username}"
-            logger.error(errMsg)
+            err_msg = f"Cannot find admin user {username}"
+            logger.error(err_msg)
             if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                print (errMsg)
+                print (err_msg)
     
         return ret_val   
     
