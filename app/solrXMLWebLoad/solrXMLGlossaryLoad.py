@@ -144,7 +144,7 @@ def main():
 
         # import into lxml
         # root = etree.fromstring(fileXMLContents)
-        root = etree.fromstring(opasxmllib.xml_remove_encoding_string(fileXMLContents))
+        root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents))
         pepxml = root[0]
 
         # Containing Article data

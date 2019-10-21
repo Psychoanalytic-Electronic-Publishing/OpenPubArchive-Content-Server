@@ -45,8 +45,7 @@
     
   <!--<xsl:param name="transform" select="'pepkbd3-html.xsl'"/>-->
   <!--<xsl:param name="css" select="'./pep-html-preview.css'"/>-->
-<!--  <xsl:param name="css" select="'pep.css'"/>-->
-  <xsl:param name="css2" select="'pep.css'"/>
+  <!--<xsl:param name="css2" select="'pep.css'"/>-->
   <xsl:param name="css3" select="'pepepub.css'"/>
   <xsl:param name="report-warnings" select="'no'"/>
 
@@ -87,7 +86,7 @@
         <xsl:value-of select="pepkbd3/artinfo/arttitle"/>
       </title>
       <!-- <link rel="stylesheet" type="text/css" href="{$css}"></link>-->
-      <link rel="stylesheet" type="text/css" href="{$css2}"></link>
+      <!--<link rel="stylesheet" type="text/css" href="{$css2}"></link>-->
       <link rel="stylesheet" type="text/css" href="{$css3}"></link>
       
       <!-- When importing jats-oasis-html.xsl, we can call a template to insert CSS for our tables. -->

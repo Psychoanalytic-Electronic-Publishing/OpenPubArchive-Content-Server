@@ -525,12 +525,14 @@ class opasCentralDB(object):
                     if success:
                         msg = f"save_session: Session {session_id} Record Saved"
                         print (msg)
+                        ret_val = True
                     else:
                         msg = f"save_session {session_id} Record Could not be Saved"
                         print (msg)
+                        ret_val = False
                         logger.warning(msg)
                     
-                    ret_val = self.db.commit()
+                    self.db.commit()
                     cursor.close()
                     session_info = self.get_session_from_db(session_id)
                     self.sessionInfo = session_info
@@ -539,9 +541,9 @@ class opasCentralDB(object):
         # return session model object
         return ret_val, session_info #True or False, and SessionInfo Object
 
-    def close_expired_sessions(self, expire_time=30):
+    def close_inactive_sessions(self, inactive_time=opasConfig.SESSION_INACTIVE_LIMIT):
         """
-        Retire any expire sessions
+        Close any sessions where they've been inactive for inactive_time minutes
         """
         ret_val = None
         self.open_connection(caller_name="close_expired_sessions") # make sure connection is open
@@ -556,7 +558,7 @@ class opasCentralDB(object):
                             vw_latest_session_activity.session_id
                              FROM
                              vw_latest_session_activity
-                             WHERE latest_activity < DATE_SUB(NOW(), INTERVAL {expireTime} MINUTE))        
+                             WHERE latest_activity < DATE_SUB(NOW(), INTERVAL {inactive_time} MINUTE))        
                       """
                 success = cursor.execute(sql)
             except pymysql.InternalError as error:
@@ -578,12 +580,52 @@ class opasCentralDB(object):
         self.close_connection(caller_name="close_expired_sessions") # make sure connection is closed
         return ret_val
 
-    def retire_expired_sessions(self):
+    def count_open_sessions(self):
         """
-        Retire any expired sessions (in the database)
+        Get a count of any open sessions
+        
+        >>> ocd = opasCentralDB()
+        >>> session_count = ocd.count_open_sessions()
+
         """
-        ret_val = None
-        self.open_connection(caller_name="retire_expired_sessions") # make sure connection is open
+        ret_val = 0
+        self.open_connection(caller_name="count_open_sessions") # make sure connection is open
+
+        if self.db != None:
+            try:
+                cursor = self.db.cursor()
+                sql = """SELECT COUNT(*)
+                         FROM api_sessions
+                         WHERE session_end is NULL
+                      """
+                success = cursor.execute(sql)
+                    
+            except pymysql.InternalError as error:
+                code, message = error.args
+                print (f">>>>>>>>>>>>> {code} {message}")
+                logger.error(code, message)
+            else:
+                if success:
+                    result = cursor.fetchone()
+                    ret_val = result[0]
+                else:
+                    retVal = 0
+            
+            cursor.close()
+
+        self.close_connection(caller_name="count_open_sessions") # make sure connection is closed
+        return ret_val
+    
+
+    def close_expired_sessions(self):
+        """
+        Close any sessions past the set expiration time set in the record
+        
+        >>> ocd = opasCentralDB()
+        >>> session_count = ocd.close_expired_sessions()
+        """
+        ret_val = 0
+        self.open_connection(caller_name="close_expired_sessions") # make sure connection is open
 
         if self.db != None:
             try:
@@ -602,15 +644,14 @@ class opasCentralDB(object):
                 self.db.commit()
             
             cursor.close()
+            ret_val = int(success)
             if success:
-                ret_val = True
-                print (f"Retired {int(success)} expired sessions")
+                print (f"Closed {ret_val} expired sessions")
             else:
-                ret_val = False
-                print ("Retired expired sessions did not work")
-                logger.warning("Could not retire sessions in DB")
+                print ("Closed expired sessions did not work")
+                logger.warning("Could not close sessions in DB")
 
-        self.close_connection(caller_name="retire_expired_sessions") # make sure connection is closed
+        self.close_connection(caller_name="close_expired_sessions") # make sure connection is closed
         return ret_val
     
     def record_session_endpoint(self, session_info=None, api_endpoint_id=0, params=None, document_id=None, return_status_code=0, status_message=None):
@@ -668,8 +709,13 @@ class opasCentralDB(object):
 
     def get_sources(self, source=None, source_type=None, limit=None, offset=0):
         """
+        Return a list of sources
+          - for a specific source (code),
+          - OR for a specific source type (e.g. journal)
+          - OR if source and source_type are not specified, bring back them all
+          
         >>> ocd = opasCentralDB()
-        >>> sources = ocd.getSources()
+        >>> sources = ocd.getSources(source='IJP')
 
         """
         self.open_connection(caller_name="get_sources") # make sure connection is open
@@ -727,6 +773,7 @@ class opasCentralDB(object):
         Add a record to the doc_viewcounts table for specified viewtype
 
         Tested in main instance docstring
+        
         """
         ret_val = None
         self.open_connection(caller_name="update_document_view_count") # make sure connection is open

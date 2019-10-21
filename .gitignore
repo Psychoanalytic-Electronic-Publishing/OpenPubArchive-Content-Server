@@ -28,6 +28,7 @@ app/config/localsecrets.py
 app/libs/Garbage*
 app/libs/examples/*
 app/libs/recreateUsers.py
+app/libs/styles/defunct or example-only
 env/
 ftp.passwd
 global set of requirements.txt

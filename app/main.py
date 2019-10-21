@@ -8,7 +8,6 @@ This API server is based on the existing PEP-Web API 1.0.  The data returned
 may have additional fields but should be otherwise compatible with PEP API clients
 such as PEP-Easy.
 
-2019.0904.1 - Started conversion to snake_case...
 2019.0617.1 - First version with 6 endpoints, 5 set up for Pydantic and one not yet
                 converted - nrs
 2019.0617.4 - Changed functions under decorators to snake case since the auto doc uses those 
@@ -23,6 +22,14 @@ such as PEP-Easy.
                       USE THAT AS A TEMPLATE.
 
               #TODO: This now needs to be done to each end point.
+              
+2019.0904.1 - Started conversion to snake_case...
+
+2019.1019/1 - This and the other modules have now been (mostly) converted from camelCase to snake_case
+              for the sake of other Python programmers using the source.  This does lead
+              to some consistency issues, because you do end up with a mix of camelCase given
+              the API and some libraries using it.  I'm not a big fan of snake_case but
+              trying to do it in the most consistent way possible :)
 
 
 Run with:
@@ -194,14 +201,24 @@ def cleanup_sessions(response: Response,
     """
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)   
     #TODO: Check if user is admin
-    ocd.ocd.retire_expired_sessions()
-    ocd.close_expired_sessions()
+    count = ocd.close_expired_sessions()
+    ocd.close_inactive_sessions(inactive_time=opasConfig.SESSION_INACTIVE_LIMIT)
+    solr_ok = opasAPISupportLib.check_solr_docs_connection()
+    db_ok = ocd.open_connection()
     ocd.close_connection()
 
     try:
         serverStatusItem = None
     except ValidationError as e:
-        print(e.json())             
+        print(e.json())
+    else:
+        server_status_item = models.ServerStatusItem(text_server_ok = solr_ok, 
+                                                     db_server_ok = db_ok,
+                                                     user_ip = request.client.host,
+                                                     solr_url = localsecrets.SOLRURL,
+                                                     config_name = localsecrets.CONFIG,
+                                                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
+                                                     )
 
 
     return serverStatusItem
@@ -431,7 +448,7 @@ def get_license_status(response: Response,
         user.password = "Hidden"
         username = user.username
 
-    print (user_id, user)
+    # print (user_id, user)
     # hide the password hash
     response_info = models.ResponseInfoLoginStatus(loggedIn = logged_in,
                                                    username = username,
@@ -508,23 +525,18 @@ def login_user(response: Response,
                 user.end_date = user.end_date.timestamp()
                 user.last_update = user.last_update.timestamp()
                 access_token = jwt.encode({'exp': expiration_time.timestamp(),
-                                           'user': user.dict()
+                                           'user': user.dict(), 
+                                           'orig_session_id': session_id,
                                            },
                                           key=localsecrets.SECRET_KEY,
                                           algorithm=localsecrets.ALGORITHM)
-                access_token = jwt.encode({'exp': expiration_time.timestamp(),
-                                           'user': user.dict()
-                                          },
-                                          key=localsecrets.SECRET_KEY,
-                                          algorithm=localsecrets.ALGORITHM)
+
                 # start a new session, with this user (could even still be the old user
                 ocd, session_info = opasAPISupportLib.start_new_session(response,
                                                                         request,
                                                                         session_id=session_id,
                                                                         access_token=access_token,
                                                                         user=user)
-                # start a new session, with this user (could even still be the old user
-                ocd, session_info = opasAPISupportLib.start_new_session(response, request, session_id=session_id, access_token=access_token, user=user)
                 # set accessTokenCookie!
                 # opasAPISupportLib.set_cookies(response, session_id, access_token=access_token, max_age=max_age) #tokenExpiresTime=expirationTime)
 
@@ -548,13 +560,14 @@ def login_user(response: Response,
     
             else:
                 access_token = None # user rejected
-                err_code = response.status_code = HTTP_400_BAD_REQUEST
-                err_return = models.ErrorReturn(error = ERR_CREDENTIALS, error_message = ERR_MSG_LOGIN_CREDENTIALS)
+                err_code = response.status_code = HTTP_401_UNAUTHORIZED
+                err_return = models.ErrorReturn(error = ERR_CREDENTIALS,
+                                                error_message = ERR_MSG_LOGIN_CREDENTIALS)
     
         else: # Can't log in!
             raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED, 
-                detail="Bad credentials"
+                status_code = HTTP_400_BAD_REQUEST, 
+                detail = "Bad credentials"
             )
 
     # this simple return without responseInfo matches the GVPi server return.
@@ -645,7 +658,7 @@ def parse_search_query_parameters(search=None,
                                   references=None,
                                   citecount=None, 
                                   viewcount=None, 
-                                  viewedWithin=None, 
+                                  viewed_within=None, 
                                   solrQ=None, 
                                   disMax=None, 
                                   edisMax=None, 
@@ -654,8 +667,8 @@ def parse_search_query_parameters(search=None,
                                   ):
 
     # initialize accumulated variables
-    searchQ = "*:* "
-    filterQ = "*:* "
+    search_q = "*:* "
+    filter_q = "*:* "
     analyze_this = ""
     solr_max = None
     search_analysis_term_list = []
@@ -665,12 +678,12 @@ def parse_search_query_parameters(search=None,
 
     if title is not None:
         analyze_this = "&& art_title_xml:{} ".format(title)
-        filterQ += analyze_this
+        filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  
 
     if journal_name is not None:
         analyze_this = "&& art_pepsourcetitle_fulltext:{} ".format(journal_name)
-        filterQ += analyze_this
+        filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  
 
     if journal is not None:
@@ -682,26 +695,26 @@ def parse_search_query_parameters(search=None,
             # it's a wildcard pattern
             code_for_query = journal
             analyze_this = "&& art_pepsourcetitlefull:{} ".format(code_for_query)
-            filterQ += analyze_this
+            filter_q += analyze_this
         else:
-            journalCodeList = journal.split(" or ")
-            if len(journalCodeList) > 1:
+            journal_code_list = journal.split(" or ")
+            if len(journal_code_list) > 1:
                 # it was a list.
-                code_for_query = " OR ".join(journalCodeList)
+                code_for_query = " OR ".join(journal_code_list)
                 analyze_this = "&& (art_pepsrccode:{}) ".format(code_for_query)
-                filterQ += analyze_this
+                filter_q += analyze_this
             else:
                 sourceInfo = sourceInfoDB.lookupSourceCode(journal.upper())
                 if sourceInfo is not None:
                     # it's a single source code
                     code_for_query = journal.upper()
                     analyze_this = "&& art_pepsrccode:{} ".format(code_for_query)
-                    filterQ += analyze_this
+                    filter_q += analyze_this
                 else: # not a pattern, or a code, or a list of codes.
                     # must be a name
                     code_for_query = journal
                     analyze_this = "&& art_pepsourcetitlefull:{} ".format(code_for_query)
-                    filterQ += analyze_this
+                    filter_q += analyze_this
 
         search_analysis_term_list.append(analyze_this)
         # or it could be an abbreviation #TODO
@@ -709,18 +722,18 @@ def parse_search_query_parameters(search=None,
 
     if vol is not None:
         analyze_this = "&& art_vol:{} ".format(vol)
-        filterQ += analyze_this
+        filter_q += analyze_this
         #searchAnalysisTermList.append(analyzeThis)  # Not collecting this!
 
     if issue is not None:
         analyze_this = "&& art_iss:{} ".format(issue)
-        filterQ += analyze_this
+        filter_q += analyze_this
         #searchAnalysisTermList.append(analyzeThis)  # Not collecting this!
 
     if author is not None:
         author = author.replace('"', '')
         analyze_this = "&& art_authors_xml:{} ".format(author)
-        filterQ += analyze_this
+        filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  
 
     if datetype is not None:
@@ -732,7 +745,7 @@ def parse_search_query_parameters(search=None,
         # parse startYear
         parsed_year_search = opasAPISupportLib.year_arg_parser(startyear)
         if parsed_year_search is not None:
-            filterQ += parsed_year_search
+            filter_q += parsed_year_search
             search_analysis_term_list.append(parsed_year_search)  
         else:
             logger.info("Search - StartYear bad argument {}".format(startyear))
@@ -744,7 +757,7 @@ def parse_search_query_parameters(search=None,
             logger.info("Search - StartYear {} /Endyear {} bad arguments".format(startyear, endyear))
         else:
             analyze_this = "&& art_year_int:[{} TO {}] ".format(startyear, endyear)
-            filterQ += analyze_this
+            filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)
 
     if startyear is None and endyear is not None:
@@ -752,7 +765,7 @@ def parse_search_query_parameters(search=None,
             logger.info("Search - Endyear {} bad argument".format(endyear))
         else:
             analyze_this = "&& art_year_int:[{} TO {}] ".format("*", endyear)
-            filterQ += analyze_this
+            filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)
 
     if citecount is not None:
@@ -780,64 +793,63 @@ def parse_search_query_parameters(search=None,
             period = '5'
 
         analyze_this = "&& art_cited_{}:[{} TO *] ".format(period.lower(), val)
-        filterQ += analyze_this
+        filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if fulltext1 is not None:
         analyze_this = "&& text:{} ".format(fulltext1)
-        searchQ += analyze_this
+        search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if fulltext2 is not None:
         analyze_this = "&& text:{} ".format(fulltext2)
-        searchQ += analyze_this
+        search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if dreams is not None:
         analyze_this = "&& dreams_xml:{} ".format(dreams)
-        searchQ += analyze_this
+        search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if quotes is not None:
         analyze_this = "&& quotes_xml:{} ".format(quotes)
-        searchQ += analyze_this
+        search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if abstracts is not None:
         analyze_this = "&& abstracts_xml:{} ".format(abstracts)
-        searchQ += analyze_this
+        search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if dialogs is not None:
         analyze_this = "&& dialogs_xml:{} ".format(dialogs)
-        searchQ += analyze_this
+        search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if references is not None:
         analyze_this = "&& references_xml:{} ".format(references)
-        searchQ += analyze_this
+        search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if solrQ is not None:
-        searchQ = solrQ # (overrides fields) # search = solrQ
+        search_q = solrQ # (overrides fields) # search = solrQ
         search_analysis_term_list = [solrQ]
 
     if disMax is not None:
-        searchQ = disMax # (overrides fields) # search = solrQ
+        search_q = disMax # (overrides fields) # search = solrQ
         solr_max = "disMax"
 
     if edisMax is not None:
-        searchQ = edisMax # (overrides fields) # search = solrQ
+        search_q = edisMax # (overrides fields) # search = solrQ
         solr_max = "edisMax"
 
     if quick_search is not None: #TODO - might want to change this to match PEP-Web best
-        searchQ = quick_search # (overrides fields) # search = solrQ
+        search_q = quick_search # (overrides fields) # search = solrQ
         solr_max = "edisMax"
 
-    ret_val = models.QueryParameters(
-        analyzeThis = analyze_this,
-                                     searchQ = searchQ,
-                                     filterQ = filterQ,
+    ret_val = models.QueryParameters(analyzeThis = analyze_this,
+                                     searchQ = search_q,
+                                     filterQ = filter_q,
                                      solrMax = solr_max,
                                      searchAnalysisTermList = search_analysis_term_list,
                                      solrSortBy = sort
@@ -941,7 +953,7 @@ async def search_the_document_database(response: Response,
                                                       references=references,
                                                       citecount=citecount,
                                                       viewcount=viewcount,
-                                                      viewedWithin=viewedWithin,
+                                                      viewed_within=viewedWithin,
                                                       solrQ=solrQ,
                                                       disMax=disMax,
                                                       edisMax=edisMax,
@@ -1743,7 +1755,7 @@ def download_a_document(response: Response,
     elif retFormat.upper() == "PDF":
         file_format = 'PDF'
         media_type='application/pdf'
-    elif retFormat.upper() == "PDFORIG":
+    elif retFormat.upper() == "PDFORIG":  # not yet implemented.
         file_format = 'PDFORIG'
         media_type='application/pdf'
     else:

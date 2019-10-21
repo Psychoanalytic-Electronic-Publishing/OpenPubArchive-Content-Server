@@ -62,7 +62,8 @@ from lxml import etree
 from pydantic import BaseModel
 from pydantic import ValidationError
 
-from ebooklib import epub
+from ebooklib import epub              # for HTML 2 EPUB conversion
+from xhtml2pdf import pisa             # for HTML 2 PDF conversion
 
 #import imp
 
@@ -1799,12 +1800,27 @@ def prep_document_download(document_id, ret_format="HTML", authenticated=True, b
                         ret_val = opasxmllib.remove_encoding_string(ret_val)
                         filename = convert_xml_to_html_file(ret_val, output_filename=document_id + ".html")  # returns filename
                         ret_val = filename
+                    elif ret_format.lower() == "pdf":
+                        ret_val = opasxmllib.remove_encoding_string(ret_val)
+                        html_string = opasxmllib.xml_str_to_html(ret_val)
+                        # open output file for writing (truncated binary)
+                        filename = document_id + ".pdf" 
+                        result_file = open(filename, "w+b")
+                        # convert HTML to PDF
+                        pisaStatus = pisa.CreatePDF(html_string,                # the HTML to convert
+                                                    dest=result_file)           # file handle to recieve result
+                        # close output file
+                        result_file.close()                 # close output file
+                        # return True on success and False on errors
+                        ret_val = filename
                     elif ret_format.lower() == "epub":
                         ret_val = opasxmllib.remove_encoding_string(ret_val)
                         html_string = opasxmllib.xml_str_to_html(ret_val)
                         html_string = add_epub_elements(html_string)
                         filename = opasxmllib.html_to_epub(html_string, document_id, document_id)
                         ret_val = filename
+                    else:
+                        logger.warning(f"Format {ret_format} not supported")
                         
                 except Exception as e:
                     logger.warning("Can't convert data: %s" % e)
