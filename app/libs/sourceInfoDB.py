@@ -11,7 +11,7 @@ import os.path
 
 import PEPSourceDBData
 
-scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
+# scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
 
 class SourceInfoDB (object):
     def __init__(self):

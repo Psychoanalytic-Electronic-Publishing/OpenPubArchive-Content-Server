@@ -2,7 +2,7 @@
 This file contains standard messages and pages to be used by the server
 """
 
-copyrightPageHTML = """
+COPYRIGHT_PAGE_HTML = """
                     <div class="copyrightpage">
                         <h1 class="main_title">PEP-Web Copyright</h1>
                         <div class="entry-content">

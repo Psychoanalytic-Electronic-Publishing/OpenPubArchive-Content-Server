@@ -599,7 +599,7 @@ def main():
     global bibTotalReferenceCount
 
     programNameShort = "OPASWebLoaderPEP"  # used for log file
-    scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
+    # scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
     logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
 
     parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.14")
@@ -632,8 +632,6 @@ def main():
 
     (options, args) = parser.parse_args()
 
-    #processingErrorCount = 0
-    #processingWarningCount = 0
     processedFilesCount = 0
     # Python 3 did not like the following...
     #logging.basicConfig(handlers=[ExitOnExceptionHandler()], filename=logFilename, level=options.logLevel)
@@ -822,7 +820,7 @@ def main():
         artID = artID.upper()
 
         # import into lxml
-        root = etree.fromstring(opasxmllib.xml_remove_encoding_string(fileXMLContents))
+        root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents))
         pepxml = root
 
         # save common document (article) field values into artInfo instance for both databases

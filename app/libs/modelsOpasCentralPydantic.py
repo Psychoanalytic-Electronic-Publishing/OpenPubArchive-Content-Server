@@ -36,7 +36,7 @@ class UserInDB(User):
   
 class UserSubscriptions(UserInDB):
     """
-    __View user_active_subscriptions__
+    __View vw_user_active_subscriptions__
 
     Includes UserInDB and key Subscriptions
       fields.  Filtered down to "active"

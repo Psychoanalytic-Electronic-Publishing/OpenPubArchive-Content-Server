@@ -28,7 +28,7 @@ class TestDatabase(unittest.TestCase):
         assert(sources[0] > 100)
         sources = ocd.get_sources(source="IJP")
         assert(sources[0] == 1)
-        sources = ocd.get_sources(source_type="journal")
+        sources = ocd.get_sources(src_type="journal")
         assert(sources[0] > 70)
        
        

@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 from datetime import datetime # , timedelta
 import time
+import itertools
 
 # import secrets
 # from pydantic import BaseModel
@@ -72,8 +73,10 @@ API_AUTHORS_PUBLICATIONS = 21	#/Authors/Publications/{authNamePartial}/
 API_DOCUMENTS_ABSTRACTS = 30	#/Documents/Abstracts/{documentID}/
 API_DOCUMENTS = 31	#/Documents/{documentID}/
 API_DOCUMENTS_PDF = 32	#/Documents/Downloads/PDF/{documentID}/
-API_DOCUMENTS_EPUB = 33	#/Documents/Downloads/PDF/{documentID}/
-API_DOCUMENTS_IMAGE = 34	#/Documents/Downloads/Images/{imageID}/
+API_DOCUMENTS_PDFORIG = 33	#/Documents/Downloads/PDFORIG/{documentID}/
+API_DOCUMENTS_EPUB = 35	#/Documents/Downloads/PDF/{documentID}/
+API_DOCUMENTS_HTML = 36	#/Documents/Downloads/HTML/{documentID}/
+API_DOCUMENTS_IMAGE = 37	#/Documents/Downloads/Images/{imageID}/
 API_DATABASE_SEARCHANALYSIS_FOR_TERMS = 40	#/Database/SearchAnalysis/{searchTerms}/
 API_DATABASE_SEARCH = 41	#/Database/Search/
 API_DATABASE_WHATSNEW = 42	#/Database/WhatsNew/
@@ -86,17 +89,16 @@ def verifyAccessToken(session_id, username, access_token):
     
 def verify_password(plain_password, hashed_password):
     """
-    >>> verifyPassword("secret", getPasswordHash("secret"))
+    >>> verify_password("secret", get_password_hash("secret"))
+    True
     
     """
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
     """
-    (Test disabled, since tested via verify_password docstring)
-    >> getPasswordHash("test 1 2 3 ")
-    
-    >>> getPasswordHash("temporaryLover")
+    >>> verify_password("temporaryLover", get_password_hash("temporaryLover"))
+    True
     
     """
     return pwd_context.hash(password)
@@ -109,21 +111,17 @@ class opasCentralDB(object):
     Therefore, keeping session info in the object is ok,
     
     >>> ocd = opasCentralDB()
-    >>> randomSessionID = secrets.token_urlsafe(16)
-    >>> success, sessionInfo = ocd.saveSession(sessionID=randomSessionID)
-    >>> sessionInfo.authenticated
+    >>> random_session_id = secrets.token_urlsafe(16)
+    >>> success, session_info = ocd.save_session(session_id=random_session_id)
+    >>> session_info.authenticated
     False
-    >>> sessionInfo = ocd.getSession(sessionID=randomSessionID)
-    >>> sessionInfo.authenticated
-    False
-    >>> ocd.recordSessionEndpoint(sessionID=randomSessionID, apiEndpointID=API_AUTHORS_INDEX, documentID="IJP.001.0001A", statusMessage="Testing")
+    >>> ocd.record_session_endpoint(session_info=session_info, api_endpoint_id=API_AUTHORS_INDEX, document_id="IJP.001.0001A", status_message="Testing")
     1
-    >>> ocd.updateDocumentViewCount("IJP.001.0001A")
-    1
-    >>> ocd.endSession(sessionInfo.session_id)
+    >>> ocd.end_session(session_info.session_id)
     True
+
     # don't delete, do it manually
-    > ocd.deleteSession(sessionID=randomSessionID)
+    > ocd.delete_session(session_id=random_session_id)
     True
     """
     def __init__(self, session_id=None, access_token=None, token_expires_time=None, username="NotLoggedIn", user=None):
@@ -132,7 +130,6 @@ class opasCentralDB(object):
         self.authenticated = False
         self.session_id = session_id
         self.access_token = access_token
-        self.tokenExpiresTime = token_expires_time
         self.user = None
         self.sessionInfo = None
         
@@ -146,9 +143,8 @@ class opasCentralDB(object):
         try:
             status = self.db.open
             self.connected = True
-            if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                print (f"Database connection was already opened ({caller_name})")
-            
+            # this is normal, why log it?
+            # logger.debug(f"Database connection was already opened ({caller_name})")
         except:
             # not open reopen it.
             status = False
@@ -156,31 +152,27 @@ class opasCentralDB(object):
         if status == False:
             try:
                 self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
+                logger.debug(f"Database opened by ({caller_name})")
                 self.connected = True
-                if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                    print (f"Database connection was already opened ({caller_name})")
-            except:
-                err_msg = f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT}"
-                logger.error(err_msg)
-                if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                    print (err_msg)
+            except Exception as e:
+                logger.error(f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})")
                 self.connected = False
                 self.db = None
 
         return self.connected
 
     def close_connection(self, caller_name=""):
-        try:
-            if self.db.open:
-                self.db.close()
-                if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                    print (f"Database connection closed ({caller_name})")
-                self.db = None
-        except:
-            err_msg = f"closeConnection: The db is not open ({caller_name})"
-            if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                print (err_msg)
-            logger.error(err_msg)
+        if self.db is not None:
+            try:
+                if self.db.open:
+                    self.db.close()
+                    logger.debug(f"Database closed by ({caller_name})")
+                    self.db = None
+                else:
+                    logger.debug(f"Database close request, but not open ({caller_name})")
+                    
+            except Exception as e:
+                logger.error(f"closeConnection: {caller_name} the db is not open ({e})")
 
         # make sure to mark the connection false in any case
         self.connected = False           
@@ -399,11 +391,10 @@ class opasCentralDB(object):
                 cursor.close()
                 if success:
                     ret_val = True
-                    print (f"Updated session record for session: {session_id}")
+                    logger.debug(f"Updated session record for session: {session_id}")
                 else:
                     ret_val = False
-                    print (f"Session close/update did not work for sessionID: {session_id}")
-                    logger.warning(f"Could not record close session per token={session_id} in DB")
+                    logger.warning(f"Could not record close session per sessionID {session_id} in DB")
 
         self.close_connection(caller_name="update_session") # make sure connection is closed
         return ret_val
@@ -418,14 +409,9 @@ class opasCentralDB(object):
         if session_id is None:
             err_msg = "No session ID specified"
             logger.error(err_msg)
-            if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                print (err_msg)
         else:
             if not self.open_connection(caller_name="delete_session"): # make sure connection opens
-                err_msg = "Delete session could not open database"
-                logger.error(err_msg)
-                if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                    print (err_msg)
+                logger.error("Delete session could not open database")
             else: # its open
                 if self.db != None:  # don't need this check, but leave it.
                     cursor = self.db.cursor()
@@ -462,16 +448,10 @@ class opasCentralDB(object):
         ret_val = False
         session_info = None
         if session_id is None:
-            err_msg = "SaveSession: No session ID specified"
-            logger.error(err_msg)
-            if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                print (err_msg)
+            logger.error("SaveSession: No session ID specified")
         else:
             if not self.open_connection(caller_name="save_session"): # make sure connection opens
-                err_msg = "Save session could not open database"
-                logger.error(err_msg)
-                if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                    print (err_msg)
+                logger.error("Save session could not open database")
             else: # its open
                 session_start=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
                 if self.db != None:  # don't need this check, but leave it.
@@ -524,7 +504,7 @@ class opasCentralDB(object):
                                              )
                     if success:
                         msg = f"save_session: Session {session_id} Record Saved"
-                        print (msg)
+                        #print (msg)
                         ret_val = True
                     else:
                         msg = f"save_session {session_id} Record Could not be Saved"
@@ -648,13 +628,13 @@ class opasCentralDB(object):
             if success:
                 print (f"Closed {ret_val} expired sessions")
             else:
-                print ("Closed expired sessions did not work")
                 logger.warning("Could not close sessions in DB")
 
         self.close_connection(caller_name="close_expired_sessions") # make sure connection is closed
         return ret_val
     
-    def record_session_endpoint(self, session_info=None, api_endpoint_id=0, params=None, document_id=None, return_status_code=0, status_message=None):
+    def record_session_endpoint(self, session_info=None, api_endpoint_id=0, params=None,
+                                item_of_interest=None, return_status_code=0, status_message=None):
         """
         Track endpoint calls
         
@@ -662,17 +642,14 @@ class opasCentralDB(object):
         """
         ret_val = None
         if not self.open_connection(caller_name="record_session_endpoint"): # make sure connection is open
-            err_msg = "Save session could not open database"
-            logger.error(err_msg)
-            if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                print (err_msg)
+            logger.error("record_session_endpoint could not open database")
         else:
             try:
                 session_id = session_info.session_id         
             except:
                 if self.session_id == None:
                     # no session open!
-                    logger.warning("record_session_endpoint: No session is open")
+                    logger.debug("No session is open")
                     return ret_val
                 else:
                     session_id = self.session_id
@@ -684,7 +661,7 @@ class opasCentralDB(object):
                             api_session_endpoints(session_id, 
                                                   api_endpoint_id,
                                                   params, 
-                                                  documentid, 
+                                                  item_of_interest, 
                                                   return_status_code,
                                                   return_added_status_message
                                                  )
@@ -696,7 +673,7 @@ class opasCentralDB(object):
                                                   session_id, 
                                                   api_endpoint_id, 
                                                   params,
-                                                  document_id,
+                                                  item_of_interest,
                                                   return_status_code,
                                                   status_message
                                                  ))
@@ -707,15 +684,99 @@ class opasCentralDB(object):
 
         return ret_val
 
-    def get_sources(self, source=None, source_type=None, limit=None, offset=0):
+    def get_subscription_access(self, basecode, product_id):
+        """
+        given a user's subscription product_ids, look up basecode to see if
+          that subscription includes access.
+        """
+        ret_val = 0
+        self.open_connection(caller_name="get_subscription_access") # make sure connection is open
+        if self.db != None:
+            try:
+                curs = self.db.cursor(pymysql.cursors.DictCursor)
+
+                sqlCount = "SELECT count(*) as productvalidity FROM vw_api_products WHERE basecode = %s and product_id = %s"
+                data = (basecode, product_id) 
+                result = curs.execute(sqlCount, data)
+                try:
+                    if result:
+                        datarow = curs.fetchone()
+                        ret_val = datarow['productvalidity']
+                    else:
+                        ret_val = 0
+                except Exception as e:
+                    ret_val = 0
+                    
+            except Exception as e:
+                msg = f"get_sources Error querying vw_api_products: {e}"
+                logger.error(msg)
+            else:
+                curs.close()
+            
+        self.close_connection(caller_name="get_subscription_access") # make sure connection is closed
+
+        # return session model object
+        logger.debug(f"productCheck for {basecode}/{product_id} results in {ret_val}")
+        return ret_val
+
+    def get_basecodes_for_product(self, product_id):
+        """
+        given a product_id, return a list of basecodes for that product
+        """
+        ret_val = []
+        self.open_connection(caller_name="get_basecodes_for_product") # make sure connection is open
+        if self.db != None:
+            try:
+                curs = self.db.cursor(pymysql.cursors.SSCursor)
+
+                sqlCount = "SELECT basecode FROM vw_products_with_productbase WHERE product_id = %s and active = 1"
+                curs.execute(sqlCount, product_id)
+                ret_val = list(itertools.chain.from_iterable(curs))
+                    
+            except Exception as e:
+                logger.error(f"get_sources Error querying vw_api_products: {e}")
+            else:
+                curs.close()
+            
+        self.close_connection(caller_name="get_basecodes_for_product") # make sure connection is closed
+        # returns a list of basecodes in that product, suitable for matching against.
+        return ret_val
+
+    def get_dict_of_products(self):
+        """
+        get a complete dictionary of products, with each including a list of basecodes for that product
+        """
+        ret_val = {}
+        self.open_connection(caller_name="get_dict_of_products") # make sure connection is open
+        if self.db != None:
+            try:
+                curs = self.db.cursor(pymysql.cursors.DictCursor)
+
+                sql = "SELECT product_id FROM vw_api_product_list"
+                curs.execute(sql)
+                product_list = list(itertools.chain.from_iterable(curs))
+                for n in product_list:
+                    basecodes = self.get_basecodes_for_product(n)
+                    ret_val[n] = basecodes
+                    
+            except Exception as e:
+                logger.error(f"get_sources Error querying vw_api_products: {e}")
+            else:
+                curs.close()
+            
+        self.close_connection(caller_name="get_dict_of_products") # make sure connection is closed
+        # returns a list of basecodes in that product, suitable for matching against.
+        return ret_val
+
+    def get_sources(self, source=None, src_type=None, limit=None, offset=0):
         """
         Return a list of sources
           - for a specific source (code),
           - OR for a specific source type (e.g. journal)
-          - OR if source and source_type are not specified, bring back them all
+          - OR if source and src_type are not specified, bring back them all
           
         >>> ocd = opasCentralDB()
-        >>> sources = ocd.getSources(source='IJP')
+        >>> sources = ocd.get_sources(source='IJP')
 
         """
         self.open_connection(caller_name="get_sources") # make sure connection is open
@@ -725,15 +786,15 @@ class opasCentralDB(object):
         if limit is not None:
             limit_clause = f"LIMIT {limit}"
             if offset != 0:
-                limit_clause += f"OFFSET {offset}"
+                limit_clause += f" OFFSET {offset}"
 
         if self.db != None:
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
                 if source is not None:
                     sqlAll = "FROM vw_opas_sources WHERE active = 1 and src_code = '%s'" % source
-                elif source_type is not None:
-                    sqlAll = "FROM vw_opas_sources WHERE active = 1 and src_type = '%s' and (src_type_qualifier <> 'multivolumesubbook' or src_type_qualifier IS NULL)" % source_type
+                elif src_type is not None:
+                    sqlAll = "FROM vw_opas_sources WHERE active = 1 and src_type = '%s' and (src_type_qualifier <> 'multivolumesubbook' or src_type_qualifier IS NULL)" % src_type
                 else:  # bring them all back
                     sqlAll = "FROM vw_opas_sources WHERE active = 1 and (src_type_qualifier IS NULL or src_type_qualifier <> 'multivolumesubbook')"
 
@@ -743,7 +804,7 @@ class opasCentralDB(object):
             except Exception as e:
                 msg = f"get_sources Error querying vw_opas_sources: {e}"
                 logger.error(msg)
-                print (msg)
+                # print (msg)
             else:
                 if res:
                     ret_val = curs.fetchall()
@@ -768,46 +829,49 @@ class opasCentralDB(object):
         # return session model object
         return total_count, ret_val # None or Session Object
 
-    def update_document_view_count(self, articleID, account="NotLoggedIn", title=None, viewType="Online"):
-        """
-        Add a record to the doc_viewcounts table for specified viewtype
+    #####################################################################################################################
+    # This isn't needed.   We have a complete record of views in api_session_endpoints.
+    #def update_document_view_count(self, articleID, account="NotLoggedIn", title=None, viewType="Online"):
+        #"""
+        #Add a record to the doc_viewcounts table for specified viewtype
 
-        Tested in main instance docstring
+        #Tested in main instance docstring
         
-        """
-        ret_val = None
-        self.open_connection(caller_name="update_document_view_count") # make sure connection is open
+        #"""
+        #ret_val = None
+        #self.open_connection(caller_name="update_document_view_count") # make sure connection is open
 
-        try:
-            cursor = self.db.cursor()
-            sql = """INSERT INTO 
-                        doc_viewcounts(account, 
-                                        locator, 
-                                        title, 
-                                        type, 
-                                        datetimechar
-                                      )
-                                      VALUES 
-                                        ('%s', '%s', '%s', '%s', '%s')"""
+        #try:
+            #cursor = self.db.cursor()
+            #sql = """INSERT INTO 
+                        #doc_viewcounts(account, 
+                                        #locator, 
+                                        #title, 
+                                        #type, 
+                                        #datetimechar
+                                      #)
+                                      #VALUES 
+                                        #('%s', '%s', '%s', '%s', '%s')"""
             
-            ret_val = cursor.execute(sql,
-                                    (account,
-                                     articleID, 
-                                     title, 
-                                     viewType, 
-                                     datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
-                                     )
-                                    )
-            self.db.commit()
-            cursor.close()
+            #ret_val = cursor.execute(sql,
+                                    #(account,
+                                     #articleID, 
+                                     #title, 
+                                     #viewType, 
+                                     #datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
+                                     #)
+                                    #)
+            #self.db.commit()
+            #cursor.close()
 
-        except Exception as e:
-            logger.warning(f"recordSessionEndpoint: {e}")
+        #except Exception as e:
+            #logger.warning(f"recordSessionEndpoint: {e}")
             
 
-        self.close_connection(caller_name="update_document_view_count") # make sure connection is closed
+        #self.close_connection(caller_name="update_document_view_count") # make sure connection is closed
 
-        return ret_val
+        #return ret_val
+        #####################################################################################################################
             
     def get_user(self, username = None, user_id = None):
         """
@@ -819,7 +883,7 @@ class opasCentralDB(object):
         Specify either username or userID, not both.
         
         >>> ocd = opasCentralDB()
-        >>> ocd.getUser("demo")
+        >>> ocd.get_user("demo")
         
         """
         try:
@@ -831,11 +895,11 @@ class opasCentralDB(object):
         curs = self.db.cursor(pymysql.cursors.DictCursor)
         if username is not None:
             sql = f"""SELECT *
-                     FROM user_active_subscriptions
+                     FROM vw_user_active_subscriptions
                      WHERE username = '{username}'"""
         elif user_id is not None:
             sql = f"""SELECT *
-                     FROM user_active_subscriptions
+                     FROM vw_user_active_subscriptions
                      WHERE user_id = '{user_id}'"""
 
         if sql is None:
@@ -860,7 +924,7 @@ class opasCentralDB(object):
         Returns a user object
         
         >>> ocd = opasCentralDB()
-        >>> ocd.verifyAdmin("TemporaryDeveloper", "temporaryLover")
+        >>> ocd.verify_admin("TemporaryDeveloper", "temporaryLover")
         
         """
         ret_val =  None
@@ -872,8 +936,6 @@ class opasCentralDB(object):
         except:
             err_msg = f"Cannot find admin user {username}"
             logger.error(err_msg)
-            if opasConfig.CONSOLE_DB_DEBUG_MESSAGES_ON:
-                print (err_msg)
     
         return ret_val   
     
@@ -882,7 +944,7 @@ class opasCentralDB(object):
         Create a new user!
         
         >>> ocd = opasCentralDB()
-        >>> ocd.createUser("nobody2", "nothing", "TemporaryDeveloper", "temporaryLover", "USGS", "nobody@usgs.com")
+        >>> ocd.create_user("nobody2", "nothing", "TemporaryDeveloper", "temporaryLover", "USGS", "nobody@usgs.com")
           
         """
         ret_val = None
@@ -953,7 +1015,7 @@ class opasCentralDB(object):
         Else returns (False, None)
         
         >>> ocd = opasCentralDB()
-        >>> status, userInfo = ocd.authenticateUser("TemporaryDeveloper", "temporaryLover")  # Need to disable this account when system is online!
+        >>> status, userInfo = ocd.authenticate_user("TemporaryDeveloper", "temporaryLover")  # Need to disable this account when system is online!
         >>> status
         True
         """
@@ -963,19 +1025,15 @@ class opasCentralDB(object):
         if not user:
             msg = f"User: {username} turned away"
             logger.warning(msg)
-            print (msg)
             ret_val = (False, None)
         elif not verify_password(password, user.password):
             msg = f"User: {username} turned away with incorrect password"
             logger.warning(msg)
-            print (msg)
             ret_val = (False, None)
         else:
             self.user = user
             msg = f"Authenticated (with active subscription) user: {username}, sessionID: {self.session_id}"
             logger.info(msg)
-            print (msg)
-            
             ret_val = (True, user)
 
         if ret_val == (False, None):
@@ -998,13 +1056,13 @@ class opasCentralDB(object):
         
         >>> ocd = opasCentralDB()
         >>> refToCheck = "http://www.psychoanalystdatabase.com/PEPWeb/PEPWeb{}Gateway.asp".format(13)
-        >>> status, userInfo = ocd.authenticateReferrer(refToCheck)  # Need to disable this account when system is online!
+        >>> status, userInfo = ocd.authenticate_referrer(refToCheck)  # Need to disable this account when system is online!
         >>> status
         True
 
         """
         ret_val = (False, None)
-        print (f"Authenticating user by referrer: {referrer}")
+        logger.debug(f"Authenticating user by referrer: {referrer}")
         try:
             db_opened = not self.db.open
         except:
@@ -1026,7 +1084,7 @@ class opasCentralDB(object):
                 self.user = user
                 msg = f"Authenticated (with active subscription) referrer: {referrer}"
                 logger.info(msg)
-                print (msg)
+                # print (msg)
                 ret_val = (True, user)
             else:
                 ret_val = (False, None)
@@ -1091,7 +1149,7 @@ class opasCentralDB(object):
             else:
                 ret_val = None
         
-        print (ret_val)
+        # print (ret_val)
     
         return ret_val
 
@@ -1101,28 +1159,25 @@ class opasCentralDB(object):
 if __name__ == "__main__":
     print (40*"*", "opasCentralDBLib Tests", 40*"*")
     print ("Running in Python %s" % sys.version_info[0])
-    
-    #sessionID = secrets.token_urlsafe(16)
-    #ocd = opasCentralDB(sessionID, 
-                        #secrets.token_urlsafe(16), 
-                        #datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'),
-                        #username = "gvpi")
-
-    #session = ocd.startSession(sessionID)
-    #ocd.recordSessionEndpoint(apiEndpointID=API_AUTHORS_INDEX, documentID="IJP.001.0001A", statusMessage="Testing")
-    #ocd.updateDocumentViewCount("IJP.001.0001A")
-    #session = ocd.endSession(sessionID)
-    #ocd.closeConnection()
-    
-    #ocd.connected
+   
+    logger = logging.getLogger(__name__)
+    # extra logging for standalong mode 
+    logger.setLevel(logging.DEBUG)
+    # create console handler and set level to debug
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s')    
+    # add formatter to ch
+    ch.setFormatter(formatter)
+    # add ch to logger
+    logger.addHandler(ch)
     
     ocd = opasCentralDB()
-    #refToCheck = "http://www.psychoanalystdatabase.com/PEPWeb/PEPWeb{}Gateway.asp".format(13)
-    #ocd.authenticateReferrer(refToCheck)
-    results = ocd.get_most_downloaded()
-    print (len(results))
-    sys.exit()
-    
+    basecodes = ocd.get_basecodes_for_product(421)
+    ocd.get_dict_of_products()
+    #ocd.get_subscription_access("IJP", 421)
+    #ocd.get_subscription_access("BIPPI", 421)
     #docstring tests
     import doctest
     doctest.testmod()    

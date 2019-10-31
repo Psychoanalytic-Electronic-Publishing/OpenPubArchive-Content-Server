@@ -15,6 +15,7 @@ __status__      = "Development"
 import sys
 import re
 import os
+import os.path
 import stdMessageLib
 import logging
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ from lxml import etree
 import lxml.html as lhtml
 
 from ebooklib import epub
-from opasConfig import TEMPDIRECTORY
+import opasConfig
 
 pyVer = 2
 if (sys.version_info > (3, 0)):
@@ -208,6 +209,7 @@ def xml_get_subelement_textsingleton(element_node, subelement_name, default_retu
         ret_val = element_node.find(subelement_name).text
         ret_val = ret_val.strip()
     except Exception as err:
+        logger.warning(err)
         ret_val = default_return
 
     return ret_val
@@ -233,6 +235,7 @@ def xml_get_subelement_xmlsingleton(element_node, subelement_name, default_retur
         if ret_val == "":
             ret_val = default_return
     except Exception as err:
+        logger.warning(err)
         ret_val = default_return
 
     return ret_val
@@ -273,6 +276,7 @@ def xml_get_element_attr(element_node, attr_name, default_return=""):
         if ret_val == "":
             ret_val = default_return
     except Exception as err:
+        logger.warning(err)
         ret_val = default_return
 
     return ret_val
@@ -297,7 +301,7 @@ def xml_get_elements(element_node, xpath_def, default_return=list()):
             ret_val = default_return
         
     except Exception as err:
-        print (err)
+        logger.error(err)
 
     return ret_val
 
@@ -324,7 +328,7 @@ def xml_get_direct_subnode_textsingleton(element_node, subelement_name, default_
         pass
         #ret_val = default_return  # empty
     except Exception as err:
-        print ("getSingleSubnodeText Error: ", err)
+        logger.error("getSingleSubnodeText Error: ", err)
 
     if ret_val == []:
         ret_val = default_return
@@ -347,7 +351,7 @@ def xml_elem_or_str_to_xmlstring(elem_or_xmlstr, default_return=""):
         else:
             ret_val = elem_or_xmlstr
     except Exception as err:
-        print (err)
+        logger.error(err)
         ret_val = default_return
         
     return ret_val
@@ -390,7 +394,7 @@ def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
             else:
                 elem = elem_or_xmlstr
         except Exception as err:
-            print (err)
+            logger.error(err)
             ret_val = default_return
             
         try:
@@ -401,7 +405,7 @@ def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
             else:
                 ret_val = default_return
         except Exception as err:
-            print ("xmlElemOrStrToText: %s" % err)
+            logger.error("xmlElemOrStrToText: ", err)
             ret_val = default_return
 
     if ret_val == "":
@@ -474,7 +478,7 @@ def xml_xpath_return_xmlsingleton(element_node, xpath, default_return=""):
         ret_val = etree.tostring(ret_val, with_tail=False, encoding="unicode") 
                 
     except Exception as err:
-        print (err)
+        logger.error(err)
 
     return ret_val
 
@@ -549,8 +553,8 @@ def xml_str_to_html(xml_text, xslt_file=r"./libs/styles/pepkbd3-html.xslt"):
     """
     Convert XML to HTML per XSLT file parameter
     
-    >>> xml_str_to_html(xml_text=text_xml2)
-    
+    >>> len(xml_str_to_html(xml_text=text_xml2))
+    314
     """
     ret_val = None
     try:
@@ -564,7 +568,7 @@ def xml_str_to_html(xml_text, xslt_file=r"./libs/styles/pepkbd3-html.xslt"):
     except Exception as e:
         # return this error, so it will be displayed (for now) instead of the document
         ret_val = f"<p align='center'>Sorry, due to a configuration error (xslt missing), we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>Exception finding style sheet: {e}</p>"
-        print (ret_val)
+        logger.error(ret_val)
 
     try:
         if isinstance(xml_text, list) and xml_text != "[]":
@@ -580,7 +584,6 @@ def xml_str_to_html(xml_text, xslt_file=r"./libs/styles/pepkbd3-html.xslt"):
             # return this error, so it will be displayed (for now) instead of the document
             ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
             logger.error(ret_val)
-            print (ret_val)
         else:
             if xml_text is not None and xml_text != "[]":
                 try:
@@ -591,7 +594,6 @@ def xml_str_to_html(xml_text, xslt_file=r"./libs/styles/pepkbd3-html.xslt"):
                     # return this error, so it will be displayed (for now) instead of the document
                     ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
                     logger.error(ret_val)
-                    print (ret_val)
                 else:
                     ret_val = str(transformed_data)
     return ret_val
@@ -638,7 +640,7 @@ def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=No
     # copyright page / chapter
     c2 = epub.EpubHtml(title='Copyright',
                        file_name='copyright.xhtml')
-    c2.set_content(stdMessageLib.copyrightPageHTML)   
+    c2.set_content(stdMessageLib.COPYRIGHT_PAGE_HTML)   
     
     book.add_item(c1)
     book.add_item(c2)    
@@ -669,7 +671,7 @@ def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=No
     book.spine = ['nav', c1, c2]
     book.add_item(epub.EpubNcx())
     book.add_item(epub.EpubNav())    
-    filename = TEMPDIRECTORY + "/" + basename + '.epub'
+    filename = os.path.join(opasConfig.TEMPDIRECTORY, basename + '.epub')
     epub.write_epub(filename, book)
     return filename
 

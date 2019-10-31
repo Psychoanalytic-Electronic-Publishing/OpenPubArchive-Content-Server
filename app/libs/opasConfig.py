@@ -3,14 +3,10 @@ import logging
 import datetime
 import tempfile
 
-CONSOLE_DEBUG_MESSAGES_ON = True
-CONSOLE_DB_DEBUG_MESSAGES_ON = True
-
 BASELOGFILENAME = "opasAPI"
-LOGLEVEL = "DEBUG"
 logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
-FORMAT = "%(asctime)-15s %(message)s"
-logging.basicConfig(filename=logFilename, format=FORMAT,level=logging.INFO,datefmt='%Y-%m-%d %H:%M:%S')
+FORMAT = '%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s'
+logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
 
 #logger = logging.getLogger(programNameShort)
 
@@ -28,9 +24,11 @@ SESSION_INACTIVE_LIMIT = 30  # minutes
 
 # cookies
 OPASSESSIONID = "opasSessionID"
-OPASACCESSTOKEN = "opasAccessToken"
+OPASACCESSTOKEN = "opasSessionInfo"
 OPASEXPIRES= "OpasExpiresTime"
 
+# configure for location where to find the PDF originals
+PDFORIGDIR = r"X:\PEP Dropbox\PEPWeb\Inventory\PEPDownloads\PDF"
 
 DEFAULT_KWIC_CONTENT_LENGTH = 200  # On each side of match (so use 1/2 of the total you want)
 DEFAULT_MAX_KWIC_RETURNS = 5

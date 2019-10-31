@@ -25,32 +25,28 @@ client = TestClient(app)
 
 class TestStatus(unittest.TestCase):
     """
-    Tests for status endpoints 
+    Tests
     
     Note: tests are performed in alphabetical order, hence the function naming
           with forced order in the names.
     
     """   
 
-    def test_0_server_status(self):
-        # Send a request to the API server and store the response.
-        response = client.get(base_api + '/v2/Admin/Status/')
+    def test_0_basic_login(self):
+        """
+        This is not working...it doesn't ask for username/password, and
+        for this particular call, there's no way to include the data
+        that I know of. It works through the Docs interface though, so
+        there must be some way.
+        """
+        # request login to the API server
+        response = client.get(base_api + '/v2/Users/BasicLogin/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
         assert(r["text_server_ok"] == True)
         assert(r["db_server_ok"] == True)
         print (r)
-
-    def test_1_get_license_status(self):
-        # Send a request to the API server and store the response.
-        response = client.get(base_api + '/v1/License/Status/Login/')
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        r = response.json()
-        response_info = r["licenseInfo"]["responseInfo"]
-        response_set = r["licenseInfo"]["responseSet"]
-        print (response_info)
        
 if __name__ == '__main__':
     unittest.main()    

@@ -16,29 +16,41 @@ import urllib
 from testConfig import base_api, base_plus_endpoint_encoded
 
 class TestSearch(unittest.TestCase):
-    def test_search_mixedcase(self):
+    def test_1a_search_mixedcase(self):
         # Send a request to the API server and store the response.
-        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=Tuckett')
+        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=Greenfield')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 15)
-        print (response_set)
+        assert(response_info["fullCount"] == 8)
+        # print (response_set)
         # Confirm that the request-response cycle completed successfully.
 
-    def test_search_lowercase(self):
-        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=tuckett')
+    def test_1b_search_lowercase(self):
+        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=greenfield')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 15)
-        print (response_set)
+        assert(response_info["fullCount"] == 8)
+        # print (response_set)
+        # Confirm that the request-response cycle completed successfully.
+
+    def test_1c_search_wildcard(self):
+        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=gr??nfield')
+        response = requests.get(full_URL)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["fullCount"] == 8)
+        # print (response_set)
         # Confirm that the request-response cycle completed successfully.
 
     def test_search_journalcode(self):
@@ -71,11 +83,11 @@ class TestSearch(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 10)
+        assert(response_info["count"] == 1)
         print (response_set)
 
     def test_search_author_and_journalcode_and_text_and_citecount(self):
-        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=tuckett&journal=IJP&text=economics&citecount=3')
+        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=tuckett&citecount=5')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
