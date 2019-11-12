@@ -9,12 +9,36 @@ This library is supports the main functionality of the OPAS Central Database
 The database has use and usage information.
 
 2019.0708.1 - Python 3.7 compatible.  Work in progress.
+2019.1110.1 - Updates for database view/table naming cleanup
+
+OPASCENTRAL TABLES (and Views) CURRENTLY USED:
+   vw_stat_most_viewed (depends on vw_stat_docviews_crosstab,
+                                   table articles)
+
+   vw_stat_docviews_crosstab (depends on api_docviews,
+                                         vw_stat_docviews_lastweek,
+                                         vw_stat_docviews_lastmonth,
+                                         vw_stat_docviews_lastsixmonths,
+                                         vw_stat_docviews_lastcalyear,
+                                         vw_stat_docviews_last12months
+                                         )
+
+    vw_stat_cited (depends on fullbiblioxml - table copied from PEP XML Processing db pepa1db
+                              vw_stat_cited_in_last_5_years,
+                              vw_stat_cited_in_last_10_years,
+                              vw_stat_cited_in_last_20_years,
+                              vw_stat_cited_in_all_years
+                  )                                        
+    
+    vw_productbase (this is the ISSN table from pepa1vdb used during processing)
+    
+    vw_latest_session_activity (list of sessions with date from table api_session_endpoints)
 
 """
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0619.1"
+__version__     = "2019.1110.1"
 __status__      = "Development"
 
 import sys
@@ -77,6 +101,7 @@ API_DOCUMENTS_PDFORIG = 33	#/Documents/Downloads/PDFORIG/{documentID}/
 API_DOCUMENTS_EPUB = 35	#/Documents/Downloads/PDF/{documentID}/
 API_DOCUMENTS_HTML = 36	#/Documents/Downloads/HTML/{documentID}/
 API_DOCUMENTS_IMAGE = 37	#/Documents/Downloads/Images/{imageID}/
+API_DOCUMENTS_DOWNLOADS = 38  #/Documents/Downloads (used generally for errors in download requests)
 API_DATABASE_SEARCHANALYSIS_FOR_TERMS = 40	#/Database/SearchAnalysis/{searchTerms}/
 API_DATABASE_SEARCH = 41	#/Database/Search/
 API_DATABASE_WHATSNEW = 42	#/Database/WhatsNew/
@@ -217,7 +242,8 @@ class opasCentralDB(object):
                             limit=None,
                             offset=0):
         """
-         Using the api_session_endpoints data, return the most downloaded (viewed) Documents
+         Using the opascentral api_docviews table data, as dynamically statistically aggregated into
+           the view vw_stat_most_viewed return the most downloaded (viewed) Documents
            
          1) Using documents published in the last 5, 10, 20, or all years.
             Viewperiod takes an int and covers these or any other period (now - viewPeriod years).
@@ -792,11 +818,11 @@ class opasCentralDB(object):
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
                 if source is not None:
-                    sqlAll = "FROM vw_opas_sources WHERE active = 1 and src_code = '%s'" % source
+                    sqlAll = "FROM vw_productbase WHERE active = 1 and basecode = '%s'" % source
                 elif src_type is not None:
-                    sqlAll = "FROM vw_opas_sources WHERE active = 1 and src_type = '%s' and (src_type_qualifier <> 'multivolumesubbook' or src_type_qualifier IS NULL)" % src_type
+                    sqlAll = "FROM vw_productbase WHERE active = 1 and product_type = '%s'" % src_type
                 else:  # bring them all back
-                    sqlAll = "FROM vw_opas_sources WHERE active = 1 and (src_type_qualifier IS NULL or src_type_qualifier <> 'multivolumesubbook')"
+                    sqlAll = "FROM vw_productbase WHERE active = 1 and product_type <> 'bookseriessub'"
 
                 sql = f"SELECT * {sqlAll} ORDER BY title {limit_clause}"
                 res = curs.execute(sql)
@@ -829,50 +855,54 @@ class opasCentralDB(object):
         # return session model object
         return total_count, ret_val # None or Session Object
 
-    #####################################################################################################################
-    # This isn't needed.   We have a complete record of views in api_session_endpoints.
-    #def update_document_view_count(self, articleID, account="NotLoggedIn", title=None, viewType="Online"):
-        #"""
-        #Add a record to the doc_viewcounts table for specified viewtype
+    def record_document_view(self, document_id, session_info=None, view_type="Abstract"):
+        """
+        Add a record to the api_doc_views table for specified view_type (Abstract, Document, PDF, PDFOriginal, or EPub)
 
-        #Tested in main instance docstring
+        Tested in main instance docstring
         
-        #"""
-        #ret_val = None
-        #self.open_connection(caller_name="update_document_view_count") # make sure connection is open
+        """
+        ret_val = None
+        self.open_connection(caller_name="record_document_view") # make sure connection is open
+        try:
+            session_id = session_info.session_id
+            user_id =  session_info.user_id
+        except:
+            # no session open!
+            logger.debug("No session is open")
+            return ret_val
 
-        #try:
-            #cursor = self.db.cursor()
-            #sql = """INSERT INTO 
-                        #doc_viewcounts(account, 
-                                        #locator, 
-                                        #title, 
-                                        #type, 
-                                        #datetimechar
-                                      #)
-                                      #VALUES 
-                                        #('%s', '%s', '%s', '%s', '%s')"""
+        try:
+            cursor = self.db.cursor()
+            sql = """INSERT INTO 
+                        api_docviews(user_id, 
+                                      document_id, 
+                                      session_id, 
+                                      type, 
+                                      datetimechar
+                                     )
+                                     VALUES 
+                                      (%s, %s, %s, %s, %s)"""
             
-            #ret_val = cursor.execute(sql,
-                                    #(account,
-                                     #articleID, 
-                                     #title, 
-                                     #viewType, 
-                                     #datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
-                                     #)
-                                    #)
-            #self.db.commit()
-            #cursor.close()
+            ret_val = cursor.execute(sql,
+                                    (user_id,
+                                     document_id,
+                                     session_id, 
+                                     view_type, 
+                                     datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
+                                     )
+                                    )
+            self.db.commit()
+            cursor.close()
 
-        #except Exception as e:
-            #logger.warning(f"recordSessionEndpoint: {e}")
+        except Exception as e:
+            logger.warning(f"record_document_view: {e}")
             
 
-        #self.close_connection(caller_name="update_document_view_count") # make sure connection is closed
+        self.close_connection(caller_name="record_document_view") # make sure connection is closed
 
-        #return ret_val
-        #####################################################################################################################
-            
+        return ret_val
+
     def get_user(self, username = None, user_id = None):
         """
         If user exists (via username or user_id) and has an active subscription
@@ -907,7 +937,7 @@ class opasCentralDB(object):
             ret_val = None
         else:
             res = curs.execute(sql)
-            if res == 1:
+            if res >= 1:
                 user = curs.fetchone()
                 ret_val = modelsOpasCentralPydantic.UserSubscriptions(**user)
             else:
@@ -1174,6 +1204,7 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     
     ocd = opasCentralDB()
+    # get basecodes for PEP Archive Product
     basecodes = ocd.get_basecodes_for_product(421)
     ocd.get_dict_of_products()
     #ocd.get_subscription_access("IJP", 421)

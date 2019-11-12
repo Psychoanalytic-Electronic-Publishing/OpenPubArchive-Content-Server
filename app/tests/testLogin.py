@@ -51,7 +51,7 @@ class TestLogin(unittest.TestCase):
         print (decoded_access_token )
 
         # now Check if we are logged in!
-        full_URL = base_plus_endpoint_encoded('/v1/Admin/WhoAmI/')
+        full_URL = base_plus_endpoint_encoded('/v2/Admin/WhoAmI/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -63,11 +63,8 @@ class TestLogin(unittest.TestCase):
                                           key=SECRET_KEY,
                                           algorithms=ALGORITHM
                                          )
-        print (decoded_access_token )
         assert(r["authenticated"] == True)
-
-    def test_1_logout(self):
-        full_URL = base_plus_endpoint_encoded(f'/v1/Logout/')
+        full_URL = base_plus_endpoint_encoded('/v1/Logout/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -76,7 +73,7 @@ class TestLogin(unittest.TestCase):
         response_set = r["licenseInfo"]["responseSet"]
         assert(r["licenseInfo"]["responseInfo"]["loggedIn"] == False)
 
-        full_URL = base_plus_endpoint_encoded('/v1/Admin/WhoAmI/')
+        full_URL = base_plus_endpoint_encoded('/v2/Admin/WhoAmI/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -96,13 +93,10 @@ class TestLogin(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded(f'/v1/Login/?grant_type=password&username={TESTUSER}&password="notthepassword"')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
+        assert(response.status_code == 401) # Unauthorized Error
         r = response.json()
-        access_token = r["access_token"]
-        session_id =  r["session_id"]
-        assert(access_token == '')
 
-        full_URL = base_plus_endpoint_encoded('/v1/Admin/WhoAmI/')
+        full_URL = base_plus_endpoint_encoded('/v2/Admin/WhoAmI/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)

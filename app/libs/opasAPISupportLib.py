@@ -215,21 +215,21 @@ def start_new_session(resp: Response, request: Request, session_id=None, access_
     # return the object so the caller can get the details of the session
     return ocd, sessionInfo
 
-#-----------------------------------------------------------------------------
-def delete_cookies(resp: Response, session_id=None, access_token=None):
-    """
-    Delete the session and or accessToken cookies in the response header 
+##-----------------------------------------------------------------------------
+#def delete_cookies(resp: Response, session_id=None, access_token=None):
+    #"""
+    #Delete the session and or accessToken cookies in the response header 
    
-    """
+    #"""
 
-    logger.debug("Setting specified cookies to empty to delete them")
-    expires = datetime.utcnow()
-    if session_id is not None:
-        set_cookie(resp, OPASSESSIONID, value=None, domain=COOKIE_DOMAIN, path="/", expires=expires, max_age=0)
+    #logger.debug("Setting specified cookies to empty to delete them")
+    #expires = datetime.utcnow()
+    #if session_id is not None:
+        #set_cookie(resp, OPASSESSIONID, value=None, domain=COOKIE_DOMAIN, path="/", expires=expires, max_age=0)
 
-    if access_token is not None:
-        set_cookie(resp, OPASACCESSTOKEN, value=None, domain=COOKIE_DOMAIN, path="/", expires=expires, max_age=0)
-    return resp
+    #if access_token is not None:
+        #set_cookie(resp, OPASACCESSTOKEN, value=None, domain=COOKIE_DOMAIN, path="/", expires=expires, max_age=0)
+    #return resp
     
 ##-----------------------------------------------------------------------------
 #def set_cookies(resp: Response, session_id, access_token=None, max_age=None, token_expires_time=None):
@@ -332,9 +332,12 @@ def force_string_return_from_various_return_types(text_str, min_length=5):
                 # we have an abstract
                 ret_val = text_str
         elif isinstance(text_str, list):
-            ret_val = text_str[0]
-            if ret_val == [] or ret_val == '[]':
+            if text_str == []:
                 ret_val = None
+            else:
+                ret_val = text_str[0]
+                if ret_val == [] or ret_val == '[]':
+                    ret_val = None
         else:
             logger.error("Type mismatch on Solr Data. forceStringReturn ERROR: %s", type(ret_val))
 
@@ -394,16 +397,18 @@ def get_article_data(article_id, fields=None):  # DEPRECATED???????  (at least, 
     ret_val = None
     if article_id != "":
         try:
-            results = solr_docs.query(q = "art_id:{}".format(article_id),  fields = fields)
+            q = f"art_id:{article_id}"
+            results = solr_docs.query(q, fields = fields)
         except Exception as e:
-            logger.error("Solr Error: {}".format(e))
+            logger.error(f"Solr Error: {e}")
             ret_val = None
         else:
             if results._numFound == 0:
                 ret_val = None
             else:
                 ret_val = results.results[0]
-    limit = 5 # for now, we may make this 1
+
+    limit = 5 # for now, we may later make this 1
     offset = 0
     response_info = models.ResponseInfo (count = len(results.results),
                                          fullCount = results._numFound,
@@ -411,7 +416,7 @@ def get_article_data(article_id, fields=None):  # DEPRECATED???????  (at least, 
                                          limit = limit,
                                          offset = offset,
                                          listType="documentlist",
-                                         scopeQuery=None,
+                                         scopeQuery=[q],
                                          fullCountComplete = limit >= results._numFound,
                                          solrParams = results._params,
                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
@@ -810,8 +815,8 @@ def database_get_whats_new(days_back=7, limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS
     return ret_val   # WhatsNewList
 
 #-----------------------------------------------------------------------------
-def search_like_the_pep_api():
-    pass  # later
+#def search_like_the_pep_api():
+    #pass  # later
 
 #-----------------------------------------------------------------------------
 def metadata_get_volumes(pep_code, year="*", limit=opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, offset=0):
@@ -1050,7 +1055,7 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
                 total_count, sourceData = ocd.get_sources(src_type = src_type, limit=limit, offset=offset)
                 
             for sourceInfoDict in sourceData:
-                if sourceInfoDict["src_type"] == src_type:
+                if sourceInfoDict["product_type"] == src_type:
                     # match
                     source_info_dblist.append(sourceInfoDict)
             if limit < total_count:
@@ -1070,7 +1075,7 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
                                          offset = offset,
                                          listLabel = "{} List".format(src_type),
                                          listType = "sourceinfolist",
-                                         scopeQuery = "*",
+                                         scopeQuery = [src_type, src_code],
                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
                                        )
 
@@ -1089,7 +1094,7 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
             publisher = source.get("publisher")
             bookCode = None
             if src_type == "book":
-                bookCode = source.get("base_code")
+                bookCode = source.get("pepcode")
                 m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", bookCode, re.IGNORECASE)
                 if m is not None:
                     code = m.group("code")
@@ -1110,7 +1115,7 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
 
             try:
                 item = models.SourceInfoListItem( sourceType = src_type,
-                                                  PEPCode = source.get("src_code"),
+                                                  PEPCode = source.get("basecode"),
                                                   authors = authors,
                                                   pub_year = pub_year,
                                                   documentID = source.get("art_id"),
@@ -1118,13 +1123,15 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
                                                   title = title,
                                                   srcTitle = title,  # v1 Deprecated for future
                                                   bookCode = bookCode,
-                                                  abbrev = source.get("bib_abbrev"),
-                                                  bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('src_code')}.logo.gif",
+                                                  abbrev = source.get("bibabbrev"),
+                                                  bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('basecode')}.logo.gif",
                                                   language = source.get("language"),
                                                   ISSN = source.get("ISSN"),
+                                                  ISBN10 = source.get("ISBN-10"),
+                                                  ISBN13 = source.get("ISBN-13"),
                                                   yearFirst = source.get("start_year"),
                                                   yearLast = source.get("end_year"),
-                                                  embargoYears = source.get("embargo_yrs")
+                                                  embargoYears = source.get("embargo")
                                                 ) 
                 #logger.debug("metadataGetSourceByType SourceInfoListItem: %s", item)
             except ValidationError as e:
@@ -1194,7 +1201,7 @@ def metadata_get_source_by_code(src_code=None, limit=opasConfig.DEFAULT_LIMIT_FO
                                          offset = offset,
                                          #listLabel = "{} List".format(sourceType),
                                          listType = "sourceinfolist",
-                                         scopeQuery = "*",
+                                         scopeQuery = [src_code],
                                          fullCountComplete = True,
                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
                                        )
@@ -1313,7 +1320,7 @@ def authors_get_author_info(author_partial, limit=opasConfig.DEFAULT_LIMIT_FOR_S
     response_info = models.ResponseInfo( limit=limit,
                                          offset=offset,
                                          listType="authorindex",
-                                         scopeQuery="Terms: %s" % author_partial,
+                                         scopeQuery=[f"Terms: {author_partial}"],
                                          solrParams=results._params,
                                          timeStamp=datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
                                        )
@@ -1406,7 +1413,7 @@ def authors_get_author_publications(author_partial, limit=opasConfig.DEFAULT_LIM
                                          limit = limit,
                                          offset = offset,
                                          listType="authorpublist",
-                                         scopeQuery=query,
+                                         scopeQuery=[query],
                                          solrParams = results._params,
                                          fullCountComplete = limit >= results._numFound,
                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
@@ -1492,110 +1499,121 @@ def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=No
       
     """
     ret_val = None
-    results = solr_docs.query(q = "art_id:%s*" % (document_id),  
-                                fields = "art_id, art_pepsourcetitlefull, art_vol, art_year, art_citeas_xml, art_pgrg, art_title_xml, art_authors, abstracts_xml, summaries_xml, text_xml",
-                                sort="art_year, art_pgrg", sort_order="asc",
-                                rows=limit, start=offset
-                             )
-    
-    matches = len(results.results)
-    cwd = os.getcwd()    
-    # print ("GetAbstract: Current Directory {}".format(cwd))
-    logger.debug ("%s document matches for getAbstracts", matches)
-    
-    response_info = models.ResponseInfo( count = len(results.results),
-                                         fullCount = results._numFound,
-                                         limit = limit,
-                                         offset = offset,
-                                         listType="documentlist",
-                                         fullCountComplete = limit >= results._numFound,
-                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                       )
-    
-    document_item_list = []
-    for result in results:
-        if matches > 0:
-            try:
-                xml_abstract = result["abstracts_xml"]
-            except KeyError as e:
-                xml_abstract = None
-                logger.info("No abstract for document ID: %s", document_id)
-        
-            try:
-                xml_summary = result["summaries_xml"]
-            except KeyError as e:
-                xml_summary = None
-                logger.info("No summary for document ID: %s", document_id)
-        
-            try:
-                xml_document = result["text_xml"]
-            except KeyError as e:
-                xml_document = None
-                logger.error("No content matched document ID for: %s", document_id)
-
-            author_ids = result.get("art_authors", None)
-            if author_ids is None:
-                author_mast = None
-            else:
-                author_mast = opasgenlib.deriveAuthorMast(author_ids)
-
-            pgrg = result.get("art_pgrg", None)
-            pg_start, pg_end = opasgenlib.pgrg_splitter(pgrg)
+    if document_id is not None:
+        try:
+            document_id = document_id.upper()
+        except Exception as e:
+            logger.warning("Bad argument {document_id} to get_abstract(Error:{e})")
+            return ret_val
             
-            source_title = result.get("art_pepsourcetitlefull", None)
-            title = result.get("art_title_xml", "")  # name is misleading, it's not xml.
-            art_year = result.get("art_year", None)
-            art_vol = result.get("art_vol", None)
-
-            citeas = result.get("art_citeas_xml", None)
-            citeas = force_string_return_from_various_return_types(citeas)
-
-            abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document)
-            if abstract == "[]":
-                abstract = None
-            elif ret_format == "TEXTONLY":
-                abstract = opasxmllib.xml_elem_or_str_to_text(abstract)
-            elif ret_format == "HTML":
-                abstractHTML = opasxmllib.xml_str_to_html(abstract)
-                abstract = extract_html_fragment(abstractHTML, "//div[@id='abs']")
-
-            abstract = opasxmllib.add_headings_to_abstract_html(abstract=abstract, 
-                                                            source_title=source_title,
-                                                            pub_year=art_year,
-                                                            vol=art_vol, 
-                                                            pgrg=pgrg, 
-                                                            citeas=citeas, 
-                                                            title=title,
-                                                            author_mast=author_mast )
-
-            item = models.DocumentListItem(year = art_year,
-                                    vol = art_vol,
-                                    sourceTitle = source_title,
-                                    pgRg = pgrg,
-                                    pgStart = pg_start,
-                                    pgEnd = pg_end,
-                                    authorMast = author_mast,
-                                    documentID = result.get("art_id", None),
-                                    documentRefHTML = citeas,
-                                    documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return=""),
-                                    accessLimited = authenticated,
-                                    abstract = abstract,
-                                    score = result.get("score", None)
-                                    )
+        results = solr_docs.query(q = "art_id:%s*" % (document_id),  
+                                    fields = "art_id, art_pepsourcetitlefull, art_vol, art_year, art_citeas_xml, art_pgrg, art_title_xml, art_authors, abstracts_xml, summaries_xml, text_xml",
+                                    sort="art_year, art_pgrg", sort_order="asc",
+                                    rows=limit, start=offset
+                                 )
         
-            document_item_list.append(item)
-
-    response_info.count = len(document_item_list)
-    
-    document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
-                                                      responseSet=document_item_list
-                                                      )
-    
-    documents = models.Documents(documents = document_list_struct)
+        matches = len(results.results)
+        cwd = os.getcwd()    
+        # print ("GetAbstract: Current Directory {}".format(cwd))
+        logger.debug ("%s document matches for getAbstracts", matches)
         
-    ret_val = documents
+        response_info = models.ResponseInfo( count = len(results.results),
+                                             fullCount = results._numFound,
+                                             limit = limit,
+                                             offset = offset,
+                                             listType="documentlist",
+                                             fullCountComplete = limit >= results._numFound,
+                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                           )
+        
+        document_item_list = []
+        for result in results:
+            if matches > 0:
+                try:
+                    xml_abstract = result["abstracts_xml"]
+                except KeyError as e:
+                    xml_abstract = None
+                    logger.info("No abstract for document ID: %s", document_id)
             
+                try:
+                    xml_summary = result["summaries_xml"]
+                except KeyError as e:
+                    xml_summary = None
+                    logger.info("No summary for document ID: %s", document_id)
+            
+                try:
+                    xml_document = result["text_xml"]
+                except KeyError as e:
+                    xml_document = None
+                    logger.error("No content matched document ID for: %s", document_id)
+    
+                author_ids = result.get("art_authors", None)
+                if author_ids is None:
+                    author_mast = None
+                else:
+                    author_mast = opasgenlib.deriveAuthorMast(author_ids)
+    
+                pgrg = result.get("art_pgrg", None)
+                pg_start, pg_end = opasgenlib.pgrg_splitter(pgrg)
                 
+                source_title = result.get("art_pepsourcetitlefull", None)
+                title = result.get("art_title_xml", "")  # name is misleading, it's not xml.
+                art_year = result.get("art_year", None)
+                art_vol = result.get("art_vol", None)
+    
+                citeas = result.get("art_citeas_xml", None)
+                citeas = force_string_return_from_various_return_types(citeas)
+    
+                abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document)
+                if abstract == "[]":
+                    abstract = None
+                elif ret_format == "TEXTONLY":
+                    abstract = opasxmllib.xml_elem_or_str_to_text(abstract)
+                elif ret_format == "HTML":
+                    abstractHTML = opasxmllib.xml_str_to_html(abstract)
+                    # try to extract just the abstract.  Not sure why this used to work and now (20191111) doesn't for some articles.  Maybe sampling, or
+                    #   the style sheet application changed.
+                    abstract = extract_html_fragment(abstractHTML, "//div[@id='abs']")
+                    if abstract == None:
+                        abstract = abstractHTML
+    
+                abstract = opasxmllib.add_headings_to_abstract_html(abstract=abstract, 
+                                                                source_title=source_title,
+                                                                pub_year=art_year,
+                                                                vol=art_vol, 
+                                                                pgrg=pgrg, 
+                                                                citeas=citeas, 
+                                                                title=title,
+                                                                author_mast=author_mast,
+                                                                ret_format=ret_format)
+    
+                item = models.DocumentListItem(year = art_year,
+                                        vol = art_vol,
+                                        sourceTitle = source_title,
+                                        pgRg = pgrg,
+                                        pgStart = pg_start,
+                                        pgEnd = pg_end,
+                                        authorMast = author_mast,
+                                        documentID = result.get("art_id", None),
+                                        documentRefHTML = citeas,
+                                        documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return=""),
+                                        accessLimited = authenticated,
+                                        abstract = abstract,
+                                        score = result.get("score", None)
+                                        )
+            
+                document_item_list.append(item)
+    
+        response_info.count = len(document_item_list)
+        
+        document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
+                                                          responseSet=document_item_list
+                                                          )
+        
+        documents = models.Documents(documents = document_list_struct)
+            
+        ret_val = documents
+
     return ret_val
 
 
@@ -1618,64 +1636,70 @@ def documents_get_document(document_id, solr_query_params=None, ret_format="XML"
     if not authenticated:
         #if user is not authenticated, effectively do endpoint for getDocumentAbstracts
         logger.info("documentsGetDocument: User not authenticated...fetching abstracts instead")
-        ret_val = document_list_struct = documents_get_abstracts(document_id, authenticated=authenticated, limit=1)
+        ret_val = document_list_struct = documents_get_abstracts(document_id, authenticated=authenticated, ret_format=ret_format, limit=1)
         return ret_val
 
-    if solr_query_params is not None:
-        # repeat the query that the user had done when retrieving the document
-        query = "art_id:{} && {}".format(document_id, solr_query_params.searchQ)
-        document_list = search_text(query, 
-                                    filter_query = solr_query_params.filterQ,
-                                    full_text_requested=True,
-                                    full_text_format_requested = ret_format,
-                                    authenticated=authenticated,
-                                    query_debug = False,
-                                    dis_max = solr_query_params.solrMax,
-                                    limit=limit, 
-                                    offset=offset
-                                  )
-    
-    if document_list == None or document_list.documentList.responseInfo.count == 0:
-        #sometimes the query is still sent back, even though the document was an independent selection.  So treat it as a simple doc fetch
-        
-        query = "art_id:{}".format(document_id)
-        #summaryFields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml"
-       
-        document_list = search_text(query, 
-                                    full_text_requested=True,
-                                    full_text_format_requested = ret_format,
-                                    authenticated=authenticated,
-                                    query_debug = False,
-                                    limit=limit, 
-                                    offset=offset
-                                    )
-
-    try:
-        matches = document_list.documentList.responseInfo.count
-        full_count = document_list.documentList.responseInfo.fullCount
-        full_count_complete = document_list.documentList.responseInfo.fullCountComplete
-        document_list_item = document_list.documentList.responseSet[0]
-        logger.debug("documentsGetDocument %s document matches", matches)
+    try: # Solr match against art_id is case sensitive
+        document_id = document_id.upper()
     except Exception as e:
-        logger.info("No matches or error: %s", e)
+        logger.warning("Bad argument {document_id} to documents_get_document(Error:{e})")
+        return ret_val
     else:
-        response_info = models.ResponseInfo( count = matches,
-                                             fullCount = full_count,
-                                             limit = limit,
-                                             offset = offset,
-                                             listType="documentlist",
-                                             fullCountComplete = full_count_complete,
-                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
-                                           )
+        if solr_query_params is not None:
+            # repeat the query that the user had done when retrieving the document
+            query = "art_id:{} && {}".format(document_id, solr_query_params.searchQ)
+            document_list, ret_status = search_text(query, 
+                                        filter_query = solr_query_params.filterQ,
+                                        full_text_requested=True,
+                                        full_text_format_requested = ret_format,
+                                        authenticated=authenticated,
+                                        query_debug = False,
+                                        dis_max = solr_query_params.solrMax,
+                                        limit=limit, 
+                                        offset=offset
+                                      )
         
-        if matches >= 1:       
-            document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
-                                                              responseSet = [document_list_item]
-                                                            )
-                
-            documents = models.Documents(documents = document_list_struct)
+        if document_list == None or document_list.documentList.responseInfo.count == 0:
+            #sometimes the query is still sent back, even though the document was an independent selection.  So treat it as a simple doc fetch
+            
+            query = "art_id:{}".format(document_id)
+            #summaryFields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml"
+           
+            document_list, ret_status = search_text(query, 
+                                        full_text_requested=True,
+                                        full_text_format_requested = ret_format,
+                                        authenticated=authenticated,
+                                        query_debug = False,
+                                        limit=limit, 
+                                        offset=offset
+                                        )
+    
+        try:
+            matches = document_list.documentList.responseInfo.count
+            full_count = document_list.documentList.responseInfo.fullCount
+            full_count_complete = document_list.documentList.responseInfo.fullCountComplete
+            document_list_item = document_list.documentList.responseSet[0]
+            logger.debug("documentsGetDocument %s document matches", matches)
+        except Exception as e:
+            logger.info("No matches or error: %s", e)
+        else:
+            response_info = models.ResponseInfo( count = matches,
+                                                 fullCount = full_count,
+                                                 limit = limit,
+                                                 offset = offset,
+                                                 listType="documentlist",
+                                                 fullCountComplete = full_count_complete,
+                                                 timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
+                                               )
+            
+            if matches >= 1:       
+                document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
+                                                                  responseSet = [document_list_item]
+                                                                )
                     
-            ret_val = documents
+                documents = models.Documents(documents = document_list_struct)
+                        
+                ret_val = documents
     
     return ret_val
 
@@ -2171,9 +2195,13 @@ def search_text(query,
                limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
                offset=0):
     """
-    Full-text search
+    Full-text search, via the Solr server api.
+    
+    Returns a pair of values: ret_val, ret_status.  The double return value is important in case the Solr server isn't running or it returns an HTTP error.  The 
+       ret_val = a DocumentList model object
+       ret_status = a status tuple, consisting of a HTTP status code and a status mesage. Default (HTTP_200_OK, "OK")
 
-    >>> ret = search_text(query="art_title_xml:'ego identity'", limit=10, offset=0, full_text_requested=False)
+    >>> ret_val, ret_status = search_text(query="art_title_xml:'ego identity'", limit=10, offset=0, full_text_requested=False)
     Search Performed: art_title_xml:'ego identity'
     Result  Set Size: 12809
     Return set limit: 10
@@ -2227,9 +2255,11 @@ def search_text(query,
         filter_query = None
     elif filter_query is not None:
         # for logging/debug
+        filter_query = filter_query.replace("*:* && ", "")
         logger.debug("Solr FilterQ: %s", filter_query)
 
     if query is not None:
+        query = query.replace("*:* && ", "")
         logger.debug("Solr Query: %s", query)
 
     try:
@@ -2265,41 +2295,44 @@ def search_text(query,
 
     else: #  search was ok
         logger.debug("Search Performed: %s", query)
-        logger.debug("The Filtering: %s", query)
+        logger.debug("The Filtering: %s", filter_query)
         logger.debug("Result  Set Size: %s", results._numFound)
         logger.debug("Return set limit: %s", limit)
-        if results._numFound == 0:
-            try:
-                # try removing the filter query
-                results = solr_docs.query(query,  
-                                         debugQuery = query_debug,
-                                         disMax = dis_max,
-                                         fields = summary_fields,
-                                         hl='true', 
-                                         hl_fragsize = fragSize, 
-                                         hl_multiterm='true',
-                                         hl_fl = highlight_fields,
-                                         hl_usePhraseHighlighter = 'true',
-                                         hl_snippets = maxKWICReturns,
-                                         #hl_method="unified",  # these don't work
-                                         #hl_encoder="HTML",
-                                         mlt = mlt,
-                                         mlt_fl = mlt_fl,
-                                         mlt_count = 2,
-                                         mlt_minwl = mlt_minwl,
-                                         rows = limit,
-                                         start = offset,
-                                         sort=sort_by,
-                                         hl_simple_pre = opasConfig.HITMARKERSTART,
-                                         hl_simple_post = opasConfig.HITMARKEREND)
-            except solr.SolrException as e:
-                logger.error(f"Solr Runtime Search Error: {e}")
-                # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-                ret_status = (400, e) 
-            else:
-                logger.debug("Re-formed Search: %s", query)
-                logger.debug("New Result Set Size: %s", results._numFound)
-                logger.debug("Return set limit: %s", limit)
+        scopeofquery = [query, filter_query]
+        
+        #if results._numFound == 0:
+            #try:
+                ## try removing the filter query
+                #results = solr_docs.query(query,  
+                                         #debugQuery = query_debug,
+                                         #disMax = dis_max,
+                                         #fields = summary_fields,
+                                         #hl='true', 
+                                         #hl_fragsize = fragSize, 
+                                         #hl_multiterm='true',
+                                         #hl_fl = highlight_fields,
+                                         #hl_usePhraseHighlighter = 'true',
+                                         #hl_snippets = maxKWICReturns,
+                                         ##hl_method="unified",  # these don't work
+                                         ##hl_encoder="HTML",
+                                         #mlt = mlt,
+                                         #mlt_fl = mlt_fl,
+                                         #mlt_count = 2,
+                                         #mlt_minwl = mlt_minwl,
+                                         #rows = limit,
+                                         #start = offset,
+                                         #sort=sort_by,
+                                         #hl_simple_pre = opasConfig.HITMARKERSTART,
+                                         #hl_simple_post = opasConfig.HITMARKEREND)
+            #except solr.SolrException as e:
+                #logger.error(f"Solr Runtime Search Error: {e}")
+                ## e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+                #ret_status = (400, e) 
+            #else:
+                #logger.debug("Re-formed Search: %s", query)
+                #logger.debug("New Result Set Size: %s", results._numFound)
+                #logger.debug("Return set limit: %s", limit)
+                #scopeofquery = [query, f"filter query was removed due to 0 hits: {filter_query}"]
 
         if ret_status[0] == 200: 
             # Solr search was ok
@@ -2310,7 +2343,7 @@ def search_text(query,
                              limit = limit,
                              offset = offset,
                              listType="documentlist",
-                             scopeQuery=query,
+                             scopeQuery=[scopeofquery], 
                              fullCountComplete = limit >= results._numFound,
                              solrParams = results._params,
                              timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     

@@ -15,10 +15,13 @@
 *.xml
 *Sample*
 *examples*
+*Hold*
 *epubExamination*
+filetracker.db-journal
 .idea
 .vscode/
 GVPI_Data/*
+sql/schemas/backups/*
 OPASServer/.vs/*
 OPASServer/.vscode/*
 OPASServer/vs_opas.code-workspace

@@ -507,7 +507,7 @@ def xml_xpath_return_xmlstringlist(element_node, xpath, default_return=list()):
         
     return ret_val   
 
-def add_headings_to_abstract_html(abstract, source_title=None, pub_year=None, vol=None, issue=None, pgrg=None, title=None, author_mast=None, citeas=None):
+def add_headings_to_abstract_html(abstract, source_title=None, pub_year=None, vol=None, issue=None, pgrg=None, title=None, author_mast=None, citeas=None, ret_format="HTML"):
     """
     Format the top portion of the Abstracts presented by the client per the original GVPi model
     """
@@ -518,12 +518,21 @@ def add_headings_to_abstract_html(abstract, source_title=None, pub_year=None, vo
         issue = ""
         
     heading = f"({pub_year}). {source_title}, {vol}{issue}:{pgrg}"
-    ret_val = f"""
-            <p class="heading">{heading}</p>
-            <p class="title">{title}</p>
-            <p class="title_author">{author_mast}</p>
-            <div class="abstract">{abstract}</p>
-            """
+    if ret_format != "TEXTONLY":
+        # BOTH HTML and XML.  May later want to handle XML separately
+        ret_val = f"""
+                <p class="heading">{heading}</p>
+                <p class="title">{title}</p>
+                <p class="title_author">{author_mast}</p>
+                <div class="abstract">{abstract}</p>
+                """
+    else:
+        ret_val = f"""
+                {heading}\n{title}\n{author_mast}\n\n
+                {abstract}
+                """
+        
+        
     return ret_val
 
 def xml_file_to_xmlstr(xml_file, remove_encoding=False, resolve_entities=True):
