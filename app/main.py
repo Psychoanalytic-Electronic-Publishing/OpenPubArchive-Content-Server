@@ -92,6 +92,7 @@ from starlette.status import HTTP_200_OK, \
                              HTTP_400_BAD_REQUEST, \
                              HTTP_401_UNAUTHORIZED, \
                              HTTP_403_FORBIDDEN, \
+                             HTTP_404_NOT_FOUND, \
                              HTTP_500_INTERNAL_SERVER_ERROR, \
                              HTTP_503_SERVICE_UNAVAILABLE
 
@@ -577,7 +578,7 @@ def login_user(response: Response,
     ## Potential Errors
 
     """
-    logger.debug("Login via: /v1/(Users)?/Login/ - %s", username)
+    logger.debug("Login via: /v2/(Users)?/Login/ - %s", username)
     err_code = None
 
     session_id = request.cookies.get(OPASSESSIONID) #  opasAPISupportLib.get_session_id(request)
@@ -842,7 +843,7 @@ def parse_search_query_parameters(search=None,
 
     if author is not None:
         author = author.replace('"', '')
-        analyze_this = "&& art_authors_xml:{} ".format(author)
+        analyze_this = "&& art_authors_ngrm:{} ".format(author)
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  
 
@@ -891,10 +892,13 @@ def parse_search_query_parameters(search=None,
         # 'in' is required along with a space in front of it and after it
         # when specifying the period.
         # the default period is 5 years.
-        match_ptn = "(?P<nbr>[0-9]+)(\s+IN\s+(?P<period>(5|10|20|All)))?"
+        match_ptn = "(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?"
         m = re.match(match_ptn, citecount, re.IGNORECASE)
         if m is not None:
             val = m.group("nbr")
+            val_end = m.group("endnbr")
+            if val_end == None:
+                val_end = "*"
             period = m.group("period")
 
         if val is None:
@@ -902,7 +906,7 @@ def parse_search_query_parameters(search=None,
         if period is None:
             period = '5'
 
-        analyze_this = "&& art_cited_{}:[{} TO *] ".format(period.lower(), val)
+        analyze_this = "&& art_cited_{}:[{} TO {}] ".format(period.lower(), val, val_end)
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
@@ -989,9 +993,9 @@ async def search_the_document_database(response: Response,
                                        abstracts: str=Query(None, title="Search Text within 'Abstracts'", description="Words or phrases (in quotes) to match within abstracts"),  
                                        dialogs: str=Query(None, title="Search Text within 'Dialogs'", description="Words or phrases (in quotes) to match within dialogs"),  
                                        references: str=Query(None, title="Search Text within 'References'", description="Words or phrases (in quotes) to match within references"),  
-                                       citecount: str=Query(None, title="Find Documents cited this many times", description="Filter for documents cited more than the specified times in the past 5 years"),   
+                                       citecount: str=Query(None, title="Find Documents cited this many times", description="Filter for documents cited more than the specified times in the past 5 years.  Can also specify range, e.g., 5 TO 10"),   
                                        viewcount: str=Query(None, title="Find Documents viewed this many times", description="Not yet implemented"),    
-                                       viewedWithin: str=Query(None, title="Find Documents viewed this many times", description="Not yet implemented"),     
+                                       viewedWithin: str=Query(None, title="Find Documents viewed this many times within a period", description="Not yet implemented"),     
                                        solrQ: str=Query(None, title="Advanced Query (Solr Syntax)", description="Advanced Query in Solr Q syntax (see schema names)"),
                                        disMax: str=Query(None, title="Advanced Query (Solr disMax Syntax)", description="Solr disMax syntax - more like Google search"),
                                        edisMax: str=Query(None, title="Advanced Query (Solr edisMax Syntax) ", description="Solr edisMax syntax - more like Google search, better than disMax"), 
@@ -1109,7 +1113,7 @@ async def search_the_document_database(response: Response,
         ret_val, ret_status = opasAPISupportLib.search_text(query=solr_query_params.searchQ, 
                                                             filter_query = solr_query_params.filterQ,
                                                             full_text_requested=False,
-                                                            query_debug = False,
+                                                            query_debug = True, # TEMPORARY
                                                             more_like_these = more_like_these_mode,
                                                             dis_max = solr_query_params.solrMax,
                                                             sort_by = sortBy,
@@ -1471,13 +1475,16 @@ def get_journal_content_lists_for_volume(SourceCode: str,
 @app.get("/v1/Metadata/Videos/", response_model=models.VideoInfoList, response_model_skip_defaults=True, tags=["Metadata"])
 def get_a_list_of_video_names(response: Response,
                               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
-                              SourceCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
+                              SourceCode: str=Query("*", title="PEP Code for Video Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                               limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                               offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                              ):
     """
     ## Function
-    <b>Get a complete list of journal names</b>
+    <b>Get a complete list of video names</b>
+    
+    SourceCode is the short abbreviation used as part of the DocumentIDs. e.g., for PEP in 2019, this includes:
+      IPSAVS, PEPVS, PEPTOPAUTHVS, BPSIVS, IJPVS, PCVS, SFCPVS, UCLVS, PEPGRANTVS, AFCVS, NYPSIVS, SPIVS
 
     ## Return Type
        models.VideoInfoList
@@ -1660,6 +1667,8 @@ def get_a_list_of_source_names(response: Response,
          http://localhost:9100/v1/Metadata/Books/IPL
     
     ## Notes
+       Depends on:
+          vw_productbase for videos
     
     ## Potential Errors
         
@@ -1667,9 +1676,10 @@ def get_a_list_of_source_names(response: Response,
     """
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    source_code = SourceCode.upper()
     try:    
-        if SourceCode == "*" or SourceType != "Journal":
-            ret_val = source_info_list = opasAPISupportLib.metadata_get_source_by_type(src_type=SourceType, src_code=SourceCode, limit=limit, offset=offset)
+        if source_code == "*" or SourceType != "Journal":
+            ret_val = source_info_list = opasAPISupportLib.metadata_get_source_by_type(src_type=SourceType, src_code=source_code, limit=limit, offset=offset)
         else:
             ret_val = source_info_list = opasAPISupportLib.metadata_get_source_by_code(src_code=SourceCode, limit=limit, offset=offset)            
 
@@ -1729,14 +1739,16 @@ def get_author_index_for_matching_author_names(response: Response,
         author_name_to_check = authorNamePartial.lower()  # work with lower case only, since Solr is case sensitive.
         ret_val = opasAPISupportLib.authors_get_author_info(author_name_to_check, limit=limit, offset=offset)
     except ConnectionRefusedError as e:
-        logger.error(f"The server is not running or is currently not accepting connections: {e}")
+        status_message = f"The server is not running or is currently not accepting connections: {e}"
+        logger.error(status_message)
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             detail=status_message
         )
 
     except Exception as e:
-        logger.error("Error: {}".format(e))
+        status_message = f"Error: {e}"
+        logger.error(status_message)
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             detail=status_message
@@ -1814,7 +1826,7 @@ def get_author_pubs_for_matching_author_names(response: Response,
 def view_an_abstract(response: Response,
                      request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                      documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
-                     return_format: str=Query("TEXTONLY", title="Document return format", description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                     return_format: str=Query("HTML", title="Document return format", description=opasConfig.DESCRIPTION_RETURNFORMATS),
                      limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                      offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                      ):
@@ -1834,7 +1846,8 @@ def view_an_abstract(response: Response,
          http://localhost:9100/v1/Documents/Abstracts/IJP.001.0203A/
     
     ## Notes
-    
+        PEP Easy 1.03Beta expects HTML abstract return (it doesn't specify a format)
+        
     ## Potential Errors
 
     """
@@ -1850,18 +1863,29 @@ def view_an_abstract(response: Response,
                                     session_info=session_info, 
                                     params=request.url._url,
                                     item_of_interest=f"{documentID}", 
-                                    return_status_code = status_code,
+                                    return_status_code = response.status_code,
                                     status_message=status_message
                                     )
         raise HTTPException(
-            status_code=status_code,
+            status_code=response.status_code,
             detail=status_message
         )
     else:
         status_message = "Success"
-        response.status_code = HTTP_200_OK
         #client_host = request.client.host
+        # title = ret_val.documents.responseSet[0].title  # blank!
         ret_val.documents.responseInfo.request = request.url._url
+        if ret_val.documents.responseInfo.count > 0:
+            response.status_code = HTTP_200_OK
+            #  record document view if found
+            ocd.record_document_view(document_id=documentID,
+                                     session_info=session_info,
+                                     view_type="Abstract")
+        else:
+            # make sure we specify an error in the session log
+            #  not sure this is the best return code, but for now...
+            response.status_code = HTTP_404_NOT_FOUND
+            
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS_ABSTRACTS,
                                     session_info=session_info, 
                                     params=request.url._url,
@@ -2062,7 +2086,7 @@ def view_a_document(response: Response,
                 logger.debug("user is not authenticated.  Returning abstract only)")
 
                 ret_val = opasAPISupportLib.documents_get_abstracts( documentID,
-                                                                     ret_format="TEXTONLY",
+                                                                     ret_format=return_format,
                                                                      authenticated=None,
                                                                      limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
                                                                      offset=0
@@ -2088,6 +2112,18 @@ def view_a_document(response: Response,
             response.status_code = HTTP_200_OK
             status_message = "Success"
             ret_val.documents.responseInfo.request = request.url._url
+            if ret_val.documents.responseInfo.count > 0:
+                response.status_code = HTTP_200_OK
+                #  record document view if found
+                ocd.record_document_view(document_id=documentID,
+                                         session_info=session_info,
+                                         view_type="Document")
+            else:
+                # make sure we specify an error in the session log
+                # not sure this is the best return code, but for now...
+               response.status_code = HTTP_404_NOT_FOUND
+
+            # record session endpoint in any case   
             ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
                                         session_info=session_info, 
                                         params=request.url._url,
@@ -2131,7 +2167,7 @@ def download_a_document(response: Response,
     if not session_info.authenticated:
         response.status_code = HTTP_400_BAD_REQUEST 
         status_message = "Must be logged in and authorized to download a document."
-        ocd.record_session_endpoint(api_endpoint_id=endpoint,
+        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS_DOWNLOADS,
                                     session_info=session_info, 
                                     params=request.url._url,
                                     item_of_interest=f"{documentID}", 
@@ -2194,6 +2230,9 @@ def download_a_document(response: Response,
         else:
             status_message = "Success"
             logger.info(status_message)
+            ocd.record_document_view(document_id=documentID,
+                                     session_info=session_info,
+                                     view_type=file_format)
             ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                         session_info=session_info, 
                                         params=request.url._url,

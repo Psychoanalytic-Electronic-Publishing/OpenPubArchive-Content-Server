@@ -70,7 +70,7 @@ from optparse import OptionParser
 #from base64 import b64encode
 
 from lxml import etree
-import solr     # supports a number of types of authentication, including basic.  This is "solrpy"
+import solrpy as solr
 import pymysql
 
 import config
@@ -771,13 +771,13 @@ def main():
         try:
             cursor = ocd.db.cursor(pymysql.cursors.DictCursor)
             sql = """
-                  SELECT rxCode, count5, count10, count20, countAll from mostcitedarticles; 
+                  SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
                   """
             success = cursor.execute(sql)
             if success:
                 for n in cursor.fetchall():
                     row = modelsOpasCentralPydantic.MostCitedArticles(**n)
-                    gCitedTable[row.rxCode] = row
+                    gCitedTable[row.cited_document_id] = row
                 cursor.close()
             else:
                 retVal = 0

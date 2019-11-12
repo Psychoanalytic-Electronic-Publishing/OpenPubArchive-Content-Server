@@ -85,12 +85,12 @@ class Subscriptions(BaseModel):
     
 class MostCitedArticles(BaseModel):
     """
-    __Table mostcitedarticles__
+    __Table vw_stat_cited_crosstab__
 
     A view with rxCode counts derived from the fullbiblioxml table and the articles table
       for citing sources in one of the date ranges.
     """
-    rxCode: str = None
+    cited_document_id: str = None
     countAll: int = 0
     count5: int = 0
     count10: int = 0
@@ -98,9 +98,9 @@ class MostCitedArticles(BaseModel):
     
 class MostCitedArticlesWithDetails(MostCitedArticles):
     """
-    __Table MostCitedArticlesWithDetails__
+    __Table vw_stat_cited_crosstab_with_details__ # was MostCitedArticlesWithDetails
     based on 
-    __Table mostcitedarticles__
+    __Table vw_stat_cited_crosstab__
 
     A view with rxCode counts derived from the fullbiblioxml table and the articles table
       for citing sources in one of the date ranges.

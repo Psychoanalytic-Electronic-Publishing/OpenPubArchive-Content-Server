@@ -22,11 +22,13 @@ class TestSearch(unittest.TestCase):
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 8)
-        # print (response_set)
+        #print (response_set)
+        for n in response_set:
+            print (n["documentRef"])
         # Confirm that the request-response cycle completed successfully.
 
     def test_1b_search_lowercase(self):
@@ -38,7 +40,7 @@ class TestSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 8)
-        # print (response_set)
+        print (response_set)
         # Confirm that the request-response cycle completed successfully.
 
     def test_1c_search_wildcard(self):
@@ -76,7 +78,18 @@ class TestSearch(unittest.TestCase):
         print (response_set)
 
     def test_search_author_and_journalcode_and_text(self):
-        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=tuckett&journal=IJP&text=economics&citecount=3')
+        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=tuckett&journal=IJP&text=economics&citecount=6')
+        response = requests.get(full_URL)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["count"] == 14)
+        print (response_set)
+
+    def test_search_author_and_journalcode_and_text_and_citecount(self):
+        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=tuckett&fulltext1=economics&citecount=3 TO 8')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
@@ -84,17 +97,6 @@ class TestSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
-
-    def test_search_author_and_journalcode_and_text_and_citecount(self):
-        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=tuckett&citecount=5')
-        response = requests.get(full_URL)
-        assert(response.ok == True)
-        r = response.json()
-        print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 10)
         print (response_set)
 
        

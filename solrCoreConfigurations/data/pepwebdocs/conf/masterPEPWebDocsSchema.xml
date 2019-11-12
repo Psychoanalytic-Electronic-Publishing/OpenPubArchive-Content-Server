@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Web Database Schema v.00.01.15
-    for core PEPWebProto
+    PEP Web Database Schema v.00.01.17
+    for core PEPWebDocs
 
+    2019-11-12: Added additional author fields (data auto copied from old field)
+                to test (and deal with) partial search.  Trying ngrm field 
+                definition from medium: https://medium.com/aubergine-solutions/partial-string-search-in-apache-solr-4b9200e8e6bb
     2019-05-16: had to change art_kwds to multiValued, in testing against
                 full PEP Data set.
     2019-06-*:  Tuning:
@@ -60,7 +63,18 @@
   <field name="art_origrx" type="string" indexed="true" stored="true" multiValued="false"/>
   <!-- So how can we do queries for partial last names...can't bunch authors in printable form.  Try two fields, one XML one presentation one multifield. -->
   <field name="art_authors" type="string" indexed="true" stored="true" multiValued="true"/>
+  # try to improve author search for single names and full names
+  <field name="art_authors_text" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+  # try to improve author search for single names and full names
+  <field name="art_authors_ngrm" type="text_ngrm" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_mast" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_authors_mast_text" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="true" multiValued="true"/>
+  <copyField source="art_authors" dest="art_authors_text"/>
+  <copyField source="art_authors" dest="art_authors_ngrm"/>
+  <copyField source="art_authors_mast" dest="art_authors_mast_text"/>
+  <copyField source="art_authors_mast" dest="art_authors_mast_ngrm"/>
+  
   <field name="art_authors_unlisted" type="string" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <field name="art_body_xml" type="text_simple" indexed="true" stored="false" multiValued="false"/>
@@ -259,9 +273,22 @@
   <!--Binary data type. The data should be sent/retrieved in as Base64 encoded Strings -->
   <fieldType name="binary" class="solr.BinaryField"/>
 
-<!-- since fields of this type are by default not stored or indexed,
+  <!-- since fields of this type are by default not stored or indexed,
      any data added to them will be ignored outright.  -->
   <fieldType name="ignored" stored="false" indexed="false" multiValued="true" class="solr.StrField" />
 
-
+  <!--text field which allows partial searches-->
+  <fieldType name="text_ngrm" class="solr.TextField" positionIncrementGap="100">
+   
+    <analyzer type="index">
+       <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+        <filter class="solr.NGramFilterFactory" minGramSize="1" maxGramSize="50"/>
+        
+     <filter class="solr.LowerCaseFilterFactory"/>
+     </analyzer>
+     <analyzer type="query">
+       <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+       <filter class="solr.LowerCaseFilterFactory"/>
+     </analyzer>
+   </fieldType>
 </schema>
