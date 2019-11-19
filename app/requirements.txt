@@ -24,6 +24,7 @@ pydantic==0.32.2
 PyJWT==1.7.1
 PyMySQL==0.9.3
 PyPDF2==1.26.0
+python-multipart==0.0.5
 reportlab==3.5.28
 requests==2.22.0
 six==1.12.0

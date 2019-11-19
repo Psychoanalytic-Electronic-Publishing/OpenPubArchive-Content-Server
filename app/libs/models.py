@@ -57,7 +57,22 @@ class SearchModeEnum(Enum):
 class ErrorReturn(BaseModel):
     error: str = Schema(None, title="Error class or title")
     error_message: str = Schema(None, title="Error description")
+
+class authorInfo(BaseModel):
+    first: str = Schema(None, title="First name")
+    middle: str = Schema(None, title="Middle name")
+    last: str = Schema(None, title="Last name")
+    title: str = Schema(None, title="Prename title (Mr. Mrs. Dr.") 
+    affil: str = Schema(None, title="Affiliation")
     
+class authorList(BaseModel):
+    authorList: List[authorInfo] = []   
+
+class ReportTypeEnum(str, Enum):
+    mostViewed = "mostViewed"
+    mostCited = "mostCited"
+    
+
 class ListTypeEnum(Enum):
     volumelist = "volumelist"
     documentList = "documentlist"
@@ -91,7 +106,7 @@ class ResponseInfoLoginStatus(BaseModel):
     loggedIn: bool = Schema(False, title="Whether the user is logged in or not")
     username: str = Schema(None, title="The logged in user's name")
     request: str = Schema(None, title="The URL of the request")
-    user: User = Schema(None, title="A user object for the user")
+    #user: User = Schema(None, title="A user object for the user")
     error_message: str = Schema(None, title="If an error occurred, description")
     timeStamp: str = Schema(None, title="Server timestamp of return data.")   
 

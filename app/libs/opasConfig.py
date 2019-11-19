@@ -11,9 +11,9 @@ logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.DEBUG, da
 #logger = logging.getLogger(programNameShort)
 
 IMAGES = "images"
-HITMARKERSTART = "%##"  # using non html/xml default markers, so we can strip all tags but leave the hitmarkers!
-HITMARKEREND = "##%"
-HITMARKERSTART_OUTPUTHTML = '<span class="searchhit">'  # to convert the non-markup HIT markers to HTML, supply values here.  These match the current PEPEasy stylesheet.
+HITMARKERSTART = "#@@@"  # using non html/xml default markers, so we can strip all tags but leave the hitmarkers!
+HITMARKEREND = "@@@#"
+HITMARKERSTART_OUTPUTHTML = "<span class='searchhit'>"  # to convert the non-markup HIT markers to HTML, supply values here.  These match the current PEPEasy stylesheet.
 HITMARKEREND_OUTPUTHTML = "</span>"
       
 USER_NOT_LOGGED_IN_ID = 0
@@ -45,13 +45,15 @@ SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 2520000 # to get a complete document from 
 DESCRIPTION_LIMIT = "Number of items to return"
 DESCRIPTION_DAYSBACK = "Number of days to look back to assess what's new"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)"
+DESCRIPTION_PAGELIMIT = "Number of pages of a document to return"
+DESCRIPTION_PAGEOFFSET = "Starting page to return for this document as an offset from the first page.)"
 DESCRIPTION_SOURCECODE = "The 2-8 character PEP Code for source (of various types, e.g., journals: APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE; books: GW, SE, ZBK; videos: PEPGRANTVS, PEPTOPAUTHVS)"
 DESCRIPTION_YEAR = "The year for which to return data"
 DESCRIPTION_REQUEST = "The request object, passed in automatically by FastAPI"
 DESCRIPTION_AUTHORNAMEORPARTIAL = "The author name or a partial name (regex type wildcards [.*] permitted EXCEPT at the end of the string--the system will try that automatically)"
 DESCRIPTION_AUTHORNAMEORPARTIALNOWILD = "The author name or a author partial name (prefix)"
 DESCRIPTION_DOCIDORPARTIAL = "The document ID (e.g., IJP.077.0217A) or a partial ID (e.g., IJP.077,  no wildcard) for which to return data"
-DESCRIPTION_RETURNFORMATS = "The format of the returned document data.  One of: 'HTML', 'XML', 'TEXTONLY'"
+DESCRIPTION_RETURNFORMATS = "The format of the returned abstract and document data.  One of: 'HTML', 'XML', 'TEXTONLY'.  The default is HTML."
 DESCRIPTION_DOCDOWNLOADFORMAT = "The format of the downloaded document data.  One of: 'HTML', 'PDF', 'PDFORIG', EPUB'"
 DESCRIPTION_SOURCETYPE = "The class of source type for the metadata.  One of: 'Journals', 'Books', 'Videos'"
 DESCRIPTION_MOST_CITED_PERIOD = "Look for citations during this Period (5, 10, 20, or all)"

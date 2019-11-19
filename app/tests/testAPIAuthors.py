@@ -47,7 +47,7 @@ class TestAPIAuthors(unittest.TestCase):
         #                             'request': 'http://127.0.0.1:9100/v1/Authors/Index/Tuckett/', 'solrParams': {'terms_fl': 'art_author_id', 'terms_prefix': 'tuckett', 
         #                             'terms_sort': 'index', 'terms_limit': 15, 'fl': '*,score', 'version': 2.2, 'wt': 'xml'}, 'timeStamp': '2019-10-28T13:54:36Z'}, 
         #            'responseSet': [{'authorID': 'tuckett, david', 'publicationsURL': '/v1/Authors/Publications/tuckett, david/', 'publicationsCount': 63}]}}
-        assert(r['authorIndex']['responseSet'][0]['publicationsURL'] == '/v1/Authors/Publications/tuckett, david/')
+        assert(r['authorIndex']['responseSet'][0]['publicationsURL'][0:33] == '/v1/Authors/Publications/tuckett,')
        
         response = client.get(base_api + '/v1/Authors/Index/Maslo/')
         # Confirm that the request-response cycle completed successfully.

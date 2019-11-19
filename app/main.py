@@ -83,7 +83,7 @@ from urllib import parse
 
 from enum import Enum
 import uvicorn
-from fastapi import FastAPI, Query, Path, Cookie, Header, Depends, HTTPException
+from fastapi import FastAPI, Query, Path, Cookie, Header, Depends, HTTPException, File, Form, UploadFile
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, RedirectResponse, FileResponse
 from starlette.middleware.cors import CORSMiddleware
@@ -97,6 +97,8 @@ from starlette.status import HTTP_200_OK, \
                              HTTP_503_SERVICE_UNAVAILABLE
 
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import aiofiles
+from typing import List
 
 app = FastAPI()
 
@@ -125,6 +127,9 @@ import modelsOpasCentralPydantic
 import opasCentralDBLib
 from sourceInfoDB import SourceInfoDB
 
+# used to remove prefix && added to queries
+pat_prefix_amps = re.compile("^\s*&& ")
+
 sourceInfoDB = SourceInfoDB()
 # gActiveSessions = {}
 
@@ -137,9 +142,9 @@ CURRENT_DEVELOPMENT_STATUS = "Developing"
 
 app = FastAPI(
     debug=True,
-        title="OPAS API for PEP-Web",
-        description = "Open Publications Archive Software API",
-        version = "1.0.0.Alpha",
+        title="Open Publications Archive (OPAS) API for PEP-Web",
+        description = "Open Publications Archive Software API for PEP-Web by Psychoanalytic Electronic Publishing (PEP)",
+        version = "2019.11.17.alpha",
         static_directory=r"./docs",
         swagger_static={
             "favicon": "pepfavicon.gif"
@@ -170,6 +175,9 @@ origins = [
     "http://development",
     "http://development.org",
     "http://.development.org",
+    "http://pep-web",
+    "http://pep-web.rocks",
+    "http://.pep-web.rocks",
 ]
 
 app.add_middleware(
@@ -191,14 +199,115 @@ def check_if_user_logged_in(request:Request,
     ret_val = login_user(response, request)
     return ret_val.authenticated  #  this may not be right.
 
+security = HTTPBasic()
+def get_current_username(response: Response, 
+                         request: Request,
+                         credentials: HTTPBasicCredentials = Depends(security)):
+
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response)   
+    status, user = ocd.authenticate_user(credentials.username, credentials.password)
+    if not user:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return user
+##-----------------------------------------------------------------------------
+#@app.post("/v2/Admin/LoginForm/")
+#async def login(*, username: str = Form(...), password: str = Form(...)):
+    #"""
+    #Just Testing forms
+    #"""
+    #return {"username": username}
+
+##-----------------------------------------------------------------------------
+#@app.post("/v2/Admin/SubmitFiles/")
+#async def create_file(
+                       #file: bytes = File(..., description="bytes to submit"),
+                       #fileb: UploadFile = File(..., description="file to upload"),
+                       #token: str = Form(...)
+                      #):
+
+    #sample = await fileb.read()
+    #async with aiofiles.open(fr"z:\back\{fileb.filename}", "wb") as f:
+        #await f.write(sample)
+        
+    ##with open(fr"z:\back\{fileb.filename}", "wb") as f:
+        ##f.write(sample)
+    
+        
+    #return {
+        #"file_size": len(file),
+        #"token": token,
+        #"fileb_content_type": fileb.content_type,
+        #"fileb_sample": len(sample)
+    #}
 #-----------------------------------------------------------------------------
-@app.get("/v2/Admin/SessionCleanup/", response_model=models.ServerStatusItem, tags=["Admin"])
-def cleanup_sessions(response: Response, 
-                     request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
-                          ):
+@app.post("/v2/Admin/CreateUser/", response_model=models.User, tags=["Admin"])
+async def create_new_user(response: Response, 
+                     request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                     username: str = Form(..., description="Username"),
+                     password: str = Form(..., description="Password"),
+                     company: str = Form(default=None, description="Optional, company name"),
+                     fullname: str = Form(default=None, description="Optional, full name"),
+                     email: str = Form(default=None, description="The user's email address"),
+                     tracking: bool = Form(default=1, description="Tracking information recorded for reports"),
+                     cookies: bool = Form(default=1, description="User agrees to site cookies"),
+                     reports: bool = Form(default=0, description="View Parent Reports"),
+                     optin: bool = Form(default=1, description="User agrees to email communications"),
+                     hide: bool = Form(default=1, description="User agrees to site cookies"),
+                    ):
     """
     ## Function
-       <b>Clean up old, open sessions (may only be needed during development</b>
+       <b>Add a new user</b>
+
+    ## Return Type
+       models.UserInfo
+
+    ## Status
+       Status: In Development
+
+    ## Sample Call
+         /v2/Admin/CreateUser/
+    
+    ## Notes
+         NA
+    
+    ## Potential Errors
+       NA
+       
+    """
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    # ensure user is admin
+    if ocd.verify_admin(session_info):
+        ret_val = ocd.create_user(session_info=session_info,
+                                  username=username,
+                                  password=password,
+                                  full_name=fullname, 
+                                  company=company,
+                                  email=email,
+                                  user_agrees_tracking=tracking,
+                                  user_agrees_cookies=cookies,
+                                  view_parent_user_reports=reports, 
+                                  email_optin=optin,
+                                  hide_activity=hide
+                                  )
+    else:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED, 
+            detail="Not authorized"
+        )        
+    return ret_val
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Admin/SessionCleanup/", response_model=models.ServerStatusItem, tags=["Admin"])
+async def cleanup_expired_sessions(response: Response, 
+                           request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
+                           ):
+    """
+    ## Function
+       <b>Clean up old, open sessions (may only be needed during development)</b>
 
     ## Return Type
        ServerStatusItem
@@ -216,35 +325,95 @@ def cleanup_sessions(response: Response,
        NA
        
     """
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response)   
-    #TODO: Check if user is admin
-    count = ocd.close_expired_sessions()
-    ocd.close_inactive_sessions(inactive_time=opasConfig.SESSION_INACTIVE_LIMIT)
-    solr_ok = opasAPISupportLib.check_solr_docs_connection()
-    db_ok = ocd.open_connection()
-    ocd.close_connection()
-
-    try:
-        server_status_item = None
-    except ValidationError as e:
-        logger.warning("ValidationError", e.json())
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    # ensure user is admin
+    if ocd.verify_admin(session_info):
+        count = ocd.close_expired_sessions()
+        ocd.close_inactive_sessions(inactive_time=opasConfig.SESSION_INACTIVE_LIMIT)
+        solr_ok = opasAPISupportLib.check_solr_docs_connection()
+        db_ok = ocd.open_connection()
+        ocd.close_connection()
+    
+        try:
+            server_status_item = None
+        except ValidationError as e:
+            logger.warning("ValidationError", e.json())
+        else:
+            server_status_item = models.ServerStatusItem(text_server_ok = solr_ok, 
+                                                         db_server_ok = db_ok,
+                                                         user_ip = request.client.host,
+                                                         solr_url = localsecrets.SOLRURL,
+                                                         config_name = localsecrets.CONFIG,
+                                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
+                                                         )
+        
     else:
-        server_status_item = models.ServerStatusItem(text_server_ok = solr_ok, 
-                                                     db_server_ok = db_ok,
-                                                     user_ip = request.client.host,
-                                                     solr_url = localsecrets.SOLRURL,
-                                                     config_name = localsecrets.CONFIG,
-                                                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
-                                                     )
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED, 
+            detail="Not authorized"
+        )        
+
 
 
     return server_status_item
 
+#-----------------------------------------------------------------------------
+@app.post("/v2/Admin/SendAlerts/", response_model=models.ServerStatusItem, tags=["Admin"])
+async def send_out_alerts_now(response: Response, 
+                              request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
+                          ):
+    """
+    ## Function
+       <b>Initiate the alert send process</b>
+
+    ## Return Type
+       ServerStatusItem
+
+    ## Status
+       Status: In Development
+
+    ## Sample Call
+         /v2/Admin/SendAlerts/
+    
+    ## Notes
+         NA
+    
+    ## Potential Errors
+       NA
+       
+    """
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response)   
+    # ensure user is admin
+    if ocd.verify_admin(session_info):
+        # TODO - Replace this with the real code!
+        solr_ok = opasAPISupportLib.check_solr_docs_connection()
+        db_ok = ocd.open_connection()
+        ocd.close_connection()
+    
+        try:
+            server_status_item = None
+        except ValidationError as e:
+            logger.warning("ValidationError", e.json())
+        else:
+            server_status_item = models.ServerStatusItem(text_server_ok = solr_ok, 
+                                                         db_server_ok = db_ok,
+                                                         user_ip = request.client.host,
+                                                         solr_url = localsecrets.SOLRURL,
+                                                         config_name = localsecrets.CONFIG,
+                                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
+                                                         )
+    else:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED, 
+            detail="Not authorized"
+        )        
+
+    return server_status_item
 
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Admin/Status/", response_model=models.ServerStatusItem, tags=["Session"])
-def get_the_server_status(response: Response, 
+async def get_the_server_status(response: Response, 
                           request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
                           ):
     """
@@ -291,7 +460,7 @@ def get_the_server_status(response: Response,
 #-----------------------------------------------------------------------------
 @app.get("/v2/Admin/WhoAmI/", response_model=models.SessionInfo, tags=["Admin"])
 # @app.get("/v2/Admin/WhoAmI/", tags=["Admin"])
-def who_am_i(response: Response,
+async def who_am_i(response: Response,
              request: Request):
     """
     ## Function
@@ -317,37 +486,156 @@ def who_am_i(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     return(session_info)
 
-##-----------------------------------------------------------------------------
-#@app.get("/v2/Admin/WhoAmIGit/", tags=["Admin"])
-#def who_am_i2(response: Response,
-              #request: Request):
-    #"""
-    #Temporary endpoint for debugging purposes
-    #"""
-    #return {"client_host": request.client.host, 
-            #"referrer": request.headers.get('referrer', None), 
-            #OPASSESSIONID: request.cookies.get(f"{OPASSESSIONID}", None), 
-            #OPASACCESSTOKEN: request.cookies.get(f"{OPASACCESSTOKEN}", None),
-            #OPASEXPIRES: request.cookies.get(f"{OPASEXPIRES}", None), 
-            #}
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+@app.get("/v2/Database/Alerts/", response_model=models.SessionInfo, tags=["Database"])
+def get_alert_subscriptions(response: Response,
+                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
+                ):
+    """
+    ## Function
+       <b>Return the specified report</b>
+
+    ## Return Type
+       models.SessionInfo
+
+    ## Status
+
+    ## Sample Call
+         /v2/Admin/Alerts/
+    
+    ## Notes
+       NA
+    
+    ## Potential Errors
+       NA
+
+    """
+
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    return(session_info)
+
+#-----------------------------------------------------------------------------
+@app.post("/v2/Database/Alerts/", response_model=models.SessionInfo, tags=["Database"])
+def subscribe_to_alerts(*,
+                        email: str = Form(default=None, description="The email address where to send alerts"),
+                        journal: bool = Form(default=None, description="Alerts on PEP Journal updates"),
+                        books: bool = Form(default=None, description="Alerts on PEP Book updates"),
+                        videos: bool = Form(default=None, description="Alerts on PEP Video updates"),
+                        ):
+    """
+    ## Function
+       <b>Subscribe to alerts/b>
+
+    ## Return Type
+       models.SessionInfo
+
+    ## Status
+
+    ## Sample Call
+         /v2/Subscription/Alerts/
+    
+    ## Notes
+       NA
+    
+    ## Potential Errors
+       NA
+
+    """
+
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    return(session_info)
+
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+@app.get("/v2/Database/Reports/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
+def get_reports(response: Response,
+                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
+                report: models.ReportTypeEnum=Query(default="None", title="Report Type", description="Report Type"),
+                journal: str=Query(None, title="Filter by Journal or Source Code", description="PEP Journal Code (e.g., APA, CPS, IJP, PAQ),", min_length=2), 
+                author: str=Query(None, title="Filter by Author name", description="Author name, use wildcard * for partial entries (e.g., Johan*)"), 
+                title: str=Query(None, title="Filter by Document Title", description="The title of the document (article, book, video)"),
+                period: models.TimePeriod=Query(None, title="Time period (range)", description="Range of data to return"), 
+                endyear: str=Query(None, title="Last year to match", description="Last year of documents to match (e.g, 2001)"), 
+                limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
+                ):
+    """
+    ## Function
+       <b>Return the specified report</b>
+
+    ## Return Type
+       models.SessionInfo
+
+    ## Status
+
+    ## Sample Call
+         /v2/Database/Reports/
+    
+    ## Notes
+       NA
+    
+    ## Potential Errors
+       NA
+
+    """
+
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    return(session_info)
 
 
 #-----------------------------------------------------------------------------
-security = HTTPBasic()
-def get_current_username(response: Response, 
-                         request: Request,
-                         credentials: HTTPBasicCredentials = Depends(security)):
+@app.post("/v2/Authorized/ArticleSubmission/")   
+async def article_submission(*,
+                             journalcode: str = Form(default=None, description="The 3-8 digit PEP Code for this journal"),
+                             title: str = Form(..., description="The title of the article"),
+                             keywords: str = Form(default=None, description="A comma separated list of keywords"),
+                             region: str = Form(default=None, description="The region it's from"),
+                             editor: str = Form(default=None, description="The editor assigned to this article"),
+                             country: str = Form(default=None, description="The country of origin"),
+                             language: str = Form(default="English", description="The language in which the article is written"),
+                             anonymous: bool = Form(default=None, description="If the author is to be anonymous"),
+                             authorlist: models.authorList = Form(default=None, description="This must be a structure of the form shown."),
+                             abstract: str = Form(...),
+                             reviewernotes: str = Form(default=None, description="Notes for the revieweer"),
+                             file: UploadFile = File(..., description="PDF or EPUB version of article"),
+                             token: str = Form(..., description="Authorization code")                             
+                          ):
+    """
+    ## Function
+       <b>An authorized user can submit an article (PDF)</b>
+       
+    ## Return Type
+       models.XXX
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response)   
-    status, user = ocd.authenticate_user(credentials.username, credentials.password)
-    if not user:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return user
+    ## Status
+       In Development
 
+    ## Sample Call
+         /v2/Authorized/ArticleSubmission/
+    
+    ## Notes
+    
+    ## Potential Errors
+        
+    """
+    sample = await file.read()
+    async with aiofiles.open(fr"z:\back\{file.filename}", "wb") as f:
+        await f.write(sample)
+        
+    #with open(fr"z:\back\{fileb.filename}", "wb") as f:
+        #f.write(sample)
+    
+        
+    return {
+        "file_size": len(file),
+        "token": token,
+        "fileb_content_type": fileb.content_type,
+        "fileb_sample": len(sample)
+    }
+    return {"username": username}
+
+#-----------------------------------------------------------------------------
 @app.get("/v2/Users/BasicLogin/", tags=["Session"], description="Used for Basic Authentication")
 def read_current_user(response: Response, 
                       request: Request,
@@ -453,12 +741,15 @@ def get_token(response: Response,
               ka=False):
     """
     ## Function
-       <b>Get the current sessionID, or generate one.  Uses by PEP-Easy from v1</b>
+       <b>Actually, this is just like a login.  Used by PEP-Easy from v1</b>
+       Will be deprecated eventually.
 
     ## Return Type
-       documents
+       models.LoginReturnItem
 
     ## Status
+       This is currently used by PEPEasy (under checkLoginStatus)
+
        This endpoint is working.
 
     ## Sample Call
@@ -492,7 +783,7 @@ def get_license_status(response: Response,
        <b>Return a LicenseStatusInfo object showing the user's license status info.</b>
 
     ## Return Type
-       models.ResponseInfoLoginStatus
+       models.LoginStatus
 
     ## Status
        This is currently used by PEPEasy (under checkLoginStatus)
@@ -511,22 +802,19 @@ def get_license_status(response: Response,
     # is the user authenticated? if so, loggedIn is true
     logged_in = session_info.authenticated
     user_id = session_info.user_id
-    username = None
-    user = None
-    if user_id == 0:
-        user = ocd.get_user(user_id=user_id)
-        username = "NotLoggedIn"
-        logged_in = False
-    elif user_id is not None:
-        user = ocd.get_user(user_id=user_id)
-        user.password = "Hidden"
-        username = user.username
+    username = session_info.username
+    #if user_id == 0:
+        ##user = ocd.get_user(user_id=user_id)
+        #username = "NotLoggedIn"
+        #logged_in = False
+    #elif user_id is not None:
+        #username = session_info.username
 
     # hide the password hash
     response_info = models.ResponseInfoLoginStatus(loggedIn = logged_in,
                                                    username = username,
                                                    request = request.url._url,
-                                                   user=user,
+                                                   #user=user,
                                                    timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
                                                    )
 
@@ -832,18 +1120,19 @@ def parse_search_query_parameters(search=None,
         # or it counld be a complete name #TODO
 
     if vol is not None:
-        analyze_this = "&& art_vol:{} ".format(vol)
+        analyze_this = f"&& art_vol:{vol} "
         filter_q += analyze_this
         #searchAnalysisTermList.append(analyzeThis)  # Not collecting this!
 
     if issue is not None:
-        analyze_this = "&& art_iss:{} ".format(issue)
+        analyze_this = f"&& art_iss:{issue} "
         filter_q += analyze_this
         #searchAnalysisTermList.append(analyzeThis)  # Not collecting this!
 
     if author is not None:
-        author = author.replace('"', '')
-        analyze_this = "&& art_authors_ngrm:{} ".format(author)
+        author = opasAPISupportLib.termlist_to_doubleamp_query(author, field="art_authors_text")
+        # add a && to the start to add to existng filter_q 
+        analyze_this = f" && {author} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  
 
@@ -892,7 +1181,9 @@ def parse_search_query_parameters(search=None,
         # 'in' is required along with a space in front of it and after it
         # when specifying the period.
         # the default period is 5 years.
-        match_ptn = "(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?"
+        # citecount = citecount.strip()
+        val = None
+        match_ptn = "\s*(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?\s*"
         m = re.match(match_ptn, citecount, re.IGNORECASE)
         if m is not None:
             val = m.group("nbr")
@@ -960,6 +1251,22 @@ def parse_search_query_parameters(search=None,
     if quick_search is not None: #TODO - might want to change this to match PEP-Web best
         search_q = quick_search # (overrides fields) # search = solrQ
         solr_max = "edisMax"
+        
+    # now clean up the final components.
+    if search_q is not None:
+        # no need to start with '*:* && '.  Remove it.
+        search_q = search_q.replace("*:* && ", "")
+
+    if filter_q is not None:
+        # no need to start with '*:* && '.  Remove it.
+        filter_q = filter_q.replace("*:* && ", "")
+
+    if analyze_this is not None:
+        # no need to start with '&& '.  Remove it.
+        analyze_this = pat_prefix_amps.sub("", analyze_this)
+    
+    if search_analysis_term_list is not []:
+        search_analysis_term_list = [pat_prefix_amps.sub("", x) for x in search_analysis_term_list]
 
     ret_val = models.QueryParameters(analyzeThis = analyze_this,
                                      searchQ = search_q,
@@ -977,7 +1284,6 @@ def parse_search_query_parameters(search=None,
 @app.get("/v1/Database/Search/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
 async def search_the_document_database(response: Response, 
                                        request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
-                                       search: str=Query(None, title="Document request, with a search", description="This is a document request, with a search"),  
                                        journalName: str=Query(None, title="Match PEP Journal or Source Name", description="PEP part of a Journal, Book, or Video name (e.g., 'international'),", min_length=2),  
                                        journal: str=Query(None, title="Match PEP Journal or Source Code", description="PEP Journal Code (e.g., APA, CPS, IJP, PAQ),", min_length=2), 
                                        fulltext1: str=Query(None, title="Search for Words or phrases", description="Words or phrases (in quotes) anywhere in the document"),
@@ -986,14 +1292,14 @@ async def search_the_document_database(response: Response,
                                        issue: str=Query(None, title="Match Issue Number", description="The issue number if the source has one"),
                                        author: str=Query(None, title="Match Author name", description="Author name, use wildcard * for partial entries (e.g., Johan*)"), 
                                        title: str=Query(None, title="Search Document Title", description="The title of the document (article, book, video)"),
-                                       startyear: str=Query(None, title="First year to match or a range", description="First year of documents to match (e.g, 1999).  Range query: ^1999-2010 means between 1999-2010.  >1999 is after 1999 <1999 is before 1999"), 
+                                       startyear: str=Query(None, title="First year to match or a range", description="First year to match (e.g, 1999). Between range: ^1999-2010. After: >1999 Before: <1999"), 
                                        endyear: str=Query(None, title="Last year to match", description="Last year of documents to match (e.g, 2001)"), 
                                        dreams: str=Query(None, title="Search Text within 'Dreams'", description="Words or phrases (in quotes) to match within dreams"),  
                                        quotes: str=Query(None, title="Search Text within 'Quotes'", description="Words or phrases (in quotes) to match within quotes"),  
                                        abstracts: str=Query(None, title="Search Text within 'Abstracts'", description="Words or phrases (in quotes) to match within abstracts"),  
                                        dialogs: str=Query(None, title="Search Text within 'Dialogs'", description="Words or phrases (in quotes) to match within dialogs"),  
                                        references: str=Query(None, title="Search Text within 'References'", description="Words or phrases (in quotes) to match within references"),  
-                                       citecount: str=Query(None, title="Find Documents cited this many times", description="Filter for documents cited more than the specified times in the past 5 years.  Can also specify range, e.g., 5 TO 10"),   
+                                       citecount: str=Query(None, title="Find Documents cited this many times", description="Cited more than 'X' times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL"),   
                                        viewcount: str=Query(None, title="Find Documents viewed this many times", description="Not yet implemented"),    
                                        viewedWithin: str=Query(None, title="Find Documents viewed this many times within a period", description="Not yet implemented"),     
                                        solrQ: str=Query(None, title="Advanced Query (Solr Syntax)", description="Advanced Query in Solr Q syntax (see schema names)"),
@@ -1062,8 +1368,7 @@ async def search_the_document_database(response: Response,
     current_year = datetime.utcfromtimestamp(time.time()).strftime('%Y')
     # this does intelligent processing of the query parameters and returns a smaller set of solr oriented         
     # params (per pydantic model QueryParameters), ready to use
-    solr_query_params = parse_search_query_parameters(search=search,
-                                                      journal_name=journalName,
+    solr_query_params = parse_search_query_parameters(journal_name=journalName,
                                                       journal=journal,
                                                       fulltext1=fulltext1,
                                                       fulltext2=fulltext2,
@@ -1560,6 +1865,8 @@ def get_a_list_of_volumes_for_a_journal(response: Response,
     """
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    # Solr is case sensitive, make sure arg is upper
+    SourceCode = SourceCode.upper()
     src_exists = ocd.get_sources(source=SourceCode)
     if not src_exists[0]:
         response.status_code = HTTP_400_BAD_REQUEST
@@ -2016,10 +2323,11 @@ def view_a_glossary_entry(response: Response,
 def view_a_document(response: Response,
                     request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                     documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
-                    offset: int=Query(0, title="Document Page offset", description=opasConfig.DESCRIPTION_PAGEOFFSET),
                     page: int=Query(None, title="Document Page Request (from document pagination)", description=opasConfig.DESCRIPTION_PAGEREQUEST),
                     return_format: str=Query("HTML", title="Document return format", description=opasConfig.DESCRIPTION_RETURNFORMATS),
                     search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
+                    offset: int=Query(None, title="Document page return offset", description=opasConfig.DESCRIPTION_PAGEOFFSET), 
+                    limit: int=Query(None, title="Document page return limit", description=opasConfig.DESCRIPTION_PAGELIMIT)
                     ):
     """
     ## Function
@@ -2060,7 +2368,6 @@ def view_a_document(response: Response,
         ret_val = view_a_glossary_entry(response, request, term_id=term_id, search=search, return_format=return_format)
     else:
         try:
-            logger.debug("TODO: CHECK IF USER IS AUTHENTICATED for document download")
             # is the user authenticated? if so, loggedIn is true
             if session_info.authenticated:
                 if search is not None:
@@ -2080,7 +2387,10 @@ def view_a_document(response: Response,
                 ret_val = opasAPISupportLib.documents_get_document( documentID, 
                                                                     solr_query_params,
                                                                     ret_format=return_format, 
-                                                                    authenticated = session_info.authenticated
+                                                                    authenticated = session_info.authenticated, 
+                                                                    page_offset=offset, # starting page
+                                                                    page_limit=limit, # number of pages
+                                                                    page=page # specific page number request (rather than offset)
                                                                     )
             else:
                 logger.debug("user is not authenticated.  Returning abstract only)")
@@ -2109,21 +2419,16 @@ def view_a_document(response: Response,
                 detail=status_message
             )
         else:
-            response.status_code = HTTP_200_OK
-            status_message = "Success"
-            ret_val.documents.responseInfo.request = request.url._url
-            if ret_val.documents.responseInfo.count > 0:
+            if ret_val != {}:
                 response.status_code = HTTP_200_OK
-                #  record document view if found
-                ocd.record_document_view(document_id=documentID,
-                                         session_info=session_info,
-                                         view_type="Document")
+                status_message = "Success"
             else:
                 # make sure we specify an error in the session log
                 # not sure this is the best return code, but for now...
-               response.status_code = HTTP_404_NOT_FOUND
+                status_message = "Not Found"
+                response.status_code = HTTP_404_NOT_FOUND
+                # record session endpoint in any case   
 
-            # record session endpoint in any case   
             ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
                                         session_info=session_info, 
                                         params=request.url._url,
@@ -2131,6 +2436,20 @@ def view_a_document(response: Response,
                                         return_status_code = response.status_code,
                                         status_message=status_message
                                         )
+            
+            if ret_val == {}:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=status_message
+                )           
+            else:
+                ret_val.documents.responseInfo.request = request.url._url
+                if ret_val.documents.responseInfo.count > 0:
+                    #  record document view if found
+                    ocd.record_document_view(document_id=documentID,
+                                             session_info=session_info,
+                                             view_type="Document")
+
     return ret_val
 
 @app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_skip_defaults=True, tags=["Documents"])

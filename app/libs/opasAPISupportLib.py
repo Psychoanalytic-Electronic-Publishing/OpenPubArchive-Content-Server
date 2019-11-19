@@ -25,6 +25,7 @@ sys.path.append('./solrpy')
 import http.cookies
 import re
 import secrets
+import socket, struct
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 from starlette.responses import Response
@@ -70,6 +71,7 @@ import opasCentralDBLib
 import sourceInfoDB as SourceInfoDB
     
 sourceDB = SourceInfoDB.SourceInfoDB()
+count_anchors = 0
 
 #from solrq import Q
 import json
@@ -94,6 +96,31 @@ else:
 #API endpoints
 documentURL = "/v1/Documents/"
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
+
+#-----------------------------------------------------------------------------
+def numbered_anchors(matchobj):
+    """
+    Called by re.sub on replacing anchor placeholders for HTML output.  This allows them to be numbered as they are replaced.
+    """
+    global count_anchors
+    #JUMPTOPREVHIT = "<a onclick='hitCursor.prevHit();event.preventDefault();'>🡄</a>"
+    #JUMPTONEXTHIT = "<a onclick='hitCursor.nextHit();event.preventDefault();'>🡆</a>"
+    JUMPTOPREVHIT = f"""<a onclick='scrollToAnchor("hit{count_anchors-1}");event.preventDefault();'>🡄</a>"""
+    JUMPTONEXTHIT = f"""<a onclick='scrollToAnchor("hit{count_anchors+1}");event.preventDefault();'>🡆</a>"""
+    
+    if matchobj.group(0) == opasConfig.HITMARKERSTART:
+        count_anchors += 1
+        if count_anchors > 1:
+            #return f"<a name='hit{count_anchors}'><a href='hit{count_anchors-1}'>🡄</a>{opasConfig.HITMARKERSTART_OUTPUTHTML}"
+            return f"<a name='hit{count_anchors}'>{JUMPTOPREVHIT}{opasConfig.HITMARKERSTART_OUTPUTHTML}"
+        elif count_anchors <= 1:
+            return f"<a name='hit{count_anchors}'> "
+    if matchobj.group(0) == opasConfig.HITMARKEREND:
+        #return f"{opasConfig.HITMARKEREND_OUTPUTHTML}<a href='hit{count_anchors+1}'>🡆</a>"
+        return f"{opasConfig.HITMARKEREND_OUTPUTHTML}{JUMPTONEXTHIT}"
+            
+    else:
+        return matchobj.group(0)
 
 #-----------------------------------------------------------------------------
 def get_max_age(keep_active=False):
@@ -160,6 +187,18 @@ def is_session_authenticated(request: Request, resp: Response):
     ret_val = sessionInfo.authenticated
     return ret_val
     
+def ip2long(ip):
+    """
+    Convert an IP string to long
+    
+    >>> ip2long("127.0.0.1")
+    2130706433
+    >>> socket.inet_ntoa(struct.pack('!L', 2130706433))
+    '127.0.0.1'
+    """
+    packedIP = socket.inet_aton(ip)
+    return struct.unpack("!L", packedIP)[0]    
+    
 def extract_html_fragment(html_str, xpath_to_extract="//div[@id='abs']"):
     # parse HTML
     htree = etree.HTML(html_str)
@@ -214,54 +253,6 @@ def start_new_session(resp: Response, request: Request, session_id=None, access_
 
     # return the object so the caller can get the details of the session
     return ocd, sessionInfo
-
-##-----------------------------------------------------------------------------
-#def delete_cookies(resp: Response, session_id=None, access_token=None):
-    #"""
-    #Delete the session and or accessToken cookies in the response header 
-   
-    #"""
-
-    #logger.debug("Setting specified cookies to empty to delete them")
-    #expires = datetime.utcnow()
-    #if session_id is not None:
-        #set_cookie(resp, OPASSESSIONID, value=None, domain=COOKIE_DOMAIN, path="/", expires=expires, max_age=0)
-
-    #if access_token is not None:
-        #set_cookie(resp, OPASACCESSTOKEN, value=None, domain=COOKIE_DOMAIN, path="/", expires=expires, max_age=0)
-    #return resp
-    
-##-----------------------------------------------------------------------------
-#def set_cookies(resp: Response, session_id, access_token=None, max_age=None, token_expires_time=None):
-    #"""
-    #Set the session and or accessToken cookies in the response header 
-    
-    #if accessToken isn't supplied, it is not set.
-    
-    #"""
-    
-    #logger.debug("Setting cookies for {}".format(COOKIE_DOMAIN))
-    #if session_id is not None:
-        #logger.debug("Session Cookie being Written from SetCookies")
-        #set_cookie(resp, OPASSESSIONID, session_id, domain=COOKIE_DOMAIN, expires=token_expires_time, httponly=False)
-
-    #if access_token is not None:
-        #access_token = access_token.decode("utf-8")
-        #set_cookie(resp, OPASACCESSTOKEN, access_token, domain=COOKIE_DOMAIN, httponly=False, expires=token_expires_time, max_age=max_age) 
-
-    #return resp
-    
-#-----------------------------------------------------------------------------
-#def parse_cookies_from_header(request):
-    #ret_val = {}
-    #client_supplied_cookies = request.headers.get("cookie", None)
-    #if client_supplied_cookies is not None:
-        #cookie_statements = client_supplied_cookies.split(";")
-        #for n in cookie_statements:
-            #cookie, value = n.split("=")
-            #ret_val[cookie] = value
-
-    #return ret_val
 
 #-----------------------------------------------------------------------------
 def get_session_id(request):
@@ -1618,7 +1609,14 @@ def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=No
 
 
 #-----------------------------------------------------------------------------
-def documents_get_document(document_id, solr_query_params=None, ret_format="XML", authenticated=True, limit=opasConfig.DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS, offset=0):
+def documents_get_document(document_id,
+                           solr_query_params=None,
+                           ret_format="XML",
+                           authenticated=True,
+                           page_offset=None,
+                           page_limit=None,
+                           page=None
+                           ):
     """
    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
    For authenticated users, it returns with the document itself
@@ -1651,12 +1649,15 @@ def documents_get_document(document_id, solr_query_params=None, ret_format="XML"
             document_list, ret_status = search_text(query, 
                                         filter_query = solr_query_params.filterQ,
                                         full_text_requested=True,
-                                        full_text_format_requested = ret_format,
+                                        format_requested = ret_format,
                                         authenticated=authenticated,
                                         query_debug = False,
                                         dis_max = solr_query_params.solrMax,
-                                        limit=limit, 
-                                        offset=offset
+                                        limit=1, # document call returns only one document.  limit and offset used for something else
+                                        #offset=offset
+                                        page_offset=page_offset, #  e.g., start with the 5th page
+                                        page_limit=page_limit,    #        return limit pages
+                                        page=page # start page specified
                                       )
         
         if document_list == None or document_list.documentList.responseInfo.count == 0:
@@ -1665,30 +1666,39 @@ def documents_get_document(document_id, solr_query_params=None, ret_format="XML"
             query = "art_id:{}".format(document_id)
             #summaryFields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml"
            
-            document_list, ret_status = search_text(query, 
-                                        full_text_requested=True,
-                                        full_text_format_requested = ret_format,
-                                        authenticated=authenticated,
-                                        query_debug = False,
-                                        limit=limit, 
-                                        offset=offset
-                                        )
+            document_list, ret_status = search_text(query,
+                                                    full_text_requested=True,
+                                                    format_requested = ret_format,
+                                                    authenticated=authenticated,
+                                                    query_debug = False,
+                                                    limit=1,   # document call returns only one document.  limit and offset used for something else
+                                                    #offset=offset
+                                                    page_offset=page_offset, #  e.g., start with the 5th page
+                                                    page_limit=page_limit    #        return limit pages
+                                                    )
     
         try:
             matches = document_list.documentList.responseInfo.count
+            logger.debug("documentsGetDocument %s document matches", matches)
             full_count = document_list.documentList.responseInfo.fullCount
             full_count_complete = document_list.documentList.responseInfo.fullCountComplete
             document_list_item = document_list.documentList.responseSet[0]
-            logger.debug("documentsGetDocument %s document matches", matches)
         except Exception as e:
             logger.info("No matches or error: %s", e)
         else:
+            if page_limit is None:
+                page_limit = 0
+            if page_offset is None:
+                page_offset = 0
+                
             response_info = models.ResponseInfo( count = matches,
                                                  fullCount = full_count,
-                                                 limit = limit,
-                                                 offset = offset,
+                                                 page=page, 
+                                                 limit = page_limit,
+                                                 offset = page_offset,
                                                  listType="documentlist",
                                                  fullCountComplete = full_count_complete,
+                                                 solrParams = solr_query_params.dict(), 
                                                  timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
                                                )
             
@@ -2010,48 +2020,6 @@ def get_kwic_list(marked_up_text,
     # matchCount = len(ret_val)
     
     return ret_val    
-
-
-##-----------------------------------------------------------------------------
-#def get_kwic_list_old(marked_up_text, extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, 
-                #solr_start_hit_tag=opasConfig.HITMARKERSTART, # supply whatever the start marker that solr was told to use
-                #solr_end_hit_tag=opasConfig.HITMARKEREND,     # supply whatever the end marker that solr was told to use
-                #output_start_hit_tag_marker=opasConfig.HITMARKERSTART_OUTPUTHTML, # the default output marker, in HTML
-                #output_end_hit_tag_marker=opasConfig.HITMARKEREND_OUTPUTHTML,
-                #limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS):
-    #"""
-    #Find all nonoverlapping matches, using Solr's return.  Limit the number.
-    #"""
-    
-    #ret_val = []
-    #em_marks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extra_context_len, solr_start_hit_tag, solr_end_hit_tag, extra_context_len))
-    #count = 0
-    #for n in em_marks.finditer(marked_up_text):
-        #count += 1
-        #match = n.group(0)
-        #try:
-            ## strip xml
-            #match = opasxmllib.xml_string_to_text(match)
-            ## change the tags the user told Solr to use to the final output tags they want
-            ##   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
-            #match = re.sub(solr_start_hit_tag, output_start_hit_tag_marker, match)
-            #match = re.sub(solr_end_hit_tag, output_end_hit_tag_marker, match)
-        #except Exception as e:
-            #logging.error("Error stripping xml from kwic entry {}".format(e))
-               
-        #ret_val.append(match)
-        #try:
-            #logger.info("getKwicList Match: '...{}...'".format(match))
-            #print ("getKwicListMatch: '...{}...'".format(match))
-        #except Exception as e:
-            #print ("getKwicList Error printing or logging matches. {}".format(e))
-        #if count >= limit:
-            #break
-        
-    #match_count = len(ret_val)
-    
-    #return ret_val    
-
 #-----------------------------------------------------------------------------
 def year_arg_parser(year_arg):
     ret_val = None
@@ -2181,7 +2149,7 @@ def search_text(query,
                query_debug = False,
                more_like_these = False,
                full_text_requested = False, 
-               full_text_format_requested = "HTML",
+               format_requested = "HTML",
                dis_max = None,
                # bring text_xml back in summary fields in case it's missing in highlights! I documented a case where this happens!
                # summary_fields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml, text_xml", 
@@ -2193,7 +2161,11 @@ def search_text(query,
                extra_context_len = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                maxKWICReturns = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
                limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
-               offset=0):
+               offset=0,
+               page_offset=None,
+               page_limit=None,
+               page=None
+               ):
     """
     Full-text search, via the Solr server api.
     
@@ -2230,6 +2202,7 @@ def search_text(query,
     """
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
+    global count_anchors
     
     if more_like_these:
         mlt_fl = "text_xml, headings_xml, terms_xml, references_xml"
@@ -2250,13 +2223,12 @@ def search_text(query,
     else:
         fragSize = extra_context_len
 
-    if filter_query == "*:*":
-        # drop it...it seems to produce problems in simple queries that follow a search.
-        filter_query = None
-    elif filter_query is not None:
+    if filter_query is not None:
         # for logging/debug
         filter_query = filter_query.replace("*:* && ", "")
         logger.debug("Solr FilterQ: %s", filter_query)
+    else:
+        filter_query == "*:*"
 
     if query is not None:
         query = query.replace("*:* && ", "")
@@ -2274,6 +2246,7 @@ def search_text(query,
                                  hl_fl = highlight_fields,
                                  hl_usePhraseHighlighter = 'true',
                                  hl_snippets = maxKWICReturns,
+                                 hl_maxAnalyzedChars=opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
                                  #hl_method="unified",  # these don't work
                                  #hl_encoder="HTML",
                                  mlt = mlt,
@@ -2335,20 +2308,7 @@ def search_text(query,
                 #scopeofquery = [query, f"filter query was removed due to 0 hits: {filter_query}"]
 
         if ret_status[0] == 200: 
-            # Solr search was ok
-            responseInfo = models.ResponseInfo(
-                             count = len(results.results),
-                             fullCount = results._numFound,
-                             totalMatchCount = results._numFound,
-                             limit = limit,
-                             offset = offset,
-                             listType="documentlist",
-                             scopeQuery=[scopeofquery], 
-                             fullCountComplete = limit >= results._numFound,
-                             solrParams = results._params,
-                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                           )
-       
+      
             documentItemList = []
             rowCount = 0
             rowOffset = 0
@@ -2360,6 +2320,8 @@ def search_text(query,
                 full_text_requested = False
                 
             for result in results.results:
+                # reset anchor counts for full-text markup re.sub
+                count_anchors = 0
                 authorIDs = result.get("art_author_id", None)
                 if authorIDs is None:
                     authorMast = None
@@ -2405,10 +2367,43 @@ def search_text(query,
                         logger.warning("Warning: text with highlighting is smaller than full-text area.  Returning without hit highlighting.")
                         text_xml = fullText
                         
-                    if full_text_format_requested == "HTML":
-                        if text_xml is not None:
-                            text_xml = opasxmllib.xml_str_to_html(text_xml,
-                                                                     xslt_file=r"./libs/styles/pepkbd3-html.xslt")
+                    if text_xml is not None:
+                        reduce = False
+                        # see if an excerpt was requested.
+                        if page is not None and page <= int(pgEnd) and page >= int(pgStart):
+                            # use page to grab the starting page
+                            # we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
+                            offset = page - int(pgStart)
+                            reduce = True
+                        # Only use supplied offset if page parameter is out of range, or not supplied
+                        if reduce == False and page_offset is not None: 
+                            offset = page_offset
+                            reduce = True
+
+                        if page_limit is not None:
+                            limit = page_limit
+                            
+                        if reduce == True or page_limit is not None:
+                            # extract the requested pages
+                            try:
+                                text_xml = opasxmllib.xml_get_pages(text_xml, page_offset, page_limit, inside="body", env="body")
+                                text_xml = text_xml[0]
+                            except Exception as e:
+                                logging.error(f"Page extraction from document failed. Error: {e}")
+                                                    
+                    if format_requested == "HTML":
+                        # Convert to HTML
+                        text_xml = opasxmllib.xml_str_to_html(text_xml, xslt_file=r"./libs/styles/pepkbd3-html.xslt")
+                        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                        #text_xml = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, text_xml)
+                        #text_xml = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, text_xml)
+                    elif format_requested == "TEXTONLY":
+                        # strip tags
+                        text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
+                    elif format_requested == "XML":
+                        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                        #text_xml = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, text_xml)
+                        #text_xml = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, text_xml)
         
                 if full_text_requested and not authenticated: # don't do this when textXml is a fragment from kwiclist!
                     try:
@@ -2436,6 +2431,14 @@ def search_text(query,
                     similarMaxScore = None
                     similarNumFound = None
                 
+                abstract = force_string_return_from_various_return_types(result.get("abstracts_xml", None)) # these were highlight versions, not needed
+                if format_requested == "HTML":
+                    # Convert to HTML
+                    abstract = opasxmllib.xml_str_to_html(abstract, xslt_file=r"./libs/styles/pepkbd3-html.xslt")
+                elif format_requested == "TEXTONLY":
+                    # strip tags
+                    abstract = opasxmllib.xml_elem_or_str_to_text(abstract, default_return=abstract)
+                
                 try:
                     item = models.DocumentListItem(PEPCode = result.get("art_pepsrccode", None), 
                                             year = result.get("art_year", None),
@@ -2450,7 +2453,7 @@ def search_text(query,
                                             kwic = kwic,
                                             kwicList = kwic_list,
                                             title = result.get("art_title", None),
-                                            abstract = force_string_return_from_various_return_types(result.get("abstracts_xml", None)), # these were highlight versions, not needed
+                                            abstract = abstract, 
                                             document = text_xml,
                                             score = result.get("score", None), 
                                             rank = rowCount + 1,
@@ -2467,6 +2470,23 @@ def search_text(query,
                     if rowCount > limit:
                         break
         
+        # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
+        #  was a full-text request with a page offset and limit
+        # Solr search was ok
+        responseInfo = models.ResponseInfo(
+                         count = len(results.results),
+                         fullCount = results._numFound,
+                         totalMatchCount = results._numFound,
+                         limit = limit,
+                         offset = offset,
+                         page = page, 
+                         listType="documentlist",
+                         scopeQuery=[scopeofquery], 
+                         fullCountComplete = limit >= results._numFound,
+                         solrParams = results._params,
+                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                       )
+        
         responseInfo.count = len(documentItemList)
         
         documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
@@ -2480,66 +2500,32 @@ def search_text(query,
     return ret_val, ret_status
 
 #-----------------------------------------------------------------------------
-#def set_cookie(response: Response, name: str, value: Union[str, bytes], *, domain: Optional[str] = None,
-               #path: str = '/', expires: Optional[Union[float, Tuple, datetime]] = None,
-               #expires_days: Optional[int] = None, max_age: Optional[int] = None, secure=False, httponly=True,
-               #samesite: Optional[str] = 'Lax') -> None:
-    #"""Sets an outgoing cookie name/value with the given options.
+def termlist_to_doubleamp_query(termlist_str, field=None):
+    """
+    Take a comma separated term list and change to a
+    (double ampersand) type query term (e.g., for solr)
+    
+    >>> a = "tuckett, dav"
+    >>> termlist_to_doubleamp_query(a)
+    'tuckett && dav'
+    >>> termlist_to_doubleamp_query(a, field="art_authors_ngrm")
+    'art_authors_ngrm(tuckett) && art_authors_ngrm(dav)'
 
-    #Newly-set cookies are not immediately visible via `get_cookie`;
-    #they are not present until the next request.
+    """
+    # in case it's in quotes in the string
+    termlist_str = termlist_str.replace('"', '')
+    # split it
+    name_list = re.split("\W+", termlist_str)
+    # if a field or function is supplied, use it
+    if field is not None:
+        name_list = [f"art_authors_ngrm:{x}"
+                     for x in name_list if len(x) > 0]
+    else:
+        name_list = [f"{x}" for x in name_list]
+        
+    ret_val = " && ".join(name_list)
+    return ret_val
 
-    #expires may be a numeric timestamp as returned by `time.time`,
-    #a time tuple as returned by `time.gmtime`, or a
-    #`datetime.datetime` object.
-    #"""
-    #if not name.isidentifier():
-        ## Don't let us accidentally inject bad stuff
-        #raise ValueError(f'Invalid cookie name: {repr(name)}')
-    #if value is None:
-        #raise ValueError(f'Invalid cookie value: {repr(value)}')
-    ##value = unicode(value)
-    #cookie = http.cookies.SimpleCookie()
-    #cookie[name] = value
-    #morsel = cookie[name]
-    #if domain:
-        #morsel['domain'] = domain
-    #if path:
-        #morsel['path'] = path
-    #if expires_days is not None and not expires:
-        #expires = datetime.utcnow() + timedelta(days=expires_days)
-    #if expires:
-        #morsel['expires'] = expires
-    #if max_age is not None:
-        #morsel['max-age'] = max_age
-    #parts = [cookie.output(header='').strip()]
-    #if secure:
-        #parts.append('Secure')
-    #if httponly:
-        #parts.append('HttpOnly')
-    #if samesite:
-        #parts.append(f'SameSite={http.cookies._quote(samesite)}')
-    #cookie_val = '; '.join(parts)
-    #response.raw_headers.append((b'set-cookie', cookie_val.encode('latin-1')))
-
-##-----------------------------------------------------------------------------
-#def delete_cookie(response: Response, name: str, *, domain: Optional[str] = None, path: str = '/') -> None:
-    #"""Deletes the cookie with the given name.
-
-    #Due to limitations of the cookie protocol, you must pass the same
-    #path and domain to clear a cookie as were used when that cookie
-    #was set (but there is no way to find out on the server side
-    #which values were used for a given cookie).
-
-    #Similar to `set_cookie`, the effect of this method will not be
-    #seen until the following request.
-    #"""
-    #expires = datetime.utcnow() - timedelta(days=365)
-    #set_cookie(response, name, value='', domain=domain, path=path, expires=expires, max_age=0)
-
-
-
-#================================================================================================================================
 def main():
 
     print (40*"*", "opasAPISupportLib Tests", 40*"*")

@@ -28,6 +28,9 @@ class User(BaseModel):  # snake_case names to match DB
     user_agrees_date: datetime = None
     user_agrees_to_tracking: bool = None
     user_agrees_to_cookies: bool = None
+    view_parent_user_reports: str = 'n'
+    deleted: bool = False
+    added_by_user_id: int = None
     added_date: datetime = None
     last_update: datetime = None
 
@@ -68,6 +71,7 @@ class Session(BaseModel):  # subset of sessionInfo
     access_token: str = None
     token_type: str = None
     authenticated: bool = False
+    admin: bool = False
     keep_active: bool = False
     api_client_id: int = None            
     

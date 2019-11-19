@@ -62,12 +62,13 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v1/Database/WhatsNew/')
+        response = client.get(base_api + '/v1/Database/WhatsNew/?days_back=90')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        assert(r['whatsNew']['responseInfo']['count'] == r['whatsNew']['responseInfo']['limit'])
+        assert(r['whatsNew']['responseInfo']['listType'] == 'newlist')
         #assert(r["db_server_ok"] == True)
+        print (f"{r['whatsNew']['responseInfo']['limit']}")
         print (r)
 
 if __name__ == '__main__':

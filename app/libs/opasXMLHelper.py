@@ -9,7 +9,7 @@ OPAS - XML Support Function Library
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0523.4"
+__version__     = "2019.0523.5"
 __status__      = "Development"
 
 import sys
@@ -191,6 +191,92 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
 def get_html_citeas(authors_bib_style, art_year, art_title, art_pep_sourcetitle_full, art_vol, art_pgrg):
     ret_val = f"""<p class="citeas"><span class="authors">{authors_bib_style}</span> (<span class="year">{art_year}</span>) <span class="title">{art_title}</span>. <span class="sourcetitle">{art_pep_sourcetitle_full}</span> <span class="pgrg">{art_vol}</span>:<span class="pgrg">{art_pgrg}</span></p>"""
     return ret_val
+
+def xml_get_pages(xmlstr, offset=0, limit=1, inside="test", env="body", pagebrk="pb"):
+    """
+    Return the xml between the given page breaks (default <pb>).
+    
+    The pages are returned in the first entry of a tuple: an 'envelope', default <body></body> tag, an 'envelope' of sorts.
+    The xml element list is returned as the second entry of the tuple
+    if there's an error ("", []) is returned.
+
+    If offset is not specified, it's 1 by default (first page)
+    If limit is not specified, it's 1 by default
+    So if neither is specified, it should return everything in 'inside' up to the first 'pagebrk'
+    
+    >>> ret_tuple = xml_get_pages(test_xml2, 0, 1, env="body")
+    >>> ret_tuple[0]
+    '<body>\\n<author role="writer">this is just authoring test stuff</author>\\n                \\n<p id="1">A random paragraph</p>\\n                \\n</body>\\n'
+    
+    >>> ret_tuple = xml_get_pages(test_xml2, 2, 1, env="grp")
+    >>> ret_tuple[0]
+    '<grp>\\n<p id="4">Another random paragraph</p>\\n                \\n<p id="5">Another <b>random</b> paragraph with multiple <b>subelements</b></p>\\n                \\n<pb/>\\n                \\n</grp>\\n'
+
+    >>> ret_tuple = xml_get_pages(test_xml2, 1, 1, env="grp")
+    >>> ret_tuple[0]
+    '<grp>\\n<p id="2" type="speech">Another random paragraph</p>\\n                \\n<p id="3">Another <b>random</b> paragraph</p>\\n                \\n<grp>\\n                   <p>inside group</p>\\n                </grp>\\n                \\n<pb/>\\n                \\n</grp>\\n'
+
+    """
+    ret_val = ("", [])
+    offset1 = offset
+    offset2 = offset + limit
+
+    try:
+        xmlstr = xmlstr.replace("encoding=\'UTF-8\'", "")
+        root = etree.parse(StringIO(xmlstr))
+    except Exception as e:
+        logging.error(f"Error parsing xmlstr: {e}")
+    else:
+        if offset1 == 0: # get all tags before offset2
+            elem_list = root.xpath(f'/{inside}/{pagebrk}[{offset2}]/preceding-sibling::*')
+        else: # get all content between offset1 and offset2
+            elem_list = xml_get_elements_between_element(root, between_element=pagebrk, offset1=offset1, offset2=offset2)
+
+        new_xml = f"<{env}>\n"
+        for n in elem_list:
+            try:
+                new_xml += etree.tostring(n).decode("utf8") + "\n"
+            except Exception as e:
+                logging.warning(f"Error converting node: {e}")
+        # close the new xml string
+        new_xml += f"</{env}>\n"
+        
+        ret_val = (new_xml, elem_list)
+
+    return ret_val
+
+def xml_get_elements_between_element(element_node, between_element="pb", offset1=1, offset2=None):
+    """
+    Return the elements between the offset1 instance and offset2 instance of 'between_element'
+    
+    >>> root = etree.fromstring(test_xml2)
+    >>> elist = xml_get_elements_between_element(root, between_element="pb", offset1=2, offset2=3)
+    >>> etree.tostring(elist[0]).decode("utf8")
+    '<p id="4">Another random paragraph</p>\\n                '
+    
+    >>> elist = xml_get_elements_between_element(root, between_element="pb", offset1=3, offset2=4)
+    >>> etree.tostring(elist[0]).decode("utf8")
+    '<p id="6">Another random paragraph</p>\\n                '
+    
+    >>> elist = xml_get_elements_between_element(root, between_element="pb", offset1=1, offset2=3)
+    >>> etree.tostring(elist[-1]).decode("utf8")
+    '<pb/>\\n                '
+    
+    """
+    ret_val = []
+    if offset1 is None:
+        offset1 == 1
+
+    if offset2 is None:
+        offset2 = offset1 + 1
+
+    path = f"//*/*[preceding-sibling::{between_element}[{offset1}] and not (preceding-sibling::{between_element}[{offset2}])]" 
+    try:
+        ret_val = element_node.xpath(path)
+    except Exception as e:
+        logging.error(f"Problem extracting xpath nodes: {xpath}")
+    
+    return ret_val
     
 def xml_get_subelement_textsingleton(element_node, subelement_name, default_return=""):
     """
@@ -289,10 +375,14 @@ def xml_get_elements(element_node, xpath_def, default_return=list()):
     Example:
     strList = xml_get_elements(treeRoot, "//p")
     
+    >>> root = etree.fromstring(test_xml3)
+    >>> xml_get_elements(root, "/*/p[count(preceding-sibling::pb)=1]", None)
+
     >>> root = etree.fromstring(test_xml)
     >>> len(xml_get_elements(root, "p[@id=2]", None))
     1
     >>> xml_get_elements(root, "//pxxxx", None)    # test default return
+    
     """
     ret_val = default_return
     try:
@@ -370,9 +460,9 @@ def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
 
     >>> root = etree.fromstring(test_xml)
     >>> xml_elem_or_str_to_text(test_xml, None)[0:100]
-    'this is just authoring test stuff\\n                A random paragraph\\n                Another random '
+    'this is just authoring test stuff\\n                whatever is in the abstract\\n                \\n     '
     >>> xml_elem_or_str_to_text(root, None)[0:100]
-    'this is just authoring test stuff\\n                A random paragraph\\n                Another random '
+    'this is just authoring test stuff\\n                whatever is in the abstract\\n                \\n     '
     >>> root = etree.fromstring("<myxml>this <b>is <i>really</i><empty/></b> xml.</myxml>", None)  #mixed content element
     >>> xml_elem_or_str_to_text(root, None)
     'this is really xml.'
@@ -419,9 +509,9 @@ def xml_xpath_return_textlist(element_node, xpath, default_return=list()):
     
     >>> root = etree.fromstring(test_xml)
     >>> xml_xpath_return_textlist(root, "//p", None)
-    ['A random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph with multiple subelements']
+    ['A random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph with multiple subelements', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph with multiple subelements']
     >>> xml_xpath_return_textlist(root, "p", None)
-    ['A random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph with multiple subelements']
+    ['A random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph with multiple subelements', 'Another random paragraph', 'Another random paragraph', 'Another random paragraph with multiple subelements']
     >>> xml_xpath_return_textlist(root, "pxxx", None) # check default return
     """
     ret_val = default_return
@@ -492,7 +582,7 @@ def xml_xpath_return_xmlstringlist(element_node, xpath, default_return=list()):
     >>> root = etree.fromstring(test_xml)
     >>> stringList = xml_xpath_return_xmlstringlist(root, "p")
     >>> len(stringList)
-    5
+    8
     >>> stringList[0]
     '<p id="1">A random paragraph</p>'
     >>> xml_xpath_return_xmlstringlist(root, "pxxxx", None)  # check default return
@@ -562,7 +652,7 @@ def xml_str_to_html(xml_text, xslt_file=r"./libs/styles/pepkbd3-html.xslt"):
     """
     Convert XML to HTML per XSLT file parameter
     
-    >>> len(xml_str_to_html(xml_text=text_xml2))
+    >>> len(xml_str_to_html(xml_text=test_xml3))
     314
     """
     ret_val = None
@@ -611,7 +701,7 @@ def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=No
     """
     uses ebooklib
     
-    >>> htmlstr = xml_str_to_html(text_xml2)
+    >>> htmlstr = xml_str_to_html(test_xml3)
     >>> document_id = "epubconversiontest"
     >>> filename = html_to_epub(htmlstr, output_filename_base=document_id, art_id=document_id)
     
@@ -716,16 +806,51 @@ if __name__ == "__main__":
     test_xml = """
               <test>
                 <author role="writer">this is just authoring test stuff</author>
+                <abstract>whatever is in the abstract</abstract>
+                <pb></pb>
                 <p id="1">A random paragraph</p>
                 <p id="2" type="speech">Another random paragraph</p>
+                <pb></pb>
                 <p id="3">Another <b>random</b> paragraph</p>
                 <p id="4">Another random paragraph</p>
                 <p id="5">Another <b>random</b> paragraph with multiple <b>subelements</b></p>
+                <pb></pb>
+                <p id="3">Another <b>random</b> paragraph</p>
+                <p id="4">Another random paragraph</p>
+                <p id="5">Another <b>random</b> paragraph with multiple <b>subelements</b></p>
+                <pb></pb>
               </test>
               """
-    text_xml2 = xml_file_to_xmlstr("./tstfiles/IJP.051.0175A(bEXP_ARCH1).XML")
+
+    test_xml2 = """
+              <test>
+                <author role="writer">this is just authoring test stuff</author>
+                <p id="1">A random paragraph</p>
+                <pb></pb>
+                <p id="2" type="speech">Another random paragraph</p>
+                <p id="3">Another <b>random</b> paragraph</p>
+                <grp>
+                   <p>inside group</p>
+                </grp>
+                <pb></pb>
+                <p id="4">Another random paragraph</p>
+                <p id="5">Another <b>random</b> paragraph with multiple <b>subelements</b></p>
+                <pb></pb>
+                <p id="6">Another random paragraph</p>
+                <pb></pb>
+                <quote>blah blah</quote>
+                <p id="7">Another <b>random</b> paragraph with multiple <b>subelements</b></p>
+                <pb></pb>
+                <p id="8">Another random paragraph</p>
+                <quote>blah blah</quote>
+                <p id="9">Another <b>random</b> paragraph with multiple <b>subelements</b></p>
+                <p id="10">Another <b>random</b> paragraph with multiple <b>subelements</b></p>
+              </test>
+              """
+
+    test_xml3 = xml_file_to_xmlstr("./tstfiles/IJP.051.0175A(bEXP_ARCH1).XML")
     
     doctest.testmod()
-    print ("Tests Completed")
+    print ("All Tests Completed")
 
 

@@ -64,9 +64,10 @@ from passlib.context import CryptContext
 # from pydantic import ValidationError
 
 import pymysql
+import jwt
 
 #import opasAuthBasic
-from localsecrets import url_pads
+from localsecrets import url_pads, SECRET_KEY
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 import requests
@@ -135,12 +136,13 @@ class opasCentralDB(object):
       
     Therefore, keeping session info in the object is ok,
     
+    >>> import secrets
     >>> ocd = opasCentralDB()
     >>> random_session_id = secrets.token_urlsafe(16)
     >>> success, session_info = ocd.save_session(session_id=random_session_id)
     >>> session_info.authenticated
     False
-    >>> ocd.record_session_endpoint(session_info=session_info, api_endpoint_id=API_AUTHORS_INDEX, document_id="IJP.001.0001A", status_message="Testing")
+    >>> ocd.record_session_endpoint(session_info=session_info, api_endpoint_id=API_AUTHORS_INDEX, item_of_interest="IJP.001.0001A", status_message="Testing")
     1
     >>> ocd.end_session(session_info.session_id)
     True
@@ -163,7 +165,10 @@ class opasCentralDB(object):
         Opens a connection if it's not already open.
         
         If already open, no changes.
-        
+        >>> ocd = opasCentralDB()
+        >>> ocd.open_connection("my name")
+        >>> ocd.close_connection("my name")
+        True
         """
         try:
             status = self.db.open
@@ -480,6 +485,7 @@ class opasCentralDB(object):
                 logger.error("Save session could not open database")
             else: # its open
                 session_start=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+                session_admin = False
                 if self.db != None:  # don't need this check, but leave it.
                     cursor = self.db.cursor()
                     if username != "NotLoggedIn":
@@ -487,6 +493,7 @@ class opasCentralDB(object):
                         if user:
                             userID = user.user_id
                             authenticated = True
+                            session_admin = user.admin
                             #if expiresTime == None:
                                 #from opasCentralDBLib import getMaxAge
                                 #maxAge = getMaxAge(keepActive)
@@ -509,10 +516,11 @@ class opasCentralDB(object):
                                                       session_expires_time,
                                                       access_token, 
                                                       authenticated,
+                                                      admin,
                                                       api_client_id
                                               )
                                               VALUES 
-                                                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
+                                                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
                     
                     success = cursor.execute(sql, 
                                              (session_id, 
@@ -525,6 +533,7 @@ class opasCentralDB(object):
                                               expiresTime,
                                               accessToken,
                                               authenticated,
+                                              session_admin, 
                                               apiClientID
                                               )
                                              )
@@ -748,6 +757,7 @@ class opasCentralDB(object):
     def get_basecodes_for_product(self, product_id):
         """
         given a product_id, return a list of basecodes for that product
+        
         """
         ret_val = []
         self.open_connection(caller_name="get_basecodes_for_product") # make sure connection is open
@@ -948,28 +958,39 @@ class opasCentralDB(object):
 
         return ret_val
     
-    def verify_admin(self, username, password):
+    def verify_admin(self, session_info):
         """
         Find if this is an admin, and return user info for them.
         Returns a user object
         
         >>> ocd = opasCentralDB()
-        >>> ocd.verify_admin("TemporaryDeveloper", "temporaryLover")
-        
+        >>> ocd.verify_admin(ocd.sessionInfo)
+        False
         """
-        ret_val =  None
-        admin = self.get_user(username)
+        ret_val = False
         try:
-            if admin.enabled and admin.admin:
-                if verify_password(password, admin.password):
-                    ret_val = admin
+            logged_in_user = jwt.decode(session_info.access_token, localsecrets.SECRET_KEY)
+            ret_val = logged_in_user["user"]["admin"]
         except:
-            err_msg = f"Cannot find admin user {username}"
+            err_msg = f"Not logged in or error getting admin status"
             logger.error(err_msg)
-    
+            
         return ret_val   
     
-    def create_user(self, username, password, admin_username, admin_password, company=None, email=None):
+    def create_user(self,
+                    session_info,
+                    username,
+                    password,
+                    full_name=None, 
+                    company=None,
+                    email=None,
+                    user_agrees_tracking=0,
+                    user_agrees_cookies=0,
+                    view_parent_user_reports=0, 
+                    email_optin='n',
+                    hide_activity='n',
+                    view_parent_reports='n'
+                    ):
         """
         Create a new user!
         
@@ -980,40 +1001,55 @@ class opasCentralDB(object):
         ret_val = None
         self.open_connection(caller_name="create_user") # make sure connection is open
         curs = self.db.cursor(pymysql.cursors.DictCursor)
-    
-        admin = self.verify_admin(admin_username, admin_password)
-        if admin is not None:
+        if self.verify_admin(session_info):
             # see if user exists:
             user = self.get_user(username)
             if user is None: # good to go
                 user = UserInDB()
                 user.username = username
+                user.full_name = full_name
+                user.user_agrees_to_tracking = int(user_agrees_tracking)
+                user.user_agrees_to_cookies = int(user_agrees_cookies)
+                user.view_parent_user_reports = int(view_parent_user_reports)
                 user.password = get_password_hash(password)
-                user.company = company
-                user.enabled = True
+                if company is not None:
+                    user.company = pymysql.escape_string(company)
+                else:
+                    user.company = None
+                user.enabled = int(1)
                 user.email_address = email
-                user.modified_by_user_id = admin.user_id
-                user.enabled = True
+                user.modified_by_user_id = session_info.user_id
+                user.added_by_user_id = session_info.user_id
                 
-                sql = """INSERT INTO user 
+                sql = """INSERT INTO api_user 
                          (
                             username,
                             email_address,
                             enabled,
                             company,
+                            full_name,
                             password,
+                            user_agrees_to_tracking,
+                            user_agrees_to_cookies,
+                            view_parent_user_reports,
                             modified_by_user_id,
+                            added_by_user_id,
                             added_date,
                             last_update
                             )
-                        VALUES ('%s', '%s', %s, '%s', '%s', '%s', '%s', '%s')
+                        VALUES ('%s', '%s', '%s', '%s', '%s', '%s', %d, %d, %d, %d, %d, '%s', '%s')
                       """ % \
                           ( pymysql.escape_string(user.username),
                             user.email_address,
                             user.enabled,
-                            pymysql.escape_string(user.company),
+                            user.company,
+                            user.full_name, 
                             get_password_hash(user.password),
-                            admin.user_id,
+                            user.user_agrees_to_tracking, 
+                            user.user_agrees_to_cookies, 
+                            user.view_parent_user_reports, 
+                            user.modified_by_user_id,
+                            user.added_by_user_id,
                             datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                             datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                           )
@@ -1049,21 +1085,24 @@ class opasCentralDB(object):
         >>> status
         True
         """
-        print (f"Authenticating user: {username}")
+        #print (f"Authenticating user: {username}")
         self.open_connection(caller_name="authenticate_user") # make sure connection is open
         user = self.get_user(username)  # returns a UserInDB object
         if not user:
             msg = f"User: {username} turned away"
             logger.warning(msg)
+            #print(msg)
             ret_val = (False, None)
         elif not verify_password(password, user.password):
             msg = f"User: {username} turned away with incorrect password"
             logger.warning(msg)
+            #print(msg)
             ret_val = (False, None)
         else:
             self.user = user
             msg = f"Authenticated (with active subscription) user: {username}, sessionID: {self.session_id}"
             logger.info(msg)
+            #print(msg)
             ret_val = (True, user)
 
         if ret_val == (False, None):
@@ -1102,7 +1141,7 @@ class opasCentralDB(object):
         curs = self.db.cursor(pymysql.cursors.DictCursor)
         if referrer is not None:
             sql = """SELECT *
-                     FROM vw_referrer_users
+                     FROM vw_user_referred
                      WHERE referrer_url = %s
                      AND enabled = 1
                      """ 
@@ -1192,10 +1231,10 @@ if __name__ == "__main__":
    
     logger = logging.getLogger(__name__)
     # extra logging for standalong mode 
-    logger.setLevel(logging.DEBUG)
+    # logger.setLevel(logging.DEBUG)
     # create console handler and set level to debug
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    # ch.setLevel(logging.DEBUG)
     # create formatter
     formatter = logging.Formatter('%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s')    
     # add formatter to ch
@@ -1203,10 +1242,10 @@ if __name__ == "__main__":
     # add ch to logger
     logger.addHandler(ch)
     
-    ocd = opasCentralDB()
+    #ocd = opasCentralDB()
     # get basecodes for PEP Archive Product
-    basecodes = ocd.get_basecodes_for_product(421)
-    ocd.get_dict_of_products()
+    #basecodes = ocd.get_basecodes_for_product(421)
+    #ocd.get_dict_of_products()
     #ocd.get_subscription_access("IJP", 421)
     #ocd.get_subscription_access("BIPPI", 421)
     #docstring tests

@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Web Database Schema v.00.01.17
+    PEP Web Database Schema v.00.01.18
     for core PEPWebDocs
+
+    2019-11-15: artvoltitle was at top but never used/loaded.  These are important for TOCs.
+                Renamed to art_vol_title and setting up
+                the load program to use it.  Document example: AIM.049.0001A
 
     2019-11-12: Added additional author fields (data auto copied from old field)
                 to test (and deal with) partial search.  Trying ngrm field 
@@ -56,7 +60,6 @@
   <!-- ************************************************************************************************* -->
   <!-- Metadata fields -->
 
-  <field name="artvoltitle" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!-- Article metadata -->
   <field name="abstracts_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="art_id" type="string" indexed="true" stored="true" multiValued="false"/>
@@ -90,6 +93,7 @@
   <field name="art_pepsourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_type" type="string" indexed="true" stored="true" multiValued="false" docValues="true" />
   <field name="art_vol" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_vol_title" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_year" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_year_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_cited_all" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>

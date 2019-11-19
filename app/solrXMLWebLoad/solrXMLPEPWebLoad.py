@@ -129,6 +129,7 @@ class ArticleInfo(object):
         #---------------------------------------------
         self.artPepSrcCode = pepxml.xpath("//artinfo/@j")[0]
         try:
+            self.artPepSrcCode = self.artPepSrcCode.upper()  # 20191115 - To make sure this is always uppercase
             self.artPepSourceTitleAbbr = sourceInfoDBData[self.artPepSrcCode].get("sourcetitleabbr", None)
             self.artPepSourceTitleFull = sourceInfoDBData[self.artPepSrcCode].get("sourcetitlefull", None)
             self.artPepSourceType = sourceInfoDBData[self.artPepSrcCode].get("pep_class", None)  # journal, book, video...
@@ -146,7 +147,7 @@ class ArticleInfo(object):
             return
         self.artVol = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvol/node()', default_return=None)
         self.artIssue = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artiss/node()', default_return=None)
-        self.artIssueTitle = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/isstitle/node()', default_return=None)
+        self.artIssueTitle = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artissinfo/isstitle/node()', default_return=None)
         self.artYear = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artyear/node()', default_return=None)
         try:
             artYearForInt = re.sub("[^0-9]", "", self.artYear)
@@ -156,7 +157,18 @@ class ArticleInfo(object):
             self.artYearInt = 0
 
         artInfoNode = pepxml.xpath('//artinfo')[0]
-        self.artType = opasxmllib.xml_get_element_attr(artInfoNode, "arttype", default_return=None) 
+        self.artType = opasxmllib.xml_get_element_attr(artInfoNode, "arttype", default_return=None)
+        self.art_vol_title = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvolinfo/voltitle/node()', default_return=None)
+        if self.art_vol_title is None:
+            # try attribute for value (lower priority than element above)
+            self.art_vol_title = opasxmllib.xml_get_element_attr(artInfoNode, "voltitle", default_return=None)
+
+        if self.art_vol_title is not None:
+            print (f"volume title: {self.art_vol_title}")
+    
+        if self.artIssueTitle is not None:
+            print (f"issue title: {self.artIssueTitle}")
+            
         self.artDOI = opasxmllib.xml_get_element_attr(artInfoNode, "doi", default_return=None) 
         self.artISSN = opasxmllib.xml_get_element_attr(artInfoNode, "ISSN", default_return=None) 
         self.artOrigRX = opasxmllib.xml_get_element_attr(artInfoNode, "origrx", default_return=None) 
@@ -317,6 +329,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                                       art_year = artInfo.artYear,
                                       art_year_int = artInfo.artYearInt,
                                       art_vol = artInfo.artVol,
+                                      art_vol_title = artInfo.art_vol_title, 
                                       art_pgrg = artInfo.artPgrg,
                                       art_iss = artInfo.artIssue,
                                       art_iss_title = artInfo.artIssueTitle,
@@ -763,7 +776,7 @@ def main():
     bibTotalReferenceCount = 0
     preCommitFileCount = 0
     processedFilesCount = 0
-    
+    print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
     try:
         ocd =  opasCentralDBLib.opasCentralDB()
         ocd.open_connection()

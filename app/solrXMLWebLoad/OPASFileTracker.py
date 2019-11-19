@@ -26,6 +26,7 @@ import sqlite3
 import os
 import os.path
 import time
+import ntpath
 
 import config
 
@@ -139,6 +140,25 @@ class FileTracker (object):
             self.commit()
             count = self.getFileDatabaseRecordCount()
             print(("Delete Performed, now there are %s records in database" % count))
+            retVal = True
+        except sqlite3.Error as e:
+            print(e)
+
+        c.close()
+        return retVal
+
+    #----------------------------------------------------------------------------------------
+    def deleteRecord(self, filePath):
+        """
+        Delete a specific record
+
+        """
+        retVal = False
+        try:
+            c = self.conn.cursor()
+            c.execute(f"DELETE FROM fileTracking WHERE filePath = '{filePath}';")
+            self.commit()
+            print("Delete Performed")
             retVal = True
         except sqlite3.Error as e:
             print(e)
@@ -281,6 +301,50 @@ class FileTracker (object):
         c.close()  # close cursor
         return retVal
 
+    #----------------------------------------------------------------------------------------
+    def getMissingFileList(self, filePath):
+        """ Find files that are missing from the disk
+        """
+        retVal = []
+        getFileInfoSQL = """
+                            SELECT
+                               filePath,
+                               fileSize,
+                               fileModDate,
+                               buildDate,
+                               solrServerURL
+                            FROM fileTracking
+                            """
+        try:
+            c = self.conn.cursor()
+            c.execute(getFileInfoSQL)
+            rows = c.fetchall()
+            if rows == []:
+                # no database record here
+                retVal = None
+            else:
+                rem_count = 0
+                for row in rows:
+                    filePath = row[0]
+                    if not os.path.isfile(filePath):
+                        # we need to remove it from solr
+                        # create a list of missing IDs
+                        rem_count += 1
+                        art_id = ntpath.basename(filePath.upper())
+                        art_id = art_id.replace("(BEXP_ARCH1).XML", "")
+                        # add to retVal
+                        print (f"Adding {art_id} to the Solr remove list")
+                        retVal.append(art_id)
+                        print (f"Deleting {art_id} record frm the database")
+                        self.deleteRecord(filePath)
+
+        except sqlite3.Error as e:
+            print(e)
+        
+        print(f"{rem_count} files found to be removed from Solr.  Returning list.")
+        c.close()  # close cursor
+        return retVal
+
     def isFileModified(self, currentFileInfo):
         """
         """
@@ -296,3 +360,16 @@ class FileTracker (object):
             retVal = False
 
         return retVal
+
+    
+if __name__ == "__main__":
+    import sys
+    print ("Running in Python %s" % sys.version_info[0])
+
+    myFileTracker = FileTracker()
+    myFileTracker.getMissingFileList(r"X:\_PEPA1\_PEPa1v\_PEPCurrent")
+
+    #import doctest
+    #doctest.testmod()    
+
+    print ("...done...")

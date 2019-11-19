@@ -10,6 +10,7 @@ OPAS - General Support Function Library
 """
 from typing import Union, Optional, Tuple
 import sys
+import re
 import string
 import logging
 logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ def pgrg_splitter(pgRg):
     """
     Break up a stored page range into its components.
     
-    >>> pgRgSplitter("1-5")
+    >>> pgrg_splitter("1-5")
     ('1', '5')
     
     """
