@@ -91,18 +91,20 @@ class FileTracker (object):
         retVal = True
         createCmd = """
                             CREATE TABLE fileTracking(
-                            filePath VARCHAR NOT NULL,
-                            fileSize BIGINT,
-                            fileModDate FLOAT,
-                            buildDate INT,
-                            solrServerURL VARCHAR,
-                            PRIMARY KEY(filePath)
-                            );
+                                                        filePath VARCHAR NOT NULL,
+                                                        fileSize BIGINT,
+                                                        fileModDate FLOAT,
+                                                        buildDate INT,
+                                                        solrServerURL VARCHAR,
+                                                        PRIMARY KEY(filePath)
+                                                    );
                             """
         try:
             self.conn = sqlite3.connect(self.sqlDBPath)
-            #print(sqlite3.version)
+            # print(sqlite3.version)
+            # Try to connect, see if the database table already exists
             count = self.getFileDatabaseRecordCount()
+            # if not, create it.
             if count is None:
                 try:
                     self.createTable(createCmd)
@@ -150,8 +152,7 @@ class FileTracker (object):
     #----------------------------------------------------------------------------------------
     def deleteRecord(self, filePath):
         """
-        Delete a specific record
-
+        Delete a specific record, e.g., for use if the file at filePath was missing
         """
         retVal = False
         try:

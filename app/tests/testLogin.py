@@ -51,7 +51,7 @@ class TestLogin(unittest.TestCase):
         print (decoded_access_token )
 
         # now Check if we are logged in!
-        full_URL = base_plus_endpoint_encoded('/v2/Admin/WhoAmI/')
+        full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -73,7 +73,7 @@ class TestLogin(unittest.TestCase):
         response_set = r["licenseInfo"]["responseSet"]
         assert(r["licenseInfo"]["responseInfo"]["loggedIn"] == False)
 
-        full_URL = base_plus_endpoint_encoded('/v2/Admin/WhoAmI/')
+        full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -96,7 +96,7 @@ class TestLogin(unittest.TestCase):
         assert(response.status_code == 401) # Unauthorized Error
         r = response.json()
 
-        full_URL = base_plus_endpoint_encoded('/v2/Admin/WhoAmI/')
+        full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)

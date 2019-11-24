@@ -34,7 +34,7 @@ class TestStatus(unittest.TestCase):
 
     def test_0_server_status(self):
         # Send a request to the API server and store the response.
-        response = client.get(base_api + '/v2/Admin/Status/')
+        response = client.get(base_api + '/v2/Session/Status/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()

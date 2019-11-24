@@ -63,7 +63,7 @@ Endpoint and structure documentation automatically available when server is runn
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0906.1"
+__version__     = "2019.1124.1"
 __status__      = "Development"
 
 import sys
@@ -125,12 +125,9 @@ from errorMessages import *
 import models
 import modelsOpasCentralPydantic
 import opasCentralDBLib
-from sourceInfoDB import SourceInfoDB
+# from sourceInfoDB import SourceInfoDB
 
-# used to remove prefix && added to queries
-pat_prefix_amps = re.compile("^\s*&& ")
 
-sourceInfoDB = SourceInfoDB()
 # gActiveSessions = {}
 
 #gOCDatabase = None # opasCentralDBLib.opasCentralDB()
@@ -144,10 +141,10 @@ app = FastAPI(
     debug=True,
         title="Open Publications Archive (OPAS) API for PEP-Web",
         description = "Open Publications Archive Software API for PEP-Web by Psychoanalytic Electronic Publishing (PEP)",
-        version = "2019.11.17.alpha",
+        version = "2019.11.24.alpha",
         static_directory=r"./docs",
         swagger_static={
-            "favicon": "pepfavicon.gif"
+            "favicon": "pepfavicon"
             },
 )
 
@@ -300,62 +297,62 @@ async def create_new_user(response: Response,
         )        
     return ret_val
 
-#-----------------------------------------------------------------------------
-@app.get("/v2/Admin/SessionCleanup/", response_model=models.ServerStatusItem, tags=["Admin"])
-async def cleanup_expired_sessions(response: Response, 
-                           request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
-                           ):
-    """
-    ## Function
-       <b>Clean up old, open sessions (may only be needed during development)</b>
+##-----------------------------------------------------------------------------
+#@app.post("/v2/Admin/SessionCleanup/", response_model=models.ServerStatusItem, tags=["Admin"])
+#async def cleanup_expired_sessions(response: Response, 
+                           #request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
+                           #):
+    #"""
+    ### Function
+       #<b>Clean up old, open sessions (may only be needed during development)</b>
 
-    ## Return Type
-       ServerStatusItem
+    ### Return Type
+       #ServerStatusItem
 
-    ## Status
-       Status: In Development
+    ### Status
+       #Status: In Development
 
-    ## Sample Call
-         /v2/Admin/SessionCleanup/
+    ### Sample Call
+         #/v2/Admin/SessionCleanup/
     
-    ## Notes
-         NA
+    ### Notes
+         #NA
     
-    ## Potential Errors
-       NA
+    ### Potential Errors
+       #NA
        
-    """
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
-    # ensure user is admin
-    if ocd.verify_admin(session_info):
-        count = ocd.close_expired_sessions()
-        ocd.close_inactive_sessions(inactive_time=opasConfig.SESSION_INACTIVE_LIMIT)
-        solr_ok = opasAPISupportLib.check_solr_docs_connection()
-        db_ok = ocd.open_connection()
-        ocd.close_connection()
+    #"""
+    #ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    ## ensure user is admin
+    #if ocd.verify_admin(session_info):
+        #count = ocd.close_expired_sessions()
+        #ocd.close_inactive_sessions(inactive_time=opasConfig.SESSION_INACTIVE_LIMIT)
+        #solr_ok = opasAPISupportLib.check_solr_docs_connection()
+        #db_ok = ocd.open_connection()
+        #ocd.close_connection()
     
-        try:
-            server_status_item = None
-        except ValidationError as e:
-            logger.warning("ValidationError", e.json())
-        else:
-            server_status_item = models.ServerStatusItem(text_server_ok = solr_ok, 
-                                                         db_server_ok = db_ok,
-                                                         user_ip = request.client.host,
-                                                         solr_url = localsecrets.SOLRURL,
-                                                         config_name = localsecrets.CONFIG,
-                                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
-                                                         )
+        #try:
+            #server_status_item = None
+        #except ValidationError as e:
+            #logger.warning("ValidationError", e.json())
+        #else:
+            #server_status_item = models.ServerStatusItem(text_server_ok = solr_ok, 
+                                                         #db_server_ok = db_ok,
+                                                         #user_ip = request.client.host,
+                                                         #solr_url = localsecrets.SOLRURL,
+                                                         #config_name = localsecrets.CONFIG,
+                                                         #timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
+                                                         #)
         
-    else:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED, 
-            detail="Not authorized"
-        )        
+    #else:
+        #raise HTTPException(
+            #status_code=HTTP_401_UNAUTHORIZED, 
+            #detail="Not authorized"
+        #)        
 
 
 
-    return server_status_item
+    #return server_status_item
 
 #-----------------------------------------------------------------------------
 @app.post("/v2/Admin/SendAlerts/", response_model=models.ServerStatusItem, tags=["Admin"])
@@ -412,7 +409,7 @@ async def send_out_alerts_now(response: Response,
 
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Admin/Status/", response_model=models.ServerStatusItem, tags=["Session"])
+@app.get("/v2/Session/Status/", response_model=models.ServerStatusItem, tags=["Session", "v2.0"])
 async def get_the_server_status(response: Response, 
                           request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
                           ):
@@ -424,10 +421,10 @@ async def get_the_server_status(response: Response,
        models.ServerStatusItem
 
     ## Status
-       Status: In Development
+       Status: Working
 
     ## Sample Call
-         /v2/Admin/Status/
+         /v2/Session/Status/
     
     ## Notes
        NA
@@ -441,13 +438,20 @@ async def get_the_server_status(response: Response,
     solr_ok = opasAPISupportLib.check_solr_docs_connection()
     db_ok = ocd.open_connection()
     ocd.close_connection()
-
+    
+    if ocd.verify_admin(session_info):
+        solr_url = localsecrets.SOLRURL
+        config_name = localsecrets.CONFIG
+    else:
+        solr_url = None
+        config_name = None
+        
     try:
         server_status_item = models.ServerStatusItem(text_server_ok = solr_ok, 
                                                      db_server_ok = db_ok,
                                                      user_ip = request.client.host,
-                                                     solr_url = localsecrets.SOLRURL,
-                                                     config_name = localsecrets.CONFIG,
+                                                     solr_url = solr_url,
+                                                     config_name = config_name, # should not be for unauthorized users
                                                      timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
                                                      )
     except ValidationError as e:
@@ -458,8 +462,7 @@ async def get_the_server_status(response: Response,
     return server_status_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Admin/WhoAmI/", response_model=models.SessionInfo, tags=["Admin"])
-# @app.get("/v2/Admin/WhoAmI/", tags=["Admin"])
+@app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, tags=["Session", "v2.0"])
 async def who_am_i(response: Response,
              request: Request):
     """
@@ -473,7 +476,7 @@ async def who_am_i(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Admin/WhoAmI/
+         /v2/Session/WhoAmI/
     
     ## Notes
        NA
@@ -488,13 +491,13 @@ async def who_am_i(response: Response,
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
-@app.get("/v2/Database/Alerts/", response_model=models.SessionInfo, tags=["Database"])
-def get_alert_subscriptions(response: Response,
-                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
-                ):
+@app.get("/v2/Database/Alerts/", response_model=models.SessionInfo, tags=["Database", "v2.0"])
+def get_database_alerts(response: Response,
+                        request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
+                        ):
     """
     ## Function
-       <b>Return the specified report</b>
+       <b>Get database alert settings</b>
 
     ## Return Type
        models.SessionInfo
@@ -516,16 +519,17 @@ def get_alert_subscriptions(response: Response,
     return(session_info)
 
 #-----------------------------------------------------------------------------
-@app.post("/v2/Database/Alerts/", response_model=models.SessionInfo, tags=["Database"])
-def subscribe_to_alerts(*,
-                        email: str = Form(default=None, description="The email address where to send alerts"),
-                        journal: bool = Form(default=None, description="Alerts on PEP Journal updates"),
-                        books: bool = Form(default=None, description="Alerts on PEP Book updates"),
-                        videos: bool = Form(default=None, description="Alerts on PEP Video updates"),
-                        ):
+@app.post("/v2/Database/Alerts/", response_model=models.SessionInfo, tags=["Database", "v2.0"])
+def subscribe_to_database_alerts(*,
+                                 email: str = Form(default=None, description="The email address where to send alerts"),
+                                 product: str = Form(default=None, description="Alert on a specific product"),
+                                 journals: bool = Form(default=None, description="Alerts on all Journal updates"),
+                                 books: bool = Form(default=None, description="Alerts on all Book updates"),
+                                 videos: bool = Form(default=None, description="Alerts on all Video updates"),
+                                 ):
     """
     ## Function
-       <b>Subscribe to alerts/b>
+       <b>Subscribe to database alerts/b>
 
     ## Return Type
        models.SessionInfo
@@ -548,7 +552,7 @@ def subscribe_to_alerts(*,
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
-@app.get("/v2/Database/Reports/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
+@app.get("/v2/Database/Reports/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database", "v2.0"])
 def get_reports(response: Response,
                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                 report: models.ReportTypeEnum=Query(default="None", title="Report Type", description="Report Type"),
@@ -585,8 +589,8 @@ def get_reports(response: Response,
 
 
 #-----------------------------------------------------------------------------
-@app.post("/v2/Authorized/ArticleSubmission/")   
-async def article_submission(*,
+@app.post("/v2/Documents/Submission/", tags=["Documents", "v2.0"])   
+async def document_submission(*,
                              journalcode: str = Form(default=None, description="The 3-8 digit PEP Code for this journal"),
                              title: str = Form(..., description="The title of the article"),
                              keywords: str = Form(default=None, description="A comma separated list of keywords"),
@@ -603,7 +607,7 @@ async def article_submission(*,
                           ):
     """
     ## Function
-       <b>An authorized user can submit an article (PDF)</b>
+       <b>An <i>authorized user</i> can submit an article in PDF</b>
        
     ## Return Type
        models.XXX
@@ -636,7 +640,7 @@ async def article_submission(*,
     return {"username": username}
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Users/BasicLogin/", tags=["Session"], description="Used for Basic Authentication")
+@app.get("/v2/Session/BasicLogin/", tags=["Experimental"], description="Used for Basic Authentication")
 def read_current_user(response: Response, 
                       request: Request,
                       user: str = Depends(get_current_username), 
@@ -682,8 +686,9 @@ def read_current_user(response: Response,
             # new session and then token
             session_id = secrets.token_urlsafe(16)
             max_age = opasAPISupportLib.get_max_age(ka)
-            user.start_date = user.start_date.timestamp()  # we may just want to null these in the jwt
-            user.end_date = user.end_date.timestamp()
+            # let people log in even without a current subscription (just can't access non-free data)
+            #user.start_date = user.start_date.timestamp()  # we may just want to null these in the jwt
+            #user.end_date = user.end_date.timestamp()
             user.last_update = user.last_update.timestamp()
             access_token = jwt.encode({'exp': expiration_time.timestamp(),
                                        'user': user.dict()
@@ -732,7 +737,7 @@ def read_current_user(response: Response,
     return login_return_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Token/", tags=["Session"], description="Used by PEP-Easy to login; will be deprecated in V2")  
+@app.get("/v1/Token/", tags=["v1.0", "Deprecated", "PEPEasy1"], description="Used by PEP-Easy to login; will be deprecated in V2")  
 def get_token(response: Response, 
               request: Request,
               grant_type=None, 
@@ -773,7 +778,7 @@ def get_token(response: Response,
         #err_return = models.ErrorReturn(error = ERR_CREDENTIALS, error_message = ERR_MSG_INSUFFICIENT_INFO)
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/License/Status/Login/", tags=["Session"])
+@app.get("/v1/License/Status/Login/", tags=["Session", "PEPEasy1", "v1.0"])
 def get_license_status(response: Response, 
                        request: Request=Query( None,
                                                title="HTTP Request",
@@ -826,7 +831,7 @@ def get_license_status(response: Response,
     return license_info
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Users/Login/", tags=["Session"]) # I like it under Users so I did them both.
+@app.get("/v2/Session/Login/", tags=["Session", "v2.0"]) # I like it under Users so I did them both.
 @app.get("/v1/Login/", tags=["Session"])
 def login_user(response: Response, 
                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
@@ -859,7 +864,7 @@ def login_user(response: Response,
 
     ## Sample Call
        /v1/Login/             (Needed to support the original version of the PEP API.)
-       /v2/Users/Login/    
+       /v2/Session/Login/    
 
     ## Notes
     
@@ -897,17 +902,24 @@ def login_user(response: Response,
                 # new session and then token
                 session_id = secrets.token_urlsafe(16)
                 max_age = opasAPISupportLib.get_max_age(ka)
-                user.start_date = user.start_date.timestamp()  # we may just want to null these in the jwt
-                user.end_date = user.end_date.timestamp()
-                user.last_update = user.last_update.timestamp()
+                # let people log in even without a current subscription (just can't access non-free data)
+                # user.start_date = user.start_date.timestamp()  # we may just want to null these in the jwt
+                # user.end_date = user.end_date.timestamp()
+                # user.last_update = user.last_update.timestamp()
                 access_token = jwt.encode({'exp': expiration_time.timestamp(),
-                                           'user': user.dict(), 
+                                           'user': user.user_id, # .dict(), 
                                            'orig_session_id': session_id,
                                            },
                                           key=localsecrets.SECRET_KEY,
                                           algorithm=localsecrets.ALGORITHM)
 
-                # start a new session, with this user (could even still be the old user
+                # this seems like a good time to close any expired sessions, 
+                # to free up resources in case this is a related user
+                # added 2019-11-21
+                count = ocd.close_expired_sessions()
+                logging.info(f"Setting up new session.  Closed %s expired sessions")
+
+                # start a new session, with this user (could even still be the old user)
                 ocd, session_info = opasAPISupportLib.start_new_session(response,
                                                                         request,
                                                                         session_id=session_id,
@@ -960,8 +972,8 @@ def login_user(response: Response,
         return login_return_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Users/Logout/", tags=["Session"]) # I like it under Users so I did them both.
-@app.get("/v1/Logout/", tags=["Session"])  # The original GVPi URL
+@app.get("/v2/Session/Logout/", tags=["Session", "v2.0"]) # I like it under Users so I did them both.
+@app.get("/v1/Logout/", tags=["Session", "PEPEasy1", "v1.0"])  # The original GVPi URL
 def logout_user(response: Response, 
                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST)):
     """
@@ -982,7 +994,7 @@ def logout_user(response: Response,
 
     ## Sample Call
          /v1/Logout/
-         /v2/Users/Logout/
+         /v2/Session/Logout/
     
     ## Notes
     
@@ -1036,252 +1048,11 @@ def logout_user(response: Response,
         license_info = models.LicenseStatusInfo(licenseInfo = license_info_struct)
         return license_info
 
-#---------------------------------------------------------------------------------------------------------
-# this function lets various endpoints like search, searchanalysis, and document, share this large parameter set.
-def parse_search_query_parameters(search=None,
-                                  journal_name=None,
-                                  journal=None,
-                                  fulltext1=None,
-                                  fulltext2=None,
-                                  vol=None,
-                                  issue=None,
-                                  author=None,
-                                  title=None,
-                                  datetype=None,
-                                  startyear=None,
-                                  endyear=None,
-                                  dreams=None,
-                                  quotes=None,
-                                  abstracts=None,
-                                  dialogs=None,
-                                  references=None,
-                                  citecount=None, 
-                                  viewcount=None, 
-                                  viewed_within=None, 
-                                  solrQ=None, 
-                                  disMax=None, 
-                                  edisMax=None, 
-                                  quick_search=None, 
-                                  sort=None, 
-                                  ):
-
-    # initialize accumulated variables
-    search_q = "*:* "
-    filter_q = "*:* "
-    analyze_this = ""
-    solr_max = None
-    search_analysis_term_list = []
-
-    if sort is not None:  # not sure why this seems to have a slash, but remove it
-        sort = re.sub("\/", "", sort)
-
-    if title is not None:
-        analyze_this = "&& art_title_xml:{} ".format(title)
-        filter_q += analyze_this
-        search_analysis_term_list.append(analyze_this)  
-
-    if journal_name is not None:
-        analyze_this = "&& art_pepsourcetitle_fulltext:{} ".format(journal_name)
-        filter_q += analyze_this
-        search_analysis_term_list.append(analyze_this)  
-
-    if journal is not None:
-        code_for_query = ""
-        analyze_this = ""
-        # journal_code_list_pattern = "((?P<namelist>[A-z0-9]*[ ]*\+or\+[ ]*)+|(?P<namelist>[A-z0-9]))"
-        journal_wildcard_pattern = r".*\*[ ]*"  # see if it ends in a * (wildcard)
-        if re.match(journal_wildcard_pattern, journal):
-            # it's a wildcard pattern
-            code_for_query = journal
-            analyze_this = "&& art_pepsourcetitlefull:{} ".format(code_for_query)
-            filter_q += analyze_this
-        else:
-            journal_code_list = journal.split(" or ")
-            if len(journal_code_list) > 1:
-                # it was a list.
-                code_for_query = " OR ".join(journal_code_list)
-                analyze_this = "&& (art_pepsrccode:{}) ".format(code_for_query)
-                filter_q += analyze_this
-            else:
-                sourceInfo = sourceInfoDB.lookupSourceCode(journal.upper())
-                if sourceInfo is not None:
-                    # it's a single source code
-                    code_for_query = journal.upper()
-                    analyze_this = "&& art_pepsrccode:{} ".format(code_for_query)
-                    filter_q += analyze_this
-                else: # not a pattern, or a code, or a list of codes.
-                    # must be a name
-                    code_for_query = journal
-                    analyze_this = "&& art_pepsourcetitlefull:{} ".format(code_for_query)
-                    filter_q += analyze_this
-
-        search_analysis_term_list.append(analyze_this)
-        # or it could be an abbreviation #TODO
-        # or it counld be a complete name #TODO
-
-    if vol is not None:
-        analyze_this = f"&& art_vol:{vol} "
-        filter_q += analyze_this
-        #searchAnalysisTermList.append(analyzeThis)  # Not collecting this!
-
-    if issue is not None:
-        analyze_this = f"&& art_iss:{issue} "
-        filter_q += analyze_this
-        #searchAnalysisTermList.append(analyzeThis)  # Not collecting this!
-
-    if author is not None:
-        author = opasAPISupportLib.termlist_to_doubleamp_query(author, field="art_authors_text")
-        # add a && to the start to add to existng filter_q 
-        analyze_this = f" && {author} "
-        filter_q += analyze_this
-        search_analysis_term_list.append(analyze_this)  
-
-    if datetype is not None:
-        #TODO for now, lets see if we need this. (We might)
-        pass
-
-    if startyear is not None and endyear is None:
-        # put this in the filter query
-        # parse startYear
-        parsed_year_search = opasAPISupportLib.year_arg_parser(startyear)
-        if parsed_year_search is not None:
-            filter_q += parsed_year_search
-            search_analysis_term_list.append(parsed_year_search)  
-        else:
-            logger.info("Search - StartYear bad argument {}".format(startyear))
-
-    if startyear is not None and endyear is not None:
-        # put this in the filter query
-        # should check to see if they are each dates
-        if re.match("[12][0-9]{3,3}", startyear) is None or re.match("[12][0-9]{3,3}", endyear) is None:
-            logger.info("Search - StartYear {} /Endyear {} bad arguments".format(startyear, endyear))
-        else:
-            analyze_this = "&& art_year_int:[{} TO {}] ".format(startyear, endyear)
-            filter_q += analyze_this
-            search_analysis_term_list.append(analyze_this)
-
-    if startyear is None and endyear is not None:
-        if re.match("[12][0-9]{3,3}", endyear) is None:
-            logger.info("Search - Endyear {} bad argument".format(endyear))
-        else:
-            analyze_this = "&& art_year_int:[{} TO {}] ".format("*", endyear)
-            filter_q += analyze_this
-            search_analysis_term_list.append(analyze_this)
-
-    if citecount is not None:
-        # This is the only query handled by GVPi and the current API.  But
-        # the Solr database is set up so this could be easily extended to
-        # the 10, 20, and "all" periods.  Here we add syntax to the 
-        # citecount field, to allow the user to say:
-        #  25 in 10 
-        # which means 25 citations in 10 years
-        # or 
-        #  400 in ALL
-        # which means 400 in all years. 
-        # 'in' is required along with a space in front of it and after it
-        # when specifying the period.
-        # the default period is 5 years.
-        # citecount = citecount.strip()
-        val = None
-        match_ptn = "\s*(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?\s*"
-        m = re.match(match_ptn, citecount, re.IGNORECASE)
-        if m is not None:
-            val = m.group("nbr")
-            val_end = m.group("endnbr")
-            if val_end == None:
-                val_end = "*"
-            period = m.group("period")
-
-        if val is None:
-            val = 1
-        if period is None:
-            period = '5'
-
-        analyze_this = "&& art_cited_{}:[{} TO {}] ".format(period.lower(), val, val_end)
-        filter_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if fulltext1 is not None:
-        analyze_this = "&& text:{} ".format(fulltext1)
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if fulltext2 is not None:
-        analyze_this = "&& text:{} ".format(fulltext2)
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if dreams is not None:
-        analyze_this = "&& dreams_xml:{} ".format(dreams)
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if quotes is not None:
-        analyze_this = "&& quotes_xml:{} ".format(quotes)
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if abstracts is not None:
-        analyze_this = "&& abstracts_xml:{} ".format(abstracts)
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if dialogs is not None:
-        analyze_this = "&& dialogs_xml:{} ".format(dialogs)
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if references is not None:
-        analyze_this = "&& references_xml:{} ".format(references)
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if solrQ is not None:
-        search_q = solrQ # (overrides fields) # search = solrQ
-        search_analysis_term_list = [solrQ]
-
-    if disMax is not None:
-        search_q = disMax # (overrides fields) # search = solrQ
-        solr_max = "disMax"
-
-    if edisMax is not None:
-        search_q = edisMax # (overrides fields) # search = solrQ
-        solr_max = "edisMax"
-
-    if quick_search is not None: #TODO - might want to change this to match PEP-Web best
-        search_q = quick_search # (overrides fields) # search = solrQ
-        solr_max = "edisMax"
-        
-    # now clean up the final components.
-    if search_q is not None:
-        # no need to start with '*:* && '.  Remove it.
-        search_q = search_q.replace("*:* && ", "")
-
-    if filter_q is not None:
-        # no need to start with '*:* && '.  Remove it.
-        filter_q = filter_q.replace("*:* && ", "")
-
-    if analyze_this is not None:
-        # no need to start with '&& '.  Remove it.
-        analyze_this = pat_prefix_amps.sub("", analyze_this)
-    
-    if search_analysis_term_list is not []:
-        search_analysis_term_list = [pat_prefix_amps.sub("", x) for x in search_analysis_term_list]
-
-    ret_val = models.QueryParameters(analyzeThis = analyze_this,
-                                     searchQ = search_q,
-                                     filterQ = filter_q,
-                                     solrMax = solr_max,
-                                     searchAnalysisTermList = search_analysis_term_list,
-                                     solrSortBy = sort
-    )
-
-    return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/MoreLikeThese/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
-@app.get("/v1/Database/SearchAnalysis/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
-@app.get("/v1/Database/Search/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
+@app.get("/v2/Database/MoreLikeThese/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database", "v2.0"])
+@app.get("/v1/Database/SearchAnalysis/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database", "v1.0"])
+@app.get("/v1/Database/Search/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database", "PEPEasy1", "v1.0"])
 async def search_the_document_database(response: Response, 
                                        request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
                                        journalName: str=Query(None, title="Match PEP Journal or Source Name", description="PEP part of a Journal, Book, or Video name (e.g., 'international'),", min_length=2),  
@@ -1368,30 +1139,31 @@ async def search_the_document_database(response: Response,
     current_year = datetime.utcfromtimestamp(time.time()).strftime('%Y')
     # this does intelligent processing of the query parameters and returns a smaller set of solr oriented         
     # params (per pydantic model QueryParameters), ready to use
-    solr_query_params = parse_search_query_parameters(journal_name=journalName,
-                                                      journal=journal,
-                                                      fulltext1=fulltext1,
-                                                      fulltext2=fulltext2,
-                                                      vol=volume,
-                                                      issue=issue,
-                                                      author=author,
-                                                      title=title,
-                                                      startyear=startyear,
-                                                      endyear=endyear,
-                                                      dreams=dreams,
-                                                      quotes=quotes,
-                                                      abstracts=abstracts,
-                                                      dialogs=dialogs,
-                                                      references=references,
-                                                      citecount=citecount,
-                                                      viewcount=viewcount,
-                                                      viewed_within=viewedWithin,
-                                                      solrQ=solrQ,
-                                                      disMax=disMax,
-                                                      edisMax=edisMax,
-                                                      quick_search=quickSearch,
-                                                      sort = sortBy
-                                                      )
+    solr_query_params = \
+        opasAPISupportLib.parse_search_query_parameters(journal_name=journalName,
+                                                        journal=journal,
+                                                        fulltext1=fulltext1,
+                                                        fulltext2=fulltext2,
+                                                        vol=volume,
+                                                        issue=issue,
+                                                        author=author,
+                                                        title=title,
+                                                        startyear=startyear,
+                                                        endyear=endyear,
+                                                        dreams=dreams,
+                                                        quotes=quotes,
+                                                        abstracts=abstracts,
+                                                        dialogs=dialogs,
+                                                        references=references,
+                                                        citecount=citecount,
+                                                        viewcount=viewcount,
+                                                        viewed_within=viewedWithin,
+                                                        solrQ=solrQ,
+                                                        disMax=disMax,
+                                                        edisMax=edisMax,
+                                                        quick_search=quickSearch,
+                                                        sort = sortBy
+                                                        )
 
     solr_query_params.urlRequest = request.url._url
 
@@ -1580,7 +1352,7 @@ def get_the_most_cited_articles(response: Response,
     #print ("out mostcited")
     return ret_val
 
-@app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_skip_defaults=True, tags=["Database"])
+@app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_skip_defaults=True, tags=["Database", "PEPEasy1", "v1.0"])
 def get_the_newest_uploaded_issues(response: Response,
                                    request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                    days_back: int=Query(14, title="Number of days to look back", description=opasConfig.DESCRIPTION_DAYSBACK),
@@ -1777,7 +1549,7 @@ def get_journal_content_lists_for_volume(SourceCode: str,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Videos/", response_model=models.VideoInfoList, response_model_skip_defaults=True, tags=["Metadata"])
+@app.get("/v1/Metadata/Videos/", response_model=models.VideoInfoList, response_model_skip_defaults=True, tags=["Metadata", "PEPEasy1", "v1.0"])
 def get_a_list_of_video_names(response: Response,
                               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                               SourceCode: str=Query("*", title="PEP Code for Video Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
@@ -1809,7 +1581,7 @@ def get_a_list_of_video_names(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Journals/", response_model=models.JournalInfoList, response_model_skip_defaults=True, tags=["Metadata"])
+@app.get("/v1/Metadata/Journals/", response_model=models.JournalInfoList, response_model_skip_defaults=True, tags=["Metadata", "PEPEasy1", "v1.0"])
 def get_a_list_of_journal_names(response: Response,
                                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                 SourceCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
@@ -1913,7 +1685,7 @@ def get_a_list_of_volumes_for_a_journal(response: Response,
 
     return ret_val # returns volumeList
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, response_model_skip_defaults=True, tags=["Metadata"])
+@app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, response_model_skip_defaults=True, tags=["Metadata", "PEPEasy1", "v1.0"])
 def get_a_list_of_book_names(response: Response,
                              request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                              SourceCode: str=Query("*", title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
@@ -1975,7 +1747,7 @@ def get_a_list_of_source_names(response: Response,
     
     ## Notes
        Depends on:
-          vw_productbase for videos
+          vw_api_productbase for videos
     
     ## Potential Errors
         
@@ -2013,7 +1785,7 @@ def get_a_list_of_source_names(response: Response,
 
     return ret_val
 #-----------------------------------------------------------------------------
-@app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_skip_defaults=True, tags=["Authors"])
+@app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_skip_defaults=True, tags=["Authors", "PEPEasy1", "v1.0"])
 def get_author_index_for_matching_author_names(response: Response,
                                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                                authorNamePartial: str=Path(..., title="Author name or Partial Name", description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
@@ -2076,7 +1848,7 @@ def get_author_index_for_matching_author_names(response: Response,
     return ret_val  # Return author information or error
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, response_model_skip_defaults=True, tags=["Authors"])
+@app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, response_model_skip_defaults=True, tags=["Authors", "v1.0"])
 def get_author_pubs_for_matching_author_names(response: Response,
                                               request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                               authorNamePartial: str=Path(..., title="Author name or Partial Name", description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
@@ -2129,7 +1901,7 @@ def get_author_pubs_for_matching_author_names(response: Response,
 
     return ret_val
 
-@app.get("/v1/Documents/Abstracts/{documentID}/", response_model=models.Documents, response_model_skip_defaults=True, tags=["Documents"])
+@app.get("/v1/Documents/Abstracts/{documentID}/", response_model=models.Documents, response_model_skip_defaults=True, tags=["Documents", "v1.0"])
 def view_an_abstract(response: Response,
                      request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                      documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
@@ -2202,7 +1974,7 @@ def view_an_abstract(response: Response,
                                     )
     return ret_val
 
-@app.get("/v2/Documents/Glossary/{term_id}/", response_model=models.Documents, tags=["Documents"], response_model_skip_defaults=True)  # the current PEP API
+@app.get("/v2/Documents/Glossary/{term_id}/", response_model=models.Documents, tags=["Documents", "v2.0"], response_model_skip_defaults=True)  # the current PEP API
 def view_a_glossary_entry(response: Response,
                           request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                           term_id: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL),
@@ -2225,7 +1997,7 @@ def view_a_glossary_entry(response: Response,
          http://localhost:9100/v2/Documents/Document/YP0004173238470/
     
     ## Notes
-         In V1, glossary entries are fetched via the /v1/Documents endpoint
+         In V1 (and PEP-Easy 1.0), glossary entries are fetched via the /v1/Documents endpoint rather than here.
     
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED for glossary access at the term level.  Otherwise, returns error.
@@ -2318,8 +2090,8 @@ def view_a_glossary_entry(response: Response,
     return ret_val
 
 
-@app.get("/v2/Documents/Document/{documentID}/", response_model=models.Documents, tags=["Documents"], response_model_skip_defaults=True) # more consistent with the model grouping
-@app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["Documents"], response_model_skip_defaults=True)  # the current PEP API
+@app.get("/v2/Documents/Document/{documentID}/", response_model=models.Documents, tags=["Documents", "v2.0"], response_model_skip_defaults=True) # more consistent with the model grouping
+@app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["Documents", "v1.0", "PEPEasy1"], response_model_skip_defaults=True)  # the current PEP API
 def view_a_document(response: Response,
                     request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                     documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
@@ -2331,8 +2103,10 @@ def view_a_document(response: Response,
                     ):
     """
     ## Function
-       <b>Return Document information (summary, non-authenticated) or the document itself (authenticated) for the requested documentID (e.g., IJP.077.0001A,
-        or multiple documents for a partial ID (e.g., IJP.077)</b>
+       <b>Returns the Document information and summary and full-text - but conditionally.</b>
+       Returns the Document information the document itself (authenticated) for the requested documentID (e.g., IJP.077.0001A)
+          Returns only the summary (abstract) if non-authenticated unless the document has field
+          file_classification in the Solr database set to the same as the value of opasConfig.DOCUMENT_ACCESS_FREE.
 
     ## Return Type
        models.Documents
@@ -2367,9 +2141,11 @@ def view_a_document(response: Response,
         term_id = m.group("termid")
         ret_val = view_a_glossary_entry(response, request, term_id=term_id, search=search, return_format=return_format)
     else:
+        doc_info = opasAPISupportLib.document_get_info(documentID, fields="art_id, art_pepsourcetype, art_year, file_classification, art_pepsrccode")
+        file_classification = doc_info["file_classification"] 
         try:
             # is the user authenticated? if so, loggedIn is true
-            if session_info.authenticated:
+            if session_info.authenticated or file_classification == opasConfig.DOCUMENT_ACCESS_FREE:
                 if search is not None:
                     argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
                     if documentID is not None:
@@ -2380,14 +2156,21 @@ def view_a_document(response: Response,
                                 argdict["journal"] = None
                 else:
                     argdict = {}
+                    
+                #if not file_classification == opasConfig.DOCUMENT_ACCESS_FREE:
+                    ## see if the user has access to this document
+                    #basecode = opasAPISupportLib.get_basecode(documentID)
+                    #year = 
+                    #ocd.authenticate_user_product_request(session_info.user_id, basecode, year)
 
-                solr_query_params = parse_search_query_parameters(**argdict)
+                solr_query_params = opasAPISupportLib.parse_search_query_parameters(**argdict)
                 logger.debug("Document View Request: %s/%s/%s", solr_query_params, documentID, return_format)
 
                 ret_val = opasAPISupportLib.documents_get_document( documentID, 
                                                                     solr_query_params,
                                                                     ret_format=return_format, 
-                                                                    authenticated = session_info.authenticated, 
+                                                                    authenticated = session_info.authenticated,
+                                                                    file_classification=file_classification, 
                                                                     page_offset=offset, # starting page
                                                                     page_limit=limit, # number of pages
                                                                     page=page # specific page number request (rather than offset)
@@ -2452,7 +2235,7 @@ def view_a_document(response: Response,
 
     return ret_val
 
-@app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_skip_defaults=True, tags=["Documents"])
+@app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_skip_defaults=True, tags=["Documents", "PEPEasy1", "v1.0"])
 def download_a_document(response: Response,
                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                         documentID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 

@@ -85,7 +85,7 @@ class TestSearch(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 25)
+        assert(response_info["count"] == 5)
         print (response_set)
 
     def test_search_author_and_journalcode_and_text_and_citecount(self):
@@ -96,10 +96,9 @@ class TestSearch(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 1)
+        assert(response_info["count"] == 8)
         print (response_set)
 
-       
-        
 if __name__ == '__main__':
-    unittest.main()    
+    unittest.main()
+    

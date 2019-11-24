@@ -30,7 +30,7 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
                               vw_stat_cited_in_all_years
                   )                                        
     
-    vw_productbase (this is the ISSN table from pepa1vdb used during processing)
+    vw_api_productbase (this is the ISSN table from pepa1vdb used during processing)
     
     vw_latest_session_activity (list of sessions with date from table api_session_endpoints)
 
@@ -754,33 +754,100 @@ class opasCentralDB(object):
         logger.debug(f"productCheck for {basecode}/{product_id} results in {ret_val}")
         return ret_val
 
-    def get_basecodes_for_product(self, product_id):
+    def authenticate_user_product_request(self, user_id, basecode, year):
         """
-        given a product_id, return a list of basecodes for that product
+        see if the user has access to this product and year
+        
+        >>> ocd = opasCentralDB()
+        >>> ocd.authenticate_user_product_request(10, "IJP", 2016)
         
         """
-        ret_val = []
-        self.open_connection(caller_name="get_basecodes_for_product") # make sure connection is open
+        ret_val = False
+        user_products = []
+        self.open_connection(caller_name="authenticate_user_product_request") # make sure connection is open
+            
         if self.db != None:
+            #  is the product free?
+            #    -- need to do a query against the product database directly to answer
+            # 
             try:
-                curs = self.db.cursor(pymysql.cursors.SSCursor)
+                curs = self.db.cursor(pymysql.cursors.DictCursor)
 
-                sqlCount = "SELECT basecode FROM vw_products_with_productbase WHERE product_id = %s and active = 1"
-                curs.execute(sqlCount, product_id)
-                ret_val = list(itertools.chain.from_iterable(curs))
+                sqlProducts = """SELECT *, YEAR(NOW())-embargo_length as first_year_embargoed FROM vw_api_user_subscriptions_with_basecodes
+                              WHERE user_id = %s and basecode = %s"""
+                             
+                success = curs.execute(sqlProducts, (user_id, basecode))
+                if success:
+                    user_products = curs.fetchall()
+                
                     
             except Exception as e:
                 logger.error(f"get_sources Error querying vw_api_products: {e}")
             else:
                 curs.close()
+                
+            for n in user_products:
+                # First Priority: If it's free, grant access
+                if n["free_access"]:
+                    # catch special free document years for logged in users, without being in free
+                    ret_val = True # it's ok
+                    break
+
+                # Second Priority: If it's in the product year range, grant access
+                if n["range_limited"]:
+                    if n["range_start_year"] <= year and n["range_end_year"] >= year: # it's in the range
+                        ret_val = True # grant product acccess
+                        break                    
+                else: # This is only if it's NOT range limited, because if it's range limited, 
+                      # you don't want to do any other checks, since one of the below would pass
+
+                    # Third Priority: If it's either in the embargo, but product is for embargos, or 
+                    if n["embargo_inverted"]: # we want the embargo period
+                        if n["first_year_embargoed"] <= year: # it's in the embargo
+                            ret_val = True # grant product acccess
+                            break
+                    # Third Priority: It's not in the embargo, so the product is applicable
+                    else: # we don't allow embargoed years
+                        if n["first_year_embargoed"] > year: # it's not in the embargo
+                            ret_val = True # grant product acccess
+                            break
+                
+        self.close_connection(caller_name="authenticate_user_product_request") # make sure connection is closed
+        # returns True if user is granted access
+        return ret_val
+
+    def get_basecodes_for_product(self, product_id):
+        """
+        given a product_id, return a list of basecodes for that product
+        
+        #TODO: Delete or Not - Perhaps Not Needed!  
+        """
+        ret_val = []
+        #self.open_connection(caller_name="get_basecodes_for_product") # make sure connection is open
+        #if self.db != None:
+            #try:
+                #curs = self.db.cursor(pymysql.cursors.SSCursor)
+
+                #sqlCount = "SELECT basecode FROM vw_products_with_productbase WHERE product_id = %s and active = 1"
+                #curs.execute(sqlCount, product_id)
+                #ret_val = list(itertools.chain.from_iterable(curs))
+                    
+            #except Exception as e:
+                #logger.error(f"get_sources Error querying vw_api_products: {e}")
+            #else:
+                #curs.close()
             
-        self.close_connection(caller_name="get_basecodes_for_product") # make sure connection is closed
+        #self.close_connection(caller_name="get_basecodes_for_product") # make sure connection is closed
         # returns a list of basecodes in that product, suitable for matching against.
         return ret_val
 
     def get_dict_of_products(self):
         """
         get a complete dictionary of products, with each including a list of basecodes for that product
+        
+        >>> ocd = opasCentralDB()
+        >>> ocd.get_dict_of_products()
+        
         """
         ret_val = {}
         self.open_connection(caller_name="get_dict_of_products") # make sure connection is open
@@ -788,7 +855,7 @@ class opasCentralDB(object):
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
 
-                sql = "SELECT product_id FROM vw_api_product_list"
+                sql = "SELECT product_id FROM vw_api_product_list_with_basecodes"
                 curs.execute(sql)
                 product_list = list(itertools.chain.from_iterable(curs))
                 for n in product_list:
@@ -828,17 +895,17 @@ class opasCentralDB(object):
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
                 if source is not None:
-                    sqlAll = "FROM vw_productbase WHERE active = 1 and basecode = '%s'" % source
+                    sqlAll = "FROM vw_api_productbase WHERE active = 1 and basecode = '%s'" % source
                 elif src_type is not None:
-                    sqlAll = "FROM vw_productbase WHERE active = 1 and product_type = '%s'" % src_type
+                    sqlAll = "FROM vw_api_productbase WHERE active = 1 and product_type = '%s'" % src_type
                 else:  # bring them all back
-                    sqlAll = "FROM vw_productbase WHERE active = 1 and product_type <> 'bookseriessub'"
+                    sqlAll = "FROM vw_api_productbase WHERE active = 1 and product_type <> 'bookseriessub'"
 
                 sql = f"SELECT * {sqlAll} ORDER BY title {limit_clause}"
                 res = curs.execute(sql)
                     
             except Exception as e:
-                msg = f"get_sources Error querying vw_opas_sources: {e}"
+                msg = f"get_sources Error querying vw_api_productbase: {e}"
                 logger.error(msg)
                 # print (msg)
             else:
@@ -935,12 +1002,14 @@ class opasCentralDB(object):
         curs = self.db.cursor(pymysql.cursors.DictCursor)
         if username is not None:
             sql = f"""SELECT *
-                     FROM vw_user_active_subscriptions
-                     WHERE username = '{username}'"""
+                     FROM vw_api_user
+                     WHERE username = '{username}'
+                     and enabled = 1"""
         elif user_id is not None:
             sql = f"""SELECT *
-                     FROM vw_user_active_subscriptions
-                     WHERE user_id = '{user_id}'"""
+                     FROM api_user
+                     WHERE vw_user_id = '{user_id}'
+                     and enabled = 1"""
 
         if sql is None:
             logger.error("get_user: No user info supplied to search by")
@@ -949,7 +1018,7 @@ class opasCentralDB(object):
             res = curs.execute(sql)
             if res >= 1:
                 user = curs.fetchone()
-                ret_val = modelsOpasCentralPydantic.UserSubscriptions(**user)
+                ret_val = modelsOpasCentralPydantic.UserInDB(**user)
             else:
                 ret_val = None
 
@@ -976,6 +1045,31 @@ class opasCentralDB(object):
             logger.error(err_msg)
             
         return ret_val   
+    
+    def verify_access_to_product(self, session_info):
+        """
+        Find if this user has access to a specific product.
+        
+        >>> ocd = opasCentralDB()
+        >>> ocd.verify_access_to_product(ocd.sessionInfo, )
+        False
+        """
+        ret_val = False
+        try:
+            logged_in_user = jwt.decode(session_info.access_token, localsecrets.SECRET_KEY)
+            ret_val = logged_in_user["user"]["admin"]
+        except:
+            err_msg = f"Not logged in or error getting admin status"
+            logger.error(err_msg)
+            
+        return ret_val   
+
+    def user_document_authorization(self,
+                                    session_info,
+                                    request,
+                                    doc_id):
+        pass
+    
     
     def create_user(self,
                     session_info,
@@ -1242,9 +1336,11 @@ if __name__ == "__main__":
     # add ch to logger
     logger.addHandler(ch)
     
-    #ocd = opasCentralDB()
-    # get basecodes for PEP Archive Product
-    #basecodes = ocd.get_basecodes_for_product(421)
+    ocd = opasCentralDB()
+    # check this user permissions 
+    basecodes = ocd.authenticate_user_product_request(30065, "IJP", 2016)
+    basecodes = ocd.authenticate_user_product_request(116848, "IJP", 2016)
+    basecodes = ocd.authenticate_user_product_request(10, "IJP", 2016)
     #ocd.get_dict_of_products()
     #ocd.get_subscription_access("IJP", 421)
     #ocd.get_subscription_access("BIPPI", 421)

@@ -717,6 +717,10 @@ def main():
         # also reset the file tracker in both cases
         fileTracker.deleteAll()
         fileTracker.commit()
+    else:
+        # check for missing files and delete them from the core, since we didn't empty the core above
+        pass
+        
 
     if options.forceRebuildAllFiles == False:
         print ("Adding only files with newer modification dates than what's in fileTracker database")

@@ -41,6 +41,7 @@ from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, CO
 from opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES 
 from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
 
+
 if (sys.version_info > (3, 0)):
     # Python 3 code in this block
     from io import StringIO
@@ -98,6 +99,22 @@ documentURL = "/v1/Documents/"
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 
 #-----------------------------------------------------------------------------
+def get_basecode(document_id):
+    """
+    Get basecode from document_id
+    """
+    ret_val = None
+    try:
+        parts = document_id.split(".")
+        ret_val = parts[0]
+    except Exception as e:
+        logging.error(f"Bad document_id {document_id} to get_basecode. {e}")
+    
+    #TODO: later we might want to check for special book basecodes.
+    
+    return ret_val
+    
+#-----------------------------------------------------------------------------
 def numbered_anchors(matchobj):
     """
     Called by re.sub on replacing anchor placeholders for HTML output.  This allows them to be numbered as they are replaced.
@@ -105,7 +122,7 @@ def numbered_anchors(matchobj):
     global count_anchors
     #JUMPTOPREVHIT = "<a onclick='hitCursor.prevHit();event.preventDefault();'>🡄</a>"
     #JUMPTONEXTHIT = "<a onclick='hitCursor.nextHit();event.preventDefault();'>🡆</a>"
-    JUMPTOPREVHIT = f"""<a onclick='scrollToAnchor("hit{count_anchors-1}");event.preventDefault();'>🡄</a>"""
+    JUMPTOPREVHIT = f"""<a onclick='scrollToAnchor("hit{count_anchors}");event.preventDefault();'>🡄</a>"""
     JUMPTONEXTHIT = f"""<a onclick='scrollToAnchor("hit{count_anchors+1}");event.preventDefault();'>🡆</a>"""
     
     if matchobj.group(0) == opasConfig.HITMARKERSTART:
@@ -276,7 +293,6 @@ def get_access_token(request):
 def get_expiration_time(request):
     ret_val = request.cookies.get(opasConfig.OPASEXPIRES, None)
     return ret_val
-
 #-----------------------------------------------------------------------------
 def check_solr_docs_connection():
     """
@@ -302,6 +318,33 @@ def check_solr_docs_connection():
             if len(results.results) == 0:
                 return False
         return True
+
+
+#-----------------------------------------------------------------------------
+def document_get_info(document_id, fields="art_id, art_pepsourcetype, art_year, file_classification, art_pepsrccode"):
+    """
+    Gets key information about a single document for the specified fields.
+    
+    >>> document_get_info('PEPGRANTVS.001.0003A', fields='file_classification')
+    {'file_classification': 'pepfree', 'score': 5.1670485}
+    
+    """
+    ret_val = {}
+    if solr_docs is not None:
+        try:
+            results = solr_docs.query(q = f"art_id:{document_id}",  fields = fields)
+        except Exception as e:
+            logger.error(f"Solr Retrieval Error: {e}")
+        else:
+            if len(results.results) == 0:
+                return ret_val
+            else:
+                try:
+                    ret_val = results.results[0]
+                except Exception as e:
+                    logger.error(f"Solr Result Error: {e}")
+                
+        return ret_val
 
 #-----------------------------------------------------------------------------
 def force_string_return_from_various_return_types(text_str, min_length=5):
@@ -374,7 +417,7 @@ def get_article_data_raw(article_id, fields=None):  # DEPRECATED??????? (at leas
     return ret_val
                 
 #-----------------------------------------------------------------------------
-def get_article_data(article_id, fields=None):  # DEPRECATED???????  (at least, not used)
+def get_article_data(article_id, fields=None):  # DEPRECATED???????  (at least, not used, though its tested)
     """
     Fetch an article "Doc" from the Solr solrDocs core.  If fields is none, it fetches all fields.
 
@@ -518,14 +561,8 @@ def database_get_most_downloaded(period: str="all",
     Docstring Tests:
     
     >>> result = database_get_most_downloaded()
-    DocumentListItem PEPCode='IJP' sourceTitle=None documentID='IJP.077.0217A' authormast=None documentRef='Fonagy, P. and Target, M. (1996). Playing With Reality: I. Theory Of Mind And…' documentRefHTML='<p class="citeas"><span class="authors">Fonagy, P. and Target, M.</span> (<sp…' kwicList=None kwic=None issue='' issueTitle=None newSectionName=None pgRg='217-233' pgStart='217' pgEnd='233' title='Int. J. Psychoanal.' vol='77' year='1996' term=None termCount=None abstract=None document=None updated=None accessLimited=False accessLimitedReason=None accessLimitedDescription=None accessLimitedCurrentContent=None score=None rank=None instanceCount=24 count1=24 count2=24 count3=24 count4=24 count5=0 countAll=None similarDocs=None similarMaxScore=None similarNumFound=None
-    DocumentListItem PEPCode='APA' sourceTitle=None documentID='APA.014.0243A' authormast=None documentRef='Kohut, H. (1966). Forms and Transformations of Narcissism. Journal of the Ame…' documentRefHTML='<p class="citeas"><span class="authors">Kohut, H.</span> (<span class="year">…' kwicList=None kwic=None issue='' issueTitle=None newSectionName=None pgRg='243-272' pgStart='243' pgEnd='272' title='J. Amer. Psychoanal. Assn.' vol='14' year='1966' term=None termCount=None abstract=None document=None updated=None accessLimited=False accessLimitedReason=None accessLimitedDescription=None accessLimitedCurrentContent=None score=None rank=None instanceCount=10 count1=0 count2=0 count3=10 count4=10 count5=0 countAll=None similarDocs=None similarMaxScore=None similarNumFound=None
-    DocumentListItem PEPCode='IJPSP' sourceTitle=None documentID='IJPSP.009.0324A' authormast=None documentRef='Strozier, C., Strug, D., Pinteris, K. and Kelley, K. (2014). On Dreams. Inter…' documentRefHTML='<p class="citeas"><span class="authors">Strozier, C., Strug, D., Pinteris, K.…' kwicList=None kwic=None issue='4' issueTitle=None newSectionName=None pgRg='324-338' pgStart='324' pgEnd='338' title='Int. J. Psychoanal. Self Psychol.' vol='9' year='2014' term=None termCount=None abstract=None document=None updated=None accessLimited=False accessLimitedReason=None accessLimitedDescription=None accessLimitedCurrentContent=None score=None rank=None instanceCount=8 count1=8 count2=8 count3=8 count4=8 count5=0 countAll=None similarDocs=None similarMaxScore=None similarNumFound=None
-    DocumentListItem PEPCode='PI' sourceTitle=None documentID='PI.037.0425A' authormast=None documentRef='Orange, D. M. (2017). From Fallibilism to Clinical Humility: Brothers and Cor…' documentRefHTML='<p class="citeas"><span class="authors">Orange, D. M.</span> (<span class="ye…' kwicList=None kwic=None issue='6' issueTitle=None newSectionName=None pgRg='425-428' pgStart='425' pgEnd='428' title='Psychoanal. Inq.' vol='37' year='2017' term=None termCount=None abstract=None document=None updated=None accessLimited=False accessLimitedReason=None accessLimitedDescription=None accessLimitedCurrentContent=None score=None rank=None instanceCount=7 count1=5 count2=5 count3=7 count4=7 count5=0 countAll=None similarDocs=None similarMaxScore=None similarNumFound=None
-    DocumentListItem PEPCode='APA' sourceTitle=None documentID='APA.011.0576A' authormast=None documentRef='Arlow, J. A. (1963). The Supervisory Situation. Journal of the American Psych…' documentRefHTML='<p class="citeas"><span class="authors">Arlow, J. A.</span> (<span class="yea…' kwicList=None kwic=None issue='' issueTitle=None newSectionName=None pgRg='576-594' pgStart='576' pgEnd='594' title='J. Amer. Psychoanal. Assn.' vol='11' year='1963' term=None termCount=None abstract=None document=None updated=None accessLimited=False accessLimitedReason=None accessLimitedDescription=None accessLimitedCurrentContent=None score=None rank=None instanceCount=6 count1=0 count2=0 count3=6 count4=6 count5=0 countAll=None similarDocs=None similarMaxScore=None similarNumFound=None
-
     >>> result.documentList.responseSet[0].documentID
-    'IJP.077.0217A'
+    'ijp.030.0069a'
 
     """
     if period.lower() not in ['5', '10', '20', 'all']:
@@ -571,9 +608,10 @@ def database_get_most_downloaded(period: str="all",
                                               art_pgrg=pgrg
                                             )
 
-        item = models.DocumentListItem( documentID = download.get("documentid", None),
+        item = models.DocumentListItem( documentID = download.get("document_id", None), # 11/24 database sync fix
                                         instanceCount = download.get("last12months", None),
-                                        title = download.get("srctitleseries", None),
+                                        title = download.get("hdgtitle", None), # 11/24 database sync fix
+                                        sourceTitle = download.get("srctitleseries", None), # 11/24 database sync fix
                                         PEPCode = download.get("jrnlcode", None), 
                                         authorMast = download.get("authorMast", None),
                                         year = download.get("pubyear", None),
@@ -622,9 +660,8 @@ def database_get_most_cited(period: models.TimePeriod='5',
     period must be either '5', 10, '20', or 'all'
     
     >>> result = database_get_most_cited()
-    databaseGetMostCited Number found: 114935
     >>> result.documentList.responseSet[0].documentID
-    'IJP.027.0099A'
+    'PAQ.073.0005A'
 
     """
     if str(period).lower() not in models.TimePeriod._value2member_map_:
@@ -714,8 +751,7 @@ def database_get_whats_new(days_back=7, limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS
     Return a what's been updated in the last week
     
     >>> result = database_get_whats_new()
-    databaseWhatsNew Number found: 0
-    databaseWhatsNew Expanded search to most recent...Number found: 73
+    
     """    
     
     try:
@@ -1003,18 +1039,14 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
     
     No attempt here to map to the correct structure, just checking what field/data items we have in sourceInfoDB.
     
-    >>> returnData = metadata_get_source_by_type(src_type="journal", limit=3)
-    MetadataGetSourceByType: Number found: 3
-
-    >>> returnData = metadata_get_source_by_type(src_type="book", limit=3)
-    MetadataGetSourceByType: Number found: 3
-
-    >>> returnData = metadata_get_source_by_type(src_type="journals", limit=5, offset=0)
-    MetadataGetSourceByType: Number found: 5
-    
-    >>> returnData = metadata_get_source_by_type(src_type="journals", limit=5, offset=6)
-    MetadataGetSourceByType: Number found: 5
-    
+    >>> metadata_get_source_by_type(src_type="journal", limit=3)
+    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=3 limit=3 offset=0 page=None…>
+    >>> metadata_get_source_by_type(src_type="book", limit=3)
+    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=3 limit=3 offset=0 page=None…>
+    >>> metadata_get_source_by_type(src_type="journals", limit=5, offset=0)
+    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=5 limit=5 offset=0 page=None…>
+    >>> metadata_get_source_by_type(src_type="journals", limit=5, offset=6)
+    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=5 limit=5 offset=6 page=None…>
     """
     ret_val = []
     source_info_dblist = []
@@ -1165,10 +1197,9 @@ def metadata_get_source_by_code(src_code=None, limit=opasConfig.DEFAULT_LIMIT_FO
     
     curl -X GET "http://stage.pep.gvpi.net/api/v1/Metadata/Journals/AJP/" -H "accept: application/json"
     
-    >>> ret = metadata_get_source_by_code(src_code="APA")
-    metadataGetSourceByCode: Number found: 1
+    >>> metadata_get_source_by_code(src_code="APA")
+    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=1 limit=10 offset=0 page=Non…>
     >>> metadata_get_source_by_code()
-    metadataGetSourceByCode: Number found: 191
     <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=191 limit=10 offset=0 page=N…>
     
     """
@@ -1259,21 +1290,9 @@ def authors_get_author_info(author_partial, limit=opasConfig.DEFAULT_LIMIT_FOR_S
 
     Docstring Tests:    
         >>> resp = authors_get_author_info("Tuck")
-        authorsGetAuthorInfo AuthorIndexItem authorID='tucker, landrum' publicationsURL='/v1/Authors/Publications/tucker, landrum/' publicationsCount=1
-        authorsGetAuthorInfo AuthorIndexItem authorID='tucker, nicholas' publicationsURL='/v1/Authors/Publications/tucker, nicholas/' publicationsCount=1
-        authorsGetAuthorInfo AuthorIndexItem authorID='tucker, robert c.' publicationsURL='/v1/Authors/Publications/tucker, robert c./' publicationsCount=1
-        authorsGetAuthorInfo AuthorIndexItem authorID='tucker, sara s.' publicationsURL='/v1/Authors/Publications/tucker, sara s./' publicationsCount=7
-        authorsGetAuthorInfo AuthorIndexItem authorID='tucker, susan' publicationsURL='/v1/Authors/Publications/tucker, susan/' publicationsCount=1
-        authorsGetAuthorInfo AuthorIndexItem authorID='tucker, william m.' publicationsURL='/v1/Authors/Publications/tucker, william m./' publicationsCount=1
-        authorsGetAuthorInfo AuthorIndexItem authorID='tuckett, david' publicationsURL='/v1/Authors/Publications/tuckett, david/' publicationsCount=63
         >>> resp.authorIndex.responseInfo.count
-        7
+        8
         >>> resp = authors_get_author_info("Levins.*", limit=5)
-        authorsGetAuthorInfo AuthorIndexItem authorID='levinsky-wohl, mina' publicationsURL='/v1/Authors/Publications/levinsky-wohl, mina/' publicationsCount=5
-        authorsGetAuthorInfo AuthorIndexItem authorID='levinson, alice' publicationsURL='/v1/Authors/Publications/levinson, alice/' publicationsCount=1
-        authorsGetAuthorInfo AuthorIndexItem authorID='levinson, dorthy m.' publicationsURL='/v1/Authors/Publications/levinson, dorthy m./' publicationsCount=4
-        authorsGetAuthorInfo AuthorIndexItem authorID='levinson, gordon' publicationsURL='/v1/Authors/Publications/levinson, gordon/' publicationsCount=6
-        authorsGetAuthorInfo AuthorIndexItem authorID='levinson, harry' publicationsURL='/v1/Authors/Publications/levinson, harry/' publicationsCount=2
         >>> resp.authorIndex.responseInfo.count
         5
     """
@@ -1354,18 +1373,12 @@ def authors_get_author_publications(author_partial, limit=opasConfig.DEFAULT_LIM
     """
     Returns a list of publications (per authors partial name), and the number of articles by that author.
     
-    >>> resp = authors_get_author_publications(author_partial="Tuck")
-    Author Publications: Number found: 0
-    Author Publications: Query didn't work - art_author_id:/Tuck/
-    Author Publications: trying again - art_author_id:/Tuck[ ]?.*/
-    Author Publications: Number found: 72
-    >>> resp = authors_get_author_publications(author_partial="Fonag")
-    Author Publications: Number found: 0
-    Author Publications: Query didn't work - art_author_id:/Fonag/
-    Author Publications: trying again - art_author_id:/Fonag[ ]?.*/
-    Author Publications: Number found: 136
-    >>> resp = authors_get_author_publications(author_partial="Levinson, Nadine A.")
-    Author Publications: Number found: 8
+    >>> authors_get_author_publications(author_partial="Tuck")
+    <AuthorPubList authorPubList=<AuthorPubListStruct responseInfo=<ResponseInfo count=10 limit=10 offset=0 page…>
+    >>> authors_get_author_publications(author_partial="Fonag")
+    <AuthorPubList authorPubList=<AuthorPubListStruct responseInfo=<ResponseInfo count=10 limit=10 offset=0 page…>
+    >>> authors_get_author_publications(author_partial="Levinson, Nadine A.")
+    <AuthorPubList authorPubList=<AuthorPubListStruct responseInfo=<ResponseInfo count=8 limit=10 offset=0 page=…>
     """
     ret_val = {}
     query = "art_author_id:/{}/".format(author_partial)
@@ -1481,12 +1494,12 @@ def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=No
     The endpoint reminds me that we should be using documentID instead of "art" for article perhaps.
       Not thrilled about the prospect of changing it, but probably the right thing to do.
       
-    >>> abstracts = documents_get_abstracts("IJP.075")
-    10 document matches for getAbstracts
-    >>> abstracts = documents_get_abstracts("AIM.038.0279A")  # no abstract on this one
-    1 document matches for getAbstracts
-    >>> abstracts = documents_get_abstracts("AIM.040.0311A")
-    1 document matches for getAbstracts
+    >>> documents_get_abstracts("IJP.075")
+    <Documents documents=<DocumentListStruct responseInfo=<ResponseInfo count=10 limit=10 offset=0 page=…>
+    >>> documents_get_abstracts("AIM.038.0279A")  # no abstract on this one
+    <Documents documents=<DocumentListStruct responseInfo=<ResponseInfo count=1 limit=10 offset=0 page=N…>
+    >>> documents_get_abstracts("AIM.040.0311A")
+    <Documents documents=<DocumentListStruct responseInfo=<ResponseInfo count=1 limit=10 offset=0 page=N…>
       
     """
     ret_val = None
@@ -1613,6 +1626,7 @@ def documents_get_document(document_id,
                            solr_query_params=None,
                            ret_format="XML",
                            authenticated=True,
+                           file_classification=None, 
                            page_offset=None,
                            page_limit=None,
                            page=None
@@ -1631,7 +1645,7 @@ def documents_get_document(document_id,
     """
     ret_val = {}
     
-    if not authenticated:
+    if not authenticated and file_classification != opasConfig.DOCUMENT_ACCESS_FREE:
         #if user is not authenticated, effectively do endpoint for getDocumentAbstracts
         logger.info("documentsGetDocument: User not authenticated...fetching abstracts instead")
         ret_val = document_list_struct = documents_get_abstracts(document_id, authenticated=authenticated, ret_format=ret_format, limit=1)
@@ -1651,6 +1665,7 @@ def documents_get_document(document_id,
                                         full_text_requested=True,
                                         format_requested = ret_format,
                                         authenticated=authenticated,
+                                        file_classification=file_classification, 
                                         query_debug = False,
                                         dis_max = solr_query_params.solrMax,
                                         limit=1, # document call returns only one document.  limit and offset used for something else
@@ -2068,7 +2083,260 @@ def year_arg_parser(year_arg):
             ret_val = search_clause
 
     return ret_val
-                        
+                   
+#---------------------------------------------------------------------------------------------------------
+# this function lets various endpoints like search, searchanalysis, and document, share this large parameter set.
+def parse_search_query_parameters(search=None,
+                                  journal_name=None,
+                                  journal=None,
+                                  fulltext1=None,
+                                  fulltext2=None,
+                                  vol=None,
+                                  issue=None,
+                                  author=None,
+                                  title=None,
+                                  datetype=None,
+                                  startyear=None,
+                                  endyear=None,
+                                  dreams=None,
+                                  quotes=None,
+                                  abstracts=None,
+                                  dialogs=None,
+                                  references=None,
+                                  citecount=None, 
+                                  viewcount=None, 
+                                  viewed_within=None, 
+                                  solrQ=None, 
+                                  disMax=None, 
+                                  edisMax=None, 
+                                  quick_search=None, 
+                                  sort=None, 
+                                  ):
+    """
+    >>> search = parse_search_query_parameters(journal="IJP", vol=57, author="Tuckett")
+    >>> search.analyzeThis
+    'art_authors_ngrm:Tuckett '
+    
+    <QueryParameters analyzeThis='art_authors_ngrm:Tuckett ' searchQ='*:* ' filterQ='art_pepsrccode:IJP && art_vol:57  && art_authors_ngrm:Tuckett ' searchAnalysisTermList=['art_pepsrccode:IJP ', 'art_authors_ngrm:Tuckett '] solrMax=None solrSortBy=None urlRequest=''>    
+    """
+
+    # initialize accumulated variables
+    search_q = "*:* "
+    filter_q = "*:* "
+    analyze_this = ""
+    solr_max = None
+    search_analysis_term_list = []
+    # used to remove prefix && added to queries.  
+    # Could make it global to save a couple of CPU cycles, but I suspect it doesn't matter
+    # and the function is cleaner this way.
+    pat_prefix_amps = re.compile("^\s*&& ")
+    
+    if sort is not None:  # not sure why this seems to have a slash, but remove it
+        sort = re.sub("\/", "", sort)
+
+    if title is not None:
+        analyze_this = "&& art_title_xml:{} ".format(title)
+        filter_q += analyze_this
+        search_analysis_term_list.append(analyze_this)  
+
+    if journal_name is not None:
+        analyze_this = "&& art_pepsourcetitle_fulltext:{} ".format(journal_name)
+        filter_q += analyze_this
+        search_analysis_term_list.append(analyze_this)  
+
+    if journal is not None:
+        code_for_query = ""
+        analyze_this = ""
+        # journal_code_list_pattern = "((?P<namelist>[A-z0-9]*[ ]*\+or\+[ ]*)+|(?P<namelist>[A-z0-9]))"
+        journal_wildcard_pattern = r".*\*[ ]*"  # see if it ends in a * (wildcard)
+        if re.match(journal_wildcard_pattern, journal):
+            # it's a wildcard pattern
+            code_for_query = journal
+            analyze_this = "&& art_pepsourcetitlefull:{} ".format(code_for_query)
+            filter_q += analyze_this
+        else:
+            journal_code_list = journal.split(" or ")
+            if len(journal_code_list) > 1:
+                # it was a list.
+                code_for_query = " OR ".join(journal_code_list)
+                analyze_this = "&& (art_pepsrccode:{}) ".format(code_for_query)
+                filter_q += analyze_this
+            else:
+                sourceInfo = sourceDB.lookupSourceCode(journal.upper())
+                if sourceInfo is not None:
+                    # it's a single source code
+                    code_for_query = journal.upper()
+                    analyze_this = "&& art_pepsrccode:{} ".format(code_for_query)
+                    filter_q += analyze_this
+                else: # not a pattern, or a code, or a list of codes.
+                    # must be a name
+                    code_for_query = journal
+                    analyze_this = "&& art_pepsourcetitlefull:{} ".format(code_for_query)
+                    filter_q += analyze_this
+
+        search_analysis_term_list.append(analyze_this)
+        # or it could be an abbreviation #TODO
+        # or it counld be a complete name #TODO
+
+    if vol is not None:
+        analyze_this = f"&& art_vol:{vol} "
+        filter_q += analyze_this
+        #searchAnalysisTermList.append(analyzeThis)  # Not collecting this!
+
+    if issue is not None:
+        analyze_this = f"&& art_iss:{issue} "
+        filter_q += analyze_this
+        #searchAnalysisTermList.append(analyzeThis)  # Not collecting this!
+
+    if author is not None:
+        author = termlist_to_doubleamp_query(author, field="art_authors_text")
+        # add a && to the start to add to existng filter_q 
+        analyze_this = f" && {author} "
+        filter_q += analyze_this
+        search_analysis_term_list.append(analyze_this)  
+
+    if datetype is not None:
+        #TODO for now, lets see if we need this. (We might)
+        pass
+
+    if startyear is not None and endyear is None:
+        # put this in the filter query
+        # parse startYear
+        parsed_year_search = year_arg_parser(startyear)
+        if parsed_year_search is not None:
+            filter_q += parsed_year_search
+            search_analysis_term_list.append(parsed_year_search)  
+        else:
+            logger.info("Search - StartYear bad argument {}".format(startyear))
+
+    if startyear is not None and endyear is not None:
+        # put this in the filter query
+        # should check to see if they are each dates
+        if re.match("[12][0-9]{3,3}", startyear) is None or re.match("[12][0-9]{3,3}", endyear) is None:
+            logger.info("Search - StartYear {} /Endyear {} bad arguments".format(startyear, endyear))
+        else:
+            analyze_this = "&& art_year_int:[{} TO {}] ".format(startyear, endyear)
+            filter_q += analyze_this
+            search_analysis_term_list.append(analyze_this)
+
+    if startyear is None and endyear is not None:
+        if re.match("[12][0-9]{3,3}", endyear) is None:
+            logger.info("Search - Endyear {} bad argument".format(endyear))
+        else:
+            analyze_this = "&& art_year_int:[{} TO {}] ".format("*", endyear)
+            filter_q += analyze_this
+            search_analysis_term_list.append(analyze_this)
+
+    if citecount is not None:
+        # This is the only query handled by GVPi and the current API.  But
+        # the Solr database is set up so this could be easily extended to
+        # the 10, 20, and "all" periods.  Here we add syntax to the 
+        # citecount field, to allow the user to say:
+        #  25 in 10 
+        # which means 25 citations in 10 years
+        # or 
+        #  400 in ALL
+        # which means 400 in all years. 
+        # 'in' is required along with a space in front of it and after it
+        # when specifying the period.
+        # the default period is 5 years.
+        # citecount = citecount.strip()
+        val = None
+        match_ptn = "\s*(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?\s*"
+        m = re.match(match_ptn, citecount, re.IGNORECASE)
+        if m is not None:
+            val = m.group("nbr")
+            val_end = m.group("endnbr")
+            if val_end == None:
+                val_end = "*"
+            period = m.group("period")
+
+        if val is None:
+            val = 1
+        if period is None:
+            period = '5'
+
+        analyze_this = "&& art_cited_{}:[{} TO {}] ".format(period.lower(), val, val_end)
+        filter_q += analyze_this
+        search_analysis_term_list.append(analyze_this)
+
+    if fulltext1 is not None:
+        analyze_this = "&& text:{} ".format(fulltext1)
+        search_q += analyze_this
+        search_analysis_term_list.append(analyze_this)
+
+    if fulltext2 is not None:
+        analyze_this = "&& text:{} ".format(fulltext2)
+        search_q += analyze_this
+        search_analysis_term_list.append(analyze_this)
+
+    if dreams is not None:
+        analyze_this = "&& dreams_xml:{} ".format(dreams)
+        search_q += analyze_this
+        search_analysis_term_list.append(analyze_this)
+
+    if quotes is not None:
+        analyze_this = "&& quotes_xml:{} ".format(quotes)
+        search_q += analyze_this
+        search_analysis_term_list.append(analyze_this)
+
+    if abstracts is not None:
+        analyze_this = "&& abstracts_xml:{} ".format(abstracts)
+        search_q += analyze_this
+        search_analysis_term_list.append(analyze_this)
+
+    if dialogs is not None:
+        analyze_this = "&& dialogs_xml:{} ".format(dialogs)
+        search_q += analyze_this
+        search_analysis_term_list.append(analyze_this)
+
+    if references is not None:
+        analyze_this = "&& references_xml:{} ".format(references)
+        search_q += analyze_this
+        search_analysis_term_list.append(analyze_this)
+
+    if solrQ is not None:
+        search_q = solrQ # (overrides fields) # search = solrQ
+        search_analysis_term_list = [solrQ]
+
+    if disMax is not None:
+        search_q = disMax # (overrides fields) # search = solrQ
+        solr_max = "disMax"
+
+    if edisMax is not None:
+        search_q = edisMax # (overrides fields) # search = solrQ
+        solr_max = "edisMax"
+
+    if quick_search is not None: #TODO - might want to change this to match PEP-Web best
+        search_q = quick_search # (overrides fields) # search = solrQ
+        solr_max = "edisMax"
+        
+    # now clean up the final components.
+    if search_q is not None:
+        # no need to start with '*:* && '.  Remove it.
+        search_q = search_q.replace("*:* && ", "")
+
+    if filter_q is not None:
+        # no need to start with '*:* && '.  Remove it.
+        filter_q = filter_q.replace("*:* && ", "")
+
+    if analyze_this is not None:
+        # no need to start with '&& '.  Remove it.
+        analyze_this = pat_prefix_amps.sub("", analyze_this)
+    
+    if search_analysis_term_list is not []:
+        search_analysis_term_list = [pat_prefix_amps.sub("", x) for x in search_analysis_term_list]
+
+    ret_val = models.QueryParameters(analyzeThis = analyze_this,
+                                     searchQ = search_q,
+                                     filterQ = filter_q,
+                                     solrMax = solr_max,
+                                     searchAnalysisTermList = search_analysis_term_list,
+                                     solrSortBy = sort
+    )
+
+    return ret_val
+                       
 #-----------------------------------------------------------------------------
 def search_analysis(query_list, 
                     filter_query = None,
@@ -2148,7 +2416,8 @@ def search_text(query,
                filter_query = None,
                query_debug = False,
                more_like_these = False,
-               full_text_requested = False, 
+               full_text_requested = False,
+               file_classification=None, 
                format_requested = "HTML",
                dis_max = None,
                # bring text_xml back in summary fields in case it's missing in highlights! I documented a case where this happens!
@@ -2173,10 +2442,8 @@ def search_text(query,
        ret_val = a DocumentList model object
        ret_status = a status tuple, consisting of a HTTP status code and a status mesage. Default (HTTP_200_OK, "OK")
 
-    >>> ret_val, ret_status = search_text(query="art_title_xml:'ego identity'", limit=10, offset=0, full_text_requested=False)
-    Search Performed: art_title_xml:'ego identity'
-    Result  Set Size: 12809
-    Return set limit: 10
+    >>> search_text(query="art_title_xml:'ego identity'", limit=10, offset=0, full_text_requested=False)
+    (<DocumentList documentList=<DocumentListStruct responseInfo=<ResponseInfo count=10 limit=10 offset=0 page=…>, (200, 'OK'))
     
         Original Parameters in API
         Original API return model example, needs to be supported:
@@ -2272,52 +2539,17 @@ def search_text(query,
         logger.debug("Result  Set Size: %s", results._numFound)
         logger.debug("Return set limit: %s", limit)
         scopeofquery = [query, filter_query]
-        
-        #if results._numFound == 0:
-            #try:
-                ## try removing the filter query
-                #results = solr_docs.query(query,  
-                                         #debugQuery = query_debug,
-                                         #disMax = dis_max,
-                                         #fields = summary_fields,
-                                         #hl='true', 
-                                         #hl_fragsize = fragSize, 
-                                         #hl_multiterm='true',
-                                         #hl_fl = highlight_fields,
-                                         #hl_usePhraseHighlighter = 'true',
-                                         #hl_snippets = maxKWICReturns,
-                                         ##hl_method="unified",  # these don't work
-                                         ##hl_encoder="HTML",
-                                         #mlt = mlt,
-                                         #mlt_fl = mlt_fl,
-                                         #mlt_count = 2,
-                                         #mlt_minwl = mlt_minwl,
-                                         #rows = limit,
-                                         #start = offset,
-                                         #sort=sort_by,
-                                         #hl_simple_pre = opasConfig.HITMARKERSTART,
-                                         #hl_simple_post = opasConfig.HITMARKEREND)
-            #except solr.SolrException as e:
-                #logger.error(f"Solr Runtime Search Error: {e}")
-                ## e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-                #ret_status = (400, e) 
-            #else:
-                #logger.debug("Re-formed Search: %s", query)
-                #logger.debug("New Result Set Size: %s", results._numFound)
-                #logger.debug("Return set limit: %s", limit)
-                #scopeofquery = [query, f"filter query was removed due to 0 hits: {filter_query}"]
 
         if ret_status[0] == 200: 
-      
             documentItemList = []
             rowCount = 0
             rowOffset = 0
-            # if we're not authenticated, then turn off the full-text request and behave as if we didn't try
-            if not authenticated:
-                if full_text_requested:
-                    logger.warning("Fulltext requested--by API--but not authenticated.")
-        
-                full_text_requested = False
+            if full_text_requested:
+                # if we're not authenticated, then turn off the full-text request and behave as if we didn't try
+                if not authenticated and full_text_requested and file_classification != opasConfig.DOCUMENT_ACCESS_FREE:
+                    # can't bring back full-text
+                    logger.warning("Fulltext requested--by API--but not authenticated and not open access document.")
+                    full_text_requested = False
                 
             for result in results.results:
                 # reset anchor counts for full-text markup re.sub
@@ -2405,19 +2637,20 @@ def search_text(query,
                         #text_xml = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, text_xml)
                         #text_xml = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, text_xml)
         
-                if full_text_requested and not authenticated: # don't do this when textXml is a fragment from kwiclist!
-                    try:
-                        abstracts_xml = results.highlighting[documentID].get("abstracts_xml", None)
-                        abstracts_xml  = force_string_return_from_various_return_types(abstracts_xml )
+                #  shouldn't need this anymore...per above where we turned off full_text_requested when not authenticated.  But leave for now.
+                #if full_text_requested and not authenticated: # don't do this when textXml is a fragment from kwiclist!
+                    #try:
+                        #abstracts_xml = results.highlighting[documentID].get("abstracts_xml", None)
+                        #abstracts_xml  = force_string_return_from_various_return_types(abstracts_xml )
      
-                        summaries_xml = results.highlighting[documentID].get("abstracts_xml", None)
-                        summaries_xml  = force_string_return_from_various_return_types(summaries_xml)
+                        #summaries_xml = results.highlighting[documentID].get("abstracts_xml", None)
+                        #summaries_xml  = force_string_return_from_various_return_types(summaries_xml)
      
-                        text_xml = get_excerpt_from_abs_sum_or_doc(xml_abstract=abstracts_xml,
-                                                                   xml_summary=summaries_xml,
-                                                                   xml_document=text_xml)
-                    except:
-                        text_xml = None
+                        #text_xml = get_excerpt_from_abs_sum_or_doc(xml_abstract=abstracts_xml,
+                                                                   #xml_summary=summaries_xml,
+                                                                   #xml_document=text_xml)
+                    #except:
+                        #text_xml = None
         
                 citeAs = result.get("art_citeas_xml", None)
                 citeAs = force_string_return_from_various_return_types(citeAs)
@@ -2509,7 +2742,7 @@ def termlist_to_doubleamp_query(termlist_str, field=None):
     >>> termlist_to_doubleamp_query(a)
     'tuckett && dav'
     >>> termlist_to_doubleamp_query(a, field="art_authors_ngrm")
-    'art_authors_ngrm(tuckett) && art_authors_ngrm(dav)'
+    'art_authors_ngrm:tuckett && art_authors_ngrm:dav'
 
     """
     # in case it's in quotes in the string
@@ -2557,7 +2790,7 @@ if __name__ == "__main__":
     # sys.exit(0)
     logger = logging.getLogger(__name__)
     # extra logging for standalong mode 
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.WARN)
     # create console handler and set level to debug
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
@@ -2567,6 +2800,8 @@ if __name__ == "__main__":
     ch.setFormatter(formatter)
     # add ch to logger
     logger.addHandler(ch)
+    
+    document_get_info("PEPGRANTVS.001.0003A", fields="file_classification")
     
     import doctest
     doctest.testmod()    

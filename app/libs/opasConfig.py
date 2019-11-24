@@ -27,6 +27,11 @@ OPASSESSIONID = "opasSessionID"
 OPASACCESSTOKEN = "opasSessionInfo"
 OPASEXPIRES= "OpasExpiresTime"
 
+# file classifications (from documents in the Solr database)
+DOCUMENT_ACCESS_FREE = "pepfree"
+DOCUMENT_ACCESS_EMBARGOED = "pepcurrent"
+DOCUMENT_ACCESS_ARCHIVE = "peparchive"
+
 # configure for location where to find the PDF originals
 PDFORIGDIR = r"X:\PEP Dropbox\PEPWeb\Inventory\PEPDownloads\PDF"
 
@@ -62,3 +67,4 @@ DESCRIPTION_PAGEOFFSET = "The relative page number (1 is the first) to return"
 
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()
+

@@ -119,3 +119,36 @@ class MostCitedArticlesWithDetails(MostCitedArticles):
     vol: str = None
     pgrg: str = None
     
+class Products(BaseModel):
+    product_id: int = None
+    subsystem_id: int = None
+    product: str = None
+    product_level: int = None
+    product_type: str = None
+    basecode: str = None
+    product_comment: str = None
+    free_access: bool = False
+    active: bool = False
+    range_limited: bool = False
+    embargo_length: int = None
+    embargo_inverted: int = None
+    range_start_date: datetime = None
+    range_end_date: datetime = None
+    parent_product_id: int = None
+    inherit_parent_metadata: bool = False
+    id_type: int = None
+    counter_service: str = None
+    counter_database: str = None
+    counter_book: str = None
+    counter_journal_collection: str = None
+    id_code_1: str = None
+    id_code_2: str = None
+    group_sort_order: int = None
+    hide_in_product_access: bool = False
+    hide_in_report_list: bool = False
+    added_by_user_id: int = None
+    date_added: datetime = None
+    modified_by_user_id: int = None
+    last_update: datetime = None
+    
+    
