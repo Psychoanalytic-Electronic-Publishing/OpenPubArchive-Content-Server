@@ -648,9 +648,9 @@ def xml_file_to_xmlstr(xml_file, remove_encoding=False, resolve_entities=True):
     
     return ret_val
 
-def xml_str_to_html(xml_text, xslt_file=r"./libs/styles/pepkbd3-html.xslt"):
+def xml_str_to_html(xml_text, xslt_file=opasConfig.XSLT_XMLTOHTML):
     """
-    Convert XML to HTML per XSLT file parameter
+    Convert XML to HTML per XSLT file parameter configured in opasConfig.
     
     >>> len(xml_str_to_html(xml_text=test_xml3))
     314
@@ -658,8 +658,8 @@ def xml_str_to_html(xml_text, xslt_file=r"./libs/styles/pepkbd3-html.xslt"):
     ret_val = None
     try:
         if not os.path.exists(xslt_file):
-            # see if we're too low (e.g., we're already in libs)
-            alt = "../styles/pepkbd3-html.xslt"
+            # see if we're too low in the tree (e.g., we're already in libs)
+            alt = opasConfig.XSLT_XMLTOHTML_ALT  # e.g., r"../styles/pepkbd3-html.xslt"
             if os.path.exists(alt):
                 xslt_file = alt
             else:
@@ -697,7 +697,7 @@ def xml_str_to_html(xml_text, xslt_file=r"./libs/styles/pepkbd3-html.xslt"):
                     ret_val = str(transformed_data)
     return ret_val
 
-def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=None, stylesheet="./libs/styles/pep-html-preview.css"):
+def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=None, stylesheet=opasConfig.CSS_STYLESHEET): #  e.g., "./libs/styles/pep-html-preview.css"
     """
     uses ebooklib
     

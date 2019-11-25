@@ -175,6 +175,10 @@ origins = [
     "http://pep-web",
     "http://pep-web.rocks",
     "http://.pep-web.rocks",
+    "http://pep-web.org",
+    "http://.pep-web.org",
+    "http://pep-web.info",
+    "http://.pep-web.info",   
 ]
 
 app.add_middleware(
@@ -297,63 +301,6 @@ async def create_new_user(response: Response,
         )        
     return ret_val
 
-##-----------------------------------------------------------------------------
-#@app.post("/v2/Admin/SessionCleanup/", response_model=models.ServerStatusItem, tags=["Admin"])
-#async def cleanup_expired_sessions(response: Response, 
-                           #request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
-                           #):
-    #"""
-    ### Function
-       #<b>Clean up old, open sessions (may only be needed during development)</b>
-
-    ### Return Type
-       #ServerStatusItem
-
-    ### Status
-       #Status: In Development
-
-    ### Sample Call
-         #/v2/Admin/SessionCleanup/
-    
-    ### Notes
-         #NA
-    
-    ### Potential Errors
-       #NA
-       
-    #"""
-    #ocd, session_info = opasAPISupportLib.get_session_info(request, response)
-    ## ensure user is admin
-    #if ocd.verify_admin(session_info):
-        #count = ocd.close_expired_sessions()
-        #ocd.close_inactive_sessions(inactive_time=opasConfig.SESSION_INACTIVE_LIMIT)
-        #solr_ok = opasAPISupportLib.check_solr_docs_connection()
-        #db_ok = ocd.open_connection()
-        #ocd.close_connection()
-    
-        #try:
-            #server_status_item = None
-        #except ValidationError as e:
-            #logger.warning("ValidationError", e.json())
-        #else:
-            #server_status_item = models.ServerStatusItem(text_server_ok = solr_ok, 
-                                                         #db_server_ok = db_ok,
-                                                         #user_ip = request.client.host,
-                                                         #solr_url = localsecrets.SOLRURL,
-                                                         #config_name = localsecrets.CONFIG,
-                                                         #timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
-                                                         #)
-        
-    #else:
-        #raise HTTPException(
-            #status_code=HTTP_401_UNAUTHORIZED, 
-            #detail="Not authorized"
-        #)        
-
-
-
-    #return server_status_item
-
 #-----------------------------------------------------------------------------
 @app.post("/v2/Admin/SendAlerts/", response_model=models.ServerStatusItem, tags=["Admin"])
 async def send_out_alerts_now(response: Response, 
@@ -457,8 +404,6 @@ async def get_the_server_status(response: Response,
     except ValidationError as e:
         logger.warning("ValidationError", e.json())
 
-    #response.set_cookie(key="testtoken", value="testtokenvalue", expires="300")
-
     return server_status_item
 
 #-----------------------------------------------------------------------------
@@ -491,7 +436,7 @@ async def who_am_i(response: Response,
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
-@app.get("/v2/Database/Alerts/", response_model=models.SessionInfo, tags=["Database", "v2.0"])
+@app.get("/v2/Database/Alerts/", response_model=models.AlertList, tags=["Database", "v2.0"])
 def get_database_alerts(response: Response,
                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                         ):
@@ -516,11 +461,30 @@ def get_database_alerts(response: Response,
     """
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
-    return(session_info)
+
+    try:
+        ret_val = models.AlertList(report=[4, 5, [1, 2, 3]])
+        response_info = models.ResponseInfoLoginStatus(username = session_info.username,
+                                                       request = request.url._url,
+                                                       timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
+                                                       )
+    
+        alert_struct = models.AlertListStruct(responseInfo = response_info, 
+                                              responseSet = None #TODO: add info
+                                            )
+    
+        ret_val = models.AlertList(alertList = alert_struct)
+
+    except ValidationError as e:
+        logger.error(e.json())             
+    
+    return(ret_val )
 
 #-----------------------------------------------------------------------------
 @app.post("/v2/Database/Alerts/", response_model=models.SessionInfo, tags=["Database", "v2.0"])
 def subscribe_to_database_alerts(*,
+                                 response: Response,
+                                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                                  email: str = Form(default=None, description="The email address where to send alerts"),
                                  product: str = Form(default=None, description="Alert on a specific product"),
                                  journals: bool = Form(default=None, description="Alerts on all Journal updates"),
@@ -535,9 +499,10 @@ def subscribe_to_database_alerts(*,
        models.SessionInfo
 
     ## Status
+       in development planning - currently unimplemented
 
     ## Sample Call
-         /v2/Subscription/Alerts/
+         /v2/Database/Alerts/
     
     ## Notes
        NA
@@ -552,15 +517,15 @@ def subscribe_to_database_alerts(*,
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
-@app.get("/v2/Database/Reports/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database", "v2.0"])
+@app.get("/v2/Database/Reports/", response_model=models.Report, response_model_skip_defaults=True, tags=["Database", "v2.0"])
 def get_reports(response: Response,
                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
-                report: models.ReportTypeEnum=Query(default="None", title="Report Type", description="Report Type"),
+                #report: models.ReportTypeEnum=Query(default="None", title="Report Type", description="Report Type"),
                 journal: str=Query(None, title="Filter by Journal or Source Code", description="PEP Journal Code (e.g., APA, CPS, IJP, PAQ),", min_length=2), 
-                author: str=Query(None, title="Filter by Author name", description="Author name, use wildcard * for partial entries (e.g., Johan*)"), 
-                title: str=Query(None, title="Filter by Document Title", description="The title of the document (article, book, video)"),
+                #author: str=Query(None, title="Filter by Author name", description="Author name, use wildcard * for partial entries (e.g., Johan*)"), 
+                #title: str=Query(None, title="Filter by Document Title", description="The title of the document (article, book, video)"),
                 period: models.TimePeriod=Query(None, title="Time period (range)", description="Range of data to return"), 
-                endyear: str=Query(None, title="Last year to match", description="Last year of documents to match (e.g, 2001)"), 
+                #endyear: str=Query(None, title="Last year to match", description="Last year of documents to match (e.g, 2001)"), 
                 limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                 offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
                 ):
@@ -572,6 +537,7 @@ def get_reports(response: Response,
        models.SessionInfo
 
     ## Status
+       in development planning - currently unimplemented
 
     ## Sample Call
          /v2/Database/Reports/
@@ -583,13 +549,21 @@ def get_reports(response: Response,
        NA
 
     """
+    ret_val = None
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
-    return(session_info)
+    
+    try:
+        ret_val = models.Report(report=[4, 5, [1, 2, 3]])
+
+    except ValidationError as e:
+        logger.error(e.json())             
+    
+    return(ret_val )
 
 
 #-----------------------------------------------------------------------------
-@app.post("/v2/Documents/Submission/", tags=["Documents", "v2.0"])   
+@app.get("/v2/Documents/Submission/", tags=["Documents", "v2.0"])   
 async def document_submission(*,
                              journalcode: str = Form(default=None, description="The 3-8 digit PEP Code for this journal"),
                              title: str = Form(..., description="The title of the article"),
@@ -616,7 +590,7 @@ async def document_submission(*,
        In Development
 
     ## Sample Call
-         /v2/Authorized/ArticleSubmission/
+         /v2/Documents/Submission/
     
     ## Notes
     
@@ -624,7 +598,7 @@ async def document_submission(*,
         
     """
     sample = await file.read()
-    async with aiofiles.open(fr"z:\back\{file.filename}", "wb") as f:
+    async with aiofiles.open(fr"{UPLOAD_DIR}{file.filename}", "wb") as f:
         await f.write(sample)
         
     #with open(fr"z:\back\{fileb.filename}", "wb") as f:
@@ -2142,7 +2116,7 @@ def view_a_document(response: Response,
         ret_val = view_a_glossary_entry(response, request, term_id=term_id, search=search, return_format=return_format)
     else:
         doc_info = opasAPISupportLib.document_get_info(documentID, fields="art_id, art_pepsourcetype, art_year, file_classification, art_pepsrccode")
-        file_classification = doc_info["file_classification"] 
+        file_classification = doc_info.get("file_classification", opasConfig.DOCUMENT_ACCESS_UNDEFINED)
         try:
             # is the user authenticated? if so, loggedIn is true
             if session_info.authenticated or file_classification == opasConfig.DOCUMENT_ACCESS_FREE:

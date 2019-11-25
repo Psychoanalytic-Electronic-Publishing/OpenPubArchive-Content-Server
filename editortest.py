@@ -1,19 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+File for testing functions (and Wing editor issues) -- not a permanent part of the project.
+
+"""
 import re
 
 MATCH_STR =  "#!#"
 MATCH_STR_START = "##!" 
 MATCH_STR_END = "!##" 
 count_anchors = 0
-
-def numbered_anchor(matchobj):
-    global count_anchors
-    if matchobj.group(0) == MATCH_STR:
-        count_anchors += 1 
-        return f"<a name='hit{count_anchors}'>{matchobj.group(0)}"
-    else:
-        return matchobj.group(0)
 
 def numbered_anchors(matchobj):
     """

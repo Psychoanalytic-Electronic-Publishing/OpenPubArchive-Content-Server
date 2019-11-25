@@ -3,7 +3,9 @@
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
 <!--     BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML   -->
 <!--  DATE:      August 6, 2019                                    -->
-<!--                                                               -->
+<!--  Revisions:                                                   
+        2019-11-25: fix lang attribute insertion  
+-->
 <!-- ============================================================= -->
 <!--
     The design of the conversion from PEP KBD3 to HTML is to use class for 
@@ -122,12 +124,16 @@
   </xsl:variable>
   <xsl:variable name="artstartpg">
     <xsl:value-of select="substring-before(($artpgrg), '-')"/>
-  </xsl:variable> 
+  </xsl:variable>
+
   
   <xsl:template match="pepkbd3">
-    <div class="pepkbd3" lang="{@lang}">
-      <xsl:call-template name="make-article"/>
-    </div>
+    <body>
+      <div class="pepkbd3">
+        <xsl:call-template name="assign-lang"/>
+        <xsl:call-template name="make-article"/>
+      </div>
+    </body>
   </xsl:template>
 
   <!-- ============================================================= -->
@@ -163,35 +169,37 @@
 
     <!-- abs -->
     <xsl:for-each select="abs">
-      <div id="{$this-article}-abs" class="abs abstract nrs">
+      <div id="{$this-article}-abs" class="abs abstract">
         <xsl:apply-templates/>
       </div>
     </xsl:for-each>
     
     <!-- body -->
     <xsl:for-each select="body">
-      <div id="{$this-article}-body" class="body nrs">
+      <div id="{$this-article}-body" class="body">
+        <xsl:call-template name="assign-lang"/>
         <xsl:apply-templates/>
       </div>
     </xsl:for-each>
 
     <!-- summaries -->
     <xsl:for-each select="summaries">
-      <div id="{$this-article}-summaries" class="summaries nrs">
+      <div id="{$this-article}-summaries" class="summaries">
+        <xsl:call-template name="assign-lang"/>
         <xsl:apply-templates/>
       </div>
     </xsl:for-each>
     
     <!-- body -->
     <xsl:for-each select="bib">
-      <div id="{$this-article}-bib" class="biblio nrs">
+      <div id="{$this-article}-bib" class="biblio">
         <xsl:apply-templates/>
       </div>
     </xsl:for-each>
 
     <!-- grp (***)  -->
     <xsl:for-each select="body/grp">
-      <div id="grp-{$this-article}-{@id}" class="grp sec nrs" data-name="{@name}">
+      <div id="grp-{$this-article}-{@id}" class="grp sec" data-name="{@name}">
         <xsl:apply-templates/>
       </div>
     </xsl:for-each>
@@ -207,7 +215,7 @@
         <!-- Cell 1: journal information -->
         <!-- Cell 2: Article information -->
         <xsl:for-each select="artinfo">
-            <h4 class="generated nrs">
+            <h4 class="generated">
               <xsl:text>Article Information</xsl:text>
             </h4>
         </xsl:for-each>
@@ -291,7 +299,7 @@
   </xsl:template>
   
   <xsl:template match="artbkinfo" mode="metadata">
-    <div class="metadata-entry artbookinfo nrs">
+    <div class="metadata-entry artbookinfo">
       <xsl:if test="@extract">
         <xsl:attribute name="data-extract">
           <xsl:value-of select="@extract"/>
@@ -476,7 +484,7 @@
 
   <xsl:template match="ftnx">
     <sup>
-      <span class="ftnx nrs" data-type="{@type}" data-r="{@r}">
+      <span class="ftnx" data-type="{@type}" data-r="{@r}">
         <xsl:value-of select="."/>
       </span>
     </sup>
@@ -485,7 +493,7 @@
   <xsl:template match="ftr">
     <xsl:text>&#13;</xsl:text>
     <p class="ftn_top">—————————————</p>
-    <div class="footer nrs">
+    <div class="footer">
       <xsl:apply-templates/>
     </div>
   </xsl:template>  
@@ -694,13 +702,15 @@
 
   <!-- abs -->
   <xsl:template match="abs">
-    <div id="abs" class="abs nrs">
+    <xsl:call-template name="assign-lang"/>
+    <div id="abs" class="abs">
       <xsl:apply-templates/>
     </div>
   </xsl:template>
 
   <xsl:template match="h1|h2|h3|h4|h5|h6">
     <xsl:copy>
+      <xsl:call-template name="assign-lang"/>
       <xsl:attribute name="text-align">
         <xsl:value-of select="@align"/>  
       </xsl:attribute>
@@ -712,7 +722,7 @@
 <!--  <xsl:template match="h2">
     <h2>
       <xsl:call-template name="assign-id"/>
-      <span class="heading nrs">
+      <span class="heading">
         <xsl:call-template name="assign-id"/>
         <xsl:apply-templates/>
       </span>
@@ -790,7 +800,7 @@
   </xsl:template>
   
   <xsl:template match="li" mode="list">
-    <li class="nrs">
+    <li>
       <xsl:apply-templates select="label"/>
       <xsl:apply-templates/>
     </li>
@@ -811,7 +821,7 @@
   </xsl:template>
   
   <xsl:template match="n">
-    <span class="n pagenumber nrs">
+    <span class="n pagenumber">
       <xsl:if test="@nextpgnum">
         <xsl:attribute name="data-nextpgnum">
           <xsl:value-of select="@nextpgnum"/>
@@ -829,7 +839,7 @@
   
   
   <xsl:template match="pb">
-    <p class="pb pagebreak nrs">
+    <p class="pb pagebreak">
       <xsl:call-template name="named-anchor"/>
 <!--      <xsl:call-template name="assign-id"/>
 -->     
@@ -850,12 +860,12 @@
   <xsl:template match="impx"> <!--when not in metadata mode --> 
     <xsl:choose>
       <xsl:when test="@rx"> <!-- for the generated links -->
-        <span class="peppopup glosstip impx nrs" data-type="{@type}" data-docid="{@rx}" data-grpname="{@grpname}">
+        <span class="peppopup glosstip impx" data-type="{@type}" data-docid="{@rx}" data-grpname="{@grpname}">
           <xsl:value-of select="."/>
         </span>
       </xsl:when>
       <xsl:otherwise> <!-- sometimes impx is manually tagged -->
-        <span class="impx nrs" data-type="{@type}">
+        <span class="impx" data-type="{@type}">
           <xsl:value-of select="."/>
         </span>
       </xsl:otherwise>
@@ -863,42 +873,47 @@
   </xsl:template>
 
   <xsl:template match="poem">
-    <div class="poem nrs">
+    <xsl:call-template name="assign-lang"/>
+    <div class="poem">
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
     </div>
   </xsl:template>
   
   <xsl:template match="quote">
-    <div class="quote nrs">
+    <xsl:call-template name="assign-lang"/>
+    <div class="quote">
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
     </div>
   </xsl:template>
   
   <xsl:template match="dream">
-    <div class="dream nrs">
+    <div class="dream">
+      <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
     </div>
   </xsl:template>
 
   <xsl:template match="dialog">
-    <div class="dialog nrs">
+    <xsl:call-template name="assign-lang"/>
+    <div class="dialog">
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
     </div>
   </xsl:template>
 
   <xsl:template match="p | p2">
-    <p class="para nrs">
+    <p class="para">
+      <xsl:call-template name="assign-lang"/>
       <xsl:if test="not(preceding-sibling::*)">
         <xsl:attribute name="class">first</xsl:attribute>
       </xsl:if>
       <xsl:if test="name() = 'p2'">
         <!--        if you want to concatenate to the attribute class-->
         <!--          <xsl:value-of select="concat('continued',  ' ', @class)"/>-->
-        <xsl:attribute name="class">p2 paracont nrs</xsl:attribute>
+        <xsl:attribute name="class">p2 paracont</xsl:attribute>
       </xsl:if>
       
       <xsl:call-template name="assign-id"/>
@@ -1788,6 +1803,15 @@
     </xsl:choose>
   </xsl:template>
 
+  <xsl:template name="assign-lang">
+    <xsl:choose>
+      <xsl:when test="@lang">
+        <xsl:attribute name="lang">
+            <xsl:value-of select="@lang"/>
+        </xsl:attribute>
+      </xsl:when>
+    </xsl:choose>
+ </xsl:template>
 
   <xsl:template name="assign-id">
     <xsl:variable name="id">

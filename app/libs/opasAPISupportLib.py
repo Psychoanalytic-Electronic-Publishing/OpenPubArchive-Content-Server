@@ -332,6 +332,8 @@ def document_get_info(document_id, fields="art_id, art_pepsourcetype, art_year, 
     ret_val = {}
     if solr_docs is not None:
         try:
+            # PEP indexes field in upper case, but just in case caller sends lower case, convert.
+            document_id = document_id.upper()
             results = solr_docs.query(q = f"art_id:{document_id}",  fields = fields)
         except Exception as e:
             logger.error(f"Solr Retrieval Error: {e}")
@@ -344,7 +346,7 @@ def document_get_info(document_id, fields="art_id, art_pepsourcetype, art_year, 
                 except Exception as e:
                     logger.error(f"Solr Result Error: {e}")
                 
-        return ret_val
+    return ret_val
 
 #-----------------------------------------------------------------------------
 def force_string_return_from_various_return_types(text_str, min_length=5):
@@ -2625,7 +2627,7 @@ def search_text(query,
                                                     
                     if format_requested == "HTML":
                         # Convert to HTML
-                        text_xml = opasxmllib.xml_str_to_html(text_xml, xslt_file=r"./libs/styles/pepkbd3-html.xslt")
+                        text_xml = opasxmllib.xml_str_to_html(text_xml, xslt_file=opasConfig.XSLT_XMLTOHTML)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
                         text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
                         #text_xml = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, text_xml)
                         #text_xml = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, text_xml)
@@ -2667,7 +2669,7 @@ def search_text(query,
                 abstract = force_string_return_from_various_return_types(result.get("abstracts_xml", None)) # these were highlight versions, not needed
                 if format_requested == "HTML":
                     # Convert to HTML
-                    abstract = opasxmllib.xml_str_to_html(abstract, xslt_file=r"./libs/styles/pepkbd3-html.xslt")
+                    abstract = opasxmllib.xml_str_to_html(abstract, xslt_file=opasConfig.XSLT_XMLTOHTML)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
                 elif format_requested == "TEXTONLY":
                     # strip tags
                     abstract = opasxmllib.xml_elem_or_str_to_text(abstract, default_return=abstract)

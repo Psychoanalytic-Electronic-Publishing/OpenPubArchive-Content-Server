@@ -42,37 +42,38 @@ class QueryParameters(BaseModel):
     solrSortBy: str = None
     urlRequest: str = ""
 
-class TimePeriod(Enum):
-    five = '5'
-    ten = '10'
-    twenty = '20'
-    alltime = 'all'
-
-class SearchModeEnum(Enum):
-    searchMode = "Searching"
-    documentFetchMode = "DocumentFetch"
-    moreLikeTheseMode = "MoreLikeThese"
-    queryAnalysisMode = "QueryAnalysis"
-   
-class ErrorReturn(BaseModel):
-    error: str = Schema(None, title="Error class or title")
-    error_message: str = Schema(None, title="Error description")
-
-class authorInfo(BaseModel):
-    first: str = Schema(None, title="First name")
-    middle: str = Schema(None, title="Middle name")
-    last: str = Schema(None, title="Last name")
-    title: str = Schema(None, title="Prename title (Mr. Mrs. Dr.") 
-    affil: str = Schema(None, title="Affiliation")
+class SearchFormFields(BaseModel): # not used
+    quickSearch: str = Schema(None, title="")
+    solrQ: str = Schema(None, title="")
+    disMax: str = Schema(None, title="")
+    edisMax: str = Schema(None, title="")
+    partialDocumentID: str = Schema(None, title="")
+    compoundQuery: bool = Schema(None, title="")
+    wordsOrPhrases: str = Schema(None, title="")
+    sourceWords: str = Schema(None, title="")
+    sourceCodes: str = Schema(None, title="")
+    sourceSet: str = Schema(None, title="")
+    author: str = Schema(None, title="")
+    title: str = Schema(None, title="")
+    year: str = Schema(None, title="")
+    startYear: str = Schema(None, title="")
+    endYear: str = Schema(None, title="")
+    citedTimes: int = Schema(None, title="")
+    citedPeriod: int = Schema(None, title="")
+    viewedTimes: int = Schema(None, title="")
+    viewedPeriod: int = Schema(None, title="")
+    articles: str = Schema(None, title="")
+    paragraphs: str = Schema(None, title="")
+    references: str = Schema(None, title="")
+    referenceAuthors: str = Schema(None, title="")
+    poems: str = Schema(None, title="")
+    quotes: str = Schema(None, title="")
+    dialogs: str = Schema(None, title="")
+    quotes: str = Schema(None, title="")
     
-class authorList(BaseModel):
-    authorList: List[authorInfo] = []   
-
-class ReportTypeEnum(str, Enum):
-    mostViewed = "mostViewed"
-    mostCited = "mostCited"
-    
-
+#-------------------------------------------------------
+# Enums
+#-------------------------------------------------------
 class ListTypeEnum(Enum):
     volumelist = "volumelist"
     documentList = "documentlist"
@@ -86,6 +87,32 @@ class ListTypeEnum(Enum):
     mostViewedList = "mostviewed"
     searchAnalysisList = "srclist"
     
+class ReportTypeEnum(str, Enum):
+    mostViewed = "mostViewed"
+    mostCited = "mostCited"
+    
+class SearchModeEnum(Enum):
+    searchMode = "Searching"
+    documentFetchMode = "DocumentFetch"
+    moreLikeTheseMode = "MoreLikeThese"
+    queryAnalysisMode = "QueryAnalysis"
+   
+class TimePeriod(Enum):
+    five = '5'
+    ten = '10'
+    twenty = '20'
+    alltime = 'all'
+
+#-------------------------------------------------------
+# Error Return classes [may not be used, switched to exceptions]
+#-------------------------------------------------------
+class ErrorReturn(BaseModel):
+    error: str = Schema(None, title="Error class or title")
+    error_message: str = Schema(None, title="Error description")
+
+#-------------------------------------------------------
+# Key data status return structure, part of most models
+#-------------------------------------------------------
 class ResponseInfo(BaseModel):
     count: int = Schema(0, title="The number of returned items in the accompanying ResponseSet list.")
     limit: int = Schema(0, title="The limit set by the API client for the ResponseSet list.")
@@ -102,25 +129,21 @@ class ResponseInfo(BaseModel):
     errors: ErrorReturn = Schema(None, title="Any Error information")
     timeStamp: str = Schema(None, title="Server timestamp of return data.")   
 
-class ResponseInfoLoginStatus(BaseModel):
-    loggedIn: bool = Schema(False, title="Whether the user is logged in or not")
-    username: str = Schema(None, title="The logged in user's name")
-    request: str = Schema(None, title="The URL of the request")
-    #user: User = Schema(None, title="A user object for the user")
-    error_message: str = Schema(None, title="If an error occurred, description")
-    timeStamp: str = Schema(None, title="Server timestamp of return data.")   
-
-class AlertListItem(BaseModel):
-    alertName: str
-    alertSubscribeStatus: bool
-    alertSubscribeDate: str
-    action: str = Schema(None, title="")
-
-class AuthorIndexItem(BaseModel):
-    authorID: str = Schema(None, title="Author ID as indexed by the system.")
-    publicationsURL: str = Schema(None, title="Endpoint URL for this API to retrieve a list of this authors publications.")
-    publicationsCount: int = Schema(None, title="The number of publications in this database by this author.")
+#-------------------------------------------------------
+# Data Return classes
+#-------------------------------------------------------
+class authorInfo(BaseModel):
+    first: str = Schema(None, title="First name")
+    middle: str = Schema(None, title="Middle name")
+    last: str = Schema(None, title="Last name")
+    title: str = Schema(None, title="Prename title (Mr. Mrs. Dr.") 
+    affil: str = Schema(None, title="Affiliation")
     
+class authorList(BaseModel):
+    authorList: List[authorInfo] = []   
+
+#-------------------------------------------------------
+
 class AuthorPubListItem(BaseModel):
     authorID: str = Schema(None, title="Author ID as indexed by the system.")
     documentID: str = Schema(None, title="Doc ID for this publication by the author.")
@@ -129,6 +152,43 @@ class AuthorPubListItem(BaseModel):
     year: str = Schema(None, title="Year of publication of this list item.")
     documentURL: str = Schema(None, title="API Endpoint URL (minus base) to access this document.")
     score: float = None
+
+class AuthorPubListStruct(BaseModel):
+    responseInfo: ResponseInfo 
+    responseSet: List[AuthorPubListItem] = []
+
+class AuthorPubList(BaseModel):
+    authorPubList: AuthorPubListStruct
+
+#-------------------------------------------------------
+
+class AuthorIndexItem(BaseModel):
+    authorID: str = Schema(None, title="Author ID as indexed by the system.")
+    publicationsURL: str = Schema(None, title="Endpoint URL for this API to retrieve a list of this authors publications.")
+    publicationsCount: int = Schema(None, title="The number of publications in this database by this author.")
+    
+class AuthorIndexStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[AuthorIndexItem] = []
+
+class AuthorIndex(BaseModel):
+    authorIndex: AuthorIndexStruct
+    
+#-------------------------------------------------------
+class AlertListItem(BaseModel):
+    alertName: str
+    alertSubscribeStatus: bool
+    alertSubscribeDate: str
+    action: str = Schema(None, title="")
+
+class AlertListStruct(BaseModel):
+    responseInfo: ResponseInfo 
+    responseSet: List[AlertListItem] = []
+
+class AlertList(BaseModel):
+    alertList: AlertListStruct
+
+#-------------------------------------------------------
 
 class DocumentListItem(BaseModel):
     PEPCode: str = Schema(None, title="The code assigned to a source, e.g., CPS, IJP, ANIJP-EL, ZBK.  (The first part of the document ID.)")
@@ -170,12 +230,47 @@ class DocumentListItem(BaseModel):
     similarMaxScore: float = None
     similarNumFound: int = Schema(None, title="")
         
+class DocumentListStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[DocumentListItem] = []
+
+class DocumentList(BaseModel):
+    documentList: DocumentListStruct
+
+#-------------------------------------------------------
+
+class DocumentStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: DocumentListItem
+
+# modified PEPEasy2020 works with multiple 
+class Documents(BaseModel):        # For the GVPi server, it returns a single object not an array of documents. But that's inconsistent with the abstract return.  Need to modify PEP-Easy and unify as a list.
+    documents: DocumentListStruct
+
+#-------------------------------------------------------
+
 class ImageURLListItem(BaseModel):    
     PEPCode: str
     imageURL: str
     sourceType: str
     title: str
-    
+
+class ImageURLListStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[ImageURLListItem] = []
+
+class ImageURLList(BaseModel):
+    imageURLList: ImageURLListStruct
+
+#-------------------------------------------------------
+class ResponseInfoLoginStatus(BaseModel):
+    loggedIn: bool = Schema(False, title="Whether the user is logged in or not")
+    username: str = Schema(None, title="The logged in user's name")
+    request: str = Schema(None, title="The URL of the request")
+    #user: User = Schema(None, title="A user object for the user")
+    error_message: str = Schema(None, title="If an error occurred, description")
+    timeStamp: str = Schema(None, title="Server timestamp of return data.")   
+
 class LoginReturnItem(BaseModel):    
     session_id: str = Schema(None, title="")
     token_type: str = Schema(None, title="")
@@ -185,6 +280,18 @@ class LoginReturnItem(BaseModel):
     keep_active: bool = Schema(False, title="Extend the token retention time")
     error_message: str = Schema(None, title="Error description if login failed")
     scope: str = Schema(None, title="")
+
+class LicenseInfoStruct(BaseModel):
+    responseInfo: ResponseInfoLoginStatus
+    responseSet: LoginReturnItem = None
+
+class LicenseStatusInfo(BaseModel):
+    licenseInfo: LicenseInfoStruct 
+
+#-------------------------------------------------------
+    
+
+#-------------------------------------------------------
 
 class SessionInfo(BaseModel):    
     #ocd: Optional[OpasDB]
@@ -202,6 +309,8 @@ class SessionInfo(BaseModel):
     keep_active: bool = False
     scope: str = Schema(None, title="")
     api_client_id: int = None            
+
+#-------------------------------------------------------
     
 class ServerStatusItem(BaseModel):
     text_server_ok: bool = Schema(None, title="")
@@ -210,6 +319,8 @@ class ServerStatusItem(BaseModel):
     timeStamp: str = Schema(None, title="")
     config_name: str= Schema(None, title="Current Configuration Name")
     solr_url: str= Schema(None, title="Current SOLR URL")
+
+#-------------------------------------------------------
 
 class JournalInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few fields
     sourceType: str = Schema(None, title="")
@@ -225,19 +336,15 @@ class JournalInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a fe
     yearLast: str = Schema(None, title="")
     embargoYears: str = Schema(None, title="")
     
-class VideoInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few fields
-    sourceType: str = Schema(None, title="")
-    PEPCode: str = Schema(None, title="")
-    bannerURL: str = Schema(None, title="")
-    displayTitle: str = Schema(None, title="Reference format for this source")
-    title: str = Schema(None, title="Title of this source")
-    abbrev: str = Schema(None, title="")
-    ISSN: str = Schema(None, title="")
-    language: str = Schema(None, title="")
-    yearFirst: str = Schema(None, title="")
-    yearLast: str = Schema(None, title="")
-    embargoYears: str = Schema(None, title="")
-    
+class JournalInfoStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[JournalInfoListItem] = []
+
+class JournalInfoList(BaseModel):
+    sourceInfo: JournalInfoStruct
+
+#-------------------------------------------------------
+
 class SourceInfoListItem(BaseModel):    
     sourceType: str = Schema(None, title="")
     PEPCode: str = Schema(None, title="")
@@ -258,11 +365,76 @@ class SourceInfoListItem(BaseModel):
     yearLast: str = Schema(None, title="Last year available for this source")
     embargoYears: str = Schema(None, title="")
 
+class SourceInfoStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[SourceInfoListItem] = []
+
+class SourceInfoList(BaseModel):
+    sourceInfo: SourceInfoStruct
+
+#-------------------------------------------------------
+
+class VideoInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few fields
+    sourceType: str = Schema(None, title="")
+    PEPCode: str = Schema(None, title="")
+    bannerURL: str = Schema(None, title="")
+    displayTitle: str = Schema(None, title="Reference format for this source")
+    title: str = Schema(None, title="Title of this source")
+    abbrev: str = Schema(None, title="")
+    ISSN: str = Schema(None, title="")
+    language: str = Schema(None, title="")
+    yearFirst: str = Schema(None, title="")
+    yearLast: str = Schema(None, title="")
+    embargoYears: str = Schema(None, title="")
+
+class VideoInfoStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[VideoInfoListItem] = []
+
+class VideoInfoList(BaseModel):
+    sourceInfo: VideoInfoStruct
+
+#-------------------------------------------------------
 class VolumeListItem(BaseModel):
     PEPCode: str = Schema(None, title="")
     vol: str = Schema(None, title="")
     year: str = Schema(None, title="")
     
+#-------------------------------------------------------
+   
+class ReportRow(BaseModel):
+    row: List = []
+
+class ReportListItem(BaseModel):
+    title: str = Schema(None, title="The report title")
+    filterDescription: str = Schema(None, title="Textuall description of filter applied")
+    startDate: datetime =  Schema(None, title="Report data from this start date")
+    endDate: datetime =  Schema(None, title="Report data to this end date")
+    rowCount: int = Schema(None, title="Reusable field to return counts requested")
+    row: List[ReportRow] = []
+    
+class ReportStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: ReportListItem
+
+class Report(BaseModel):
+    report: ReportStruct
+    
+    #responseInfo: ResponseInfo
+    #responseSet: List[VolumeListItem] = []   
+    #reportTitle: str = Schema(None, title="")
+    #reportData: List[ReportRow] = [] # ReportListStruct
+
+#-------------------------------------------------------
+
+class VolumeListStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[VolumeListItem] = []   
+
+class VolumeList(BaseModel):
+    volumeList: VolumeListStruct
+    
+#-------------------------------------------------------
 class WhatsNewListItem(BaseModel):
     displayTitle: str = Schema(None, title="")
     abbrev: str = Schema(None, title="")
@@ -273,111 +445,7 @@ class WhatsNewListItem(BaseModel):
     srcTitle: str = Schema(None, title="")
     updated: str = Schema(None, title="")
     volumeURL: str = Schema(None, title="")
-  
-class SearchFormFields(BaseModel):
-    quickSearch: str = Schema(None, title="")
-    solrQ: str = Schema(None, title="")
-    disMax: str = Schema(None, title="")
-    edisMax: str = Schema(None, title="")
-    partialDocumentID: str = Schema(None, title="")
-    compoundQuery: bool = Schema(None, title="")
-    wordsOrPhrases: str = Schema(None, title="")
-    sourceWords: str = Schema(None, title="")
-    sourceCodes: str = Schema(None, title="")
-    sourceSet: str = Schema(None, title="")
-    author: str = Schema(None, title="")
-    title: str = Schema(None, title="")
-    year: str = Schema(None, title="")
-    startYear: str = Schema(None, title="")
-    endYear: str = Schema(None, title="")
-    citedTimes: int = Schema(None, title="")
-    citedPeriod: int = Schema(None, title="")
-    viewedTimes: int = Schema(None, title="")
-    viewedPeriod: int = Schema(None, title="")
-    articles: str = Schema(None, title="")
-    paragraphs: str = Schema(None, title="")
-    references: str = Schema(None, title="")
-    referenceAuthors: str = Schema(None, title="")
-    poems: str = Schema(None, title="")
-    quotes: str = Schema(None, title="")
-    dialogs: str = Schema(None, title="")
-    quotes: str = Schema(None, title="")
-    
-#-------------------------------------------------------
-#
-# Top level schema structures
-#
-#-------------------------------------------------------
-class AuthorPubListStruct(BaseModel):
-    responseInfo: ResponseInfo 
-    responseSet: List[AuthorPubListItem] = []
 
-class AuthorPubList(BaseModel):
-    authorPubList: AuthorPubListStruct
-
-class AuthorIndexStruct(BaseModel):
-    responseInfo: ResponseInfo
-    responseSet: List[AuthorIndexItem] = []
-
-class AuthorIndex(BaseModel):
-    authorIndex: AuthorIndexStruct
-
-class DocumentListStruct(BaseModel):
-    responseInfo: ResponseInfo
-    responseSet: List[DocumentListItem] = []
-
-class DocumentList(BaseModel):
-    documentList: DocumentListStruct
-    
-class DocumentStruct(BaseModel):
-    responseInfo: ResponseInfo
-    responseSet: DocumentListItem
-
-class Documents(BaseModel):        # For the GVPi server, it returns a single object not an array of documents. But that's inconsistent with the abstract return.  Need to modify PEP-Easy and unify as a list.
-    documents: DocumentListStruct
-
-class ImageURLListStruct(BaseModel):
-    responseInfo: ResponseInfo
-    responseSet: List[ImageURLListItem] = []
-
-class ImageURLList(BaseModel):
-    imageURLList: ImageURLListStruct
-
-class LicenseInfoStruct(BaseModel):
-    responseInfo: ResponseInfoLoginStatus
-    responseSet: LoginReturnItem = None
-
-class LicenseStatusInfo(BaseModel):
-    licenseInfo: LicenseInfoStruct 
-
-class SourceInfoStruct(BaseModel):
-    responseInfo: ResponseInfo
-    responseSet: List[SourceInfoListItem] = []
-
-class JournalInfoStruct(BaseModel):
-    responseInfo: ResponseInfo
-    responseSet: List[JournalInfoListItem] = []
-
-class VideoInfoStruct(BaseModel):
-    responseInfo: ResponseInfo
-    responseSet: List[VideoInfoListItem] = []
-
-class JournalInfoList(BaseModel):
-    sourceInfo: JournalInfoStruct
-
-class VideoInfoList(BaseModel):
-    sourceInfo: VideoInfoStruct
-
-class SourceInfoList(BaseModel):
-    sourceInfo: SourceInfoStruct
-
-class VolumeListStruct(BaseModel):
-    responseInfo: ResponseInfo
-    responseSet: List[VolumeListItem] = []   
-
-class VolumeList(BaseModel):
-    volumeList: VolumeListStruct
-    
 class WhatsNewListStruct(BaseModel):
     responseInfo: ResponseInfo
     responseSet: List[WhatsNewListItem] = []   

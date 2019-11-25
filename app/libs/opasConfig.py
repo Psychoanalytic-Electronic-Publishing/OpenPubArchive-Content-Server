@@ -8,6 +8,13 @@ logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d')
 FORMAT = '%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s'
 logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
 
+# folders
+# uploads
+UPLOAD_DIR = r"z:\\back\\"
+XSLT_XMLTOHTML = r"./libs/styles/pepkbd3-html.xslt"
+XSLT_XMLTOHTML_ALT = r"../styles/pepkbd3-html.xslt"
+CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
+
 #logger = logging.getLogger(programNameShort)
 
 IMAGES = "images"
@@ -31,6 +38,7 @@ OPASEXPIRES= "OpasExpiresTime"
 DOCUMENT_ACCESS_FREE = "pepfree"
 DOCUMENT_ACCESS_EMBARGOED = "pepcurrent"
 DOCUMENT_ACCESS_ARCHIVE = "peparchive"
+DOCUMENT_ACCESS_UNDEFINED = "undefined" 
 
 # configure for location where to find the PDF originals
 PDFORIGDIR = r"X:\PEP Dropbox\PEPWeb\Inventory\PEPDownloads\PDF"
