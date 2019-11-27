@@ -3,6 +3,9 @@
 
 # base_api = "http://stage.pep.gvpi.net/api"
 base_api = "http://127.0.0.1:9100"
+JOURNALCOUNT = 77
+BOOKCOUNT = 102
+VIDEOSOURCECOUNT = 12
 
 # Can use constants for endpoints, which solves consistency in the tests, but I find it
 #  harder to read (and I'd need to remove the parameters).  Left just for documentation sake

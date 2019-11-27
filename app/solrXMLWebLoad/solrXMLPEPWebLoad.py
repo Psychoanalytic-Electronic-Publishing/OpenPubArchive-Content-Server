@@ -67,7 +67,6 @@ else:
 
 from datetime import datetime
 from optparse import OptionParser
-#from base64 import b64encode
 
 from lxml import etree
 import solrpy as solr
@@ -75,11 +74,7 @@ import pymysql
 
 import config
 from OPASFileTracker import FileTracker, FileTrackingInfo
-#import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
-import sourceInfoDB as SourceInfoDB
-#from sourceInfoDB import sourceInfoDBData
-from sourceInfoDB import SourceInfoDB
 import opasCentralDBLib
 
 # Module Globals
@@ -685,7 +680,7 @@ def main():
 
     # import data about the PEP codes for journals and books.
     #  Codes are like APA, PAH, ... and special codes like ZBK000 for a particular book
-    sourceDB = SourceInfoDB()
+    sourceDB = opasCentralDBLib.SourceInfoDB()
 
     #TODO: Try without the None test, the library should not try to use None as user name or password, so only the first case may be needed
     # The connection call is to solrpy (import was just solr)

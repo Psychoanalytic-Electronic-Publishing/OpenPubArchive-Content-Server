@@ -141,7 +141,7 @@ app = FastAPI(
     debug=True,
         title="Open Publications Archive (OPAS) API for PEP-Web",
         description = "Open Publications Archive Software API for PEP-Web by Psychoanalytic Electronic Publishing (PEP)",
-        version = "2019.11.24.alpha",
+        version = "2019.11.26.alpha",
         static_directory=r"./docs",
         swagger_static={
             "favicon": "pepfavicon"
@@ -1162,16 +1162,16 @@ async def search_the_document_database(response: Response,
 
         # note: this now returns a tuple...t
         ret_val, ret_status = opasAPISupportLib.search_text(query=solr_query_params.searchQ, 
-                                                            filter_query = solr_query_params.filterQ,
-                                                            full_text_requested=False,
-                                                            query_debug = True, # TEMPORARY
-                                                            more_like_these = more_like_these_mode,
-                                                            dis_max = solr_query_params.solrMax,
-                                                            sort_by = sortBy,
-                                                            limit=limit, 
-                                                            offset=offset,
-                                                            extra_context_len=200
-                                                            )
+                                                                  filter_query = solr_query_params.filterQ,
+                                                                  full_text_requested=False,
+                                                                  query_debug = True, # TEMPORARY
+                                                                  more_like_these = more_like_these_mode,
+                                                                  dis_max = solr_query_params.solrMax,
+                                                                  sort_by = sortBy,
+                                                                  limit=limit, 
+                                                                  offset=offset,
+                                                                  extra_context_len=200
+                                                                  )
 
         #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
         if ret_status[0] != HTTP_200_OK:
@@ -1204,7 +1204,7 @@ async def search_the_document_database(response: Response,
     return ret_val
 
 @app.get("/v1/Database/MostDownloaded/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
-def get_the_most_viewed_articles(response: Response,
+async def get_the_most_viewed_articles(response: Response,
                                  request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
                                  period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
                                  limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
@@ -1220,6 +1220,8 @@ def get_the_most_viewed_articles(response: Response,
 
     ## Status
        This endpoint is working.
+       For whatever reason, async works here, without a wait on the long running database call.  And
+         adding the await makes it never return
 
     ## Sample Call
          /v1/Database/MostDownloaded/
@@ -1235,8 +1237,8 @@ def get_the_most_viewed_articles(response: Response,
     logger.debug("in most viewed")
     try:
         ret_val = opasAPISupportLib.database_get_most_downloaded(period=period,
-                                                                limit=limit,
-                                                                offset=offset)
+                                                                 limit=limit,
+                                                                 offset=offset)
         # fill in additional return structure status info
         # client_host = request.client.host
         ret_val.documentList.responseInfo.request = request.url._url
@@ -2209,6 +2211,128 @@ def view_a_document(response: Response,
 
     return ret_val
 
+@app.get("/v1/Documents/Downloads/Images/{imageID}/", response_model_skip_defaults=True, tags=["Documents", "PEPEasy1", "v1.0"])
+async def download_an_image(response: Response,
+                            request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                            imageID: str=Path(..., title="Document ID or Partial ID", description=opasConfig.DESCRIPTION_DOCIDORPARTIAL),
+                            download: int=Query(0, title="Return or download", description="0 to return the image to the browser, 1 to download")
+                            ):
+    """
+    ## Function
+       <b>Returns a binary image per the GVPi server</b>
+       if download == 1 then the file is returned as a downloadable file to the client/browser.
+       Otherwise, it's returned as binary data, and displays in the browser.  This is in fact
+          how it works to display images in articles.
+
+    ## Return Type
+       Binary data
+
+    ## Status
+       This endpoint is working.
+       
+
+    ## Sample Call
+         http://localhost:9100/v1/Documents/Images/AIM.036.0275A.FIG001/
+         http://development.org:9100/v1/Documents/Downloads/Images/AIM.036.0275A.FIG001
+    
+    ## Notes
+    
+    ## Potential Errors
+       USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
+    """
+    endpoint = opasCentralDBLib.API_DOCUMENTS_IMAGE
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    if not session_info.authenticated:
+        response.status_code = HTTP_400_BAD_REQUEST 
+        status_message = "Must be logged in and authorized to download an image."
+        # no need to record endpoint failure
+        #ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                    #session_info=session_info, 
+                                    #params=request.url._url,
+                                    #item_of_interest=f"{imageID}", 
+                                    #return_status_code = response.status_code,
+                                    #status_message=status_message
+                                    #)
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=status_message
+        )    
+
+    filename = opasAPISupportLib.get_image_filename(image_id=imageID)    
+    media_type='image/jpeg'
+    if download == 0:
+        if filename == None:
+            response.status_code = HTTP_400_BAD_REQUEST 
+            status_message = "Error: no filename specified"
+            logger.error(status_message)
+            # no need to record endpoint failure
+            #ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                        #session_info=session_info, 
+                                        #params=request.url._url,
+                                        #item_of_interest=f"{imageID}", 
+                                        #return_status_code = response.status_code,
+                                        #status_message=status_message
+                                        #)
+            raise HTTPException(status_code=response.status_code,
+                                detail=status_message)
+        else:
+            with open(filename, mode='rb') as file: # b is important -> binary
+                file_content = file.read()
+            
+            # file_content = data
+            try:
+                ret_val = response = Response(file_content, media_type=media_type)
+                
+            except Exception as e:
+                response.status_code = HTTP_400_BAD_REQUEST 
+                status_message = f" The requested document {filename} could not be returned {e}"
+                raise HTTPException(status_code=response.status_code,
+                                    detail=status_message)
+    
+            else:
+                status_message = "Success"
+                logger.info(status_message)
+                ocd.record_document_view(document_id=imageID,
+                                         session_info=session_info,
+                                         view_type="file_format")
+                # no need to record image return (happens many times per article)
+                #ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                #session_info=session_info, 
+                                            #params=request.url._url,
+                                            #item_of_interest=f"{imageID}", 
+                                            #return_status_code = response.status_code,
+                                            #status_message=status_message
+                                            #)
+    else: # download == 1
+        try:
+            response.status_code = HTTP_200_OK
+            ret_val = FileResponse(path=filename,
+                                   status_code=response.status_code,
+                                   filename=os.path.split(filename)[1], 
+                                   media_type=media_type)
+            
+        except Exception as e:
+            response.status_code = HTTP_400_BAD_REQUEST 
+            status_message = f" The requested document {filename} could not be returned {e}"
+            raise HTTPException(status_code=response.status_code,
+                                detail=status_message)
+
+        else:
+            status_message = "Success"
+            logger.info(status_message)
+            ocd.record_document_view(document_id=imageID,
+                                     session_info=session_info,
+                                     view_type="file_format")
+            ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                        session_info=session_info, 
+                                        params=request.url._url,
+                                        item_of_interest=f"{imageID}", 
+                                        return_status_code = response.status_code,
+                                        status_message=status_message
+                                        )
+    
+    return ret_val
+
 @app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_skip_defaults=True, tags=["Documents", "PEPEasy1", "v1.0"])
 def download_a_document(response: Response,
                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
@@ -2243,13 +2367,14 @@ def download_a_document(response: Response,
     if not session_info.authenticated:
         response.status_code = HTTP_400_BAD_REQUEST 
         status_message = "Must be logged in and authorized to download a document."
-        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS_DOWNLOADS,
-                                    session_info=session_info, 
-                                    params=request.url._url,
-                                    item_of_interest=f"{documentID}", 
-                                    return_status_code = response.status_code,
-                                    status_message=status_message
-                                    )
+        # no need to record endpoint failure
+        #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS_DOWNLOADS,
+                                    #session_info=session_info, 
+                                    #params=request.url._url,
+                                    #item_of_interest=f"{documentID}", 
+                                    #return_status_code = response.status_code,
+                                    #status_message=status_message
+                                    #)
         raise HTTPException(
             status_code=response.status_code,
             detail=status_message
@@ -2277,13 +2402,14 @@ def download_a_document(response: Response,
         response.status_code = HTTP_400_BAD_REQUEST 
         status_message = "Error: no filename specified"
         logger.error(status_message)
-        ocd.record_session_endpoint(api_endpoint_id=endpoint,
-                                    session_info=session_info, 
-                                    params=request.url._url,
-                                    item_of_interest=f"{documentID}", 
-                                    return_status_code = response.status_code,
-                                    status_message=status_message
-                                    )
+        # no need to record endpoint failure
+        #ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                    #session_info=session_info, 
+                                    #params=request.url._url,
+                                    #item_of_interest=f"{documentID}", 
+                                    #return_status_code = response.status_code,
+                                    #status_message=status_message
+                                    #)
         raise HTTPException(status_code=response.status_code,
                             detail=status_message)
     else:
@@ -2321,6 +2447,7 @@ def download_a_document(response: Response,
 
 if __name__ == "__main__":
     print(f"Server Running ({localsecrets.BASEURL}:{localsecrets.API_PORT_MAIN})")
+    print (f"Running in Python {sys.version_info[0]}.{sys.version_info[1]}")
     uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=True)
         # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
     print ("Now we're exiting...")

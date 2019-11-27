@@ -13,7 +13,7 @@ import PEPSourceDBData
 
 # scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
 
-class SourceInfoDB (object):
+class SourceInfoDB2 (object):
     def __init__(self):
         self.sourceData = {}
         
@@ -31,6 +31,7 @@ class SourceInfoDB (object):
         dbEntry = self.sourceData.get(sourceCode, None)
         retVal = dbEntry
         return retVal
+
         
 
 def main():

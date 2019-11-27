@@ -129,6 +129,26 @@ def get_password_hash(password):
     """
     return pwd_context.hash(password)
 
+class SourceInfoDB(object):
+    def __init__(self):
+        self.sourceData = {}
+        ocd = opasCentralDB()
+        recs = ocd.get_productbase_data()
+        for n in recs:
+            try:
+                self.sourceData[n["pepsrccode"]] = n
+            except KeyError as e:
+                print ("Missing Source Code Value in %s" % n)
+
+    def lookupSourceCode(self, sourceCode):
+        """
+        Returns the dictionary entry for the source code or None
+          if it doesn't exist.
+        """
+        dbEntry = self.sourceData.get(sourceCode, None)
+        retVal = dbEntry
+        return retVal
+
 class opasCentralDB(object):
     """
     This object should be used and then discarded on an endpoint by endpoint basis in any
@@ -235,6 +255,22 @@ class opasCentralDB(object):
                 ret_val = False
 
         self.close_connection(caller_name="end_session") # make sure connection is closed
+        return ret_val
+
+    def get_productbase_data(self):
+        """
+        Load the journal book and video product data
+        """
+        ret_val = {}
+        self.open_connection(caller_name="get_productbase_data") # make sure connection is open
+        curs = self.db.cursor(pymysql.cursors.DictCursor)
+        sql = "SELECT * from vw_api_sourceinfodb where active=1;"
+        row_count = curs.execute(sql)
+        if row_count:
+            sourceData = curs.fetchall()
+            ret_val = sourceData
+
+        self.close_connection(caller_name="get_productbase_data") # make sure connection is closed
         return ret_val
         
     def get_most_downloaded(self,
@@ -1321,7 +1357,7 @@ class opasCentralDB(object):
 
 if __name__ == "__main__":
     print (40*"*", "opasCentralDBLib Tests", 40*"*")
-    print ("Running in Python %s" % sys.version_info[0])
+    print (f"Running in Python {sys.version_info[0]}.{sys.version_info[1]}")
    
     logger = logging.getLogger(__name__)
     # extra logging for standalong mode 
@@ -1337,6 +1373,8 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     
     ocd = opasCentralDB()
+    sourceDB = SourceInfoDB()
+    code = sourceDB.lookupSourceCode("ANIJP-EL")
     # check this user permissions 
     basecodes = ocd.authenticate_user_product_request(30065, "IJP", 2016)
     basecodes = ocd.authenticate_user_product_request(116848, "IJP", 2016)

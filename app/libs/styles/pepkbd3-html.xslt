@@ -100,7 +100,10 @@
   <!-- ============================================================= -->
   <!--  TOP LEVEL                                                    -->
   <!-- ============================================================= -->
-
+  <!--Config Variables-->
+  <xsl:variable name="domain" select="'http://development.org:9100/'" />
+  <xsl:variable name="artimageurl" select="'v1/Documents/Downloads/Images/'" />
+    
   <!--Global Variables-->
   <!--  used with translate to convert between case, since this is for XSLT 1.0 -->
   <xsl:variable name="lowercase" select="'abcdefghijklmnopqrstuvwxyz'" />
@@ -118,6 +121,12 @@
   </xsl:variable>
   <xsl:variable name="artvol">
     <xsl:apply-templates select="//artinfo/artvol"/>
+  </xsl:variable>
+  <xsl:variable name="artiss">
+    <xsl:apply-templates select="//artinfo/artiss"/>
+  </xsl:variable>
+  <xsl:variable name="artyear">
+    <xsl:apply-templates select="//artinfo/artyear"/>
   </xsl:variable>
   <xsl:variable name="artpgrg">
     <xsl:apply-templates select="//artinfo/artpgrg"/>
@@ -153,6 +162,7 @@
           <img src="/images/banner{$journal-code}logo.gif" alt=""/>
         </a>
       </p>
+      <div class='pubinfotop'><xsl:value-of select="'[[RunningHead]]'"/></div>
  
       <xsl:for-each select="artinfo">
         <div id="{$this-article}-artinfo" class="artinfo" data-arttype="{@arttype}" data-journal="{@j}">
@@ -568,7 +578,9 @@
             <xsl:variable name="image">
               <xsl:value-of select="."/>
             </xsl:variable>
-            <xsl:value-of select="concat('g/', $image, '.jpg')"/>
+            <!--<xsl:value-of select="concat('g/', $image, '.jpg')"/>-->
+            <!--Use api call to grab image-->
+            <xsl:value-of select="concat($domain, $artimageurl, $image)"/>
             <!--          <xsl:value-of select="."/>-->
           </xsl:attribute>
         </xsl:for-each>      

@@ -71,7 +71,7 @@ import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
 import sourceInfoDB as SourceInfoDB
     
-sourceDB = SourceInfoDB.SourceInfoDB()
+sourceDB = opasCentralDBLib.SourceInfoDB()
 count_anchors = 0
 
 #from solrq import Q
@@ -326,7 +326,7 @@ def document_get_info(document_id, fields="art_id, art_pepsourcetype, art_year, 
     Gets key information about a single document for the specified fields.
     
     >>> document_get_info('PEPGRANTVS.001.0003A', fields='file_classification')
-    {'file_classification': 'pepfree', 'score': 5.1670485}
+    {'file_classification': 'pepfree', 'score': 5.1908216}
     
     """
     ret_val = {}
@@ -1202,7 +1202,7 @@ def metadata_get_source_by_code(src_code=None, limit=opasConfig.DEFAULT_LIMIT_FO
     >>> metadata_get_source_by_code(src_code="APA")
     <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=1 limit=10 offset=0 page=Non…>
     >>> metadata_get_source_by_code()
-    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=191 limit=10 offset=0 page=N…>
+    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=192 limit=10 offset=0 page=N…>
     
     """
     ret_val = []
@@ -1903,15 +1903,47 @@ def convert_xml_to_html_file(xmltext_str, xslt_file=r"./styles/pepkbd3-html.xslt
     return output_filename
 
 #-----------------------------------------------------------------------------
+def get_image_filename(image_id):
+    """
+    Return the file name given the image id, if it exists
+    
+    >>> get_image_binary("AIM.036.0275A.FIG001")
+
+    >>> get_image_binary("JCPTX.032.0329A.F0003g")
+    
+    """
+    image_filename = None
+    image_source_path = opasConfig.API_BINARY_IMAGE_SOURCE_PATH
+    ext = os.path.splitext(image_id)[-1].lower()
+    if ext in (".jpg", ".tif", ".gif"):
+        image_filename = os.path.join(image_source_path, image_id)
+        exists = os.path.isfile(image_filename)
+        if not exists:
+            image_filename = None
+    else:
+        image_filename = os.path.join(image_source_path, image_id + ".jpg")
+        exists = os.path.isfile(image_filename)
+        if not exists:
+            image_filename = os.path.join(image_source_path, image_id + ".gif")
+            exists = os.path.isfile(image_filename)
+            if not exists:
+                image_filename = os.path.join(image_source_path, image_id + ".tif")
+                exists = os.path.isfile(image_filename)
+                if not exists:
+                    image_filename = None
+
+    return image_filename
+
+#-----------------------------------------------------------------------------
 def get_image_binary(image_id):
     """
     Return a binary object of the image, e.g.,
    
-    >>> get_image_binary("NOTEXISTS.032.0329A.F0003g")
+    >> get_image_binary("NOTEXISTS.032.0329A.F0003g")
 
-    >> get_image_binary("AIM.036.0275A.FIG001")
+    >>> get_image_binary("AIM.036.0275A.FIG001")
 
-    >> get_image_binary("JCPTX.032.0329A.F0003g")
+    >>> get_image_binary("JCPTX.032.0329A.F0003g")
     
     Note: the current server requires the extension, but it should not.  The server should check
     for the file per the following extension hierarchy: .jpg then .gif then .tif
@@ -1923,35 +1955,14 @@ def get_image_binary(image_id):
     curl -X GET "http://stage.pep.gvpi.net/api/v1/Documents/Downloads/Images/aim.036.0275a.fig001.jpg" -H "accept: image/jpeg" -H "Authorization: Basic cC5lLnAuYS5OZWlsUlNoYXBpcm86amFDayFsZWdhcmQhNQ=="
     
     and returns a binary object.
-    
         
     """
-    def getImageFilename(image_id):
-        image_source_path = "X:\_PEPA1\g"
-        ext = os.path.splitext(image_source_path)[-1].lower()
-        if ext in (".jpg", ".tif", ".gif"):
-            image_filename = os.path.join(image_source_path, image_id)
-            exists = os.path.isfile(image_filename)
-            if not exists:
-                image_filename = None
-        else:
-            image_filename = os.path.join(image_source_path, image_id + ".jpg")
-            exists = os.path.isfile(image_filename)
-            if not exists:
-                image_filename = os.path.join(image_source_path, image_id + ".gif")
-                exists = os.path.isfile(image_filename)
-                if not exists:
-                    image_filename = os.path.join(image_source_path, image_id + ".tif")
-                    exists = os.path.isfile(image_filename)
-                    if not exists:
-                        image_filename = None
 
-        return image_filename
     
     # these won't be in the Solr database, needs to be brought back by a file
     # the file ID should match a file name
     ret_val = None
-    image_filename = getImageFilename(image_id)
+    image_filename = get_image_filename(image_id)
     if image_filename is not None:
         try:
             f = open(image_filename, "rb")
@@ -2039,6 +2050,25 @@ def get_kwic_list(marked_up_text,
     return ret_val    
 #-----------------------------------------------------------------------------
 def year_arg_parser(year_arg):
+    """
+    Look for fulll start/end year ranges submitted in a single field.
+    Returns with Solr field name and proper syntax
+    
+    For example:
+        >1977
+        <1990
+        1980-1990
+        1970
+
+    >>> year_arg_parser("1970")
+    '&& art_year_int:1970 '
+    >>> year_arg_parser(">1977")
+    '&& art_year_int:[1977 TO *] '
+    >>> year_arg_parser("<1990")
+    '&& art_year_int:[* TO 1990] '
+    >>> year_arg_parser("1980-1990")
+    '&& art_year_int:[1980 TO 1990] '
+    """
     ret_val = None
     year_query = re.match("[ ]*(?P<option>[\>\^\<\=])?[ ]*(?P<start>[12][0-9]{3,3})?[ ]*(?P<separator>([-]|TO))*[ ]*(?P<end>[12][0-9]{3,3})?[ ]*", year_arg, re.IGNORECASE)            
     if year_query is None:
@@ -2089,17 +2119,17 @@ def year_arg_parser(year_arg):
 #---------------------------------------------------------------------------------------------------------
 # this function lets various endpoints like search, searchanalysis, and document, share this large parameter set.
 def parse_search_query_parameters(search=None,
-                                  journal_name=None,
-                                  journal=None,
-                                  fulltext1=None,
-                                  fulltext2=None,
-                                  vol=None,
-                                  issue=None,
-                                  author=None,
-                                  title=None,
-                                  datetype=None,
-                                  startyear=None,
-                                  endyear=None,
+                                  journal_name=None,  # full name of journal or wildcarded
+                                  journal=None,       # journal code or list of codes
+                                  fulltext1=None,     # term, phrases, and boolean connectors for full-text search
+                                  fulltext2=None,     # term, phrases, and boolean connectors for full-text search
+                                  vol=None,           # match only this volume (integer)
+                                  issue=None,         # match only this issue (integer)
+                                  author=None,        # author last name, optional first, middle.  Wildcards permitted
+                                  title=None,         
+                                  datetype=None,  # not implemented
+                                  startyear=None, # can contain complete range syntax
+                                  endyear=None,   # year only.
                                   dreams=None,
                                   quotes=None,
                                   abstracts=None,
@@ -2121,6 +2151,37 @@ def parse_search_query_parameters(search=None,
     
     <QueryParameters analyzeThis='art_authors_ngrm:Tuckett ' searchQ='*:* ' filterQ='art_pepsrccode:IJP && art_vol:57  && art_authors_ngrm:Tuckett ' searchAnalysisTermList=['art_pepsrccode:IJP ', 'art_authors_ngrm:Tuckett '] solrMax=None solrSortBy=None urlRequest=''>    
     """
+    def split_boolean(field_name, query_string):
+        """
+        >>> split_boolean("text", "dog and cat or mouse and pig or hawk")
+    
+        >>> split_boolean("text", "dog AND cat or 'mouse pig'")
+    
+        >>> split_boolean("text", "dog and cat")
+    
+        >>> split_boolean("text", "dog and cat or mouse")
+    
+        >>> split_boolean("text", "dog and cat or mouse")
+    
+        """
+        split_pattern = "(and|or|AND|OR)"
+        ret_val = ""
+        split_list = re.split(split_pattern, query_string, maxsplit=50, flags=re.IGNORECASE)
+        term_list = [x.strip() for x in split_list]
+        for n in term_list:
+            if n in ("and", "AND"):
+                ret_val += " && "
+            elif n in ["or", "OR"]:
+                ret_val += " || "
+            else:
+                ret_val += f"{field_name}:{n}"
+    
+        return ret_val        
+    
+                
+        
+        
+        # convert to upper case
 
     # initialize accumulated variables
     search_q = "*:* "
@@ -2142,11 +2203,15 @@ def parse_search_query_parameters(search=None,
         search_analysis_term_list.append(analyze_this)  
 
     if journal_name is not None:
-        analyze_this = "&& art_pepsourcetitle_fulltext:{} ".format(journal_name)
+        # accepts a journal name and optional wildcard
+        analyze_this = f"&& art_pepsourcetitle_fulltext:{journal_name} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  
 
     if journal is not None:
+        # accepts a journal code (no wildcards) or a list of journal codes
+        # ALSO can accept a single journal name or partial name with an optional wildcard.  But
+        #   that's really what argument journal_name is for, so this is just extra and may be later removed.
         code_for_query = ""
         analyze_this = ""
         # journal_code_list_pattern = "((?P<namelist>[A-z0-9]*[ ]*\+or\+[ ]*)+|(?P<namelist>[A-z0-9]))"
@@ -2154,26 +2219,28 @@ def parse_search_query_parameters(search=None,
         if re.match(journal_wildcard_pattern, journal):
             # it's a wildcard pattern
             code_for_query = journal
-            analyze_this = "&& art_pepsourcetitlefull:{} ".format(code_for_query)
+            analyze_this = f"&& art_pepsourcetitlefull:{code_for_query} "
             filter_q += analyze_this
         else:
             journal_code_list = journal.split(" or ")
+            # convert to upper case
+            journal_code_list = [f"art_pepsrccode:{x.upper()}" for x in journal_code_list]
             if len(journal_code_list) > 1:
                 # it was a list.
                 code_for_query = " OR ".join(journal_code_list)
-                analyze_this = "&& (art_pepsrccode:{}) ".format(code_for_query)
+                analyze_this = f"&& ({code_for_query}) "
                 filter_q += analyze_this
             else:
                 sourceInfo = sourceDB.lookupSourceCode(journal.upper())
                 if sourceInfo is not None:
                     # it's a single source code
                     code_for_query = journal.upper()
-                    analyze_this = "&& art_pepsrccode:{} ".format(code_for_query)
+                    analyze_this = f"&& art_pepsrccode:{code_for_query} "
                     filter_q += analyze_this
                 else: # not a pattern, or a code, or a list of codes.
                     # must be a name
                     code_for_query = journal
-                    analyze_this = "&& art_pepsourcetitlefull:{} ".format(code_for_query)
+                    analyze_this = f"&& art_pepsourcetitlefull:{code_for_query} "
                     filter_q += analyze_this
 
         search_analysis_term_list.append(analyze_this)
@@ -2209,7 +2276,7 @@ def parse_search_query_parameters(search=None,
             filter_q += parsed_year_search
             search_analysis_term_list.append(parsed_year_search)  
         else:
-            logger.info("Search - StartYear bad argument {}".format(startyear))
+            logger.info(f"Search - StartYear bad argument {startyear}")
 
     if startyear is not None and endyear is not None:
         # put this in the filter query
@@ -2217,15 +2284,15 @@ def parse_search_query_parameters(search=None,
         if re.match("[12][0-9]{3,3}", startyear) is None or re.match("[12][0-9]{3,3}", endyear) is None:
             logger.info("Search - StartYear {} /Endyear {} bad arguments".format(startyear, endyear))
         else:
-            analyze_this = "&& art_year_int:[{} TO {}] ".format(startyear, endyear)
+            analyze_this = f"&& art_year_int:[{startyear} TO {endyear}] "
             filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)
 
     if startyear is None and endyear is not None:
         if re.match("[12][0-9]{3,3}", endyear) is None:
-            logger.info("Search - Endyear {} bad argument".format(endyear))
+            logger.info(f"Search - Endyear {endyear} bad argument")
         else:
-            analyze_this = "&& art_year_int:[{} TO {}] ".format("*", endyear)
+            analyze_this = f"&& art_year_int:[* TO {endyear}] "
             filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)
 
@@ -2263,7 +2330,7 @@ def parse_search_query_parameters(search=None,
         search_analysis_term_list.append(analyze_this)
 
     if fulltext1 is not None:
-        analyze_this = "&& text:{} ".format(fulltext1)
+        analyze_this = f"&& {split_boolean('text', fulltext1)} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
@@ -2425,7 +2492,7 @@ def search_text(query,
                # bring text_xml back in summary fields in case it's missing in highlights! I documented a case where this happens!
                # summary_fields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml, text_xml", 
                # highlight_fields = 'art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
-               summary_fields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, abstracts_xml, art_title, art_author_id, art_citeas_xml, text_xml", 
+               summary_fields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_pepsourcetitleabbr, art_newsecnm, art_pgrg, abstracts_xml, art_title, art_author_id, art_citeas_xml, text_xml", 
                highlight_fields = 'text_xml', 
                sort_by="score desc",
                authenticated = None, 
@@ -2466,8 +2533,7 @@ def search_text(query,
 				"citeCount20": "3",
 				"citeCountAll": "3",
 				"kwic": ". . . \r\n        
-
-    
+   
     """
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
@@ -2497,7 +2563,7 @@ def search_text(query,
         filter_query = filter_query.replace("*:* && ", "")
         logger.debug("Solr FilterQ: %s", filter_query)
     else:
-        filter_query == "*:*"
+        filter_query = "*:*"
 
     if query is not None:
         query = query.replace("*:* && ", "")
@@ -2566,7 +2632,10 @@ def search_text(query,
                 if pgRg is not None:
                     pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
                     
-                documentID = result.get("art_id", None)        
+                documentID = result.get("art_id", None)
+                art_year = result.get("art_year", None)
+                art_vol = result.get("art_vol", None)
+                art_issue = result.get("art_iss", None)
                 text_xml = results.highlighting[documentID].get("text_xml", None)
                 # no kwic list when full-text is requested.
                 if text_xml is not None and not full_text_requested:
@@ -2627,8 +2696,11 @@ def search_text(query,
                                                     
                     if format_requested == "HTML":
                         # Convert to HTML
+                        source_title = result.get("art_pepsourcetitleabbr", "")
+                        heading = opasxmllib.get_running_head(source_title=source_title, pub_year=art_year, vol=art_vol, issue=art_issue, pgrg=pgRg, ret_format="HTML")
                         text_xml = opasxmllib.xml_str_to_html(text_xml, xslt_file=opasConfig.XSLT_XMLTOHTML)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
                         text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                        text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
                         #text_xml = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, text_xml)
                         #text_xml = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, text_xml)
                     elif format_requested == "TEXTONLY":

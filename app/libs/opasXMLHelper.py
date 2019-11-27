@@ -595,19 +595,28 @@ def xml_xpath_return_xmlstringlist(element_node, xpath, default_return=list()):
     except:
         ret_val = default_return
         
-    return ret_val   
+    return ret_val
+
+def get_running_head(source_title=None, pub_year=None, vol=None, issue=None, pgrg=None, ret_format="HTML"):
+    """
+    Return the short running head at the top of articles and Abstracts
+    """
+    if issue is not None:
+        issue = "({})".format(issue)
+    else:
+        issue = ""
+        
+    ret_val = f"({pub_year}). {source_title}, {vol}{issue}:{pgrg}"
+    return ret_val
+    
 
 def add_headings_to_abstract_html(abstract, source_title=None, pub_year=None, vol=None, issue=None, pgrg=None, title=None, author_mast=None, citeas=None, ret_format="HTML"):
     """
     Format the top portion of the Abstracts presented by the client per the original GVPi model
     """
 
-    if issue is not None:
-        issue = "({})".format(issue)
-    else:
-        issue = ""
+    heading = get_running_head(source_title=source_title, pub_year=pub_year, vol=vol, issue=issue, pgrg=pgrg, ret_format="HTML")
         
-    heading = f"({pub_year}). {source_title}, {vol}{issue}:{pgrg}"
     if ret_format != "TEXTONLY":
         # BOTH HTML and XML.  May later want to handle XML separately
         ret_val = f"""
