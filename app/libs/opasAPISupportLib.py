@@ -81,7 +81,7 @@ import json
 #solr = pysolr.Solr('http://localhost:8983/solr/pepwebproto', timeout=10)
 #This is the old way -- should switch to class Solr per https://pythonhosted.org/solrpy/reference.html
 if SOLRUSER is not None:
-    solr_docs = solr.Solr(SOLRURL + 'pepwebdocs', http_user=SOLRUSER, http_pass=SOLRPW)
+    solr_docs = solr.SolrConnection(SOLRURL + 'pepwebdocs', http_user=SOLRUSER, http_pass=SOLRPW)
     solr_refs = solr.SolrConnection(SOLRURL + 'pepwebrefs', http_user=SOLRUSER, http_pass=SOLRPW)
     solr_gloss = solr.SolrConnection(SOLRURL + 'pepwebglossary', http_user=SOLRUSER, http_pass=SOLRPW)
     solr_authors = solr.SolrConnection(SOLRURL + 'pepwebauthors', http_user=SOLRUSER, http_pass=SOLRPW)
@@ -2162,19 +2162,29 @@ def parse_search_query_parameters(search=None,
         >>> split_boolean("text", "dog and cat or mouse")
     
         >>> split_boolean("text", "dog and cat or mouse")
+        
+        #TODO: Need to make "AND" implicit with separated words
     
         """
-        split_pattern = "(and|or|AND|OR)"
+        split_pattern = "(\sand\s|\sor\s|\sAND\s|\sOR\s)"
         ret_val = ""
         split_list = re.split(split_pattern, query_string, maxsplit=50, flags=re.IGNORECASE)
         term_list = [x.strip() for x in split_list]
+        prior_term = "initial"
+        default_term = ""
         for n in term_list:
             if n in ("and", "AND"):
                 ret_val += " && "
+                prior_term = "and"
             elif n in ["or", "OR"]:
                 ret_val += " || "
+                prior_term = "or"
             else:
-                ret_val += f"{field_name}:{n}"
+                if prior_term not in ("and", "AND", "or", "OR", "initial"):
+                    default_term = " && "
+                ret_val += default_term + f"{field_name}:{n}"
+                prior_term = ""
+                default_term = ""
     
         return ret_val        
     
