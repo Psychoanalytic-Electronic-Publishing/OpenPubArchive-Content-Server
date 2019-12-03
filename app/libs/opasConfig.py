@@ -6,7 +6,13 @@ import tempfile
 BASELOGFILENAME = "opasAPI"
 logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s'
-logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
+
+# These are the solr database names used
+SOLR_DOCS = "pepwebdocs"
+SOLR_REFS = "pepwebrefs"
+SOLR_AUTHORS = "pepwebauthors"
+SOLR_GLOSSARY = "pepwebglossary" 
 
 # folders, configure per install
 # uploads
@@ -14,7 +20,6 @@ UPLOAD_DIR = r"z:\\back\\"
 XSLT_XMLTOHTML = r"./libs/styles/pepkbd3-html.xslt"
 XSLT_XMLTOHTML_ALT = r"../styles/pepkbd3-html.xslt"
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
-API_BINARY_IMAGE_SOURCE_PATH = r"X:\_PEPA1\g"
 
 #logger = logging.getLogger(programNameShort)
 

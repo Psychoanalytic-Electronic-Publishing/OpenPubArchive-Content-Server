@@ -22,15 +22,26 @@ such as PEP-Easy.
                       USE THAT AS A TEMPLATE.
 
               #TODO: This now needs to be done to each end point.
-              
+
 2019.0904.1 - Started conversion to snake_case...
 
-2019.1019/1 - This and the other modules have now been (mostly) converted from camelCase to snake_case
+2019.1019.1 - This and the other modules have now been (mostly) converted from camelCase to snake_case
               for the sake of other Python programmers using the source.  This does lead
               to some consistency issues, because you do end up with a mix of camelCase given
               the API and some libraries using it.  I'm not a big fan of snake_case but
               trying to do it in the most consistent way possible :)
 
+2019.1202.1 - Fixed password encoding for create user. Parameterized some settings.
+              Tuned mostcited to retrieve fewer records which is what was making it slow.
+              Continued working on term search fixes...not done! #TODO
+
+To Install (at least in windows)
+  rem python 3.7 required
+  python -m venv .\venv
+  .\venv\Scripts\activate.bat
+  pip install --trusted-host pypi.python.org -r /app/requirements.txt
+  rem if it complains pip is not up to date
+  python -m pip install --upgrade pip
 
 Run with:
     uvicorn server:app --reload
@@ -58,12 +69,18 @@ Endpoint and structure documentation automatically available when server is runn
 
 (base URL + "/docs")
 
+2019-11-30 - Updated FastAPI/Starlette/Pydantic.  Removed EmailStr import which was just there to prevent warnings on older versions.
+           - Added additional fields, some admin only, to get_server_status (now shows versions)
+           
+2019-11-28 - Added SSH support to allow communicating with AWS mySQL offsite.
+
+
 """
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1124.1"
+__version__     = "2019.1202.1"
 __status__      = "Development"
 
 import sys
@@ -96,6 +113,8 @@ from starlette.status import HTTP_200_OK, \
                              HTTP_500_INTERNAL_SERVER_ERROR, \
                              HTTP_503_SERVICE_UNAVAILABLE
 
+import requests
+from requests.auth import HTTPBasicAuth
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import aiofiles
 from typing import List
@@ -104,7 +123,7 @@ app = FastAPI()
 
 
 from pydantic import BaseModel
-from pydantic.types import EmailStr
+# from pydantic.types import EmailStr
 from pydantic import ValidationError
 import solrpy as solr
 import json
@@ -127,6 +146,23 @@ import modelsOpasCentralPydantic
 import opasCentralDBLib
 # from sourceInfoDB import SourceInfoDB
 
+# Check text server version
+# doesn't work for some reason.  Works for localhost, but not cross-domain.
+# on the bitnami server, I get unauthorized (401).  I get an error on the
+# codesypher server.
+text_server_ver = None
+text_server_url = localsecrets.SOLRURL
+PARAMS = {'wt':'json'}
+url = f"{localsecrets.SOLRURL}admin/info/system"
+if localsecrets.SOLRUSER is not None:
+    # need username and password
+    r = requests.get(url = url, params = PARAMS, auth=HTTPBasicAuth(localsecrets.SOLRUSER, localsecrets.SOLRPW))
+else:
+    r = requests.get(url = url, params = PARAMS)
+    
+if r.status_code == 200:
+    ver_json = r.json()
+    text_server_ver = ver_json["lucene"]["lucene-spec-version"]
 
 # gActiveSessions = {}
 
@@ -139,9 +175,9 @@ CURRENT_DEVELOPMENT_STATUS = "Developing"
 
 app = FastAPI(
     debug=True,
-        title="Open Publications Archive (OPAS) API for PEP-Web",
+    title="Open Publications Archive (OPAS) API for PEP-Web",
         description = "Open Publications Archive Software API for PEP-Web by Psychoanalytic Electronic Publishing (PEP)",
-        version = "2019.11.26.alpha",
+        version = f"{__version__}.alpha",
         static_directory=r"./docs",
         swagger_static={
             "favicon": "pepfavicon"
@@ -178,7 +214,9 @@ origins = [
     "http://pep-web.org",
     "http://.pep-web.org",
     "http://pep-web.info",
-    "http://.pep-web.info",   
+    "http://.pep-web.info",
+    f"http://{localsecrets.COOKIE_DOMAIN}",
+    f"http://{localsecrets.BASEURL}"
 ]
 
 app.add_middleware(
@@ -214,51 +252,21 @@ def get_current_username(response: Response,
             headers={"WWW-Authenticate": "Basic"},
         )
     return user
-##-----------------------------------------------------------------------------
-#@app.post("/v2/Admin/LoginForm/")
-#async def login(*, username: str = Form(...), password: str = Form(...)):
-    #"""
-    #Just Testing forms
-    #"""
-    #return {"username": username}
-
-##-----------------------------------------------------------------------------
-#@app.post("/v2/Admin/SubmitFiles/")
-#async def create_file(
-                       #file: bytes = File(..., description="bytes to submit"),
-                       #fileb: UploadFile = File(..., description="file to upload"),
-                       #token: str = Form(...)
-                      #):
-
-    #sample = await fileb.read()
-    #async with aiofiles.open(fr"z:\back\{fileb.filename}", "wb") as f:
-        #await f.write(sample)
-        
-    ##with open(fr"z:\back\{fileb.filename}", "wb") as f:
-        ##f.write(sample)
-    
-        
-    #return {
-        #"file_size": len(file),
-        #"token": token,
-        #"fileb_content_type": fileb.content_type,
-        #"fileb_sample": len(sample)
-    #}
 #-----------------------------------------------------------------------------
-@app.post("/v2/Admin/CreateUser/", response_model=models.User, tags=["Admin"])
+@app.post("/v2/Admin/CreateUser/", response_model=models.User, response_model_exclude_unset=True, tags=["Admin"])
 async def create_new_user(response: Response, 
-                     request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
-                     username: str = Form(..., description="Username"),
-                     password: str = Form(..., description="Password"),
-                     company: str = Form(default=None, description="Optional, company name"),
-                     fullname: str = Form(default=None, description="Optional, full name"),
-                     email: str = Form(default=None, description="The user's email address"),
-                     tracking: bool = Form(default=1, description="Tracking information recorded for reports"),
-                     cookies: bool = Form(default=1, description="User agrees to site cookies"),
-                     reports: bool = Form(default=0, description="View Parent Reports"),
-                     optin: bool = Form(default=1, description="User agrees to email communications"),
-                     hide: bool = Form(default=1, description="User agrees to site cookies"),
-                    ):
+                          request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                          username: str = Form(..., description="Username"),
+                          password: str = Form(..., description="Password"),
+                          company: str = Form(default=None, description="Optional, company name"),
+                          fullname: str = Form(default=None, description="Optional, full name"),
+                          email: str = Form(default=None, description="The user's email address"),
+                          tracking: bool = Form(default=1, description="Tracking information recorded for reports"),
+                          cookies: bool = Form(default=1, description="User agrees to site cookies"),
+                          reports: bool = Form(default=0, description="View Parent Reports"),
+                          optin: bool = Form(default=1, description="User agrees to email communications"),
+                          hide: bool = Form(default=1, description="User agrees to site cookies"),
+                          ):
     """
     ## Function
        <b>Add a new user</b>
@@ -271,13 +279,13 @@ async def create_new_user(response: Response,
 
     ## Sample Call
          /v2/Admin/CreateUser/
-    
+
     ## Notes
          NA
-    
+
     ## Potential Errors
        NA
-       
+
     """
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     # ensure user is admin
@@ -302,63 +310,9 @@ async def create_new_user(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.post("/v2/Admin/SendAlerts/", response_model=models.ServerStatusItem, tags=["Admin"])
-async def send_out_alerts_now(response: Response, 
-                              request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
-                          ):
-    """
-    ## Function
-       <b>Initiate the alert send process</b>
-
-    ## Return Type
-       ServerStatusItem
-
-    ## Status
-       Status: In Development
-
-    ## Sample Call
-         /v2/Admin/SendAlerts/
-    
-    ## Notes
-         NA
-    
-    ## Potential Errors
-       NA
-       
-    """
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response)   
-    # ensure user is admin
-    if ocd.verify_admin(session_info):
-        # TODO - Replace this with the real code!
-        solr_ok = opasAPISupportLib.check_solr_docs_connection()
-        db_ok = ocd.open_connection()
-        ocd.close_connection()
-    
-        try:
-            server_status_item = None
-        except ValidationError as e:
-            logger.warning("ValidationError", e.json())
-        else:
-            server_status_item = models.ServerStatusItem(text_server_ok = solr_ok, 
-                                                         db_server_ok = db_ok,
-                                                         user_ip = request.client.host,
-                                                         solr_url = localsecrets.SOLRURL,
-                                                         config_name = localsecrets.CONFIG,
-                                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
-                                                         )
-    else:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED, 
-            detail="Not authorized"
-        )        
-
-    return server_status_item
-
-
-#-----------------------------------------------------------------------------
-@app.get("/v2/Session/Status/", response_model=models.ServerStatusItem, tags=["Session", "v2.0"])
+@app.get("/v2/Session/Status/", response_model=models.ServerStatusItem, response_model_exclude_unset=True, tags=["Session", "v2.0"])
 async def get_the_server_status(response: Response, 
-                          request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
+                                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST) 
                           ):
     """
     ## Function
@@ -372,44 +326,73 @@ async def get_the_server_status(response: Response,
 
     ## Sample Call
          /v2/Session/Status/
-    
+
     ## Notes
        NA
-    
+
     ## Potential Errors
        NA
-        
+
     """
+    global text_server_ver
+    
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)   
 
-    solr_ok = opasAPISupportLib.check_solr_docs_connection()
     db_ok = ocd.open_connection()
-    ocd.close_connection()
-    
+    solr_ok = opasAPISupportLib.check_solr_docs_connection()
+    config_name = None
+    mysql_ver = None
+    text_server_ver = ""
+    text_server_url = None
+    config_name = None
+    mysql_ver = ocd.get_mysql_version()
     if ocd.verify_admin(session_info):
-        solr_url = localsecrets.SOLRURL
-        config_name = localsecrets.CONFIG
-    else:
-        solr_url = None
-        config_name = None
-        
-    try:
-        server_status_item = models.ServerStatusItem(text_server_ok = solr_ok, 
-                                                     db_server_ok = db_ok,
-                                                     user_ip = request.client.host,
-                                                     solr_url = solr_url,
-                                                     config_name = config_name, # should not be for unauthorized users
-                                                     timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')  
-                                                     )
-    except ValidationError as e:
-        logger.warning("ValidationError", e.json())
+        # Check text server version
+        #PARAMS = {'wt':'json'}
+        #url = f"{localsecrets.SOLRURL}/admin/info/system"
+        #r = requests.get(url = "http://localhost:8983/solr/admin/info/system", params = PARAMS)
+        #if r.status_code == 200:
+            #ver_json = r.json()
+            #text_server_ver = ver_json["lucene"]["lucene-spec-version"]
 
+        text_server_url = localsecrets.SOLRURL
+        config_name = localsecrets.CONFIG
+        try:
+            server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
+                                                         text_server_version = text_server_ver, 
+                                                         db_server_version = mysql_ver,
+                                                         db_server_ok = db_ok,
+                                                         api_server_version = __version__, 
+                                                         user_ip = request.client.host,
+                                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
+                                                         # admin only fields
+                                                         text_server_url = text_server_url,
+                                                         config_name = config_name,
+                                                         user_count = 0
+                                                         )
+        except ValidationError as e:
+            logger.warning("ValidationError", e.json())
+    else:
+        try:
+            server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
+                                                         text_server_version = text_server_ver, 
+                                                         db_server_version = mysql_ver,
+                                                         db_server_ok = db_ok,
+                                                         api_server_version = __version__, 
+                                                         user_ip = request.client.host,
+                                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
+                                                         )
+        except ValidationError as e:
+            logger.warning("ValidationError", e.json())
+
+
+    ocd.close_connection()
     return server_status_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, tags=["Session", "v2.0"])
+@app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Session", "v2.0"])
 async def who_am_i(response: Response,
-             request: Request):
+                   request: Request):
     """
     ## Function
        <b>Temporary endpoint for debugging purposes</b>
@@ -422,10 +405,10 @@ async def who_am_i(response: Response,
 
     ## Sample Call
          /v2/Session/WhoAmI/
-    
+
     ## Notes
        NA
-    
+
     ## Potential Errors
        NA
 
@@ -435,8 +418,7 @@ async def who_am_i(response: Response,
     return(session_info)
 
 #-----------------------------------------------------------------------------
-#-----------------------------------------------------------------------------
-@app.get("/v2/Database/Alerts/", response_model=models.AlertList, tags=["Database", "v2.0"])
+@app.get("/v2/Database/Alerts/", response_model=models.AlertList, response_model_exclude_unset=True, tags=["Database", "v2.0"])
 def get_database_alerts(response: Response,
                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                         ):
@@ -451,10 +433,10 @@ def get_database_alerts(response: Response,
 
     ## Sample Call
          /v2/Admin/Alerts/
-    
+
     ## Notes
        NA
-    
+
     ## Potential Errors
        NA
 
@@ -468,20 +450,20 @@ def get_database_alerts(response: Response,
                                                        request = request.url._url,
                                                        timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
                                                        )
-    
+
         alert_struct = models.AlertListStruct(responseInfo = response_info, 
                                               responseSet = None #TODO: add info
-                                            )
-    
+                                              )
+
         ret_val = models.AlertList(alertList = alert_struct)
 
     except ValidationError as e:
         logger.error(e.json())             
-    
+
     return(ret_val )
 
 #-----------------------------------------------------------------------------
-@app.post("/v2/Database/Alerts/", response_model=models.SessionInfo, tags=["Database", "v2.0"])
+@app.post("/v2/Database/Alerts/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Database", "v2.0"])
 def subscribe_to_database_alerts(*,
                                  response: Response,
                                  request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
@@ -489,7 +471,7 @@ def subscribe_to_database_alerts(*,
                                  product: str = Form(default=None, description="Alert on a specific product"),
                                  journals: bool = Form(default=None, description="Alerts on all Journal updates"),
                                  books: bool = Form(default=None, description="Alerts on all Book updates"),
-                                 videos: bool = Form(default=None, description="Alerts on all Video updates"),
+                                 videos: bool = Form(default=None, description="Alerts on all Video updates")
                                  ):
     """
     ## Function
@@ -503,10 +485,10 @@ def subscribe_to_database_alerts(*,
 
     ## Sample Call
          /v2/Database/Alerts/
-    
+
     ## Notes
        NA
-    
+
     ## Potential Errors
        NA
 
@@ -515,7 +497,6 @@ def subscribe_to_database_alerts(*,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     return(session_info)
 
-#-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 @app.get("/v2/Database/Reports/", response_model=models.Report, response_model_skip_defaults=True, tags=["Database", "v2.0"])
 def get_reports(response: Response,
@@ -541,10 +522,10 @@ def get_reports(response: Response,
 
     ## Sample Call
          /v2/Database/Reports/
-    
+
     ## Notes
        NA
-    
+
     ## Potential Errors
        NA
 
@@ -552,37 +533,37 @@ def get_reports(response: Response,
     ret_val = None
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
-    
+
     try:
         ret_val = models.Report(report=[4, 5, [1, 2, 3]])
 
     except ValidationError as e:
         logger.error(e.json())             
-    
+
     return(ret_val )
 
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Documents/Submission/", tags=["Documents", "v2.0"])   
+@app.get("/v2/Documents/Submission/", response_model_exclude_unset=True, tags=["Documents", "v2.0"])   
 async def document_submission(*,
-                             journalcode: str = Form(default=None, description="The 3-8 digit PEP Code for this journal"),
-                             title: str = Form(..., description="The title of the article"),
-                             keywords: str = Form(default=None, description="A comma separated list of keywords"),
-                             region: str = Form(default=None, description="The region it's from"),
-                             editor: str = Form(default=None, description="The editor assigned to this article"),
-                             country: str = Form(default=None, description="The country of origin"),
-                             language: str = Form(default="English", description="The language in which the article is written"),
-                             anonymous: bool = Form(default=None, description="If the author is to be anonymous"),
-                             authorlist: models.authorList = Form(default=None, description="This must be a structure of the form shown."),
-                             abstract: str = Form(...),
-                             reviewernotes: str = Form(default=None, description="Notes for the revieweer"),
-                             file: UploadFile = File(..., description="PDF or EPUB version of article"),
-                             token: str = Form(..., description="Authorization code")                             
-                          ):
+                              journalcode: str = Form(default=None, description="The 3-8 digit PEP Code for this journal"),
+                              title: str = Form(..., description="The title of the article"),
+                              keywords: str = Form(default=None, description="A comma separated list of keywords"),
+                              region: str = Form(default=None, description="The region it's from"),
+                              editor: str = Form(default=None, description="The editor assigned to this article"),
+                              country: str = Form(default=None, description="The country of origin"),
+                              language: str = Form(default="English", description="The language in which the article is written"),
+                              anonymous: bool = Form(default=None, description="If the author is to be anonymous"),
+                              authorlist: models.authorList = Form(default=None, description="This must be a structure of the form shown."),
+                              abstract: str = Form(...),
+                              reviewernotes: str = Form(default=None, description="Notes for the revieweer"),
+                              file: UploadFile = File(..., description="PDF or EPUB version of article"),
+                              token: str = Form(..., description="Authorization code")                             
+                              ):
     """
     ## Function
        <b>An <i>authorized user</i> can submit an article in PDF</b>
-       
+
     ## Return Type
        models.XXX
 
@@ -591,20 +572,20 @@ async def document_submission(*,
 
     ## Sample Call
          /v2/Documents/Submission/
-    
+
     ## Notes
-    
+
     ## Potential Errors
-        
+
     """
     sample = await file.read()
     async with aiofiles.open(fr"{UPLOAD_DIR}{file.filename}", "wb") as f:
         await f.write(sample)
-        
+
     #with open(fr"z:\back\{fileb.filename}", "wb") as f:
         #f.write(sample)
-    
-        
+
+
     return {
         "file_size": len(file),
         "token": token,
@@ -614,7 +595,7 @@ async def document_submission(*,
     return {"username": username}
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Session/BasicLogin/", tags=["Experimental"], description="Used for Basic Authentication")
+@app.get("/v2/Session/BasicLogin/", response_model_exclude_unset=True, tags=["Experimental"], description="Used for Basic Authentication")
 def read_current_user(response: Response, 
                       request: Request,
                       user: str = Depends(get_current_username), 
@@ -622,7 +603,7 @@ def read_current_user(response: Response,
     """
     ## Function
        <b>Basic login Authentication.  Calls up a simple dialog allowing secure login.</b>
-       
+
     ## Return Type
        models.LoginReturnItem
 
@@ -631,17 +612,17 @@ def read_current_user(response: Response,
 
     ## Sample Call
          /v2/Users/BasicLogin/
-    
+
     ## Notes
-    
+
     ## Potential Errors
-        
+
     """
     session_id = request.cookies.get(OPASSESSIONID) #  opasAPISupportLib.get_session_id(request)
     access_token = request.cookies.get(OPASACCESSTOKEN)   #  opasAPISupportLib.get_access_token(request)
     expiration_time = datetime.utcfromtimestamp(time.time() + opasAPISupportLib.get_max_age(keep_active=ka))
     logger.debug("V2 Login Request: ")
-    
+
     if session_id is not None and access_token is not None:
         logger.debug("...note, already logged in...")
         pass # we are already logged in
@@ -666,7 +647,7 @@ def read_current_user(response: Response,
             user.last_update = user.last_update.timestamp()
             access_token = jwt.encode({'exp': expiration_time.timestamp(),
                                        'user': user.dict()
-                                      },
+                                       },
                                       key=localsecrets.SECRET_KEY,
                                       algorithm=localsecrets.ALGORITHM)
             # start a new session, with this user (could even still be the old user
@@ -711,7 +692,7 @@ def read_current_user(response: Response,
     return login_return_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Token/", tags=["v1.0", "Deprecated", "PEPEasy1"], description="Used by PEP-Easy to login; will be deprecated in V2")  
+@app.get("/v1/Token/", response_model_exclude_unset=True, tags=["v1.0", "Deprecated", "PEPEasy1"], description="Used by PEP-Easy to login; will be deprecated in V2")  
 def get_token(response: Response, 
               request: Request,
               grant_type=None, 
@@ -733,11 +714,11 @@ def get_token(response: Response,
 
     ## Sample Call
          /v1/Token/
-    
+
     ## Notes
-    
+
     ## Potential Errors
-        
+
     """
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     if grant_type=="password" and username is not None and password is not None:
@@ -752,7 +733,7 @@ def get_token(response: Response,
         #err_return = models.ErrorReturn(error = ERR_CREDENTIALS, error_message = ERR_MSG_INSUFFICIENT_INFO)
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/License/Status/Login/", tags=["Session", "PEPEasy1", "v1.0"])
+@app.get("/v1/License/Status/Login/", response_model_exclude_unset=True, tags=["Session", "PEPEasy1", "v1.0"])
 def get_license_status(response: Response, 
                        request: Request=Query( None,
                                                title="HTTP Request",
@@ -769,10 +750,10 @@ def get_license_status(response: Response,
 
     ## Sample Call
          /v1/License/Status/Login/
-    
+
     ## Notes
          In V1, glossary entries are fetched via the /v1/Documents endpoint
-    
+
     ## Potential Errors
     """
     # get session info database record if there is one
@@ -805,8 +786,8 @@ def get_license_status(response: Response,
     return license_info
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Session/Login/", tags=["Session", "v2.0"]) # I like it under Users so I did them both.
-@app.get("/v1/Login/", tags=["Session"])
+@app.get("/v2/Session/Login/", response_model_exclude_unset=True, tags=["Session", "v2.0"]) # I like it under Users so I did them both.
+@app.get("/v1/Login/", response_model_exclude_unset=True, tags=["Session"])
 def login_user(response: Response, 
                request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
                grant_type=None, 
@@ -830,7 +811,7 @@ def login_user(response: Response,
 
     ## Status
        This endpoint is working.
-       
+
        Returns models.ErrorReturn on one error, otherwise throws exception.
        #TODO: Look into whether this is appropriate.
 
@@ -841,7 +822,7 @@ def login_user(response: Response,
        /v2/Session/Login/    
 
     ## Notes
-    
+
     ## Potential Errors
 
     """
@@ -871,7 +852,7 @@ def login_user(response: Response,
                                                  session_end=session_end_time
                                                  )    
                     #opasAPISupportLib.deleteCookies(resp, session_id="", accessToken="")
-    
+
                 # NOW lets give them a new session
                 # new session and then token
                 session_id = secrets.token_urlsafe(16)
@@ -881,7 +862,8 @@ def login_user(response: Response,
                 # user.end_date = user.end_date.timestamp()
                 # user.last_update = user.last_update.timestamp()
                 access_token = jwt.encode({'exp': expiration_time.timestamp(),
-                                           'user': user.user_id, # .dict(), 
+                                           'user': user.user_id, # .dict(),
+                                           'admin': user.admin,
                                            'orig_session_id': session_id,
                                            },
                                           key=localsecrets.SECRET_KEY,
@@ -906,20 +888,20 @@ def login_user(response: Response,
                                     path="/",
                                     secure=False, 
                                     httponly=False)
-    
+
                 response.set_cookie(key=OPASACCESSTOKEN,
                                     value=access_token,
                                     max_age=max_age, expires=None, 
                                     path="/",
                                     secure=False, 
                                     httponly=False)
-    
+
             else:
                 access_token = None # user rejected
                 err_code = response.status_code = HTTP_401_UNAUTHORIZED
                 err_return = models.ErrorReturn(error = ERR_CREDENTIALS,
                                                 error_message = ERR_MSG_LOGIN_CREDENTIALS)
-    
+
         else: # Can't log in!
             raise HTTPException(
                 status_code = HTTP_400_BAD_REQUEST, 
@@ -946,8 +928,8 @@ def login_user(response: Response,
         return login_return_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Session/Logout/", tags=["Session", "v2.0"]) # I like it under Users so I did them both.
-@app.get("/v1/Logout/", tags=["Session", "PEPEasy1", "v1.0"])  # The original GVPi URL
+@app.get("/v2/Session/Logout/", response_model_exclude_unset=True, tags=["Session", "v2.0"]) # I like it under Users so I did them both.
+@app.get("/v1/Logout/", response_model_exclude_unset=True, tags=["Session", "PEPEasy1", "v1.0"])  # The original GVPi URL
 def logout_user(response: Response, 
                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST)):
     """
@@ -956,7 +938,7 @@ def logout_user(response: Response,
 
        /v1/Logout/ is used by the GVPi/PEPEasy current config.
                    It can be removed when we move off the GVPi server.
-   
+
        /v2/Users/Logout/ is the newer path, parallels logout /v2/Users/Login/ for clarity.
 
 
@@ -969,9 +951,9 @@ def logout_user(response: Response,
     ## Sample Call
          /v1/Logout/
          /v2/Session/Logout/
-    
+
     ## Notes
-    
+
     ## Potential Errors
 
     """
@@ -1006,7 +988,7 @@ def logout_user(response: Response,
                                 path="/",
                                 secure=False, 
                                 httponly=False)
-            
+
     else:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
@@ -1026,7 +1008,7 @@ def logout_user(response: Response,
 #---------------------------------------------------------------------------------------------------------
 @app.get("/v2/Database/MoreLikeThese/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database", "v2.0"])
 @app.get("/v1/Database/SearchAnalysis/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database", "v1.0"])
-@app.get("/v1/Database/Search/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database", "PEPEasy1", "v1.0"])
+@app.get("/v1/Database/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, response_model_skip_defaults=True, tags=["Database", "PEPEasy1", "v1.0"])
 async def search_the_document_database(response: Response, 
                                        request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
                                        journalName: str=Query(None, title="Match PEP Journal or Source Name", description="PEP part of a Journal, Book, or Video name (e.g., 'international'),", min_length=2),  
@@ -1061,15 +1043,15 @@ async def search_the_document_database(response: Response,
 
        This code is front end for three endpoints in order to only have to code parameter handling once 
        (since they all would use the same parameters), easily distinguished here by the calling path.
-   
+
        Some of the fields should be deprecated, but for now, they support PEP-Easy, as configured to use the GVPi based PEP Server
-   
+
        MoreLikeThis and SearchAnalysis are brand new (20190625), and there right now for experimentation
-   
+
        Trying to reduce these by making them "smarter". For example, 
            endyear isn't needed, because startyear can handle the ranges (and better than before).
            journal is also configured to take anything that would have otherwise been entered in journalName
-   
+
     ## Return Type
        models.DocumentList
 
@@ -1085,11 +1067,11 @@ async def search_the_document_database(response: Response,
          /v2/Database/MoreLikeThese/
          /v1/Database/SearchAnalysis/
          /v1/Database/Search/"
-    
+
     ## Notes
-    
+
     ## Potential Errors
-    
+
     """
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
@@ -1162,7 +1144,7 @@ async def search_the_document_database(response: Response,
 
         # note: this now returns a tuple...t
         ret_val, ret_status = opasAPISupportLib.search_text(query=solr_query_params.searchQ, 
-                                                                  filter_query = solr_query_params.filterQ,
+                                                            filter_query = solr_query_params.filterQ,
                                                                   full_text_requested=False,
                                                                   query_debug = True, # TEMPORARY
                                                                   more_like_these = more_like_these_mode,
@@ -1180,13 +1162,13 @@ async def search_the_document_database(response: Response,
                 status_code=ret_status[0], 
                 detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
             )
-        
+
         if ret_val != {}:
             matches = len(ret_val.documentList.responseSet)
             ret_val.documentList.responseInfo.request = request.url._url
         else:
             matches = 0
-            
+
         logger.debug(f"....matches = {matches}")
         # fill in additional return structure status info
         statusMsg = f"{matches} hits; moreLikeThese:{more_like_these_mode}; queryAnalysis: {analysis_mode}"
@@ -1203,13 +1185,14 @@ async def search_the_document_database(response: Response,
 
     return ret_val
 
-@app.get("/v1/Database/MostDownloaded/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
+#---------------------------------------------------------------------------------------------------------
+@app.get("/v1/Database/MostDownloaded/", response_model=models.DocumentList, response_model_exclude_unset=True, response_model_skip_defaults=True, tags=["Database"])
 async def get_the_most_viewed_articles(response: Response,
-                                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
-                                 period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
-                                 limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
-                                 offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
-                                 ):
+                                       request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
+                                       period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
+                                       limit: int=Query(5, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
+                                       offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
+                                       ):
     """
     ## Function
        <b>Return a list of documents which are the most downloaded (viewed)</b>
@@ -1225,9 +1208,9 @@ async def get_the_most_viewed_articles(response: Response,
 
     ## Sample Call
          /v1/Database/MostDownloaded/
-    
+
     ## Notes
-    
+
     ## Potential Errors
 
     """
@@ -1265,6 +1248,7 @@ async def get_the_most_viewed_articles(response: Response,
     logger.debug("out most viewed")
     return ret_val  # document_list
 
+#---------------------------------------------------------------------------------------------------------
 @app.get("/v1/Database/MostCited/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database"])
 def get_the_most_cited_articles(response: Response,
                                 request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
@@ -1287,9 +1271,9 @@ def get_the_most_cited_articles(response: Response,
 
     ## Sample Call
          /v1/Database/MostCited/
-    
+
     ## Notes
-    
+
     ## Potential Errors
 
     """
@@ -1301,7 +1285,7 @@ def get_the_most_cited_articles(response: Response,
     #print ("in most cited")
     try:
         # return documentList
-        ret_val = opasAPISupportLib.database_get_most_cited(period=period, limit=limit, offset=offset)
+        ret_val = opasAPISupportLib.database_get_most_cited(period=period, more_than=30, limit=limit, offset=offset)
         # fill in additional return structure status info
         # client_host = request.client.host
         ret_val.documentList.responseInfo.request = request.url._url
@@ -1328,6 +1312,7 @@ def get_the_most_cited_articles(response: Response,
     #print ("out mostcited")
     return ret_val
 
+#---------------------------------------------------------------------------------------------------------
 @app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_skip_defaults=True, tags=["Database", "PEPEasy1", "v1.0"])
 def get_the_newest_uploaded_issues(response: Response,
                                    request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
@@ -1348,26 +1333,26 @@ def get_the_newest_uploaded_issues(response: Response,
 
     ## Sample Call
          /v1/Database/WhatsNew/
-    
+
     ## Notes
-    
+
     ## Potential Errors
 
     """
     # (Don't log calls to this endpoint)
-    
+
     time.sleep(1.25)  # let it wait
     try:
         # return whatsNewList
         ret_val = opasAPISupportLib.database_get_whats_new(limit=limit, 
-                                                       offset=offset,
+                                                           offset=offset,
                                                        days_back=days_back)
 
     except Exception as e:
         e = str(e)
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST,
                             detail="Error: {}".format(e.replace("'", "\\'"))
-        )
+                            )
     else:
         # response.status_message = "Success"
         response.status_code = HTTP_200_OK
@@ -1375,41 +1360,6 @@ def get_the_newest_uploaded_issues(response: Response,
 
     return ret_val
 
-##-----------------------------------------------------------------------------
-#@app.get("/v1/Metadata/Banners/", response_model_skip_defaults=True, tags=["Metadata"])
-#def get_banners(response: Response, 
-                #request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
-                #):
-    #"""
-    #Return information on the location of a source's banner.
-    #This v1 endpoint has not yet been used by a client.  
-    #DEPRECATED.
-    #Use /v1/Metadata/{SourceType}/ instead
-
-    #"""
-    #errCode = response.status_code = HTTP_400_BAD_REQUEST
-    #errorMessage = "Error: {}".format("This endpoint is was unused and is now deprecated. Use /v1/Metadata/{SourceType}/ instead")
-    #errReturn = models.ErrorReturn(error = ERR_MSG_DEPRECATED, error_message = errorMessage)
-
-    #return errReturn
-##-----------------------------------------------------------------------------
-#@app.get("/v1/Metadata/Banners/{SourceCode}", response_model_skip_defaults=True, tags=["Metadata"])
-#def get_banners(response Response, 
-                #request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
-                #SourceCode: str=Path(..., title="PEP Code for Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
-                #):
-    #"""
-    #Return information on the location of a source's banner.
-    #This v1 endpoint has not yet been used by a client.  
-    #DEPRECATED.
-    #Use /v1/Metadata/{SourceType}/ instead
-
-    #"""
-    #errCode = resp.status_code = HTTP_400_BAD_REQUEST
-    #errorMessage = "Error: {}".format("This endpoint is was unused and is now deprecated. Use /v1/Metadata/{SourceType}/ instead")
-    #errReturn = models.ErrorReturn(error = ERR_MSG_DEPRECATED, error_message = errorMessage)
-
-    #return errReturn  
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Contents/{SourceCode}/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Metadata"])
 def get_journal_content_lists(response: Response,
@@ -1433,9 +1383,9 @@ def get_journal_content_lists(response: Response,
 
     ## Sample Call
          /v1/Metadata/Contents/IJP/
-    
+
     ## Notes
-    
+
     ## Potential Errors
 
     """
@@ -1491,9 +1441,9 @@ def get_journal_content_lists_for_volume(SourceCode: str,
     ## Sample Call
          /v1/Metadata/Contents/IJP/77/
          http://development.org:9100/v1/Metadata/Contents/IJP/77/
-    
+
     ## Notes
-    
+
     ## Potential Errors
 
     """
@@ -1531,11 +1481,11 @@ def get_a_list_of_video_names(response: Response,
                               SourceCode: str=Query("*", title="PEP Code for Video Source", description=opasConfig.DESCRIPTION_SOURCECODE), 
                               limit: int=Query(200, title="Document return limit", description=opasConfig.DESCRIPTION_LIMIT),
                               offset: int=Query(0, title="Document return offset", description=opasConfig.DESCRIPTION_OFFSET)
-                             ):
+                              ):
     """
     ## Function
     <b>Get a complete list of video names</b>
-    
+
     SourceCode is the short abbreviation used as part of the DocumentIDs. e.g., for PEP in 2019, this includes:
       IPSAVS, PEPVS, PEPTOPAUTHVS, BPSIVS, IJPVS, PCVS, SFCPVS, UCLVS, PEPGRANTVS, AFCVS, NYPSIVS, SPIVS
 
@@ -1547,9 +1497,9 @@ def get_a_list_of_video_names(response: Response,
 
     ## Sample Call
          /v1/Metadata/Videos/
-    
+
     ## Notes
-    
+
     ## Potential Errors
 
     """
@@ -1575,12 +1525,12 @@ def get_a_list_of_journal_names(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Documents/Glossary/{term_id}
-    
+       /v1/Metadata/Journals/
+
     ## Notes
-    
+
     ## Potential Errors
-        
+
     """
     ret_val = get_a_list_of_source_names(response, request, SourceType="Journal", SourceCode=SourceCode, limit=limit, offset=offset)
     return ret_val
@@ -1605,11 +1555,11 @@ def get_a_list_of_volumes_for_a_journal(response: Response,
 
     ## Sample Call
          http://localhost:9100/v1/Metadata/Volumes/CPS/
-    
+
     ## Notes
-    
+
     ## Potential Errors
-        
+
     """
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
@@ -1660,6 +1610,7 @@ def get_a_list_of_volumes_for_a_journal(response: Response,
                                         )
 
     return ret_val # returns volumeList
+
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, response_model_skip_defaults=True, tags=["Metadata", "PEPEasy1", "v1.0"])
 def get_a_list_of_book_names(response: Response,
@@ -1684,11 +1635,11 @@ def get_a_list_of_book_names(response: Response,
 
     ## Sample Call
          http://localhost:9100/v1/Metadata/Books
-    
+
     ## Notes
-    
+
     ## Potential Errors
-        
+
     """
 
     ret_val = get_a_list_of_source_names(response, request, SourceType="Book", SourceCode=SourceCode, limit=limit, offset=offset)
@@ -1720,13 +1671,13 @@ def get_a_list_of_source_names(response: Response,
 
     ## Sample Call
          http://localhost:9100/v1/Metadata/Books/IPL
-    
+
     ## Notes
        Depends on:
           vw_api_productbase for videos
-    
+
     ## Potential Errors
-        
+
 
     """
 
@@ -1760,6 +1711,7 @@ def get_a_list_of_source_names(response: Response,
                                 )
 
     return ret_val
+
 #-----------------------------------------------------------------------------
 @app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_skip_defaults=True, tags=["Authors", "PEPEasy1", "v1.0"])
 def get_author_index_for_matching_author_names(response: Response,
@@ -1782,9 +1734,9 @@ def get_author_index_for_matching_author_names(response: Response,
        http://localhost:9100/v1/Authors/Index/Tuck/
 
     ## Notes
-    
+
     ## Potential Errors
-        
+
     """
     ret_val = None 
 
@@ -1847,9 +1799,9 @@ def get_author_pubs_for_matching_author_names(response: Response,
        http://localhost:8000/v1/Authors/Publications/maslow, a.*/
 
     ## Notes
-    
+
     ## Potential Errors
-        
+
     """
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     try:
@@ -1877,6 +1829,7 @@ def get_author_pubs_for_matching_author_names(response: Response,
 
     return ret_val
 
+#-----------------------------------------------------------------------------
 @app.get("/v1/Documents/Abstracts/{documentID}/", response_model=models.Documents, response_model_skip_defaults=True, tags=["Documents", "v1.0"])
 def view_an_abstract(response: Response,
                      request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
@@ -1899,10 +1852,10 @@ def view_an_abstract(response: Response,
     ## Sample Call
          /v1/Documents/Abstracts/IJP.001.0203A/
          http://localhost:9100/v1/Documents/Abstracts/IJP.001.0203A/
-    
+
     ## Notes
         PEP Easy 1.03Beta expects HTML abstract return (it doesn't specify a format)
-        
+
     ## Potential Errors
 
     """
@@ -1940,7 +1893,7 @@ def view_an_abstract(response: Response,
             # make sure we specify an error in the session log
             #  not sure this is the best return code, but for now...
             response.status_code = HTTP_404_NOT_FOUND
-            
+
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS_ABSTRACTS,
                                     session_info=session_info, 
                                     params=request.url._url,
@@ -1950,6 +1903,7 @@ def view_an_abstract(response: Response,
                                     )
     return ret_val
 
+#-----------------------------------------------------------------------------
 @app.get("/v2/Documents/Glossary/{term_id}/", response_model=models.Documents, tags=["Documents", "v2.0"], response_model_skip_defaults=True)  # the current PEP API
 def view_a_glossary_entry(response: Response,
                           request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
@@ -1970,14 +1924,12 @@ def view_a_glossary_entry(response: Response,
     ## Sample Call
          /v2/Documents/Glossary/{term_id}
 
-         http://localhost:9100/v2/Documents/Document/YP0004173238470/
-    
     ## Notes
          In V1 (and PEP-Easy 1.0), glossary entries are fetched via the /v1/Documents endpoint rather than here.
-    
+
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED for glossary access at the term level.  Otherwise, returns error.
-        
+
        Client apps should disable the glossary links when not authenticated.
     """
     ret_val = None
@@ -2065,7 +2017,7 @@ def view_a_glossary_entry(response: Response,
                                     )
     return ret_val
 
-
+#-----------------------------------------------------------------------------
 @app.get("/v2/Documents/Document/{documentID}/", response_model=models.Documents, tags=["Documents", "v2.0"], response_model_skip_defaults=True) # more consistent with the model grouping
 @app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["Documents", "v1.0", "PEPEasy1"], response_model_skip_defaults=True)  # the current PEP API
 def view_a_document(response: Response,
@@ -2092,17 +2044,17 @@ def view_a_document(response: Response,
 
     ## Sample Call
          http://localhost:9100/v1/Documents/IJP.077.0217A/
-    
+
     ## Notes
-    
+
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED to return a document.
-       
+
        If not authenticated:
           - The PEP developed server/API for V1 and V2 will return an abstract or summary if non-authenticated.
-       
+
           - The GVPI V1 API returns an error if not 
-        
+
     """
     # NOTE: Calls the code for the Glossary endpoint via function view_a_glossary_entry)
 
@@ -2132,7 +2084,7 @@ def view_a_document(response: Response,
                                 argdict["journal"] = None
                 else:
                     argdict = {}
-                    
+
                 #if not file_classification == opasConfig.DOCUMENT_ACCESS_FREE:
                     ## see if the user has access to this document
                     #basecode = opasAPISupportLib.get_basecode(documentID)
@@ -2195,7 +2147,7 @@ def view_a_document(response: Response,
                                         return_status_code = response.status_code,
                                         status_message=status_message
                                         )
-            
+
             if ret_val == {}:
                 raise HTTPException(
                     status_code=response.status_code,
@@ -2211,6 +2163,8 @@ def view_a_document(response: Response,
 
     return ret_val
 
+#-----------------------------------------------------------------------------
+@app.get("/v2/Documents/Image/{imageID}/", response_model_skip_defaults=True, tags=["Documents", "v2.0"])
 @app.get("/v1/Documents/Downloads/Images/{imageID}/", response_model_skip_defaults=True, tags=["Documents", "PEPEasy1", "v1.0"])
 async def download_an_image(response: Response,
                             request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
@@ -2229,14 +2183,14 @@ async def download_an_image(response: Response,
 
     ## Status
        This endpoint is working.
-       
+
 
     ## Sample Call
          http://localhost:9100/v1/Documents/Images/AIM.036.0275A.FIG001/
          http://development.org:9100/v1/Documents/Downloads/Images/AIM.036.0275A.FIG001
-    
+
     ## Notes
-    
+
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
     """
@@ -2278,17 +2232,17 @@ async def download_an_image(response: Response,
         else:
             with open(filename, mode='rb') as file: # b is important -> binary
                 file_content = file.read()
-            
+
             # file_content = data
             try:
                 ret_val = response = Response(file_content, media_type=media_type)
-                
+
             except Exception as e:
                 response.status_code = HTTP_400_BAD_REQUEST 
                 status_message = f" The requested document {filename} could not be returned {e}"
                 raise HTTPException(status_code=response.status_code,
                                     detail=status_message)
-    
+
             else:
                 status_message = "Success"
                 logger.info(status_message)
@@ -2310,7 +2264,7 @@ async def download_an_image(response: Response,
                                    status_code=response.status_code,
                                    filename=os.path.split(filename)[1], 
                                    media_type=media_type)
-            
+
         except Exception as e:
             response.status_code = HTTP_400_BAD_REQUEST 
             status_message = f" The requested document {filename} could not be returned {e}"
@@ -2330,9 +2284,10 @@ async def download_an_image(response: Response,
                                         return_status_code = response.status_code,
                                         status_message=status_message
                                         )
-    
+
     return ret_val
 
+#-----------------------------------------------------------------------------
 @app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_skip_defaults=True, tags=["Documents", "PEPEasy1", "v1.0"])
 def download_a_document(response: Response,
                         request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST), 
@@ -2356,9 +2311,9 @@ def download_a_document(response: Response,
          http://localhost:9100/v1/Documents/Downloads/EPUB/IJP.077.0217A/
          http://localhost:9100/v1/Documents/Downloads/PDF/IJP.077.0217A/
          http://localhost:9100/v1/Documents/Downloads/PDFORIG/IJP.077.0217A/
-    
+
     ## Notes
-    
+
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
     """
@@ -2422,7 +2377,7 @@ def download_a_document(response: Response,
                                    status_code=response.status_code,
                                    filename=os.path.split(filename)[1], 
                                    media_type=media_type)
-            
+
         except Exception as e:
             response.status_code = HTTP_400_BAD_REQUEST 
             status_message = f" The requested document {filename} could not be returned {e}"
@@ -2442,7 +2397,7 @@ def download_a_document(response: Response,
                                         return_status_code = response.status_code,
                                         status_message=status_message
                                         )
-    
+
     return ret_val
 
 if __name__ == "__main__":

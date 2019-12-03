@@ -41,7 +41,7 @@ class TestAPIDatabase(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        assert(r['documentList']['responseInfo']['fullCount'] == 3)
+        assert(r['documentList']['responseInfo']['fullCount'] >= 2)
         assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
        
         response = client.get(base_api + '/v1/Authors/Index/Maslo/')

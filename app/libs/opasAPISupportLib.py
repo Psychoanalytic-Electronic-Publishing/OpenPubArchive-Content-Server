@@ -37,7 +37,8 @@ from enum import Enum
 # import pymysql
 
 import opasConfig
-from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, CONFIG, COOKIE_DOMAIN
+import localsecrets
+from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, CONFIG, COOKIE_DOMAIN  
 from opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES 
 from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
 
@@ -78,20 +79,21 @@ count_anchors = 0
 import json
 
 # Setup a Solr instance. The timeout is optional.
-#solr = pysolr.Solr('http://localhost:8983/solr/pepwebproto', timeout=10)
-#This is the old way -- should switch to class Solr per https://pythonhosted.org/solrpy/reference.html
+# solr = pysolr.Solr('http://localhost:8983/solr/pepwebproto', timeout=10)
+# This is the old way -- should switch to class Solr per https://pythonhosted.org/solrpy/reference.html
+# 
 if SOLRUSER is not None:
-    solr_docs = solr.SolrConnection(SOLRURL + 'pepwebdocs', http_user=SOLRUSER, http_pass=SOLRPW)
-    solr_refs = solr.SolrConnection(SOLRURL + 'pepwebrefs', http_user=SOLRUSER, http_pass=SOLRPW)
-    solr_gloss = solr.SolrConnection(SOLRURL + 'pepwebglossary', http_user=SOLRUSER, http_pass=SOLRPW)
-    solr_authors = solr.SolrConnection(SOLRURL + 'pepwebauthors', http_user=SOLRUSER, http_pass=SOLRPW)
+    solr_docs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_DOCS, http_user=SOLRUSER, http_pass=SOLRPW)
+    solr_refs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_REFS, http_user=SOLRUSER, http_pass=SOLRPW)
+    solr_gloss = solr.SolrConnection(SOLRURL + opasConfig.SOLR_GLOSSARY, http_user=SOLRUSER, http_pass=SOLRPW)
+    solr_authors = solr.SolrConnection(SOLRURL + opasConfig.SOLR_AUTHORS, http_user=SOLRUSER, http_pass=SOLRPW)
     solr_author_term_search = solr.SearchHandler(solr_authors, "/terms")
 
 else:
-    solr_docs = solr.SolrConnection(SOLRURL + 'pepwebdocs')
-    solr_refs = solr.SolrConnection(SOLRURL + 'pepwebrefs')
-    solr_gloss = solr.SolrConnection(SOLRURL + 'pepwebglossary')
-    solr_authors = solr.SolrConnection(SOLRURL + 'pepwebauthors')
+    solr_docs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_DOCS)
+    solr_refs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_REFS)
+    solr_gloss = solr.SolrConnection(SOLRURL + opasConfig.SOLR_GLOSSARY)
+    solr_authors = solr.SolrConnection(SOLRURL + opasConfig.SOLR_AUTHORS)
     solr_author_term_search = solr.SearchHandler(solr_authors, "/terms")
 
 #API endpoints
@@ -654,12 +656,18 @@ def database_get_most_downloaded(period: str="all",
 
 #-----------------------------------------------------------------------------
 def database_get_most_cited(period: models.TimePeriod='5',
+                            more_than: int=25, # if they only want the top 100 or so, a large number here speeds the query
                             limit: int=10,
                             offset: int=0):
     """
     Return the most cited journal articles duing the prior period years.
     
     period must be either '5', 10, '20', or 'all'
+    
+    args:
+      limit: the number of records you want to return
+      more_than: setting more_than to a large number speeds the query because the set to be sorted is smaller.
+                 just set it so it's not so high you still get "limit" records back.
     
     >>> result = database_get_most_cited()
     >>> result.documentList.responseSet[0].documentID
@@ -669,9 +677,9 @@ def database_get_most_cited(period: models.TimePeriod='5',
     if str(period).lower() not in models.TimePeriod._value2member_map_:
         period = '5'
     
-    results = solr_docs.query( q = "*:*",  
+    results = solr_docs.query( q = f"art_cited_{period}:[{more_than} TO *]",  
                                fl = f"art_id, title, art_vol, art_iss, art_year,  art_pepsrccode, \
-                                     art_cited_{period}, art_cited_all, timestamp, art_pepsrccode, \
+                                     art_cited_5, art_cited_10, art_cited_20, art_cited_all, timestamp, art_pepsrccode, \
                                      art_pepsourcetype, art_pepsourcetitleabbr, art_pgrg, \
                                      art_citeas_xml, art_authors_mast, abstract_xml, text_xml",
                                fq = "art_pepsourcetype: journal",
@@ -1913,7 +1921,7 @@ def get_image_filename(image_id):
     
     """
     image_filename = None
-    image_source_path = opasConfig.API_BINARY_IMAGE_SOURCE_PATH
+    image_source_path = localsecrets.API_BINARY_IMAGE_SOURCE_PATH
     ext = os.path.splitext(image_id)[-1].lower()
     if ext in (".jpg", ".tif", ".gif"):
         image_filename = os.path.join(image_source_path, image_id)
@@ -2157,6 +2165,8 @@ def parse_search_query_parameters(search=None,
     
         >>> split_boolean("text", "dog AND cat or 'mouse pig'")
     
+        >>> split_boolean("text", "dog AND cat or 'mouse pig bird'")
+
         >>> split_boolean("text", "dog and cat")
     
         >>> split_boolean("text", "dog and cat or mouse")
@@ -2182,9 +2192,17 @@ def parse_search_query_parameters(search=None,
             else:
                 if prior_term not in ("and", "AND", "or", "OR", "initial"):
                     default_term = " && "
-                ret_val += default_term + f"{field_name}:{n}"
-                prior_term = ""
-                default_term = ""
+                if " " in n:
+                    if n[0] not in ('"', "'"):
+                        #  split it again!
+                        wordlist = n.split(" ")
+                        ret_val += default_term + f"{field_name}:{wordlist[0]}"
+                        for n in wordlist[1:]:
+                            ret_val += default_term + f"{field_name}:{n}"
+                else:
+                    ret_val += default_term + f"{field_name}:{n}"
+                    prior_term = ""
+                    default_term = ""
     
         return ret_val        
     

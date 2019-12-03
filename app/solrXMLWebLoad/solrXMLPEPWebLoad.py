@@ -28,7 +28,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0707.1"
+__version__     = "2019.1129.1"
 __status__      = "Development"
 
 #Revision Notes:
@@ -73,9 +73,12 @@ import solrpy as solr
 import pymysql
 
 import config
-from OPASFileTracker import FileTracker, FileTrackingInfo
+import opasConfig
+
+from OPASFileTrackerMySQL import FileTracker, FileTrackingInfo
 import opasXMLHelper as opasxmllib
 import opasCentralDBLib
+import localsecrets
 
 # Module Globals
 gCitedTable = dict() # large table of citation counts, too slow to run one at a time.
@@ -127,7 +130,7 @@ class ArticleInfo(object):
             self.artPepSrcCode = self.artPepSrcCode.upper()  # 20191115 - To make sure this is always uppercase
             self.artPepSourceTitleAbbr = sourceInfoDBData[self.artPepSrcCode].get("sourcetitleabbr", None)
             self.artPepSourceTitleFull = sourceInfoDBData[self.artPepSrcCode].get("sourcetitlefull", None)
-            self.artPepSourceType = sourceInfoDBData[self.artPepSrcCode].get("pep_class", None)  # journal, book, video...
+            self.artPepSourceType = sourceInfoDBData[self.artPepSrcCode].get("product_type", None)  # journal, book, video...
             self.artPepSrcEmbargo = sourceInfoDBData[self.artPepSrcCode].get("wall", None)
         except KeyError as err:
             self.artPepSourceTitleAbbr = None
@@ -241,7 +244,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
     #------------------------------------------------------------------------------------------------------
     #globals gCitedTable 
     if options.displayVerbose:
-        print(("   ...Processing main file content for the %s core." % options.fullTextCoreName))
+        print(("   ...Processing main file content for the %s core." % opasConfig.SOLR_DOCS))
 
     artLang = pepxml.xpath('//@lang')
     if artLang == []:
@@ -458,16 +461,10 @@ def processInfoForAuthorCore(pepxml, artInfo, solrAuthor):
         config.logger.error(errStr)
 
 #------------------------------------------------------------------------------------------------------
-def processBibForReferencesCore(pepxml, artInfo, solrcon):
+def processBibForReferencesCore(pepxml, artInfo, solrbib):
     """
-    Adds data to the core per the pepwebrefs schema
-
-    TODO: This is the slowest of the two data adds.  It does multiple transactions
-          per document (one per reference).  This could be redone as an AddMany transaction,
-          assuming AddMany can handle as many references as we might find in a document.
-          It's not unbearably slow locally, but via the API remotely, it adds up.
-          Remotely to Bitnami AWS with a 1GB memory: 0.0476 seconds per reference
-
+    Adds the bibliography data from a single document to the core per the pepwebrefs solr schema
+    
     """
     #------------------------------------------------------------------------------------------------------
     #<!-- biblio section fields -->
@@ -480,7 +477,7 @@ def processBibForReferencesCore(pepxml, artInfo, solrcon):
 
     allRefs = []
     for ref in bibReferences:
-        config.bibTotalReferenceCount += 1
+        bibTotalReferenceCount += 1
         bibRefEntry = etree.tostring(ref, with_tail=False)
         bibRefID = opasxmllib.xml_get_element_attr(ref, "id")
         refID = artInfo.artID + "." + bibRefID
@@ -590,7 +587,7 @@ def processBibForReferencesCore(pepxml, artInfo, solrcon):
         
     # We collected all the references.  Now lets save the whole shebang
     try:
-        response_update = solrcon.add_many(allRefs)  # lets hold off on the , _commit=True)
+        response_update = solrbib.add_many(allRefs)  # lets hold off on the , _commit=True)
 
         if not re.search('"status">0</int>', response_update):
             print (response_update)
@@ -600,6 +597,134 @@ def processBibForReferencesCore(pepxml, artInfo, solrcon):
 
     return retVal  # return the bibRefCount
 
+#------------------------------------------------------------------------------------------------------
+def process_glossary_core(solr_glossary_core):
+    """
+    Process the special PEP Glossary documents.  These are linked to terms in the document
+       as popups.
+       
+    Unlike the other cores processing, this has a limited document set so it runs
+      through them all as a single pass, in a single call to this function.
+       
+    Note: Moved code 2019/11/30 from separate solrXMLGlossaryLoad program.  It was separate
+          because the glossary isn't updated frequently.  However, it was felt that
+          it was not as easy to keep in sync as a completely separate program.
+    """
+    global logger
+    
+    countFiles = 0
+    countTerms = 0
+    ret_val = (countFiles, countTerms) # File count, entry count
+    
+    # find the Glossaary (bEXP_ARCH1) files (processed with links already) in path
+    processedDateTime = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
+    pat = r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
+    filePatternMatch = re.compile(pat)
+    filenames = []
+    for root, d_names, f_names in os.walk(options.rootFolder):
+        for f in f_names:
+            if filePatternMatch.match(f):
+                countFiles += 1
+                filenames.append(os.path.join(root, f))
+
+    print ("Ready to import glossary records from %s files at path: %s" % (countFiles, options.rootFolder))
+    for n in filenames:
+        f = open(n, encoding='utf8')
+        fileXMLContents = f.read()
+
+        # get file basename without build (which is in paren)
+        base = os.path.basename(n)
+        artID = os.path.splitext(base)[0]
+        m = re.match(r"(.*)\(.*\)", artID)
+        artID = m.group(1)
+        # all IDs to upper case.
+        artID = artID.upper()
+        fileTimeStamp = datetime.utcfromtimestamp(os.path.getmtime(n)).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        # import into lxml
+        # root = etree.fromstring(fileXMLContents)
+        root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents))
+        pepxml = root[0]
+
+        # Containing Article data
+        #<!-- Common fields -->
+        #<!-- Article front matter fields -->
+        #---------------------------------------------
+        # Usually we put the abbreviated title here, but that won't always work here.
+
+        #<!-- biblio section fields -->
+        #Note: currently, this does not include footnotes or biblio include tagged data in document (binc)
+        glossaryGroups = pepxml.xpath("/pepkbd3//dictentrygrp")  
+        groupCount = len(glossaryGroups)
+        print("File %s has %s groups." % (base, groupCount))
+        # processedFilesCount += 1
+
+        allDictEntries = []
+        for glossaryGroup in glossaryGroups:
+            glossaryGroupXML = etree.tostring(glossaryGroup, with_tail=False)
+            glossaryGroupID = opasxmllib.xml_get_element_attr(glossaryGroup, "id")
+            glossaryGroupTerm = opasxmllib.xml_get_subelement_textsingleton(glossaryGroup, "term")
+            glossaryGroupAlso = opasxmllib.xml_get_subelement_xmlsingleton(glossaryGroup, "dictalso")
+            if glossaryGroupAlso == "":
+                glossaryGroupAlso = None
+            print ("Processing Term: %s" % glossaryGroupTerm)
+            countTerms += 1
+            dictEntries = glossaryGroup.xpath("dictentry")  
+            groupTermCount = len(dictEntries)
+            counter = 0
+            for dictEntry in dictEntries:
+                counter += 1
+                thisDictEntry = {}
+                dictEntryID = glossaryGroupID + ".{:03d}".format(counter)
+                dictEntryTerm = opasxmllib.xml_get_subelement_textsingleton(dictEntry, "term")
+                if dictEntryTerm == "":
+                    dictEntryTerm = glossaryGroupTerm
+                dictEntryTermType = dictEntry.xpath("term/@type")  
+                if dictEntryTermType != []:
+                    dictEntryTermType = dictEntryTermType[0]
+                else:
+                    dictEntryTermType = "term"
+                
+                dictEntrySrc = opasxmllib.xml_get_subelement_textsingleton(dictEntry, "src")
+                dictEntryAlso = opasxmllib.xml_get_subelement_xmlsingleton(dictEntry, "dictalso")
+                if dictEntryAlso == "":
+                    dictEntryAlso = None
+                dictEntryDef = opasxmllib.xml_get_subelement_xmlsingleton(dictEntry, "def")
+                dictEntryDefRest = opasxmllib.xml_get_subelement_xmlsingleton(dictEntry, "defrest")
+                thisDictEntry = {
+                    "term_id"             : dictEntryID,
+                    "group_id"            : glossaryGroupID,
+                    "art_id"              : artID,
+                    "term"                : dictEntryTerm,
+                    "term_type"           : dictEntryTermType,
+                    "term_source"         : dictEntrySrc,
+                    "term_also"           : dictEntryAlso,
+                    "term_def_xml"        : dictEntryDef,
+                    "term_def_rest_xml"   : dictEntryDefRest,
+                    "group_name"          : glossaryGroupTerm,
+                    "group_also"          : glossaryGroupAlso,
+                    "group_term_count"    : groupTermCount,
+                    "text"                : str(glossaryGroupXML, "utf8"),
+                    "file_name"           : base,
+                    "timestamp"           : processedDateTime,
+                    "file_last_modified"  : fileTimeStamp
+                }
+                allDictEntries.append(thisDictEntry)
+
+        # We collected all the dictentries for the group.  Now lets save the whole shebang
+        try:
+            response_update = solr_glossary_core.add_many(allDictEntries)  # lets hold off on the , _commit=True)
+    
+            if not re.search('"status">0</int>', response_update):
+                print (response_update)
+        except Exception as err:
+            logger.error("Solr call exception %s", err)
+    
+        f.close()
+
+    solr_glossary_core.commit()
+    ret_val = (countFiles, countTerms) # File count, entry count
+    return ret_val    
 #------------------------------------------------------------------------------------------------------
 def main():
     
@@ -613,12 +738,12 @@ def main():
     parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.14")
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
                       help="Option to force all files to be updated on the specified cores.  This does not reset the file tracker but updates it as files are processed.")
-    parser.add_option("-b", "--bibliocorename", dest="biblioCoreName", default=None,
-                      help="the Solr corename (holding the collection) to connect to, i.e., where to send data.  Example: 'pepwebrefs'")
+    parser.add_option("-b", "--bibliocoreupdate", dest="reference_core_update", action="store_true", default=False,
+                      help="Whether to update the biblio core")
     parser.add_option("-d", "--dataroot", dest="rootFolder", default=config.DEFAULTDATAROOT,
                       help="Root folder path where input data is located")
-    parser.add_option("-f", "--fulltextcorename", dest="fullTextCoreName", default=None,
-                      help="the Solr corename (holding the collection) to connect to, i.e., where to send data.  Example: 'pepwebdocs'")
+    parser.add_option("-f", "--fulltextcoreupdate", dest="fulltext_core_update", action="store_true", default=False,
+                      help="Whether to update the full-text and authors core")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.INFO,
                       help="Level at which events should be logged")
     parser.add_option("--logfile", dest="logfile", default=logFilename,
@@ -626,17 +751,22 @@ def main():
     parser.add_option("--resetcore",
                       action="store_true", dest="resetCoreData", default=False,
                       help="reset the data in the selected cores. (authorscore is reset with the fulltext core)")
+    parser.add_option("-g", "--glossarycoreupdate", dest="glossary_core_update", action="store_true", default=False,
+                      help="Whether to update the glossary core")
     parser.add_option("-t", "--trackerdb", dest="fileTrackerDBPath", default="filetracker.db",
                       help="Full path and database name where the File Tracking Database is located (sqlite3 db)")
-    parser.add_option("-u", "--url",
-                      dest="solrURL", default=config.DEFAULTSOLRHOME,
-                      help="Base URL of Solr api (without core), e.g., http://localhost:8983/solr/", metavar="URL")
+    #parser.add_option("-u", "--url",
+                      #dest="solrURL", default=config.DEFAULTSOLRHOME,
+                      #help="Base URL of Solr api (without core), e.g., http://localhost:8983/solr/", metavar="URL")
     parser.add_option("-v", "--verbose", action="store_true", dest="displayVerbose", default=False,
                       help="Display status and operational timing info as load progresses.")
     parser.add_option("--pw", dest="httpPassword", default=None,
                       help="Password for the server")
     parser.add_option("--userid", dest="httpUserID", default=None,
                       help="UserID for the server")
+    parser.add_option("--config", dest="config_info", default="Local",
+                      help="UserID for the server")
+
 
     (options, args) = parser.parse_args()
 
@@ -648,261 +778,307 @@ def main():
 
     logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
 
-    solrAPIURL = None
-    solrAPIURLRefs = None
-
-    if options.fullTextCoreName is not None:
-        solrAPIURL = options.solrURL + options.fullTextCoreName  # e.g., http://localhost:8983/solr/    + pepwebdocs'
-    if options.biblioCoreName is not None:
-        solrAPIURLRefs = options.solrURL + options.biblioCoreName  # e.g., http://localhost:8983/solr/  + pepwebrefs'
-
+    solrurl_docs = None
+    solrurl_refs = None
+    solrurl_authors = None
+    solrurl_glossary = None
+    
+    if (options.reference_core_update or options.fulltext_core_update or options.glossary_core_update) == True:
+        try:
+            solrurl_docs = localsecrets.SOLRURL + opasConfig.SOLR_DOCS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
+            solrurl_refs = localsecrets.SOLRURL + opasConfig.SOLR_REFS  # e.g., http://localhost:8983/solr/  + pepwebrefs'
+            solrurl_authors = localsecrets.SOLRURL + opasConfig.SOLR_AUTHORS
+            solrurl_glossary = localsecrets.SOLRURL + opasConfig.SOLR_GLOSSARY
+            print("Logfile: ", logFilename)
+            print("Input data Root: ", options.rootFolder)
+            print("Reset Core Data: ", options.resetCoreData)
+            if options.fulltext_core_update:
+                print("Solr Full-Text Core will be updated: ", solrurl_docs)
+                print("Solr Authors Core will be updated: ", solrurl_authors)
+            if options.reference_core_update:
+                print("Solr References Core will be updated: ", solrurl_refs)
+            if options.glossary_core_update:
+                print("Solr Glossary Core will be updated: ", solrurl_glossary)
+        except Exception as e:
+            msg = "cores specification error (e)."
+            print((len(msg)*"-"))
+            print (msg)
+            print((len(msg)*"-"))
+            sys.exit(0)
+    else:
+        msg = "No cores requested for update.  Use -f or -b to update the full-text and biblio cores respectively"
+        print((len(msg)*"-"))
+        print (msg)
+        print((len(msg)*"-"))
+        sys.exit(0)
+        
     # instantiate the fileTracker.
-    fileTracker = FileTracker(options.fileTrackerDBPath)
-
-    print(("Input data Root: ", options.rootFolder))
-    print(("Solr Full-Text Core: ", options.fullTextCoreName))
-    print(("Solr Biblio Core: ", options.biblioCoreName))
-    print(("Reset Core Data: ", options.resetCoreData))
-    if options.fullTextCoreName is not None:
-        print(("Solr solrAPIURL: ", solrAPIURL))
-    if options.biblioCoreName is not None:
-        print(("Solr solrAPIURLRefs: ", solrAPIURLRefs))
-    print(("Logfile: ", logFilename))
-
-    if options.fullTextCoreName is None and options.biblioCoreName is None:
-        msg = "No cores specified so no database to update. Use the -f and -b options to specify the core. Use -h for help."
+    try:
+        fileTracker = FileTracker(options.fileTrackerDBPath)
+    except Exception as e:
+        msg = "Filetracker error (e)."
         print((len(msg)*"-"))
         print (msg)
         print((len(msg)*"-"))
         sys.exit(0)
         
     timeStart = time.time()
-
+    
     # import data about the PEP codes for journals and books.
     #  Codes are like APA, PAH, ... and special codes like ZBK000 for a particular book
     sourceDB = opasCentralDBLib.SourceInfoDB()
 
     #TODO: Try without the None test, the library should not try to use None as user name or password, so only the first case may be needed
     # The connection call is to solrpy (import was just solr)
-    if options.httpUserID is not None and options.httpPassword is not None:
-        if options.fullTextCoreName is not None:
-            solrDocs = solr.SolrConnection(solrAPIURL, http_user=options.httpUserID, http_pass=options.httpPassword)
-            solrAuthors = solr.SolrConnection(options.solrURL + config.AUTHORCORENAME, http_user=options.httpUserID, http_pass=options.httpPassword)
-        if options.biblioCoreName is not None:
-            solrBib = solr.SolrConnection(solrAPIURLRefs, http_user=options.httpUserID, http_pass=options.httpPassword)
-    else:
-        if options.fullTextCoreName is not None:
-            solrDocs = solr.SolrConnection(solrAPIURL)
-            solrAuthors = solr.SolrConnection(options.solrURL + config.AUTHORCORENAME)
-        if options.biblioCoreName is not None:
-            solrBib = solr.SolrConnection(solrAPIURLRefs)
+    #if options.httpUserID is not None and options.httpPassword is not None:
+    if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:
+        if options.fulltext_core_update:
+            # fulltext update always includes authors
+            solrcore_docs = solr.SolrConnection(solrurl_docs, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+            solrcore_authors = solr.SolrConnection(solrurl_authors, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+        if options.reference_core_update:
+            # as of 2019/11/30 this core isn't actually being used in the API.  May end up dropping this.
+            solrcore_references = solr.SolrConnection(solrurl_refs, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+        if options.glossary_core_update:
+            solrcore_glossary = solr.SolrConnection(solrurl_glossary, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+    else: #  no user and password needed
+        if options.fulltext_core_update:
+            # fulltext update always includes authors
+            solrcore_docs = solr.SolrConnection(solrurl_docs)
+            solrcore_authors = solr.SolrConnection(solrurl_authors)
+        if options.reference_core_update:
+            # as of 2019/11/30 this core isn't actually being used in the API.  May end up dropping this.
+            solrcore_references = solr.SolrConnection(solrurl_refs)
+        if options.glossary_core_update:
+            solrcore_glossary = solr.SolrConnection(solrurl_glossary)
 
     # Reset core's data if requested (mainly for early development)
     if options.resetCoreData:
-        if options.fullTextCoreName is not None:
+        if options.fulltext_core_update:
             print ("*** Deleting all data from the docs and author cores ***")
-            solrDocs.delete_query("*:*")
-            solrDocs.commit()
-            solrAuthors.delete_query("*:*")
-            solrAuthors.commit()
-        if options.biblioCoreName is not None:
+            solrcore_docs.delete_query("*:*")
+            solrcore_docs.commit()
+            solrcore_authors.delete_query("*:*")
+            solrcore_authors.commit()
+        if options.reference_core_update:
             print ("*** Deleting all data from the References core ***")
-            solrBib.delete_query("*:*")
-            solrBib.commit()
+            solrcore_references.delete_query("*:*")
+            solrcore_references.commit()
+        if options.glossary_core_update:
+            print ("*** Deleting all data from the Glossary core ***")
+            solrcore_glossary.delete_query("*:*")
+            solrcore_glossary.commit()
         # also reset the file tracker in both cases
         fileTracker.deleteAll()
         fileTracker.commit()
     else:
         # check for missing files and delete them from the core, since we didn't empty the core above
         pass
-        
 
-    if options.forceRebuildAllFiles == False:
-        print ("Adding only files with newer modification dates than what's in fileTracker database")
-    else:
-        print ("Forced Rebuild - All files added, regardless of whether they were marked in the fileTracker as already added.")
-
-    # find all processed XML files where build is (bEXP_ARCH1) in path
-    # glob.glob doesn't unfortunately work to do this in Py2.7.x
-    pat = r"(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
-    filePatternMatch = re.compile(pat)
-    filenames = []
-    skippedFiles = 0
-    newFiles = 0
-    totalFiles = 0
-    currFileInfo = FileTrackingInfo()
-    if re.match(".*\.xml$", options.rootFolder, re.IGNORECASE):
-        # single file mode.
-        singleFileMode = True
-        if os.path.exists(options.rootFolder):
-            filenames.append(options.rootFolder)
-            totalFiles = 1
-            newFiles = 1
-        else:
-            print(("Error: Single file mode name: {} does not exist.".format(options.rootfolder)))
-    else:
-        # get a list of all the XML files that are new
-        singleFileMode = False
-        for root, d_names, f_names in os.walk(options.rootFolder):
-            for f in f_names:
-                if filePatternMatch.match(f):
-                    totalFiles += 1
-                    filename = os.path.join(root, f)
-                    #currFileInfo = FileTrackingInfo()
-                    currFileInfo.loadForFile(filename, options.solrURL)  # mod 2019-06-05 Just the base URL, not the core
-                    isModified = fileTracker.isFileModified(currFileInfo)
-                    if options.forceRebuildAllFiles:
-                        # fake it, make it look modified!
-                        isModified = True
-                    if not isModified:
-                        # file seen before, need to compare.
-                        #print "File is the same!  Skipping..."
-                        skippedFiles += 1
-                        continue
-                    else:
-                        newFiles += 1
-                        #print "File is NOT the same!  Scanning the data..."
-                        filenames.append(filename)
+    # Glossary Processing only
+    if options.glossary_core_update:
+        # this option will process all files in the glossary core.
+        glossary_file_count, glossary_terms = process_glossary_core(solrcore_glossary)
     
-    print((80*"-"))
-    if singleFileMode:
-        print(("Single File Mode Selected.  Only file {} will be imported".format(options.rootFolder)))
-    else:
-        print(("Ready to import records from %s files of %s at path: %s." % (newFiles, totalFiles, options.rootFolder)))
-        print(("%s Skipped files (those not modified since the last run)" % (skippedFiles)))
-        print(("%s Files to process" % (newFiles )))
-    print((80*"-"))
-    bibTotalReferenceCount = 0
-    preCommitFileCount = 0
-    processedFilesCount = 0
-    print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
-    try:
-        ocd =  opasCentralDBLib.opasCentralDB()
-        ocd.open_connection()
-        # Get citation lookup table
-        try:
-            cursor = ocd.db.cursor(pymysql.cursors.DictCursor)
-            sql = """
-                  SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
-                  """
-            success = cursor.execute(sql)
-            if success:
-                for n in cursor.fetchall():
-                    row = modelsOpasCentralPydantic.MostCitedArticles(**n)
-                    gCitedTable[row.cited_document_id] = row
-                cursor.close()
+    # Docs, Authors and References go through a full set of regular XML files
+    bibTotalReferenceCount = 0 # zero this here, it's checked at the end whether references are processed or not
+    if (options.reference_core_update or options.fulltext_core_update) == True:
+        if options.forceRebuildAllFiles == False:
+            print ("Adding only files with newer modification dates than what's in fileTracker database")
+        else:
+            print ("Forced Rebuild - All files added, regardless of whether they were marked in the fileTracker as already added.")
+    
+        # find all processed XML files where build is (bEXP_ARCH1) in path
+        # glob.glob doesn't unfortunately work to do this in Py2.7.x
+        pat = r"(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
+        filePatternMatch = re.compile(pat)
+        filenames = []
+        skippedFiles = 0
+        newFiles = 0
+        totalFiles = 0
+        currFileInfo = FileTrackingInfo()
+        if re.match(".*\.xml$", options.rootFolder, re.IGNORECASE):
+            # single file mode.
+            singleFileMode = True
+            if os.path.exists(options.rootFolder):
+                filenames.append(options.rootFolder)
+                totalFiles = 1
+                newFiles = 1
             else:
-                retVal = 0
-        except MemoryError as e:
-            print(("Memory error loading table: {}".format(e)))
-        except Exception as e:
-            print(("Table Query Error: {}".format(e)))
-        
-        ocd.close_connection()
-    except Exception as e:
-        print(("Database Connect Error: {}".format(e)))
-        gCitedTable["dummy"] = modelsOpasCentralPydantic.MostCitedArticles()
-        
-
-    for n in filenames:
-        fileTimeStart = time.time()
-        processedFilesCount += 1
-        if pyVer == 3:
-            f = open(n, encoding="utf-8")
+                print(("Error: Single file mode name: {} does not exist.".format(options.rootfolder)))
         else:
-            f = open(n)
-        fileXMLContents = f.read()
+            # get a list of all the XML files that are new
+            singleFileMode = False
+            for root, d_names, f_names in os.walk(options.rootFolder):
+                for f in f_names:
+                    if filePatternMatch.match(f):
+                        totalFiles += 1
+                        filename = os.path.join(root, f)
+                        #currFileInfo = FileTrackingInfo()
+                        currFileInfo.loadForFile(filename, localsecrets.SOLRURL)  # mod 2019-06-05 Just the base URL, not the core
+                        isModified = fileTracker.isFileModified(currFileInfo)
+                        if options.forceRebuildAllFiles:
+                            # fake it, make it look modified!
+                            isModified = True
+                        if not isModified:
+                            # file seen before, need to compare.
+                            #print "File is the same!  Skipping..."
+                            skippedFiles += 1
+                            continue
+                        else:
+                            newFiles += 1
+                            #print "File is NOT the same!  Scanning the data..."
+                            filenames.append(filename)
         
-        # get file basename without build (which is in paren)
-        base = os.path.basename(n)
-        artID = os.path.splitext(base)[0]
-        m = re.match(r"(.*)\(.*\)", artID)
-
-        # Update this file in the database as "processed"
-        currFileInfo.loadForFile(n, options.solrURL)
-        fileTracker.setFileDatabaseRecord(currFileInfo)
-        fileTimeStamp = datetime.utcfromtimestamp(currFileInfo.fileModDate).strftime('%Y-%m-%dT%H:%M:%SZ')
-        print(("Processing file #%s of %s: %s (%s bytes)." % (processedFilesCount, newFiles, base, currFileInfo.fileSize)))
-
-        # Note: We could also get the artID from the XML, but since it's also important
-        # the file names are correct, we'll do it here.  Also, it "could" have been left out
-        # of the artinfo (attribute), whereas the filename is always there.
-        artID = m.group(1)
-        # all IDs to upper case.
-        artID = artID.upper()
-
-        # import into lxml
-        root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents))
-        pepxml = root
-
-        # save common document (article) field values into artInfo instance for both databases
-        artInfo = ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
-        artInfo.fileTimeStamp = fileTimeStamp
-        artInfo.fileName = base
-        artInfo.fileSize = currFileInfo.fileSize
-        try:
-            artInfo.fileClassification = re.search("(pepcurrent|peparchive|pepfuture|pepfree|pepoffsite)", n, re.IGNORECASE).group(1)
-            # set it to lowercase for ease of matching later
-            artInfo.fileClassification = artInfo.fileClassification.lower()
-        except Exception as e:
-            logging.warn("Could not determine file classification for %s (%s)" % (n, e))
-        
-
-        # walk through bib section and add to refs core database
-
-        if preCommitFileCount > config.COMMITLIMIT:
-            print(("Committing info for %s documents/articles" % config.COMMITLIMIT))
-            
-        # input to the full-text code
-        if solrAPIURL is not None:
-            # this option will also load the biblio and authors cores.
-            processArticleForDocCore(pepxml, artInfo, solrDocs, fileXMLContents)
-            processInfoForAuthorCore(pepxml, artInfo, solrAuthors)
-            if preCommitFileCount > config.COMMITLIMIT:
-                preCommitFileCount = 0
-                solrDocs.commit()
-                solrAuthors.commit()
-                fileTracker.commit()
-
-        # input to the references core
-        if solrAPIURLRefs is not None:
-            bibTotalReferenceCount += processBibForReferencesCore(pepxml, artInfo, solrBib)
-            if preCommitFileCount > config.COMMITLIMIT:
-                preCommitFileCount = 0
-                solrBib.commit()
-                fileTracker.commit()
-
-        preCommitFileCount += 1
-        # close the file, and do the next
-        f.close()
-        if options.displayVerbose:
-            print(("   ...Time: %s seconds." % (time.time() - fileTimeStart)))
-
-    # all done with the files.  Do a final commit.
-    print ("Performing final commit.")
-    try:
-        if solrAPIURLRefs is not None:
-            solrBib.commit()
-            fileTracker.commit()
-    except Exception as e:
-        print(("Exception: ", e))
+        print((80*"-"))
+        if singleFileMode:
+            print(("Single File Mode Selected.  Only file {} will be imported".format(options.rootFolder)))
+        else:
+            print(("Ready to import records from %s files of %s at path: %s." % (newFiles, totalFiles, options.rootFolder)))
+            print(("%s Skipped files (those not modified since the last run)" % (skippedFiles)))
+            print(("%s Files to process" % (newFiles )))
     
-    try:
-        if solrAPIURL is not None:
-            solrDocs.commit()
-            solrAuthors.commit()
-            fileTracker.commit()
-    except Exception as e:
-        print(("Exception: ", e))
-
-    timeEnd = time.time()
-    ocd.close_connection()
-
-    if bibTotalReferenceCount > 0:
-        msg = "Finished! Imported %s documents and %s references. Elapsed time: %s secs" % (len(filenames), bibTotalReferenceCount, timeEnd-timeStart)
-    else:
-        msg = "Finished! Imported %s documents. Elapsed time: %s secs" % (len(filenames), timeEnd-timeStart)
+        print((80*"-"))
+        preCommitFileCount = 0
+        processedFilesCount = 0
+        print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
+        try:
+            ocd =  opasCentralDBLib.opasCentralDB()
+            ocd.open_connection()
+            # Get citation lookup table
+            try:
+                cursor = ocd.db.cursor(pymysql.cursors.DictCursor)
+                sql = """
+                      SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
+                      """
+                success = cursor.execute(sql)
+                if success:
+                    for n in cursor.fetchall():
+                        row = modelsOpasCentralPydantic.MostCitedArticles(**n)
+                        gCitedTable[row.cited_document_id] = row
+                    cursor.close()
+                else:
+                    retVal = 0
+            except MemoryError as e:
+                print(("Memory error loading table: {}".format(e)))
+            except Exception as e:
+                print(("Table Query Error: {}".format(e)))
+            
+            ocd.close_connection()
+        except Exception as e:
+            print(("Database Connect Error: {}".format(e)))
+            gCitedTable["dummy"] = modelsOpasCentralPydantic.MostCitedArticles()
+            
+    
+        for n in filenames:
+            fileTimeStart = time.time()
+            processedFilesCount += 1
+            if pyVer == 3:
+                f = open(n, encoding="utf-8")
+            else:
+                f = open(n)
+            fileXMLContents = f.read()
+            
+            # get file basename without build (which is in paren)
+            base = os.path.basename(n)
+            artID = os.path.splitext(base)[0]
+            m = re.match(r"(.*)\(.*\)", artID)
+    
+            # Update this file in the database as "processed"
+            currFileInfo.loadForFile(n, localsecrets.SOLRURL)
+            fileTracker.setFileDatabaseRecord(currFileInfo)
+            fileTimeStamp = datetime.utcfromtimestamp(currFileInfo.fileModDate).strftime('%Y-%m-%dT%H:%M:%SZ')
+            print(("Processing file #%s of %s: %s (%s bytes)." % (processedFilesCount, newFiles, base, currFileInfo.fileSize)))
+    
+            # Note: We could also get the artID from the XML, but since it's also important
+            # the file names are correct, we'll do it here.  Also, it "could" have been left out
+            # of the artinfo (attribute), whereas the filename is always there.
+            artID = m.group(1)
+            # all IDs to upper case.
+            artID = artID.upper()
+    
+            # import into lxml
+            root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents))
+            pepxml = root
+    
+            # save common document (article) field values into artInfo instance for both databases
+            artInfo = ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
+            artInfo.fileTimeStamp = fileTimeStamp
+            artInfo.fileName = base
+            artInfo.fileSize = currFileInfo.fileSize
+            try:
+                artInfo.fileClassification = re.search("(pepcurrent|peparchive|pepfuture|pepfree|pepoffsite)", n, re.IGNORECASE).group(1)
+                # set it to lowercase for ease of matching later
+                artInfo.fileClassification = artInfo.fileClassification.lower()
+            except Exception as e:
+                logging.warn("Could not determine file classification for %s (%s)" % (n, e))
+            
+    
+            # walk through bib section and add to refs core database
+    
+            if preCommitFileCount > config.COMMITLIMIT:
+                print(("Committing info for %s documents/articles" % config.COMMITLIMIT))
+                
+            # input to the full-text code
+            if options.fulltext_core_update:
+                # this option will also load the biblio and authors cores.
+                processArticleForDocCore(pepxml, artInfo, solrcore_docs, fileXMLContents)
+                processInfoForAuthorCore(pepxml, artInfo, solrcore_authors)
+                if preCommitFileCount > config.COMMITLIMIT:
+                    preCommitFileCount = 0
+                    solrcore_docs.commit()
+                    solrcore_authors.commit()
+                    fileTracker.commit()
+    
+            # input to the references core
+            if options.reference_core_update:
+                bibTotalReferenceCount += processBibForReferencesCore(pepxml, artInfo, solrcore_references)
+                if preCommitFileCount > config.COMMITLIMIT:
+                    preCommitFileCount = 0
+                    solrcore_references.commit()
+                    fileTracker.commit()
+    
+            preCommitFileCount += 1
+            # close the file, and do the next
+            f.close()
+            if options.displayVerbose:
+                print(("   ...Time: %s seconds." % (time.time() - fileTimeStart)))
+    
+        # all done with the files.  Do a final commit.
+        print ("Performing final commit.")
+        try:
+            if options.reference_core_update:
+                solrcore_references.commit()
+                fileTracker.commit()
+        except Exception as e:
+            print(("Exception: ", e))
         
+        try:
+            if options.fulltext_core_update:
+                solrcore_docs.commit()
+                solrcore_authors.commit()
+                fileTracker.commit()
+        except Exception as e:
+            print(("Exception: ", e))
+    # end of docs, authors, and/or references Adds
+
+    # ---------------------------------------------------------
+    # Closing time
+    # ---------------------------------------------------------
+    timeEnd = time.time()
+
+    elapsed_seconds = timeEnd-timeStart
+    elapsed_minutes = elapsed_seconds / 60
+
+    if (options.reference_core_update or options.fulltext_core_update) == True:
+        if bibTotalReferenceCount > 0:
+            msg = f"Finished! Imported {len(filenames)} documents and {bibTotalReferenceCount} references. Elapsed time: {elapsed_seconds} secs ({elapsed_minutes} minutes)" 
+        else:
+            msg = f"Finished! Imported {len(filenames)} documents. Elapsed time: {elapsed_seconds} secs ({elapsed_minutes} minutes)" 
+
+    if options.glossary_core_update:
+        msg = f"Finished! Imported {glossary_file_count} glossary documents and {glossary_terms} terms. Elapsed time: {elapsed_seconds} secs ({elapsed_minutes} minutes)"
+
     print (msg)
     config.logger.info(msg)
     #if processingWarningCount + processingErrorCount > 0:

@@ -110,22 +110,32 @@ API_DATABASE_MOSTCITED = 43	#/Database/MostCited/
 API_DATABASE_MOSTDOWNLOADED = 44	#/Database/MostDownloaded/
 API_DATABASE_SEARCHANALYSIS = 45	#/Database/SearchAnalysis/
 
-def verifyAccessToken(session_id, username, access_token):
-    return pwd_context.verify(session_id+username, access_token)
+#def verifyAccessToken(session_id, username, access_token):
+    #return pwd_context.verify(session_id+username, access_token)
     
 def verify_password(plain_password, hashed_password):
     """
     >>> verify_password("secret", get_password_hash("secret"))
     True
+
+    >>> verify_password("temporaryLover", '$2b$12$dy27eHxQoeekTMQIlofzvekWPr1rgrGp1fmXbWcQwCQynFkqvDH62')
+    True
     
+    >>> verify_password("temporaryLover", '$2b$12$0VH2W6CPxJdARmEcVQ7S9.FWk.xC41KdwN1e5XS2wuhbPYNRCFrmy')
+    True
+    
+    >>> verify_password("pakistan", '$2b$12$VRLAkonDGCEuavaSotvbhOf.bVV0GDNysja.cHBFrrYHZw3e2vV7C')
+    True
+
+    >>> verify_password("pakistan", '$2b$12$z7F1BD8NhgcuBq090omf1.PfmP6obAaFN0QGyU1n/Gqv2oUvU9CGy')
+    True
+
     """
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
     """
-    >>> verify_password("temporaryLover", get_password_hash("temporaryLover"))
-    True
-    
+    Returns the hashed password that's stored
     """
     return pwd_context.hash(password)
 
@@ -187,8 +197,8 @@ class opasCentralDB(object):
         If already open, no changes.
         >>> ocd = opasCentralDB()
         >>> ocd.open_connection("my name")
-        >>> ocd.close_connection("my name")
         True
+        >>> ocd.close_connection("my name")
         """
         try:
             status = self.db.open
@@ -201,10 +211,31 @@ class opasCentralDB(object):
         
         if status == False:
             try:
-                self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
-                logger.debug(f"Database opened by ({caller_name})")
+                tunneling = None
+                if localsecrets.SSH_HOST is not None:
+                    from sshtunnel import SSHTunnelForwarder
+                    self.tunnel = SSHTunnelForwarder(
+                                                      (localsecrets.SSH_HOST,
+                                                       localsecrets.SSH_PORT),
+                                                       ssh_username=localsecrets.SSH_USER,
+                                                       ssh_pkey=localsecrets.SSH_MYPKEY,
+                                                       remote_bind_address=(localsecrets.DBHOST,
+                                                                            localsecrets.DBPORT))
+                    self.tunnel.start()
+                    self.db = pymysql.connect(host='127.0.0.1',
+                                           user=localsecrets.DBUSER,
+                                           passwd=localsecrets.DBPW,
+                                           db=localsecrets.DBNAME,
+                                           port=self.tunnel.local_bind_port)
+                    tunneling = self.tunnel.local_bind_port
+                else:
+                    #  not tunneled
+                    self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
+
+                logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} tunnel {tunneling}")
                 self.connected = True
             except Exception as e:
+                print(f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})")
                 logger.error(f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})")
                 self.connected = False
                 self.db = None
@@ -216,8 +247,11 @@ class opasCentralDB(object):
             try:
                 if self.db.open:
                     self.db.close()
-                    logger.debug(f"Database closed by ({caller_name})")
                     self.db = None
+                    logger.debug(f"Database closed by ({caller_name})")
+                    if localsecrets.CONFIG == "AWSTestAccountTunnel":
+                        self.tunnel.stop()
+                        logger.debug(f"Database tunnel stopped.")
                 else:
                     logger.debug(f"Database close request, but not open ({caller_name})")
                     
@@ -235,7 +269,7 @@ class opasCentralDB(object):
         """
         ret_val = None
         self.open_connection(caller_name="end_session") # make sure connection is open
-        if self.db != None:
+        if self.db is not None:
             cursor = self.db.cursor()
             sql = """UPDATE api_sessions
                      SET session_end = %s
@@ -407,6 +441,28 @@ class opasCentralDB(object):
         # return session model object
         return ret_val # None or Session Object
 
+    def get_mysql_version(self):
+        """
+        Get the mysql version number
+        
+        >>> ocd = opasCentralDB()
+        >>> ocd.get_mysql_version()
+        'Vers: 5.7.26'
+        """
+        ret_val = "Unknown"
+        self.open_connection(caller_name="update_session") # make sure connection is open
+        curs = self.db.cursor()
+        sql = "SELECT VERSION();"
+        success = curs.execute(sql)
+        if success:
+            ret_val = "Vers: " + curs.fetchone()[0]
+            curs.close()
+        else:
+            ret_val = None
+
+        self.close_connection(caller_name="update_session") # make sure connection is closed
+        return ret_val
+    
     def update_session(self, session_id, userID=None, access_token=None, userIP=None, connectedVia=None, session_end=None):
         """
         Update the extra fields in the session record
@@ -687,6 +743,9 @@ class opasCentralDB(object):
                          AND session_end is NULL
                       """
                 success = cursor.execute(sql)
+                if success:
+                    ret_val = cursor.fetchone()
+                    
             except pymysql.InternalError as error:
                 code, message = error.args
                 print (f">>>>>>>>>>>>> {code} {message}")
@@ -698,8 +757,6 @@ class opasCentralDB(object):
             ret_val = int(success)
             if success:
                 print (f"Closed {ret_val} expired sessions")
-            else:
-                logger.warning("Could not close sessions in DB")
 
         self.close_connection(caller_name="close_expired_sessions") # make sure connection is closed
         return ret_val
@@ -810,7 +867,7 @@ class opasCentralDB(object):
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
 
                 sqlProducts = """SELECT *, YEAR(NOW())-embargo_length as first_year_embargoed FROM vw_api_user_subscriptions_with_basecodes
-                              WHERE user_id = %s and basecode = %s"""
+                                    WHERE user_id = %s and basecode = %s"""
                              
                 success = curs.execute(sqlProducts, (user_id, basecode))
                 if success:
@@ -852,60 +909,60 @@ class opasCentralDB(object):
         # returns True if user is granted access
         return ret_val
 
-    def get_basecodes_for_product(self, product_id):
-        """
-        given a product_id, return a list of basecodes for that product
+    #def get_basecodes_for_product(self, product_id):
+        #"""
+        #given a product_id, return a list of basecodes for that product
         
-        #TODO: Delete or Not - Perhaps Not Needed!  
-        """
-        ret_val = []
-        #self.open_connection(caller_name="get_basecodes_for_product") # make sure connection is open
+        ##TODO: Delete or Not - Perhaps Not Needed!  
+        #"""
+        #ret_val = []
+        ##self.open_connection(caller_name="get_basecodes_for_product") # make sure connection is open
+        ##if self.db != None:
+            ##try:
+                ##curs = self.db.cursor(pymysql.cursors.SSCursor)
+
+                ##sqlCount = "SELECT basecode FROM vw_products_with_productbase WHERE product_id = %s and active = 1"
+                ##curs.execute(sqlCount, product_id)
+                ##ret_val = list(itertools.chain.from_iterable(curs))
+                    
+            ##except Exception as e:
+                ##logger.error(f"get_sources Error querying vw_api_products: {e}")
+            ##else:
+                ##curs.close()
+            
+        ##self.close_connection(caller_name="get_basecodes_for_product") # make sure connection is closed
+        ## returns a list of basecodes in that product, suitable for matching against.
+        #return ret_val
+
+    #def get_dict_of_products(self):
+        #"""
+        #get a complete dictionary of products, with each including a list of basecodes for that product
+        
+        #>>> ocd = opasCentralDB()
+        #>>> ocd.get_dict_of_products()
+        
+        #"""
+        #ret_val = {}
+        #self.open_connection(caller_name="get_dict_of_products") # make sure connection is open
         #if self.db != None:
             #try:
-                #curs = self.db.cursor(pymysql.cursors.SSCursor)
+                #curs = self.db.cursor(pymysql.cursors.DictCursor)
 
-                #sqlCount = "SELECT basecode FROM vw_products_with_productbase WHERE product_id = %s and active = 1"
-                #curs.execute(sqlCount, product_id)
-                #ret_val = list(itertools.chain.from_iterable(curs))
+                #sql = "SELECT product_id FROM vw_api_product_list_with_basecodes"
+                #curs.execute(sql)
+                #product_list = list(itertools.chain.from_iterable(curs))
+                #for n in product_list:
+                    #basecodes = self.get_basecodes_for_product(n)
+                    #ret_val[n] = basecodes
                     
             #except Exception as e:
                 #logger.error(f"get_sources Error querying vw_api_products: {e}")
             #else:
                 #curs.close()
             
-        #self.close_connection(caller_name="get_basecodes_for_product") # make sure connection is closed
-        # returns a list of basecodes in that product, suitable for matching against.
-        return ret_val
-
-    def get_dict_of_products(self):
-        """
-        get a complete dictionary of products, with each including a list of basecodes for that product
-        
-        >>> ocd = opasCentralDB()
-        >>> ocd.get_dict_of_products()
-        
-        """
-        ret_val = {}
-        self.open_connection(caller_name="get_dict_of_products") # make sure connection is open
-        if self.db != None:
-            try:
-                curs = self.db.cursor(pymysql.cursors.DictCursor)
-
-                sql = "SELECT product_id FROM vw_api_product_list_with_basecodes"
-                curs.execute(sql)
-                product_list = list(itertools.chain.from_iterable(curs))
-                for n in product_list:
-                    basecodes = self.get_basecodes_for_product(n)
-                    ret_val[n] = basecodes
-                    
-            except Exception as e:
-                logger.error(f"get_sources Error querying vw_api_products: {e}")
-            else:
-                curs.close()
-            
-        self.close_connection(caller_name="get_dict_of_products") # make sure connection is closed
-        # returns a list of basecodes in that product, suitable for matching against.
-        return ret_val
+        #self.close_connection(caller_name="get_dict_of_products") # make sure connection is closed
+        ## returns a list of basecodes in that product, suitable for matching against.
+        #return ret_val
 
     def get_sources(self, source=None, src_type=None, limit=None, offset=0):
         """
@@ -1044,7 +1101,7 @@ class opasCentralDB(object):
         elif user_id is not None:
             sql = f"""SELECT *
                      FROM api_user
-                     WHERE vw_user_id = '{user_id}'
+                     WHERE user_id = '{user_id}'
                      and enabled = 1"""
 
         if sql is None:
@@ -1075,7 +1132,7 @@ class opasCentralDB(object):
         ret_val = False
         try:
             logged_in_user = jwt.decode(session_info.access_token, localsecrets.SECRET_KEY)
-            ret_val = logged_in_user["user"]["admin"]
+            ret_val = logged_in_user["admin"]
         except:
             err_msg = f"Not logged in or error getting admin status"
             logger.error(err_msg)
@@ -1174,7 +1231,7 @@ class opasCentralDB(object):
                             user.enabled,
                             user.company,
                             user.full_name, 
-                            get_password_hash(user.password),
+                            user.password,
                             user.user_agrees_to_tracking, 
                             user.user_agrees_to_cookies, 
                             user.view_parent_user_reports, 

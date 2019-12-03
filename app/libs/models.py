@@ -21,7 +21,7 @@ from typing import List, Generic, TypeVar, Optional
 from enum import Enum
 
 from pydantic import BaseModel, Schema
-from pydantic.types import EmailStr
+# from pydantic.types import EmailStr
 from modelsOpasCentralPydantic import User
 #from opasCentralDBLib import opasCentralDB
 
@@ -313,12 +313,17 @@ class SessionInfo(BaseModel):
 #-------------------------------------------------------
     
 class ServerStatusItem(BaseModel):
-    text_server_ok: bool = Schema(None, title="")
-    db_server_ok: bool = Schema(None, title="")
-    user_ip: str = Schema(None, title="")
-    timeStamp: str = Schema(None, title="")
+    db_server_ok: bool = Schema(None, title="Database server is online")
+    db_server_version: str = Schema(None, title="Version of the Database server")
+    text_server_ok: bool = Schema(None, title="Text server is online")
+    text_server_version: str = Schema(None, title="Version of the text server")
+    api_server_version: str = Schema(None, title="Version of the API server software")
+    timeStamp: str = Schema(None, title="Current time")
+    # admin only
+    user_count:  int = Schema(0, title="Number of users online")
+    user_ip: str = Schema(None, title="Requestor's ip")
     config_name: str= Schema(None, title="Current Configuration Name")
-    solr_url: str= Schema(None, title="Current SOLR URL")
+    text_server_url: str= Schema(None, title="Current SOLR URL")
 
 #-------------------------------------------------------
 
