@@ -28,7 +28,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1129.1"
+__version__     = "2019.1203.1"
 __status__      = "Development"
 
 #Revision Notes:
