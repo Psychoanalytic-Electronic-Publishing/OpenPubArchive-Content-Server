@@ -9,12 +9,13 @@ This library is meant to hold the heart of the API based Solr queries and other 
 functions.  
 
 2019.0614.1 - Python 3.7 compatible.  Work in progress.
+2019.1203.1 - fixed authentication value error in show abstract call
 
 """
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0714.1"
+__version__     = "2019.1203.1"
 __status__      = "Development"
 
 import os
@@ -1496,7 +1497,7 @@ def get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document):
     return ret_val
     
 #-----------------------------------------------------------------------------
-def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=None, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=False, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
     Returns an abstract or summary for the specified document
     If part of a documentID is supplied, multiple abstracts will be returned.

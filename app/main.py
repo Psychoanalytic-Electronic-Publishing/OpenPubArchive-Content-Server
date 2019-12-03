@@ -41,6 +41,7 @@ such as PEP-Easy.
               Continued working on term search fixes...not done! #TODO
 
 2019.1202.2 - Fixed text_server_ver return
+2019.1203.1 - authentication parameter default (None) error slipped in!  But important, it blocked abstracts showing. 
 
 To Install (at least in windows)
   rem python 3.7 required
@@ -82,7 +83,7 @@ Endpoint and structure documentation automatically available when server is runn
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1202.2"
+__version__     = "2019.1203.1"
 __status__      = "Development"
 
 import sys
@@ -2112,7 +2113,7 @@ def view_a_document(response: Response,
 
                 ret_val = opasAPISupportLib.documents_get_abstracts( documentID,
                                                                      ret_format=return_format,
-                                                                     authenticated=None,
+                                                                     authenticated=session_info.authenticated,
                                                                      limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
                                                                      offset=0
                                                                      )
