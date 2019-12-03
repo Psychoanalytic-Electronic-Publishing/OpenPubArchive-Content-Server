@@ -941,125 +941,127 @@ def main():
         print((80*"-"))
         preCommitFileCount = 0
         processedFilesCount = 0
-        print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
-        try:
-            ocd =  opasCentralDBLib.opasCentralDB()
-            ocd.open_connection()
-            # Get citation lookup table
+        if newFiles > 0:
+            print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
             try:
-                cursor = ocd.db.cursor(pymysql.cursors.DictCursor)
-                sql = """
-                      SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
-                      """
-                success = cursor.execute(sql)
-                if success:
-                    for n in cursor.fetchall():
-                        row = modelsOpasCentralPydantic.MostCitedArticles(**n)
-                        gCitedTable[row.cited_document_id] = row
-                    cursor.close()
-                else:
-                    retVal = 0
-            except MemoryError as e:
-                print(("Memory error loading table: {}".format(e)))
-            except Exception as e:
-                print(("Table Query Error: {}".format(e)))
-            
-            ocd.close_connection()
-        except Exception as e:
-            print(("Database Connect Error: {}".format(e)))
-            gCitedTable["dummy"] = modelsOpasCentralPydantic.MostCitedArticles()
-            
-    
-        for n in filenames:
-            fileTimeStart = time.time()
-            processedFilesCount += 1
-            if pyVer == 3:
-                f = open(n, encoding="utf-8")
-            else:
-                f = open(n)
-            fileXMLContents = f.read()
-            
-            # get file basename without build (which is in paren)
-            base = os.path.basename(n)
-            artID = os.path.splitext(base)[0]
-            m = re.match(r"(.*)\(.*\)", artID)
-    
-            # Update this file in the database as "processed"
-            currFileInfo.loadForFile(n, localsecrets.SOLRURL)
-            fileTracker.setFileDatabaseRecord(currFileInfo)
-            fileTimeStamp = datetime.utcfromtimestamp(currFileInfo.fileModDate).strftime('%Y-%m-%dT%H:%M:%SZ')
-            print(("Processing file #%s of %s: %s (%s bytes)." % (processedFilesCount, newFiles, base, currFileInfo.fileSize)))
-    
-            # Note: We could also get the artID from the XML, but since it's also important
-            # the file names are correct, we'll do it here.  Also, it "could" have been left out
-            # of the artinfo (attribute), whereas the filename is always there.
-            artID = m.group(1)
-            # all IDs to upper case.
-            artID = artID.upper()
-    
-            # import into lxml
-            root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents))
-            pepxml = root
-    
-            # save common document (article) field values into artInfo instance for both databases
-            artInfo = ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
-            artInfo.fileTimeStamp = fileTimeStamp
-            artInfo.fileName = base
-            artInfo.fileSize = currFileInfo.fileSize
-            try:
-                artInfo.fileClassification = re.search("(pepcurrent|peparchive|pepfuture|pepfree|pepoffsite)", n, re.IGNORECASE).group(1)
-                # set it to lowercase for ease of matching later
-                artInfo.fileClassification = artInfo.fileClassification.lower()
-            except Exception as e:
-                logging.warn("Could not determine file classification for %s (%s)" % (n, e))
-            
-    
-            # walk through bib section and add to refs core database
-    
-            if preCommitFileCount > config.COMMITLIMIT:
-                print(("Committing info for %s documents/articles" % config.COMMITLIMIT))
+                ocd =  opasCentralDBLib.opasCentralDB()
+                ocd.open_connection()
+                # Get citation lookup table
+                try:
+                    cursor = ocd.db.cursor(pymysql.cursors.DictCursor)
+                    sql = """
+                          SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
+                          """
+                    success = cursor.execute(sql)
+                    if success:
+                        for n in cursor.fetchall():
+                            row = modelsOpasCentralPydantic.MostCitedArticles(**n)
+                            gCitedTable[row.cited_document_id] = row
+                        cursor.close()
+                    else:
+                        retVal = 0
+                except MemoryError as e:
+                    print(("Memory error loading table: {}".format(e)))
+                except Exception as e:
+                    print(("Table Query Error: {}".format(e)))
                 
-            # input to the full-text code
-            if options.fulltext_core_update:
-                # this option will also load the biblio and authors cores.
-                processArticleForDocCore(pepxml, artInfo, solrcore_docs, fileXMLContents)
-                processInfoForAuthorCore(pepxml, artInfo, solrcore_authors)
+                ocd.close_connection()
+            except Exception as e:
+                print(("Database Connect Error: {}".format(e)))
+                gCitedTable["dummy"] = modelsOpasCentralPydantic.MostCitedArticles()
+                
+        
+            for n in filenames:
+                fileTimeStart = time.time()
+                processedFilesCount += 1
+                if pyVer == 3:
+                    f = open(n, encoding="utf-8")
+                else:
+                    f = open(n)
+                fileXMLContents = f.read()
+                
+                # get file basename without build (which is in paren)
+                base = os.path.basename(n)
+                artID = os.path.splitext(base)[0]
+                m = re.match(r"(.*)\(.*\)", artID)
+        
+                # Update this file in the database as "processed"
+                currFileInfo.loadForFile(n, localsecrets.SOLRURL)
+                fileTracker.setFileDatabaseRecord(currFileInfo)
+                fileTimeStamp = datetime.utcfromtimestamp(currFileInfo.fileModDate).strftime('%Y-%m-%dT%H:%M:%SZ')
+                print(("Processing file #%s of %s: %s (%s bytes)." % (processedFilesCount, newFiles, base, currFileInfo.fileSize)))
+        
+                # Note: We could also get the artID from the XML, but since it's also important
+                # the file names are correct, we'll do it here.  Also, it "could" have been left out
+                # of the artinfo (attribute), whereas the filename is always there.
+                artID = m.group(1)
+                # all IDs to upper case.
+                artID = artID.upper()
+        
+                # import into lxml
+                root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents))
+                pepxml = root
+        
+                # save common document (article) field values into artInfo instance for both databases
+                artInfo = ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
+                artInfo.fileTimeStamp = fileTimeStamp
+                artInfo.fileName = base
+                artInfo.fileSize = currFileInfo.fileSize
+                try:
+                    artInfo.fileClassification = re.search("(pepcurrent|peparchive|pepfuture|pepfree|pepoffsite)", n, re.IGNORECASE).group(1)
+                    # set it to lowercase for ease of matching later
+                    artInfo.fileClassification = artInfo.fileClassification.lower()
+                except Exception as e:
+                    logging.warn("Could not determine file classification for %s (%s)" % (n, e))
+                
+        
+                # walk through bib section and add to refs core database
+        
                 if preCommitFileCount > config.COMMITLIMIT:
-                    preCommitFileCount = 0
+                    print(("Committing info for %s documents/articles" % config.COMMITLIMIT))
+                    
+                # input to the full-text code
+                if options.fulltext_core_update:
+                    # this option will also load the biblio and authors cores.
+                    processArticleForDocCore(pepxml, artInfo, solrcore_docs, fileXMLContents)
+                    processInfoForAuthorCore(pepxml, artInfo, solrcore_authors)
+                    if preCommitFileCount > config.COMMITLIMIT:
+                        preCommitFileCount = 0
+                        solrcore_docs.commit()
+                        solrcore_authors.commit()
+                        fileTracker.commit()
+        
+                # input to the references core
+                if options.reference_core_update:
+                    bibTotalReferenceCount += processBibForReferencesCore(pepxml, artInfo, solrcore_references)
+                    if preCommitFileCount > config.COMMITLIMIT:
+                        preCommitFileCount = 0
+                        solrcore_references.commit()
+                        fileTracker.commit()
+        
+                preCommitFileCount += 1
+                # close the file, and do the next
+                f.close()
+                if options.displayVerbose:
+                    print(("   ...Time: %s seconds." % (time.time() - fileTimeStart)))
+        
+            # all done with the files.  Do a final commit.
+            print ("Performing final commit.")
+            try:
+                if options.reference_core_update:
+                    solrcore_references.commit()
+                    fileTracker.commit()
+            except Exception as e:
+                print(("Exception: ", e))
+            
+            try:
+                if options.fulltext_core_update:
                     solrcore_docs.commit()
                     solrcore_authors.commit()
                     fileTracker.commit()
-    
-            # input to the references core
-            if options.reference_core_update:
-                bibTotalReferenceCount += processBibForReferencesCore(pepxml, artInfo, solrcore_references)
-                if preCommitFileCount > config.COMMITLIMIT:
-                    preCommitFileCount = 0
-                    solrcore_references.commit()
-                    fileTracker.commit()
-    
-            preCommitFileCount += 1
-            # close the file, and do the next
-            f.close()
-            if options.displayVerbose:
-                print(("   ...Time: %s seconds." % (time.time() - fileTimeStart)))
-    
-        # all done with the files.  Do a final commit.
-        print ("Performing final commit.")
-        try:
-            if options.reference_core_update:
-                solrcore_references.commit()
-                fileTracker.commit()
-        except Exception as e:
-            print(("Exception: ", e))
-        
-        try:
-            if options.fulltext_core_update:
-                solrcore_docs.commit()
-                solrcore_authors.commit()
-                fileTracker.commit()
-        except Exception as e:
-            print(("Exception: ", e))
+            except Exception as e:
+                print(("Exception: ", e))
+
     # end of docs, authors, and/or references Adds
 
     # ---------------------------------------------------------

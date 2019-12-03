@@ -221,48 +221,49 @@ class FileTracker (object):
         :return: False for fail
         """
         retVal = False
-        updateFileInfoSQL = """
+        updateFileInfoSQL = r"""
                                     UPDATE fileTracking
-                                    SET filePath = '%s',
+                                    SET filePath = %s,
                                         fileSize = %s,
                                         fileModDate = %s,
                                         buildDate = %s,
-                                        solrServerURL = '%s'
-                                    WHERE filePath = '%s';
-                                """ % (currentFileInfo.filePath,
+                                        solrServerURL = %s
+                                    WHERE filePath = %s and solrServerURL = %s;
+                                """ 
+        insertIntoFileInfoSQL = r"""
+                                    INSERT INTO fileTracking (filePath,  fileSize, fileModDate, buildDate, solrServerURL)
+                                    VALUES (%s, %s, %s, %s, %s)
+                                """
+        try:
+            c = self.conn.cursor()
+            c.execute(updateFileInfoSQL, (currentFileInfo.filePath,
                                        currentFileInfo.fileSize,
                                        currentFileInfo.fileModDate,
                                        currentFileInfo.buildDate,
                                        currentFileInfo.solrAPIURL,
-                                       currentFileInfo.filePath
-                                      )
-        insertIntoFileInfoSQL = """
-                                    INSERT INTO fileTracking (filePath,  fileSize, fileModDate, buildDate, solrServerURL)
-                                    VALUES ('%s', %s, %s, %s, '%s')
-                                """ % (currentFileInfo.filePath,
+                                       currentFileInfo.filePath, 
+                                       currentFileInfo.solrAPIURL
+                                      ))
+            if c.rowcount == 0:
+                # if it isn't updated, then it didn't exist, so insert it
+                c.execute(insertIntoFileInfoSQL, (currentFileInfo.filePath,
                                        currentFileInfo.fileSize,
                                        currentFileInfo.fileModDate,
                                        currentFileInfo.buildDate,
                                        currentFileInfo.solrAPIURL
-                                      )
-
-        try:
-            c = self.conn.cursor()
-            c.execute(updateFileInfoSQL)
-            if c.rowcount == 0:
-                # if it isn't updated, then it didn't exist, so insert it
-                c.execute(insertIntoFileInfoSQL)
+                                      ))
             retVal = True
         except pymysql.Error as e:
             print(("SetDatabaseRecord Error: ", e))
             #retVal = False #default
 
         c.close()
-        #self.commit()  # we commit during the Solr update loop, so if Solr update fails, so does the "files seen" database update.
+        # for debug, let it commit; otherwise, let it commit later
+        self.commit()  # we commit during the Solr update loop, so if Solr update fails, so does the "files seen" database update.
         return retVal
 
     #----------------------------------------------------------------------------------------
-    def getFileDatabaseRecord(self, filePath):
+    def getFileDatabaseRecord(self, filePath, serverURL):
         """ Check pymysql to see if and when the file was last processed
         """
         retVal = FileTrackingInfo()
@@ -274,11 +275,11 @@ class FileTracker (object):
                                buildDate,
                                solrServerURL
                             FROM fileTracking
-                            WHERE filePath = '%s'
-                        """ % filePath
+                            WHERE filePath = %s and solrServerURL = %s
+                        """
         try:
             c = self.conn.cursor()
-            c.execute(getFileInfoSQL)
+            c.execute(getFileInfoSQL, (filePath, serverURL))
             rows = c.fetchall()
             if rows == ():
                 # no database record here
@@ -349,7 +350,7 @@ class FileTracker (object):
         """
         """
         retVal = False
-        filesDBRecord = self.getFileDatabaseRecord(currentFileInfo.filePath)
+        filesDBRecord = self.getFileDatabaseRecord(currentFileInfo.filePath, serverURL = currentFileInfo.solrAPIURL)
         if filesDBRecord is None:
             retVal = True  # file not in database.
         elif format(filesDBRecord.fileModDate, '.2f') != format(currentFileInfo.fileModDate, '.2f'):
