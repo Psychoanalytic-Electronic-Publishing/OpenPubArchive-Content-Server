@@ -40,4 +40,6 @@ elif CONFIG == "AWSCodesyper": # Codesypher setup, but running from my PC
     DBPW = "fill-me-in"
     DBNAME = "opascentral"
     SSH_HOST = None
+    API_BINARY_IMAGE_SOURCE_PATH = r"fill-me-in"
+    API_PDF_ORIGINALS_PATH = r"fill-me-in"
 
