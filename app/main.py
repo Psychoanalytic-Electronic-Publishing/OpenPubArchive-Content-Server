@@ -31,9 +31,16 @@ such as PEP-Easy.
               the API and some libraries using it.  I'm not a big fan of snake_case but
               trying to do it in the most consistent way possible :)
 
+2019-11-30 - Updated FastAPI/Starlette/Pydantic.  Removed EmailStr import which was just there to prevent warnings on older versions.
+           - Added additional fields, some admin only, to get_server_status (now shows versions)
+           
+2019-11-28 - Added SSH support to allow communicating with AWS mySQL offsite.
+
 2019.1202.1 - Fixed password encoding for create user. Parameterized some settings.
               Tuned mostcited to retrieve fewer records which is what was making it slow.
               Continued working on term search fixes...not done! #TODO
+
+2019.1202.2 - Fixed text_server_ver return
 
 To Install (at least in windows)
   rem python 3.7 required
@@ -69,18 +76,13 @@ Endpoint and structure documentation automatically available when server is runn
 
 (base URL + "/docs")
 
-2019-11-30 - Updated FastAPI/Starlette/Pydantic.  Removed EmailStr import which was just there to prevent warnings on older versions.
-           - Added additional fields, some admin only, to get_server_status (now shows versions)
-           
-2019-11-28 - Added SSH support to allow communicating with AWS mySQL offsite.
-
 
 """
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1202.1"
+__version__     = "2019.1202.2"
 __status__      = "Development"
 
 import sys
@@ -162,7 +164,10 @@ else:
     
 if r.status_code == 200:
     ver_json = r.json()
-    text_server_ver = ver_json["lucene"]["lucene-spec-version"]
+    try:
+        text_server_ver = ver_json["lucene"]["lucene-spec-version"]
+    except KeyError:
+        text_server_ver = ver_json["lucene"]["solr-spec-version"]
 
 # gActiveSessions = {}
 
@@ -342,7 +347,6 @@ async def get_the_server_status(response: Response,
     solr_ok = opasAPISupportLib.check_solr_docs_connection()
     config_name = None
     mysql_ver = None
-    text_server_ver = ""
     text_server_url = None
     config_name = None
     mysql_ver = ocd.get_mysql_version()
