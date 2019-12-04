@@ -220,11 +220,13 @@ origins = [
     "http://pep-web.rocks",
     "http://.pep-web.rocks",
     "http://*.pep-web.rocks",
+    "http://pepeasy.pep-web.rocks",
     "http://pep-web.org",
     "http://.pep-web.org",
     "http://pep-web.info",
     "http://.pep-web.info",
     "http://*.pep-web.info",
+    "http://pepeasy.pep-web.info",
     f"http://{localsecrets.COOKIE_DOMAIN}",
     f"http://{localsecrets.BASEURL}"
 ]
