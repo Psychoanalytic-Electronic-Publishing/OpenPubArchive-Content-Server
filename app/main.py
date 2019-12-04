@@ -41,7 +41,9 @@ such as PEP-Easy.
               Continued working on term search fixes...not done! #TODO
 
 2019.1202.2 - Fixed text_server_ver return
-2019.1203.1 - authentication parameter default (None) error slipped in!  But important, it blocked abstracts showing. 
+2019.1203.1 - authentication parameter default (None) error slipped in!  But important, it blocked abstracts showing.
+2019.1204.1 - modified cors origin list to try *. instead of just . origins
+
 
 To Install (at least in windows)
   rem python 3.7 required
@@ -83,7 +85,7 @@ Endpoint and structure documentation automatically available when server is runn
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1203.1"
+__version__     = "2019.1204.1"
 __status__      = "Development"
 
 import sys
@@ -217,10 +219,12 @@ origins = [
     "http://pep-web",
     "http://pep-web.rocks",
     "http://.pep-web.rocks",
+    "http://*.pep-web.rocks",
     "http://pep-web.org",
     "http://.pep-web.org",
     "http://pep-web.info",
     "http://.pep-web.info",
+    "http://*.pep-web.info",
     f"http://{localsecrets.COOKIE_DOMAIN}",
     f"http://{localsecrets.BASEURL}"
 ]
