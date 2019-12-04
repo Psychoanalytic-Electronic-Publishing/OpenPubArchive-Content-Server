@@ -42,7 +42,8 @@ such as PEP-Easy.
 
 2019.1202.2 - Fixed text_server_ver return
 2019.1203.1 - authentication parameter default (None) error slipped in!  But important, it blocked abstracts showing.
-2019.1204.1 - modified cors origin list to try *. instead of just . origins
+2019.1204.1 - modified cors origin list to try *. instead of just . origins [didn't work]
+2019.1204.3 - modified cors to use regex opion. Define regex in localsecrets CORS_REGEX
 
 
 To Install (at least in windows)
@@ -85,7 +86,7 @@ Endpoint and structure documentation automatically available when server is runn
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1204.1"
+__version__     = "2019.1204.3"
 __status__      = "Development"
 
 import sys
@@ -213,26 +214,14 @@ app = FastAPI(
 #]
 
 origins = [
-    "http://development",
-    "http://development.org",
-    "http://.development.org",
-    "http://pep-web",
-    "http://pep-web.rocks",
-    "http://.pep-web.rocks",
+    "http://*.development.org",
     "http://*.pep-web.rocks",
-    "http://pepeasy.pep-web.rocks",
-    "http://pep-web.org",
-    "http://.pep-web.org",
-    "http://pep-web.info",
-    "http://.pep-web.info",
-    "http://*.pep-web.info",
-    "http://pepeasy.pep-web.info",
-    f"http://{localsecrets.COOKIE_DOMAIN}",
-    f"http://{localsecrets.BASEURL}"
+    "http://*.pep-web.info"
 ]
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origin_regex=localsecrets.CORS_REGEX, 
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
