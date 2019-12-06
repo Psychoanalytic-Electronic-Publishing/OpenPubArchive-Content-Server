@@ -159,7 +159,8 @@
       <p class="banner">
         <a class="anchor" name="{$document-id}" id="{$document-id}"/>
         <a class="toc-link" href="search.php?journal={$journal-code}">
-          <img src="/images/banner{$journal-code}logo.gif" alt=""/>
+		  <!--Client relative...but could use /v2/Document/Images command instead.-->
+          <img src="./images/banner{$journal-code}logo.gif" alt=""/>
         </a>
       </p>
       <div class='pubinfotop'><xsl:value-of select="'[[RunningHead]]'"/></div>

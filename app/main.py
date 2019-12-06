@@ -44,7 +44,7 @@ such as PEP-Easy.
 2019.1203.1 - authentication parameter default (None) error slipped in!  But important, it blocked abstracts showing.
 2019.1204.1 - modified cors origin list to try *. instead of just . origins [didn't work]
 2019.1204.3 - modified cors to use regex opion. Define regex in localsecrets CORS_REGEX
-
+2019.1205.1 - Added opasQueryHelper with QueryTextToSolr to parse form text query fields and translate to Solr syntax
 
 To Install (at least in windows)
   rem python 3.7 required
@@ -86,7 +86,7 @@ Endpoint and structure documentation automatically available when server is runn
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1204.3"
+__version__     = "2019.1205.1"
 __status__      = "Development"
 
 import sys
@@ -134,7 +134,7 @@ from pydantic import ValidationError
 import solrpy as solr
 import json
 import libs.opasConfig as opasConfig
-from opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES 
+from opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES
 import logging
 logger = logging.getLogger(__name__)
 
@@ -2196,7 +2196,8 @@ async def download_an_image(response: Response,
     """
     endpoint = opasCentralDBLib.API_DOCUMENTS_IMAGE
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
-    if not session_info.authenticated:
+    # allow viewing, but not downloading if not logged in
+    if not session_info.authenticated and download != 0:
         response.status_code = HTTP_400_BAD_REQUEST 
         status_message = "Must be logged in and authorized to download an image."
         # no need to record endpoint failure

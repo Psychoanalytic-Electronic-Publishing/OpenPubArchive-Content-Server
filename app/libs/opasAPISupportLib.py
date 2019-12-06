@@ -69,6 +69,8 @@ from xhtml2pdf import pisa             # for HTML 2 PDF conversion
 import models
 
 import opasXMLHelper as opasxmllib
+import opasQueryHelper
+from opasQueryHelper import QueryTextToSolr
 import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
 import sourceInfoDB as SourceInfoDB
@@ -2160,53 +2162,6 @@ def parse_search_query_parameters(search=None,
     
     <QueryParameters analyzeThis='art_authors_ngrm:Tuckett ' searchQ='*:* ' filterQ='art_pepsrccode:IJP && art_vol:57  && art_authors_ngrm:Tuckett ' searchAnalysisTermList=['art_pepsrccode:IJP ', 'art_authors_ngrm:Tuckett '] solrMax=None solrSortBy=None urlRequest=''>    
     """
-    def split_boolean(field_name, query_string):
-        """
-        >>> split_boolean("text", "dog and cat or mouse and pig or hawk")
-    
-        >>> split_boolean("text", "dog AND cat or 'mouse pig'")
-    
-        >>> split_boolean("text", "dog AND cat or 'mouse pig bird'")
-
-        >>> split_boolean("text", "dog and cat")
-    
-        >>> split_boolean("text", "dog and cat or mouse")
-    
-        >>> split_boolean("text", "dog and cat or mouse")
-        
-        #TODO: Need to make "AND" implicit with separated words
-    
-        """
-        split_pattern = "(\sand\s|\sor\s|\sAND\s|\sOR\s)"
-        ret_val = ""
-        split_list = re.split(split_pattern, query_string, maxsplit=50, flags=re.IGNORECASE)
-        term_list = [x.strip() for x in split_list]
-        prior_term = "initial"
-        default_term = ""
-        for n in term_list:
-            if n in ("and", "AND"):
-                ret_val += " && "
-                prior_term = "and"
-            elif n in ["or", "OR"]:
-                ret_val += " || "
-                prior_term = "or"
-            else:
-                if prior_term not in ("and", "AND", "or", "OR", "initial"):
-                    default_term = " && "
-                if " " in n:
-                    if n[0] not in ('"', "'"):
-                        #  split it again!
-                        wordlist = n.split(" ")
-                        ret_val += default_term + f"{field_name}:{wordlist[0]}"
-                        for n in wordlist[1:]:
-                            ret_val += default_term + f"{field_name}:{n}"
-                else:
-                    ret_val += default_term + f"{field_name}:{n}"
-                    prior_term = ""
-                    default_term = ""
-    
-        return ret_val        
-    
                 
         
         
@@ -2222,12 +2177,14 @@ def parse_search_query_parameters(search=None,
     # Could make it global to save a couple of CPU cycles, but I suspect it doesn't matter
     # and the function is cleaner this way.
     pat_prefix_amps = re.compile("^\s*&& ")
+    qparse = opasQueryHelper.QueryTextToSolr()
     
     if sort is not None:  # not sure why this seems to have a slash, but remove it
         sort = re.sub("\/", "", sort)
 
     if title is not None:
-        analyze_this = "&& art_title_xml:{} ".format(title)
+        title = qparse.markup(title, "art_title_xml")
+        analyze_this = f"&& {title} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  
 
@@ -2354,42 +2311,50 @@ def parse_search_query_parameters(search=None,
         if period is None:
             period = '5'
 
-        analyze_this = "&& art_cited_{}:[{} TO {}] ".format(period.lower(), val, val_end)
+        analyze_this = f"&& art_cited_{period.lower()}:[{val} TO {val_end}] "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if fulltext1 is not None:
-        analyze_this = f"&& {split_boolean('text', fulltext1)} "
+        fulltext1 = qparse.markup(fulltext1, "text_xml")
+        analyze_this = f"&& {fulltext1} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if fulltext2 is not None:
-        analyze_this = "&& text:{} ".format(fulltext2)
+        # we should use this for thesaurus OFF later
+        fulltext2 = qparse.markup(fulltext2, "text_xml")
+        analyze_this = f"&& {fulltext2} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if dreams is not None:
-        analyze_this = "&& dreams_xml:{} ".format(dreams)
+        dreams = qparse.markup(dreams, "dreams_xml")
+        analyze_this = f"&& {dreams} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if quotes is not None:
-        analyze_this = "&& quotes_xml:{} ".format(quotes)
+        quotes = qparse.markup(quotes, "quotes_xml")
+        analyze_this = f"&& {quotes} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if abstracts is not None:
-        analyze_this = "&& abstracts_xml:{} ".format(abstracts)
+        abstracts = qparse.markup(abstracts, "abstracts_xml")
+        analyze_this = f"&& {abstracts} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if dialogs is not None:
-        analyze_this = "&& dialogs_xml:{} ".format(dialogs)
+        dialogs = qparse.markup(dialogs, "dialogs_xml")
+        analyze_this = f"&& {dialogs} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
     if references is not None:
-        analyze_this = "&& references_xml:{} ".format(references)
+        references = qparse.markup(references, "references_xml")
+        analyze_this = f"&& {references} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
