@@ -3,16 +3,24 @@
 
 # Third-party imports...
 #from nose.tools import assert_true
-
 import sys
-sys.path.append('../libs')
-sys.path.append('../config')
+import os.path
+
+folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+if folder == "tests": # testing from within WingIDE, default folder is tests
+    sys.path.append('../libs')
+    sys.path.append('../config')
+    sys.path.append('../../app')
+else: # python running from should be within folder app
+    sys.path.append('./libs')
+    sys.path.append('./config')
+
 import unittest
 import requests
 from requests.utils import requote_uri
 import urllib
 
-from testConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded
 
 class TestDatabase(unittest.TestCase):
     def test_count_open_sessions(self):

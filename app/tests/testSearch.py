@@ -5,15 +5,23 @@
 #from nose.tools import assert_true
 
 import sys
-sys.path.append('../libs')
-sys.path.append('../config')
+import os.path
+
+folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+if folder == "tests": # testing from within WingIDE, default folder is tests
+    sys.path.append('../libs')
+    sys.path.append('../config')
+    sys.path.append('../../app')
+else: # python running from should be within folder app
+    sys.path.append('./libs')
+    sys.path.append('./config')
 
 import unittest
 import requests
 from requests.utils import requote_uri
 import urllib
 
-from testConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded
 
 class TestSearch(unittest.TestCase):
     def test_1a_search_mixedcase(self):
@@ -25,7 +33,7 @@ class TestSearch(unittest.TestCase):
         #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] == 7)
+        assert(response_info["fullCount"] >= 6)
         #print (response_set)
         for n in response_set:
             print (n["documentRef"])
@@ -39,7 +47,7 @@ class TestSearch(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] == 7)
+        assert(response_info["fullCount"] >= 6)
         print (response_set)
         # Confirm that the request-response cycle completed successfully.
 
@@ -51,7 +59,7 @@ class TestSearch(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] == 7)
+        assert(response_info["fullCount"] >= 7)
         # print (response_set)
         # Confirm that the request-response cycle completed successfully.
 

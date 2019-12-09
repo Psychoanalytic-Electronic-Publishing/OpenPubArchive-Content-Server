@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+This file has settings for the server tests, as well as a list of endpoint definitions to aid in
+  developing tets.  Of ourse, you can see the OpenAPI Docs for documentation.
+  
+"""
 
 # base_api = "http://stage.pep.gvpi.net/api"
 base_api = "http://127.0.0.1:9100"

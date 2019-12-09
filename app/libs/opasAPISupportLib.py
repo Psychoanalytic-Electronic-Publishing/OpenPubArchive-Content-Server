@@ -87,6 +87,7 @@ import json
 # 
 if SOLRUSER is not None:
     solr_docs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_DOCS, http_user=SOLRUSER, http_pass=SOLRPW)
+    solr_docs_term_search = solr.SearchHandler(solr_docs, "/terms")
     solr_refs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_REFS, http_user=SOLRUSER, http_pass=SOLRPW)
     solr_gloss = solr.SolrConnection(SOLRURL + opasConfig.SOLR_GLOSSARY, http_user=SOLRUSER, http_pass=SOLRPW)
     solr_authors = solr.SolrConnection(SOLRURL + opasConfig.SOLR_AUTHORS, http_user=SOLRUSER, http_pass=SOLRPW)
@@ -94,6 +95,7 @@ if SOLRUSER is not None:
 
 else:
     solr_docs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_DOCS)
+    solr_docs_term_search = solr.SearchHandler(solr_docs, "/terms")
     solr_refs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_REFS)
     solr_gloss = solr.SolrConnection(SOLRURL + opasConfig.SOLR_GLOSSARY)
     solr_authors = solr.SolrConnection(SOLRURL + opasConfig.SOLR_AUTHORS)
@@ -125,8 +127,6 @@ def numbered_anchors(matchobj):
     Called by re.sub on replacing anchor placeholders for HTML output.  This allows them to be numbered as they are replaced.
     """
     global count_anchors
-    #JUMPTOPREVHIT = "<a onclick='hitCursor.prevHit();event.preventDefault();'>🡄</a>"
-    #JUMPTONEXTHIT = "<a onclick='hitCursor.nextHit();event.preventDefault();'>🡆</a>"
     JUMPTOPREVHIT = f"""<a onclick='scrollToAnchor("hit{count_anchors}");event.preventDefault();'>🡄</a>"""
     JUMPTONEXTHIT = f"""<a onclick='scrollToAnchor("hit{count_anchors+1}");event.preventDefault();'>🡆</a>"""
     
@@ -138,7 +138,6 @@ def numbered_anchors(matchobj):
         elif count_anchors <= 1:
             return f"<a name='hit{count_anchors}'> "
     if matchobj.group(0) == opasConfig.HITMARKEREND:
-        #return f"{opasConfig.HITMARKEREND_OUTPUTHTML}<a href='hit{count_anchors+1}'>🡆</a>"
         return f"{opasConfig.HITMARKEREND_OUTPUTHTML}{JUMPTONEXTHIT}"
             
     else:
@@ -394,153 +393,6 @@ def force_string_return_from_various_return_types(text_str, min_length=5):
             logger.error(err)
             
     return ret_val        
-
-#-----------------------------------------------------------------------------
-def get_article_data_raw(article_id, fields=None):  # DEPRECATED??????? (at least, not used)
-    """
-    Fetch an article "Doc" from the Solr solrDocs core.  If fields is none, it fetches all fields.
-
-    This returns a dictionary--the one returned by Solr 
-      (hence why the function is Raw rather than Pydantic like getArticleData)
-      
-    >>> result = get_article_data_raw("APA.009.0331A")
-    >>> result["art_id"]
-    'APA.009.0331A'
-    
-    """
-    ret_val = None
-    if article_id != "":
-        try:
-            results = solr_docs.query(q = "art_id:{}".format(article_id),  fields = fields)
-        except Exception as e:
-            logger.error("Solr Error: {}".format(e))
-            ret_val = None
-        else:
-            if results._numFound == 0:
-                ret_val = None
-            else:
-                ret_val = results.results[0]
-
-    return ret_val
-                
-#-----------------------------------------------------------------------------
-def get_article_data(article_id, fields=None):  # DEPRECATED???????  (at least, not used, though its tested)
-    """
-    Fetch an article "Doc" from the Solr solrDocs core.  If fields is none, it fetches all fields.
-
-    Returns the pydantic model object for a document in a regular documentListStruct
-
-    >>> result = get_article_data("APA.009.0331A")
-    >>> result.documentList.responseSet[0].documentID
-    'APA.009.0331A'
-    
-    """
-    ret_val = None
-    if article_id != "":
-        try:
-            q = f"art_id:{article_id}"
-            results = solr_docs.query(q, fields = fields)
-        except Exception as e:
-            logger.error(f"Solr Error: {e}")
-            ret_val = None
-        else:
-            if results._numFound == 0:
-                ret_val = None
-            else:
-                ret_val = results.results[0]
-
-    limit = 5 # for now, we may later make this 1
-    offset = 0
-    response_info = models.ResponseInfo (count = len(results.results),
-                                         fullCount = results._numFound,
-                                         totalMatchCount = results._numFound,
-                                         limit = limit,
-                                         offset = offset,
-                                         listType="documentlist",
-                                         scopeQuery=[q],
-                                         fullCountComplete = limit >= results._numFound,
-                                         solrParams = results._params,
-                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                       )
-
-    document_item_list = []
-    row_count = 0
-    # row_offset = 0
-    for result in results.results:
-        author_ids = result.get("art_authors", None)
-        if author_ids is None:
-            authorMast = None
-        else:
-            authorMast = opasgenlib.deriveAuthorMast(author_ids)
-
-        pgrg = result.get("art_pgrg", None)
-        if pgrg is not None:
-            pg_start, pg_end = opasgenlib.pgrg_splitter(pgrg)
-         
-        # TODO: Highlighting return is incomplete.  Return from non-highlighted results, and figure out workaround later.
-        
-        document_id = result.get("art_id", None)        
-        #titleXml = results.highlighting[documentID].get("art_title_xml", None)
-        title_xml = result.get("art_title_xml", None)
-        title_xml = force_string_return_from_various_return_types(title_xml)
-        #abstractsXml = results.highlighting[documentID].get("abstracts_xml", None)
-        abstracts_xml = result.get("abstracts_xml", None)
-        abstracts_xml  = force_string_return_from_various_return_types(abstracts_xml )
-        #summariesXml = results.highlighting[documentID].get("abstracts_xml", None)
-        summaries_xml = result.get("abstracts_xml", None)
-        summaries_xml  = force_string_return_from_various_return_types(summaries_xml)
-        #textXml = results.highlighting[documentID].get("text_xml", None)
-        text_xml = result.get("text_xml", None)
-        text_xml  = force_string_return_from_various_return_types(text_xml)
-        kwic_list = []
-        kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
-    
-        if DEBUG_DOCUMENTS != 1:
-            if not user_logged_in or not full_text_requested:
-                text_xml = get_excerpt_from_abs_sum_or_doc(xml_abstract=abstracts_xml,
-                                                           xml_summary=summaries_xml,
-                                                           xml_document=text_xml
-                                                          )
-
-        citeas = result.get("art_citeas_xml", None)
-        citeas = force_string_return_from_various_return_types(citeas)
-        
-        try:
-            item = models.DocumentListItem(PEPCode = result.get("art_pepsrccode", None), 
-                                           year = result.get("art_year", None),
-                                           vol = result.get("art_vol", None),
-                                           pgRg = pgrg,
-                                           pgStart = pg_start,
-                                           pgEnd = pg_end,
-                                           authorMast = authorMast,
-                                           documentID = document_id,
-                                           documentRefHTML = citeas,
-                                           documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return=""),
-                                           title = title_xml,
-                                           abstract = abstracts_xml,
-                                           documentText = None, #textXml,
-                                           score = result.get("score", None), 
-                                           )
-        except ValidationError as e:
-            logger.error(e.json())  
-        else:
-            row_count += 1
-            # logger.debug("{}:{}".format(row_count, citeas))
-            document_item_list.append(item)
-            if row_count > limit:
-                break
-
-    response_info.count = len(document_item_list)
-    
-    document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
-                                                      responseSet = document_item_list
-                                                    )
-    
-    document_list = models.DocumentList(documentList = document_list_struct)
-    
-    ret_val = document_list
-    
-    return ret_val
 
 #-----------------------------------------------------------------------------
 def database_get_most_downloaded(period: str="all",
@@ -1657,7 +1509,7 @@ def documents_get_document(document_id,
 
     """
     ret_val = {}
-    
+    document_list = None
     if not authenticated and file_classification != opasConfig.DOCUMENT_ACCESS_FREE:
         #if user is not authenticated, effectively do endpoint for getDocumentAbstracts
         logger.info("documentsGetDocument: User not authenticated...fetching abstracts instead")
@@ -1672,21 +1524,30 @@ def documents_get_document(document_id,
     else:
         if solr_query_params is not None:
             # repeat the query that the user had done when retrieving the document
-            query = "art_id:{} && {}".format(document_id, solr_query_params.searchQ)
-            document_list, ret_status = search_text(query, 
-                                        filter_query = solr_query_params.filterQ,
-                                        full_text_requested=True,
-                                        format_requested = ret_format,
-                                        authenticated=authenticated,
-                                        file_classification=file_classification, 
-                                        query_debug = False,
-                                        dis_max = solr_query_params.solrMax,
-                                        limit=1, # document call returns only one document.  limit and offset used for something else
-                                        #offset=offset
-                                        page_offset=page_offset, #  e.g., start with the 5th page
-                                        page_limit=page_limit,    #        return limit pages
-                                        page=page # start page specified
-                                      )
+            query = f"art_id:{document_id} && {solr_query_params.searchQ}"
+            filterQ = solr_query_params.filterQ
+            solrMax = solr_query_params.solrMax
+            solrParams = solr_query_params.dict() 
+        else:
+            query = f"art_id:{document_id}"
+            filterQ = None
+            solrMax = None
+            solrParams = None
+            
+        document_list, ret_status = search_text(query, 
+                                    filter_query = filterQ,
+                                    full_text_requested=True,
+                                    format_requested = ret_format,
+                                    authenticated=authenticated,
+                                    file_classification=file_classification, 
+                                    query_debug = False,
+                                    dis_max = solrMax,
+                                    limit=1, # document call returns only one document.  limit and offset used for something else
+                                    #offset=offset
+                                    page_offset=page_offset, #  e.g., start with the 5th page
+                                    page_limit=page_limit,    #        return limit pages
+                                    page=page # start page specified
+                                  )
         
         if document_list == None or document_list.documentList.responseInfo.count == 0:
             #sometimes the query is still sent back, even though the document was an independent selection.  So treat it as a simple doc fetch
@@ -1726,7 +1587,7 @@ def documents_get_document(document_id,
                                                  offset = page_offset,
                                                  listType="documentlist",
                                                  fullCountComplete = full_count_complete,
-                                                 solrParams = solr_query_params.dict(), 
+                                                 solrParams = solrParams, 
                                                  timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
                                                )
             
@@ -2403,8 +2264,8 @@ def parse_search_query_parameters(search=None,
 #-----------------------------------------------------------------------------
 def search_analysis(query_list, 
                     filter_query = None,
-                    more_like_these = False,
-                    query_analysis = False,
+                    #more_like_these = False,
+                    #query_analysis = False,
                     dis_max = None,
                     # summaryFields="art_id, art_pepsrccode, art_vol, art_year, art_iss, 
                         # art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
@@ -2420,40 +2281,42 @@ def search_analysis(query_list,
     ret_val = {}
     document_item_list = []
     rowCount = 0
-    for n in query_list:
-        n = n[3:]
-        n = n.strip(" ")
-        if n == "" or n is None:
-            continue
-
-        results = solr_docs.query(n,
-                                 disMax = dis_max,
-                                 queryAnalysis = True,
-                                 fields = summary_fields,
-                                 rows = 1,
-                                 start = 0)
+    for query_item in query_list:
+        boolean_subs = [termpair.strip() for termpair in re.split("\s+\|\||\&\&\s+", query_item)]
+        for field_clause in boolean_subs:
+            if field_clause == "" or field_clause is None:
+                continue
     
-        termField, termValue = n.split(":")
-        if termField == "art_author_xml":
-            term = termValue + " ( in author)"
-        elif termField == "text_xml":
-            term = termValue + " ( in text)"
-            
-        logger.debug("Analysis: Term %s, matches %s", n, results._numFound)
-        item = models.DocumentListItem(term = n, 
-                                termCount = results._numFound
-                                )
-        document_item_list.append(item)
-        rowCount += 1
+            results = solr_docs.query(field_clause,
+                                      disMax = dis_max,
+                                      queryAnalysis = True,
+                                      fields = summary_fields,
+                                      rows = 1,
+                                      start = 0)
+        
+            termField, termValue = field_clause.split(":")
+            if re.match("art_author.*", termField):
+                term = f"{termValue} ( in author)"
+            elif re.match("text.*", "text_xml"):
+                term = f"{termValue} ( in text)"
+            else:
+                term = f"{termValue} ( in {termField})"
+                
+            #logger.debug("Analysis: Term %s, matches %s", field_clause, results._numFound)
+            item = models.DocumentListItem(term = field_clause, 
+                                    termCount = results._numFound
+                                    )
+            document_item_list.append(item)
+            rowCount += 1
 
-    if rowCount > 0:
-        numFound = 0
-        item = models.DocumentListItem(term = "combined",
-                                termCount = numFound
-                                )
-        document_item_list.append(item)
-        rowCount += 1
-        print ("Analysis: Term %s, matches %s" % ("combined: ", numFound))
+    #if rowCount > 0:
+        #numFound = 0
+        #item = models.DocumentListItem(term = "combined",
+                                       #termCount = numFound
+                                       #)
+        #document_item_list.append(item)
+        #rowCount += 1
+        #print ("Analysis: Term %s, matches %s" % ("combined: ", numFound))
 
     response_info = models.ResponseInfo(count = rowCount,
                                         fullCount = rowCount,
@@ -2471,6 +2334,158 @@ def search_analysis(query_list,
     ret_val = models.DocumentList(documentList = document_list_struct)
     
     return ret_val
+#-----------------------------------------------------------------------------
+def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, term_order="index", wildcard_match_limit=4):
+    """
+    Returns a list of matching terms, and the number of articles with that term.
+    
+    Args:
+        term (str): Term or comma separated list of terms to return data on.
+        term_field (str): the text field to look in
+        limit (int, optional): Paging mechanism, return is limited to this number of items.
+        offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
+        term_order (str, optional): Return the list in this order, per Solr documentation.  Defaults to "index", which is the Solr determined indexing order.
+
+    Returns:
+        list of dicts with term, count
+
+    Docstring Tests:    
+        >>> resp = get_term_count_list("Jealousy")
+        
+    """
+    ret_val = {}
+    #  see if there is a wildcard
+    if "," in term: 
+        # It's a comma separated list!
+        results = solr_docs_term_search( terms_fl=term_field,
+                                         terms_list=term.lower(),
+                                         terms_sort=term_order,  # index or count
+                                         terms_mincount="1",
+                                         #terms_ttf=True, 
+                                         terms_limit=limit
+                                        )
+        try:
+            ret_val = results.terms.get(term_field, {})
+        except Exception as e:
+            logger.debug(f"get_term_count_list error: {e}")
+
+    elif isinstance(term, list):
+        for term_list_component in term:
+            try:
+                ret_val.update(get_term_count_list(term_list_component))
+            except Exception as e:
+                logger.debug(f"get_term_count_list error: {e}")
+            
+
+    elif re.match(".*[\*\?\.].*", term):
+        # make sure legit
+        # do subs to make wildcard * into zero or more regex character, and ? to zero or one
+        term = re.sub("(?P<lead>[^\.])(?P<wildc>[\*\?])", "\g<lead>.\g<wildc>", term)
+        try:
+            re.compile(term)
+            is_valid = True
+        except:
+            is_valid = False
+
+        results = solr_docs_term_search(terms_fl=term_field,
+                                        terms_limit=wildcard_match_limit,
+                                        terms_regex=term.lower(), # + ".*",
+                                        terms_mincount="1",
+                                        terms_sort="count"  # wildcard, pick highest
+                                       )           
+        try:
+            ret_val = results.terms.get(term_field, {})
+            term_wild = term.replace(".", "")
+            ret_val = {f"{key}({term_wild})": value for (key, value) in ret_val.items()}
+            ret_val.update({f"Total({term_wild})>=":sum(x for x in ret_val.values())})
+            
+        except Exception as e:
+            logger.debug(f"get_term_count_list error: {e}")
+    else:
+        # Note: we need an exact match here.
+        results = solr_docs_term_search( terms_fl=term_field,
+                                         terms_prefix=term.lower(),
+                                         terms_sort=term_order,  # index or count
+                                         terms_mincount="1",
+                                         #terms_ttf=True, 
+                                         terms_limit=1 # only one response needed
+                                        )
+        try:
+            ret_val = results.terms.get(term_field, {})
+        except Exception as e:
+            logger.debug(f"get_term_count_list error: {e}")
+    
+
+    return ret_val
+#-----------------------------------------------------------------------------
+def get_termlist_counts(termlist, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, term_order="index"):
+    """
+    Returns a list of counts for terms on the list
+    
+    Args:
+        termlist (list): list of terms, fieldname tuples (term to look for and the field to search
+        term_field (str): the text field to look in
+        limit (int, optional): Paging mechanism, return is limited to this number of items.
+        offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
+        term_order (str, optional): Return the list in this order, per Solr documentation.  Defaults to "index", which is the Solr determined indexing order.
+
+    Returns:
+        list of dicts with term, count
+
+    Docstring Tests:    
+        >>> resp = get_term_count_list("Jealousy")
+        
+    """
+    ret_val = {}
+    
+    response_info = models.ResponseInfo( limit=limit,
+                                         offset=offset,
+                                         listType="documentlist", # this is a mistake in the GVPi API, should be termIndex
+                                         scopeQuery=[f"Terms: {term}"],
+                                         solrParams=results._params,
+                                         timeStamp=datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
+                                       )
+
+    response_info.count = 0
+    if results != []:
+        for key, value in results.terms[term_field].items():
+            if value > 0:
+                item = models.TermIndexItem(term = key, 
+                                            termCount = value,
+                                            ) 
+                term_index_items.append(item)
+                logger.debug("termIndexGetInfo: %s", item)
+           
+    response_info.count = len(term_index_items)
+
+    term_index_item_list = []
+    count = 0
+    try:
+        if results != {}:
+            result = results.terms.get(term_field, {})
+            for key, value in result.items():
+                item = models.TermIndexItem(term = key, 
+                                            termCount = value,
+                                            ) 
+                term_index_item_list.append(item)
+                logger.debug("get_term_count_list: %s", item)
+    except Exception as e:
+        count = 0
+        logger.debug(f"get_term_count_list error: {e}")
+    else:
+        count = len(term_index_item_list)
+
+
+    response_info.fullCountComplete = limit >= response_info.count
+    term_index_struct = models.TermIndexStruct( responseInfo = response_info, 
+                                                responseSet = term_index_items
+                                              )
+    
+    term_index = models.TermIndex(termIndex = term_index_struct)
+    
+    ret_val = term_index
+    return ret_val
+
 
 #================================================================================================================
 # SEARCHTEXT
@@ -2869,7 +2884,10 @@ if __name__ == "__main__":
     # add ch to logger
     logger.addHandler(ch)
     
-    document_get_info("PEPGRANTVS.001.0003A", fields="file_classification")
+    # document_get_info("PEPGRANTVS.001.0003A", fields="file_classification")
+    print (get_term_count_list("jealous*"))
+    print (get_term_count_list("incest"))
+    print (get_term_count_list("murder*"))
     
     import doctest
     doctest.testmod()    

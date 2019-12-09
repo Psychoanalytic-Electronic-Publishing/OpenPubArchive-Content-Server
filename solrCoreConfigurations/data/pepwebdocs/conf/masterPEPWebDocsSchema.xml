@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Web Database Schema v.00.01.18
+    PEP Web Database Schema v.00.01.19
     for core PEPWebDocs
 
     2019-11-15: artvoltitle was at top but never used/loaded.  These are important for TOCs.
@@ -24,7 +24,7 @@
 
 -->
 <!-- Schema name just for labeling, the managed-schema file name is what Solr looks for -->
-<schema name="pepwebproto-nrs" version="1.61">
+<schema name="pepwebdocs" version="1.61">
   <uniqueKey>id</uniqueKey>
   <!-- Document ID (Locator) -->
   <field name="id" type="string" indexed="true" stored="true"/>

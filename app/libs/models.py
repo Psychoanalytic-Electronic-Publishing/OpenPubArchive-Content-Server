@@ -378,7 +378,18 @@ class SourceInfoList(BaseModel):
     sourceInfo: SourceInfoStruct
 
 #-------------------------------------------------------
+class TermIndexItem(BaseModel):
+    term: str = Schema(None, title="The term as indexed by the system.")
+    termCount: int = Schema(None, title="The number of documents with this term.")
+    
+class TermIndexStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[TermIndexItem] = []
 
+class TermIndex(BaseModel):
+    termIndex: TermIndexStruct
+
+#-------------------------------------------------------
 class VideoInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few fields
     sourceType: str = Schema(None, title="")
     PEPCode: str = Schema(None, title="")

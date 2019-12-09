@@ -7,9 +7,17 @@
 #  This test module is in development...
 
 import sys
-sys.path.append('../libs')
-sys.path.append('../config')
-sys.path.append('../../app')
+import os.path
+
+folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+if folder == "tests": # testing from within WingIDE, default folder is tests
+    sys.path.append('../libs')
+    sys.path.append('../config')
+    sys.path.append('../../app')
+else: # python running from should be within folder app
+    sys.path.append('./libs')
+    sys.path.append('./config')
+
 
 from starlette.testclient import TestClient
 
@@ -20,7 +28,7 @@ from datetime import datetime
 import opasAPISupportLib
 import opasConfig
 
-from testConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded
 from main import app
 
 client = TestClient(app)
@@ -36,13 +44,18 @@ class TestStandaloneFunctions(unittest.TestCase):
 
     def test_1_get_article_data(self):
         """
-        This library function is not currently used in the server, but is potentially still useful.
+        Retrieve an article; make sure it's there and the abstract len is not 0
         """
-        data = opasAPISupportLib.get_article_data("ANIJP-DE.009.0189A", fields=None)
+        # This old function wasn't used by the code otherwise so removed this call
+        #  it retrieves an article but doesn't include search highlighting.
+        # data = opasAPISupportLib.get_article_data("ANIJP-DE.009.0189A", fields=None)
+        # this newer function includes the search parameters if there were some
+        data = opasAPISupportLib.documents_get_document("ANIJP-DE.009.0189A")
         # Confirm that the request-response cycle completed successfully.
-        assert (data.documentList.responseInfo.fullCount == 1)
-        assert (data.documentList.responseSet[0].documentID == 'ANIJP-DE.009.0189A')
-        
+        assert (data.documents.responseInfo.fullCount == 1)
+        assert (data.documents.responseSet[0].documentID == 'ANIJP-DE.009.0189A')
+        assert (len(data.documents.responseSet[0].abstract)) > 0
+
     def test_2_metadata_get_sources(self):
         """
         Test

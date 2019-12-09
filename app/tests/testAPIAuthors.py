@@ -6,10 +6,20 @@
 
 #  This test module is in development...
 
+# expects to be run from the app folder.
+
 import sys
-sys.path.append('../libs')
-sys.path.append('../config')
-sys.path.append('../../app')
+import os.path
+
+folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+if folder == "tests": # testing from within WingIDE, default folder is tests
+    sys.path.append('../libs')
+    sys.path.append('../config')
+    sys.path.append('../../app')
+else: # python running from should be within folder app
+    sys.path.append('./libs')
+    sys.path.append('./config')
+
 
 from starlette.testclient import TestClient
 
@@ -18,7 +28,7 @@ from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
 import jwt
 from datetime import datetime
 
-from testConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded
 from main import app
 
 client = TestClient(app)
