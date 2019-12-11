@@ -5,6 +5,11 @@
 <!--  DATE:      August 6, 2019                                    -->
 <!--  Revisions:                                                   
         2019-11-25: fix lang attribute insertion  
+        2019-12-09: add xml to html video callout conversion  
+        2019-12-10: set video callout to newest Wistia player which 
+                    allows seek by captions!
+                    added link to banner icon to search volume
+                      (required an additon to PEPEasy to support it.
 -->
 <!-- ============================================================= -->
 <!--
@@ -158,7 +163,7 @@
       <xsl:apply-templates select="front | front-stub" mode="metadata"/>
       <p class="banner">
         <a class="anchor" name="{$document-id}" id="{$document-id}"/>
-        <a class="toc-link" href="search.php?journal={$journal-code}">
+        <a class="toc-link" href="/#/ArticleList/?journal={$journal-code}">
 		  <!--Client relative...but could use /v2/Document/Images command instead.-->
           <img src="./images/banner{$journal-code}logo.gif" alt=""/>
         </a>
@@ -478,7 +483,60 @@
     </div>
   </xsl:template>
   
-
+  <xsl:template match="videoplayer">
+<!--    <xsl:text>&#xa;</xsl:text>
+    videoid: <xsl:value-of select="@videoid"/>
+    <xsl:text>  </xsl:text>
+    tprojectid: <xsl:value-of select="@tprojectid"/>
+    <xsl:text>  </xsl:text>
+    tplayerid: <xsl:value-of select="@tplayerid"/> 
+    <xsl:text>  </xsl:text>
+    usevideoid: <xsl:value-of select="@usevideoid"/>
+-->    <xsl:if test="'1'='1'">
+      <!--This is the new Wistia player-\-it allows seeking in the transcript, press the arrow on the captions, or use the "Search Video" on the cc menu.
+          This works for old and new videos!
+      -->
+      <div class="wistia_responsive_padding" style="padding:56.25% 0 0 0;position:relative;">
+        <div class="wistia_responsive_wrapper" style="height:100%;left:0;position:absolute;top:0;width:100%;">
+          <iframe src="https://fast.wistia.net/embed/iframe/{@videoid}?videoFoam=true" allowtransparency="true" frameborder="0" scrolling="no" class="wistia_embed" name="wistia_embed" width="100%" height="100%" allowfullscreen="allowfullscreen" mozallowfullscreen="mozallowfullscreen" webkitallowfullscreen="webkitallowfullscreen" oallowfullscreen="oallowfullscreen" msallowfullscreen="msallowfullscreen"></iframe></div>
+      </div>
+      <script src="https://fast.wistia.net/assets/external/E-v1.js" async="async"></script>      
+    </xsl:if>
+<!--    <xsl:if test="@tprojectid='11714' and @tplayerid='10627'">
+      <!-\-these are all on the old 3play account-\->
+      <div class="video-container projectid{@tprojectid} usevideoid{@usevideoid}" style="display: flex; flex-wrap: nowrap; align-content: flex-start; max-width: 900px; "> 
+        <xsl:text>&#xa;</xsl:text>
+        <iframe class="wistia_embed" allowtransparency="true" frameborder="0" scrolling="no" name="wistia_embed" width="540" height="360" id="wistia_embed_id" title="Video player" allowfullscreen="allowfullscreen" mozallowfullscreen="mozallowfullscreen" webkitallowfullscreen="webkitallowfullscreen" oallowfullscreen="oallowfullscreen" msallowfullscreen="msallowfullscreen" src="//fast.wistia.net/embed/iframe/{@videoid}"></iframe>
+        <xsl:text>&#xa;</xsl:text>
+        <div>
+          <script type="text/javascript" src="//static.3playmedia.com/p/projects/{@tprojectid}/files/{@transcriptid}/plugins/10627.js?usevideoid=0"></script>
+          <div id="transcript_p10627_{@transcriptid}"></div>
+          <div id="p3-js-main-root">
+            <script async="" src="//p3.3playmedia.com/p3.js">
+            </script>
+          </div>
+          <script type="text/javascript" src="//fast.wistia.net/assets/external/E-v1.js" async=""></script>
+        </div>
+      </div>
+    </xsl:if>
+    <xsl:if test="@tplayerid!='10627'">  <!-\-proj 16353 tplayerid=11097-\->
+      <div class="video-container projectid{@tprojectid} usevideoid{@usevideoid}" style="display: flex; flex-wrap: nowrap; align-content: flex-start; max-width: 900px; "> 
+        <xsl:text>&#xa;</xsl:text>
+        <iframe marginwidth='0px' marginheight='0px' width='800px' height='850px' frameBorder='0' src='//plugin.3playmedia.com/show?mf={@transcriptid}&amp;p3sdk_version=1.10.4&amp;p={@tprojectid}&amp;pt=563&amp;video_id={@videoid}&amp;video_target=tpm-plugin-p2l4xacj-\-{@videoid}'></iframe>      
+      </div>
+    </xsl:if>
+    <xsl:if test="'1'='0' and @tplayerid!='10627'"> <!-\-disabled, because the one from the test above includes transcription!-\-> 
+      <div class="video-container projectid{@tprojectid} usevideoid{@usevideoid}" style="display: flex; flex-wrap: nowrap; align-content: flex-start; max-width: 900px; ">
+        <!-\-  works for the video for these, but not transcription.-\->
+        <xsl:text>&#xa;</xsl:text>
+        <iframe class="wistia_embed" allowtransparency="true" frameborder="0" scrolling="no" name="wistia_embed" width="540" height="360" id="wistia_embed_id" title="Video player" allowfullscreen="allowfullscreen" mozallowfullscreen="mozallowfullscreen" webkitallowfullscreen="webkitallowfullscreen" oallowfullscreen="oallowfullscreen" msallowfullscreen="msallowfullscreen" src="//fast.wistia.net/embed/iframe/{@videoid}"></iframe>
+        <xsl:text>&#xa;</xsl:text>
+        <div> <script type="text/javascript" src="//static.3playmedia.com/p/projects/16353/files/2855158/plugins/11097.js?usevideoid=0"></script> <script type="text/javascript" src="//fast.wistia.net/assets/external/E-v1.js" async=""></script> </div>
+      </div>
+    </xsl:if>
+-->
+  </xsl:template>
+  
   <xsl:template match="webx" mode="metadata">
     <span class="webx" data-type="{@type}" data-url="{@url}">
       <xsl:value-of select="."/>
@@ -503,7 +561,6 @@
 
   <xsl:template match="ftr">
     <xsl:text>&#13;</xsl:text>
-    <p class="ftn_top">—————————————</p>
     <div class="footer">
       <xsl:apply-templates/>
     </div>
@@ -834,6 +891,7 @@
   </xsl:template>
   
   <xsl:template match="n">
+    <xsl:apply-templates select="@content-type"/>
     <span class="n pagenumber">
       <xsl:if test="@nextpgnum">
         <xsl:attribute name="data-nextpgnum">
@@ -845,7 +903,6 @@
             <xsl:value-of select="@prefxused"/>
           </xsl:attribute>
       </xsl:if>
-      <xsl:apply-templates select="@content-type"/>
       <xsl:apply-templates/>
     </span>  
   </xsl:template>

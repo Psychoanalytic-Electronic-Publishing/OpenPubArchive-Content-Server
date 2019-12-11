@@ -48,3 +48,6 @@ app/oldrequirements.txt
 app/xrequirements.txt
 images/g/AIM.036.0275A.FIG001.jpg
 images/g/JCPTX.032.0329A.F0003g.jpg
+sql/schemas/opascentral from Codesypher AWS Install.sql
+sql/schemas/opascentral local XPS 20191126.sql
+sql/schemas/opascentral20191210withdata.sql
