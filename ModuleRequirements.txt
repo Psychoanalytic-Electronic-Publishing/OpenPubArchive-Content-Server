@@ -1,0 +1,9 @@
+Dependencies
+
+PEP API Server:
+    
+    
+    
+    Maybe:
+        import databases  # pip install databases - required by async database use for FastAPI
+        import aiosqlite  # pip install aiosqlite - required by databases if using sqllite (I guess)

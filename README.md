@@ -1,4 +1,4 @@
-# OpenPubArchive - Open Publications Archive Software (OPAS, working Acronym for project) 
+# OpenPubArchive - Open Publications Archive Software (OPAS) 
  
 (Software for online publishing of journal archives)
 
@@ -16,15 +16,39 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-TBD. What things you need to install the software and how to install them.  Docker should be of help here.
+At the moment, the only pre-requisite is having the docker demon installed.
+Once that's taken care of:
+```
+cd /CURRENT/DIRECTORY
+docker-compose up
+```
+will start both MySQL and Solr.
 
-```
-Give examples
-```
+Currently the FastAPI build goes up via a separate Docker image.  The plan was to merge that into the docker-compose file, but that was not done during our first installation by DevOps.
+
+#TODO DevOPS: The Docker file commands should be translated into docker-compose syntax so all can go up at once.
+
+To start the Server, you then need to start the docker python process, which is curently a Docker file.
+
+The address:
+http://localhost:8983/solr
+
+should be accessible once the services have started.
+
+The MySQL will be on port 3308 but requires a username and password you can set in the YML file.
+
+#TODO DevOPS: The Solr install should have a password and other security precautions:
+     See https://cwiki.apache.org/confluence/display/solr/SolrSecurity
+     
+#TODO DevOPS: Neither Solr or MySQL should use the published usernames/passwords.
+
+**Please note** that the index will be empty. It is then necessary to copy/move the data for the index, or insert the documents. **The index will be persisted**.
+
+#TODO DevOPS.  Make note of the persistent folders
 
 ### Installing
 
-TBD.  A step by step series of examples shall be provided (eventually here) that tell you how to get a development env running
+#TODO DevOPS.  A step by step series of examples shall be provided (eventually here) that tell you how to get a development env running without giving direct security info here.
 
 Say what the step will be
 
@@ -43,6 +67,16 @@ End with an example of getting some data out of the system or using it for a lit
 ## Running the tests
 
 Explain how to run the automated tests for this system
+
+#TODO DevOPS - document any testing possible
+
+To test the Python API/Server code, there are both Docstring tests and unittests.  To run the unittests, go to the APP folder and run the batch file testsuite.bat:
+
+./testsuite - in Windows, or the equiv in Unix environments.  Basically, you must first set the python environment to the env folder and then run the tests.  E.g., from the App folder:
+
+.\env\scripts\activate
+.\env\scripts\python -m unittest discover tests
+
 
 ### Break down into end to end tests
 
@@ -63,14 +97,18 @@ http://google.github.io/styleguide/pyguide.html
 
 ## Deployment
 
-Docker or similar technology will be used to make deployment and redeployment easy.
+Docker will be used to make deployment and redeployment easy.
 
 ## Built With
 
-* [Python]
+* [Python 3]
 * [Solr](http://lucene.apache.org/solr/) - Dependency Management
-* Python Web framework - Flask, Falcon, Hug, Pyramid, or other!
-* XML/XSLT for coding source files and transforming them
+* solrpy A convenience Python library for Solr.
+* Python Web framework - [FastAPI](https://github.com/tiangolo/fastapi) (see [Requirements.txt] in APP for complete list)
+* [MySQL](https://dev.mysql.com/downloads/)
+* [XSLT](https://lxml.de/xpathxslt.html) via LXML for coding source files and transforming them
+* [XML/DTD](http://peparchive.org/pepa1dtd/pepkbd3.dtd) The initial (base) version of the server schemas and imports is based on PEP's KBD3 DTD which is the document markup implemented in books and articles in PEP-Web.  It can readily be adapted for other DTDs though.
+* [PEP-Web API](https://app.swaggerhub.com/apis/nrshapiro/PEP-Web/1.1.0) The initial (base) version of the server API will be largely based on the PEP-Web 1.0 Open API implemented in the current PEP-Web system in order to allow a mostly unmodified version of the PEP-Easy front end to work with the server.  As PEP embarks on new, more functional client developments, this will be expanded.  Incompatible endpoints in the expanded API will be V2 endpoints, whereas anything compatible (such as those not used in PEP-Easy) will be marked as V1 endpoints.  Note that the server itself will provide [OpenAPI](https://www.openapis.org/) based documentation via FastAPI's built-in /docs endpoint.
 
 ## Contributing
 
@@ -78,13 +116,13 @@ Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c6
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) standards for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
+We use [SemVer](http://semver.org/) standards for versioning. We will use the build date as year.moday as the first two parts of the version numbers followed by a sequential differentiating number for any given day in case there are more than one builds for that day.
+
+For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
 
 ## Authors
 
-* **Neil R. Shapiro** - *Initial work* - [Scilab Inc.](https://github.com/nrshapiro)
-
-Future: See also the list of [contributors](https://github.com/nrshapiro/openpubarchive/contributors) who participated in this project.
+See the list of [contributors](https://github.com/nrshapiro/openpubarchive/contributors) who participated in this project.
 
 ## License
 

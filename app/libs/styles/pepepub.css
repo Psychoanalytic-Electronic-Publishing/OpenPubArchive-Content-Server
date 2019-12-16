@@ -1,0 +1,30 @@
+.noprint {
+	display: none;
+}
+.fullwidth {
+	width: 100%;
+}
+.lgrid {
+	display: none;
+}
+
+span.ftntip {
+	color: black;
+	font-weight: normal;
+	cursor: auto;
+}
+
+p.pagebreak {
+	margin-top: 10px;
+	margin-bottom: 10px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #888;
+}
+
+p.pagebreak span.warning {
+	color: #888;
+}
+
+div.copyrightpage {
+	page-break-before: always;
+}
