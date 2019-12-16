@@ -136,6 +136,7 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     """
     Returns the hashed password that's stored
+    >>> get_password_hash("doogie")
     """
     return pwd_context.hash(password)
 

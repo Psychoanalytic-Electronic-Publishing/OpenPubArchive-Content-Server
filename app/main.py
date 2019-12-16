@@ -46,6 +46,10 @@ such as PEP-Easy.
 2019.1204.3 - modified cors to use regex opion. Define regex in localsecrets CORS_REGEX
 2019.1205.1 - Added opasQueryHelper with QueryTextToSolr to parse form text query fields and translate to Solr syntax
 2019.1207.1 - Search analysis reenabled and being tested...may be problems from pepeasy
+2019.1213.1 - Added S3 access via s3fs library - working well for images.  Downloads still needs work because
+              while it downloads, it doesn't trigger browser to download to user's choice of locations.
+2019.1214.1 - Added experimental "prefix switches" to opasQueryHelper to allow proximity selection via "p>" (or now just "p "
+              at the beginning of string.  
 
 To Install (at least in windows)
   rem python 3.7 required
@@ -87,7 +91,7 @@ Endpoint and structure documentation automatically available when server is runn
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1207.1"
+__version__     = "2019.1214.1"
 __status__      = "Development"
 
 import sys
@@ -101,6 +105,8 @@ import datetime
 from datetime import datetime
 import re
 import secrets
+import wget
+
 # import json
 from urllib import parse
 # from http import cookies
@@ -144,13 +150,15 @@ import jwt
 import localsecrets as localsecrets
 import localsecrets
 import libs.opasAPISupportLib as opasAPISupportLib
-import libs.opasBasicLoginLib as opasBasicLoginLib
+# import libs.opasBasicLoginLib as opasBasicLoginLib
 #from libs.opasBasicLoginLib import get_current_user
 
 from errorMessages import *
 import models
-import modelsOpasCentralPydantic
+# import modelsOpasCentralPydantic
 import opasCentralDBLib
+import opasFileSupport
+
 # from sourceInfoDB import SourceInfoDB
 
 # Check text server version
@@ -216,6 +224,7 @@ app = FastAPI(
 
 origins = [
     "http://*.development.org",
+    "http://*.development.org:9999",
     "http://*.pep-web.rocks",
     "http://*.pep-web.info"
 ]
@@ -228,6 +237,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 
 logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
 
@@ -2250,6 +2261,7 @@ async def download_an_image(response: Response,
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
     """
+    ret_val = None
     endpoint = opasCentralDBLib.API_DOCUMENTS_IMAGE
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     # allow viewing, but not downloading if not logged in
@@ -2269,7 +2281,7 @@ async def download_an_image(response: Response,
             detail=status_message
         )    
 
-    filename = opasAPISupportLib.get_image_filename(image_id=imageID)    
+    filename = opas_fs.get_image_filename(filespec=imageID, path=localsecrets.IMAGE_SOURCE_PATH)    
     media_type='image/jpeg'
     if download == 0:
         if filename == None:
@@ -2287,10 +2299,7 @@ async def download_an_image(response: Response,
             raise HTTPException(status_code=response.status_code,
                                 detail=status_message)
         else:
-            with open(filename, mode='rb') as file: # b is important -> binary
-                file_content = file.read()
-
-            # file_content = data
+            file_content = opas_fs.get_image_binary(filename)
             try:
                 ret_val = response = Response(file_content, media_type=media_type)
 
@@ -2317,10 +2326,21 @@ async def download_an_image(response: Response,
     else: # download == 1
         try:
             response.status_code = HTTP_200_OK
-            ret_val = FileResponse(path=filename,
-                                   status_code=response.status_code,
-                                   filename=os.path.split(filename)[1], 
-                                   media_type=media_type)
+            filename = opas_fs.get_image_filename(filename)
+            if opas_fs.key is not None:
+                fileurl = opas_fs.fs.url(filename)
+                fname = wget.download(fileurl)
+                ret_val = FileResponse(path=fname,
+                                       status_code=response.status_code,
+                                       filename=os.path.split(fname)[1], 
+                                       media_type=media_type)
+            else:
+                fileurl = filename
+                ret_val = FileResponse(path=fileurl,
+                                       status_code=response.status_code,
+                                       filename=os.path.split(filename)[1], 
+                                       media_type=media_type)
+
 
         except Exception as e:
             response.status_code = HTTP_400_BAD_REQUEST 

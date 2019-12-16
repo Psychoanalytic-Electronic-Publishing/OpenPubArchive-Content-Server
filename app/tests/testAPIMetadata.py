@@ -25,7 +25,7 @@ from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
 import jwt
 from datetime import datetime
 
-import testConfig
+import unitTestConfig
 from unitTestConfig import base_api, base_plus_endpoint_encoded
 from main import app
 
@@ -83,7 +83,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['fullCount'] == testConfig.VIDEOSOURCECOUNT)
+        assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.VIDEOSOURCECOUNT)
 
         # try with src code parameter
         response = client.get(base_api + '/v1/Metadata/Videos/?SourceCode=AFCVS&limit=1')
@@ -104,7 +104,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['fullCount'] == testConfig.JOURNALCOUNT)
+        assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.JOURNALCOUNT)
 
         # try with src code parameter
         response = client.get(base_api + '/v1/Metadata/Journals/?SourceCode=BJP&limit=1')
@@ -152,7 +152,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['fullCount'] == testConfig.BOOKCOUNT)
+        assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.BOOKCOUNT)
 
     def test_7_meta_sourcenames(self):
         """

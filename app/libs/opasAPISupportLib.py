@@ -30,19 +30,27 @@ import socket, struct
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 from starlette.responses import Response
+from starlette.status import HTTP_200_OK, \
+                             HTTP_400_BAD_REQUEST, \
+                             HTTP_401_UNAUTHORIZED, \
+                             HTTP_403_FORBIDDEN, \
+                             HTTP_404_NOT_FOUND, \
+                             HTTP_500_INTERNAL_SERVER_ERROR, \
+                             HTTP_503_SERVICE_UNAVAILABLE
 import time
 import datetime
 from datetime import datetime, timedelta
 from typing import Union, Optional, Tuple, List
 from enum import Enum
 # import pymysql
+import s3fs # read s3 files just like local files (with keys)
 
 import opasConfig
 import localsecrets
 from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, CONFIG, COOKIE_DOMAIN  
 from opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES 
 from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
-
+from fastapi import HTTPException
 
 if (sys.version_info > (3, 0)):
     # Python 3 code in this block
@@ -120,7 +128,6 @@ def get_basecode(document_id):
     #TODO: later we might want to check for special book basecodes.
     
     return ret_val
-    
 #-----------------------------------------------------------------------------
 def numbered_anchors(matchobj):
     """
@@ -1775,83 +1782,6 @@ def convert_xml_to_html_file(xmltext_str, xslt_file=r"./styles/pepkbd3-html.xslt
     return output_filename
 
 #-----------------------------------------------------------------------------
-def get_image_filename(image_id):
-    """
-    Return the file name given the image id, if it exists
-    
-    >>> get_image_binary("AIM.036.0275A.FIG001")
-
-    >>> get_image_binary("JCPTX.032.0329A.F0003g")
-    
-    """
-    image_filename = None
-    image_source_path = localsecrets.API_BINARY_IMAGE_SOURCE_PATH
-    ext = os.path.splitext(image_id)[-1].lower()
-    if ext in (".jpg", ".tif", ".gif"):
-        image_filename = os.path.join(image_source_path, image_id)
-        exists = os.path.isfile(image_filename)
-        if not exists:
-            image_filename = None
-    else:
-        image_filename = os.path.join(image_source_path, image_id + ".jpg")
-        exists = os.path.isfile(image_filename)
-        if not exists:
-            image_filename = os.path.join(image_source_path, image_id + ".gif")
-            exists = os.path.isfile(image_filename)
-            if not exists:
-                image_filename = os.path.join(image_source_path, image_id + ".tif")
-                exists = os.path.isfile(image_filename)
-                if not exists:
-                    image_filename = None
-
-    return image_filename
-
-#-----------------------------------------------------------------------------
-def get_image_binary(image_id):
-    """
-    Return a binary object of the image, e.g.,
-   
-    >> get_image_binary("NOTEXISTS.032.0329A.F0003g")
-
-    >>> get_image_binary("AIM.036.0275A.FIG001")
-
-    >>> get_image_binary("JCPTX.032.0329A.F0003g")
-    
-    Note: the current server requires the extension, but it should not.  The server should check
-    for the file per the following extension hierarchy: .jpg then .gif then .tif
-    
-    However, if the extension is supplied, that should be accepted.
-
-    The current API implements this:
-    
-    curl -X GET "http://stage.pep.gvpi.net/api/v1/Documents/Downloads/Images/aim.036.0275a.fig001.jpg" -H "accept: image/jpeg" -H "Authorization: Basic cC5lLnAuYS5OZWlsUlNoYXBpcm86amFDayFsZWdhcmQhNQ=="
-    
-    and returns a binary object.
-        
-    """
-
-    
-    # these won't be in the Solr database, needs to be brought back by a file
-    # the file ID should match a file name
-    ret_val = None
-    image_filename = get_image_filename(image_id)
-    if image_filename is not None:
-        try:
-            f = open(image_filename, "rb")
-            image_bytes = f.read()
-            f.close()    
-        except OSError as e:
-            logger.error("getImageBinary: File Open Error: %s", e)
-        except Exception as e:
-            logger.error("getImageBinary: Error: %s", e)
-        else:
-            ret_val = image_bytes
-    else:
-        logger.error("Image File ID %s not found", image_id)
-  
-    return ret_val
-
-#-----------------------------------------------------------------------------
 def get_kwic_list(marked_up_text, 
                   extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, 
                   solr_start_hit_tag=opasConfig.HITMARKERSTART, # supply whatever the start marker that solr was told to use
@@ -2038,6 +1968,7 @@ def parse_search_query_parameters(search=None,
     # Could make it global to save a couple of CPU cycles, but I suspect it doesn't matter
     # and the function is cleaner this way.
     pat_prefix_amps = re.compile("^\s*&& ")
+    pat_special_search_sytax = "^\s*(?P<proximity_switch>[0-9]?P>)"
     qparse = opasQueryHelper.QueryTextToSolr()
     
     if sort is not None:  # not sure why this seems to have a slash, but remove it
@@ -2183,7 +2114,7 @@ def parse_search_query_parameters(search=None,
         search_analysis_term_list.append(analyze_this)
 
     if fulltext2 is not None:
-        # we should use this for thesaurus OFF later
+        # we should use this for thesaurus later
         fulltext2 = qparse.markup(fulltext2, "text_xml")
         analyze_this = f"&& {fulltext2} "
         search_q += analyze_this
@@ -2282,17 +2213,23 @@ def search_analysis(query_list,
     document_item_list = []
     rowCount = 0
     for query_item in query_list:
-        boolean_subs = [termpair.strip() for termpair in re.split("\s+\|\||\&\&\s+", query_item)]
+        # get rid of illegal stuff
+        
+        # boolean_subs = [termpair.strip() for termpair in re.split("\s+\|\||\&\&|[ ]\s+", query_item)]
+        boolean_subs = [termpair.strip() for termpair in re.split("\s*\|\||\&\&\s*", query_item)]
         for field_clause in boolean_subs:
+            field_clause = field_clause.strip("()")
             if field_clause == "" or field_clause is None:
                 continue
-    
-            results = solr_docs.query(field_clause,
-                                      disMax = dis_max,
-                                      queryAnalysis = True,
-                                      fields = summary_fields,
-                                      rows = 1,
-                                      start = 0)
+            try:
+                results = solr_docs.query(field_clause,
+                                          disMax = dis_max,
+                                          queryAnalysis = True,
+                                          fields = summary_fields,
+                                          rows = 1,
+                                          start = 0)
+            except Exception as e:
+                raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=e)
         
             termField, termValue = field_clause.split(":")
             if re.match("art_author.*", termField):
@@ -2816,6 +2753,335 @@ def search_text(query,
     return ret_val, ret_status
 
 #-----------------------------------------------------------------------------
+#================================================================================================================
+def search_text_hold(query, 
+               filter_query = None,
+               query_debug = False,
+               more_like_these = False,
+               full_text_requested = False,
+               file_classification=None, 
+               format_requested = "HTML",
+               dis_max = None,
+               # bring text_xml back in summary fields in case it's missing in highlights! I documented a case where this happens!
+               # summary_fields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml, text_xml", 
+               # highlight_fields = 'art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
+               summary_fields = "art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_pepsourcetitleabbr, art_newsecnm, art_pgrg, abstracts_xml, art_title, art_author_id, art_citeas_xml, text_xml", 
+               highlight_fields = 'text_xml', 
+               sort_by="score desc",
+               authenticated = None, 
+               extra_context_len = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+               maxKWICReturns = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
+               limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
+               offset=0,
+               page_offset=None,
+               page_limit=None,
+               page=None
+               ):
+    """
+    Full-text search, via the Solr server api.
+    
+    Returns a pair of values: ret_val, ret_status.  The double return value is important in case the Solr server isn't running or it returns an HTTP error.  The 
+       ret_val = a DocumentList model object
+       ret_status = a status tuple, consisting of a HTTP status code and a status mesage. Default (HTTP_200_OK, "OK")
+
+    >>> search_text(query="art_title_xml:'ego identity'", limit=10, offset=0, full_text_requested=False)
+    (<DocumentList documentList=<DocumentListStruct responseInfo=<ResponseInfo count=10 limit=10 offset=0 page=…>, (200, 'OK'))
+    
+        Original Parameters in API
+        Original API return model example, needs to be supported:
+    
+                "authormast": "Ringstrom, P.A.",
+				"documentID": "IJPSP.005.0257A",
+				"documentRef": "Ringstrom, P.A. (2010). Commentary on Donna Orange's, &#8220;Recognition as: Intersubjective Vulnerability in the Psychoanalytic Dialogue&#8221;. Int. J. Psychoanal. Self Psychol., 5(3):257-273.",
+				"issue": "3",
+				"PEPCode": "IJPSP",
+				"pgStart": "257",
+				"pgEnd": "273",
+				"title": "Commentary on Donna Orange's, &#8220;Recognition as: Intersubjective Vulnerability in the Psychoanalytic Dialogue&#8221;",
+				"vol": "5",
+				"year": "2010",
+				"rank": "100",
+				"citeCount5": "1",
+				"citeCount10": "3",
+				"citeCount20": "3",
+				"citeCountAll": "3",
+				"kwic": ". . . \r\n        
+   
+    """
+    ret_val = {}
+    ret_status = (200, "OK") # default is like HTTP_200_OK
+    global count_anchors
+    
+    if more_like_these:
+        mlt_fl = "text_xml, headings_xml, terms_xml, references_xml"
+        mlt = "true"
+        mlt_minwl = 8
+    else:
+        mlt_fl = None
+        mlt = "false"
+        mlt_minwl = None
+    
+    if query_debug:
+        query_debug = "on"
+    else:
+        query_debug = "off"
+        
+    if full_text_requested:
+        fragSize = opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE 
+    else:
+        fragSize = extra_context_len
+
+    if filter_query is not None:
+        # for logging/debug
+        filter_query = filter_query.replace("*:* && ", "")
+        logger.debug("Solr FilterQ: %s", filter_query)
+    else:
+        filter_query = "*:*"
+
+    if query is not None:
+        query = query.replace("*:* && ", "")
+        logger.debug("Solr Query: %s", query)
+
+    try:
+        results = solr_docs.query(query,  
+                                 fq = filter_query,
+                                 debugQuery = query_debug,
+                                 disMax = dis_max,
+                                 fields = summary_fields,
+                                 hl='true', 
+                                 hl_fragsize = fragSize, 
+                                 hl_multiterm = 'true',
+                                 hl_fl = highlight_fields,
+                                 hl_usePhraseHighlighter = 'true',
+                                 hl_snippets = maxKWICReturns,
+                                 hl_maxAnalyzedChars=opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
+                                 #hl_method="unified",  # these don't work
+                                 #hl_encoder="HTML",
+                                 mlt = mlt,
+                                 mlt_fl = mlt_fl,
+                                 mlt_count = 2,
+                                 mlt_minwl = mlt_minwl,
+                                 rows = limit,
+                                 start = offset,
+                                 sort=sort_by,
+                                 hl_simple_pre = opasConfig.HITMARKERSTART,
+                                 hl_simple_post = opasConfig.HITMARKEREND)
+    except solr.SolrException as e:
+        logger.error(f"Solr Runtime Search Error: {e}")
+        ret_status = (400, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+                              #  (I added the 400 first element, because then I have a known quantity to catch)
+                              #  httpcode: 400
+                              #  reason: 'Bad Request'
+                              #  body: b'<?xml version="1.0" encoding="UTF-8"?>\n<response>\n\n<lst name="responseHeader">\n  <int name="status">400</int>\n  <int name="QTime">0</int>\n  <lst name="params">\n    <str name="hl">true</str>\n    <str name="fl">art_id, art_pepsrccode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, abstracts_xml, art_title, art_author_id, art_citeas_xml, text_xml,score</str>\n    <str name="hl.fragsize">200</str>\n    <str name="hl.usePhraseHighlighter">true</str>\n    <str name="start">0</str>\n    <str name="fq">*:* </str>\n    <str name="mlt.minwl">None</str>\n    <str name="sort">rank asc</str>\n    <str name="rows">15</str>\n    <str name="hl.multiterm">true</str>\n    <str name="mlt.count">2</str>\n    <str name="version">2.2</str>\n    <str name="hl.simple.pre">%##</str>\n    <str name="hl.snippets">5</str>\n    <str name="q">*:* &amp;&amp; text:depression &amp;&amp; text:"passive withdrawal" </str>\n    <str name="mlt">false</str>\n    <str name="hl.simple.post">##%</str>\n    <str name="disMax">None</str>\n    <str name="mlt.fl">None</str>\n    <str name="hl.fl">text_xml</str>\n    <str name="wt">xml</str>\n    <str name="debugQuery">off</str>\n  </lst>\n</lst>\n<lst name="error">\n  <lst name="metadata">\n    <str name="error-class">org.apache.solr.common.SolrException</str>\n    <str name="root-error-class">org.apache.solr.common.SolrException</str>\n  </lst>\n  <str name="msg">sort param field can\'t be found: rank</str>\n  <int name="code">400</int>\n</lst>\n</response>\n'
+
+    else: #  search was ok
+        logger.debug("Search Performed: %s", query)
+        logger.debug("The Filtering: %s", filter_query)
+        logger.debug("Result  Set Size: %s", results._numFound)
+        logger.debug("Return set limit: %s", limit)
+        scopeofquery = [query, filter_query]
+
+        if ret_status[0] == 200: 
+            documentItemList = []
+            rowCount = 0
+            rowOffset = 0
+            if full_text_requested:
+                # if we're not authenticated, then turn off the full-text request and behave as if we didn't try
+                if not authenticated and full_text_requested and file_classification != opasConfig.DOCUMENT_ACCESS_FREE:
+                    # can't bring back full-text
+                    logger.warning("Fulltext requested--by API--but not authenticated and not open access document.")
+                    full_text_requested = False
+                
+            for result in results.results:
+                # reset anchor counts for full-text markup re.sub
+                count_anchors = 0
+                authorIDs = result.get("art_author_id", None)
+                if authorIDs is None:
+                    authorMast = None
+                else:
+                    authorMast = opasgenlib.deriveAuthorMast(authorIDs)
+        
+                pgRg = result.get("art_pgrg", None)
+                if pgRg is not None:
+                    pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
+                    
+                documentID = result.get("art_id", None)
+                art_year = result.get("art_year", None)
+                art_vol = result.get("art_vol", None)
+                art_issue = result.get("art_iss", None)
+                text_xml = results.highlighting[documentID].get("text_xml", None)
+                # no kwic list when full-text is requested.
+                if text_xml is not None and not full_text_requested:
+                    #kwicList = getKwicList(textXml, extraContextLen=extraContextLen)  # returning context matches as a list, making it easier for clients to work with
+                    kwic_list = []
+                    for n in text_xml:
+                        # strip all tags
+                        match = opasxmllib.xml_string_to_text(n)
+                        # change the tags the user told Solr to use to the final output tags they want
+                        #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
+                        match = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, match)
+                        match = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, match)
+                        kwic_list.append(match)
+                        
+                    kwic = " . . . ".join(kwic_list)  # how its done at GVPi, for compatibility (as used by PEPEasy)
+                    text_xml = None
+                    #print ("Document Length: {}; Matches to show: {}".format(len(textXml), len(kwicList)))
+                else: # either fulltext requested, or no document
+                    kwic_list = []
+                    kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
+                
+                if full_text_requested:
+                    fullText = result.get("text_xml", None)
+                    text_xml = force_string_return_from_various_return_types(text_xml)
+                    if text_xml is None:  # no highlights, so get it from the main area
+                        try:
+                            text_xml = fullText
+                        except:
+                            text_xml = None
+     
+                    elif len(fullText) > len(text_xml):
+                        logger.warning("Warning: text with highlighting is smaller than full-text area.  Returning without hit highlighting.")
+                        text_xml = fullText
+                        
+                    if text_xml is not None:
+                        reduce = False
+                        # see if an excerpt was requested.
+                        if page is not None and page <= int(pgEnd) and page >= int(pgStart):
+                            # use page to grab the starting page
+                            # we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
+                            offset = page - int(pgStart)
+                            reduce = True
+                        # Only use supplied offset if page parameter is out of range, or not supplied
+                        if reduce == False and page_offset is not None: 
+                            offset = page_offset
+                            reduce = True
+
+                        if page_limit is not None:
+                            limit = page_limit
+                            
+                        if reduce == True or page_limit is not None:
+                            # extract the requested pages
+                            try:
+                                text_xml = opasxmllib.xml_get_pages(text_xml, page_offset, page_limit, inside="body", env="body")
+                                text_xml = text_xml[0]
+                            except Exception as e:
+                                logging.error(f"Page extraction from document failed. Error: {e}")
+                                                    
+                    if format_requested == "HTML":
+                        # Convert to HTML
+                        source_title = result.get("art_pepsourcetitleabbr", "")
+                        heading = opasxmllib.get_running_head(source_title=source_title, pub_year=art_year, vol=art_vol, issue=art_issue, pgrg=pgRg, ret_format="HTML")
+                        text_xml = opasxmllib.xml_str_to_html(text_xml, xslt_file=opasConfig.XSLT_XMLTOHTML)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+                        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                        text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
+                        #text_xml = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, text_xml)
+                        #text_xml = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, text_xml)
+                    elif format_requested == "TEXTONLY":
+                        # strip tags
+                        text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
+                    elif format_requested == "XML":
+                        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                        #text_xml = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, text_xml)
+                        #text_xml = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, text_xml)
+        
+                #  shouldn't need this anymore...per above where we turned off full_text_requested when not authenticated.  But leave for now.
+                #if full_text_requested and not authenticated: # don't do this when textXml is a fragment from kwiclist!
+                    #try:
+                        #abstracts_xml = results.highlighting[documentID].get("abstracts_xml", None)
+                        #abstracts_xml  = force_string_return_from_various_return_types(abstracts_xml )
+     
+                        #summaries_xml = results.highlighting[documentID].get("abstracts_xml", None)
+                        #summaries_xml  = force_string_return_from_various_return_types(summaries_xml)
+     
+                        #text_xml = get_excerpt_from_abs_sum_or_doc(xml_abstract=abstracts_xml,
+                                                                   #xml_summary=summaries_xml,
+                                                                   #xml_document=text_xml)
+                    #except:
+                        #text_xml = None
+        
+                citeAs = result.get("art_citeas_xml", None)
+                citeAs = force_string_return_from_various_return_types(citeAs)
+                
+                if more_like_these:
+                    similarDocs = results.moreLikeThis[documentID]
+                    similarMaxScore = results.moreLikeThis[documentID].maxScore
+                    similarNumFound = results.moreLikeThis[documentID].numFound
+                else:
+                    similarDocs = None
+                    similarMaxScore = None
+                    similarNumFound = None
+                
+                abstract = force_string_return_from_various_return_types(result.get("abstracts_xml", None)) # these were highlight versions, not needed
+                if format_requested == "HTML":
+                    # Convert to HTML
+                    abstract = opasxmllib.xml_str_to_html(abstract, xslt_file=opasConfig.XSLT_XMLTOHTML)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+                elif format_requested == "TEXTONLY":
+                    # strip tags
+                    abstract = opasxmllib.xml_elem_or_str_to_text(abstract, default_return=abstract)
+                
+                try:
+                    item = models.DocumentListItem(PEPCode = result.get("art_pepsrccode", None), 
+                                            year = result.get("art_year", None),
+                                            vol = result.get("art_vol", None),
+                                            pgRg = pgRg,
+                                            pgStart = pgStart,
+                                            pgEnd = pgEnd,
+                                            authorMast = authorMast,
+                                            documentID = documentID,
+                                            documentRefHTML = citeAs,
+                                            documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
+                                            kwic = kwic,
+                                            kwicList = kwic_list,
+                                            title = result.get("art_title", None),
+                                            abstract = abstract, 
+                                            document = text_xml,
+                                            score = result.get("score", None), 
+                                            rank = rowCount + 1,
+                                            similarDocs = similarDocs,
+                                            similarMaxScore = similarMaxScore,
+                                            similarNumFound = similarNumFound
+                                            )
+                except ValidationError as e:
+                    logger.error(e.json())  
+                else:
+                    rowCount += 1
+                    # logger.info("{}:{}".format(rowCount, citeAs.decode("utf8")))
+                    documentItemList.append(item)
+                    if rowCount > limit:
+                        break
+        
+        # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
+        #  was a full-text request with a page offset and limit
+        # Solr search was ok
+        responseInfo = models.ResponseInfo(
+                         count = len(results.results),
+                         fullCount = results._numFound,
+                         totalMatchCount = results._numFound,
+                         limit = limit,
+                         offset = offset,
+                         page = page, 
+                         listType="documentlist",
+                         scopeQuery=[scopeofquery], 
+                         fullCountComplete = limit >= results._numFound,
+                         solrParams = results._params,
+                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                       )
+        
+        responseInfo.count = len(documentItemList)
+        
+        documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
+                                                        responseSet = documentItemList
+                                                      )
+        
+        documentList = models.DocumentList(documentList = documentListStruct)
+ 
+        ret_val = documentList
+    
+    return ret_val, ret_status
+
+#-----------------------------------------------------------------------------
+
+
 def termlist_to_doubleamp_query(termlist_str, field=None):
     """
     Take a comma separated term list and change to a

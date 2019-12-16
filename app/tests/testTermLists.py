@@ -34,7 +34,7 @@ class TestSearch(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] >= 6)
+        assert(response_set[0]["termCount"] >= 6)
         print (response_set)
         # Confirm that the request-response cycle completed successfully.
         
