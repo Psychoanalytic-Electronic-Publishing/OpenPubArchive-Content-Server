@@ -1,0 +1,235 @@
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# There are two ways to specify synonym mappings as listed below. We will discuss both the options with example.
+#    - Two comma-separated lists of words with the symbol “=>” between them. If the token matches any word on
+#        the left, then the list on the right is substituted. The original token will not be included
+#        unless it is also in the list on the right.
+#    - A comma-separated list of words. If the token matches any of the words, then all the words in the list are
+#         substituted, which will include the original token.
+
+#-----------------------------------------------------------------------
+#some test synonym mappings unlikely to appear in real input text
+doc => doctor
+child => adolescent teen toddler youth child
+
+# Some synonym groups specific to this example
+GB,gib,gigabyte,gigabytes
+MB,mib,megabyte,megabytes
+
+# Synonym mappings can be used for spelling correction too
+pateint => patient
+
+#PEP Thesaurus generated from original files 2019-05-05 nrs
+internalization,incorporation,object,introjection,identification,superego
+interpretation,empathy,technique,dream,psychoanalysis,reconstruction,transference
+consciousness,perception,preconscious
+violence,aggression
+perversion,bisexuality,homosexuality,masochism,regression,sadism,transvestitism,exhibitionism,fetishism,scopophilia,voyeurism
+insight,psychoanalysis
+dynamic,metapsychology
+resistance,conscious,defense,ego,unconscious,countertransference,transference
+scoptophilia,voyeurism
+differentiation,dedifferentiation
+fear,fright,superego,panic,phobia,anxiety
+hate,affect,aggression,ambivalence,hostility,love
+aggression,anger,conflict,death,defense,drive,energy,frustration,hate,id,neutralization,orality,sex,ambivalence,destructiveness,libido,masochism,rage,suicide,hostility,violence,sadism
+adolescence,ego,masturbation
+repression,anxiety,censor,censorship,instinct,amnesia,hysteria,inhibition,isolation,memory,regression,suppression,unconscious,forgetting
+envy,jealousy
+death,aggression,bereavement,fantasy,mother,mourning,father,suicide
+dissociation,amnesia,ego,splitting,hysteria
+paranoid,projection
+father,children,incest,object,death
+paranoia,paraphrenia,projection,psychosis
+maturation,development
+metapsychology,dynamic,ego,psychodynamics,psychology,topographical,economic,id,psychoanalysis
+trauma,abreaction,anxiety,neurosis,regression,stimulus,fixation
+pride,narcissism
+passivity,activity
+narcissism,autoerotism,character,identification,introjection,sublimation,ego,love,pride,psychosis,transference,object,self,libido
+reconstruction,memory,psychoanalysis,interpretation
+omnipotence,thought
+fixation,development,libido,object,psychodynamics,trauma,regression
+hostility,anger,rage,aggression
+libido,anal,economic,ego,fixation,introjection,object,oral,sex,aggression,anxiety,cathexis,love,energy,id,sublimation,narcissism,eros
+autoerotism,narcissism,sexuality
+inhibition,symptom,repression
+gratification,development,satisfaction,sexuality,frustration,need
+destructiveness,aggression
+hallucinations,delusions
+affect,abreaction,depression,discharge,ego,hate,love,isolation,mood,emotion,anxiety
+dreams,regression
+conversion,somatization,hysteria
+externalization,phobia
+loss,mourning
+compulsion,obsession
+daydream,wish
+stimulus,trauma
+psychoneurosis,hysteria
+incest,father,sexuality
+countertransference,resistance,transference
+wish,daydream,fantasy,neurosis
+anal,libido
+scopophilia,curiosity,exhibitionism,sexuality,voyeurism,perversion
+energy,aggression,bound,masochism,cathexis,economic,libido
+displacement,condensation,phobia,sublimation,transference
+sex,aggression,development,eros,libido
+schizophrenia,autistic,hallucination,psychosis
+cathexis,ego,energy,libido,object
+delibidinization,aggression
+obsession,compulsion
+depression,affect,ambivalence,grief,introjection,mood,object,orality,psychosis,mania,suicide,superego,anxiety,mourning
+hysteria,character,phobia,psychoneurosis,symptom,anxiety,dissociation,neurosis,repression,conversion
+conscience,guilt,superego
+introject,identification
+defence,neurosis,repression
+projection,paranoid,transference,identification,paranoia,introjection
+constitution,ego
+nightmare,anxiety
+integration,ego
+neurosis,conflict,conversion,symptom,trauma,wish,character,hysteria,phobia,psychosis,transference,anxiety
+perversions,homosexuality,psychosis
+sexuality,autoerotism,drive,eros,heterosexuality,incest,scopophilia,masturbation
+identification,ego,introject,mother,narcissism,self,sublimation,superego,transference,identity,object,projection,empathy,internalization,incorporation,introjection
+introjection,depression,libido,narcissism,object,self,superego,ego,internalization,projection,identification,incorporation
+fetish,perversion,splitting
+eros,sex,sexuality,thanatos,love,libido
+neutrality,abstinence
+symbol,symptom
+perception,consciousness,ego,hallucination
+unconscious,anxiety,conflict,psychoanalysis,regression,resistance,subconscious,symbol,ego,fantasy,preconscious,reality,conscious,repression,id
+attention,conscious
+exhibitionism,scopophilia,shame,perversion
+subconscious,unconscious
+suicide,aggression,depression,melancholia,death
+disposition,predisposition
+instinct,ego,object,repression
+mourning,death,melancholia,object,depression
+fantasies,masturbation
+melancholia,grief,mourning,suicide
+empathy,interpretation,intuition,identification
+language,ego
+abstinence,frustration,neutrality
+termination,psychoanalysis
+bisexuality,perversion,transvestitism,homosexuality
+dependence,helplessness
+thinking,language
+paramnesia,amnesia
+economic,libido,energy,metapsychology
+desexualization,sublimation
+emotion,affect
+intuition,empathy
+love,affect,ambivalence,hate,jealousy,transference,libido,narcissism,eros
+censorship,condensation,repression
+danger,anxiety
+character,anality,hysteria,narcissism,normality,orality,neurosis
+splitting,dissociation,fetish,ego
+bound,energy
+fantasy,castration,daydreams,death,denial,masochism,masturbation,wish,reality,unconscious
+homosexuality,bisexuality
+moral,superego
+adaptation,ego
+sadism,anality,perversion,sadomasochism,aggression,masochism
+anality,character,sadism
+psychopathology,psychosis
+neutralization,aggression,sublimation
+jealousy,homosexuality,love,object,envy
+normality,character
+compromise,symptom
+amnesia,dissociation,repression,forgetting,memory
+frustration,abstinence,aggression
+memory,reconstruction,repression,amnesia,forgetting
+morality,superego
+castration,fantasy,genitality,anxiety
+symbiosis,mother
+paraphrenia,paranoia
+transsexualism,sexuality
+voyeurism,scoptophilia,scopophilia,perversion
+fetishism,perversion
+bereavement,death
+grief,melancholia,depression
+incorporation,ego,internalization,object,orality,identification,introjection
+gain,symptom
+child,development,psychosis,infant
+regression,anxiety,dedifferentiation,development,dreams,psychodynamics,superego,trauma,unconscious,psychosis,repression,transference,ego,fixation
+psychotherapy,transference,psychoanalysis
+symptom,compromise,gain,hysteria,inhibition,phobia,symbol,neurosis
+superego,conflict,fear,identification,masochism,morality,regression,shame,sublimation,anxiety,depression,id,introjection,guilt,conscience,internalization,ego
+anxiety,ego,fright,guilt,hysteria,nightmare,psychosis,regression,repression,shame,trauma,unconscious,conflict,depression,libido,superego,affect,castration,neurosis,panic,phobia,fear
+somatization,conflict,conversion
+rage,aggression
+isolation,affect,repression
+preconscious,consciousness,unconscious
+transvestitism,bisexuality,perversion
+psychosis,anxiety,child,defense,depression,mania,mother,perversions,psychopathology,reality,regression,ego,narcissism,paranoia,neurosis,schizophrenia
+forgetting,amnesia,memory,repression
+defense,aggression,projection,psychosis,resistance,conflict,regression
+guilt,anxiety,conscience,shame,superego
+daydreams,fantasy
+determinism,will
+hallucination,delusion,dream,perception,schizophrenia
+heterosexuality,sexuality
+sadomasochism,sadism
+phobia,displacement,externalization,hysteria,symptom,neurosis,fear,anxiety
+fright,anxiety,fear,panic
+psychoses,schizophrenia
+delusion,hallucination
+censor,dream,repression
+shame,anxiety,exhibitionism,superego,guilt
+anger,aggression,hostility
+orality,aggression,cannibalism,character,depression,incorporation
+psychoanalysis,insight,psychology,reconstruction,termination,unconscious,interpretation,metapsychology,psychotherapy,transference
+id,aggression,conflict,metapsychology,superego,libido,unconscious,ego
+latency,masturbation
+autonomy,development,ego
+denial,fantasy,negation,reality
+cathexes,economic
+ambivalence,depression,hate,love,aggression,conflict
+self,identification,introjection,representation,object,identity,narcissism,ego
+transference,idealization,love,object,psychotherapy,regression,identification,narcissism,neurosis,projection,psychoanalysis,displacement,interpretation,resistance,countertransference
+negation,denial
+reality,conscious,psychodynamics,psychosis,denial,ego,object,unconscious,fantasy
+elation,mood,mania
+idealization,transference
+genitality,castration
+panic,fright,fear,anxiety
+dedifferentiation,differentiation,regression
+conflict,aggression,id,neurosis,somatization,superego,unconscious,ambivalence,anxiety,defense,ego
+development,autonomy,ego,fixation,regression,sex,maturation
+neuroses,psychosis
+sublimation,desexualization,displacement,narcissism,superego,identification,ego,neutralization,libido
+depersonalization,derealization
+object,anaclisis,depression,father,fixation,incorporation,instinct,internalization,jealousy,libido,mourning,reality,representation,selfobject,transference,cathexis,mother,self,identification,narcissism
+derealization,depersonalization
+curiosity,scopophilia
+representation,self
+suppression,repression
+discharge,affect
+identity,identification,self
+mood,depression,elation,affect
+condensation,censorship,displacement,dream
+conscious,attention,reality,resistance,unconscious
+psychodynamics,fixation,reality,regression
+oral,libido
+drive,libido,sexuality,aggression
+psychology,metapsychology,psychoanalysis
+mania,psychosis,depression,elation
+ego,adolescence,affect,anxiety,cathexis,constitution,development,dissociation,identification,identity,incorporation,instinct,integration,language,libido,metapsychology,narcissism,perception,resistance,autonomy,psychosis,reality,unconscious,introjection,regression,sublimation,adaptation,conflict,splitting,superego,id,self
+anaclisis,object
+mother,death,infancy,symbiosis,object
+anaclitic,depression
+abreaction,affect
+masturbation,adolescence,fantasy,latency,sexuality
+dream,censor,condensation,hallucination,interpretation
+topographical,metapsychology
+masochism,aggression,energy,fantasy,perversion,superego,sadism

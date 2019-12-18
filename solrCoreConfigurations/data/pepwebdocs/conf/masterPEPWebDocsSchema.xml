@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Web Database Schema v.00.01.19
+    PEP Web Database Schema v.2019.12.18
     for core PEPWebDocs
 
     2019-11-15: artvoltitle was at top but never used/loaded.  These are important for TOCs.
@@ -16,6 +16,7 @@
                 Added text_offsite, so we can search but not store offsite text and there's no danger of returning it
     2019-07-*:  Added art_body_xml, to allow search to easily exclude abstract, summaries, and references (as our current full article search does!)          
             
+    2019-12-18: Added storeOffsetsWithPositions to true in text_general.  This should speed up highlighting in long text fields.
    
    Schema version attribute note: 
    
@@ -220,7 +221,7 @@
        (empty by default), and down cases.  At query time only, it
        also applies synonyms.
   -->
-  <fieldType name="text_general" class="solr.TextField" positionIncrementGap="100" multiValued="true">
+  <fieldType name="text_general" class="solr.TextField" positionIncrementGap="100" storeOffsetsWithPositions="true" multiValued="true">
     <analyzer type="index">
       <!-- nrs added HTMLStripCharFilterFactory -->
       <charFilter class="solr.HTMLStripCharFilterFactory"/>

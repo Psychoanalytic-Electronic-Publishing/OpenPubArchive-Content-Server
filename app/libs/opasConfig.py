@@ -10,6 +10,7 @@ logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.WARNING, 
 
 # These are the solr database names used
 SOLR_DOCS = "pepwebdocs"
+SOLR_DOCPARAS = "pepwebdocparas"  # For testing workaround for paragraph search
 SOLR_REFS = "pepwebrefs"
 SOLR_AUTHORS = "pepwebauthors"
 SOLR_GLOSSARY = "pepwebglossary" 

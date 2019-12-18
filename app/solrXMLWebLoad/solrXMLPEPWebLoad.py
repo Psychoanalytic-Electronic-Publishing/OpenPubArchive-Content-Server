@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
-from __future__ import absolute_import
-from __future__ import print_function
-import six
 print(
     """ 
     OPAS - Open Publications-Archive Software - Document, Authors, and References Core Loader
@@ -28,7 +25,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1203.1"
+__version__     = "2019.1217.1"
 __status__      = "Development"
 
 #Revision Notes:
@@ -51,7 +48,7 @@ import os
 import os.path
 import time
 import logging
-import six.moves.urllib.request, six.moves.urllib.parse, six.moves.urllib.error
+import urllib.request, urllib.parse, urllib.error
 import random
 
 import modelsOpasCentralPydantic
@@ -242,7 +239,8 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
 
     """
     #------------------------------------------------------------------------------------------------------
-    #globals gCitedTable 
+    #globals gCitedTable
+    
     if options.displayVerbose:
         print(("   ...Processing main file content for the %s core." % opasConfig.SOLR_DOCS))
 
@@ -272,7 +270,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                                 in another window or tab.
                              </p>
                              </html>
-                          """ % six.moves.urllib.parse.quote(artInfo.artDOI)
+                          """ % urllib.parse.quote(artInfo.artDOI)
         # should we trust clients, or remove this data?  For now, remove.  Need to probably do this in biblio core too
         dialogsXml = dreamsXml = notesXml = panelsXml = poemsXml = quotesXml = None    
         referencesXml = abstractsXml = summariesXml = None
@@ -289,6 +287,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
         referencesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//be", default_return=None)
         summariesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//summaries", default_return=None)
         abstractsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//abs", default_return=None)
+        parasxml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//p")
         if abstractsXml is None:
             if summariesXml is None:
                 abstractsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//p")[0:20]
@@ -297,13 +296,12 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
             else:
                 abstractsXml = summariesXml
 
-    citedCounts = gCitedTable.get(artInfo.artID, modelsOpasCentralPydantic.MostCitedArticles())   
-        
+    citedCounts = gCitedTable.get(artInfo.artID, modelsOpasCentralPydantic.MostCitedArticles())
+    
+    #experimental paras save
+    parasXMLUpdate(parasxml, solrcon, artInfo)
+    
     #save main article info    
-    if pyVer == 2:
-        fileXMLContents = six.text_type(fileXMLContents, "utf8")
-        offsiteContents = six.text_type(offsiteContents, "utf8")
-        
     try:
         response_update = solrcon.add(id = artInfo.artID,                   # important =  note this is unique id for every reference
                                       art_id = artInfo.artID,
@@ -387,6 +385,39 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
 
     return
 
+def parasXMLUpdate(parasxml, solrcon, artInfo):
+    """
+    Load a core with each paragraph (or equivalent terminal node if that's desirable)
+      so this core can be used as a filter in queries.  Just use it as a filter
+      in the other core, e.g., from the Docs core, filtering on this core:
+      
+      {!join from=art_id to=art_id fromIndex=pepwebdocparas}paras:Kultur && paras:Persönlichkeit 
+      
+    with this core loading PEPCurrent took 13.55 minutes.  Significantly slower than before.
+       And there were 348583 separate docs created in the core.
+      
+    The issues so far seems to be while it works well:
+       - It's much slower of course to process each document since we have to store each paragraph/terminal
+       - If the search relies on a join to this core, the highlighting of the matches in the other core doesn't seem to work
+       
+    """
+    global solrcore_docparas
+    count = 0
+    for n in parasxml:
+        count += 1
+        try:
+            response_update = solrcore_docparas.add(id = artInfo.artID + f".{count}",
+                                                    art_id = artInfo.artID,
+                                                    paras = n
+                                                   )
+            if not re.search('"status">0</int>', response_update):
+                print (response_update)
+        except Exception as err:
+            #processingErrorCount += 1
+            errStr = "Solr call exception for save docparas on %s: %s" % (artInfo.artID, err)
+            print (errStr)
+            #config.logger.error(errStr)
+    
 #------------------------------------------------------------------------------------------------------
 def processInfoForAuthorCore(pepxml, artInfo, solrAuthor):
     """
@@ -730,7 +761,7 @@ def main():
     
     global options  # so the information can be used in support functions
     global bibTotalReferenceCount
-
+    global solrcore_docparas #TODO TEMP
     programNameShort = "OPASWebLoaderPEP"  # used for log file
     # scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
     logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
@@ -779,6 +810,7 @@ def main():
     logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
 
     solrurl_docs = None
+    solrurl_docparas = None
     solrurl_refs = None
     solrurl_authors = None
     solrurl_glossary = None
@@ -786,6 +818,7 @@ def main():
     if (options.reference_core_update or options.fulltext_core_update or options.glossary_core_update) == True:
         try:
             solrurl_docs = localsecrets.SOLRURL + opasConfig.SOLR_DOCS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
+            solrurl_docparas = localsecrets.SOLRURL + opasConfig.SOLR_DOCPARAS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
             solrurl_refs = localsecrets.SOLRURL + opasConfig.SOLR_REFS  # e.g., http://localhost:8983/solr/  + pepwebrefs'
             solrurl_authors = localsecrets.SOLRURL + opasConfig.SOLR_AUTHORS
             solrurl_glossary = localsecrets.SOLRURL + opasConfig.SOLR_GLOSSARY
@@ -835,6 +868,7 @@ def main():
         if options.fulltext_core_update:
             # fulltext update always includes authors
             solrcore_docs = solr.SolrConnection(solrurl_docs, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+            solrcore_docparas = solr.SolrConnection(solrurl_docparas, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
             solrcore_authors = solr.SolrConnection(solrurl_authors, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
         if options.reference_core_update:
             # as of 2019/11/30 this core isn't actually being used in the API.  May end up dropping this.
@@ -845,6 +879,7 @@ def main():
         if options.fulltext_core_update:
             # fulltext update always includes authors
             solrcore_docs = solr.SolrConnection(solrurl_docs)
+            solrcore_docparas = solr.SolrConnection(solrurl_docparas)
             solrcore_authors = solr.SolrConnection(solrurl_authors)
         if options.reference_core_update:
             # as of 2019/11/30 this core isn't actually being used in the API.  May end up dropping this.
@@ -1028,6 +1063,7 @@ def main():
                     if preCommitFileCount > config.COMMITLIMIT:
                         preCommitFileCount = 0
                         solrcore_docs.commit()
+                        solrcore_docparas.commit()
                         solrcore_authors.commit()
                         fileTracker.commit()
         
@@ -1057,6 +1093,7 @@ def main():
             try:
                 if options.fulltext_core_update:
                     solrcore_docs.commit()
+                    solrcore_docparas.commit()
                     solrcore_authors.commit()
                     fileTracker.commit()
             except Exception as e:
