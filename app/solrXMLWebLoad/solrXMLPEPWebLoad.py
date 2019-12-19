@@ -406,10 +406,11 @@ def parasXMLUpdate(parasxml, solrcon, artInfo):
     for n in parasxml:
         count += 1
         try:
-            response_update = solrcore_docparas.add(id = artInfo.artID + f".{count}",
-                                                    art_id = artInfo.artID,
-                                                    paras = n
-                                                   )
+            response_update = solrcon.add(id = artInfo.artID + f".{count}",
+                                          art_id = artInfo.artID,
+                                          paras = n
+                                         )
+
             if not re.search('"status">0</int>', response_update):
                 print (response_update)
         except Exception as err:

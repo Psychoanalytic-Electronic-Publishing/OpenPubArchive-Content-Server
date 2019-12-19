@@ -176,6 +176,9 @@
   <field name="quotes_spkr"  type="string" indexed="true" stored="true" multiValued="true"/>
   <field name="quotes_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
 
+  <!-- set default op to AND.  Could have also done this with parameter q.op -->
+  <solrQueryParser defaultOperator="AND"/>
+
   <!-- Uncomment the dynamicField definition to catch any other fields
    that may have been declared in the DIH configuration.
    This allows to speed up prototyping.
