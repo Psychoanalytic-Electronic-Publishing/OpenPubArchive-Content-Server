@@ -109,6 +109,8 @@ API_DATABASE_WHATSNEW = 42	#/Database/WhatsNew/
 API_DATABASE_MOSTCITED = 43	#/Database/MostCited/
 API_DATABASE_MOSTDOWNLOADED = 44	#/Database/MostDownloaded/
 API_DATABASE_SEARCHANALYSIS = 45	#/Database/SearchAnalysis/
+API_DATABASE_ADVANCEDSEARCH = 46	
+API_DATABASE_TERMCOUNTS = 47
 
 #def verifyAccessToken(session_id, username, access_token):
     #return pwd_context.verify(session_id+username, access_token)

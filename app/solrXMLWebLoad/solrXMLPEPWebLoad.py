@@ -287,7 +287,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
         referencesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//be", default_return=None)
         summariesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//summaries", default_return=None)
         abstractsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//abs", default_return=None)
-        parasxml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//p")
+        parasxml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//p|//p2")
         if abstractsXml is None:
             if summariesXml is None:
                 abstractsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//p")[0:20]
@@ -296,96 +296,152 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
             else:
                 abstractsXml = summariesXml
 
+    art_authors_unlisted = pepxml.xpath(r'//artinfo/artauth/aut[@listed="false"]/@authindexid') 
     citedCounts = gCitedTable.get(artInfo.artID, modelsOpasCentralPydantic.MostCitedArticles())
-    
+    # anywhere in the doc.
+    children = DocChildren() # new instance, reset child counter suffix
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//p|//p2"),
+                          parent_id=artInfo.artID,
+                          parent_tag="doc")
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//quote//p|//quote//p2"),
+                          parent_id=artInfo.artID,
+                          parent_tag="quotes")
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dream//p|//dream//p2"),
+                          parent_id=artInfo.artID,
+                          parent_tag="dreams")
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//poem//p|//poem//p2"),
+                          parent_id=artInfo.artID,
+                          parent_tag="poems")
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dialog//p|//dialog//p2"),
+                          parent_id=artInfo.artID,
+                          parent_tag="dialogs")
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bib//be|//binc"),
+                          parent_id=artInfo.artID,
+                          parent_tag="references")
+
+    print (f"Adding children, tags/counts: {children.tag_counts}")
+
+    new_rec = {
+                "id": artInfo.artID,                                         # important =  note this is unique id for every reference
+                "art_id" : artInfo.artID,                                    # important                                     
+                "title" : artInfo.artTitle,                                  # important                                      
+                "art_title_xml" : opasxmllib.xml_xpath_return_textsingleton(pepxml, "//arttitle"),
+                "art_pepsourcecode" : artInfo.artPepSrcCode,                 # important
+                "art_pepsourcetitleabbr" : artInfo.artPepSourceTitleAbbr,
+                "art_pepsourcetitlefull" : artInfo.artPepSourceTitleFull,
+                "art_pepsourcetype" : artInfo.artPepSourceType,
+                "text_xml" : fileXMLContents,                                # important
+                "timestamp" : artInfo.processedDateTime,                     # important
+                "file_last_modified" : artInfo.fileTimeStamp,
+                "file_classification" : artInfo.fileClassification,
+                "file_size" : artInfo.fileSize,
+                "file_name" : artInfo.fileName,
+                "art_subtitle_xml" : opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artsubtitle", default_return = None),
+                "art_citeas_xml" : artInfo.artCiteAsXML,
+                "art_cited_all" : citedCounts.countAll,
+                "art_cited_5" : citedCounts.count5,
+                "art_cited_10" : citedCounts.count10,
+                "art_cited_20" : citedCounts.count20,
+                #"art_body_xml" : bodyXml,
+                "art_authors" : artInfo.authorList,
+                "art_authors_mast" : artInfo.authorMast,
+                "art_authors_unlisted" : art_authors_unlisted,
+                "art_authors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//aut", default_return = None),
+                "art_year" : artInfo.artYear,
+                "art_year_int" : artInfo.artYearInt,
+                "art_vol" : artInfo.artVol,
+                "art_vol_title" : artInfo.art_vol_title,
+                "art_pgrg" : artInfo.artPgrg,
+                "art_iss" : artInfo.artIssue,
+                "art_iss_title" : artInfo.artIssueTitle,
+                "art_doi" : artInfo.artDOI,
+                "art_lang" : artInfo.artLang,
+                "art_issn" : artInfo.artISSN,
+                "art_origrx" : artInfo.artOrigRX,
+                "art_qual" : artInfo.artQual,
+                "art_kwds" : artInfo.artKwds,
+                "art_type" : artInfo.artType,
+                "art_newsecnm" : artInfo.newSecNm,
+                "authors" :  artInfo.artAllAuthors,
+                "author_bio_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//nbio", default_return = None),
+                "author_aff_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//autaff", default_return = None),
+                "bk_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bktitle", default_return = None),
+                "bk_alsoknownas_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bkalsoknownas", default_return = None),
+                "bk_editors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkeditors", default_return = None),
+                "bk_seriestitle_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkeditors", default_return = None),
+                "bk_pubyear" : pepxml.xpath("//bkpubyear/node()"),
+                "caption_text_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml,"//caption", default_return = None),
+                "caption_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//ctitle", default_return = None),
+                "headings_xml" : headings,
+                "summaries_xml" : summariesXml,
+                "terms_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//impx[@type='TERM2']"),
+                "terms_highlighted" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//b") + opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//i"),
+                "dialogs_spkr" : pepxml.xpath("//dialog/spkr/node()"),"dialogs_xml" : dialogsXml,"dreams_xml" : dreamsXml,"notes_xml" : notesXml,
+                "panels_spkr" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel/spkr"),
+                "abstracts_xml" : abstractsXml,
+                "dreams_xml" : dreamsXml,
+                "panels_xml" : panelsXml,"poems_src" : pepxml.xpath("//poem/src/node()"),
+                "poems_xml" : poemsXml,"quotes_spkr" : pepxml.xpath("//quote/spkr/node()"),
+                "quotes_xml" : quotesXml,
+                "reference_count" : artInfo.artBibReferenceCount,
+                "references_xml" : referencesXml,
+                "meta_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//meta"),"text_xml" : fileXMLContents,
+                "text_xml_offsite" : offsiteContents,
+                "art_level" : 1,
+                "art_para" : parasxml, 
+                "_doc" : children.child_list
+              }
+
     #experimental paras save
-    parasXMLUpdate(parasxml, solrcon, artInfo)
-    
-    #save main article info    
+    # parasxml_update(parasxml, solrcon, artInfo)
+    # format for pysolr (rather than solrpy, supports nesting)
     try:
-        response_update = solrcon.add(id = artInfo.artID,                   # important =  note this is unique id for every reference
-                                      art_id = artInfo.artID,
-                                      file_last_modified = artInfo.fileTimeStamp,
-                                      file_classification = artInfo.fileClassification,
-                                      file_size = artInfo.fileSize,
-                                      file_name = artInfo.fileName,
-                                      timestamp = artInfo.processedDateTime,  # When batch was entered into core
-                                      art_title_xml = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//arttitle"),
-                                      art_body_xml = bodyXml,
-                                      art_subtitle_xml = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artsubtitle", default_return=None),
-                                      title = artInfo.artTitle,
-                                      art_pepsrccode = artInfo.artPepSrcCode,
-                                      art_pepsourcetitleabbr = artInfo.artPepSourceTitleAbbr,
-                                      art_pepsourcetitlefull = artInfo.artPepSourceTitleFull,
-                                      art_pepsourcetype = artInfo.artPepSourceType,
-                                      art_authors = artInfo.authorList,
-                                      art_authors_mast = artInfo.authorMast,
-                                      art_authors_unlisted = pepxml.xpath('//artinfo/artauth/aut[@listed="false"]/@authindexid'),
-                                      art_authors_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//aut", default_return=None),
-                                      art_year = artInfo.artYear,
-                                      art_year_int = artInfo.artYearInt,
-                                      art_vol = artInfo.artVol,
-                                      art_vol_title = artInfo.art_vol_title, 
-                                      art_pgrg = artInfo.artPgrg,
-                                      art_iss = artInfo.artIssue,
-                                      art_iss_title = artInfo.artIssueTitle,
-                                      art_doi = artInfo.artDOI,
-                                      art_lang = artInfo.artLang,                      
-                                      art_issn = artInfo.artISSN,
-                                      art_origrx = artInfo.artOrigRX,
-                                      art_qual = artInfo.artQual,
-                                      art_kwds = artInfo.artKwds,
-                                      art_type = artInfo.artType,
-                                      art_newsecnm = artInfo.newSecNm,
-                                      art_citeas_xml = artInfo.artCiteAsXML,
-                                      art_cited_all = citedCounts.countAll,
-                                      art_cited_5 = citedCounts.count5,
-                                      art_cited_10 = citedCounts.count10,
-                                      art_cited_20 = citedCounts.count20,
-                                      # this produces errors because the solrpy library is looking for these and thinks its a mistake.
-                                      #bib_entries_json = " " + ','.join(['='.join(i) for i in bib_refentries_struct.items()]), #bib_refentries_struct,  # hmm, I wonder if we should type suffix other fields?
-                                      authors =  artInfo.artAllAuthors,         # for common names convenience
-                                      author_bio_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//nbio", default_return=None),
-                                      author_aff_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//autaff", default_return=None),
-                                      bk_title_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bktitle", default_return=None),
-                                      bk_alsoknownas_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bkalsoknownas", default_return=None),
-                                      bk_editors_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkeditors", default_return=None),
-                                      bk_seriestitle_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkeditors", default_return=None),
-                                      bk_pubyear = pepxml.xpath("//bkpubyear/node()"),
-                                      caption_text_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//caption", default_return=None),
-                                      caption_title_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//ctitle", default_return=None),
-                                      headings_xml = headings,
-                                      abstracts_xml = abstractsXml,
-                                      summaries_xml = summariesXml,
-                                      terms_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//impx[@type='TERM2']"),
-                                      terms_highlighted_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//b") + opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//i"),
-                                      dialogs_spkr = pepxml.xpath("//dialog/spkr/node()"),
-                                      dialogs_xml = dialogsXml,
-                                      dreams_xml = dreamsXml,
-                                      notes_xml = notesXml,
-                                      panels_spkr = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel/spkr"),
-                                      panels_xml = panelsXml,
-                                      poems_src = pepxml.xpath("//poem/src/node()"),
-                                      poems_xml = poemsXml,
-                                      quotes_spkr = pepxml.xpath("//quote/spkr/node()"),
-                                      quotes_xml = quotesXml,
-                                      reference_count = artInfo.artBibReferenceCount,
-                                      references_xml = referencesXml,
-                                      meta_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//meta"),
-                                      text_xml = fileXMLContents, # now python 3 only 
-                                      text_offsite = offsiteContents
-                                     )
-        if not re.search('"status">0</int>', response_update):
-            print (response_update)
+        solrcon.add([new_rec])
     except Exception as err:
         #processingErrorCount += 1
         errStr = "Solr call exception for save doc on %s: %s" % (artInfo.artID, err)
         print (errStr)
-        config.logger.error(errStr)
+   
+ 
 
     return
 
-def parasXMLUpdate(parasxml, solrcon, artInfo):
+class DocChildren(object):
+    """
+    Create an list of child strings to be used as the Solr nested document.
+    The parent_tag allows different groups of subelements to be added and separately searchable.
+    
+    """
+    def __init__(self):
+        self.count = 0
+        self.child_list = []
+        self.tag_counts = {}
+        
+    def add_children(self, stringlist, parent_id, parent_tag=None, level=2):
+        """
+        params:
+         - stringlist is typically going to be the return of an xpath expression on an xml instance
+         - parent_id is the typically going to be the Solr ID of the parent, and this is suffixed
+                     to produce a similar but unique id for the child
+         - parent_tag for indicating where this was located in the main instance, e.g., references, dreams, etc.
+         - level for creating children at different levels (even if in the same object)
+        """
+        for n in stringlist:
+            self.count += 1
+            try:
+                self.tag_counts[parent_tag] += 1
+            except: # initialize
+                self.tag_counts[parent_tag] = 1
+                
+            self.child_list.append({"id": parent_id + f".{self.count}",
+                                    "art_level": level,
+                                    "parent_tag": parent_tag,
+                                    "para": n
+                                  })
+        return self.count
+    
+
+def parasxml_update(parasxml, solrcon, artInfo):
     """
     Load a core with each paragraph (or equivalent terminal node if that's desirable)
       so this core can be used as a filter in queries.  Just use it as a filter
@@ -458,25 +514,25 @@ def processInfoForAuthorCore(pepxml, artInfo, solrAuthor):
                
             try:  
                 response_update = solrAuthor.add(id = authorDocid,         # important =  note this is unique id for every author + artid
-                                              art_id = artInfo.artID,
-                                              title = artInfo.artTitle,
-                                              authors = artInfo.artAllAuthors,
-                                              art_author_id = authorID,
-                                              art_author_listed = authorListed,
-                                              art_author_pos_int = authorPos,
-                                              art_author_role = authorRole,
-                                              art_author_bio = authorBio,
-                                              art_author_affil_xml = authorAffil,
-                                              art_year_int = artInfo.artYearInt,
-                                              art_pepsourcetype = artInfo.artPepSourceType,
-                                              art_pepsourcetitlefull = artInfo.artPepSourceTitleFull,
-                                              art_citeas_xml = artInfo.artCiteAsXML,
-                                              art_author_xml = authorXML,
-                                              file_last_modified = artInfo.fileTimeStamp,
-                                              file_classification = artInfo.fileClassification,
-                                              file_name = artInfo.fileName,
-                                              timestamp = artInfo.processedDateTime  # When batch was entered into core
-                                             )
+                                                 art_id = artInfo.artID,
+                                                 title = artInfo.artTitle,
+                                                 authors = artInfo.artAllAuthors,
+                                                 art_author_id = authorID,
+                                                 art_author_listed = authorListed,
+                                                 art_author_pos_int = authorPos,
+                                                 art_author_role = authorRole,
+                                                 art_author_bio = authorBio,
+                                                 art_author_affil_xml = authorAffil,
+                                                 art_year_int = artInfo.artYearInt,
+                                                 art_pepsourcetype = artInfo.artPepSourceType,
+                                                 art_pepsourcetitlefull = artInfo.artPepSourceTitleFull,
+                                                 art_citeas_xml = artInfo.artCiteAsXML,
+                                                 art_author_xml = authorXML,
+                                                 file_last_modified = artInfo.fileTimeStamp,
+                                                 file_classification = artInfo.fileClassification,
+                                                 file_name = artInfo.fileName,
+                                                 timestamp = artInfo.processedDateTime  # When batch was entered into core
+                                                )
                 if not re.search('"status">0</int>', response_update):
                     print (response_update)
             except Exception as err:
@@ -585,7 +641,7 @@ def processBibForReferencesCore(pepxml, artInfo, solrbib):
                     "file_name" : artInfo.fileName,
                     "timestamp" : artInfo.processedDateTime,  # When batch was entered into core
                     "art_title" : artInfo.artTitle,
-                    "art_pepsrccode" : artInfo.artPepSrcCode,
+                    "art_pepsourcecode" : artInfo.artPepSrcCode,
                     "art_pepsourcetitleabbr" : artInfo.artPepSourceTitleAbbr,
                     "art_pepsourcetitlefull" : artInfo.artPepSourceTitleFull,
                     "art_pepsourcetype" : artInfo.artPepSourceType,
@@ -865,10 +921,12 @@ def main():
     #TODO: Try without the None test, the library should not try to use None as user name or password, so only the first case may be needed
     # The connection call is to solrpy (import was just solr)
     #if options.httpUserID is not None and options.httpPassword is not None:
+    import pysolr
     if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:
         if options.fulltext_core_update:
             # fulltext update always includes authors
-            solrcore_docs = solr.SolrConnection(solrurl_docs, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+            #solrcore_docs = solr.SolrConnection(solrurl_docs, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+            solrcore_docs2 = pysolr.Solr(solrurl_docs)
             solrcore_docparas = solr.SolrConnection(solrurl_docparas, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
             solrcore_authors = solr.SolrConnection(solrurl_authors, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
         if options.reference_core_update:
@@ -879,7 +937,8 @@ def main():
     else: #  no user and password needed
         if options.fulltext_core_update:
             # fulltext update always includes authors
-            solrcore_docs = solr.SolrConnection(solrurl_docs)
+            #solrcore_docs = solr.SolrConnection(solrurl_docs)
+            solrcore_docs2 = pysolr.Solr(solrurl_docs)
             solrcore_docparas = solr.SolrConnection(solrurl_docparas)
             solrcore_authors = solr.SolrConnection(solrurl_authors)
         if options.reference_core_update:
@@ -892,8 +951,10 @@ def main():
     if options.resetCoreData:
         if options.fulltext_core_update:
             print ("*** Deleting all data from the docs and author cores ***")
-            solrcore_docs.delete_query("*:*")
-            solrcore_docs.commit()
+            #solrcore_docs.delete_query("*:*")
+            solrcore_docs2.delete(q='*:*')
+            solrcore_docs2.commit()
+            #solrcore_docs.commit()
             solrcore_authors.delete_query("*:*")
             solrcore_authors.commit()
         if options.reference_core_update:
@@ -1059,11 +1120,11 @@ def main():
                 # input to the full-text code
                 if options.fulltext_core_update:
                     # this option will also load the biblio and authors cores.
-                    processArticleForDocCore(pepxml, artInfo, solrcore_docs, fileXMLContents)
+                    processArticleForDocCore(pepxml, artInfo, solrcore_docs2, fileXMLContents)
                     processInfoForAuthorCore(pepxml, artInfo, solrcore_authors)
                     if preCommitFileCount > config.COMMITLIMIT:
                         preCommitFileCount = 0
-                        solrcore_docs.commit()
+                        solrcore_docs2.commit()
                         solrcore_docparas.commit()
                         solrcore_authors.commit()
                         fileTracker.commit()
@@ -1093,7 +1154,7 @@ def main():
             
             try:
                 if options.fulltext_core_update:
-                    solrcore_docs.commit()
+                    solrcore_docs2.commit()
                     solrcore_docparas.commit()
                     solrcore_authors.commit()
                     fileTracker.commit()

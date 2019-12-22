@@ -33,15 +33,6 @@ from modelsOpasCentralPydantic import User
 OpasDB = TypeVar('OpasDB')
    
    
-class QueryParameters(BaseModel):
-    analyzeThis: str = ""
-    searchQ: str = ""
-    filterQ: str = ""
-    searchAnalysisTermList: List[str] = []
-    solrMax: str = None
-    solrSortBy: str = None
-    urlRequest: str = ""
-
 class SearchFormFields(BaseModel): # not used
     quickSearch: str = Schema(None, title="")
     solrQ: str = Schema(None, title="")
@@ -86,10 +77,17 @@ class ListTypeEnum(Enum):
     mostCitedList = "mostcited"
     mostViewedList = "mostviewed"
     searchAnalysisList = "srclist"
+    TermIndex = "termindex"
     
 class ReportTypeEnum(str, Enum):
     mostViewed = "mostViewed"
     mostCited = "mostCited"
+    
+class QueryParserTypeEnum(str, Enum):
+    edismax = "edismax"
+    dismax = "dismax"
+    standard = "lucene"
+    lucene = "lucene"
     
 class SearchModeEnum(Enum):
     searchMode = "Searching"
@@ -107,8 +105,9 @@ class TimePeriod(Enum):
 # Error Return classes [may not be used, switched to exceptions]
 #-------------------------------------------------------
 class ErrorReturn(BaseModel):
+    httpcode: int = Schema(200, title="HTTP code")
     error: str = Schema(None, title="Error class or title")
-    error_message: str = Schema(None, title="Error description")
+    error_description: str = Schema(None, title="Error description")
 
 #-------------------------------------------------------
 # Key data status return structure, part of most models
@@ -192,9 +191,9 @@ class AlertList(BaseModel):
 
 class DocumentListItem(BaseModel):
     PEPCode: str = Schema(None, title="The code assigned to a source, e.g., CPS, IJP, ANIJP-EL, ZBK.  (The first part of the document ID.)")
-    sourceTitle: str = Schema(None, title="The full name of the source(title)")
+    sourceTitle: str = Schema(None, title="The full name of the source(title) (abbr)")
     documentID: str = Schema(None, title="The multiple-section document ID, e.g., CPS.007B.0021A.B0012 in a biblio, or CPS.007B.0021A as a document ID.")
-    authormast: str = Schema(None, title="The author names as displayed below the title in an article.")
+    authorMast: str = Schema(None, title="The author names as displayed below the title in an article.")
     documentRef: str = Schema(None, title="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
     documentRefHTML: str = Schema(None, title="Same as documentRef but in HTML.")
     kwicList: list = Schema(None, title="The matched terms in the matched document context, set by server config DEFAULT_KWIC_CONTENT_LENGTH ") # a real list, seems better long term
@@ -212,6 +211,8 @@ class DocumentListItem(BaseModel):
     termCount: int = Schema(None, title="For search analysis, the count of occurences of the clause or term being reported")
     abstract: str = Schema(None, title="The document abstract, with markup")
     document: str = Schema(None, title="The full-text document, with markup")
+    #parent_tag: str = Schema(None, title="The parent of the nested/sub field para, when searching children directly")
+    para: str = Schema(None, title="The nested/sub field para, when searching children directly")
     updated: datetime = None
     accessLimited: bool = False
     accessLimitedReason: str = Schema(None, title="")
@@ -220,15 +221,17 @@ class DocumentListItem(BaseModel):
     score: float = None
     rank: int = Schema(None, title="")
     instanceCount: int = Schema(None, title="Reusable field to return counts requested")
-    count1: int = Schema(None, title="Number of times cited in the past 5 yrs or downloaded in the last week (depending on endpoint)")
-    count2: int = Schema(None, title="Number of times cited in the past 10 yrs or downloaded in the last month (depending on endpoint)")
-    count3: int = Schema(None, title="Number of times cited in the past 20 yrs or downloaded in the last 6 months (depending on endpoint)")
-    count4: int = Schema(None, title="Number of times cited in the past (reserved) yrs or downloaded in the last 12 months (depending on endpoint)")
-    count5: int = Schema(None, title="Number of times cited in the past (reserved) yrs or downloaded in the last calendar year (depending on endpoint)")
-    countAll: int = Schema(None, title="Number of times cited in the past or downloaded (depending on endpoint) in all years")
-    similarDocs: list = None
-    similarMaxScore: float = None
-    similarNumFound: int = Schema(None, title="")
+    stat: dict = Schema(None, title="Reusable field to return counts requested")
+    #count1: int = Schema(None, title="Number of times cited in the past 5 yrs or downloaded in the last week (depending on endpoint)")
+    #count2: int = Schema(None, title="Number of times cited in the past 10 yrs or downloaded in the last month (depending on endpoint)")
+    #count3: int = Schema(None, title="Number of times cited in the past 20 yrs or downloaded in the last 6 months (depending on endpoint)")
+    #count4: int = Schema(None, title="Number of times cited in the past (reserved) yrs or downloaded in the last 12 months (depending on endpoint)")
+    #count5: int = Schema(None, title="Number of times cited in the past (reserved) yrs or downloaded in the last calendar year (depending on endpoint)")
+    #countAll: int = Schema(None, title="Number of times cited in the past or downloaded (depending on endpoint) in all years")
+    similarityMatch: dict = Schema(None, title="Information about similarity matches")
+    #similarDocs: list = None
+    #similarMaxScore: float = None
+    #similarNumFound: int = Schema(None, title="")
         
 class DocumentListStruct(BaseModel):
     responseInfo: ResponseInfo
@@ -379,6 +382,7 @@ class SourceInfoList(BaseModel):
 
 #-------------------------------------------------------
 class TermIndexItem(BaseModel):
+    field: str = Schema(None, title="The field where the term indexed was checked.")
     term: str = Schema(None, title="The term as indexed by the system.")
     termCount: int = Schema(None, title="The number of documents with this term.")
     
@@ -416,6 +420,16 @@ class VolumeListItem(BaseModel):
     vol: str = Schema(None, title="")
     year: str = Schema(None, title="")
     
+#-------------------------------------------------------
+class QueryParameters(BaseModel):
+    analyzeThis: str = ""
+    searchQ: str = ""
+    filterQ: str = ""
+    searchAnalysisTermList: List[str] = []
+    defType: QueryParserTypeEnum = Schema(None, title="Query parser to use, e.g., 'edismax'.  Default is 'standard' (lucene)")
+    solrSortBy: str = None
+    urlRequest: str = ""
+
 #-------------------------------------------------------
    
 class ReportRow(BaseModel):

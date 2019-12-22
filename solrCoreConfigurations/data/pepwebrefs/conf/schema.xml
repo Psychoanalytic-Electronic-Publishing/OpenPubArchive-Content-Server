@@ -50,7 +50,7 @@
   <!-- ********************************* -->
   <field name="art_id" type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="art_authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
-  <field name="art_pepsrccode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_pepsourcecode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_pepsourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_pepsourcetitlefull" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_pepsourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>

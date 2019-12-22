@@ -52,28 +52,6 @@
     </lst>
   </requestHandler>
 
-  <requestHandler name="/dataimport" class="solr.DataImportHandler">
-    <lst name="defaults">
-      <str name="config">neilstika-data-config.xml</str>
-    </lst>
-  </requestHandler>
-
-  <!-- NRS: I added this to point to my data input handler -->
-  <requestHandler name="/dataimportxml" class="org.apache.solr.handler.dataimport.DataImportHandler">
-      <lst name="defaults">
-        <str name="config">xmldbconfig.xml</str>
-      </lst>
-  </requestHandler>
-
-  <!-- Terms Component
-
-        
-
-       A component to return terms and document frequency of those
-       terms
-       
-       http://localhost:8983/solr/pepwebdocs/terms?terms.fl=text_xml&terms.prefix=feel&terms=true
-    -->
   <searchComponent name="terms" class="solr.TermsComponent"/>
 
   <!-- A request handler for the terms component -->
@@ -137,6 +115,29 @@
   <autoSoftCommit>
     <maxTime>${solr.autoSoftCommit.maxTime:-1}</maxTime>
   </autoSoftCommit>
+
+  <!--<requestHandler name="/dataimport" class="solr.DataImportHandler">-->
+    <!--<lst name="defaults">-->
+      <!--<str name="config">neilstika-data-config.xml</str>-->
+    <!--</lst>-->
+  <!--</requestHandler>-->
+
+  <!-- NRS: I added this to point to my data input handler -->
+  <!--<requestHandler name="/dataimportxml" class="org.apache.solr.handler.dataimport.DataImportHandler">-->
+      <!--<lst name="defaults">-->
+        <!--<str name="config">xmldbconfig.xml</str>-->
+      <!--</lst>-->
+  <!--</requestHandler>-->
+
+  <!-- Terms Component
+
+        
+
+       A component to return terms and document frequency of those
+       terms
+       
+       http://localhost:8983/solr/pepwebdocs/terms?terms.fl=text_xml&terms.prefix=feel&terms=true
+    -->
 
 </updateHandler>
 
