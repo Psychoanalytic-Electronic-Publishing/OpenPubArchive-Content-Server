@@ -83,7 +83,7 @@ class ReportTypeEnum(str, Enum):
     mostViewed = "mostViewed"
     mostCited = "mostCited"
     
-class QueryParserTypeEnum(str, Enum):
+class QueryParserTypeEnum(Enum):
     edismax = "edismax"
     dismax = "dismax"
     standard = "lucene"

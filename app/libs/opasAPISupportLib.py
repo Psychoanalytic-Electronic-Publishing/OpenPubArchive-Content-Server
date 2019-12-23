@@ -1897,61 +1897,70 @@ def search_analysis(query_list,
         # get rid of illegal stuff
         # boolean_subs = [termpair.strip() for termpair in re.split("\s+\|\||\&\&|[ ]\s+", query_item)]
         boolean_subs = [termpair.strip() for termpair in re.split("\s*\|\||\&\&|AND|OR\s*", query_item)]
-        for field_clause in boolean_subs:
-            field_clause = field_clause.strip("()")
-            if re.match("text.*", field_clause):
-                subfield_clauses = shlex.split(field_clause)
-            else:
-                subfield_clauses = [field_clause]
+        for clause in boolean_subs:
+            #clauses = n.split(":")
+            #if len(clauses) == 1:
+                #term_clause = clauses[0]
+            #else:
+                #field_clause = clauses[0]
+                #term_clause = clauses[1]
+            #subfield_clauses = shlex.split(term_clause)
                 
-            for clause in subfield_clauses:
-                if clause == "" or clause is None or clause == "NOT":
-                    continue
-                try:
-                    results = solr_docs.query(clause,
-                                              defType = def_type,
-                                              queryAnalysis = True,
-                                              fields = summary_fields,
-                                              rows = 1,
-                                              start = 0)
-                except Exception as e:
-                    # try to return an error message for now.
-                    # logging.error(HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=e))
-                    # raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Bad Search syntax")
-                    return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
+            try:
+                results = solr_docs.query(clause,
+                                          defType = def_type,
+                                          q_op="AND", 
+                                          queryAnalysis = True,
+                                          fields = summary_fields,
+                                          rows = 1,
+                                          start = 0)
+            except Exception as e:
+                # try to return an error message for now.
+                # logging.error(HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=e))
+                # raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Bad Search syntax")
+                return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
                 
-                if ":" in clause:
-                    termField, termValue = clause.split(":")
-                    if re.match("art_author.*", termField):
-                        term = f"{termValue} ( in author)"
-                    elif re.match("art_title.*", termField):
-                        term = f"{termValue} ( in title)"
-                    elif re.match("art_year.*", termField):
-                        term = f"{termValue} ( in year)"
-                    elif re.match("art_pepsource.*", termField):
-                        term = f"{termValue} ( in source)"
-                    elif re.match("text.*", termField):
-                        term = f"{termValue} ( in text)"
-                    else:
-                        term = f"{termValue} (in {termField})"
+            if ":" in clause:
+                term_field, term_value = clause.split(":")
+                term_value = opasQueryHelper.strip_outer_matching_chars(term_value, ")")
+                if re.match("art_author.*", term_field):
+                    term = f"{term_value} ( in author)"
+                elif re.match("art_title.*", term_field):
+                    term = f"{term_value} ( in title)"
+                elif re.match("art_year.*", term_field):
+                    term = f"{term_value} ( in year)"
+                elif re.match("art_pepsource.*", term_field):
+                    term = f"{term_value} ( in source)"
+                elif re.match("text.*", term_field):
+                    term = f"{term_value} ( in text)"
                 else:
-                    term = f"{clause} ( in text)"
-                
-                #logger.debug("Analysis: Term %s, matches %s", field_clause, results._numFound)
-                item = models.DocumentListItem(term = term, 
-                                               termCount = results._numFound
-                                               )
-                document_item_list.append(item)
-                rowCount += 1
+                    term = f"{term_value} (in {term_field})"
+            else:
+                term = opasQueryHelper.strip_outer_matching_chars(term, ")")
+                term = f"{clause} ( in text)"
+            
+            #logger.debug("Analysis: Term %s, matches %s", field_clause, results._numFound)
+            item = models.DocumentListItem(term = term, 
+                                           termCount = results._numFound
+                                           )
+            document_item_list.append(item)
+            rowCount += 1
 
-    #if rowCount > 0:
-        #numFound = 0
-        #item = models.DocumentListItem(term = "combined",
-                                       #termCount = numFound
-                                       #)
-        #document_item_list.append(item)
-        #rowCount += 1
-        #print ("Analysis: Term %s, matches %s" % ("combined: ", numFound))
+    if rowCount > 0:
+        results = solr_docs.query(query_list,
+                                  defType = def_type,
+                                  q_op="AND", 
+                                  queryAnalysis = True,
+                                  fields = summary_fields,
+                                  rows = 1,
+                                  start = 0)
+
+        item = models.DocumentListItem(term = "(combined)",
+                                       termCount = results._numFound
+                                       )
+        document_item_list.append(item)
+        rowCount += 1
+        print ("Analysis: Term %s, matches %s" % ("combined: ", results._numFound))
 
     response_info = models.ResponseInfo(count = rowCount,
                                         fullCount = rowCount,
@@ -2165,7 +2174,7 @@ def search_text(query,
         logger.debug("Solr Query: %s", query)
 
     if def_type != None:
-        query_type = "edisMax"
+        query_type = def_type
     else:
         query_type = None
     try:
@@ -2173,7 +2182,7 @@ def search_text(query,
                                   fq = filter_query,
                                   q_op="AND", 
                                   debugQuery = query_debug,
-                                  defType = def_type,
+                                  #defType = def_type,
                                   fields = summary_fields,
                                   hl='true', 
                                   hl_fragsize = fragSize, 
@@ -2491,6 +2500,12 @@ if __name__ == "__main__":
     # add ch to logger
     logger.addHandler(ch)
     
+    print (search_analysis("tuckett", "authors"))
+    print (get_term_count_list("mother, father, son, daughter"))
+    print (get_term_count_list(["incest", "flyer*", "jet"]))
+    print (get_term_count_list("jealous*"))
+    print (get_term_count_list("murder*"))
+
     # document_get_info("PEPGRANTVS.001.0003A", fields="file_classification")
     print (get_term_count_list("tuckett", "authors"))
     print (get_term_count_list("mother, father, son, daughter"))

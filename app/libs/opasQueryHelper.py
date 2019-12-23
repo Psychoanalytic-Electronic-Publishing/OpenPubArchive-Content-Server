@@ -23,6 +23,15 @@ import shlex
 
 sourceDB = opasCentralDBLib.SourceInfoDB()
 
+def strip_outer_matching_chars(s, outer_char):
+    """
+    If a string has the same characters wrapped around it, remove them.
+    Make sure the pair match.
+    """
+    s = s.strip()
+    if (s[0] == s[-1]) and s.startswith(outer_char):
+        return s[1:-1]
+    return s
 #-----------------------------------------------------------------------------
 def search_qualifiers(searchstr, field_label, field_thesaurus=None, paragraph_len=25):
     """
