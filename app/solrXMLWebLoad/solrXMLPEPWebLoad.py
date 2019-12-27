@@ -50,6 +50,7 @@ import time
 import logging
 import urllib.request, urllib.parse, urllib.error
 import random
+import pysolr
 
 import modelsOpasCentralPydantic
 
@@ -396,7 +397,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
     # parasxml_update(parasxml, solrcon, artInfo)
     # format for pysolr (rather than solrpy, supports nesting)
     try:
-        solrcon.add([new_rec])
+        solrcon.add([new_rec], commit=False)
     except Exception as err:
         #processingErrorCount += 1
         errStr = "Solr call exception for save doc on %s: %s" % (artInfo.artID, err)
@@ -906,7 +907,7 @@ def main():
     try:
         fileTracker = FileTracker(options.fileTrackerDBPath)
     except Exception as e:
-        msg = "Filetracker error (e)."
+        msg = f"Filetracker error ({e})."
         print((len(msg)*"-"))
         print (msg)
         print((len(msg)*"-"))
@@ -921,12 +922,11 @@ def main():
     #TODO: Try without the None test, the library should not try to use None as user name or password, so only the first case may be needed
     # The connection call is to solrpy (import was just solr)
     #if options.httpUserID is not None and options.httpPassword is not None:
-    import pysolr
     if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:
         if options.fulltext_core_update:
             # fulltext update always includes authors
             #solrcore_docs = solr.SolrConnection(solrurl_docs, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
-            solrcore_docs2 = pysolr.Solr(solrurl_docs)
+            solrcore_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
             solrcore_docparas = solr.SolrConnection(solrurl_docparas, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
             solrcore_authors = solr.SolrConnection(solrurl_authors, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
         if options.reference_core_update:
@@ -1173,12 +1173,12 @@ def main():
 
     if (options.reference_core_update or options.fulltext_core_update) == True:
         if bibTotalReferenceCount > 0:
-            msg = f"Finished! Imported {len(filenames)} documents and {bibTotalReferenceCount} references. Elapsed time: {elapsed_seconds} secs ({elapsed_minutes} minutes)" 
+            msg = f"Finished! Imported {len(filenames)} documents and {bibTotalReferenceCount} references. Elapsed time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes. Files per Min: {len(filenames)/elapsed_minutes:.4f})" 
         else:
-            msg = f"Finished! Imported {len(filenames)} documents. Elapsed time: {elapsed_seconds} secs ({elapsed_minutes} minutes)" 
+            msg = f"Finished! Imported {len(filenames)} documents. Elapsed time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes. Files per Min: {len(filenames)/elapsed_minutes:.4f})" 
 
     if options.glossary_core_update:
-        msg = f"Finished! Imported {glossary_file_count} glossary documents and {glossary_terms} terms. Elapsed time: {elapsed_seconds} secs ({elapsed_minutes} minutes)"
+        msg = f"Finished! Imported {glossary_file_count} glossary documents and {glossary_terms} terms. Elapsed time: {elapsed_seconds} secs ({elapsed_minutes} minutes, Files per Min: {glossary_file_count/elapsed_minutes:.4f})"
 
     print (msg)
     config.logger.info(msg)

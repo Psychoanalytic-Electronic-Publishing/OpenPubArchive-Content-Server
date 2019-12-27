@@ -18,8 +18,11 @@ from __future__ import print_function
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "1.0.0"
+__version__     = "2019.12.24"
 __status__      = "Development"
+
+import sys
+sys.path.append('../config')
 
 
 import os
@@ -29,6 +32,7 @@ import ntpath
 
 import pymysql
 import config
+import localsecrets
 
 def getModDate(filePath):
     """
@@ -74,12 +78,15 @@ class FileTrackingInfo (object):
 
 class FileTracker (object):
     #----------------------------------------------------------------------------------------
-    def __init__(self, sqlDBPath="fileTracker.db"):
+    def __init__(self, sqlDBPath=None):
         """
-        Get the file info for the specified file from an pymysql instance
+        Get the file info for the specified file
+        
+        sqlDBPath is only used in the sqllite version of this lib, but
+           left here for parameter compat.
+        
         """
-        #self.currentFilePath.loadForFile(filePath, solrAPIURL)
-        self.conn = pymysql.connect(host=config.DBHOST, port=config.DBPORT, user=config.DBUSER, password=config.DBPW, database=config.DBNAME)
+        self.conn = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
         self.createDB()
         return
     #----------------------------------------------------------------------------------------

@@ -16,8 +16,4 @@ DOCSCORENAME = "pepwebdocs"
 REFSCORENAME = "pepwebrefs"
 GLOSSARYCORENAME = "pepwebglossary"
 
-DBPORT = 3306
-DBHOST = "localhost"
-DBUSER = "root"
-DBPW = ""
-DBNAME = "opascentral"
+

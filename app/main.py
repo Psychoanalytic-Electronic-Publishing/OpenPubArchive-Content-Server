@@ -57,6 +57,7 @@ such as PEP-Easy.
                  advancedsearch
                  search (replaced v1 search with more minimal one matching pepEasy requirements)
                  update v2 search as a more general (and yet more optimized search)
+2019.1227.1 - Image config S3 work for the production system.
 
 To Install (at least in windows)
   rem python 3.7 required
@@ -98,7 +99,7 @@ Endpoint and structure documentation automatically available when server is runn
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1222.1"
+__version__     = "2019.1227.1"
 __status__      = "Development"
 
 import sys

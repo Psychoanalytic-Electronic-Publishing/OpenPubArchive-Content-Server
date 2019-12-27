@@ -1893,11 +1893,12 @@ def search_analysis(query_list,
     ret_val = {}
     document_item_list = []
     rowCount = 0
+
     for query_item in query_list:
         # get rid of illegal stuff
         # boolean_subs = [termpair.strip() for termpair in re.split("\s+\|\||\&\&|[ ]\s+", query_item)]
-        boolean_subs = [termpair.strip() for termpair in re.split("\s*\|\||\&\&|AND|OR\s*", query_item)]
-        for clause in boolean_subs:
+        # boolean_subs = [termpair.strip() for termpair in re.split("\s*\|\||\&\&|AND|OR\s*", query_item)]
+        # for clause in query_item:
             #clauses = n.split(":")
             #if len(clauses) == 1:
                 #term_clause = clauses[0]
@@ -1906,45 +1907,45 @@ def search_analysis(query_list,
                 #term_clause = clauses[1]
             #subfield_clauses = shlex.split(term_clause)
                 
-            try:
-                results = solr_docs.query(clause,
-                                          defType = def_type,
-                                          q_op="AND", 
-                                          queryAnalysis = True,
-                                          fields = summary_fields,
-                                          rows = 1,
-                                          start = 0)
-            except Exception as e:
-                # try to return an error message for now.
-                # logging.error(HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=e))
-                # raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Bad Search syntax")
-                return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
-                
-            if ":" in clause:
-                term_field, term_value = clause.split(":")
-                term_value = opasQueryHelper.strip_outer_matching_chars(term_value, ")")
-                if re.match("art_author.*", term_field):
-                    term = f"{term_value} ( in author)"
-                elif re.match("art_title.*", term_field):
-                    term = f"{term_value} ( in title)"
-                elif re.match("art_year.*", term_field):
-                    term = f"{term_value} ( in year)"
-                elif re.match("art_pepsource.*", term_field):
-                    term = f"{term_value} ( in source)"
-                elif re.match("text.*", term_field):
-                    term = f"{term_value} ( in text)"
-                else:
-                    term = f"{term_value} (in {term_field})"
-            else:
-                term = opasQueryHelper.strip_outer_matching_chars(term, ")")
-                term = f"{clause} ( in text)"
+        try:
+            results = solr_docs.query(query_item,
+                                      defType = def_type,
+                                      q_op="AND", 
+                                      queryAnalysis = True,
+                                      fields = summary_fields,
+                                      rows = 1,
+                                      start = 0)
+        except Exception as e:
+            # try to return an error message for now.
+            # logging.error(HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=e))
+            # raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Bad Search syntax")
+            return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
             
-            #logger.debug("Analysis: Term %s, matches %s", field_clause, results._numFound)
-            item = models.DocumentListItem(term = term, 
-                                           termCount = results._numFound
-                                           )
-            document_item_list.append(item)
-            rowCount += 1
+        if ":" in query_item:
+            term_field, term_value = query_item.split(":")
+            term_value = opasQueryHelper.strip_outer_matching_chars(term_value, ")")
+            if re.match("art_author.*", term_field):
+                term = f"{term_value} ( in author)"
+            elif re.match("art_title.*", term_field):
+                term = f"{term_value} ( in title)"
+            elif re.match("art_year.*", term_field):
+                term = f"{term_value} ( in year)"
+            elif re.match("art_pepsource.*", term_field):
+                term = f"{term_value} ( in source)"
+            elif re.match("text.*", term_field):
+                term = f"{term_value} ( in text)"
+            else:
+                term = f"{term_value} (in {term_field})"
+        else:
+            term = opasQueryHelper.strip_outer_matching_chars(term, ")")
+            term = f"{query_item} ( in text)"
+        
+        #logger.debug("Analysis: Term %s, matches %s", field_clause, results._numFound)
+        item = models.DocumentListItem(term = term, 
+                                       termCount = results._numFound
+                                       )
+        document_item_list.append(item)
+        rowCount += 1
 
     if rowCount > 0:
         results = solr_docs.query(query_list,

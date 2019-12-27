@@ -135,8 +135,7 @@ class FlexFileSystem(object):
         
         >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
         >>> fs.get_image_filename("AIM.036.0275A.FIG001", path=localsecrets.IMAGE_SOURCE_PATH)
-        'pep-graphics/embedded-graphics/AIM.036.0275A.FIG001.jpg'
-        
+        'pep-web-files/docs/g/BAP.01.0004.FIG001.jpg'        
         >>> fs = FlexFileSystem()
         >>> fs.get_image_filename(r"X:\PEP Dropbox\PEPWeb\_PEPA1\g\IJAPS.016.0181A.FIG002")
         'X:\\\\PEP Dropbox\\\\PEPWeb\\\\_PEPA1\\\\g\\\\IJAPS.016.0181A.FIG002.jpg'
@@ -221,7 +220,7 @@ class FlexFileSystem(object):
 #from cloudstorage.drivers.amazon import S3Driver
 #import io
 
-#storage = S3Driver(key='AKIAYFOU7FEVLLJVBOBY', secret='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')
+# storage = S3Driver(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 #container = storage.get_container('pep-graphics')
 
 #picture_blob = container.get_blob('embedded-graphics/BAP.02.0005.FIG001.jpg')
@@ -247,22 +246,25 @@ if __name__ == "__main__":
     print (40*"*", "opasFileSupport Tests", 40*"*")
     print ("Running in Python %s" % sys.version_info[0])
 
-    import doctest
-    doctest.testmod()    
-    print ("Fini")
-    sys.exit()
+    #import doctest
+    #doctest.testmod()    
+    #print ("Fini")
+    #sys.exit()
 
     # test S3FileSystem
-    remfs = s3fs.S3FileSystem(anon=False, key='AKIAYFOU7FEVLLJVBOBY', secret='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')
+    remfs = s3fs.S3FileSystem(anon=False, key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
     #fs.ls("embedded-graphics")
-    filename_and_path = "pep-graphics/embedded-graphics/BAP.01.0004.FIG001.jpg"
-    filename_and_path = "pep-graphics/embedded-graphics/pep.css"
+    filename_and_path = "pep-web-files/doc/g/BAP.01.0004.FIG001.jpg"
+    # filename_and_path = "pep-web-files/docs/g/pep.css"
     
-    if remfs.ls(filename_and_path) != []:
-        # exists
-        with remfs.open(filename_and_path, mode='rb') as f:  # doctest: +SKIP
-            image_bytes = f.read()
-            f.close()    
-    
-        print (image_bytes)
+    try:
+        if remfs.ls(filename_and_path) != []:
+            # exists
+            with remfs.open(filename_and_path, mode='rb') as f:  # doctest: +SKIP
+                image_bytes = f.read()
+                f.close()    
+        
+            print (image_bytes)
+    except Exception as e:
+        print (f"Error: {e}")
 
