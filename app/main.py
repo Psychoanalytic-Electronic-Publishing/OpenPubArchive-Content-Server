@@ -58,6 +58,12 @@ such as PEP-Easy.
                  search (replaced v1 search with more minimal one matching pepEasy requirements)
                  update v2 search as a more general (and yet more optimized search)
 2019.1227.1 - Image config S3 work for the production system.
+2019.1229.1 - Tested and corrected termcounts endpoint.
+              Updated status to give more server info for the admin.
+2019.1231.1 - Fixed journal logo case of logo suffix to Logo to match files in xslt file.  Also, there was a .logo where sent back to the client which is wrong.
+            - added db url for admins in status
+            - fixes to query analysis and terms
+            - fixes to solrXMLPEPWebLoad programs to allow tunneling for remote SQL server (or Bitnami SQL install)
 
 To Install (at least in windows)
   rem python 3.7 required
@@ -99,7 +105,7 @@ Endpoint and structure documentation automatically available when server is runn
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1227.1"
+__version__     = "2019.1231.1"
 __status__      = "Development"
 
 import sys
@@ -341,7 +347,7 @@ async def get_the_server_status(response: Response,
                           ):
     """
     ## Function
-       <b>Return the status of the database and text server</b>
+       <b>Return the status of the database and text server.  Some field returns dependend on the user's security level.</b>
 
     ## Return Type
        models.ServerStatusItem
@@ -367,7 +373,6 @@ async def get_the_server_status(response: Response,
     solr_ok = opasAPISupportLib.check_solr_docs_connection()
     config_name = None
     mysql_ver = None
-    text_server_url = None
     config_name = None
     mysql_ver = ocd.get_mysql_version()
     if ocd.verify_admin(session_info):
@@ -379,18 +384,18 @@ async def get_the_server_status(response: Response,
             #ver_json = r.json()
             #text_server_ver = ver_json["lucene"]["lucene-spec-version"]
 
-        text_server_url = localsecrets.SOLRURL
         config_name = localsecrets.CONFIG
         try:
             server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
-                                                         text_server_version = text_server_ver, 
-                                                         db_server_version = mysql_ver,
                                                          db_server_ok = db_ok,
                                                          api_server_version = __version__, 
                                                          user_ip = request.client.host,
                                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
                                                          # admin only fields
-                                                         text_server_url = text_server_url,
+                                                         text_server_url = localsecrets.SOLRURL,
+                                                         text_server_version = text_server_ver, 
+                                                         db_server_url = localsecrets.DBHOST,
+                                                         db_server_version = mysql_ver,
                                                          config_name = config_name,
                                                          user_count = 0
                                                          )
@@ -399,8 +404,6 @@ async def get_the_server_status(response: Response,
     else:
         try:
             server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
-                                                         text_server_version = text_server_ver, 
-                                                         db_server_version = mysql_ver,
                                                          db_server_ok = db_ok,
                                                          api_server_version = __version__, 
                                                          user_ip = request.client.host,
@@ -1032,21 +1035,21 @@ def logout_user(response: Response,
 @app.get("/v1/Database/SearchAnalysis/", response_model_skip_defaults=True, tags=["Database", "v1.0"])  #  remove validation response_model=models.DocumentList, 
 def search_analysis(response: Response, 
                     request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
+                    fulltext1: str=Query(None, title="Search for Words or phrases", description="Words or phases (in quotes) in paragraphs.  Booleans like AND/OR/NOT allowed (And is assumed when no connector is specified.)"),
+                    fulltext2: str=Query(None, title="Search for Words or phrases", description="Words or phrases (in quotes) anywhere in the document"),
+                    dreams: str=Query(None, title="Search Text within 'Dreams'", description="Words or phrases (in quotes) to match within paragraphs of dreams"),  
+                    quotes: str=Query(None, title="Search Text within 'Quotes'", description="Words or phrases (in quotes) to match within paragraphs of quotes"),  
+                    abstracts: str=Query(None, title="Search Text within 'Abstracts'", description="Words or phrases (in quotes) to match within within paragraphs of abstracts"),  
+                    dialogs: str=Query(None, title="Search Text within 'Dialogs'", description="Words or phrases (in quotes) to match within within paragraphs of dialogs"),  
+                    references: str=Query(None, title="Search Text within 'References'", description="Words or phrases (in quotes) to match within references"),  
                     journalName: str=Query(None, title="Match PEP Journal or Source Name", description="PEP part of a Journal, Book, or Video name (e.g., 'international'),", min_length=2),  
                     journal: str=Query(None, title="Match PEP Journal or Source Code", description="PEP Journal Code (e.g., APA, CPS, IJP, PAQ),", min_length=2), 
-                    fulltext1: str=Query(None, title="Search for Words or phrases", description="Words or phrases (in quotes) anywhere in the document"),
-                    fulltext2: str=Query(None, title="Search for Words or phrases", description="Words or phrases (in quotes) anywhere in the document"),
                     volume: str=Query(None, title="Match Volume Number", description="The volume number if the source has one"), 
                     issue: str=Query(None, title="Match Issue Number", description="The issue number if the source has one"),
                     author: str=Query(None, title="Match Author name", description="Author name, use wildcard * for partial entries (e.g., Johan*)"), 
                     title: str=Query(None, title="Search Document Title", description="The title of the document (article, book, video)"),
                     startyear: str=Query(None, title="First year to match or a range", description="First year to match (e.g, 1999). Between range: ^1999-2010. After: >1999 Before: <1999"), 
                     endyear: str=Query(None, title="Last year to match", description="Last year of documents to match (e.g, 2001)"), 
-                    dreams: str=Query(None, title="Search Text within 'Dreams'", description="Words or phrases (in quotes) to match within dreams"),  
-                    quotes: str=Query(None, title="Search Text within 'Quotes'", description="Words or phrases (in quotes) to match within quotes"),  
-                    abstracts: str=Query(None, title="Search Text within 'Abstracts'", description="Words or phrases (in quotes) to match within abstracts"),  
-                    dialogs: str=Query(None, title="Search Text within 'Dialogs'", description="Words or phrases (in quotes) to match within dialogs"),  
-                    references: str=Query(None, title="Search Text within 'References'", description="Words or phrases (in quotes) to match within references"),  
                     citecount: str=Query(None, title="Find Documents cited this many times", description="Cited more than 'X' times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL"),   
                     viewcount: str=Query(None, title="Find Documents viewed this many times", description="Not yet implemented"),    
                     viewedWithin: str=Query(None, title="Find Documents viewed this many times within a period", description="Not yet implemented"),     
@@ -1058,12 +1061,17 @@ def search_analysis(response: Response,
     # current_year = datetime.utcfromtimestamp(time.time()).strftime('%Y')
     # this does intelligent processing of the query parameters and returns a smaller set of solr oriented         
     # params (per pydantic model QueryParameters), ready to use
+    if fulltext1 is not None:
+        query = "{!parent which='art_level:1'} art_level:2 AND parent_tag:doc AND para:(%s)" % (fulltext1)
+    else:
+        query = None
+        
     solr_query_params = \
         opasQueryHelper.parse_search_query_parameters(journal_name=journalName,
                                                       journal=journal,
                                                       def_type="lucene", 
                                                       quick_search=quickSearch,
-                                                      fulltext1=fulltext1,
+                                                      fulltext1=query,
                                                       fulltext2=fulltext2,
                                                       vol=volume,
                                                       issue=issue,
@@ -1102,12 +1110,13 @@ def search_analysis(response: Response,
 #-----------------------------------------------------------------------------
 @app.get("/v2/Database/TermCounts/", response_model_exclude_unset=True, response_model_skip_defaults=True, tags=["Database", "PEPEasy1", "v1.0"])  #  removed for now: response_model=models.DocumentList, 
 async def get_term_counts(response: Response, 
-                          request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
-                          termlist: str=Query(None, title="Comma separated list of terms, formatted of each either field:term or just term", description="Comma separated list of terms, formatted of each either field:term or just term"),
+                          request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),
+                          termfield: str=Query("text", title="Default field for which to get term counts", description="Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)"),
+                          termlist: str=Query(None, title="Comma separated list of terms for which to get counts", description="Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."),
                           ):
     """
     ## Function
-    <b>Get a list of term frequency counts</b>
+    <b>Get a list of term frequency counts (# of times term occurs across documents)</b>
         
     ### Notes
 
@@ -1129,6 +1138,8 @@ async def get_term_counts(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     session_id = session_info.session_id
     term_index_items = []
+    if termfield is None:
+        termfield = "text"
     
     results = {}  # results = {field1:{term:value, term:value, term:value}, field2:{term:value, term:value, term:value}}
     terms = shlex.split(termlist)
@@ -1137,15 +1148,22 @@ async def get_term_counts(response: Response,
             nfield, nterms = n.split(":")
             result = opasAPISupportLib.get_term_count_list(nterms, nfield)
         except:
-            nterms = n.split(":")
-            result = opasAPISupportLib.get_term_count_list(nterms)
-        try:
-            a = results[nfield]
-            # exists, if we get here, so add it to the existing dict
+            nterms = n.strip("', ")
+            result = opasAPISupportLib.get_term_count_list(nterms, term_field = termfield)
             for key, value in result.items():
-                results[nfield][key] = value
-        except: #  new dict entry
-            results[nfield] = result
+                try:
+                    results[termfield][key] = value
+                except:
+                    results[termfield] = {}
+                    results[termfield][key] = value
+        else:
+            try:
+                a = results[nfield]
+                # exists, if we get here, so add it to the existing dict
+                for key, value in result.items():
+                    results[nfield][key] = value
+            except: #  new dict entry
+                results[nfield] = result
     
     response_info = models.ResponseInfo( listType="termindex", # this is a mistake in the GVPi API, should be termIndex
                                          scopeQuery=[f"Terms: {termlist}"],
@@ -1320,6 +1338,7 @@ async def search_advanced(response: Response,
 async def search_doc_database_v1_compatibile(response: Response, 
                                              request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
                                              fulltext1: str=Query(None, title="Search for Words or phrases", description="Words or phrases (in quotes) in a paragraph in the document"),
+                                             thesaurus: bool=Query(False, title="Expand search to include synonyms (True/False)", description="Expand search to include specially declared synonyms (True/False)"),
                                              journal: str=Query(None, title="Match PEP Journal or Source Code", description="PEP Journal Code (e.g., APA, CPS, IJP, PAQ),", min_length=2), 
                                              volume: str=Query(None, title="Match Volume Number", description="The volume number if the source has one"), 
                                              author: str=Query(None, title="Match Author name", description="Author name, use wildcard * for partial entries (e.g., Johan*)"), 
@@ -1352,7 +1371,8 @@ async def search_doc_database_v1_compatibile(response: Response,
     
     ret_val = await search_doc_database_v2(response,
                                            request,
-                                           words=fulltext1,
+                                           words=fulltext1, #  no advanced search. Only words, phrases, prox ~ op, and booleans allowed
+                                           thesaurus=thesaurus, 
                                            scope="doc",
                                            source=journal,
                                            volume=volume, 
@@ -1375,6 +1395,7 @@ async def search_doc_database_v1_compatibile(response: Response,
 async def search_doc_database_v2(response: Response, 
                                  request: Request=Query(None, title="HTTP Request", description=opasConfig.DESCRIPTION_REQUEST),  
                                  words: str=Query(None, title="Search for words ", description="Provide a simple list of Words or phrases to find in proximity of each other"),
+                                 thesaurus: bool=Query(False, title="Expand search to include synonyms (True/False)", description="Expand search to include specially declared synonyms (True/False)"),
                                  scope: str=Query("doc", title="Search within this scope", description="scope: doc, dreams, dialogs, per the schema..."),
                                  distance: int=Query(25, title="word distance limit", description="#TODO"),
                                  source: str=Query(None, title="Match PEP Journal or Source Code", description="PEP Journal Code (e.g., APA, CPS, IJP, PAQ),", min_length=2), 
@@ -1417,15 +1438,21 @@ async def search_doc_database_v2(response: Response,
         
     qs = opasQueryHelper.QueryTextToSolr()
     words = qs.boolConnectorsToSymbols(words)
+    if words is not None:
+        if thesaurus:
+            query = "{!parent which='art_level:1'} art_level:2 AND parent_tag:doc AND para_syn:(%s)" % (words)
+        else:
+            query = "{!parent which='art_level:1'} art_level:2 AND parent_tag:doc AND para:(%s)" % (words)
+    else:
+        query = "*:*"
 
     # current_year = datetime.utcfromtimestamp(time.time()).strftime('%Y')
     # this does intelligent processing of the query parameters and returns a
     # smaller set of solr oriented params (per pydantic model
     # QueryParameters), ready to use
     solr_query_params = \
-        opasQueryHelper.parse_search_query_parameters(quick_search=words,
-                                                      word_distance=25,
-                                                      search_field="art_para",
+        opasQueryHelper.parse_search_query_parameters(quick_search=query,
+                                                      search_field=None,
                                                       journal=source,
                                                       vol=volume,
                                                       author=author,
@@ -1439,11 +1466,6 @@ async def search_doc_database_v2(response: Response,
                                                     )
     solr_query_params.urlRequest = request.url._url
 
-    if words is not None:
-        query = "{!parent which='art_level:1'} art_level:2 AND parent_tag:doc AND para:(%s)" % (words)
-    else:
-        query = "*:*"
-        
     #  just to play let's try this direct instead using a nested para approach   
     ret_val, ret_status = opasAPISupportLib.search_text(query=query, 
                                                         filter_query = solr_query_params.filterQ,

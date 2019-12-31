@@ -842,7 +842,7 @@ def main():
                       help="reset the data in the selected cores. (authorscore is reset with the fulltext core)")
     parser.add_option("-g", "--glossarycoreupdate", dest="glossary_core_update", action="store_true", default=False,
                       help="Whether to update the glossary core")
-    parser.add_option("-t", "--trackerdb", dest="fileTrackerDBPath", default="filetracker.db",
+    parser.add_option("-t", "--trackerdb", dest="fileTrackerDBPath", default=None,
                       help="Full path and database name where the File Tracking Database is located (sqlite3 db)")
     #parser.add_option("-u", "--url",
                       #dest="solrURL", default=config.DEFAULTSOLRHOME,
@@ -904,14 +904,17 @@ def main():
         sys.exit(0)
         
     # instantiate the fileTracker.
-    try:
-        fileTracker = FileTracker(options.fileTrackerDBPath)
-    except Exception as e:
-        msg = f"Filetracker error ({e})."
-        print((len(msg)*"-"))
-        print (msg)
-        print((len(msg)*"-"))
-        sys.exit(0)
+    if options.fileTrackerDBPath is None:
+        fileTracker = FileTracker()
+    else:
+        try:
+            fileTracker = FileTracker(options.fileTrackerDBPath)
+        except Exception as e:
+            msg = f"Filetracker error ({e})."
+            print((len(msg)*"-"))
+            print (msg)
+            print((len(msg)*"-"))
+            sys.exit(0)
         
     timeStart = time.time()
     

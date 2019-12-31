@@ -24,11 +24,13 @@ __status__      = "Development"
 import sys
 sys.path.append('../config')
 
-
 import os
 import os.path
 import time
 import ntpath
+
+import logging
+logger = logging.getLogger(__name__)
 
 import pymysql
 import config
@@ -43,9 +45,9 @@ def getModDate(filePath):
         retVal = os.path.getmtime(filePath)
     except IOError:
         # try where the script is running from instead.
-        config.logger.info("%s not found.", filePath)
+        logger.info("%s not found.", filePath)
     except Exception as e:
-        config.logger.fatal("%s.", e)
+        logger.fatal("%s.", e)
 
     return retVal
 
@@ -75,7 +77,6 @@ class FileTrackingInfo (object):
         self.buildDate = buildDate
         self.solrAPIURL = solrAPIURL
 
-
 class FileTracker (object):
     #----------------------------------------------------------------------------------------
     def __init__(self, sqlDBPath=None):
@@ -86,9 +87,46 @@ class FileTracker (object):
            left here for parameter compat.
         
         """
-        self.conn = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
+        self.conn = None
+        self.open_connection() # saves to self.conn
         self.createDB()
         return
+    
+    def open_connection(self):
+        """
+        Opens a connection and returns pymysql connection object
+        """
+        try:
+            tunneling = None
+            if localsecrets.SSH_HOST is not None:
+                from sshtunnel import SSHTunnelForwarder
+                self.tunnel = SSHTunnelForwarder(
+                                                  (localsecrets.SSH_HOST,
+                                                   localsecrets.SSH_PORT),
+                                                   ssh_username=localsecrets.SSH_USER,
+                                                   ssh_pkey=localsecrets.SSH_MYPKEY,
+                                                   remote_bind_address=(localsecrets.DBHOST,
+                                                                        localsecrets.DBPORT))
+                self.tunnel.start()
+                self.conn = pymysql.connect(host='127.0.0.1',
+                                            user=localsecrets.DBUSER,
+                                            passwd=localsecrets.DBPW,
+                                            db=localsecrets.DBNAME,
+                                            port=self.tunnel.local_bind_port)
+                tunneling = self.tunnel.local_bind_port
+            else:
+                #  not tunneled
+                self.conn = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
+
+            logger.debug(f"Database opened. Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} tunnel {tunneling}")
+            self.connected = True
+        except Exception as e:
+            print(f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})")
+            logger.error(f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})")
+            self.connected = False
+            self.conn = None
+
+        return self.connected
     #----------------------------------------------------------------------------------------
     def createDB(self):
         """

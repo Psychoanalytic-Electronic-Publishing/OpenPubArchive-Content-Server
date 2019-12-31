@@ -327,6 +327,7 @@ class ServerStatusItem(BaseModel):
     user_ip: str = Schema(None, title="Requestor's ip")
     config_name: str= Schema(None, title="Current Configuration Name")
     text_server_url: str= Schema(None, title="Current SOLR URL")
+    db_server_url: str= Schema(None, title="Current DB URL")
 
 #-------------------------------------------------------
 

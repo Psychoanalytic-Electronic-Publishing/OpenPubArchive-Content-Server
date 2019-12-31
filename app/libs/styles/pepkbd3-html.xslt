@@ -165,7 +165,7 @@
         <a class="anchor" name="{$document-id}" id="{$document-id}"/>
         <a class="toc-link" href="/#/ArticleList/?journal={$journal-code}">
 		  <!--Client relative...but could use /v2/Document/Images command instead.-->
-          <img src="./images/banner{$journal-code}logo.gif" alt=""/>
+          <img src="./images/banner{$journal-code}Logo.gif" alt=""/>
         </a>
       </p>
       <div class='pubinfotop'><xsl:value-of select="'[[RunningHead]]'"/></div>

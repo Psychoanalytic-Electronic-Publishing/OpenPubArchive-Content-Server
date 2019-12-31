@@ -269,8 +269,6 @@ def parse_search_query_parameters(search=None,
                                   search_field=None,  # search here
                                   search_type=None,
                                   thesaurus_expansion=False, 
-                                  word_distance=None,
-                                  para_distance=None, 
                                   fulltext1=None,     # term, phrases, and boolean connectors for full-text search
                                   fulltext2=None,     # term, phrases, and boolean connectors for full-text search
                                   solrQ=None,         # advanced search
@@ -327,7 +325,7 @@ def parse_search_query_parameters(search=None,
         search_analysis_term_list.append(analyze_this)
 
     if fulltext1 is not None:
-        fulltext1 = qparse.markup(fulltext1, "text_xml")
+        # fulltext1 = qparse.markup(fulltext1, "text_xml")
         analyze_this = f"&& {fulltext1} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
@@ -338,7 +336,6 @@ def parse_search_query_parameters(search=None,
         analyze_this = f"&& {fulltext2} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
-
 
     if title is not None:
         title = qparse.markup(title, "art_title_xml")

@@ -1041,7 +1041,7 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
                                                   srcTitle = title,  # v1 Deprecated for future
                                                   bookCode = bookCode,
                                                   abbrev = source.get("bibabbrev"),
-                                                  bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('basecode')}.logo.gif",
+                                                  bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('basecode')}Logo.gif",
                                                   language = source.get("language"),
                                                   ISSN = source.get("ISSN"),
                                                   ISBN10 = source.get("ISBN-10"),
@@ -1136,7 +1136,7 @@ def metadata_get_source_by_code(src_code=None, limit=opasConfig.DEFAULT_LIMIT_FO
             item = models.SourceInfoListItem( ISSN = source.get("ISSN"),
                                               PEPCode = source.get("src_code"),
                                               abbrev = source.get("bib_abbrev"),
-                                              bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('src_code')}.logo.gif",
+                                              bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('src_code')}Logo.gif",
                                               displayTitle = source.get("title"),
                                               language = source.get("language"),
                                               yearFirst = source.get("start_year"),
@@ -1921,24 +1921,28 @@ def search_analysis(query_list,
             # raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Bad Search syntax")
             return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
             
-        if ":" in query_item:
-            term_field, term_value = query_item.split(":")
-            term_value = opasQueryHelper.strip_outer_matching_chars(term_value, ")")
-            if re.match("art_author.*", term_field):
-                term = f"{term_value} ( in author)"
-            elif re.match("art_title.*", term_field):
-                term = f"{term_value} ( in title)"
-            elif re.match("art_year.*", term_field):
-                term = f"{term_value} ( in year)"
-            elif re.match("art_pepsource.*", term_field):
-                term = f"{term_value} ( in source)"
-            elif re.match("text.*", term_field):
-                term = f"{term_value} ( in text)"
-            else:
-                term = f"{term_value} (in {term_field})"
+        if "!parent" in query_item:
+            child_query = re.match("(\{.*\} art_level\:[1-9] AND parent_tag:(?P<parent>[^ ]+) AND para:)(?P<term>.*)", query_item)
+            term = f"{child_query.group('term')} ( in paras in {child_query.group('parent')})"
         else:
-            term = opasQueryHelper.strip_outer_matching_chars(term, ")")
-            term = f"{query_item} ( in text)"
+            if ":" in query_item:
+                term_field, term_value = query_item.split(":")
+                term_value = opasQueryHelper.strip_outer_matching_chars(term_value, ")")
+                if re.match("art_author.*", term_field):
+                    term = f"{term_value} ( in author)"
+                elif re.match("art_title.*", term_field):
+                    term = f"{term_value} ( in title)"
+                elif re.match("art_year.*", term_field):
+                    term = f"{term_value} ( in year)"
+                elif re.match("art_pepsource.*", term_field):
+                    term = f"{term_value} ( in source)"
+                elif re.match("text.*", term_field):
+                    term = f"{term_value} ( in text)"
+                else:
+                    term = f"{term_value} (in {term_field})"
+            else:
+                term = opasQueryHelper.strip_outer_matching_chars(term, ")")
+                term = f"{query_item} ( in text)"
         
         #logger.debug("Analysis: Term %s, matches %s", field_clause, results._numFound)
         item = models.DocumentListItem(term = term, 
@@ -1947,21 +1951,21 @@ def search_analysis(query_list,
         document_item_list.append(item)
         rowCount += 1
 
-    if rowCount > 0:
-        results = solr_docs.query(query_list,
-                                  defType = def_type,
-                                  q_op="AND", 
-                                  queryAnalysis = True,
-                                  fields = summary_fields,
-                                  rows = 1,
-                                  start = 0)
+    #if rowCount > 0:
+        #results = solr_docs.query(query_list,
+                                  #defType = def_type,
+                                  #q_op="AND", 
+                                  #queryAnalysis = True,
+                                  #fields = summary_fields,
+                                  #rows = 1,
+                                  #start = 0)
 
-        item = models.DocumentListItem(term = "(combined)",
-                                       termCount = results._numFound
-                                       )
-        document_item_list.append(item)
-        rowCount += 1
-        print ("Analysis: Term %s, matches %s" % ("combined: ", results._numFound))
+        #item = models.DocumentListItem(term = "(combined)",
+                                       #termCount = results._numFound
+                                       #)
+        #document_item_list.append(item)
+        #rowCount += 1
+        #print ("Analysis: Term %s, matches %s" % ("combined: ", results._numFound))
 
     response_info = models.ResponseInfo(count = rowCount,
                                         fullCount = rowCount,
