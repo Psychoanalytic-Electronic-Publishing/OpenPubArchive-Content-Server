@@ -25,7 +25,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1217.1"
+__version__     = "2019.1231.1"
 __status__      = "Development"
 
 #Revision Notes:
@@ -37,6 +37,8 @@ __status__      = "Development"
 
     #2019-07-05: added citedCounts processing to load the Solr core from the mySQL database 
                  #table which calculates these. - nrs
+    #2019-12-31: Support remote datbase tunnel.  Fix use of SQL when not using SQLite.
+    
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
