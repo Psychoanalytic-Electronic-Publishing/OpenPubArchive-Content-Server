@@ -21,9 +21,9 @@ else: # python running from should be within folder app
 from starlette.testclient import TestClient
 
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-import jwt
-from datetime import datetime
+# from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
+# import jwt
+# from datetime import datetime
 
 import unitTestConfig
 from unitTestConfig import base_api, base_plus_endpoint_encoded
@@ -50,8 +50,8 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['documentList']['responseInfo']['fullCount'] == 2634)
-        #print ("test_metadata_journals complete.")
+        assert(r['documentList']['responseInfo']['fullCount'] >= 2634)
+        # print ("test_metadata_journals complete.")
        
     def test_2_meta_contents_source_volume(self):
         """
@@ -83,7 +83,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.VIDEOSOURCECOUNT)
+        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.VIDEOSOURCECOUNT)
 
         # try with src code parameter
         response = client.get(base_api + '/v1/Metadata/Videos/?SourceCode=AFCVS&limit=1')
@@ -104,7 +104,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.JOURNALCOUNT)
+        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.JOURNALCOUNT)
 
         # try with src code parameter
         response = client.get(base_api + '/v1/Metadata/Journals/?SourceCode=BJP&limit=1')
@@ -152,7 +152,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.BOOKCOUNT)
+        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.BOOKCOUNT)
 
     def test_7_meta_sourcenames(self):
         """

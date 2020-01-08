@@ -28,6 +28,7 @@ import os
 import os.path
 import time
 import ntpath
+import datetime
 
 import logging
 logger = logging.getLogger(__name__)
@@ -396,11 +397,13 @@ class FileTracker (object):
         """
         retVal = False
         filesDBRecord = self.getFileDatabaseRecord(currentFileInfo.filePath, serverURL = currentFileInfo.solrAPIURL)
+        dbRecordDT =  datetime.date.fromtimestamp(filesDBRecord.fileModDate)
+        currFileDT =  datetime.date.fromtimestamp(currentFileInfo.fileModDate)
         if filesDBRecord is None:
             retVal = True  # file not in database.
-        elif format(filesDBRecord.fileModDate, '.2f') != format(currentFileInfo.fileModDate, '.2f'):
+        elif dbRecordDT != currFileDT:
             #print filesDBRecord.fileModDate, currentFileInfo.fileModDate
-            print(("File is modified: %s.  %s != %s" % (currentFileInfo.filePath, int(filesDBRecord.fileModDate), int(currentFileInfo.fileModDate))))
+            print(("File is modified: %s.  %s != %s" % (currentFileInfo.filePath, currFileDT, dbRecordDT)))
             retVal = True
         else: #File not modified
             retVal = False

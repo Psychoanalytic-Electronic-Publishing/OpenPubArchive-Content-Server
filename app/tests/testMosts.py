@@ -79,4 +79,6 @@ class TestMost(unittest.TestCase):
         print (r)
 
 if __name__ == '__main__':
-    unittest.main()    
+    unittest.main()
+    client.close()
+    

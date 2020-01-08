@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Web Database Schema v.2019.12.18
+    PEP Web Database Schema v.2020.01.05
     for core PEPWebDocs
 
     2019-11-15: artvoltitle was at top but never used/loaded.  These are important for TOCs.
@@ -24,6 +24,8 @@
                 noted removals:
                   art_body_xml
              
+    2020-01-05: More schema clean up. 
+    
    Schema version attribute note: 
    
    The default values for each property depend on the underlying FieldType class, which in turn may depend on the version 
@@ -81,7 +83,7 @@
   <field name="art_vol" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_vol_title" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_iss"  type="string" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_iss_title" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_iss_title" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <field name="art_year" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_year_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_origrx" type="string" indexed="true" stored="true" multiValued="false"/>
@@ -89,9 +91,11 @@
   <field name="art_cited_5" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_cited_10" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_cited_20" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
-  <field name="art_pepsourcecode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_pepsourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_pepsourcetitlefull" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_sourcecode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_sourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_sourcetitlefull" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <!--<field name="art_sourcetitle_fulltext" type="text_simple" indexed="true" stored="true" multiValued="false"/>-->
+  <!--<copyField source="art_sourcetitlefull" dest="art_sourcetitle_fulltext"/>-->
   <field name="art_doi" type="string" indexed="true" stored="true" multiValued="false"/>
   <!--name for this section of an issue, e.g., section name in a issue TOC-->
   <field name="art_newsecnm" type="text_simple" indexed="true" stored="true" multiValued="false"/>
@@ -120,15 +124,15 @@
   <!-- Article authors -->
   <!-- So how can we do queries for partial last names...can't bunch authors in printable form.  Try two fields, one XML one presentation one multifield. -->
   <field name="authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
-  <field name="art_authors" type="string" indexed="true" stored="true" multiValued="true"/>
-  <field name="art_authors_mast" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_authors" type="string_ci" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_mast" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--try to improve author search for single names and full names-->
   <!--Many of these are Temporary. fpr trying different search results.  #TODO-->
   <field name="art_authors_text" type="text_simple" indexed="true" stored="false" multiValued="true"/>
   <field name="art_authors_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>
   <field name="art_authors_mast_text" type="text_simple" indexed="true" stored="false" multiValued="false"/>
   <field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>
-  <field name="art_authors_unlisted" type="string" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_unlisted" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <copyField source="art_authors" dest="art_authors_text"/>
   <copyField source="art_authors" dest="art_authors_ngrm"/>
@@ -137,17 +141,18 @@
 
   <!--# by paras-->
   <!--<field name="art_body_xml" type="text_simple" indexed="true" stored="false" multiValued="false"/>-->
-  <field name="abstracts_xml" type="text_general" indexed="true" stored="false" multiValued="true"/> <!--this is used to display-->
+  <!-- deprecate this, no longer loaded-->
+  <field name="abstracts_xml" type="text_general" indexed="true" stored="true" multiValued="true"/> 
+  <!--This is better, use single xml field.-->
+  <field name="abstract_xml" type="text_general" indexed="true" stored="true" multiValued="false"/> <!--this is used to display-->
 
   <!-- Added this 6/25 to allow any part of a journal name to be searched.-->
-  <field name="art_pepsourcetitle_fulltext" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <copyField source="art_pepsourcetitlefull" dest="art_pepsourcetitle_fulltext"/>
   <!-- journal, book, or video -->
-  <field name="art_pepsourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_sourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_type" type="string" indexed="true" stored="true" multiValued="false" docValues="true" />
 
   <field name="art_pgrg" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_lang" type="string" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_lang" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_issn" type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="art_kwds"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_qual" type="string" indexed="true" stored="true" docValues="true" multiValued="false"/>
@@ -173,35 +178,34 @@
   <field name="caption_text_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="caption_title_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
 
-  <field name="headings_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+  <field name="headings_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
 
   <!-- include all languages in any element attribute -->
   <field name="lang" type="string" indexed="true" stored="true" multiValued="true" docValues="true"/>
 
   <!-- Revision info for document -->
   <field name="meta_xml" type="text_simple" indexed="true" stored="true"/>
-  <field name="summaries_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
 
-  <field name="tagline" type="string" indexed="true" stored="true" multiValued="true"/>
+  <field name="tagline" type="string_ci" indexed="true" stored="true" multiValued="true"/>
+  <field name="quotes_spkr"  type="string_ci" indexed="true" stored="true" multiValued="true"/>
 
-  <field name="quotes_spkr"  type="string" indexed="true" stored="true" multiValued="true"/>
-  <field name="quotes_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
+  <!--#TODO: Deprecate these-->
+  <!--<field name="quotes_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>-->
+  <!--<field name="summaries_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>-->
+  <!--<field name="dialogs_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
+  <!--<field name="notes_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
+  <!--<field name="panels_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
+  <!--<field name="dreams_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
+  <!--<field name="poems_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
 
   <!--These are not displayed directly.  Search only.-->
   <!-- Special term fields -->
   <field name="terms_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
   <!-- Highlighted, e.g., italicized and otherwise called out terms -->
   <field name="terms_highlighted" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/>
-
   <field name="dialogs_spkr"  type="string" indexed="true" stored="false" multiValued="true"/>
-  <field name="dialogs_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
-
-  <field name="dreams_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
-  <field name="notes_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
   <field name="panels_spkr"  type="string" indexed="true" stored="false" multiValued="true"/>
-  <field name="panels_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
   <field name="poems_src"  type="string" indexed="true" stored="false" multiValued="true"/>
-  <field name="poems_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
 
 
   <!-- set default op to AND NO LONGER SUPPORTED.  Do this with parameter q.op -->
@@ -219,6 +223,7 @@
   <fieldType name="_nest_path_" class="solr.NestPathField" /> 
 
   <!--top level para, for nesting tests and comparisons.  
+                      TODO: Might want to later include attribs like lang!
                       This is a single field with multiple paragraphs in a list structure -->
   <field name="art_para" type="text_general" indexed="true" stored="false" multiValued="true"/>
   <field name="art_level" type="pint" indexed="true" stored="false" docValues="true"/>

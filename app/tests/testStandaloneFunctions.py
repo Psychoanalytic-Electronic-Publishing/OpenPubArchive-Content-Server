@@ -27,11 +27,13 @@ import jwt
 from datetime import datetime
 import opasAPISupportLib
 import opasConfig
+import opasQueryHelper
+import models
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded
-from main import app
+# from main import app
 
-client = TestClient(app)
+# client = TestClient(app)
 
 class TestStandaloneFunctions(unittest.TestCase):
     """
@@ -40,9 +42,26 @@ class TestStandaloneFunctions(unittest.TestCase):
     Note: tests are performed in alphabetical order, hence the function naming
           with forced order in the names.
     
-    """   
+    """
+        
+    def test_0_parseToSolrQuery(self):
+        """
+        Test query formation via parse_search_query_parameters
+        """
+        test1 =  models.SolrQueryTermList(
+                    query = [
+                               {
+                                 "words":"child abuse",
+                                 "parent": "doc",
+                                 "field": "para",
+                                 "synonyms": "true",
+                               }
+                            ]
+                )
+        resp = opasQueryHelper.parse_search_query_parameters(solrQueryTermList=test1)
+        assert (resp.solrQuery.searchQ == "{!parent which='art_level:1'} art_level:2 AND parent_tag:(p_body OR p_summaries OR p_appxs) AND para_syn:(child abuse)")
 
-    def test_1_get_article_data(self):
+    def test_1a_get_article_abstract_data(self):
         """
         Retrieve an article; make sure it's there and the abstract len is not 0
         """
@@ -50,10 +69,24 @@ class TestStandaloneFunctions(unittest.TestCase):
         #  it retrieves an article but doesn't include search highlighting.
         # data = opasAPISupportLib.get_article_data("ANIJP-DE.009.0189A", fields=None)
         # this newer function includes the search parameters if there were some
-        data = opasAPISupportLib.documents_get_document("ANIJP-DE.009.0189A")
+        data = opasAPISupportLib.documents_get_abstracts("LU-AM.029B.0202A")
         # Confirm that the request-response cycle completed successfully.
         assert (data.documents.responseInfo.fullCount == 1)
-        assert (data.documents.responseSet[0].documentID == 'ANIJP-DE.009.0189A')
+        assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')
+        assert (len(data.documents.responseSet[0].abstract)) > 0
+
+    def test_1b_get_article_data(self):
+        """
+        Retrieve an article; make sure it's there and the abstract len is not 0
+        """
+        # This old function wasn't used by the code otherwise so removed this call
+        #  it retrieves an article but doesn't include search highlighting.
+        # data = opasAPISupportLib.get_article_data("ANIJP-DE.009.0189A", fields=None)
+        # this newer function includes the search parameters if there were some
+        data = opasAPISupportLib.documents_get_document("LU-AM.029B.0202A")
+        # Confirm that the request-response cycle completed successfully.
+        assert (data.documents.responseInfo.fullCount == 1)
+        assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')
         assert (len(data.documents.responseSet[0].abstract)) > 0
 
     def test_2_metadata_get_sources(self):

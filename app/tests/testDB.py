@@ -16,9 +16,9 @@ else: # python running from should be within folder app
     sys.path.append('./config')
 
 import unittest
-import requests
-from requests.utils import requote_uri
-import urllib
+#import requests
+#from requests.utils import requote_uri
+#import urllib
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded
 

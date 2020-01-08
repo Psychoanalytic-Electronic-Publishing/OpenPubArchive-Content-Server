@@ -109,7 +109,7 @@ class TestLogin(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         access_token = r["access_token"]
-        session_id =  r["session_id"]
+        #session_id =  r["session_id"]
 
         if access_token is not None:
             decoded_access_token = jwt.decode(access_token,

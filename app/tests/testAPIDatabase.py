@@ -21,9 +21,9 @@ else: # python running from should be within folder app
 from starlette.testclient import TestClient
 
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-import jwt
-from datetime import datetime
+# from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
+# import jwt
+# from datetime import datetime
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded
 from main import app

@@ -38,6 +38,7 @@ __status__      = "Development"
     #2019-07-05: added citedCounts processing to load the Solr core from the mySQL database 
                  #table which calculates these. - nrs
     #2019-12-31: Support remote datbase tunnel.  Fix use of SQL when not using SQLite.
+    #2020-01-05: Some fields marked xml were being loaded as text...fixed.
     
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
@@ -146,6 +147,7 @@ class ArticleInfo(object):
         self.artVol = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvol/node()', default_return=None)
         self.artIssue = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artiss/node()', default_return=None)
         self.artIssueTitle = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artissinfo/isstitle/node()', default_return=None)
+            
         self.artYear = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artyear/node()', default_return=None)
         try:
             artYearForInt = re.sub("[^0-9]", "", self.artYear)
@@ -170,7 +172,11 @@ class ArticleInfo(object):
         self.artDOI = opasxmllib.xml_get_element_attr(artInfoNode, "doi", default_return=None) 
         self.artISSN = opasxmllib.xml_get_element_attr(artInfoNode, "ISSN", default_return=None) 
         self.artOrigRX = opasxmllib.xml_get_element_attr(artInfoNode, "origrx", default_return=None) 
-        self.newSecNm = opasxmllib.xml_get_element_attr(artInfoNode, "newsecnm", default_return=None) 
+        self.newSecNm = opasxmllib.xml_get_element_attr(artInfoNode, "newsecnm", default_return=None)
+        if self.newSecNm is None:
+            #  look in newer, tagged, data
+            self.newSecNm = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artsectinfo/secttitle/node()', default_return=None)
+        
         self.artPgrg = opasxmllib.xml_get_subelement_textsingleton(artInfoNode, "artpgrg", default_return=None)  # note: getSingleSubnodeText(pepxml, "artpgrg"),
 
         self.artTitle = opasxmllib.xml_get_subelement_textsingleton(artInfoNode, "arttitle")
@@ -255,15 +261,15 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
     # the solr schema names are in snake_case; variables in the code here are camelCase
     # by my own coding habits.
 
-    headings = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h1", default_return=[])
-    headings += opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h2", default_return=[])
-    headings += opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h3", default_return=[])
-    headings += opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h4", default_return=[])
-    headings += opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h5", default_return=[])
-    headings += opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h6", default_return=[])
+    #headings = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h1", default_return=[])
+    #headings += opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h2", default_return=[])
+    #headings += opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h3", default_return=[])
+    #headings += opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h4", default_return=[])
+    #headings += opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h5", default_return=[])
+    #headings += opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h6", default_return=[])
   
     # see if this is an offsite article
-    if artInfo.fileClassification == "pepoffsite":
+    if artInfo.fileClassification == opasConfig.DOCUMENT_ACCESS_OFFSITE:
         # certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
         offsiteContents = fileXMLContents
         
@@ -276,18 +282,18 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                           """ % urllib.parse.quote(artInfo.artDOI)
         # should we trust clients, or remove this data?  For now, remove.  Need to probably do this in biblio core too
         dialogsXml = dreamsXml = notesXml = panelsXml = poemsXml = quotesXml = None    
-        referencesXml = abstractsXml = summariesXml = None
+        #referencesXml = abstractsXml = summariesXml = None
     else: # other PEP classified files, peparchive, pepcurrent, pepfree can have the full-text
         offsiteContents = ""
         #TODO: Later, it may be that we don't need Solr to store these, just index them.  If so, the schema can be changed.
-        dialogsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dialog", default_return=None)
-        dreamsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dream", default_return=None)
-        notesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//note", default_return=None)
-        panelsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel", default_return=None)
-        poemsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//poem", default_return=None)
-        quotesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//quote", default_return=None)
-        bodyXml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//body", default_return=None)  # used to search body only
-        referencesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//be", default_return=None)
+        #dialogsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dialog", default_return=None)
+        #dreamsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dream", default_return=None)
+        #notesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//note", default_return=None)
+        #panelsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel", default_return=None)
+        #poemsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//poem", default_return=None)
+        #quotesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//quote", default_return=None)
+        #bodyXml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//body", default_return=None)  # used to search body only
+        #referencesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//be", default_return=None)
         summariesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//summaries", default_return=None)
         abstractsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//abs", default_return=None)
         parasxml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//p|//p2")
@@ -303,24 +309,43 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
     citedCounts = gCitedTable.get(artInfo.artID, modelsOpasCentralPydantic.MostCitedArticles())
     # anywhere in the doc.
     children = DocChildren() # new instance, reset child counter suffix
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//p|//p2"),
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body//p|//body//p2"),
                           parent_id=artInfo.artID,
-                          parent_tag="doc")
+                          parent_tag="p_body")
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h1|//h2|//h3|//h4|//h5|//h6"),
+                          parent_id=artInfo.artID,
+                          parent_tag="p_heading")
     children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//quote//p|//quote//p2"),
                           parent_id=artInfo.artID,
-                          parent_tag="quotes")
+                          parent_tag="p_quote")
     children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dream//p|//dream//p2"),
                           parent_id=artInfo.artID,
-                          parent_tag="dreams")
+                          parent_tag="p_dream")
     children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//poem//p|//poem//p2"),
                           parent_id=artInfo.artID,
-                          parent_tag="poems")
+                          parent_tag="p_poem")
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//note//p|//note//p2"),
+                          parent_id=artInfo.artID,
+                          parent_tag="p_note")
     children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dialog//p|//dialog//p2"),
                           parent_id=artInfo.artID,
-                          parent_tag="dialogs")
+                          parent_tag="p_dialog")
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel//p|//panel//p2"),
+                          parent_id=artInfo.artID,
+                          parent_tag="p_panel")
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//caption//p"),
+                          parent_id=artInfo.artID,
+                          parent_tag="p_caption")
     children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bib//be|//binc"),
                           parent_id=artInfo.artID,
-                          parent_tag="references")
+                          parent_tag="p_bib")
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//appxs//p|//appxs//p2"),
+                          parent_id=artInfo.artID,
+                          parent_tag="p_appxs")
+    # summaries and abstracts
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//summaries//p|//summaries//p2|//abs//p|//abs//p2"),
+                          parent_id=artInfo.artID,
+                          parent_tag="p_summaries")
 
     print (f"Adding children, tags/counts: {children.tag_counts}")
 
@@ -328,18 +353,30 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                 "id": artInfo.artID,                                         # important =  note this is unique id for every reference
                 "art_id" : artInfo.artID,                                    # important                                     
                 "title" : artInfo.artTitle,                                  # important                                      
-                "art_title_xml" : opasxmllib.xml_xpath_return_textsingleton(pepxml, "//arttitle"),
-                "art_pepsourcecode" : artInfo.artPepSrcCode,                 # important
-                "art_pepsourcetitleabbr" : artInfo.artPepSourceTitleAbbr,
-                "art_pepsourcetitlefull" : artInfo.artPepSourceTitleFull,
-                "art_pepsourcetype" : artInfo.artPepSourceType,
+                "art_title_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//arttitle"),
+                "art_sourcecode" : artInfo.artPepSrcCode,                 # important
+                "art_sourcetitleabbr" : artInfo.artPepSourceTitleAbbr,
+                "art_sourcetitlefull" : artInfo.artPepSourceTitleFull,
+                "art_sourcetype" : artInfo.artPepSourceType,
+                "abstract_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//abs", default_return = None),
                 "text_xml" : fileXMLContents,                                # important
+                "text_xml_offsite" : offsiteContents,
+                "author_bio_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//nbio", default_return = None),
+                "author_aff_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//autaff", default_return = None),
+                "bk_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bktitle", default_return = None),
+                "bk_alsoknownas_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bkalsoknownas", default_return = None),
+                "bk_editors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkeditors", default_return = None),
+                "bk_seriestitle_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkeditors", default_return = None),
+                "caption_text_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml,"//caption", default_return = None),
+                "caption_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//ctitle", default_return = None),
+                #"headings_xml" : headings,
+                "meta_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//meta"),"text_xml" : fileXMLContents,
                 "timestamp" : artInfo.processedDateTime,                     # important
                 "file_last_modified" : artInfo.fileTimeStamp,
                 "file_classification" : artInfo.fileClassification,
                 "file_size" : artInfo.fileSize,
                 "file_name" : artInfo.fileName,
-                "art_subtitle_xml" : opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artsubtitle", default_return = None),
+                "art_subtitle_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//artsubtitle", default_return = None),
                 "art_citeas_xml" : artInfo.artCiteAsXML,
                 "art_cited_all" : citedCounts.countAll,
                 "art_cited_5" : citedCounts.count5,
@@ -348,7 +385,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                 #"art_body_xml" : bodyXml,
                 "art_authors" : artInfo.authorList,
                 "art_authors_mast" : artInfo.authorMast,
-                "art_authors_unlisted" : art_authors_unlisted,
+                "art_authors_unlisted" : artInfo.authorMastStringUnlisted,
                 "art_authors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//aut", default_return = None),
                 "art_year" : artInfo.artYear,
                 "art_year_int" : artInfo.artYearInt,
@@ -366,30 +403,22 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                 "art_type" : artInfo.artType,
                 "art_newsecnm" : artInfo.newSecNm,
                 "authors" :  artInfo.artAllAuthors,
-                "author_bio_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//nbio", default_return = None),
-                "author_aff_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//autaff", default_return = None),
-                "bk_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bktitle", default_return = None),
-                "bk_alsoknownas_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bkalsoknownas", default_return = None),
-                "bk_editors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkeditors", default_return = None),
-                "bk_seriestitle_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkeditors", default_return = None),
-                "bk_pubyear" : pepxml.xpath("//bkpubyear/node()"),
-                "caption_text_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml,"//caption", default_return = None),
-                "caption_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//ctitle", default_return = None),
-                "headings_xml" : headings,
-                "summaries_xml" : summariesXml,
                 "terms_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//impx[@type='TERM2']"),
                 "terms_highlighted" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//b") + opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//i"),
-                "dialogs_spkr" : pepxml.xpath("//dialog/spkr/node()"),"dialogs_xml" : dialogsXml,"dreams_xml" : dreamsXml,"notes_xml" : notesXml,
+                "dialogs_spkr" : pepxml.xpath("//dialog/spkr/node()"),
                 "panels_spkr" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel/spkr"),
-                "abstracts_xml" : abstractsXml,
-                "dreams_xml" : dreamsXml,
-                "panels_xml" : panelsXml,"poems_src" : pepxml.xpath("//poem/src/node()"),
-                "poems_xml" : poemsXml,"quotes_spkr" : pepxml.xpath("//quote/spkr/node()"),
-                "quotes_xml" : quotesXml,
+                "poems_src" : pepxml.xpath("//poem/src/node()"),
+                #"dialogs_xml" : dialogsXml,"dreams_xml" : dreamsXml,
+                #"notes_xml" : notesXml,
+                #"summaries_xml" : summariesXml,
+                #"dreams_xml" : dreamsXml,
+                #"panels_xml" : panelsXml,
+                #"poems_xml" : poemsXml,
+                # "poems" : pepxml.xpath("//quote/spkr/node()"),
+                #"quotes_xml" : quotesXml,
                 "reference_count" : artInfo.artBibReferenceCount,
-                "references_xml" : referencesXml,
-                "meta_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//meta"),"text_xml" : fileXMLContents,
-                "text_xml_offsite" : offsiteContents,
+                #"references_xml" : referencesXml,
+                "bk_pubyear" : pepxml.xpath("//bkpubyear/node()"),
                 "art_level" : 1,
                 "art_para" : parasxml, 
                 "_doc" : children.child_list
@@ -527,8 +556,8 @@ def processInfoForAuthorCore(pepxml, artInfo, solrAuthor):
                                                  art_author_bio = authorBio,
                                                  art_author_affil_xml = authorAffil,
                                                  art_year_int = artInfo.artYearInt,
-                                                 art_pepsourcetype = artInfo.artPepSourceType,
-                                                 art_pepsourcetitlefull = artInfo.artPepSourceTitleFull,
+                                                 art_sourcetype = artInfo.artPepSourceType,
+                                                 art_sourcetitlefull = artInfo.artPepSourceTitleFull,
                                                  art_citeas_xml = artInfo.artCiteAsXML,
                                                  art_author_xml = authorXML,
                                                  file_last_modified = artInfo.fileTimeStamp,
@@ -565,7 +594,7 @@ def processBibForReferencesCore(pepxml, artInfo, solrbib):
     if options.displayVerbose:
         print(("   ...Processing %s references for the references database." % (artInfo.artBibReferenceCount)))
     #processedFilesCount += 1
-
+    bibTotalReferenceCount = 0
     allRefs = []
     for ref in bibReferences:
         bibTotalReferenceCount += 1
@@ -619,7 +648,7 @@ def processBibForReferencesCore(pepxml, artInfo, solrbib):
             bibRefRxSourceCode = None
             
         # see if this is an offsite article
-        if artInfo.fileClassification == "pepoffsite":
+        if artInfo.fileClassification == opasConfig.DOCUMENT_ACCESS_OFFSITE: # "pepoffsite":
             # certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
             bibRefOffsiteEntry = bibRefEntry
           
@@ -644,10 +673,10 @@ def processBibForReferencesCore(pepxml, artInfo, solrbib):
                     "file_name" : artInfo.fileName,
                     "timestamp" : artInfo.processedDateTime,  # When batch was entered into core
                     "art_title" : artInfo.artTitle,
-                    "art_pepsourcecode" : artInfo.artPepSrcCode,
-                    "art_pepsourcetitleabbr" : artInfo.artPepSourceTitleAbbr,
-                    "art_pepsourcetitlefull" : artInfo.artPepSourceTitleFull,
-                    "art_pepsourcetype" : artInfo.artPepSourceType,
+                    "art_sourcecode" : artInfo.artPepSrcCode,
+                    "art_sourcetitleabbr" : artInfo.artPepSourceTitleAbbr,
+                    "art_sourcetitlefull" : artInfo.artPepSourceTitleFull,
+                    "art_sourcetype" : artInfo.artPepSourceType,
                     "art_authors" : artInfo.artAllAuthors,
                     "reference_count" :artInfo.artBibReferenceCount,  # would be the same for each reference in article, but could still be useful
                     "art_year" : artInfo.artYear,
@@ -1018,10 +1047,12 @@ def main():
                         filename = os.path.join(root, f)
                         #currFileInfo = FileTrackingInfo()
                         currFileInfo.loadForFile(filename, localsecrets.SOLRURL)  # mod 2019-06-05 Just the base URL, not the core
-                        isModified = fileTracker.isFileModified(currFileInfo)
                         if options.forceRebuildAllFiles:
                             # fake it, make it look modified!
                             isModified = True
+                        else:
+                            isModified = fileTracker.isFileModified(currFileInfo)
+
                         if not isModified:
                             # file seen before, need to compare.
                             #print "File is the same!  Skipping..."
@@ -1110,7 +1141,7 @@ def main():
                 artInfo.fileName = base
                 artInfo.fileSize = currFileInfo.fileSize
                 try:
-                    artInfo.fileClassification = re.search("(pepcurrent|peparchive|pepfuture|pepfree|pepoffsite)", n, re.IGNORECASE).group(1)
+                    artInfo.fileClassification = re.search("(current|archive|future|free|offsite)", n, re.IGNORECASE).group(1)
                     # set it to lowercase for ease of matching later
                     artInfo.fileClassification = artInfo.fileClassification.lower()
                 except Exception as e:

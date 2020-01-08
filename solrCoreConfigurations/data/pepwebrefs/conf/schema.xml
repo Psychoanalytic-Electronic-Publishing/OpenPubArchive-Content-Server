@@ -50,10 +50,10 @@
   <!-- ********************************* -->
   <field name="art_id" type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="art_authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
-  <field name="art_pepsourcecode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_pepsourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_pepsourcetitlefull" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_pepsourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_sourcecode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_sourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_sourcetitlefull" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_sourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_vol" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_year" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_year_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>

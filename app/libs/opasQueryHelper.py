@@ -21,6 +21,11 @@ import models
 import opasCentralDBLib
 import shlex
 
+import logging
+logger = logging.getLogger(__name__)
+
+import schemaMap
+
 sourceDB = opasCentralDBLib.SourceInfoDB()
 
 def strip_outer_matching_chars(s, outer_char):
@@ -120,8 +125,6 @@ class QueryTextToSolr():
     def __init__(self):
         regex_token_quoted =  "[\^]?[\'\"][^\'\"]+[\'\"]"
         regex_token_word = "(?P<word>[^\|\^\&\(\"\'\s)]+)"
-        # regex_word_or_quoted = f"{regex_token_quoted}|{regex_token_word}" 
-        # token_not = re.compile("\sAND\s", re.IGNORECASE)
 
         self.counter = 0
         self.token_quoted = re.compile(regex_token_quoted, re.IGNORECASE)
@@ -142,55 +145,9 @@ class QueryTextToSolr():
         return ret_val
         
     def markup(self, str_input, field_label, field_thesaurus=None):
-        #def quotedrepl(matchobj):
-            #self.counter += 1
-            #return f'QS{self.counter}'
 
         return self.boolConnectorsToSymbols(f"{field_label}:({str_input})")
     
-        #if field_thesaurus is None:
-            #field_thesaurus = field_label
-
-        #qualified, sq = search_qualifiers(str_input, field_label=field_label, field_thesaurus=field_label)
-        #if qualified:
-            #ret_val = sq
-        #else:
-            #self.counter = 0
-            #token_list = self.token_quoted.findall(str_input)
-            #ret_val = self.token_quoted.sub(quotedrepl, str_input)
-            #ret_val = re.sub("w\s*/\s*[0-9]{1,10}", "", ret_val)
-            #term_check = ret_val.split()
-            #i = 0
-            #while 1:
-                #if i == len(term_check) - 1:
-                    #break
-                #if re.match("&&|\|\||and|or", term_check[i].strip(), re.IGNORECASE) is None:
-                    #if re.match("&&|\|\||and|or", term_check[i+1].strip(), re.IGNORECASE) is None:
-                        ##  need to insert one!
-                        #term_check.insert(i+1, "and")
-                #i += 1
-                
-                        
-            #ret_val = " ".join(term_check)
-            
-            #ret_val = self.token_or.sub(" || ", ret_val)
-            #ret_val = self.token_and.sub(" && ", ret_val)
-            #ret_val = self.token_word.sub(f"{field_label}:\g<word>", ret_val)
-            #counter2 = 1
-            ## take care of ^ to - before quotes go back
-            #ret_val = re.sub("\^\s*\(", "-(", ret_val)
-            #for n in token_list:
-                #ret_val = re.sub(f"QS{counter2}", n, ret_val)
-                #counter2 += 1
-            
-            #ptn_token_not = f"{field_label}:(\^)"
-            #ptn_token_not2 = f"(\^){field_label}:"
-            #ret_val = re.sub(ptn_token_not, f"-{field_label}:", ret_val)
-            #ret_val = re.sub(ptn_token_not2, f"-{field_label}:", ret_val)
-        
-        ## debug only    
-        ## print (str_input, ":", ret_val)
-        #return ret_val
 
 #-----------------------------------------------------------------------------
 def year_arg_parser(year_arg):
@@ -264,44 +221,58 @@ def year_arg_parser(year_arg):
 #---------------------------------------------------------------------------------------------------------
 # this function lets various endpoints like search, searchanalysis, and document, share this large parameter set.
 def parse_search_query_parameters(search=None,
-                                  def_type="lucene",  # standard query parser
-                                  quick_search=None,  # simple google like
+                                  # model based query specification, allows full specification 
+                                  # of words/thes in request body, component at a time, per model
+                                  solrQueryTermList=None,
+                                  # parameter based options
+                                  para_search=None,   # search paragraphs as child of scope
+                                  parent_tag="doc",   # formerly scope
+                                  fulltext1=None,     # term, phrases, and boolean connectors with optional fields for full-text search
+                                  solrSearchQ=None,   # the standard solr (advanced) query, overrides other query specs
                                   search_field=None,  # search here
-                                  search_type=None,
-                                  thesaurus_expansion=False, 
-                                  fulltext1=None,     # term, phrases, and boolean connectors for full-text search
-                                  fulltext2=None,     # term, phrases, and boolean connectors for full-text search
-                                  solrQ=None,         # advanced search
-                                  disMax=None, 
-                                  edisMax=None, 
-                                  # these are all going to the filter
+                                  synonyms=False,     # global field synonyn flag (for all applicable fields)
+                                  # these are all going to the filter query
                                   journal_name=None,  # full name of journal or wildcarded
                                   journal=None,       # journal code or list of codes
                                   vol=None,           # match only this volume (integer)
                                   issue=None,         # match only this issue (integer)
                                   author=None,        # author last name, optional first, middle.  Wildcards permitted
-                                  title=None,         
-                                  datetype=None,  # not implemented
-                                  startyear=None, # can contain complete range syntax
-                                  endyear=None,   # year only.
-                                  dreams=None,
-                                  quotes=None,
-                                  abstracts=None,
-                                  dialogs=None,
-                                  references=None,
+                                  title=None,
+                                  articletype=None,   # types of articles: article, abstract, announcement, commentary, errata, profile, report, or review
+                                  datetype=None,      # not implemented
+                                  startyear=None,     # can contain complete range syntax
+                                  endyear=None,       # year only.
                                   citecount=None, 
                                   viewcount=None, 
-                                  viewedwithin=None, 
-                                  sort=None, 
+                                  viewedwithin=None,
+                                  # sort field and direction
+                                  sort=None
                                   ):
     """
+    This function parses various parameters in the api parameter and body to convert them
+      to a Solr Query into model SolrQuerySpec.
+      
+    The optional parameter, solrQueryTermList holds a complete term by term query request,
+    so it doesn't have to be parsed out and field and synonym can vary.
+
+        Sample:
+         {"query" : [
+                            {
+                                "words":"child abuse",
+                                "parent": "doc",
+                                "field": "para",
+                                "synonyms": "true",
+                        }
+                    ]
+         }        
+        
     >>> search = parse_search_query_parameters(journal="IJP", vol=57, author="Tuckett")
     >>> search.analyzeThis
     'art_authors_ngrm:Tuckett '
     
-    <QueryParameters analyzeThis='art_authors_ngrm:Tuckett ' searchQ='*:* ' filterQ='art_pepsourcecode:IJP && art_vol:57  && art_authors_ngrm:Tuckett ' searchAnalysisTermList=['art_pepsourcecode:IJP ', 'art_authors_ngrm:Tuckett '] solrMax=None solrSortBy=None urlRequest=''>    
     """
-                
+    # parent_tag is any parent of a child doc as stored in the schema child field parent_tag.  
+
     # initialize accumulated variables
     search_q = "*:* "
     filter_q = "*:* "
@@ -315,37 +286,91 @@ def parse_search_query_parameters(search=None,
     
     if sort is not None:  # not sure why this seems to have a slash, but remove it
         sort = re.sub("\/", "", sort)
+        if sort == "citeCount":
+            sort = "art_cited_all desc"
+        if re.search("asc|desc", sort, re.IGNORECASE) is None:
+            sort = sort + " desc"
 
-    if quick_search is not None:
-        if search_field is not None:
-            analyze_this = f"&& {search_field}:({quick_search})"
-        else:
-            analyze_this = f"&& {quick_search} "
+    if solrQueryTermList is None:
+        solrQueryOpts = models.SolrQueryOpts()
+    else:
+        try:
+            if solrQueryTermList.solrQueryOpts is not None:
+                solrQueryOpts = solrQueryTermList.solrQueryOpts
+            else: # defaults
+                solrQueryOpts = models.SolrQueryOpts()
+        except: # defaults
+            solrQueryOpts = models.SolrQueryOpts()
+
+        q = ""
+        for query in solrQueryTermList.query:
+            if query.field is None:
+                use_field = "para"
+            else:
+                use_field = query.field
+    
+            if q != "":
+                q += " && "
+                
+            if query.synonyms:
+                use_field = use_field + query.synonyms_suffix
+            
+            if query.parent is not None:
+                solr_parent = schemaMap.user2solr(query.parent)
+                
+                q += "{!parent which='art_level:1'} art_level:2 AND parent_tag:%s AND %s:(%s) " % (solr_parent, use_field, query.words)
+            else:
+                if query.field is not None:
+                    q += f"{use_field}:({query.words}) "
+                else:
+                    q += f"{query.words} "
+    
+        analyze_this = f"&& {q} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
+    # note these are specific to pepwebdocs core.  #TODO Perhaps conditional on core later?
+    if para_search is not None:
+        if search_field is None:
+            use_field = "para"
+        else:
+            use_field = search_field 
+
+        if synonyms:
+            use_field = use_field + "_syn"
+    
+        solrParent = schemaMap.user2solr(parent_tag) # e.g., doc -> (body OR summaries OR appxs)
+            
+        # clean up query / connetors
+        qs = QueryTextToSolr()
+        para_search = qs.boolConnectorsToSymbols(para_search)
+        # note: cannot use F strings here due to quoting requirements for 'which'
+        if parent_tag is not None:
+            query = "{!parent which='art_level:1'} art_level:2 AND parent_tag:%s AND %s:(%s)" % (solrParent, use_field, para_search)
+        else:
+            query = "{!parent which='art_level:1'} art_level:2 AND %s:(%s)" % (use_field, para_search)
+
+        analyze_this = f"&& {query} "
+        search_q += analyze_this
+        search_analysis_term_list.append(analyze_this)
+    
     if fulltext1 is not None:
         # fulltext1 = qparse.markup(fulltext1, "text_xml")
         analyze_this = f"&& {fulltext1} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
-
-    if fulltext2 is not None:
-        # we should use this for thesaurus later
-        fulltext2 = qparse.markup(fulltext2, "text_xml")
-        analyze_this = f"&& {fulltext2} "
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
+    
     if title is not None:
-        title = qparse.markup(title, "art_title_xml")
-        analyze_this = f"&& {title} "
-        filter_q += analyze_this
-        search_analysis_term_list.append(analyze_this)  
+        title = title.strip()
+        if title != '':
+            title = qparse.markup(title, "art_title_xml")
+            analyze_this = f"&& {title} "
+            filter_q += analyze_this
+            search_analysis_term_list.append(analyze_this)  
 
     if journal_name is not None:
         # accepts a journal name and optional wildcard
-        analyze_this = f"&& art_pepsourcetitle_fulltext:{journal_name} "
+        analyze_this = f"&& art_sourcetitle_full:{journal_name} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  
 
@@ -360,12 +385,12 @@ def parse_search_query_parameters(search=None,
         if re.match(journal_wildcard_pattern, journal):
             # it's a wildcard pattern
             code_for_query = journal
-            analyze_this = f"&& art_pepsourcetitlefull:{code_for_query} "
+            analyze_this = f"&& art_sourcetitlefull:{code_for_query} "
             filter_q += analyze_this
         else:
             journal_code_list = journal.split(" or ")
             # convert to upper case
-            journal_code_list = [f"art_pepsourcecode:{x.upper()}" for x in journal_code_list]
+            journal_code_list = [f"art_sourcecode:{x.upper()}" for x in journal_code_list]
             if len(journal_code_list) > 1:
                 # it was a list.
                 code_for_query = " OR ".join(journal_code_list)
@@ -376,12 +401,12 @@ def parse_search_query_parameters(search=None,
                 if sourceInfo is not None:
                     # it's a single source code
                     code_for_query = journal.upper()
-                    analyze_this = f"&& art_pepsourcecode:{code_for_query} "
+                    analyze_this = f"&& art_sourcecode:{code_for_query} "
                     filter_q += analyze_this
                 else: # not a pattern, or a code, or a list of codes.
                     # must be a name
                     code_for_query = journal
-                    analyze_this = f"&& art_pepsourcetitlefull:{code_for_query} "
+                    analyze_this = f"&& art_sourcetitlefull:{code_for_query} "
                     filter_q += analyze_this
 
         search_analysis_term_list.append(analyze_this)
@@ -405,6 +430,10 @@ def parse_search_query_parameters(search=None,
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  
 
+    if articletype is not None:
+        analyze_this = f"&& art_type:{articletype} "
+        filter_q += analyze_this
+        
     if datetype is not None:
         #TODO for now, lets see if we need this. (We might)
         pass
@@ -470,52 +499,10 @@ def parse_search_query_parameters(search=None,
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
-    if dreams is not None:
-        # not within para 
-        dreams = qparse.markup(dreams, "dreams_xml")
-        analyze_this = f"&& {dreams} "
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
 
-    if quotes is not None:
-        # not within para 
-        quotes = qparse.markup(quotes, "quotes_xml")
-        analyze_this = f"&& {quotes} "
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if abstracts is not None:
-        # not within para 
-        abstracts = qparse.markup(abstracts, "abstracts_xml")
-        analyze_this = f"&& {abstracts} "
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if dialogs is not None:
-        # not within para 
-        dialogs = qparse.markup(dialogs, "dialogs_xml")
-        analyze_this = f"&& {dialogs} "
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if references is not None:
-        # not within para 
-        references = qparse.markup(references, "references_xml")
-        analyze_this = f"&& {references} "
-        search_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-
-    if solrQ is not None:
-        search_q = solrQ # (overrides fields) # search = solrQ
-        search_analysis_term_list = [solrQ]
-
-    if disMax is not None:
-        search_q = disMax # (overrides fields) # search = solrQ
-        def_type = "dismax"
-
-    if edisMax is not None:
-        search_q = edisMax # (overrides fields) # search = solrQ
-        def_type = "edismax"
+    if solrSearchQ is not None:
+        search_q = solrSearchQ # (overrides fields) # search = solrQ
+        search_analysis_term_list = [solrSearchQ]
 
     # now clean up the final components.
     if search_q is not None:
@@ -533,16 +520,25 @@ def parse_search_query_parameters(search=None,
     if search_analysis_term_list is not []:
         search_analysis_term_list = [pat_prefix_amps.sub("", x) for x in search_analysis_term_list]
 
-    ret_val = models.QueryParameters(analyzeThis = analyze_this,
-                                     searchQ = search_q,
-                                     filterQ = filter_q,
-                                     defType = def_type, # defType for Solr
-                                     searchAnalysisTermList = search_analysis_term_list,
-                                     solrSortBy = sort
+    search_q = search_q.strip()
+    filter_q = filter_q.strip()
+    if search_q == "*:*" and filter_q == "*:*":
+        filter_q = "art_level:1"
+
+    solrQuery = models.SolrQuery(analyzeThis = analyze_this,
+                                 searchQ = search_q,
+                                 filterQ = filter_q,
+                                 searchAnalysisTermList = search_analysis_term_list,
+                                 sort = sort
     )
 
-    return ret_val
-                               
+    solrQuerySpec = models.SolrQuerySpec(
+        core="pepwebdocs", # for now, this is tied to this core
+        solrQuery=solrQuery,
+        solrQueryOpts=solrQueryOpts
+    )
+        
+    return solrQuerySpec
 
 # -------------------------------------------------------------------------------------------------------
 # run it!

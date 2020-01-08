@@ -42,10 +42,11 @@ OPASACCESSTOKEN = "opasSessionInfo"
 OPASEXPIRES= "OpasExpiresTime"
 
 # file classifications (from documents in the Solr database)
-DOCUMENT_ACCESS_FREE = "pepfree"
-DOCUMENT_ACCESS_EMBARGOED = "pepcurrent"
-DOCUMENT_ACCESS_ARCHIVE = "peparchive"
-DOCUMENT_ACCESS_UNDEFINED = "undefined" 
+DOCUMENT_ACCESS_FREE = "free"
+DOCUMENT_ACCESS_EMBARGOED = "current"
+DOCUMENT_ACCESS_ARCHIVE = "archive"
+DOCUMENT_ACCESS_UNDEFINED = "undefined"
+DOCUMENT_ACCESS_OFFSITE = "offsite"
 
 # configure for location where to find the PDF originals
 PDFORIGDIR = r"X:\PEP Dropbox\PEPWeb\Inventory\PEPDownloads\PDF"

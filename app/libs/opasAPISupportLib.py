@@ -85,7 +85,7 @@ from opasQueryHelper import QueryTextToSolr
 import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
 import sourceInfoDB as SourceInfoDB
-
+import schemaMap
 sourceDB = opasCentralDBLib.SourceInfoDB()
 count_anchors = 0
 
@@ -282,6 +282,13 @@ def start_new_session(resp: Response, request: Request, session_id=None, access_
                                                 connectedVia=request.headers["user-agent"],
                                                 username=username)  # returns save status and a session object (matching what was sent to the db)
 
+    resp.set_cookie(key=OPASSESSIONID,
+                    value=session_id,
+                    max_age=max_age, expires=None, 
+                    path="/",
+                    secure=False, 
+                    httponly=False)
+
     # return the object so the caller can get the details of the session
     return ocd, sessionInfo
 
@@ -335,7 +342,7 @@ def check_solr_docs_connection():
 
 
 #-----------------------------------------------------------------------------
-def document_get_info(document_id, fields="art_id, art_pepsourcetype, art_year, file_classification, art_pepsourcecode"):
+def document_get_info(document_id, fields="art_id, art_sourcetype, art_year, file_classification, art_sourcecode"):
     """
     Gets key information about a single document for the specified fields.
     
@@ -488,7 +495,7 @@ def database_get_most_downloaded(period: str="all",
             stat["downloads_lastcalyear"] = count_all
 
         item = models.DocumentListItem( documentID = download.get("document_id", None), # 11/24 database sync fix
-                                        instanceCount = download.get("last12months", None),
+                                        #instanceCount = download.get("last12months", None),
                                         title = download.get("hdgtitle", None), # 11/24 database sync fix
                                         sourceTitle = download.get("srctitleseries", None), # 11/24 database sync fix
                                         PEPCode = download.get("jrnlcode", None), 
@@ -500,11 +507,6 @@ def database_get_most_downloaded(period: str="all",
                                         pgStart = pg_start,
                                         pgEnd = pg_end,
                                         stat = stat, 
-                                        #count1 = download.get("lastweek", None),
-                                        #count2 = download.get("lastmonth", None),
-                                        #count3 = download.get("last6months", None),
-                                        #count4 = download.get("last12months", None),
-                                        #count5 = download.get("lastcalyear", None),
                                         documentRefHTML = citeas,
                                         documentRef = opasxmllib.xml_elem_or_str_to_text(xmlref, default_return=None),
                                      ) 
@@ -554,9 +556,9 @@ def database_get_most_cited(period: models.TimePeriod='5',
         period = '5'
     
     results = solr_docs.query( q = f"art_cited_{period}:[{more_than} TO *]",  
-                               fl = f"art_id, title, art_vol, art_iss, art_year, art_pepsourcecode, art_pepsourcetype, art_pepsourcetitleabbr, art_pgrg, \
+                               fl = f"art_id, title, art_vol, art_iss, art_year, art_sourcecode, art_sourcetype, art_sourcetitleabbr, art_pgrg, \
                                      art_cited_5, art_cited_10, art_cited_20, art_cited_all, art_citeas_xml, art_authors_mast, abstract_xml, text_xml",
-                               fq = "art_pepsourcetype: journal",
+                               fq = "art_sourcetype: journal",
                                sort = f"art_cited_{period} desc",
                                rows = limit, offset = offset
                               )
@@ -578,11 +580,11 @@ def database_get_most_cited(period: models.TimePeriod='5',
     # row_offset = 0
 
     for result in results:
-        PEPCode = result.get("art_pepsourcecode", None)
+        PEPCode = result.get("art_sourcecode", None)
         # volume = result.get("art_vol", None)
         # issue = result.get("art_iss", "")
         # year = result.get("art_year", None)
-        # abbrev = result.get("art_pepsourcetitleabbr", "")
+        # abbrev = result.get("art_sourcetitleabbr", "")
         # updated = result.get("timestamp", None)
         # updated = updated.strftime('%Y-%m-%d')
         pgrg = result.get("art_pgrg", None)
@@ -604,8 +606,8 @@ def database_get_most_cited(period: models.TimePeriod='5',
             stat["art_cited_all"] = count_all
         
         item = models.DocumentListItem( documentID = result.get("art_id", None),
-                                        instanceCount = result.get(f"art_cited_{period}", None),
-                                        title = result.get("art_pepsourcetitlefull", ""),
+                                        #instanceCount = result.get(f"art_cited_{period}", None),
+                                        title = result.get("art_sourcetitlefull", ""),
                                         PEPCode = PEPCode, 
                                         authorMast = result.get("art_authors_mast", None),
                                         year = result.get("art_year", None),
@@ -650,8 +652,8 @@ def database_get_whats_new(days_back=7, limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS
     
     try:
         results = solr_docs.query(q = f"timestamp:[NOW-{days_back}DAYS TO NOW]",  
-                                 fl = "art_id, title, art_vol, art_iss, art_pepsourcecode, timestamp, art_pepsourcetype",
-                                 fq = "{!collapse field=art_pepsourcecode max=art_year_int}",
+                                 fl = "art_id, title, art_vol, art_iss, art_sourcecode, timestamp, art_sourcetype",
+                                 fq = "{!collapse field=art_sourcecode max=art_year_int}",
                                  sort="timestamp", sort_order="desc",
                                  rows=limit, offset=0,
                                  )
@@ -662,9 +664,9 @@ def database_get_whats_new(days_back=7, limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS
     
     if results._numFound == 0:
         try:
-            results = solr_docs.query( q = "art_pepsourcetype:journal",  
-                                       fl = "art_id, title, art_vol, art_iss, art_pepsourcecode, timestamp, art_pepsourcetype",
-                                       fq = "{!collapse field=art_pepsourcecode max=art_year_int}",
+            results = solr_docs.query( q = "art_sourcetype:journal",  
+                                       fl = "art_id, title, art_vol, art_iss, art_sourcecode, timestamp, art_sourcetype",
+                                       fq = "{!collapse field=art_sourcecode max=art_year_int}",
                                        sort="timestamp", sort_order="desc",
                                        rows=limit, offset=0,
                                      )
@@ -688,10 +690,10 @@ def database_get_whats_new(days_back=7, limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS
     row_count = 0
     already_seen = []
     for result in results:
-        PEPCode = result.get("art_pepsourcecode", None)
+        PEPCode = result.get("art_sourcecode", None)
         #if PEPCode is None or PEPCode in ["SE", "GW", "ZBK", "IPL"]:  # no books
             #continue
-        src_type = result.get("art_pepsourcetype", None)
+        src_type = result.get("art_sourcetype", None)
         if src_type != "journal":
             continue
             
@@ -749,7 +751,7 @@ def metadata_get_volumes(pep_code, year="*", limit=opasConfig.DEFAULT_LIMIT_FOR_
     """
     ret_val = []
            
-    results = solr_docs.query( q = f"art_pepsourcecode:{pep_code} && art_year:{year}",  
+    results = solr_docs.query( q = f"art_sourcecode:{pep_code} && art_year:{year}",  
                                fields = "art_vol, art_year",
                                sort="art_year", sort_order="asc",
                                fq="{!collapse field=art_vol}",
@@ -810,7 +812,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         field="art_year"
         search_val = year  #  was "*", thats an error, fixed 2019-12-19
         
-    results = solr_docs.query(q = f"art_pepsourcecode:{pep_code} && {field}:{search_val}",  
+    results = solr_docs.query(q = f"art_sourcecode:{pep_code} && {field}:{search_val}",  
                              fields = "art_id, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml",
                              sort="art_year, art_pgrg", sort_order="asc",
                              rows=limit, start=offset
@@ -876,13 +878,13 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
     """
     
     if pep_code != None:
-        query = "art_pepsourcetype:video* AND art_pepsourcecode:{}".format(pep_code)
+        query = "art_sourcetype:video* AND art_sourcecode:{}".format(pep_code)
     else:
-        query = "art_pepsourcetype:video*"
+        query = "art_sourcetype:video*"
     try:
         srcList = solr_docs.query(q = query,  
-                                  fields = "art_id, art_issn, art_pepsourcecode, art_authors, title, \
-                                            art_pepsourcetitlefull, art_pepsourcetitleabbr, art_vol, \
+                                  fields = "art_id, art_issn, art_sourcecode, art_authors, title, \
+                                            art_sourcetitlefull, art_sourcetitleabbr, art_vol, \
                                             art_year, art_citeas_xml, art_lang, art_pgrg",
                                   sort = "art_citeas_xml",
                                   sort_order = "asc",
@@ -905,7 +907,7 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
         else:    
             source_info_record["author"] = authors[0]
             
-        source_info_record["src_code"] = result.get("art_pepsourcecode")
+        source_info_record["src_code"] = result.get("art_sourcecode")
         source_info_record["ISSN"] = result.get("art_issn")
         source_info_record["documentID"] = result.get("art_id")
         try:
@@ -915,7 +917,7 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
             
         source_info_record["art_citeas"] = result.get("art_citeas_xml")
         source_info_record["pub_year"] = result.get("art_year")
-        source_info_record["bib_abbrev"] = result.get("art_pepsourcetitleabbr")  # error in get field, fixed 2019.12.19
+        source_info_record["bib_abbrev"] = result.get("art_sourcetitleabbr")  # error in get field, fixed 2019.12.19
         try:
             source_info_record["language"] = result.get("art_lang")[0]
         except:
@@ -1372,6 +1374,7 @@ def get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document):
                 for elem in body:
                     if elem.tag == "pb" or count > 10:
                         # we're done.
+                        ret_val  += etree.tostring(elem, encoding='utf8').decode('utf8')
                         ret_val = "%s%s%s" % ("<abs><unit type='excerpt'>", ret_val, "</unit></abs>")
                         break
                     else:
@@ -1404,15 +1407,18 @@ def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=Fa
             logger.warning("Bad argument {document_id} to get_abstract(Error:{e})")
             return ret_val
 
-        standard_fields = "art_id, art_pepsourcetitlefull, art_vol, art_year, art_citeas_xml, art_pgrg, art_title_xml, art_authors, abstracts_xml, summaries_xml, text_xml"
+        required_fields = "art_id, art_sourcetitlefull, art_vol, art_year, art_iss, art_doi, file_classification, art_citeas_xml, \
+art_sourcecode, art_pgrg, art_origrx, art_qual, art_sourcetitlefull, art_title_xml, art_authors, \
+abstract_xml, summaries_xml, text_xml, file_last_modified"
+
         results = solr_docs.query(q = "art_id:%s*" % (document_id),  
-                                    fields = standard_fields,
+                                    fields = required_fields,
                                     sort="art_year, art_pgrg", sort_order="asc",
                                     rows=limit, start=offset
                                  )
         
         matches = len(results.results)
-        cwd = os.getcwd()    
+        # cwd = os.getcwd()    
         # print ("GetAbstract: Current Directory {}".format(cwd))
         logger.debug ("%s document matches for getAbstracts", matches)
         
@@ -1427,81 +1433,14 @@ def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=Fa
         
         document_item_list = []
         for result in results:
-            if matches > 0:
-                try:
-                    xml_abstract = result["abstracts_xml"]
-                except KeyError as e:
-                    xml_abstract = None
-                    logger.info("No abstract for document ID: %s", document_id)
-            
-                try:
-                    xml_summary = result["summaries_xml"]
-                except KeyError as e:
-                    xml_summary = None
-                    logger.info("No summary for document ID: %s", document_id)
-            
-                try:
-                    xml_document = result["text_xml"]
-                except KeyError as e:
-                    xml_document = None
-                    logger.error("No content matched document ID for: %s", document_id)
-    
-                author_ids = result.get("art_authors", None)
-                if author_ids is None:
-                    author_mast = None
-                else:
-                    author_mast = opasgenlib.deriveAuthorMast(author_ids)
-    
-                pgrg = result.get("art_pgrg", None)
-                pg_start, pg_end = opasgenlib.pgrg_splitter(pgrg)
-                
-                source_title = result.get("art_pepsourcetitlefull", None)
-                title = result.get("art_title_xml", "")  # name is misleading, it's not xml.
-                art_year = result.get("art_year", None)
-                art_vol = result.get("art_vol", None)
-    
-                citeas = result.get("art_citeas_xml", None)
-                citeas = force_string_return_from_various_return_types(citeas)
-    
-                abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document)
-                if abstract == "[]":
-                    abstract = None
-                elif ret_format == "TEXTONLY":
-                    abstract = opasxmllib.xml_elem_or_str_to_text(abstract)
-                elif ret_format == "HTML":
-                    abstractHTML = opasxmllib.xml_str_to_html(abstract)
-                    # try to extract just the abstract.  Not sure why this used to work and now (20191111) doesn't for some articles.  Maybe sampling, or
-                    #   the style sheet application changed.
-                    abstract = extract_html_fragment(abstractHTML, "//div[@id='abs']")
-                    if abstract == None:
-                        abstract = abstractHTML
-    
-                abstract = opasxmllib.add_headings_to_abstract_html(abstract=abstract, 
-                                                                source_title=source_title,
-                                                                pub_year=art_year,
-                                                                vol=art_vol, 
-                                                                pgrg=pgrg, 
-                                                                citeas=citeas, 
-                                                                title=title,
-                                                                author_mast=author_mast,
-                                                                ret_format=ret_format)
-    
-                item = models.DocumentListItem(year = art_year,
-                                        vol = art_vol,
-                                        sourceTitle = source_title,
-                                        pgRg = pgrg,
-                                        pgStart = pg_start,
-                                        pgEnd = pg_end,
-                                        authorMast = author_mast,
-                                        documentID = result.get("art_id", None),
-                                        documentRefHTML = citeas,
-                                        documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return=""),
-                                        accessLimited = authenticated,
-                                        abstract = abstract,
-                                        score = result.get("score", None)
-                                        )
-            
-                document_item_list.append(item)
+            if matches > 0: # not sure we need this---if there are results, aren't there matches?
+                documentListItem = models.DocumentListItem()
+                documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+                documentListItem = get_access_limitations(result, documentListItem, authenticated)
+                documentListItem = get_abstract_or_summary_from_search_result(result, documentListItem, "HTML")
+                documentListItem.score = result.get("score", None)
+                # documentListItem.authenticated = authenticated 
+                document_item_list.append(documentListItem)
     
         response_info.count = len(document_item_list)
         
@@ -1515,10 +1454,197 @@ def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=Fa
 
     return ret_val
 
+def get_access_limitations(result, documentListItem: models.DocumentListItem, authenticated):
+
+    classification = result.get("file_classification", None)
+    documentListItem.accessLimitedDescription = f"""This is a summary excerpt from the full text of the journal article.  The full text of the document is available to journal subscribers on the publisher's website """
+    doi = result.get("art_doi", None)
+    if doi is not None:
+        documentListItem.accessLimitedDescription += f"""<a href=\"http://dx.doi.org/{doi}\" target=\"_blank\">here</a>."""
+        # print (documentListItem.accessLimitedDescription)
+    else:
+        documentListItem.accessLimitedDescription += f"."
+
+    if classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
+        documentListItem.accessLimitedCurrentContent = True
+
+    if not authenticated:
+        if classification in (opasConfig.DOCUMENT_ACCESS_FREE):
+            documentListItem.accessLimited = False
+            documentListItem.accessLimitedCurrentContent = False
+            documentListItem.accessLimitedDescription = "This content is currently free to all users."
+        else:
+            documentListItem.accessLimited = True
+    else: # authenticated
+        if classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE, opasConfig.DOCUMENT_ACCESS_FREE):
+            documentListItem.accessLimited = False
+            documentListItem.accessLimitedCurrentContent = False
+            documentListItem.accessLimitedDescription = "This content is available for you to access"
+        else:
+            documentListItem.accessLimited = True
+        
+    print (f"AccessLimited:{documentListItem.accessLimited}")
+    return documentListItem # return a partially filled document list item
+
+def get_base_article_info_from_search_result(result, documentListItem: models.DocumentListItem):
+    if result is not None:
+        documentListItem.documentID = result.get("art_id", None)
+        documentListItem.PEPCode = result.get("art_sourcecode", None) 
+        documentListItem.pgRg = result.get("art_pgrg", None)
+        documentListItem.doi=result.get("art_doi", None)
+        documentListItem.origrx = result.get("art_origrx", None)
+        documentListItem.relatedrx= result.get("art_qual", None)
+        documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
+        documentListItem.year = result.get("art_year", None)
+        documentListItem.vol = result.get("art_vol", None)
+        documentListItem.issue = result.get("art_iss", None)
+        doi = result.get("art_doi", None)
+        
+        documentListItem.title = result.get("art_title_xml", "")  # name is misleading, it's not xml.
+        if documentListItem.pgRg is not None:
+            pg_start, pg_end = opasgenlib.pgrg_splitter(documentListItem.pgRg)
+            documentListItem.pgStart = pg_start
+            documentListItem.pgEnd = pg_end
+        author_ids = result.get("art_authors", None)
+        if author_ids is None:
+            documentListItem.authorMast = None
+        else:
+            documentListItem.authorMast = opasgenlib.deriveAuthorMast(author_ids)
+        documentListItem.newSectionName=result.get("art_newsecnm", None)            
+        citeas = result.get("art_citeas_xml", None)
+        citeas = force_string_return_from_various_return_types(citeas)
+        documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
+        documentListItem.documentRefHTML = citeas
+        documentListItem.updated=result.get("file_last_modified", None)
+    
+    return documentListItem # return a partially filled document list item
+
+def get_abstract_or_summary_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="TEXTONLY"):
+    """
+    pass in the result from a solr query and this retrieves an abstract (one way or another!)
+    
+    TODO: Should we try to get data up to the first page break as a special case?
+    
+    """
+    # make sure basic info has been retrieved
+    if documentListItem.sourceTitle is None:
+        documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+
+    try:
+        xml_abstract = result["abstract_xml"]
+    except KeyError as e:
+        xml_abstract = None
+        logger.info("No abstract for document ID: %s", documentListItem.documentID)
+
+    try:
+        xml_summary = result["summaries_xml"]
+    except KeyError as e:
+        xml_summary = None
+        logger.info("No summary for document ID: %s", documentListItem.documentID)
+
+    try:
+        xml_document = result["text_xml"]
+    except KeyError as e:
+        xml_document = None
+        logger.error("No content matched document ID for: %s", documentListItem.documentID)
+
+    abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document)
+    if abstract == "[]" or abstract is None:
+        abstract = None
+    elif ret_format == "TEXTONLY":
+        abstract = opasxmllib.xml_elem_or_str_to_text(abstract)
+    elif ret_format == "HTML":
+        abstractHTML = opasxmllib.xml_str_to_html(abstract)
+        # try to extract just the abstract.  Not sure why this used to work and now (20191111) doesn't for some articles.  Maybe sampling, or
+        #   the style sheet application changed.
+        abstract = extract_html_fragment(abstractHTML, "//div[@id='abs']")
+        if abstract == None:
+            abstract = abstractHTML
+
+    abstract = opasxmllib.add_headings_to_abstract_html(abstract=abstract, 
+                                                        source_title=documentListItem.sourceTitle,
+                                                        pub_year=documentListItem.year,
+                                                        vol=documentListItem.vol, 
+                                                        pgrg=documentListItem.pgRg, 
+                                                        citeas=documentListItem.documentRefHTML, 
+                                                        title=documentListItem.title,
+                                                        author_mast=documentListItem.authorMast,
+                                                        ret_format=ret_format)
+
+    documentListItem.abstract = abstract
+    
+    return documentListItem
+
+def get_fulltext_from_search_results(result, text_xml, page, page_offset, page_limit, documentListItem: models.DocumentListItem, format_requested="HTML"):
+
+    if documentListItem.sourceTitle is None:
+        documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+
+    documentListItem.docPagingInfo = {}    
+    documentListItem.docPagingInfo["page"] = page
+    documentListItem.docPagingInfo["page_limit"] = page_limit
+    documentListItem.docPagingInfo["page_offset"] = page_offset
+
+    fullText = result.get("text_xml", None)
+    text_xml = force_string_return_from_various_return_types(text_xml)
+    if text_xml is None:  # no highlights, so get it from the main area
+        try:
+            text_xml = fullText
+        except:
+            text_xml = None
+
+    elif len(fullText) > len(text_xml):
+        logger.warning("Warning: text with highlighting is smaller than full-text area.  Returning without hit highlighting.")
+        text_xml = fullText
+        
+    if text_xml is not None:
+        reduce = False
+        # see if an excerpt was requested.
+        if page is not None and page <= int(documentListItem.pgEnd) and page >= int(documentListItem.pgStart):
+            # use page to grab the starting page
+            # we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
+            offset = page - int(documentListItem.pgStart)
+            reduce = True
+        # Only use supplied offset if page parameter is out of range, or not supplied
+        if reduce == False and page_offset is not None: 
+            offset = page_offset
+            reduce = True
+
+        #if page_limit is not None:
+            #limit = page_limit
+            
+        if reduce == True or page_limit is not None:
+            # extract the requested pages
+            try:
+                text_xml = opasxmllib.xml_get_pages(text_xml, offset, page_limit, inside="body", env="body")
+                text_xml = text_xml[0]
+            except Exception as e:
+                logging.error(f"Page extraction from document failed. Error: {e}")
+                                    
+    if format_requested == "HTML":
+        # Convert to HTML
+        heading = opasxmllib.get_running_head(source_title=documentListItem.sourceTitle,
+                                              pub_year=documentListItem.year,
+                                              vol=documentListItem.vol,
+                                              issue=documentListItem.issue,
+                                              pgrg=documentListItem.pgRg,
+                                              ret_format="HTML")
+        text_xml = opasxmllib.xml_str_to_html(text_xml, xslt_file=opasConfig.XSLT_XMLTOHTML)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+        text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
+    elif format_requested == "TEXTONLY":
+        # strip tags
+        text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
+    elif format_requested == "XML":
+        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+
+    documentListItem.document = text_xml
+    return documentListItem
+    
 
 #-----------------------------------------------------------------------------
 def documents_get_document(document_id,
-                           solr_query_params=None,
+                           solr_query_spec=None,
                            ret_format="XML",
                            authenticated=True,
                            file_classification=None, 
@@ -1552,11 +1678,11 @@ def documents_get_document(document_id,
         logger.warning("Bad argument {document_id} to documents_get_document(Error:{e})")
         return ret_val
     else:
-        if solr_query_params is not None:
+        if solr_query_spec is not None:
+            solr_query_params = solr_query_spec.solrQuery
             # repeat the query that the user had done when retrieving the document
             query = f"art_id:{document_id} && {solr_query_params.searchQ}"
             filterQ = solr_query_params.filterQ
-            solrMax = solr_query_params.defType
             solrParams = solr_query_params.dict() 
         else:
             query = f"art_id:{document_id}"
@@ -1567,11 +1693,11 @@ def documents_get_document(document_id,
         document_list, ret_status = search_text(query, 
                                                 filter_query = filterQ,
                                                 full_text_requested=True,
+                                                abstract_requested=True, 
                                                 format_requested = ret_format,
                                                 authenticated=authenticated,
                                                 file_classification=file_classification, 
                                                 query_debug = False,
-                                                def_type = solrMax,
                                                 limit=1, # document call returns only one document.  limit and offset used for something else
                                                 #offset=offset
                                                 page_offset=page_offset, #  e.g., start with the 5th page
@@ -1583,10 +1709,11 @@ def documents_get_document(document_id,
             #sometimes the query is still sent back, even though the document was an independent selection.  So treat it as a simple doc fetch
             
             query = "art_id:{}".format(document_id)
-            #summaryFields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstracts_xml, summaries_xml, text_xml"
+            #summaryFields = "art_id, art_vol, art_year, art_citeas_xml, art_pgrg, art_title, art_author_id, abstract_xml, summaries_xml, text_xml"
            
             document_list, ret_status = search_text(query,
                                                     full_text_requested=True,
+                                                    abstract_requested=True, 
                                                     format_requested = ret_format,
                                                     authenticated=authenticated,
                                                     query_debug = False,
@@ -1634,7 +1761,6 @@ def documents_get_document(document_id,
 
 #-----------------------------------------------------------------------------
 def documents_get_glossary_entry(term_id,
-                                 solrQueryParams=None,
                                  retFormat="XML",
                                  authenticated=True,
                                  limit=opasConfig.DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS, offset=0):
@@ -1879,10 +2005,10 @@ def search_analysis(query_list,
                     #more_like_these = False,
                     #query_analysis = False,
                     def_type = None,
-                    # summaryFields="art_id, art_pepsourcecode, art_vol, art_year, art_iss, 
+                    # summaryFields="art_id, art_sourcecode, art_vol, art_year, art_iss, 
                         # art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
                     summary_fields="art_id",                    
-                    # highlightFields='art_title_xml, abstracts_xml, summaries_xml, art_authors_xml, text_xml', 
+                    # highlightFields='art_title_xml, abstract_xml, summaries_xml, art_authors_xml, text_xml', 
                     full_text_requested=False, 
                     user_logged_in=False,
                     limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS
@@ -1922,9 +2048,13 @@ def search_analysis(query_list,
             return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
             
         if "!parent" in query_item:
-            child_query = re.match("(\{.*\} art_level\:[1-9] AND parent_tag:(?P<parent>[^ ]+) AND para:)(?P<term>.*)", query_item)
-            term = f"{child_query.group('term')} ( in paras in {child_query.group('parent')})"
+            child_query = re.match("(\{.*\} art_level\:[1-9] AND parent_tag:(?P<parent>.*?) AND para:)(?P<term>.*)", query_item)
+            if child_query is not None:
+                term = f"{child_query.group('term')} ( in paras in {schemaMap.solr2user(child_query.group('parent'))})"
+            else:
+                continue # next term
         else:
+            term = query_item
             if ":" in query_item:
                 term_field, term_value = query_item.split(":")
                 term_value = opasQueryHelper.strip_outer_matching_chars(term_value, ")")
@@ -2092,18 +2222,49 @@ def search_text(query,
                query_debug = False,
                more_like_these = False,
                full_text_requested = False,
+               abstract_requested = False, 
                file_classification=None, 
                format_requested = "HTML",
                def_type = None,
                # bring text_xml back in summary fields in case it's missing in highlights! I documented a case where this happens!
-               summary_fields="*", 
-               #summary_fields = "art_id, art_pepsourcecode, art_vol, art_year,\
-                                 #art_iss, art_iss_title, art_pepsourcetitleabbr, \
-                                 #art_newsecnm, art_pgrg, abstracts_xml, art_title, \
-                                 #art_author_id, art_citeas_xml, text_xml, \
-                                 #art_cited_5, art_cited_10, art_cited_20, art_cited_all", 
+               summary_fields="art_id, \
+                               art_title, \
+                               art_title_xml, \
+                               art_subtitle_xml, \
+                               art_author_id, \
+                               art_authors, \
+                               art_citeas_xml, \
+                               art_sourcecode, \
+                               art_sourcetitleabbr, \
+                               art_sourcetitlefull, \
+                               abstract_xml, \
+                               summaries_xml, \
+                               text_xml, \
+                               art_level, \
+                               parent_tag, \
+                               para, \
+                               art_vol, \
+                               art_vol_title, \
+                               art_year, \
+                               art_iss, \
+                               art_iss_title, \
+                               art_newsecnm, \
+                               art_pgrg, \
+                               art_doi, \
+                               art_origrx, \
+                               art_qual, \
+                               art_kwds, \
+                               art_type, \
+                               art_cited_all, \
+                               art_cited_5, \
+                               art_cited_10, \
+                               art_cited_20, \
+                               file_classification, \
+                               file_last_modified, \
+                               timestamp, \
+                               score",
                highlight_fields = 'text_xml', 
-               sort_by="score desc",
+               sort="score desc",
                authenticated = None, 
                extra_context_len = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                maxKWICReturns = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
@@ -2204,7 +2365,7 @@ def search_text(query,
                                   mlt_minwl = mlt_minwl,
                                   rows = limit,
                                   start = offset,
-                                  sort=sort_by,
+                                  sort=sort,
                                   hl_simple_pre = opasConfig.HITMARKERSTART,
                                   hl_simple_post = opasConfig.HITMARKEREND)
     except solr.SolrException as e:
@@ -2219,7 +2380,7 @@ def search_text(query,
                               #  httpcode: 400
                               #  reason: 'Bad Request'
                               #  body: b'<?xml version="1.0" encoding="UTF-8"?>\n<response>\n\n<lst name="responseHeader">\n  <int name="status">400</int>\n  <int name="QTime">0</int>\n  <lst name="params">\n    
-                              #          <str name="hl">true</str>\n    <str name="fl">art_id, art_pepsourcecode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, abstracts_xml, art_title, art_author_id, 
+                              #          <str name="hl">true</str>\n    <str name="fl">art_id, art_sourcecode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, abstract_xml, art_title, art_author_id, 
                               #          art_citeas_xml, text_xml,score</str>\n    <str name="hl.fragsize">200</str>\n    <str name="hl.usePhraseHighlighter">true</str>\n    <str name="start">0</str>\n    <str name="fq">*:* 
                               #          </str>\n    <str name="mlt.minwl">None</str>\n    <str name="sort">rank asc</str>\n    <str name="rows">15</str>\n    <str name="hl.multiterm">true</str>\n    <str name="mlt.count">2</str>\n
                               #          <str name="version">2.2</str>\n    <str name="hl.simple.pre">%##</str>\n    <str name="hl.snippets">5</str>\n    <str name="q">*:* &amp;&amp; text:depression &amp;&amp; text:"passive withdrawal" </str>\n
@@ -2238,7 +2399,7 @@ def search_text(query,
         if ret_status[0] == 200: 
             documentItemList = []
             rowCount = 0
-            rowOffset = 0
+            # rowOffset = 0
             if full_text_requested:
                 # if we're not authenticated, then turn off the full-text request and behave as if we didn't try
                 if not authenticated and full_text_requested and file_classification != opasConfig.DOCUMENT_ACCESS_FREE:
@@ -2249,23 +2410,10 @@ def search_text(query,
             for result in results.results:
                 # reset anchor counts for full-text markup re.sub
                 count_anchors = 0
-                authorIDs = result.get("art_author_id", None)
-                if authorIDs is None:
-                    authorMast = None
-                else:
-                    authorMast = opasgenlib.deriveAuthorMast(authorIDs)
-        
-                pgRg = result.get("art_pgrg", None)
-                if pgRg is not None:
-                    pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
-                else:
-                    pgStart = None
-                    pgEnd = None
-                    
-                documentID = result.get("art_id", None)
-                art_year = result.get("art_year", None)
-                art_vol = result.get("art_vol", None)
-                art_issue = result.get("art_iss", None)
+                # authorIDs = result.get("art_authors", None)
+                documentListItem = models.DocumentListItem()
+                documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+                documentID = documentListItem.documentID
                 try:
                     text_xml = results.highlighting[documentID].get("text_xml", None)
                 except:
@@ -2276,7 +2424,11 @@ def search_text(query,
                         text_xml = results.highlighting[documentID].get("para", None)
                     except:
                         text_xml = None
-                    
+                
+                # do this before we potentially clear text_xml if no full text requested below
+                if abstract_requested or full_text_requested:
+                    documentListItem = get_abstract_or_summary_from_search_result(result, documentListItem, "HTML")
+                
                 # no kwic list when full-text is requested.
                 if text_xml is not None and not full_text_requested:
                     #kwicList = getKwicList(textXml, extraContextLen=extraContextLen)  # returning context matches as a list, making it easier for clients to work with
@@ -2291,65 +2443,19 @@ def search_text(query,
                         kwic_list.append(match)
                         
                     kwic = " . . . ".join(kwic_list)  # how its done at GVPi, for compatibility (as used by PEPEasy)
+                    # we don't need fulltext
                     text_xml = None
                     #print ("Document Length: {}; Matches to show: {}".format(len(textXml), len(kwicList)))
-                else: # either fulltext requested, or no document
+                else: # either fulltext requested, or no document, we don't need kwic
                     kwic_list = []
                     kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
                 
-                if full_text_requested:
-                    fullText = result.get("text_xml", None)
-                    text_xml = force_string_return_from_various_return_types(text_xml)
-                    if text_xml is None:  # no highlights, so get it from the main area
-                        try:
-                            text_xml = fullText
-                        except:
-                            text_xml = None
-     
-                    elif len(fullText) > len(text_xml):
-                        logger.warning("Warning: text with highlighting is smaller than full-text area.  Returning without hit highlighting.")
-                        text_xml = fullText
-                        
-                    if text_xml is not None:
-                        reduce = False
-                        # see if an excerpt was requested.
-                        if page is not None and page <= int(pgEnd) and page >= int(pgStart):
-                            # use page to grab the starting page
-                            # we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
-                            offset = page - int(pgStart)
-                            reduce = True
-                        # Only use supplied offset if page parameter is out of range, or not supplied
-                        if reduce == False and page_offset is not None: 
-                            offset = page_offset
-                            reduce = True
+                documentListItem.kwic = kwic
+                documentListItem.kwicList = kwic_list
 
-                        if page_limit is not None:
-                            limit = page_limit
-                            
-                        if reduce == True or page_limit is not None:
-                            # extract the requested pages
-                            try:
-                                text_xml = opasxmllib.xml_get_pages(text_xml, page_offset, page_limit, inside="body", env="body")
-                                text_xml = text_xml[0]
-                            except Exception as e:
-                                logging.error(f"Page extraction from document failed. Error: {e}")
-                                                    
-                    if format_requested == "HTML":
-                        # Convert to HTML
-                        source_title = result.get("art_pepsourcetitleabbr", "")
-                        heading = opasxmllib.get_running_head(source_title=source_title, pub_year=art_year, vol=art_vol, issue=art_issue, pgrg=pgRg, ret_format="HTML")
-                        text_xml = opasxmllib.xml_str_to_html(text_xml, xslt_file=opasConfig.XSLT_XMLTOHTML)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
-                        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-                        text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
-                    elif format_requested == "TEXTONLY":
-                        # strip tags
-                        text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
-                    elif format_requested == "XML":
-                        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                if full_text_requested:
+                    documentListItem = get_fulltext_from_search_results(result, text_xml, page, page_offset, page_limit, documentListItem) 
         
-                citeAs = result.get("art_citeas_xml", None)
-                citeAs = force_string_return_from_various_return_types(citeAs)
-                
                 if more_like_these:
                     similarDocs = results.moreLikeThis[documentID]
                     similarMaxScore = results.moreLikeThis[documentID].maxScore
@@ -2358,14 +2464,7 @@ def search_text(query,
                     similarDocs = None
                     similarMaxScore = None
                     similarNumFound = None
-                
-                abstract = force_string_return_from_various_return_types(result.get("abstracts_xml", None)) # these were highlight versions, not needed
-                if format_requested == "HTML":
-                    # Convert to HTML
-                    abstract = opasxmllib.xml_str_to_html(abstract, xslt_file=opasConfig.XSLT_XMLTOHTML)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
-                elif format_requested == "TEXTONLY":
-                    # strip tags
-                    abstract = opasxmllib.xml_elem_or_str_to_text(abstract, default_return=abstract)
+
                 
                 stat = None
                 count_all = result.get("art_cited_all", None)
@@ -2376,12 +2475,7 @@ def search_text(query,
                     stat["art_cited_20"] = result.get("art_cited_20", None)
                     stat["art_cited_all"] = count_all
                 
-                child = None
-                child_parent_tag = result.get("parent_tag", None)
-                if child_parent_tag is not None:
-                    child = {}
-                    child["para"] = result.get("para", None)
-                    child["parent_tag"] = child_parent_tag
+                documentListItem.stat = stat
 
                 similarityMatch = None
                 if similarDocs is not None:
@@ -2389,49 +2483,34 @@ def search_text(query,
                     similarityMatch["similarDocs"] = similarDocs
                     similarityMatch["similarMaxScore"] = similarMaxScore
                     similarityMatch["similarNumFound"] = similarNumFound
-                    
-                try:
-                    item = models.DocumentListItem(documentID = documentID,
-                                                   documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
-                                                   documentRefHTML = citeAs,
-                                                   PEPCode = result.get("art_pepsourcecode", None), 
-                                                   year = result.get("art_year", None),
-                                                   vol = result.get("art_vol", None),
-                                                   issue = result.get("art_iss", None), 
-                                                   pgRg = pgRg,
-                                                   pgStart = pgStart,
-                                                   pgEnd = pgEnd,
-                                                   authorMast = authorMast,
-                                                   kwic = kwic,
-                                                   kwicList = kwic_list,
-                                                   title = result.get("art_title", None),
-                                                   abstract = abstract, 
-                                                   document = text_xml,
-                                                   #parent_tag =result.get("parent_tag", None),
-                                                   para=result.get("para", None),
-                                                   sourceTitle = result.get("art_pepsourcetitlefull", None), 
-                                                   art_origrx = result.get("art_origrx", None),
-                                                   art_doi=result.get("art_doi", None),
-                                                   #count1 = result.get("art_cited_5", None), 
-                                                   #count2= result.get("art_cited_10", None), 
-                                                   #count3 = result.get("art_cited_20", None), 
-                                                   #countAll = result.get("art_cited_all", None),
-                                                   stat = stat, 
-                                                   updated=result.get("file_last_modified", None),
-                                                   similarityMatch = similarityMatch,
-                                                   #similarMaxScore = similarMaxScore,
-                                                   #similarNumFound = similarNumFound, 
-                                                   rank = rowCount + 1,
-                                                   score = result.get("score", None), 
-                                            )
-                except ValidationError as e:
-                    logger.error(e.json())  
+
+                documentListItem.similarityMatch = similarityMatch
+                documentListItem.docLevel = result.get("art_level", None)
+                parent_tag = result.get("parent_tag", None)
+                if parent_tag is not None:
+                    documentListItem.docChild = {}
+                    documentListItem.docChild["parent_tag"] = parent_tag
+                    documentListItem.docChild["para"] = result.get("para", None)
                 else:
-                    rowCount += 1
-                    # logger.info("{}:{}".format(rowCount, citeAs.decode("utf8")))
-                    documentItemList.append(item)
-                    if rowCount > limit:
-                        break
+                    documentListItem.docChild = None
+
+                sortby = re.search("(?P<field>[a-z_]+)[ ]*?", sort)
+                if sortby is not None:
+                    sort_field = sortby.group("field")
+                
+                documentListItem.score = result.get("score", None)
+                if sort_field == "art_cited_all":
+                    documentListItem.rank = result.get("art_cited_all", None) 
+                elif sort_field == "score":
+                    documentListItem.rank = result.get("score", None) 
+                else:
+                    documentListItem.rank = rowCount + 1
+
+                rowCount += 1
+                # add it to the set!
+                documentItemList.append(documentListItem)
+                if rowCount > limit:
+                    break
         
         # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
         #  was a full-text request with a page offset and limit

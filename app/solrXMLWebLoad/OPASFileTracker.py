@@ -350,12 +350,14 @@ class FileTracker (object):
         """
         """
         retVal = False
+        fileInDBDate = format(filesDBRecord.fileModDate, '.2f')
+        currentFileDate = format(currentFileInfo.fileModDate, '.2f') 
         filesDBRecord = self.getFileDatabaseRecord(currentFileInfo.filePath)
         if filesDBRecord is None:
             retVal = True  # file not in database.
-        elif format(filesDBRecord.fileModDate, '.2f') != format(currentFileInfo.fileModDate, '.2f'):
+        elif str(fileInDBDate) != str(currentFileDate):
             #print filesDBRecord.fileModDate, currentFileInfo.fileModDate
-            print(("File is modified: %s.  %s != %s" % (currentFileInfo.filePath, int(filesDBRecord.fileModDate), int(currentFileInfo.fileModDate))))
+            print(("File is modified: %s.  %s != %s" % (currentFileInfo.filePath, str(currentFileDate), str(fileInDBDate))))
             retVal = True
         else: #File not modified
             retVal = False

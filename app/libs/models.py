@@ -30,44 +30,15 @@ from modelsOpasCentralPydantic import User
 # Detail level schema structures
 #
 #-------------------------------------------------------
-OpasDB = TypeVar('OpasDB')
-   
-   
-class SearchFormFields(BaseModel): # not used
-    quickSearch: str = Schema(None, title="")
-    solrQ: str = Schema(None, title="")
-    disMax: str = Schema(None, title="")
-    edisMax: str = Schema(None, title="")
-    partialDocumentID: str = Schema(None, title="")
-    compoundQuery: bool = Schema(None, title="")
-    wordsOrPhrases: str = Schema(None, title="")
-    sourceWords: str = Schema(None, title="")
-    sourceCodes: str = Schema(None, title="")
-    sourceSet: str = Schema(None, title="")
-    author: str = Schema(None, title="")
-    title: str = Schema(None, title="")
-    year: str = Schema(None, title="")
-    startYear: str = Schema(None, title="")
-    endYear: str = Schema(None, title="")
-    citedTimes: int = Schema(None, title="")
-    citedPeriod: int = Schema(None, title="")
-    viewedTimes: int = Schema(None, title="")
-    viewedPeriod: int = Schema(None, title="")
-    articles: str = Schema(None, title="")
-    paragraphs: str = Schema(None, title="")
-    references: str = Schema(None, title="")
-    referenceAuthors: str = Schema(None, title="")
-    poems: str = Schema(None, title="")
-    quotes: str = Schema(None, title="")
-    dialogs: str = Schema(None, title="")
-    quotes: str = Schema(None, title="")
-    
+OpasDB = TypeVar('OpasDB')   
+  
 #-------------------------------------------------------
 # Enums
 #-------------------------------------------------------
 class ListTypeEnum(Enum):
     volumelist = "volumelist"
     documentList = "documentlist"
+    advancedSearchList = "advancedsearchlist"
     authorPubList = "authorpublist"
     authorIndex = "authorindex"
     imageURLList = "imageurllist"
@@ -110,7 +81,7 @@ class ErrorReturn(BaseModel):
     error_description: str = Schema(None, title="Error description")
 
 #-------------------------------------------------------
-# Key data status return structure, part of most models
+# Status return structure, standard part of most models
 #-------------------------------------------------------
 class ResponseInfo(BaseModel):
     count: int = Schema(0, title="The number of returned items in the accompanying ResponseSet list.")
@@ -130,6 +101,20 @@ class ResponseInfo(BaseModel):
 
 #-------------------------------------------------------
 # Data Return classes
+#-------------------------------------------------------
+class AlertListItem(BaseModel):
+    alertName: str
+    alertSubscribeStatus: bool
+    alertSubscribeDate: str
+    action: str = Schema(None, title="")
+
+class AlertListStruct(BaseModel):
+    responseInfo: ResponseInfo 
+    responseSet: List[AlertListItem] = []
+
+class AlertList(BaseModel):
+    alertList: AlertListStruct
+
 #-------------------------------------------------------
 class authorInfo(BaseModel):
     first: str = Schema(None, title="First name")
@@ -174,64 +159,52 @@ class AuthorIndex(BaseModel):
     authorIndex: AuthorIndexStruct
     
 #-------------------------------------------------------
-class AlertListItem(BaseModel):
-    alertName: str
-    alertSubscribeStatus: bool
-    alertSubscribeDate: str
-    action: str = Schema(None, title="")
-
-class AlertListStruct(BaseModel):
-    responseInfo: ResponseInfo 
-    responseSet: List[AlertListItem] = []
-
-class AlertList(BaseModel):
-    alertList: AlertListStruct
-
-#-------------------------------------------------------
-
 class DocumentListItem(BaseModel):
-    PEPCode: str = Schema(None, title="The code assigned to a source, e.g., CPS, IJP, ANIJP-EL, ZBK.  (The first part of the document ID.)")
-    sourceTitle: str = Schema(None, title="The full name of the source(title) (abbr)")
-    documentID: str = Schema(None, title="The multiple-section document ID, e.g., CPS.007B.0021A.B0012 in a biblio, or CPS.007B.0021A as a document ID.")
-    authorMast: str = Schema(None, title="The author names as displayed below the title in an article.")
-    documentRef: str = Schema(None, title="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
+    documentID: str = Schema(None, title="Document ID/Locator", description="The multiple-section document ID, e.g., CPS.007B.0021A.B0012 in a biblio, or CPS.007B.0021A as a document ID.")
+    documentRef: str = Schema(None, title="Document Ref (bibliographic)", description="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
     documentRefHTML: str = Schema(None, title="Same as documentRef but in HTML.")
-    kwicList: list = Schema(None, title="The matched terms in the matched document context, set by server config DEFAULT_KWIC_CONTENT_LENGTH ") # a real list, seems better long term
-    kwic: str = Schema(None, title="") # text, concatenated, not a list -- the way GVPi did it
-    issue: str = Schema(None, title="The source issue")
-    issueTitle: str = Schema(None, title="Issues sometimes have titles")
-    newSectionName: str = Schema(None, title="The name of the section, appear for the first article of a section")
-    pgRg: str = Schema(None, title="The start and end pages of a document, separated by a dash")
-    pgStart: str = Schema(None, title="The start page of a document")
-    pgEnd: str = Schema(None, title="The end page of a document")
-    title: str = Schema(None, title="The document title")
-    vol: str = Schema(None, title="The volume number of the source, can be alphanumeric")
-    year: str = Schema(None, title="The four digit year of publication")
-    term: str = Schema(None, title="For search analysis, the clause or term being reported")
-    termCount: int = Schema(None, title="For search analysis, the count of occurences of the clause or term being reported")
-    abstract: str = Schema(None, title="The document abstract, with markup")
-    document: str = Schema(None, title="The full-text document, with markup")
-    #parent_tag: str = Schema(None, title="The parent of the nested/sub field para, when searching children directly")
-    para: str = Schema(None, title="The nested/sub field para, when searching children directly")
-    updated: datetime = None
-    accessLimited: bool = False
-    accessLimitedReason: str = Schema(None, title="")
+    title: str = Schema(None, title="Document Title")
+    authorMast: str = Schema(None, title="Author Names", description="The author names as displayed below the title in an article.")
+    origrx: str = Schema(None, title="Original Document (documentID)", description="Document idref (documentID) linking this to an original document, e.g, this is a translation of...")
+    relatedrx: str = Schema(None, title="Closely Related Documents (documentID)", description="Document idref (documentID) associating all closely related documents to this one, e.g., this is a commentary on...")
+    PEPCode: str = Schema(None, title="Source Acronym", description="Acronym-type code assigned to the document source e.g., CPS, IJP, ANIJP-EL, ZBK. (The first part of the document ID.)")
+    sourceTitle: str = Schema(None, title="Source Title", description="The name of the document's source (title) in abbreviated, bibliographic format")
+    kwicList: list = Schema(None, title="Key Words in Context", description="The matched terms in the matched document context, set by server config DEFAULT_KWIC_CONTENT_LENGTH ") # a real list, seems better long term
+    kwic: str = Schema(None, title="Key Words in Context", description="KWIC as text, concatenated, not a list -- the way in v1 (May be deprecated later") # 
+    vol: str = Schema(None, title="Serial Publication Volume", description="The volume number of the source, can be alphanumeric")
+    year: str = Schema(None, title="Serial Publication Year", description="The four digit year of publication")
+    doi: str = Schema(None, title="Document object identifier", description="Document object identifier, a standard id system admin by the International DOI Foundation (IDF)")
+    issue: str = Schema(None, title="Serial Issue Number")
+    issueTitle: str = Schema(None, title="Serial Issue Title", description="Issues may have titles, e.g., special topic")
+    newSectionName: str = Schema(None, title="Name of Serial Section Starting", description="The name of the section of the issue, appears for the first article of a section")
+    pgRg: str = Schema(None, title="Page Range as Published", description="The published start and end pages of the document, separated by a dash")
+    pgStart: str = Schema(None, title="Starting Page Number as Published", description="The published start page number of the document")
+    pgEnd: str = Schema(None, title="Ending Page Number as Published", description="The published end page number of the document")
+    term: str = Schema(None, title="Search Analysis Term", description="For search analysis, the clause or term being reported")
+    termCount: int = Schema(None, title="Search Analysis Term Count", description="For search analysis, the count of occurences of the clause or term being reported")
+    abstract: str = Schema(None, title="Abstract", description="The document abstract, with markup")
+    document: str = Schema(None, title="Document", description="The full-text document, with markup")
+    docPagingInfo: dict = Schema(None, title="Requested document page, limit, and offset", description="The document is limited per the call: shows requested page, limit, and offset in a dict")
+    # |= the dict (for now, may be better to change to model) allows flexibility in fields, but contains the below for PEP
+    #    --document_page: str
+    #    --document_page_limit: int
+    #    --document_page_offset: int
+    docLevel: int = Schema(None, title="Document level", description="Top level document=1, subdocument=2")
+    docChild: dict = Schema(None, title="Child document fields", description="Fields specific to child documents (parent_tag, para)") 
+    #--parent_tag: str = Schema(None, title="The parent of the nested/sub field para, when searching children directly")
+    #--para: str = Schema(None, title="The nested/sub field para, when searching children directly")
+    updated: datetime = Schema(None, title="Source file update date and time", description="The date and time the source file was updated last")
+    score: float = Schema(None, title="The match score", description="Solr's score for the match in the search")
+    rank: float = Schema(None, title="Document's Search Rank")
+    #instanceCount: int = Schema(None, title="Counts", description="Reusable field to return counts requested")
+    # |- new v2 field, but removed during cleanup, better ata is in stat.
+    stat: dict = Schema(None, title="Statistics", description="Reusable field to return counts requested")
+    # these are not all currently used
+    accessLimited: bool = Schema(False, title="Access is limited, preventing full-text return")
+    accessLimitedReason: str = Schema(None, title="Explanation of limited access status")
     accessLimitedDescription: str = Schema(None, title="")
-    accessLimitedCurrentContent: bool = Schema(None, title="")
-    score: float = None
-    rank: int = Schema(None, title="")
-    instanceCount: int = Schema(None, title="Reusable field to return counts requested")
-    stat: dict = Schema(None, title="Reusable field to return counts requested")
-    #count1: int = Schema(None, title="Number of times cited in the past 5 yrs or downloaded in the last week (depending on endpoint)")
-    #count2: int = Schema(None, title="Number of times cited in the past 10 yrs or downloaded in the last month (depending on endpoint)")
-    #count3: int = Schema(None, title="Number of times cited in the past 20 yrs or downloaded in the last 6 months (depending on endpoint)")
-    #count4: int = Schema(None, title="Number of times cited in the past (reserved) yrs or downloaded in the last 12 months (depending on endpoint)")
-    #count5: int = Schema(None, title="Number of times cited in the past (reserved) yrs or downloaded in the last calendar year (depending on endpoint)")
-    #countAll: int = Schema(None, title="Number of times cited in the past or downloaded (depending on endpoint) in all years")
+    accessLimitedCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
     similarityMatch: dict = Schema(None, title="Information about similarity matches")
-    #similarDocs: list = None
-    #similarMaxScore: float = None
-    #similarNumFound: int = Schema(None, title="")
         
 class DocumentListStruct(BaseModel):
     responseInfo: ResponseInfo
@@ -241,7 +214,6 @@ class DocumentList(BaseModel):
     documentList: DocumentListStruct
 
 #-------------------------------------------------------
-
 class DocumentStruct(BaseModel):
     responseInfo: ResponseInfo
     responseSet: DocumentListItem
@@ -251,7 +223,6 @@ class Documents(BaseModel):        # For the GVPi server, it returns a single ob
     documents: DocumentListStruct
 
 #-------------------------------------------------------
-
 class ImageURLListItem(BaseModel):    
     PEPCode: str
     imageURL: str
@@ -284,6 +255,7 @@ class LoginReturnItem(BaseModel):
     error_message: str = Schema(None, title="Error description if login failed")
     scope: str = Schema(None, title="")
 
+#-------------------------------------------------------
 class LicenseInfoStruct(BaseModel):
     responseInfo: ResponseInfoLoginStatus
     responseSet: LoginReturnItem = None
@@ -292,10 +264,6 @@ class LicenseStatusInfo(BaseModel):
     licenseInfo: LicenseInfoStruct 
 
 #-------------------------------------------------------
-    
-
-#-------------------------------------------------------
-
 class SessionInfo(BaseModel):    
     #ocd: Optional[OpasDB]
     session_id: str = Schema(None, title="A generated session Identifier number the client passes in the header to identify the session")
@@ -353,7 +321,102 @@ class JournalInfoList(BaseModel):
     sourceInfo: JournalInfoStruct
 
 #-------------------------------------------------------
+   
+class ReportRow(BaseModel):
+    row: List = []
 
+class ReportListItem(BaseModel):
+    title: str = Schema(None, title="The report title")
+    filterDescription: str = Schema(None, title="Textuall description of filter applied")
+    startDate: datetime =  Schema(None, title="Report data from this start date")
+    endDate: datetime =  Schema(None, title="Report data to this end date")
+    rowCount: int = Schema(None, title="Reusable field to return counts requested")
+    row: List[ReportRow] = []
+    
+class ReportStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: ReportListItem
+
+class Report(BaseModel):
+    report: ReportStruct
+    
+    #responseInfo: ResponseInfo
+    #responseSet: List[VolumeListItem] = []   
+    #reportTitle: str = Schema(None, title="")
+    #reportData: List[ReportRow] = [] # ReportListStruct
+
+#-------------------------------------------------------
+# This is the model (SolrQuerySpec) 
+# populated by parse_search_query_parameters from api parameter or body field requests
+class SolrQuery(BaseModel):
+    # Solr Query Parameters as generated by opasQueryHelper.parse_search_query_parameters
+    searchQ: str = Schema(None, title="Query in Solr syntax", description="Advanced Query in Solr Q syntax (see schema names)")
+    filterQ: str = Schema(None, title="Filter query in Solr syntax", description="Filter Query in Solr syntax (see schema names)")
+    sort: str=Schema(None, title="Fields and direction by which to sort", description="arranges search results in either ascending (asc) or descending (desc) order. The parameter can be used with either numerical or alphabetical content. The directions can be entered in either all lowercase or all uppercase letters (i.e., both asc or ASC).")
+    # extra fields
+    analyzeThis: str = ""
+    searchAnalysisTermList: List[str] = []
+    urlRequest: str = ""
+
+class SolrQueryOpts(BaseModel):
+    # these all have proper defaults so technically, it can go into queries as is.
+    qOper: str = Schema("AND", title="Implied Boolean connector", description="Implied Boolean connector between words in query")
+    defType: QueryParserTypeEnum = Schema("lucene", title="Query parser to use, e.g., 'edismax'.  Default is 'standard' (lucene)")
+    hlFields: str = Schema(None, title="highlight fields (KWIC)", description="Turns on highlighting if specified.")
+    hlMethod: str = Schema("unified", title="Highlighter method", description="Use either unified (fastest) or original.")
+    hlFragsize: str = Schema(None, title="highlight fragment size", description="KWIC segment lengths")
+    hlMaxAnalyzedChars: int = Schema(0, title="The character limit to look for highlights, after which no highlighting will be done. This is mostly only a performance concern")
+    hlMultiterm: str = Schema('true', title="If set to true, Solr will highlight wildcard queries (and other MultiTermQuery subclasses). If false, they won’t be highlighted at all.")
+    hlTagPost: str = Schema('@@@@#', title="Markup (tag) after hit term")
+    hlTagPre: str = Schema('#@@@@', title="Markup (tag) before hit term")
+    hlSnippets: str = Schema(None, title="Max KWIC Returns", description="Max number of highlights permitted per field")
+    hlUsePhraseHighlighter: str = Schema('true', title="Solr will highlight phrase queries (and other advanced position-sensitive queries) accurately – as phrases. If false, the parts of the phrase will be highlighted everywhere instead of only when it forms the given phrase.")
+    # hlQ: str = Schema(None, title="Query to use for highlighting", description="allows you to highlight different terms than those being used to retrieve documents.")
+    # maybe move these to a third part of SolrQuerySpec
+    moreLikeThis: str = Schema("false", title="", description="If set to true, activates the MoreLikeThis component and enables Solr to return MoreLikeThis results.")
+    moreLikeThisCount: str = Schema(None, title="MoreLikeThis count", description="Specifies the number of similar documents to be returned for each result. The default value is 5.")
+    moreLikeThisFields: str = Schema(None, title="MoreLikeThis fields", description="Specifies the fields to use for similarity. If possible, these should have stored termVectors.")
+
+class SolrQuerySpec(BaseModel):
+    label: str = Schema("default", title="User defined Label to save query spec")
+    urlRequest: str = Schema(None, title="URL Request Made")
+    # for PEP Opas, this is almost always pepwebdocs
+    core: str = Schema("pepwebdocs", title="Selected core", description="Selected Solr core")
+    # TODO: this may be a good place to set the more standard return field default, even if only for the standard (usual) core, pepwebdocs
+    returnFields: str = Schema(None, title="List of return fields", description="Comma separated list of return fields.  Default=All fields.")
+    fullReturn: bool = Schema(None, title="Request full length text return", description="Request full length text (XML) return (otherwise, return field length is capped)")
+    limit: int = Schema(15, title="Record Limit for Solr returns")
+    offset: int = Schema(0, title="Record Offset in return set")
+    solrQuery: SolrQuery = None
+    solrQueryOpts: SolrQueryOpts = None
+
+#-------------------------------------------------------
+#  used to send individual components of the query, with individual options, to Opas (through API Body) 
+#    which then processes it into a SolrQuery and sends to Solr.
+class SolrQueryTerm(BaseModel):
+    words: str = Schema(None, title="words, phrase with or without proximity qualifier, boolean connectors")
+    parent: str = Schema(None, title="default parent to query or None")
+    field: str = Schema("para", title="Field to query")
+    synonyms: bool = Schema(False, title="Request thesaurus expansion") # to turn on thesaurus match (appends syn) Default = False
+    synonyms_suffix: str = Schema("_syn", title="suffix for field to use thesaurus")
+    
+class SolrQueryTermList(BaseModel):
+    query: List[SolrQueryTerm] = []
+    solrQueryOpts: SolrQueryOpts = None
+
+#-------------------------------------------------------
+# advanced Solr Raw return
+class SolrReturnItem(BaseModel):
+    solrRet: dict
+        
+class SolrReturnStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[SolrReturnItem] = []
+
+class SolrReturnList(BaseModel):
+    solrRetList: SolrReturnStruct
+
+#-------------------------------------------------------
 class SourceInfoListItem(BaseModel):    
     sourceType: str = Schema(None, title="")
     PEPCode: str = Schema(None, title="")
@@ -421,41 +484,6 @@ class VolumeListItem(BaseModel):
     vol: str = Schema(None, title="")
     year: str = Schema(None, title="")
     
-#-------------------------------------------------------
-class QueryParameters(BaseModel):
-    analyzeThis: str = ""
-    searchQ: str = ""
-    filterQ: str = ""
-    searchAnalysisTermList: List[str] = []
-    defType: QueryParserTypeEnum = Schema(None, title="Query parser to use, e.g., 'edismax'.  Default is 'standard' (lucene)")
-    solrSortBy: str = None
-    urlRequest: str = ""
-
-#-------------------------------------------------------
-   
-class ReportRow(BaseModel):
-    row: List = []
-
-class ReportListItem(BaseModel):
-    title: str = Schema(None, title="The report title")
-    filterDescription: str = Schema(None, title="Textuall description of filter applied")
-    startDate: datetime =  Schema(None, title="Report data from this start date")
-    endDate: datetime =  Schema(None, title="Report data to this end date")
-    rowCount: int = Schema(None, title="Reusable field to return counts requested")
-    row: List[ReportRow] = []
-    
-class ReportStruct(BaseModel):
-    responseInfo: ResponseInfo
-    responseSet: ReportListItem
-
-class Report(BaseModel):
-    report: ReportStruct
-    
-    #responseInfo: ResponseInfo
-    #responseSet: List[VolumeListItem] = []   
-    #reportTitle: str = Schema(None, title="")
-    #reportData: List[ReportRow] = [] # ReportListStruct
-
 #-------------------------------------------------------
 
 class VolumeListStruct(BaseModel):
