@@ -2,7 +2,7 @@
 <!-- ============================================================= -->
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
 <!--     BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML   -->
-<!--  DATE:      August 6, 2019                                    -->
+<!--  DATE:      Jan 9, 2020                                       -->
 <!--  Revisions:                                                   
         2019-11-25: fix lang attribute insertion  
         2019-12-09: add xml to html video callout conversion  
@@ -10,6 +10,8 @@
                     allows seek by captions!
                     added link to banner icon to search volume
                       (required an additon to PEPEasy to support it.
+        2020-01-09  Added conditionals to footer detection to mark first
+                     paragraph correctly.  
 -->
 <!-- ============================================================= -->
 <!--
@@ -561,7 +563,7 @@
 
   <xsl:template match="ftr">
     <xsl:text>&#13;</xsl:text>
-    <div class="footer">
+    <div class="footer above-border">
       <xsl:apply-templates/>
     </div>
   </xsl:template>  
@@ -892,7 +894,7 @@
   
   <xsl:template match="n">
     <xsl:apply-templates select="@content-type"/>
-    <span class="n pagenumber">
+    <p class="n pagenumber">
       <xsl:if test="@nextpgnum">
         <xsl:attribute name="data-nextpgnum">
           <xsl:value-of select="@nextpgnum"/>
@@ -904,7 +906,7 @@
           </xsl:attribute>
       </xsl:if>
       <xsl:apply-templates/>
-    </span>  
+    </p>  
   </xsl:template>
   
   
@@ -977,9 +979,17 @@
   <xsl:template match="p | p2">
     <p class="para">
       <xsl:call-template name="assign-lang"/>
-      <xsl:if test="not(preceding-sibling::*)">
-        <xsl:attribute name="class">first</xsl:attribute>
-      </xsl:if>
+      <xsl:choose>
+        <xsl:when test="ancestor::ftr and not(preceding-sibling::*)">
+          <xsl:attribute name="class">ftr first</xsl:attribute>
+        </xsl:when>
+        <xsl:when test="ancestor::ftr">
+          <xsl:attribute name="class">ftr</xsl:attribute>
+        </xsl:when>
+        <xsl:when test="not(preceding-sibling::*)">
+          <xsl:attribute name="class">first</xsl:attribute>
+        </xsl:when>
+      </xsl:choose>
       <xsl:if test="name() = 'p2'">
         <!--        if you want to concatenate to the attribute class-->
         <!--          <xsl:value-of select="concat('continued',  ' ', @class)"/>-->

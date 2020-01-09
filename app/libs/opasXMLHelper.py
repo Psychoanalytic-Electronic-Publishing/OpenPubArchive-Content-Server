@@ -702,6 +702,7 @@ def xml_str_to_html(xml_text, xslt_file=opasConfig.XSLT_XMLTOHTML):
                     # return this error, so it will be displayed (for now) instead of the document
                     ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
                     logger.error(ret_val)
+                    ret_val = xml_text
                 else:
                     ret_val = str(transformed_data)
     return ret_val
