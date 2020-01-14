@@ -43,7 +43,7 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v2/Database/MostDownloaded/')
+        response = client.get(base_api + '/v2/Database/MostViewed/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -60,13 +60,45 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v2/Database/MostDownloaded/?pubperiod=10&author=tuck%2A&viewperiod=4&limit=5')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&author=tuck%2A&viewperiod=4&limit=5')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['count']}")
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
         assert(r['documentList']['responseSet'][0]['stat']['downloads_last12months'] > 0)
+        #assert(r["text_server_ok"] == True)
+        #assert(r["db_server_ok"] == True)
+        print (r)
+
+    def test_0_most_cited(self):
+        """
+        """
+        # request login to the API server
+        response = client.get(base_api + '/v2/Database/MostCited/?limit=5')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['count']}")
+        print (f"Limit: {r['documentList']['responseInfo']['limit']}")
+        print (f"Limit: {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")
+        assert(r['documentList']['responseSet'][0]['stat']['art_cited_5'] > 15)
+        #assert(r["text_server_ok"] == True)
+        #assert(r["db_server_ok"] == True)
+        print (r)
+
+    def test_1_most_cited_pubperiod_author_viewperiod(self):
+        """
+        """
+        # request login to the API server
+        response = client.get(base_api + '/v2/Database/MostCited/?pubperiod=20&author=Benjamin&limit=5')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['count']}")
+        print (f"Limit: {r['documentList']['responseInfo']['limit']}")
+        print (f"Limit: {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")
+        assert(r['documentList']['responseSet'][0]['stat']['art_cited_5'] > 15)
         #assert(r["text_server_ok"] == True)
         #assert(r["db_server_ok"] == True)
         print (r)

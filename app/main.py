@@ -171,7 +171,8 @@ Endpoint and model documentation automatically available when server is running 
                #that set is returned when just full_text_requested is set in the call to search_text.
             #Added parameters to most downloaded to meet PEP-Web like functionality for filtering.  Note that you can't do most downloaded with Solr data, only
             #  with the mySQL recording of downloads.
-            
+#2020.0114.1 Fixed problem with Documents/Documents on a secondary request, added check there with embargo and authentication info.
+
             
              
 #Alpha 2     Released as Alpha2
@@ -181,7 +182,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0113.1.Alpha2"
+__version__     = "2020.0114.1.Alpha2"
 __status__      = "Development"
 
 import sys
@@ -796,7 +797,7 @@ def read_current_user(response: Response,
     return login_return_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Token/", response_model_exclude_unset=True, tags=["v1.0", "Deprecated", "PEPEasy1"], description="Used by PEP-Easy to login; will be deprecated in V2")  
+@app.get("/v1/Token/", response_model_exclude_unset=True, tags=["Deprecated", "PEPEasy1"], description="Used by PEP-Easy to login; will be deprecated in V2")  
 def get_token(response: Response, 
               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
               grant_type=None, 
@@ -837,7 +838,7 @@ def get_token(response: Response,
         #err_return = models.ErrorReturn(error = ERR_CREDENTIALS, error_message = ERR_MSG_INSUFFICIENT_INFO)
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/License/Status/Login/", response_model_exclude_unset=True, tags=["PEPEasy1", "v1.0"])
+@app.get("/v1/License/Status/Login/", response_model_exclude_unset=True, tags=["PEPEasy1", "Deprecated"])
 def get_license_status(response: Response, 
                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST)):
     """
@@ -888,7 +889,7 @@ def get_license_status(response: Response,
     return license_info
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Login/", response_model_exclude_unset=True, tags=["v1.0"])
+@app.get("/v1/Login/", response_model_exclude_unset=True, tags=["Deprecated"])
 @app.get("/v2/Session/Login/", response_model_exclude_unset=True, tags=["Session", "v2.0"]) # I like it under Users so I did them both.
 def login_user(response: Response, 
                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -1030,7 +1031,7 @@ def login_user(response: Response,
         return login_return_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Logout/", response_model_exclude_unset=True, tags=["PEPEasy1", "v1.0"])  # The original GVPi URL
+@app.get("/v1/Logout/", response_model_exclude_unset=True, tags=["PEPEasy1", "Deprecated"])  # The original GVPi URL
 @app.get("/v2/Session/Logout/", response_model_exclude_unset=True, tags=["Session", "v2.0"]) # I like it under Users so I did them both.
 def logout_user(response: Response, 
                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST)):  
@@ -1107,7 +1108,7 @@ def logout_user(response: Response,
         return license_info
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Database/TermCounts/", response_model_exclude_unset=True, response_model_skip_defaults=True, tags=["PEPEasy1", "v1.0"])  #  removed for now: response_model=models.DocumentList, 
+@app.get("/v2/Database/TermCounts/", response_model_exclude_unset=True, response_model_skip_defaults=True, tags=["PEPEasy1", "Deprecated"])  #  removed for now: response_model=models.DocumentList, 
 async def get_term_counts(response: Response, 
                           request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                           termfield: str=Query("text", title=opasConfig.TITLE_TERMFIELD, description=opasConfig.DESCRIPTION_TERMFIELD),
@@ -1398,7 +1399,7 @@ async def search_advanced(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v1/Database/Search/", response_model_exclude_unset=True, response_model_skip_defaults=True, summary="Search at the paragraph level by document zone (API v1 backwards compatible)", tags=["PEPEasy1", "v1.0"]) #  removed pydantic validation for now: response_model=models.DocumentList, 
+@app.get("/v1/Database/Search/", response_model_exclude_unset=True, response_model_skip_defaults=True, summary="Search at the paragraph level by document zone (API v1 backwards compatible)", tags=["PEPEasy1", "Deprecated"]) #  removed pydantic validation for now: response_model=models.DocumentList, 
 async def search_documents_v1(response: Response, 
                               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                               fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1_V1, description=opasConfig.DESCRIPTION_FULLTEXT1_V1),
@@ -1734,7 +1735,7 @@ async def search_documents_v2( response: Response,
 
     return ret_val
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v1/Database/SearchAnalysis/", response_model_skip_defaults=True, tags=["v1.0"])  #  remove validation response_model=models.DocumentList, 
+@app.get("/v1/Database/SearchAnalysis/", response_model_skip_defaults=True, tags=["Deprecated"])  #  remove validation response_model=models.DocumentList, 
 async def search_analysis_v1(response: Response, 
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                              fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1_V1, description=opasConfig.DESCRIPTION_FULLTEXT1_V1),
@@ -1899,6 +1900,8 @@ async def search_extended_solr_style(response: Response,
     The API user must be logged in to a valid account currently to use this for full-text return (return size is limited).
     
     #TODO: Later change to using an authorized API Token for this endpoint.
+    
+    #TODO: Meanwhile, at least without the token, the endpoint is configured not to allow the return of PEP text_xml
        
     The documentation on how to use the advanced query is intimately tied to the schemas (data structure based on the PEP DTDs).
     But it's not possible to provide query examples and sample data returns without tying them to a schema.
@@ -1939,27 +1942,27 @@ async def search_extended_solr_style(response: Response,
         solrQuery = solrQuerySpec.solrQuery
         if solrQuery is not None:
             solrQueryOpts = solrQuerySpec.solrQueryOpts
-            if solrQuerySpec.returnFields is None:
-                solrQuerySpec.returnFields = "id"
+            if solrQuery.returnFields is None:
+                solrQuery.returnFields = "id, file_classification" #  need to always return id
             else:
-                solrQuerySpec.returnFields += ", id"
-                
+                solrQuery.returnFields += ", id, file_classification"
+
+            # don't let them bring back full-text content in at least PEP schema fields in docs or glossary
+            solrQuery.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solrQuery.returnFields)
+            # limited return, no full-text, EVER (because it could be used to bypass the embargo.)
+            fragSize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH 
+
             #TODO allow core parameter here 
             solr_docs = solr.SolrConnection(localsecrets.SOLRURL + solrQuerySpec.core, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
             # see if highlight fields are selected
             hl = solrQueryOpts.hlFields is not None
-            if opasAPISupportLib.is_session_authenticated(request, response):
-                # ok to bring back as much as caller wants
-                fragSize = solrQueryOpts.hlFragsize
-            else:
-                # limited return
-                fragSize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH 
+                
             try:
                 if hl:
                     results = solr_docs.query(q = solrQuery.searchQ,  
                                               fq = solrQuery.filterQ,
                                               q_op = solrQueryOpts.qOper.upper(), 
-                                              fields = solrQuerySpec.returnFields + ", id", #  need to always return id
+                                              fields = solrQuery.returnFields, 
                                               # highlighting parameters
                                               hl = "true",
                                               hl_method = solrQueryOpts.hlMethod.lower(),
@@ -2049,11 +2052,13 @@ async def search_extended_solr_style(response: Response,
     return solr_ret_list
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/MostDownloaded/", response_model=models.DocumentList, response_model_exclude_unset=True, summary=opasConfig.ENDPOINT_SUMMARY_MOST_VIEWED, response_model_skip_defaults=True, tags=["Database", "v2.0"])
+@app.get("/v1/Database/MostDownloaded/", response_model=models.DocumentList, response_model_exclude_unset=True, summary=opasConfig.ENDPOINT_SUMMARY_MOST_VIEWED, response_model_skip_defaults=True, tags=["Deprecated"])
+@app.get("/v1/Database/MostDownloaded/", response_model=models.DocumentList, response_model_exclude_unset=True, summary=opasConfig.ENDPOINT_SUMMARY_MOST_VIEWED, response_model_skip_defaults=True, tags=["Deprecated"])
+@app.get("/v2/Database/MostViewed/", response_model=models.DocumentList, response_model_exclude_unset=True, summary=opasConfig.ENDPOINT_SUMMARY_MOST_VIEWED, response_model_skip_defaults=True, tags=["Database", "v2.0"])
 async def get_the_most_viewed_articles(response: Response,
                                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                        # period is str because it can be "all"
-                                       pubperiod: str=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
+                                       pubperiod: int=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
                                        # viewperiod=4 Prior cal year, per PEP-Web design
                                        author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                                        title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
@@ -2129,13 +2134,13 @@ async def get_the_most_viewed_articles(response: Response,
     return ret_val  # document_list
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v1/Database/MostCited/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["v1.0"])
+@app.get("/v1/Database/MostCited/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Deprecated"])
 @app.get("/v2/Database/MostCited/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Database", "v2.0"])
 def get_the_most_cited_articles(response: Response,
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                                morethan: int=Query(15, title=opasConfig.TITLE_CITED_MORETHAN, description=opasConfig.DESCRIPTION_CITED_MORETHAN),
                                 period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
-                                pubperiod: str=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
-                                # viewperiod=4 Prior cal year, per PEP-Web design
+                                pubperiod: int=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
                                 author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                                 title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
                                 sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
@@ -2174,7 +2179,7 @@ def get_the_most_cited_articles(response: Response,
     try:
         # return documentList
         ret_val = opasAPISupportLib.database_get_most_cited( period=period,
-                                                             more_than=30,
+                                                             more_than=morethan,
                                                              publication_period=pubperiod,
                                                              author=author,
                                                              title=title,
@@ -2210,7 +2215,7 @@ def get_the_most_cited_articles(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_skip_defaults=True, tags=["PEPEasy1", "v1.0"])
+@app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_skip_defaults=True, tags=["PEPEasy1", "Deprecated"])
 @app.get("/v2/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_skip_defaults=True, tags=["Database", "v2.0"])
 def get_the_newest_uploaded_issues(response: Response,
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -2259,7 +2264,7 @@ def get_the_newest_uploaded_issues(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Contents/{SourceCode}/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["v1.0"])
+@app.get("/v1/Metadata/Contents/{SourceCode}/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Deprecated"])
 @app.get("/v2/Metadata/Contents/{SourceCode}/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Metadata", "v2.0"])
 def get_journal_content_lists(response: Response,
                               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -2316,7 +2321,7 @@ def get_journal_content_lists(response: Response,
     return ret_val # document_list
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Contents/{SourceCode}/{SourceVolume}/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["v1.0"])
+@app.get("/v1/Metadata/Contents/{SourceCode}/{SourceVolume}/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Deprecated"])
 @app.get("/v2/Metadata/Contents/{SourceCode}/{SourceVolume}/", response_model=models.DocumentList, response_model_skip_defaults=True, tags=["Metadata", "v2.0"])
 def get_journal_content_lists_for_volume(SourceCode: str, 
                                          SourceVolume: str, 
@@ -2375,7 +2380,7 @@ def get_journal_content_lists_for_volume(SourceCode: str,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Videos/", response_model=models.VideoInfoList, response_model_skip_defaults=True, tags=["PEPEasy1", "v1.0"])
+@app.get("/v1/Metadata/Videos/", response_model=models.VideoInfoList, response_model_skip_defaults=True, tags=["PEPEasy1", "Deprecated"])
 @app.get("/v2/Metadata/Videos/", response_model=models.VideoInfoList, response_model_skip_defaults=True, tags=["Metadata", "v2.0"])
 def get_a_list_of_video_names(response: Response,
                               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
@@ -2408,7 +2413,7 @@ def get_a_list_of_video_names(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Journals/", response_model=models.JournalInfoList, response_model_skip_defaults=True, tags=["PEPEasy1", "v1.0"])
+@app.get("/v1/Metadata/Journals/", response_model=models.JournalInfoList, response_model_skip_defaults=True, tags=["PEPEasy1", "Deprecated"])
 def get_a_list_of_journal_names(response: Response,
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 journal: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
@@ -2467,7 +2472,7 @@ def get_a_list_of_journal_names(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Volumes/{SourceCode}/", response_model=models.VolumeList, response_model_skip_defaults=True, tags=["v1.0"])
+@app.get("/v1/Metadata/Volumes/{SourceCode}/", response_model=models.VolumeList, response_model_skip_defaults=True, tags=["Deprecated"])
 @app.get("/v2/Metadata/Volumes/{SourceCode}/", response_model=models.VolumeList, response_model_skip_defaults=True, tags=["Metadata", "v2.0"])
 def get_a_list_of_volumes_for_a_journal(response: Response,
                                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -2544,7 +2549,7 @@ def get_a_list_of_volumes_for_a_journal(response: Response,
     return ret_val # returns volumeList
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, response_model_skip_defaults=True, tags=["PEPEasy1", "v1.0"])
+@app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, response_model_skip_defaults=True, tags=["PEPEasy1", "Deprecated"])
 @app.get("/v2/Metadata/Books/", response_model=models.SourceInfoList, response_model_skip_defaults=True, tags=["Metadata", "v2.0"])
 def get_a_list_of_book_names(response: Response,
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -2579,7 +2584,7 @@ def get_a_list_of_book_names(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, response_model_skip_defaults=True, tags=["v1.0"])
+@app.get("/v1/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, response_model_skip_defaults=True, tags=["Deprecated"])
 @app.get("/v2/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, response_model_skip_defaults=True, tags=["Metadata", "v2.0"])
 def get_a_list_of_source_names(response: Response,
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -2647,7 +2652,7 @@ def get_a_list_of_source_names(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_skip_defaults=True, tags=["PEPEasy1", "v1.0"])
+@app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_skip_defaults=True, tags=["PEPEasy1", "Deprecated"])
 @app.get("/v2/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_skip_defaults=True, tags=["Authors", "v2.0"])
 def get_author_index_for_matching_author_names(response: Response,
                                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -2711,7 +2716,7 @@ def get_author_index_for_matching_author_names(response: Response,
     return ret_val  # Return author information or error
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, response_model_skip_defaults=True, tags=["v1.0"])
+@app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, response_model_skip_defaults=True, tags=["Deprecated"])
 @app.get("/v2/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, response_model_skip_defaults=True, tags=["Authors", "v2.0"])
 def get_author_pubs_for_matching_author_names(response: Response,
                                               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -2766,7 +2771,7 @@ def get_author_pubs_for_matching_author_names(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Documents/Abstracts/{documentID}/", response_model=models.Documents, response_model_skip_defaults=True, tags=["v1.0"])
+@app.get("/v1/Documents/Abstracts/{documentID}/", response_model=models.Documents, response_model_skip_defaults=True, tags=["Deprecated"])
 @app.get("/v2/Documents/Abstracts/{documentID}/", response_model=models.Documents, response_model_skip_defaults=True, tags=["Documents", "v2.0"])
 def view_an_abstract(response: Response,
                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -3037,7 +3042,7 @@ def view_a_glossary_entry(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["v1.0", "PEPEasy1"], response_model_skip_defaults=True)  # the current PEP API
+@app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["Deprecated", "PEPEasy1"], response_model_skip_defaults=True)  # the current PEP API
 @app.get("/v2/Documents/Document/{documentID}/", response_model=models.Documents, tags=["Documents", "v2.0"], response_model_skip_defaults=True) # more consistent with the model grouping
 def view_a_document(response: Response,
                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -3185,7 +3190,7 @@ def view_a_document(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Documents/Downloads/Images/{imageID}/", response_model_skip_defaults=True, tags=["PEPEasy1", "v1.0"])
+@app.get("/v1/Documents/Downloads/Images/{imageID}/", response_model_skip_defaults=True, tags=["PEPEasy1", "Deprecated"])
 @app.get("/v2/Documents/Image/{imageID}/", response_model_skip_defaults=True, tags=["Documents", "v2.0"])
 async def download_an_image(response: Response,
                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -3322,7 +3327,7 @@ async def download_an_image(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_skip_defaults=True, tags=["PEPEasy1", "v1.0"])
+@app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_skip_defaults=True, tags=["PEPEasy1", "Deprecated"])
 @app.get("/v2/Documents/Downloads/{retFormat}/{documentID}/", response_model_skip_defaults=True, tags=["Documents", "v2.0"])
 def download_a_document(response: Response,
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  

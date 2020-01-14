@@ -473,7 +473,7 @@
   
 
   <xsl:template match="addr" mode="metadata">
-    <div class="addr">
+    <div class="addr autaffaddr">
       <xsl:apply-templates mode="metadata" select="ln"/>
     </div>
   </xsl:template>

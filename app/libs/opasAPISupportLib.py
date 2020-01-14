@@ -46,8 +46,10 @@ from starlette.status import HTTP_200_OK, \
                              HTTP_500_INTERNAL_SERVER_ERROR, \
                              HTTP_503_SERVICE_UNAVAILABLE
 import time
-import datetime as dtime
-import datetime
+# used this name because later we needed to refer to the module, and datetime is also the name
+#  of the import from datetime.
+import datetime as dtime 
+# import datetime
 from datetime import datetime
 from typing import Union, Optional, Tuple, List
 from enum import Enum
@@ -595,6 +597,7 @@ def database_get_most_cited( publication_period: int=0,
         start_year = None
     else:
         start_year -= publication_period
+        start_year = f">{start_year}"
 
     solr_query_spec = \
         opasQueryHelper.parse_search_query_parameters(
@@ -1446,8 +1449,10 @@ abstract_xml, summaries_xml, text_xml, file_last_modified"
     return ret_val
 
 def get_access_limitations(result, documentListItem: models.DocumentListItem, authenticated):
-
-    classification = result.get("file_classification", None)
+    # if we get here from a art_level:2 only advanced query, there's no file classification.
+    # for now, we'll consider it part of the archive.  That would also handle an entry with the
+    # classiification data empty.
+    classification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_ARCHIVE)
     documentListItem.accessLimitedDescription = f"""This is a summary excerpt from the full text of the journal article.  The full text of the document is available to journal subscribers on the publisher's website """
     doi = result.get("art_doi", None)
     if doi is not None:
@@ -2343,7 +2348,7 @@ def search_text(query,
     else:
         query_debug = "off"
         
-    if full_text_requested:
+    if full_text_requested and authenticated:
         fragSize = opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE 
     else:
         fragSize = extra_context_len
@@ -2433,6 +2438,8 @@ def search_text(query,
                 # authorIDs = result.get("art_authors", None)
                 documentListItem = models.DocumentListItem()
                 documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+                documentListItem = get_access_limitations(result, documentListItem, authenticated)
+                documentListItem.score = result.get("score", None)               
                 documentID = documentListItem.documentID
                 try:
                     text_xml = results.highlighting[documentID].get("text_xml", None)
@@ -2478,7 +2485,8 @@ def search_text(query,
                 documentListItem.kwic = kwic
                 documentListItem.kwicList = kwic_list
 
-                if full_text_requested:
+                # no full-text if accessLimited!
+                if full_text_requested and not documentListItem.accessLimited:
                     documentListItem = get_fulltext_from_search_results(result, text_xml, page, page_offset, page_limit, documentListItem) 
         
                 if more_like_these:
