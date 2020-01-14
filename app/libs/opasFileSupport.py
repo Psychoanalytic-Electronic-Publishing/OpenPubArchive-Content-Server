@@ -246,10 +246,10 @@ if __name__ == "__main__":
     print (40*"*", "opasFileSupport Tests", 40*"*")
     print ("Running in Python %s" % sys.version_info[0])
 
-    #import doctest
-    #doctest.testmod()    
-    #print ("Fini")
-    #sys.exit()
+    import doctest
+    doctest.testmod()    
+    print ("Fini")
+    sys.exit()
 
     # test S3FileSystem
     remfs = s3fs.S3FileSystem(anon=False, key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)

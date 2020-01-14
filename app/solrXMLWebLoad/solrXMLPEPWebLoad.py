@@ -285,6 +285,10 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
         #referencesXml = abstractsXml = summariesXml = None
     else: # other PEP classified files, peparchive, pepcurrent, pepfree can have the full-text
         offsiteContents = ""
+
+        summariesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//summaries", default_return=None)
+        abstractsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//abs", default_return=None)
+        # multiple data fields, not needed, search children instead, which allows search by para
         #TODO: Later, it may be that we don't need Solr to store these, just index them.  If so, the schema can be changed.
         #dialogsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dialog", default_return=None)
         #dreamsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dream", default_return=None)
@@ -294,9 +298,8 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
         #quotesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//quote", default_return=None)
         #bodyXml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//body", default_return=None)  # used to search body only
         #referencesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//be", default_return=None)
-        summariesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//summaries", default_return=None)
-        abstractsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//abs", default_return=None)
-        parasxml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//p|//p2")
+        # this was all of the paras in one field, deprecated
+        #parasxml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//p|//p2")
         if abstractsXml is None:
             if summariesXml is None:
                 abstractsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//p")[0:20]
@@ -305,7 +308,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
             else:
                 abstractsXml = summariesXml
 
-    art_authors_unlisted = pepxml.xpath(r'//artinfo/artauth/aut[@listed="false"]/@authindexid') 
+    #art_authors_unlisted = pepxml.xpath(r'//artinfo/artauth/aut[@listed="false"]/@authindexid') 
     citedCounts = gCitedTable.get(artInfo.artID, modelsOpasCentralPydantic.MostCitedArticles())
     # anywhere in the doc.
     children = DocChildren() # new instance, reset child counter suffix
@@ -358,7 +361,10 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                 "art_sourcetitleabbr" : artInfo.artPepSourceTitleAbbr,
                 "art_sourcetitlefull" : artInfo.artPepSourceTitleFull,
                 "art_sourcetype" : artInfo.artPepSourceType,
+                # abstract_xml and summaries_xml should not be searched, but useful for display without extracting
                 "abstract_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//abs", default_return = None),
+                "summaries_xml" : summariesXml,
+                # very important field for displaying the whole document or extracting parts
                 "text_xml" : fileXMLContents,                                # important
                 "text_xml_offsite" : offsiteContents,
                 "author_bio_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//nbio", default_return = None),
@@ -410,7 +416,6 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                 "poems_src" : pepxml.xpath("//poem/src/node()"),
                 #"dialogs_xml" : dialogsXml,"dreams_xml" : dreamsXml,
                 #"notes_xml" : notesXml,
-                #"summaries_xml" : summariesXml,
                 #"dreams_xml" : dreamsXml,
                 #"panels_xml" : panelsXml,
                 #"poems_xml" : poemsXml,
@@ -420,7 +425,7 @@ def processArticleForDocCore(pepxml, artInfo, solrcon, fileXMLContents):
                 #"references_xml" : referencesXml,
                 "bk_pubyear" : pepxml.xpath("//bkpubyear/node()"),
                 "art_level" : 1,
-                "art_para" : parasxml, 
+                #"art_para" : parasxml, 
                 "_doc" : children.child_list
               }
 
@@ -471,41 +476,39 @@ class DocChildren(object):
                                     "para": n
                                   })
         return self.count
-    
 
-def parasxml_update(parasxml, solrcon, artInfo):
-    """
-    Load a core with each paragraph (or equivalent terminal node if that's desirable)
-      so this core can be used as a filter in queries.  Just use it as a filter
-      in the other core, e.g., from the Docs core, filtering on this core:
+#def parasxml_update(parasxml, solrcon, artInfo):
+    #"""
+    #Load a core with each paragraph (or equivalent terminal node if that's desirable)
+      #so this core can be used as a filter in queries.  Just use it as a filter
+      #in the other core, e.g., from the Docs core, filtering on this core:
       
-      {!join from=art_id to=art_id fromIndex=pepwebdocparas}paras:Kultur && paras:Persönlichkeit 
+      #{!join from=art_id to=art_id fromIndex=pepwebdocparas}paras:Kultur && paras:Persönlichkeit 
       
-    with this core loading PEPCurrent took 13.55 minutes.  Significantly slower than before.
-       And there were 348583 separate docs created in the core.
+    #with this core loading PEPCurrent took 13.55 minutes.  Significantly slower than before.
+       #And there were 348583 separate docs created in the core.
       
-    The issues so far seems to be while it works well:
-       - It's much slower of course to process each document since we have to store each paragraph/terminal
-       - If the search relies on a join to this core, the highlighting of the matches in the other core doesn't seem to work
+    #The issues so far seems to be while it works well:
+       #- It's much slower of course to process each document since we have to store each paragraph/terminal
+       #- If the search relies on a join to this core, the highlighting of the matches in the other core doesn't seem to work
        
-    """
-    global solrcore_docparas
-    count = 0
-    for n in parasxml:
-        count += 1
-        try:
-            response_update = solrcon.add(id = artInfo.artID + f".{count}",
-                                          art_id = artInfo.artID,
-                                          paras = n
-                                         )
+    #"""
+    #count = 0
+    #for n in parasxml:
+        #count += 1
+        #try:
+            #response_update = solrcon.add(id = artInfo.artID + f".{count}",
+                                          #art_id = artInfo.artID,
+                                          #paras = n
+                                         #)
 
-            if not re.search('"status">0</int>', response_update):
-                print (response_update)
-        except Exception as err:
-            #processingErrorCount += 1
-            errStr = "Solr call exception for save docparas on %s: %s" % (artInfo.artID, err)
-            print (errStr)
-            #config.logger.error(errStr)
+            #if not re.search('"status">0</int>', response_update):
+                #print (response_update)
+        #except Exception as err:
+            ##processingErrorCount += 1
+            #errStr = "Solr call exception for save docparas on %s: %s" % (artInfo.artID, err)
+            #print (errStr)
+            ##config.logger.error(errStr)
     
 #------------------------------------------------------------------------------------------------------
 def processInfoForAuthorCore(pepxml, artInfo, solrAuthor):
@@ -850,7 +853,6 @@ def main():
     
     global options  # so the information can be used in support functions
     global bibTotalReferenceCount
-    global solrcore_docparas #TODO TEMP
     programNameShort = "OPASWebLoaderPEP"  # used for log file
     # scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
     logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
@@ -899,7 +901,6 @@ def main():
     logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
 
     solrurl_docs = None
-    solrurl_docparas = None
     solrurl_refs = None
     solrurl_authors = None
     solrurl_glossary = None
@@ -907,7 +908,6 @@ def main():
     if (options.reference_core_update or options.fulltext_core_update or options.glossary_core_update) == True:
         try:
             solrurl_docs = localsecrets.SOLRURL + opasConfig.SOLR_DOCS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
-            solrurl_docparas = localsecrets.SOLRURL + opasConfig.SOLR_DOCPARAS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
             solrurl_refs = localsecrets.SOLRURL + opasConfig.SOLR_REFS  # e.g., http://localhost:8983/solr/  + pepwebrefs'
             solrurl_authors = localsecrets.SOLRURL + opasConfig.SOLR_AUTHORS
             solrurl_glossary = localsecrets.SOLRURL + opasConfig.SOLR_GLOSSARY
@@ -961,7 +961,6 @@ def main():
             # fulltext update always includes authors
             #solrcore_docs = solr.SolrConnection(solrurl_docs, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
             solrcore_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
-            solrcore_docparas = solr.SolrConnection(solrurl_docparas, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
             solrcore_authors = solr.SolrConnection(solrurl_authors, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
         if options.reference_core_update:
             # as of 2019/11/30 this core isn't actually being used in the API.  May end up dropping this.
@@ -973,7 +972,6 @@ def main():
             # fulltext update always includes authors
             #solrcore_docs = solr.SolrConnection(solrurl_docs)
             solrcore_docs2 = pysolr.Solr(solrurl_docs)
-            solrcore_docparas = solr.SolrConnection(solrurl_docparas)
             solrcore_authors = solr.SolrConnection(solrurl_authors)
         if options.reference_core_update:
             # as of 2019/11/30 this core isn't actually being used in the API.  May end up dropping this.
@@ -1161,7 +1159,6 @@ def main():
                     if preCommitFileCount > config.COMMITLIMIT:
                         preCommitFileCount = 0
                         solrcore_docs2.commit()
-                        solrcore_docparas.commit()
                         solrcore_authors.commit()
                         fileTracker.commit()
         
@@ -1191,7 +1188,6 @@ def main():
             try:
                 if options.fulltext_core_update:
                     solrcore_docs2.commit()
-                    solrcore_docparas.commit()
                     solrcore_authors.commit()
                     fileTracker.commit()
             except Exception as e:

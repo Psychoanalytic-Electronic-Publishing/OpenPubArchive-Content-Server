@@ -573,9 +573,9 @@
       <div class="ftn" id="@id" label="@label"> 
         <p class="ftn">
           <span class="ftnlabel">
-            <su>
+            <sup>
               <xsl:value-of select="@label"/>
-            </su>
+            </sup>
           </span>
           <xsl:value-of select="."/>
 <!--          <xsl:apply-templates/>-->

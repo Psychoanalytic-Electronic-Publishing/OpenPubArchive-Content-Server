@@ -106,8 +106,15 @@ class TestMetadata(unittest.TestCase):
         r = response.json()
         assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.JOURNALCOUNT)
 
+        response = client.get(base_api + '/v1/Metadata/Journals/')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.JOURNALCOUNT)
+
         # try with src code parameter
-        response = client.get(base_api + '/v1/Metadata/Journals/?SourceCode=BJP&limit=1')
+        response = client.get(base_api + '/v1/Metadata/Journals/?journal=BJP&limit=1')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return

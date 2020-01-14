@@ -30,7 +30,7 @@ from main import app
 
 client = TestClient(app)
 
-class TestAPIDatabase(unittest.TestCase):
+class TestDatabaseSearch(unittest.TestCase):
     """
     Tests
     
@@ -39,28 +39,79 @@ class TestAPIDatabase(unittest.TestCase):
     
     """   
 
-    def test_1_database_search(self):
-        """
-        Get Author Index For Matching Author Names
-        /v1/Authors/Index/{authorNamePartial}/
-        """
+    def test_v1_database_search_fulltext(self):
         response = client.get(base_api + '/v1/Database/Search/?fulltext1=phlebotomy&limit=5&sort')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
         assert(r['documentList']['responseInfo']['fullCount'] >= 2)
         assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
-       
-        response = client.get(base_api + '/v1/Authors/Index/Maslo/')
+        response = client.get(base_api + '/v1/Database/Search/?title=psychoanalysis&journal=CPS&startyear=1990&endyear=1995&fulltext1="child%20abuse"&sort=citeCount&limit=10&offset=0')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        # Expected:
-        #  {'authorIndex': {'responseInfo': {'count': 2, 'limit': 15, 'offset': 0, 'fullCountComplete': True, 'listType': 'authorindex', 'scopeQuery': 'Terms: maslo', 
-        #                                    'request': 'http://127.0.0.1:9100/v1/Authors/Index/Maslo/', 'solrParams': {'terms_fl': 'art_author_id', 'terms_prefix': 'maslo', 'terms_sort': 'index', 'terms_limit': 15, 'fl': '*,score', 'version': 2.2, 'wt': 'xml'}, 'timeStamp': '2019-10-28T15:15:03Z'}, 
-        #                   'responseSet': [{'authorID': 'maslow, a. h.', 'publicationsURL': '/v1/Authors/Publications/maslow, a. h./', 'publicationsCount': 1}, 
-        #                                   {'authorID': 'maslow, abraham h.', 'publicationsURL': '/v1/Authors/Publications/maslow, abraham h./', 'publicationsCount': 2}]}}
-        assert(r['authorIndex']['responseSet'][0]['publicationsURL'] == '/v1/Authors/Publications/maslow, a. h./')
+        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+        assert(r['documentList']['responseInfo']['fullCount'] == 3)
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
+       
+    def test_v2_database_search_fulltext(self):
+        response = client.get(base_api + '/v2/Database/Search/?title=psychoanalysis&sourcecode=CPS&startyear=1990-1993&fulltext1="child%20abuse"&sort=citeCount&limit=10&offset=0')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+        assert(r['documentList']['responseInfo']['fullCount'] == 2)
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
+        response = client.get(base_api + '/v2/Database/Search/?title=psychoanalysis&sourcecode=CPS&startyear=1990&endyear=1995&fulltext1="child%20abuse"&sort=citeCount&limit=10&offset=0')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+        assert(r['documentList']['responseInfo']['fullCount'] == 3)
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
+
+    def test_v2_database_search_author(self):
+        response = client.get(base_api + '/v2/Database/Search/?author=freud&sourcecode=IJP&startyear=1990-1993&limit=10&offset=0')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+        assert(r['documentList']['responseInfo']['fullCount'] == 1)
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
+        response = client.get(base_api + '/v2/Database/Search/?author=freud&limit=10&offset=0')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+        assert(r['documentList']['responseInfo']['count'] == 10)
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == False)
+
+    def test_v2_database_search_synonyms(self):
+        response = client.get(base_api + '/v2/Database/Search/?sourcecode=BAP&fulltext1=text:bisexuality&sort=citeCount&limit=10&offset=0')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+        assert(r['documentList']['responseInfo']['fullCount'] == 14)
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == False)
+        response = client.get(base_api + '/v2/Database/Search/?synonyms=true&sourcecode=BAP&fulltext1=text:bisexuality&sort=citeCount&limit=10&offset=0')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+        assert(r['documentList']['responseInfo']['fullCount'] == 78)
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == False)
+
+    def test_v2_database_search_citedcount(self):
+        response = client.get(base_api + '/v2/Database/Search/?citecount=6%20TO%2010&sourcecode=IJP%20OR%20APA&startyear=1990&endyear=2010&fulltext1=theoretical%20underpinnings&sort=citeCount&limit=10&offset=0')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+        assert(r['documentList']['responseInfo']['fullCount'] >= 5)
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
+       
 
     def test_2_pubs_authornames(self):
         """
@@ -71,6 +122,7 @@ class TestAPIDatabase(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
+        print (f"Count: {r['authorPubList']['responseInfo']['fullCount']} Count complete: {r['authorPubList']['responseInfo']['fullCountComplete']}")
         assert(r['authorPubList']['responseInfo']['fullCount'] == 3)
         
         # Doesn't return an error, returns 0 matches.
@@ -78,6 +130,7 @@ class TestAPIDatabase(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json() 
+        print (f"Count: {r['authorPubList']['responseInfo']['fullCount']} Count complete: {r['authorPubList']['responseInfo']['fullCountComplete']}")
         assert(r['authorPubList']['responseInfo']['fullCount'] == 0)
         
 if __name__ == '__main__':

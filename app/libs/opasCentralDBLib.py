@@ -111,6 +111,8 @@ API_DATABASE_MOSTDOWNLOADED = 44	#/Database/MostDownloaded/
 API_DATABASE_SEARCHANALYSIS = 45	#/Database/SearchAnalysis/
 API_DATABASE_ADVANCEDSEARCH = 46	
 API_DATABASE_TERMCOUNTS = 47
+API_DATABASE_GLOSSARY_SEARCH = 48	#/Database/Search/
+API_DATABASE_EXTENDEDSEARCH = 49
 
 #def verifyAccessToken(session_id, username, access_token):
     #return pwd_context.verify(session_id+username, access_token)
@@ -310,21 +312,24 @@ class opasCentralDB(object):
         self.close_connection(caller_name="get_productbase_data") # make sure connection is closed
         return ret_val
         
-    def get_most_downloaded(self,
-                            view_period=5,
-                            sort_by_period="last12months",
-                            document_type="journals",
-                            author=None,
-                            title=None,
-                            journal_name=None,
-                            limit=None,
-                            offset=0):
+    def get_most_viewed( self,
+                         publication_period=None, # default, all of time
+                         sort_by_view_period: int=0, # last calendar year
+                         document_type="journals",
+                         author=None,
+                         title=None,
+                         source_name: str=None,  
+                         source_code: str=None,
+                         source_type: str=None,
+                         limit=None,
+                         offset=0
+                       ):
         """
          Using the opascentral api_docviews table data, as dynamically statistically aggregated into
            the view vw_stat_most_viewed return the most downloaded (viewed) Documents
            
-         1) Using documents published in the last 5, 10, 20, or all years.
-            Viewperiod takes an int and covers these or any other period (now - viewPeriod years).
+         1) Using documents published in the last publication_period N years (PEP-Web offers the last 5, 10, 20, or all years).
+            publication_period takes an int and covers these or any other period (now - viewPeriod years).
          2) Filtering videos, journals, books, or all content.  Document type filters this.
             Can be: "journals", "books", "videos", or "all" (default)
          3) Optionally filter for author, title, or specific journal.
@@ -332,6 +337,14 @@ class opasCentralDB(object):
          4) show views in last 7 days, last month, last 6 months, last calendar year.
             This function returns them all.
          
+            download_periods = {
+                0: "lastcalendaryear",
+                1: "lastweek",
+                2: "lastmonth",
+                3: "last6months",
+                4: "last12months",
+            }
+            
         """
         ret_val = None
         self.open_connection(caller_name="get_most_downloaded") # make sure connection is open
@@ -339,76 +352,90 @@ class opasCentralDB(object):
             limit_clause = f"LIMIT {offset}, {limit}"
         else:
             limit_clause = ""
-            
+        
         if self.db != None:
             cursor = self.db.cursor(pymysql.cursors.DictCursor)
 
-            if document_type == "journals":
-                doc_type_clause = " AND jrnlcode NOT IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW') \
-                                    AND jrnlcode not like '%VS'"
-            elif document_type == "books":
-                doc_type_clause = " AND jrnlcode IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW')"
-            elif document_type == "videos":
-                doc_type_clause = " AND jrnlcode like '%VS'"
-            else:
-                doc_type_clause = ""  # all
+            #if document_type == "journals":
+                #doc_type_clause = " AND jrnlcode NOT IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW') \
+                                    #AND jrnlcode not like '%VS'"
+            #elif document_type == "books":
+                #doc_type_clause = " AND jrnlcode IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW')"
+            #elif document_type == "videos":
+                #doc_type_clause = " AND jrnlcode like '%VS'"
+            #else:
+            doc_type_clause = ""  # all
 
             if author is not None:
-                author_clause = f" AND hdgauthor CONTAINS {author}"
+                author_clause = f" AND hdgauthor RLIKE '{author}'"
             else:
                 author_clause = ""
                 
             if title is not None:
-                title_clause = f" AND hdgtitle CONTAINS {title}"
+                title_clause = f" AND hdgtitle RLIKE '{title}'"
             else:
                 title_clause = ""
 
-            if title is not None:
-                journal_clause = f" AND srctitleseries CONTAINS {journalName}"
+            if source_name is not None:
+                source_clause = f" AND srctitleseries RLIKE '{source_name}'"
             else:
-                journal_clause = ""
+                source_clause = ""
                 
-            if view_period is not None:
-                if view_period == 0 or str(view_period).upper() == "ALL" or str(view_period).upper()=="ALLTIME":
-                    view_period = 500 # 500 years should cover all time!
-                pub_year_clause = f" AND `pubyear` > YEAR(NOW()) - {view_period}"  # consider only the past viewPeriod years
+            if source_type is not None:
+                source_type_clause = f" AND src_type RLIKE '{source_type}'"
+            else:
+                source_type_clause = ""
+
+            if source_code is not None:
+                src_split = source_code.split(",")
+                count = 0
+                for n in src_split:
+                    if count > 0:
+                        srcs_str += f", '{n.strip()}'"
+                    else:
+                        srcs_str = f"'{n.strip()}'"
+                    count += 1
+                source_code_clause = f" AND jrnlcode IN ({srcs_str})"
+            else:
+                source_code_clause = ""
+                
+            if publication_period is not None and publication_period != 0:
+                pub_year_clause = f" AND `pubyear` > YEAR(NOW()) - {publication_period}"  # consider only the past N years
             else:
                 pub_year_clause = ""
 
-            if sort_by_period is not None:
+            if sort_by_view_period is not None:
                 # 1 through 5 reps the 5 different values
-                if sort_by_period == 1 or sort_by_period == "lastweek":
+                if sort_by_view_period == 1 or sort_by_view_period == "lastweek":
                     sort_by_col_name = "lastweek"
-                elif sort_by_period == 2 or sort_by_period == "lastmonth":
+                elif sort_by_view_period == 2 or sort_by_view_period == "lastmonth":
                     sort_by_col_name = "lastmonth"
-                elif sort_by_period == 3 or sort_by_period == "last6months":
+                elif sort_by_view_period == 3 or sort_by_view_period == "last6months":
                     sort_by_col_name = "last6months"
-                elif sort_by_period == 4 or sort_by_period == "last12months":
+                elif sort_by_view_period == 4 or sort_by_view_period == "last12months":
                     sort_by_col_name = "last12months"
-                elif sort_by_period == 5 or sort_by_period == "lastcalendaryear":
+                elif sort_by_view_period == 0 or sort_by_view_period == "lastcalendaryear":
                     sort_by_col_name = "lastcalyear"
                 else:
                     sort_by_col_name = "last12months"
             else:
-                sort_by_col_name = "last12months"
+                sort_by_col_name = "lastcalyear"
+                
+                
             
             sort_by_clause = f" ORDER BY {sort_by_col_name} DESC"
 
-            sql = f"""SELECT * 
-                      FROM vw_stat_most_viewed
-                      WHERE 1 = 1
-                      {doc_type_clause}
-                      {author_clause}
-                      {title_clause}
-                      {journal_clause}
-                      {pub_year_clause}
-                      {sort_by_clause}
-                      {limit_clause}
+            sql = f"""SELECT DISTINCTROW * FROM vw_stat_most_viewed WHERE 1 = 1 \
+                      {doc_type_clause}  {author_clause} {title_clause} {source_clause} {source_code_clause} {source_type_clause} {pub_year_clause} \
+                      {sort_by_clause} \
+                      {limit_clause} \
                     """
             row_count = cursor.execute(sql)
             if row_count:
                 ret_val = cursor.fetchall()
                 
+            print (f"SQL: {sql}")
+            
             cursor.close()
         
         self.close_connection(caller_name="get_most_downloaded") # make sure connection is closed
@@ -466,7 +493,7 @@ class opasCentralDB(object):
         self.close_connection(caller_name="update_session") # make sure connection is closed
         return ret_val
     
-    def update_session(self, session_id, userID=None, access_token=None, userIP=None, connectedVia=None, session_end=None):
+    def update_session(self, session_id, userID=None, access_token=None, userIP=None, connected_via=None, session_end=None):
         """
         Update the extra fields in the session record
         """
@@ -475,7 +502,7 @@ class opasCentralDB(object):
         setClause = "SET "
         added = 0
         if access_token != None:
-            setClause += f" access_token = '{accessToken}'"
+            setClause += f" access_token = '{access_token}'"
             added += 1
         if userID != None:
             if added > 0:
@@ -487,10 +514,10 @@ class opasCentralDB(object):
                 setClause += ", "
             setClause += f" user_ip = '{userIP}'"
             added += 1
-        if connectedVia != None:
+        if connected_via != None:
             if added > 0:
                 setClause += ", "
-            setClause += f" connected_via = '{connectedVia}'"
+            setClause += f" connected_via = '{connected_via}'"
             added += 1
         if session_end != None:
             if added > 0:
@@ -560,7 +587,7 @@ class opasCentralDB(object):
                          username="NotLoggedIn", 
                          userID=0,  # can save us a lookup ... #TODO
                          userIP=None,
-                         connectedVia=None,
+                         connected_via=None,
                          referrer=None,
                          apiClientID=0, 
                          accessToken=None,
@@ -622,7 +649,7 @@ class opasCentralDB(object):
                                               userID, 
                                               username,
                                               userIP,
-                                              connectedVia,
+                                              connected_via,
                                               referrer,
                                               session_start, 
                                               expiresTime,

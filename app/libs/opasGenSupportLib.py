@@ -37,33 +37,10 @@ __license__     = "Apache 2.0"
 __version__     = "2019.6.15"
 __status__      = "Development"
 
-
-def getFirstValueOfDictItemList(dictName, keyName):
-    """
-    Get the first value of dictName[keyname] if it's a list
-    Dictionary value fetch with error trapping. 
+def uppercase_andornot(string):
+    ret_val = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", string)])
+    return ret_val
     
-    >>> testVar = {}
-    >>> testVar["item"] = ["1", "2", "3"]
-    >>> getFirstValueOfDictItemList(testVar, "item")
-    '1'
-    >>> testVar["item"] = "1"
-    >>> getFirstValueOfDictItemList(testVar, "item")
-    '1'
-    
-    """
-    retVal = None
-    dictVal = dictName.get(keyName, None)
-    if dictVal is not None:
-        try:
-            retVal = dictVal[0]
-        except IndexError as e:
-            print (e)
-            if isinstance(dictVal, "<class 'str'>"):
-                retVal = dictVal
-            
-    return retVal
-
 def pgrg_splitter(pgRg):
     """
     Break up a stored page range into its components.
@@ -106,7 +83,7 @@ def format_http_timestamp(ts: Union[int, float, tuple, time.struct_time, datetim
         raise TypeError(f'unknown timestamp type: {repr(ts)}')
     return email.utils.formatdate(time_num, usegmt=True)
 
-def deriveAuthorMast(authorIDList):
+def derive_author_mast(authorIDList):
     """
     """
     

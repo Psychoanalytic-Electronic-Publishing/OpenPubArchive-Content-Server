@@ -190,9 +190,10 @@ class DocumentListItem(BaseModel):
     #    --document_page_limit: int
     #    --document_page_offset: int
     docLevel: int = Schema(None, title="Document level", description="Top level document=1, subdocument=2")
-    docChild: dict = Schema(None, title="Child document fields", description="Fields specific to child documents (parent_tag, para)") 
-    #--parent_tag: str = Schema(None, title="The parent of the nested/sub field para, when searching children directly")
-    #--para: str = Schema(None, title="The nested/sub field para, when searching children directly")
+    docChild: dict = Schema(None, title="Child document fields", description="Fields specific to child documents (parent_tag, para)")
+    # |= the dict
+    #    --parent_tag: str = Schema(None, title="The parent of the nested/sub field para, when searching children directly")
+    #    --para: str = Schema(None, title="The nested/sub field para, when searching children directly")
     updated: datetime = Schema(None, title="Source file update date and time", description="The date and time the source file was updated last")
     score: float = Schema(None, title="The match score", description="Solr's score for the match in the search")
     rank: float = Schema(None, title="Document's Search Rank")

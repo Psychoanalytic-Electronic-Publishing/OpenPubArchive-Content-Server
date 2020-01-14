@@ -43,24 +43,30 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v1/Database/MostDownloaded/')
+        response = client.get(base_api + '/v2/Database/MostDownloaded/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['count']}")
+        print (f"Limit: {r['documentList']['responseInfo']['limit']}")
+        print (f"Count: {r['documentList']['responseSet'][0]['stat']['downloads_last12months']}")
         assert(r['documentList']['responseInfo']['count'] == r['documentList']['responseInfo']['limit'])
+        assert(r['documentList']['responseSet'][0]['stat']['downloads_last12months'] > 0)
         #assert(r["text_server_ok"] == True)
         #assert(r["db_server_ok"] == True)
         print (r)
        
-    def test_0_most_cited(self):
+    def test_0_most_downloaded_pubperiod_author_viewperiod(self):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v1/Database/MostDownloaded/')
+        response = client.get(base_api + '/v2/Database/MostDownloaded/?pubperiod=10&author=tuck%2A&viewperiod=4&limit=5')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        assert(r['documentList']['responseInfo']['count'] == r['documentList']['responseInfo']['limit'])
+        print (f"Count: {r['documentList']['responseInfo']['count']}")
+        print (f"Limit: {r['documentList']['responseInfo']['limit']}")
+        assert(r['documentList']['responseSet'][0]['stat']['downloads_last12months'] > 0)
         #assert(r["text_server_ok"] == True)
         #assert(r["db_server_ok"] == True)
         print (r)

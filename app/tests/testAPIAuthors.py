@@ -42,7 +42,7 @@ class TestAPIAuthors(unittest.TestCase):
     
     """   
 
-    def test_1_index_authornames(self):
+    def test_index_authornamepartial(self):
         """
         Get Author Index For Matching Author Names
         /v1/Authors/Index/{authorNamePartial}/
@@ -70,7 +70,7 @@ class TestAPIAuthors(unittest.TestCase):
         #                                   {'authorID': 'maslow, abraham h.', 'publicationsURL': '/v1/Authors/Publications/maslow, abraham h./', 'publicationsCount': 2}]}}
         assert(r['authorIndex']['responseSet'][0]['publicationsURL'] == '/v1/Authors/Publications/maslow, a. h./')
 
-    def test_2_pubs_authornames(self):
+    def test_publications_authornames(self):
         """
         Get Author Pubs For Matching Author Names
         /v1​/Authors​/Publications​/{authorNamePartial}​/
@@ -87,6 +87,14 @@ class TestAPIAuthors(unittest.TestCase):
         assert(response.ok == True)
         r = response.json() 
         assert(r['authorPubList']['responseInfo']['fullCount'] == 0)
+        
+        # try a regex wildcard search (regex wildcards permitted anywhere EXCEPT the end of the name, since that's done automatically)
+        response = client.get(base_api + '/v1/Authors/Publications/tu[ckl].*tt/')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        assert(r['authorPubList']['responseInfo']['fullCount'] >= 60)
+        
         
 if __name__ == '__main__':
     unittest.main()
