@@ -164,6 +164,7 @@ Endpoint and model documentation automatically available when server is running 
             #Finished endpoint constant names
             #Changed query parameters journal to sourcecode for v2 endpoints
             #Added sourcetype to endpoints.  An easier way to specify all books, videos, or journals.  Was already in database.
+            
 #2020.0113.1 Changed timestamp to file_last_modified in get_what's new so it's not just when the file is uploaded, but rather when it's edited (processed)
                #updated endpoint documentation
 
@@ -171,9 +172,18 @@ Endpoint and model documentation automatically available when server is running 
                #that set is returned when just full_text_requested is set in the call to search_text.
             #Added parameters to most downloaded to meet PEP-Web like functionality for filtering.  Note that you can't do most downloaded with Solr data, only
             #  with the mySQL recording of downloads.
+            
 #2020.0114.1 Fixed problem with Documents/Documents on a secondary request, added check there with embargo and authentication info.
 
-            
+#2020.0215.1 Partial fix for nested pb in files, like Bion, W. R. (1962).  Those were showing complete data when an excerpt (it has no abstract) was being generated.
+             # solved by an excerpting XSLT file which gets rid of the <p>'s and all other tags other than the pb, then translates to html.
+             # But this translation needs a lot more work due to lack of formatting (and perhaps more.)
+             #TODO MORE
+#2020.0222.1 Fix for PDF downloads, document declaration was causing errors and .
+             # utf char conversions which caused errors.
+             # also added running head and copyright notice.
+             # Still needs css formatting applied and banner if
+             # we want it (path issue right now)
              
 #Alpha 2     Released as Alpha2
 
@@ -182,7 +192,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0114.1.Alpha2"
+__version__     = "2020.0215.1.Alpha2b"
 __status__      = "Development"
 
 import sys

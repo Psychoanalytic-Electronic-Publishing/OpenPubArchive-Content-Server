@@ -240,8 +240,9 @@ class opasCentralDB(object):
                 logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} tunnel {tunneling}")
                 self.connected = True
             except Exception as e:
-                print(f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})")
-                logger.error(f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})")
+                err_str = f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})"
+                print(err_str)
+                logger.error(err_str)
                 self.connected = False
                 self.db = None
 
@@ -302,13 +303,15 @@ class opasCentralDB(object):
         """
         ret_val = {}
         self.open_connection(caller_name="get_productbase_data") # make sure connection is open
-        curs = self.db.cursor(pymysql.cursors.DictCursor)
-        sql = "SELECT * from vw_api_sourceinfodb where active=1;"
-        row_count = curs.execute(sql)
-        if row_count:
-            sourceData = curs.fetchall()
-            ret_val = sourceData
-
+        if self.db is not None:
+            curs = self.db.cursor(pymysql.cursors.DictCursor)
+            sql = "SELECT * from vw_api_sourceinfodb where active=1;"
+            row_count = curs.execute(sql)
+            if row_count:
+                sourceData = curs.fetchall()
+                ret_val = sourceData
+        else:
+            logger.fatal("Connection not available to database.")
         self.close_connection(caller_name="get_productbase_data") # make sure connection is closed
         return ret_val
         
@@ -353,7 +356,7 @@ class opasCentralDB(object):
         else:
             limit_clause = ""
         
-        if self.db != None:
+        if self.db is not None:
             cursor = self.db.cursor(pymysql.cursors.DictCursor)
 
             #if document_type == "journals":
@@ -437,11 +440,12 @@ class opasCentralDB(object):
             print (f"SQL: {sql}")
             
             cursor.close()
+        else:
+            logger.fatal("Connection not available to database.")
         
         self.close_connection(caller_name="get_most_downloaded") # make sure connection is closed
         return row_count, ret_val
-        
-        
+               
     def get_session_from_db(self, session_id):
         """
         Get the session record info for session sessionID
@@ -481,14 +485,17 @@ class opasCentralDB(object):
         """
         ret_val = "Unknown"
         self.open_connection(caller_name="update_session") # make sure connection is open
-        curs = self.db.cursor()
-        sql = "SELECT VERSION();"
-        success = curs.execute(sql)
-        if success:
-            ret_val = "Vers: " + curs.fetchone()[0]
-            curs.close()
+        if self.db is not None:
+            curs = self.db.cursor()
+            sql = "SELECT VERSION();"
+            success = curs.execute(sql)
+            if success:
+                ret_val = "Vers: " + curs.fetchone()[0]
+                curs.close()
+            else:
+                ret_val = None
         else:
-            ret_val = None
+            logger.fatal("Connection not available to database.")
 
         self.close_connection(caller_name="update_session") # make sure connection is closed
         return ret_val
@@ -526,7 +533,7 @@ class opasCentralDB(object):
             added += 1
 
         if added > 0:
-            if self.db != None:
+            if self.db is not None:
                 try:
                     cursor = self.db.cursor()
                     sql = """UPDATE api_sessions
@@ -566,7 +573,7 @@ class opasCentralDB(object):
             if not self.open_connection(caller_name="delete_session"): # make sure connection opens
                 logger.error("Delete session could not open database")
             else: # its open
-                if self.db != None:  # don't need this check, but leave it.
+                if self.db is not None:  # don't need this check, but leave it.
                     cursor = self.db.cursor()
        
                     # now delete the session
@@ -579,6 +586,8 @@ class opasCentralDB(object):
                     cursor.close()
                     self.sessionInfo = None
                     self.close_connection(caller_name="delete_session") # make sure connection is closed
+                else:
+                    logger.fatal("Connection not available to database.")
 
         return ret_val # return true or false, success or failure
         
@@ -994,6 +1003,32 @@ class opasCentralDB(object):
         ## returns a list of basecodes in that product, suitable for matching against.
         #return ret_val
 
+    #def get_article_metadata(self, article_id):
+        #"""
+        #given a article_id, the article metadata from the database (not solr)
+        #- Thought this was needed but it wasn't...unused/untested.  Deprecate for now.
+        #"""
+        #ret_val = {}
+        #self.open_connection(caller_name="get_article_metadata") # make sure connection is open
+        #if self.db is not None:
+            #try:
+                #curs = self.db.cursor(pymysql.cursors.DictCursor)
+                #sqlCount = "SELECT * FROM articles WHERE articleID = %s;"
+                #result = curs.execute(sqlCount, article_id)
+                #if result:
+                    #ret_val = curs.fetchone()
+                #else:
+                    #ret_val = {}
+            
+            #except Exception as e:
+                #logger.error(f"get_article_metadata error querying articles: {e}")
+            #else:
+                #curs.close()
+            
+        #self.close_connection(caller_name="get_article_metadata") # make sure connection is closed
+        ## returns a list of basecodes in that product, suitable for matching against.
+        #return ret_val
+
     def get_sources(self, source=None, src_type=None, limit=None, offset=0):
         """
         Return a list of sources
@@ -1194,6 +1229,35 @@ class opasCentralDB(object):
         pass
     
     
+    #----------------------------------------------------------------------------------------
+    def do_action_query(self, querytxt, queryparams, contextStr=None):
+    
+        ret_val = None
+        self.open_connection(caller_name="action_query") # make sure connection is open
+        dbc = self.db.cursor(pymysql.cursors.DictCursor)
+        try:
+            ret_val = dbc.execute(querytxt, queryparams)
+        except self.db.DataError:
+            logger.error(f"Art: {contextStr}. DB Data Error ({querytxt})")
+        except self.db.OperationalError:
+            logger.error(f"Art: {contextStr}. DB Data Error ({querytxt})")
+        except self.db.IntegrityError:
+            logger.error(f"Art: {contextStr}. DB Integrity Error ({querytxt})")
+        except self.db.InternalError:
+            logger.error(f"Art: {contextStr}. DB Internal Error ({querytxt})")
+            # raise RuntimeError, gErrorLog.logSevere("Art: %s.  DB Intr. Error (%s)" % (contextStr, querytxt))
+        except self.db.ProgrammingError:
+            logger.error(f"DB Programming Error ({querytxt})")
+        except self.db.NotSupportedError:
+            logger.error(f"DB Feature Not Supported Error ({querytxt})")
+        except Exception as e:
+            logger.error(f"error: %s" % (e))
+    
+        # close cursor
+        dbc.close()
+        return ret_val
+
+    #----------------------------------------------------------------------------------------
     def create_user(self,
                     session_info,
                     username,

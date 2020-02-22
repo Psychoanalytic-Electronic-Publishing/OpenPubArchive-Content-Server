@@ -1355,25 +1355,25 @@ def get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document):
                 # we fail.  Return None
                 logger.warning("No excerpt can be found or generated.")
             else:
-                # extract the first 10 paras
+                # extract the first 10 paras [#TODO not working correctly for nested pb]
                 ret_val = force_string_return_from_various_return_types(xml_document)
                 ret_val = opasxmllib.remove_encoding_string(ret_val)
-                # deal with potentially broken XML excerpts
                 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
-                #root = etree.parse(StringIO(ret_val), parser)
-                root = etree.fromstring(ret_val, parser)
+                root = etree.parse(StringIO(ret_val), parser)
                 body = root.xpath("//*[self::h1 or self::p or self::p2 or self::pb]")
                 ret_val = ""
                 count = 0
                 for elem in body:
-                    if elem.tag == "pb" or count > 10:
+                    if elem.tag == "pb" or count >= opasConfig.MAX_PARAS_FOR_SUMMARY:
                         # we're done.
                         ret_val  += etree.tostring(elem, encoding='utf8').decode('utf8')
                         ret_val = "%s%s%s" % ("<abs><unit type='excerpt'>", ret_val, "</unit></abs>")
                         break
                     else:
+                        # count paras
+                        if elem.tag == "p" or elem.tag == "p2":
+                            count += 1
                         ret_val  += etree.tostring(elem, encoding='utf8').decode('utf8')
-
     return ret_val
     
 #-----------------------------------------------------------------------------
@@ -1545,17 +1545,23 @@ def get_abstract_or_summary_from_search_result(result, documentListItem: models.
         logger.error("No content matched document ID for: %s", documentListItem.documentID)
 
     abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document)
-    if abstract == "[]" or abstract is None:
-        abstract = None
-    elif ret_format == "TEXTONLY":
-        abstract = opasxmllib.xml_elem_or_str_to_text(abstract)
-    elif ret_format == "HTML":
-        abstractHTML = opasxmllib.xml_str_to_html(abstract)
-        # try to extract just the abstract.  Not sure why this used to work and now (20191111) doesn't for some articles.  Maybe sampling, or
-        #   the style sheet application changed.
-        abstract = extract_html_fragment(abstractHTML, "//div[@id='abs']")
-        if abstract == None:
-            abstract = abstractHTML
+    if len(abstract) > opasConfig.DEFAULT_LIMIT_FOR_EXCERPT_LENGTH:
+        abstract = opasxmllib.xml_elem_or_str_to_excerpt(abstract)
+        pb = re.match("(?P<excerpt>.*?\<p class=\"pb.*?\</p\>)", abstract, re.DOTALL)
+        if pb is not None:
+            abstract = pb.group("excerpt")
+    else:
+        if abstract == "[]" or abstract is None:
+            abstract = None
+        elif ret_format == "TEXTONLY":
+            abstract = opasxmllib.xml_elem_or_str_to_text(abstract)
+        elif ret_format == "HTML":
+            abstractHTML = opasxmllib.xml_str_to_html(abstract)
+            # try to extract just the abstract.  Not sure why this used to work and now (20191111) doesn't for some articles.  Maybe sampling, or
+            #   the style sheet application changed.
+            abstract = extract_html_fragment(abstractHTML, "//div[@id='abs']")
+            if abstract == None:
+                abstract = abstractHTML
 
     abstract = opasxmllib.add_headings_to_abstract_html( abstract=abstract, 
                                                          source_title=documentListItem.sourceTitle,
@@ -1857,10 +1863,11 @@ def prep_document_download(document_id, ret_format="HTML", authenticated=True, b
     
     if authenticated:
         results = solr_docs.query( q = "art_id:%s" % (document_id),  
-                                   fields = "art_id, art_citeas_xml, text_xml"
+                                   fields = "art_id, art_citeas_xml, text_xml, art_sourcetype, art_year, art_sourcetitleabbr, art_vol, art_iss, art_pgrg"
                                  )
         try:
-            ret_val = results.results[0]["text_xml"]
+            art_info = results.results[0]
+            ret_val = art_info["text_xml"]
         except IndexError as e:
             logger.warning("No matching document for %s.  Error: %s", document_id, e)
         except KeyError as e:
@@ -1872,7 +1879,15 @@ def prep_document_download(document_id, ret_format="HTML", authenticated=True, b
             except Exception as e:
                 logger.warning("Empty return: %s", e)
             else:
-                try:    
+                try:
+                    heading = opasxmllib.get_running_head( source_title=art_info.get("art_sourcetitleabbr", ""),
+                                                           pub_year=art_info.get("art_year", ""),
+                                                           vol=art_info.get("art_vol", ""),
+                                                           issue=art_info.get("art_iss", ""),
+                                                           pgrg=art_info.get("art_pgrg", ""),
+                                                           ret_format="HTML"
+                                                         )
+                    
                     if ret_format.upper() == "HTML":
                         ret_val = opasxmllib.remove_encoding_string(ret_val)
                         filename = convert_xml_to_html_file(ret_val, output_filename=document_id + ".html")  # returns filename
@@ -1880,14 +1895,17 @@ def prep_document_download(document_id, ret_format="HTML", authenticated=True, b
                     elif ret_format.upper() == "PDFORIG":
                         ret_val = find(document_id + ".PDF", opasConfig.PDFORIGDIR)
                     elif ret_format.upper() == "PDF":
+                        pisa.showLogging() # debug only
                         ret_val = opasxmllib.remove_encoding_string(ret_val)
                         html_string = opasxmllib.xml_str_to_html(ret_val)
+                        html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
+                        html_string = re.sub("</html>", f"{COPYRIGHT_PAGE_HTML}</html>", html_string, count=1)                        
                         # open output file for writing (truncated binary)
                         filename = document_id + ".PDF" 
                         result_file = open(filename, "w+b")
                         # convert HTML to PDF
-                        pisaStatus = pisa.CreatePDF(html_string,                # the HTML to convert
-                                                    dest=result_file)           # file handle to recieve result
+                        pisaStatus = pisa.CreatePDF(src=html_string,                # the HTML to convert
+                                                    dest=result_file)           # file handle to receive result
                         # close output file
                         result_file.close()                 # close output file
                         # return True on success and False on errors
@@ -1895,6 +1913,7 @@ def prep_document_download(document_id, ret_format="HTML", authenticated=True, b
                     elif ret_format.upper() == "EPUB":
                         ret_val = opasxmllib.remove_encoding_string(ret_val)
                         html_string = opasxmllib.xml_str_to_html(ret_val)
+                        html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                         html_string = add_epub_elements(html_string)
                         filename = opasxmllib.html_to_epub(html_string, document_id, document_id)
                         ret_val = filename
@@ -2458,7 +2477,7 @@ def search_text(query,
                     text_xml = [text_xml]
                 
                 # do this before we potentially clear text_xml if no full text requested below
-                if abstract_requested or full_text_requested:
+                if abstract_requested or documentListItem.accessLimited:
                     documentListItem = get_abstract_or_summary_from_search_result(result, documentListItem, "HTML")
                 
                 # no kwic list when full-text is requested.
@@ -2487,7 +2506,9 @@ def search_text(query,
 
                 # no full-text if accessLimited!
                 if full_text_requested and not documentListItem.accessLimited:
-                    documentListItem = get_fulltext_from_search_results(result, text_xml, page, page_offset, page_limit, documentListItem) 
+                    documentListItem = get_fulltext_from_search_results(result, text_xml, page, page_offset, page_limit, documentListItem)
+                else:
+                    documentListItem.document = documentListItem.abstract
         
                 if more_like_these:
                     similarDocs = results.moreLikeThis[documentID]

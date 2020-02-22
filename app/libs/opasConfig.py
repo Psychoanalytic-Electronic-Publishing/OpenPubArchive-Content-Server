@@ -22,6 +22,8 @@ BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make
 UPLOAD_DIR = r"z:\\back\\"
 XSLT_XMLTOHTML = r"./libs/styles/pepkbd3-html.xslt"
 XSLT_XMLTOHTML_ALT = r"../styles/pepkbd3-html.xslt"
+XSLT_XMLTO_EXCERPT = r"./libs/styles/pepkbd3-abstract-text.xslt" 
+XSLT_XMLTO_EXCERPT_ALT = r"../styles/pepkbd3-abstract-text.xslt"
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
 
 #logger = logging.getLogger(programNameShort)
@@ -61,6 +63,8 @@ DEFAULT_LIMIT_FOR_WHATS_NEW = 5
 DEFAULT_LIMIT_FOR_VOLUME_LISTS = 100
 DEFAULT_LIMIT_FOR_CONTENTS_LISTS = 100
 DEFAULT_LIMIT_FOR_METADATA_LISTS = 100
+
+DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 3000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
 
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 2520000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
 
@@ -156,4 +160,7 @@ ENDPOINT_SUMMARY_MOST_VIEWED = "Get the most viewed journal articles published i
 
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()
+
+MAX_PARAS_FOR_SUMMARY = 10
+
 
