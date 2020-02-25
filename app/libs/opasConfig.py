@@ -24,6 +24,8 @@ XSLT_XMLTOHTML = r"./libs/styles/pepkbd3-html.xslt"
 XSLT_XMLTOHTML_ALT = r"../styles/pepkbd3-html.xslt"
 XSLT_XMLTO_EXCERPT = r"./libs/styles/pepkbd3-abstract-text.xslt" 
 XSLT_XMLTO_EXCERPT_ALT = r"../styles/pepkbd3-abstract-text.xslt"
+XSLT_XMLTO_EXCERPT_ALT2 = r"../libs/styles/pepkbd3-abstract-text.xslt"
+
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
 
 #logger = logging.getLogger(programNameShort)

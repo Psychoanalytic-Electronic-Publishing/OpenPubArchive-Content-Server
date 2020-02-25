@@ -397,13 +397,15 @@ class FileTracker (object):
         """
         retVal = False
         filesDBRecord = self.getFileDatabaseRecord(currentFileInfo.filePath, serverURL = currentFileInfo.solrAPIURL)
-        dbRecordDT =  datetime.date.fromtimestamp(filesDBRecord.fileModDate)
         currFileDT =  datetime.date.fromtimestamp(currentFileInfo.fileModDate)
+        if filesDBRecord is not None:
+            dbRecordDT =  datetime.date.fromtimestamp(filesDBRecord.fileModDate)
+
         if filesDBRecord is None:
             retVal = True  # file not in database.
-        elif dbRecordDT != currFileDT:
+        elif dbRecordDT < currFileDT:
             #print filesDBRecord.fileModDate, currentFileInfo.fileModDate
-            print(("File is modified: %s.  %s != %s" % (currentFileInfo.filePath, currFileDT, dbRecordDT)))
+            print(("File is modified: %s.  %s > %s" % (currentFileInfo.filePath, currFileDT, dbRecordDT)))
             retVal = True
         else: #File not modified
             retVal = False

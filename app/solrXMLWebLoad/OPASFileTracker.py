@@ -356,7 +356,7 @@ class FileTracker (object):
         if filesDBRecord is None:
             retVal = True  # file not in database.
         elif str(fileInDBDate) != str(currentFileDate):
-            #print filesDBRecord.fileModDate, currentFileInfo.fileModDate
+            # print filesDBRecord.fileModDate, currentFileInfo.fileModDate
             print(("File is modified: %s.  %s != %s" % (currentFileInfo.filePath, str(currentFileDate), str(fileInDBDate))))
             retVal = True
         else: #File not modified

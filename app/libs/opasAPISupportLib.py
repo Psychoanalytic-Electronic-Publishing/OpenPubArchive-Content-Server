@@ -1341,7 +1341,7 @@ def authors_get_author_publications(author_partial, limit=opasConfig.DEFAULT_LIM
     return ret_val
 
 #-----------------------------------------------------------------------------
-def get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document):
+def get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document, excerpt_html=None):
    
     ret_val = None
     # see if there's an abstract
@@ -1351,29 +1351,31 @@ def get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document):
         ret_val = force_string_return_from_various_return_types(xml_summary)
         if ret_val is None:
             # get excerpt from the document
-            if xml_document is None:
-                # we fail.  Return None
-                logger.warning("No excerpt can be found or generated.")
-            else:
-                # extract the first 10 paras [#TODO not working correctly for nested pb]
-                ret_val = force_string_return_from_various_return_types(xml_document)
-                ret_val = opasxmllib.remove_encoding_string(ret_val)
-                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
-                root = etree.parse(StringIO(ret_val), parser)
-                body = root.xpath("//*[self::h1 or self::p or self::p2 or self::pb]")
-                ret_val = ""
-                count = 0
-                for elem in body:
-                    if elem.tag == "pb" or count >= opasConfig.MAX_PARAS_FOR_SUMMARY:
-                        # we're done.
-                        ret_val  += etree.tostring(elem, encoding='utf8').decode('utf8')
-                        ret_val = "%s%s%s" % ("<abs><unit type='excerpt'>", ret_val, "</unit></abs>")
-                        break
-                    else:
-                        # count paras
-                        if elem.tag == "p" or elem.tag == "p2":
-                            count += 1
-                        ret_val  += etree.tostring(elem, encoding='utf8').decode('utf8')
+            ret_val = force_string_return_from_various_return_types(excerpt_html)
+            if ret_val is None:
+                if xml_document is None: # we should not need this since excerpt should be prestored, but there still could be cases.
+                    # we fail.  Return None
+                    logger.warning("No excerpt can be found or generated.")
+                else:
+                    # extract the first 10 paras [#TODO not working correctly for nested pb]
+                    ret_val = force_string_return_from_various_return_types(xml_document)
+                    ret_val = opasxmllib.remove_encoding_string(ret_val)
+                    parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
+                    root = etree.parse(StringIO(ret_val), parser)
+                    body = root.xpath("//*[self::h1 or self::p or self::p2 or self::pb]")
+                    ret_val = ""
+                    count = 0
+                    for elem in body:
+                        if elem.tag == "pb" or count >= opasConfig.MAX_PARAS_FOR_SUMMARY:
+                            # we're done.
+                            ret_val  += etree.tostring(elem, encoding='utf8').decode('utf8')
+                            ret_val = "%s%s%s" % ("<abs><unit type='excerpt'>", ret_val, "</unit></abs>")
+                            break
+                        else:
+                            # count paras
+                            if elem.tag == "p" or elem.tag == "p2":
+                                count += 1
+                            ret_val  += etree.tostring(elem, encoding='utf8').decode('utf8')
     return ret_val
     
 #-----------------------------------------------------------------------------
@@ -1402,8 +1404,8 @@ def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=Fa
             return ret_val
 
         required_fields = "art_id, art_sourcetitlefull, art_vol, art_year, art_iss, art_doi, file_classification, art_citeas_xml, \
-art_sourcecode, art_pgrg, art_origrx, art_qual, art_sourcetitlefull, art_title_xml, art_authors, \
-abstract_xml, summaries_xml, text_xml, file_last_modified"
+art_sourcecode, art_pgrg, art_origrx, art_qual, art_sourcetitlefull, art_title_xml, art_authors, art_authors_mast \
+abstract_xml, summaries_xml, text_xml, excerpt_html, file_last_modified"
 
         results = solr_docs.query( q = "art_id:%s*" % (document_id),  
                                    fields = required_fields,
@@ -1503,7 +1505,8 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             documentListItem.pgEnd = pg_end
         author_ids = result.get("art_authors", None)
         if author_ids is None:
-            documentListItem.authorMast = None
+            # try this, instead of abberrant behavior in alpha of display None!
+            documentListItem.authorMast = result.get("art_authors_mast", "")
         else:
             documentListItem.authorMast = opasgenlib.derive_author_mast(author_ids)
         documentListItem.newSectionName=result.get("art_newsecnm", None)            
@@ -1539,29 +1542,32 @@ def get_abstract_or_summary_from_search_result(result, documentListItem: models.
         logger.info("No summary for document ID: %s", documentListItem.documentID)
 
     try:
-        xml_document = result["text_xml"]
+        excerpt_html = result["excerpt_html"]
     except KeyError as e:
-        xml_document = None
-        logger.error("No content matched document ID for: %s", documentListItem.documentID)
+        excerpt_html  = None
+        logger.info("No excerpt for document ID: %s", documentListItem.documentID)
 
-    abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document)
-    if len(abstract) > opasConfig.DEFAULT_LIMIT_FOR_EXCERPT_LENGTH:
-        abstract = opasxmllib.xml_elem_or_str_to_excerpt(abstract)
-        pb = re.match("(?P<excerpt>.*?\<p class=\"pb.*?\</p\>)", abstract, re.DOTALL)
-        if pb is not None:
-            abstract = pb.group("excerpt")
+    if xml_abstract and xml_summary and excerpt_html is None:
+        try:
+            xml_document = result["text_xml"]
+        except KeyError as e:
+            xml_document = None
+            logger.error("No content matched document ID for: %s", documentListItem.documentID)
     else:
-        if abstract == "[]" or abstract is None:
-            abstract = None
-        elif ret_format == "TEXTONLY":
-            abstract = opasxmllib.xml_elem_or_str_to_text(abstract)
-        elif ret_format == "HTML":
-            abstractHTML = opasxmllib.xml_str_to_html(abstract)
-            # try to extract just the abstract.  Not sure why this used to work and now (20191111) doesn't for some articles.  Maybe sampling, or
-            #   the style sheet application changed.
-            abstract = extract_html_fragment(abstractHTML, "//div[@id='abs']")
-            if abstract == None:
-                abstract = abstractHTML
+        xml_document = None
+
+    abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document, excerpt_html)
+    if abstract == "[]" or abstract is None:
+        abstract = None
+    elif ret_format == "TEXTONLY":
+        abstract = opasxmllib.xml_elem_or_str_to_text(abstract)
+    elif ret_format == "HTML":
+        abstractHTML = opasxmllib.xml_str_to_html(abstract)
+        # try to extract just the abstract.  Not sure why this used to work and now (20191111) doesn't for some articles.  Maybe sampling, or
+        #   the style sheet application changed.
+        abstract = extract_html_fragment(abstractHTML, "//div[@id='abs']")
+        if abstract == None:
+            abstract = abstractHTML
 
     abstract = opasxmllib.add_headings_to_abstract_html( abstract=abstract, 
                                                          source_title=documentListItem.sourceTitle,

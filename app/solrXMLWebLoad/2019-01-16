@@ -1,0 +1,21 @@
+ 
+    OPAS - Open Publications-Archive Software - Document, Authors, and References Core Loader
+    
+        Load articles into one Solr core and extract individual references from
+        the bibliography into a second Solr core.
+        
+        This data loader is specific to PEP Data and Bibliography schemas but can 
+        serve as a model or framework for other schemas
+        
+        Example Invocation:
+        
+                $ python solrXMLPEPWebLoad.py
+        
+                Use -h for help on arguments.
+                
+                (Requires Python 3.7)
+        
+    
+--------------------------------------------------------------------------------------------------
+No cores requested for update.  Use -f or -b to update the full-text and biblio cores respectively
+--------------------------------------------------------------------------------------------------
