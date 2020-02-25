@@ -13,9 +13,9 @@ Various support functions having to do with XML conversion (e.g., to HTML, ePub,
 
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0523.5"
+__version__     = "2020.0224.1"
 __status__      = "Development"
 
 import sys

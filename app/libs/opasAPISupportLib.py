@@ -21,7 +21,7 @@ Also, some of these functions are reused in different API calls.
    #2020.0224.1 - Added biblioxml 
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 __version__     = "2020.0224.1"
 __status__      = "Development"
@@ -103,6 +103,10 @@ count_anchors = 0
 import json
 
 # Setup a Solr instance. The timeout is optional.
+# #TODO
+# switched from pysolr to solrpy for authentication feature...but solrpy has a few bugs and doesn't
+# seem to be updated anymore.  And pysolr is, and works, per usage in solrXMLWebLoad.py.  So perhaps
+# this should be switched back.
 # solr = pysolr.Solr('http://localhost:8983/solr/pepwebproto', timeout=10)
 # This is the old way -- should switch to class Solr per https://pythonhosted.org/solrpy/reference.html
 # 

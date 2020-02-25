@@ -53,3 +53,4 @@ sql/schemas/opascentral local XPS 20191126.sql
 sql/schemas/opascentral20191210withdata.sql
 solrCoreConfigurations/_gsdata_/_file_state_v4._gs
 solrCoreConfigurations/_gsdata_/_insync_v4.gsl
+solrCoreConfigurations/data/data - Shortcut.lnk
