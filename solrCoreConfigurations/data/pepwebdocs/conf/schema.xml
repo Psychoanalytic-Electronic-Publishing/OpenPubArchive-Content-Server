@@ -25,6 +25,7 @@
                   art_body_xml
              
     2020-01-05: More schema clean up. 
+    2020-01-20: Re-add summaries_xml used to display summaries when there's no abstract
     
    Schema version attribute note: 
    
@@ -142,9 +143,13 @@
   <!--# by paras-->
   <!--<field name="art_body_xml" type="text_simple" indexed="true" stored="false" multiValued="false"/>-->
   <!-- deprecate this, no longer loaded-->
-  <field name="abstracts_xml" type="text_general" indexed="true" stored="true" multiValued="true"/> 
+  <!--<field name="abstracts_xml" type="text_general" indexed="true" stored="true" multiValued="true"/> -->
   <!--This is better, use single xml field.-->
   <field name="abstract_xml" type="text_general" indexed="true" stored="true" multiValued="false"/> <!--this is used to display-->
+  <!--Need to reintroduce this!  Accidentally removed from Alpha2-->
+  <field name="summaries_xml" type="text_general" indexed="true" stored="true" multiValued="true"/> <!--this is used to display-->
+  <!--Precompute an extract for docs without abstracts or summaries.  May be xml or html -->
+  <field name="art_excerpt" type="text_general" indexed="true" stored="true" multiValued="false" uninvertible="false"/> <!--this is used to display-->
 
   <!-- Added this 6/25 to allow any part of a journal name to be searched.-->
   <!-- journal, book, or video -->
@@ -191,7 +196,6 @@
 
   <!--#TODO: Deprecate these-->
   <!--<field name="quotes_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>-->
-  <!--<field name="summaries_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>-->
   <!--<field name="dialogs_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
   <!--<field name="notes_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
   <!--<field name="panels_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->

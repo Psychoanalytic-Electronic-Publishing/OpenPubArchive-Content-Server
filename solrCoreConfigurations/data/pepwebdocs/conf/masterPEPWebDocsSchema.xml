@@ -148,8 +148,8 @@
   <field name="abstract_xml" type="text_general" indexed="true" stored="true" multiValued="false"/> <!--this is used to display-->
   <!--Need to reintroduce this!  Accidentally removed from Alpha2-->
   <field name="summaries_xml" type="text_general" indexed="true" stored="true" multiValued="true"/> <!--this is used to display-->
-  <!--Precompute an extract for docs without abstracts or summaries.-->
-  <field name="excerpt_html" type="text_general" indexed="true" stored="true" multiValued="false" uninvertible="false"/> <!--this is used to display-->
+  <!--Precompute an extract for docs without abstracts or summaries.  May be xml or html -->
+  <field name="art_excerpt" type="text_general" indexed="true" stored="true" multiValued="false" uninvertible="false"/> <!--this is used to display-->
 
   <!-- Added this 6/25 to allow any part of a journal name to be searched.-->
   <!-- journal, book, or video -->

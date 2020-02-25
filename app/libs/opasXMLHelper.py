@@ -3,8 +3,14 @@
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
 """ 
 OPAS - XML Support Function Library
+
+Various support functions having to do with XML conversion (e.g., to HTML, ePub, plain text ...),
+  extraction of portions of XML, etc.
     
 """
+#Revision Notes:
+   #2020.0224.1 - XSLT converter optimization (took to long to parse XSLT file) so loads only once.
+
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
@@ -26,18 +32,45 @@ import lxml.html as lhtml
 
 from ebooklib import epub
 import opasConfig
+from io import StringIO
 
-pyVer = 2
-if (sys.version_info > (3, 0)):
-    # Python 3 code in this block
-    from io import StringIO
-    pyVer = 3
-else:
-    # Python 2 code in this block
-    import StringIO
+class XSLT_Transformer(object):
+    # to allow transformers to be saved at class level in dict
+    transformers = {}
+
+    def __init__(self):
+        pass
+    
+    def set_transformer(self, transformer_name, xslt_file, style_path=opasConfig.STYLE_PATH):
+        self.transformer_name = transformer_name
+        self.transformer_tree = None
+        self.file_spec = None
+        style_paths = style_path.split(";")
+        # find path of file
+        for relative_path in style_paths:
+            self.file_spec = os.path.join(relative_path, xslt_file)
+            if os.path.exists(self.file_spec):
+                try:
+                    self.transformer_tree=etree.parse(self.file_spec)
+                except Exception as e:
+                    logger.error(f"Parse error for XSLT file {self.file_spec}.  Error {e}")
+                else:
+                    try:
+                        # save it to class dict by name
+                        self.__class__.transformers[transformer_name] = etree.XSLT(self.transformer_tree)
+                    except:
+                        logger.error(f"Transform definition error for XSLT file {self.file_spec}.  Error {e}")
+                    else:
+                        break;
+        if not os.path.exists(self.file_spec):
+            raise FileNotFoundError("XSLT file missing for all folders in STYLE path.") 
+        
+# create module level persistent transformers
+g_transformer = XSLT_Transformer()
+g_transformer.set_transformer("XML_To_HTML", opasConfig.XSLT_XMLTOHTML)
+g_transformer.set_transformer("EXCERPT_HTML", opasConfig.XSLT_XMLTOTEXT_EXCERPT)
 
 ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n")  # TODO - Move to module globals to optimize
-
 
 # -------------------------------------------------------------------------------------------------------
 
@@ -458,71 +491,52 @@ def xml_string_to_text(xmlstr, default_return=""):
     ret_val = clearText.text_content()
     return ret_val
 
-def xml_elem_or_str_to_excerpt(elem_or_xmlstr, xslt_file=opasConfig.XSLT_XMLTO_EXCERPT):
+def xml_elem_or_str_to_excerpt(elem_or_xmlstr, transformer_name=opasConfig.XSLT_XMLTOTEXT_EXCERPT):
     """
-    Use xslt to try to extract a formatted excerpt
+    Use xslt to extract a formatted excerpt
     """
     ret_val = None
-    # make sure it's not HTML already
-    #if re.match("<!DOCTYPE html .*", elem_or_xmlstr, re.IGNORECASE):
-        #ret_val = elem_or_xmlstr
-    #else:
-    if 1:
-        try: # first make sure we have a valid xslt file
-            if not os.path.exists(xslt_file):
-                # see if we're too low in the tree (e.g., we're already in libs)
-                alt = opasConfig.XSLT_XMLTO_EXCERPT_ALT  # e.g., r"../styles/pepkbd3-html.xslt"
-                if os.path.exists(alt):
-                    xslt_file = alt
-                else:
-                    alt = opasConfig.XSLT_XMLTO_EXCERPT_ALT2  # e.g., r"../styles/pepkbd3-html.xslt"
-                    if os.path.exists(alt):
-                        xslt_file = alt
-                    else:
-                        raise FileNotFoundError("XSLT file missing") 
+    try:
+        if isinstance(elem_or_xmlstr, list) and elem_or_xmlstr != "[]":
+            elem_or_xmlstr = elem_or_xmlstr[0]
+    except Exception as e:
+        logger.error("Problem extracting full-text: ", e)
+
+    if isinstance(elem_or_xmlstr, str):
+        try:
+            # make sure it's not HTML already
+            if re.match("<!DOCTYPE html .*", elem_or_xmlstr, re.IGNORECASE):
+                logger.error("Warning - Data is HTML already:", e)
+            xmlstr = remove_encoding_string(xmlstr)
+            source_data = etree.fromstring(xmlstr)
         except Exception as e:
             # return this error, so it will be displayed (for now) instead of the document
-            ret_val = f"<p align='center'>Sorry, due to a configuration error (xslt missing), we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>Exception finding style sheet: {e}</p>"
+            ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
             logger.error(ret_val)
-    
+    else: # it's already etree (#TODO perhaps check?)
+        source_data = elem_or_xmlstr
+
+    if source_data is not None and source_data != "[]":
         try:
-            if isinstance(elem_or_xmlstr, list) and elem_or_xmlstr != "[]":
-                elem_or_xmlstr = elem_or_xmlstr[0]
+            #xslt_file = etree.parse(xslt_file)
+            #xslt_transformer = etree.XSLT(xslt_file)
+            transformer = g_transformer.transformers.get(transformer_name, None)
+            # transform the doc or fragment
+            transformed_data = transformer(source_data)
+            
         except Exception as e:
-            logger.error("Problem extracting full-text: ", e)
-
-        if isinstance(elem_or_xmlstr, str):
-            try:
-                # make sure it's not HTML already
-                if re.match("<!DOCTYPE html .*", elem_or_xmlstr, re.IGNORECASE):
-                    logger.error("Warning - Data is HTML already:", e)
-                xmlstr = remove_encoding_string(xmlstr)
-                source_data = etree.fromstring(xmlstr)
-            except Exception as e:
-                # return this error, so it will be displayed (for now) instead of the document
-                ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-                logger.error(ret_val)
-        else: # it's already etree (#TODO perhaps check?)
-            source_data = elem_or_xmlstr
-
-        if source_data is not None and source_data != "[]":
-            try:
-                xslt_file = etree.parse(xslt_file)
-                xslt_transformer = etree.XSLT(xslt_file)
-                transformed_data = xslt_transformer(source_data)
-            except Exception as e:
-                # return this error, so it will be displayed (for now) instead of the document
-                ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-                logger.error(ret_val)
-                ret_val = elem_or_xmlstr
+            # return this error, so it will be displayed (for now) instead of the document
+            ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this excerpt right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
+            logger.error(ret_val)
+            ret_val = elem_or_xmlstr
+        else:
+            ret_val = str(transformed_data)
+            pb = re.match("(?P<excerpt>.*?\<p class=\"pb.*?\</p\>)", ret_val, re.DOTALL)
+            if pb is not None:
+                ret_val = pb.group("excerpt") + "</html>"
             else:
-                ret_val = str(transformed_data)
-                pb = re.match("(?P<excerpt>.*?\<p class=\"pb.*?\</p\>)", ret_val, re.DOTALL)
-                if pb is not None:
-                    ret_val = pb.group("excerpt") + "</html>"
-                else:
-                    logger.error("No page break in data to extract excerpt")
-                       
+                logger.error("No page break in data to extract excerpt")
+                   
     return ret_val
     
     
@@ -730,9 +744,9 @@ def xml_file_to_xmlstr(xml_file, remove_encoding=False, resolve_entities=True):
     
     return ret_val
 
-def xml_str_to_html(xml_text, xslt_file=opasConfig.XSLT_XMLTOHTML):
+def xml_str_to_html(xml_text, transformer_name="XML_To_HTML"):
     """
-    Convert XML to HTML per XSLT file parameter configured in opasConfig.
+    Convert XML to HTML per Doc level XSLT file configured as g_xslt_doc_transformer.
     
     >>> len(xml_str_to_html(xml_text=test_xml3))
     314
@@ -742,19 +756,6 @@ def xml_str_to_html(xml_text, xslt_file=opasConfig.XSLT_XMLTOHTML):
     if re.match("<!DOCTYPE html .*", xml_text, re.IGNORECASE):
         ret_val = xml_text
     else:
-        try:
-            if not os.path.exists(xslt_file):
-                # see if we're too low in the tree (e.g., we're already in libs)
-                alt = opasConfig.XSLT_XMLTOHTML_ALT  # e.g., r"../styles/pepkbd3-html.xslt"
-                if os.path.exists(alt):
-                    xslt_file = alt
-                else:
-                    raise FileNotFoundError("XSLT file missing") 
-        except Exception as e:
-            # return this error, so it will be displayed (for now) instead of the document
-            ret_val = f"<p align='center'>Sorry, due to a configuration error (xslt missing), we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>Exception finding style sheet: {e}</p>"
-            logger.error(ret_val)
-    
         try:
             if isinstance(xml_text, list) and xml_text != "[]":
                 xml_text = xml_text[0]
@@ -772,9 +773,11 @@ def xml_str_to_html(xml_text, xslt_file=opasConfig.XSLT_XMLTOHTML):
             else:
                 if xml_text is not None and xml_text != "[]":
                     try:
-                        xslt_file = etree.parse(xslt_file)
-                        xslt_transformer = etree.XSLT(xslt_file)
-                        transformed_data = xslt_transformer(sourceFile)
+                        #xslt_doc_transformer_file = etree.parse(xslt_file)
+                        #xslt_doc_transformer = etree.XSLT(xslt_doc_transformer_file)
+                        transformer = g_transformer.transformers.get(transformer_name, None)
+                        # transform the doc or fragment
+                        transformed_data = transformer(sourceFile)
                     except Exception as e:
                         # return this error, so it will be displayed (for now) instead of the document
                         ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"

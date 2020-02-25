@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Disable many annoying pylint messages, warning me about variable naming for example.
+# pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0325,C0326
 
 """
 OPASFileTracker.py:    Library for file tracking to skip already processed files 
@@ -8,10 +10,6 @@ OPASFileTracker.py:    Library for file tracking to skip already processed files
                        Uses pymysql as a database for lightweight operation
 
 """
-# Disable many annoying pylint messages, warning me about variable naming for example.
-# yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
-
-# pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0325,C0326
 
 from __future__ import absolute_import
 from __future__ import print_function

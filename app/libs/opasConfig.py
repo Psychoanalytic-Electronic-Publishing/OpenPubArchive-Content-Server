@@ -20,11 +20,11 @@ BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make
 # folders, configure per install
 # uploads
 UPLOAD_DIR = r"z:\\back\\"
-XSLT_XMLTOHTML = r"./libs/styles/pepkbd3-html.xslt"
-XSLT_XMLTOHTML_ALT = r"../styles/pepkbd3-html.xslt"
-XSLT_XMLTO_EXCERPT = r"./libs/styles/pepkbd3-abstract-text.xslt" 
-XSLT_XMLTO_EXCERPT_ALT = r"../styles/pepkbd3-abstract-text.xslt"
-XSLT_XMLTO_EXCERPT_ALT2 = r"../libs/styles/pepkbd3-abstract-text.xslt"
+# paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
+# should do this better...later.
+STYLE_PATH = r"./libs/styles;../libs/styles"
+XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
+XSLT_XMLTOTEXT_EXCERPT = r"pepkbd3-abstract-text.xslt" 
 
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
 

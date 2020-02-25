@@ -14,14 +14,16 @@ Also, some of these functions are reused in different API calls.
        and pysolr has leapfrogged it (and now works for secured Solr installs).
 
 """
-#2019.0614.1 - Python 3.7 compatible.  Work in progress.
-#2019.1203.1 - fixed authentication value error in show abstract call
-#2019.1222.1 - Finished term_count_list function for endpoint termcounts
+#Revision Notes:
+   #2019.0614.1 - Python 3.7 compatible.  Work in progress.
+   #2019.1203.1 - fixed authentication value error in show abstract call
+   #2019.1222.1 - Finished term_count_list function for endpoint termcounts
+   #2020.0224.1 - Added biblioxml 
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0113.1"
+__version__     = "2020.0224.1"
 __status__      = "Development"
 
 import os
@@ -1341,7 +1343,7 @@ def authors_get_author_publications(author_partial, limit=opasConfig.DEFAULT_LIM
     return ret_val
 
 #-----------------------------------------------------------------------------
-def get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document, excerpt_html=None):
+def get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document, excerpt=None):
    
     ret_val = None
     # see if there's an abstract
@@ -1351,7 +1353,7 @@ def get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document, exc
         ret_val = force_string_return_from_various_return_types(xml_summary)
         if ret_val is None:
             # get excerpt from the document
-            ret_val = force_string_return_from_various_return_types(excerpt_html)
+            ret_val = force_string_return_from_various_return_types(excerpt)
             if ret_val is None:
                 if xml_document is None: # we should not need this since excerpt should be prestored, but there still could be cases.
                     # we fail.  Return None
@@ -1405,7 +1407,7 @@ def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=Fa
 
         required_fields = "art_id, art_sourcetitlefull, art_vol, art_year, art_iss, art_doi, file_classification, art_citeas_xml, \
 art_sourcecode, art_pgrg, art_origrx, art_qual, art_sourcetitlefull, art_title_xml, art_authors, art_authors_mast \
-abstract_xml, summaries_xml, text_xml, excerpt_html, file_last_modified"
+abstract_xml, summaries_xml, text_xml, art_excerpt, file_last_modified"
 
         results = solr_docs.query( q = "art_id:%s*" % (document_id),  
                                    fields = required_fields,
@@ -1542,12 +1544,12 @@ def get_abstract_or_summary_from_search_result(result, documentListItem: models.
         logger.info("No summary for document ID: %s", documentListItem.documentID)
 
     try:
-        excerpt_html = result["excerpt_html"]
+        art_excerpt = result["art_excerpt"]
     except KeyError as e:
-        excerpt_html  = None
+        art_excerpt  = None
         logger.info("No excerpt for document ID: %s", documentListItem.documentID)
 
-    if xml_abstract and xml_summary and excerpt_html is None:
+    if xml_abstract is None and xml_summary is None and art_excerpt is None:
         try:
             xml_document = result["text_xml"]
         except KeyError as e:
@@ -1556,7 +1558,7 @@ def get_abstract_or_summary_from_search_result(result, documentListItem: models.
     else:
         xml_document = None
 
-    abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document, excerpt_html)
+    abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document, art_excerpt)
     if abstract == "[]" or abstract is None:
         abstract = None
     elif ret_format == "TEXTONLY":
@@ -1639,7 +1641,7 @@ def get_fulltext_from_search_results(result, text_xml, page, page_offset, page_l
                                                pgrg=documentListItem.pgRg,
                                                ret_format="HTML"
                                              )
-        text_xml = opasxmllib.xml_str_to_html(text_xml, xslt_file=opasConfig.XSLT_XMLTOHTML)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+        text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
         text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
         text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
     elif format_requested == "TEXTONLY":
@@ -1941,14 +1943,14 @@ def find(name, path):
             return os.path.join(root, name)
 
 #-----------------------------------------------------------------------------
-def convert_xml_to_html_file(xmltext_str, xslt_file=r"./styles/pepkbd3-html.xslt", output_filename=None):
+def convert_xml_to_html_file(xmltext_str, output_filename=None):
     if output_filename is None:
         basename = "opasDoc"
         suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
         filename_base = "_".join([basename, suffix]) # e.g. 'mylogfile_120508_171442'        
         output_filename = filename_base + ".html"
 
-    htmlString = opasxmllib.xml_str_to_html(xmltext_str, xslt_file=xslt_file)
+    htmlString = opasxmllib.xml_str_to_html(xmltext_str)
     fo = open(output_filename, "w", encoding="utf-8")
     fo.write(str(htmlString))
     fo.close()

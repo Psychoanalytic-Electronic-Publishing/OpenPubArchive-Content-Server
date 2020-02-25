@@ -23,9 +23,9 @@ print(
 )
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1231.1"
+__version__     = "2020.02.24"
 __status__      = "Development"
 
 #Revision Notes:
@@ -39,7 +39,12 @@ __status__      = "Development"
                  #table which calculates these. - nrs
     #2019-12-31: Support remote datbase tunnel.  Fix use of SQL when not using SQLite.
     #2020-01-05: Some fields marked xml were being loaded as text...fixed.
-    
+    #2020-02-23: Populate biblio table.
+    #2020-02-24: Insert a summary excerpt to new Solr field art_excerpt, so server doesn't have to spend time extracting at runtime.
+                 # currently, it can be either XML or HTML but should change it to one or the other to make it more consistent.
+                 # (though the server now handles it this way fine, converting to HTML on output when necessary.)
+                 # Starting to convert this to snake_case, per "pythonic-style".  But will put in more effort
+                 # on this later.
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
@@ -392,7 +397,6 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, fileXMLContents):
         #referencesXml = abstractsXml = summariesXml = None
     else: # other PEP classified files, peparchive, pepcurrent, pepfree can have the full-text
         offsiteContents = ""
-        excerpt_html = None
         summariesXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//summaries", default_return=None)
         abstractsXml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//abs", default_return=None)
         # multiple data fields, not needed, search children instead, which allows search by para
@@ -481,7 +485,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, fileXMLContents):
                 # abstract_xml and summaries_xml should not be searched, but useful for display without extracting
                 "abstract_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//abs", default_return = None),
                 "summaries_xml" : summariesXml,
-                "excerpt_html" : excerpt,
+                "art_excerpt" : excerpt,
                 # very important field for displaying the whole document or extracting parts
                 "text_xml" : fileXMLContents,                                # important
                 "text_xml_offsite" : offsiteContents,
