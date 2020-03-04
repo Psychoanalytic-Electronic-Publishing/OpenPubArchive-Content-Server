@@ -106,7 +106,7 @@ def termlist_to_doubleamp_query(termlist_str, field=None):
     ret_val = " && ".join(name_list)
     return ret_val
 #-----------------------------------------------------------------------------
-class QueryTextToSolr():
+class QueryTextToSolr(): 
     """
     This is a simple regex based word and phrase entry parser, intended to handle
       words and quoted phrases separated by ' and ' or ' or '.
@@ -247,7 +247,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   viewcount=None, 
                                   viewedwithin=None,
                                   # sort field and direction
-                                  sort=None
+                                  sort=None, 
+                                  # v1 parameters
+                                  journal=None
                                   ):
     """
     This function parses various parameters in the api parameter and body to convert them
@@ -272,6 +274,11 @@ def parse_search_query_parameters(search=None,             # url based parameter
     'art_authors_ngrm:Tuckett '
     
     """
+    
+    # v1 translation:
+    if journal is not None:
+        source_name = journal
+    
     # parent_tag is any parent of a child doc as stored in the schema child field parent_tag.  
 
     # initialize accumulated variables

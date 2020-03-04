@@ -4,10 +4,10 @@
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0325,C0326
 
 """
-OPASFileTracker.py:    Library for file tracking to skip already processed files 
-                       for OPAS
+OPASFileTrackerMySQL.py:    Library for file tracking to skip already processed files 
+                            for OPAS
 
-                       Uses pymysql as a database for lightweight operation
+                            Uses pymysql as a database for lightweight operation
 
 """
 
@@ -403,7 +403,7 @@ class FileTracker (object):
             retVal = True  # file not in database.
         elif dbRecordDT < currFileDT:
             #print filesDBRecord.fileModDate, currentFileInfo.fileModDate
-            print(("File is modified: %s.  %s > %s" % (currentFileInfo.filePath, currFileDT, dbRecordDT)))
+            # print(("File is modified: %s.  %s > %s" % (currentFileInfo.filePath, currFileDT, dbRecordDT)))
             retVal = True
         else: #File not modified
             retVal = False

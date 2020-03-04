@@ -43,10 +43,10 @@
   exclude-result-prefixes="xlink mml">
   <!--  xmlns:fn="http://www.w3.org/2005/xpath-functions" -->
 
-  <xsl:import
+   <xsl:import
     href="http://www.w3.org/2003/entities/2007/entitynamesmap.xsl"/>
   
-  <xsl:output method="html" encoding="utf-8" indent="yes" />
+  <xsl:output method="html" encoding="UTF-8" indent="yes" />
   
   <!--  <xsl:output doctype-public="-//W3C//DTD HTML 4.01 Transitional//EN"
     doctype-system="http://www.w3.org/TR/html4/loose.dtd" encoding="UTF-8"/>
@@ -555,6 +555,14 @@
     </span>
   </xsl:template>
 
+  <xsl:template match="pgx">
+    <span class="pgx" data-type="pagelink" data-r="{@rx}">
+      <a class="pgx" href="#/Document/{@rx}">
+        <xsl:value-of select="."/>
+      </a>
+    </span>
+  </xsl:template>
+  
   <xsl:template match="xref" mode="metadata-inline">
     <!-- These are not expected to appear in mixed content, so
       brackets are provided -->
@@ -784,8 +792,8 @@
 
   <!-- abs -->
   <xsl:template match="abs">
-    <xsl:call-template name="assign-lang"/>
     <div id="abs" class="abs">
+      <xsl:call-template name="assign-lang"/>
       <xsl:apply-templates/>
     </div>
   </xsl:template>
@@ -955,16 +963,16 @@
   </xsl:template>
 
   <xsl:template match="poem">
-    <xsl:call-template name="assign-lang"/>
     <div class="poem">
+      <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
     </div>
   </xsl:template>
   
   <xsl:template match="quote">
-    <xsl:call-template name="assign-lang"/>
     <div class="quote">
+      <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
     </div>
@@ -979,8 +987,8 @@
   </xsl:template>
 
   <xsl:template match="dialog">
-    <xsl:call-template name="assign-lang"/>
     <div class="dialog">
+      <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
     </div>
@@ -1192,14 +1200,14 @@
   
   <xsl:template match="row">
     <!-- other labels are displayed as blocks -->
-    <tr class="tablerow row nrs">
+    <tr class="tablerow row">
       <xsl:apply-templates/>
     </tr>
   </xsl:template>
   
   <xsl:template match="entry">
     <!-- other labels are displayed as blocks -->
-    <td class="tableentry entry nrs">
+    <td class="tableentry entry">
       <xsl:apply-templates/>
     </td>
   </xsl:template>

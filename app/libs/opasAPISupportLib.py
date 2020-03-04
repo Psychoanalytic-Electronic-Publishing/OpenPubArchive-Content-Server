@@ -18,18 +18,20 @@ Also, some of these functions are reused in different API calls.
    #2019.0614.1 - Python 3.7 compatible.  Work in progress.
    #2019.1203.1 - fixed authentication value error in show abstract call
    #2019.1222.1 - Finished term_count_list function for endpoint termcounts
-   #2020.0224.1 - Added biblioxml 
+   #2020.0224.1 - Added biblioxml
+   #2020.0226.1 - Support TOC instance as exception for abstracting extraction (extract_abstract_from_html)
+                # Python 3 only now
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0224.1"
+__version__     = "2020.0226.1"
 __status__      = "Development"
 
 import os
 import os.path
 import sys
-import shlex
+# import shlex
 
 sys.path.append('./solrpy')
 # print(os.getcwd())
@@ -40,39 +42,34 @@ import socket, struct
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.status import HTTP_200_OK, \
-                             HTTP_400_BAD_REQUEST, \
-                             HTTP_401_UNAUTHORIZED, \
-                             HTTP_403_FORBIDDEN, \
-                             HTTP_404_NOT_FOUND, \
-                             HTTP_500_INTERNAL_SERVER_ERROR, \
-                             HTTP_503_SERVICE_UNAVAILABLE
+#from starlette.status import HTTP_200_OK, \
+                             #HTTP_400_BAD_REQUEST, \
+                             #HTTP_401_UNAUTHORIZED, \
+                             #HTTP_403_FORBIDDEN, \
+                             #HTTP_404_NOT_FOUND, \
+                             #HTTP_500_INTERNAL_SERVER_ERROR, \
+                             #HTTP_503_SERVICE_UNAVAILABLE
 import time
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.
 import datetime as dtime 
 # import datetime
 from datetime import datetime
-from typing import Union, Optional, Tuple, List
-from enum import Enum
+# from typing import Union, Optional, Tuple, List
+# from enum import Enum
 # import pymysql
-import s3fs # read s3 files just like local files (with keys)
+# import s3fs # read s3 files just like local files (with keys)
 
 import opasConfig
 import localsecrets
 from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, CONFIG, COOKIE_DOMAIN  
 from opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES 
 from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
-from fastapi import HTTPException
+# from fastapi import HTTPException
 
-if (sys.version_info > (3, 0)):
-    # Python 3 code in this block
-    from io import StringIO
-    pyVer = 3
-else:
-    # Python 2 code in this block
-    pyVer = 2
-    import StringIO
+# Removed support for Py2, only Py3 supported now
+pyVer = 3
+from io import StringIO
     
 import solrpy as solr
 import lxml
@@ -80,10 +77,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 from lxml import etree
-from pydantic import BaseModel
+# from pydantic import BaseModel
 from pydantic import ValidationError
 
-from ebooklib import epub              # for HTML 2 EPUB conversion
+# from ebooklib import epub              # for HTML 2 EPUB conversion
 from xhtml2pdf import pisa             # for HTML 2 PDF conversion
 
 # note: documents and documentList share the same internals, except the first level json label (documents vs documentlist)
@@ -91,16 +88,15 @@ import models
 
 import opasXMLHelper as opasxmllib
 import opasQueryHelper
-from opasQueryHelper import QueryTextToSolr
 import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
-import sourceInfoDB as SourceInfoDB
+# import sourceInfoDB as SourceInfoDB
 import schemaMap
 sourceDB = opasCentralDBLib.SourceInfoDB()
 count_anchors = 0
 
 #from solrq import Q
-import json
+# import json
 
 # Setup a Solr instance. The timeout is optional.
 # #TODO
@@ -126,10 +122,8 @@ else:
     solr_authors = solr.SolrConnection(SOLRURL + opasConfig.SOLR_AUTHORS)
     solr_author_term_search = solr.SearchHandler(solr_authors, "/terms")
 
-#API endpoints
-documentURL = "/v1/Documents/"
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
-
+    
 #-----------------------------------------------------------------------------
 def get_basecode(document_id):
     """
@@ -244,10 +238,16 @@ def ip2long(ip):
     packedIP = socket.inet_aton(ip)
     return struct.unpack("!L", packedIP)[0]    
     
-def extract_html_fragment(html_str, xpath_to_extract="//div[@id='abs']"):
+#-----------------------------------------------------------------------------
+def extract_abstract_from_html(html_str, xpath_to_extract=opasConfig.HTML_XPATH_ABSTRACT): # xpath example: "//div[@id='abs']"
     # parse HTML
     htree = etree.HTML(html_str)
     ret_val = htree.xpath(xpath_to_extract)
+    # TOC's should be passed through "whole" (well, just the body, since headers will be added.)
+    if ret_val == []: # see if it's a TOC
+        ret_val = htree.xpath(opasConfig.HTML_XPATH_TOC_INSTANCE) # e.g, "//div[@data-arttype='TOC']"
+        if ret_val != []:
+            ret_val = htree.xpath(opasConfig.HTML_XPATH_DOC_BODY) # e.g., "//div[@class='body']"
     # make sure it's a string
     ret_val = force_string_return_from_various_return_types(ret_val)
     
@@ -1328,7 +1328,7 @@ def authors_get_author_publications(author_partial, limit=opasConfig.DEFAULT_LIM
                                          documentID = result.get("art_id", None),
                                          documentRefHTML = citeas,
                                          documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return=""),
-                                         documentURL = documentURL + result.get("art_id", None),
+                                         documentURL = opasConfig.API_URL_DOCUMENTURL + result.get("art_id", None),
                                          year = result.get("art_year", None),
                                          score = result.get("score", 0)
                                         ) 
@@ -1439,7 +1439,7 @@ abstract_xml, summaries_xml, text_xml, art_excerpt, file_last_modified"
                 documentListItem = models.DocumentListItem()
                 documentListItem = get_base_article_info_from_search_result(result, documentListItem)
                 documentListItem = get_access_limitations(result, documentListItem, authenticated)
-                documentListItem = get_abstract_or_summary_from_search_result(result, documentListItem, "HTML")
+                documentListItem = get_excerpt_from_search_result(result, documentListItem, "HTML")
                 documentListItem.score = result.get("score", None)
                 # documentListItem.authenticated = authenticated 
                 document_item_list.append(documentListItem)
@@ -1524,6 +1524,46 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
     
     return documentListItem # return a partially filled document list item
 
+def get_excerpt_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="TEXTONLY"):
+    """
+    pass in the result from a solr query and this retrieves the abstract/excerpt from the excerpt field
+     which is stored based on the abstract or summary or the first page of the document.
+     
+     Substituted for dynamic generation of excerpt 2020-02-26
+    """
+    # make sure basic info has been retrieved
+    if documentListItem.sourceTitle is None:
+        documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+
+    try:
+        art_excerpt = result["art_excerpt"]
+    except KeyError as e:
+        art_excerpt  = "No abstract found for this title."
+        logger.info("No excerpt for document ID: %s", documentListItem.documentID)
+
+    # abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document, art_excerpt)
+    if art_excerpt == "[]" or art_excerpt is None:
+        art_excerpt = None
+    elif ret_format == "TEXTONLY":
+        art_excerpt = opasxmllib.xml_elem_or_str_to_text(art_excerpt)
+    #elif ret_format == "HTML": #(Excerpt is in HTML already)
+
+    abstract = opasxmllib.add_headings_to_abstract_html( abstract=art_excerpt, 
+                                                         source_title=documentListItem.sourceTitle,
+                                                         pub_year=documentListItem.year,
+                                                         vol=documentListItem.vol, 
+                                                         pgrg=documentListItem.pgRg, 
+                                                         citeas=documentListItem.documentRefHTML, 
+                                                         title=documentListItem.title,
+                                                         author_mast=documentListItem.authorMast,
+                                                         ret_format=ret_format
+                                                       )
+
+    # return it in the abstract field for display
+    documentListItem.abstract = abstract
+    
+    return documentListItem
+
 def get_abstract_or_summary_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="TEXTONLY"):
     """
     pass in the result from a solr query and this retrieves an abstract (one way or another!)
@@ -1571,7 +1611,8 @@ def get_abstract_or_summary_from_search_result(result, documentListItem: models.
         abstractHTML = opasxmllib.xml_str_to_html(abstract)
         # try to extract just the abstract.  Not sure why this used to work and now (20191111) doesn't for some articles.  Maybe sampling, or
         #   the style sheet application changed.
-        abstract = extract_html_fragment(abstractHTML, "//div[@id='abs']")
+        # Note: this will return the entire body div if arttype=='TOC', as per PEP specs
+        abstract = extract_abstract_from_html(abstractHTML, xpath_to_extract="//div[@id='abs']") 
         if abstract == None:
             abstract = abstractHTML
 
@@ -2490,7 +2531,7 @@ def search_text(query,
                 
                 # do this before we potentially clear text_xml if no full text requested below
                 if abstract_requested or documentListItem.accessLimited:
-                    documentListItem = get_abstract_or_summary_from_search_result(result, documentListItem, "HTML")
+                    documentListItem = get_excerpt_from_search_result(result, documentListItem, "HTML")
                 
                 # no kwic list when full-text is requested.
                 if text_xml is not None and not full_text_requested:

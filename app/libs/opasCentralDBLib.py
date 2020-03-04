@@ -1233,28 +1233,45 @@ class opasCentralDB(object):
     def do_action_query(self, querytxt, queryparams, contextStr=None):
     
         ret_val = None
-        self.open_connection(caller_name="action_query") # make sure connection is open
+        localDisconnectNeeded = False
+        if self.connected != True:
+            self.open_connection(caller_name="action_query") # make sure connection is open
+            localDisconnectNeeded = True
+            
         dbc = self.db.cursor(pymysql.cursors.DictCursor)
         try:
             ret_val = dbc.execute(querytxt, queryparams)
-        except self.db.DataError:
-            logger.error(f"Art: {contextStr}. DB Data Error ({querytxt})")
-        except self.db.OperationalError:
-            logger.error(f"Art: {contextStr}. DB Data Error ({querytxt})")
-        except self.db.IntegrityError:
-            logger.error(f"Art: {contextStr}. DB Integrity Error ({querytxt})")
-        except self.db.InternalError:
-            logger.error(f"Art: {contextStr}. DB Internal Error ({querytxt})")
+        except self.db.DataError as e:
+            logger.error(f"Art: {contextStr}. DB Data Error {e} ({querytxt})")
+            raise self.db.DataError(e)
+        except self.db.OperationalError as e:
+            logger.error(f"Art: {contextStr}. DB Operation Error {e} ({querytxt})")
+            raise self.db.OperationalError(e)
+        except self.db.IntegrityError as e:
+            logger.error(f"Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
+            raise self.db.IntegrityError(e)
+        except self.db.InternalError as e:
+            logger.error(f"Art: {contextStr}. DB Internal Error {e} ({querytxt})")
+            raise self.db.InternalError(e)
             # raise RuntimeError, gErrorLog.logSevere("Art: %s.  DB Intr. Error (%s)" % (contextStr, querytxt))
-        except self.db.ProgrammingError:
-            logger.error(f"DB Programming Error ({querytxt})")
-        except self.db.NotSupportedError:
-            logger.error(f"DB Feature Not Supported Error ({querytxt})")
+        except self.db.ProgrammingError as e:
+            logger.error(f"DB Programming Error {e} ({querytxt})")
+            raise self.db.ProgrammingError(e)
+        except self.db.NotSupportedError as e:
+            logger.error(f"DB Feature Not Supported Error {e} ({querytxt})")
+            raise self.db.NotSupportedError(e)
         except Exception as e:
             logger.error(f"error: %s" % (e))
+            raise Exception(e)
     
         # close cursor
         dbc.close()
+        
+        if localDisconnectNeeded == True:
+            # if so, commit any changesand close.  Otherwise, it's up to caller.
+            self.db.commit()
+            self.close_connection(caller_name="action_query") # make sure connection is open
+        
         return ret_val
 
     #----------------------------------------------------------------------------------------

@@ -24,9 +24,27 @@ UPLOAD_DIR = r"z:\\back\\"
 # should do this better...later.
 STYLE_PATH = r"./libs/styles;../libs/styles"
 XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
-XSLT_XMLTOTEXT_EXCERPT = r"pepkbd3-abstract-text.xslt" 
+XSLT_XMLTOTEXT_EXCERPT = r"pepkbd3-abstract-text.xslt"
+TRANSFORMER_XMLTOHTML = "XML_TO_HTML" 
+TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_HTML"
 
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
+
+# Special xpaths and attributes for data handling in solrXMLPEPWebLoad
+ARTINFO_ARTTYPE_TOC_INSTANCE = "TOC" # the whole instance is a TOC ()
+XML_XPATH_SUMMARIES = "//summaries"
+XML_XPATH_ABSTRACT = "//abs"
+
+# XPaths for special data handling
+# HTML Paths
+# Detect an instance which is a TOC, e.g., GW.001.0000A
+HTML_XPATH_TOC_INSTANCE = "//div[@data-arttype='TOC']" 
+HTML_XPATH_DOC_BODY = "//div[@class='body']" # used, for example, to extract the body from the html
+HTML_XPATH_ABSTRACT = "//div[@id='abs']"  # used, for example, to extract the abstract from the HTML
+
+# API URLs used for linking
+API_URL_DOCUMENTURL = "/v2/Documents/"
+
 
 #logger = logging.getLogger(programNameShort)
 
@@ -66,7 +84,7 @@ DEFAULT_LIMIT_FOR_VOLUME_LISTS = 100
 DEFAULT_LIMIT_FOR_CONTENTS_LISTS = 100
 DEFAULT_LIMIT_FOR_METADATA_LISTS = 100
 
-DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 3000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
+DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 4000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
 
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 2520000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
 

@@ -1,5 +1,5 @@
 /*
- Navicat Premium Data Transfer
+ Navicat MySQL Data Transfer
 
  Source Server         : XPS
  Source Server Type    : MySQL
@@ -11,7 +11,7 @@
  Target Server Version : 50726
  File Encoding         : 65001
 
- Date: 03/12/2019 17:04:50
+ Date: 29/02/2020 23:54:54
 */
 
 SET NAMES utf8mb4;
@@ -27,6 +27,89 @@ CREATE TABLE `api_administrative_groups`  (
   `descriptopn` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
   PRIMARY KEY (`administrative_group_id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for api_articles
+-- ----------------------------
+DROP TABLE IF EXISTS `api_articles`;
+CREATE TABLE `api_articles`  (
+  `art_id` varchar(24) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL DEFAULT '' COMMENT 'The locator style ID for this article (e.g., APA.004.0109A)',
+  `art_doi` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL,
+  `art_type` varchar(4) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT '' COMMENT 'Article type, e.g., ART, COM, ERA',
+  `art_lang` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `art_kwds` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `art_auth_mast` text CHARACTER SET utf8 COLLATE utf8_general_ci NULL COMMENT 'Author names per masthead, e.g. Ronnie C. Lesser, Ph.D.',
+  `art_auth_to_cite` text CHARACTER SET utf8 COLLATE utf8_general_ci NULL COMMENT 'The heading style author list, e.g., Lesser, R. C.',
+  `art_title` text CHARACTER SET utf8 COLLATE utf8_general_ci NULL COMMENT 'The title for the heading',
+  `src_title_abbr` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT 'Src title bibliogr abbrev style, e.g., Psychoanal. Dial.',
+  `src_code` varchar(14) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL COMMENT 'PEP assigned Journal Code, e.g., IJP',
+  `src_publisher` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NULL DEFAULT '' COMMENT 'Publisher, e.g., Cambridge, MA / London: Harvard Univ. Press',
+  `art_year` int(11) NULL DEFAULT NULL COMMENT 'Year of Publication',
+  `art_vol` int(11) NULL DEFAULT NULL COMMENT 'Volume',
+  `art_vol_suffix` char(5) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL COMMENT 'Vol number suffix, e.g., S for supplements',
+  `art_issue` char(5) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT '' COMMENT 'Issue number or designation, e.g., 1, or pilot',
+  `art_pgrg` varchar(20) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL COMMENT 'Page range of article, e.g., 1-22',
+  `art_pgstart` varchar(11) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT 'Starting page number, negative for roman',
+  `art_pgend` varchar(11) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT 'Ending page number, use negative for roman',
+  `main_toc_id` varchar(20) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL COMMENT 'If the source has an instance as a TOC, this is the art_id for the TOC',
+  `art_start_sect` varchar(255) CHARACTER SET utf8 COLLATE utf8_unicode_ci NULL DEFAULT NULL COMMENT 'When the article starts a new section in the TOC, name',
+  `bk_title` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT 'Title of parent book which contains the article',
+  `bk_authors` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT 'Authors of the parent book',
+  `art_citeas_text` text CHARACTER SET utf8 COLLATE utf8_general_ci NULL COMMENT 'Text only format, citeas',
+  `art_citeas_xml` text CHARACTER SET utf8 COLLATE utf8_general_ci NULL COMMENT 'Bibliographic style reference for article, in XML',
+  `art_ref_count` int(11) NULL DEFAULT NULL,
+  `filename` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL COMMENT 'Path and filename of source file',
+  `filedatetime` char(25) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL COMMENT 'Article file datetime',
+  `preserve` int(11) NULL DEFAULT 0 COMMENT 'Keep this record (probably not to be used)',
+  `updated` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP(0),
+  PRIMARY KEY (`art_id`) USING BTREE,
+  UNIQUE INDEX `Primary Key`(`art_id`) USING BTREE,
+  UNIQUE INDEX `filename`(`filename`) USING BTREE,
+  INDEX `xname`(`art_vol`) USING BTREE,
+  INDEX `titlefulltext`(`art_title`(333)) USING BTREE,
+  INDEX `yrjrnlcode`(`src_code`, `art_year`) USING BTREE,
+  INDEX `voljrnlcode`(`src_code`, `art_vol`) USING BTREE,
+  INDEX `authorfulltext`(`art_auth_to_cite`(255)) USING BTREE,
+  INDEX `jrnlCodeIndiv`(`src_code`) USING BTREE,
+  FULLTEXT INDEX `hdgtitle`(`art_title`),
+  FULLTEXT INDEX `hdgauthor`(`art_auth_to_cite`),
+  FULLTEXT INDEX `xmlref`(`art_citeas_xml`),
+  FULLTEXT INDEX `bktitle`(`bk_title`)
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'A PEP journal article, book or book section' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for api_biblioxml
+-- ----------------------------
+DROP TABLE IF EXISTS `api_biblioxml`;
+CREATE TABLE `api_biblioxml`  (
+  `art_id` varchar(24) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `bib_local_id` varchar(25) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `bib_rx` varchar(30) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL COMMENT 'This article references...',
+  `bib_rxcf` varchar(30) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT '0' COMMENT 'This article may be related to...',
+  `bib_sourcecode` varchar(24) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT 'instance' COMMENT 'If it\'s refcorrections, this record came from the refcorrections table and should not be updated.',
+  `bib_authors` varchar(512) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `bib_articletitle` varchar(512) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `title` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL,
+  `full_ref_text` text CHARACTER SET utf8 COLLATE utf8_general_ci NULL,
+  `bib_sourcetype` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `bib_sourcetitle` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT 'Record the journal name as extracted from the XML referennce.  Useful to sort and check reference.',
+  `bib_authors_xml` varchar(512) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `full_ref_xml` text CHARACTER SET utf8 COLLATE utf8_general_ci NULL,
+  `bib_pgrg` varchar(12) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `doi` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT 'Document Object Identifier for this reference',
+  `bib_year` varchar(12) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `bib_year_int` int(255) NULL DEFAULT NULL,
+  `bib_volume` varchar(12) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `bib_publisher` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `updated` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP(0),
+  PRIMARY KEY (`art_id`, `bib_local_id`) USING BTREE,
+  UNIQUE INDEX `Primary Key`(`art_id`, `bib_local_id`) USING BTREE,
+  INDEX `articleID`(`art_id`) USING BTREE,
+  INDEX `titleIndex`(`title`) USING BTREE,
+  INDEX `RefersTo`(`bib_rx`) USING BTREE,
+  FULLTEXT INDEX `fulreffullText`(`full_ref_text`),
+  FULLTEXT INDEX `titleFullText`(`title`)
+) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'All bibliographic entries within PEP' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for api_client_apps
@@ -46,13 +129,15 @@ CREATE TABLE `api_client_apps`  (
 -- ----------------------------
 DROP TABLE IF EXISTS `api_docviews`;
 CREATE TABLE `api_docviews`  (
-  `user_id` varchar(60) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `session_id` varchar(60) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `document_id` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `type` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `datetimechar` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
+  `user_id` varchar(60) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `session_id` varchar(60) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `document_id` varchar(255) CHARACTER SET latin1 COLLATE latin1_spanish_ci NOT NULL DEFAULT '',
+  `type` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+  `datetimechar` varchar(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
   `last_update` timestamp(0) NULL DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP(0),
-  INDEX `user_id`(`user_id`) USING BTREE
+  INDEX `user_id`(`user_id`) USING BTREE,
+  INDEX `session_id`(`session_id`) USING BTREE,
+  CONSTRAINT `api_docviews_ibfk_1` FOREIGN KEY (`session_id`) REFERENCES `api_sessions` (`session_id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'Track the number of times a document is viewed as an abstract, full-text, PDF, or EPUB.  Somewhat redundate to api_session_endpoints table, but with less extraneous data..' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -64,7 +149,7 @@ CREATE TABLE `api_endpoints`  (
   `endpoint_url` varchar(200) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
   `last_update` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
   PRIMARY KEY (`api_endpoint_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 46 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'Each unique API endpoint (minus base URL), starting with v1, for example\r\n' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 50 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'Each unique API endpoint (minus base URL), starting with v1, for example\r\n' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for api_join_products_to_productbase
@@ -309,7 +394,7 @@ CREATE TABLE `api_user`  (
   INDEX `idxUsername`(`username`) USING BTREE,
   INDEX `user_administrative_group`(`administrative_group_id`) USING BTREE,
   CONSTRAINT `user_administrative_group` FOREIGN KEY (`administrative_group_id`) REFERENCES `api_administrative_groups` (`administrative_group_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB AUTO_INCREMENT = 119129 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'A list of all authorized users, and the NOT_LOGGED_IN user, with ID=0' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 119405 CHARACTER SET = utf8 COLLATE = utf8_general_ci COMMENT = 'A list of all authorized users, and the NOT_LOGGED_IN user, with ID=0' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for api_user_ip_ranges
@@ -442,7 +527,7 @@ DROP TABLE IF EXISTS `filetracking`;
 CREATE TABLE `filetracking`  (
   `filePath` varchar(512) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
   `fileSize` int(11) NULL DEFAULT NULL,
-  `fileModDate` decimal(18, 6) NULL DEFAULT 0.000000,
+  `fileModDate` decimal(18, 6) NULL,
   `buildDate` decimal(18, 6) NULL DEFAULT NULL,
   `solrServerURL` varchar(512) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
   PRIMARY KEY (`filePath`, `solrServerURL`) USING BTREE
@@ -478,219 +563,6 @@ CREATE TABLE `fullbiblioxml`  (
   FULLTEXT INDEX `fulreffullText`(`fullRefText`),
   FULLTEXT INDEX `titleFullText`(`title`)
 ) ENGINE = InnoDB CHARACTER SET = latin1 COLLATE = latin1_swedish_ci COMMENT = 'All bibliographic entries within PEP' ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for xxx__gvpi_user
--- ----------------------------
-DROP TABLE IF EXISTS `xxx__gvpi_user`;
-CREATE TABLE `xxx__gvpi_user`  (
-  `user_id` int(11) NOT NULL AUTO_INCREMENT,
-  `username` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `password` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `company` varchar(125) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `email_address` varchar(65) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `modified_by_user_id` int(11) NOT NULL,
-  `last_update` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  PRIMARY KEY (`user_id`) USING BTREE,
-  INDEX `idxUsername`(`username`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 119120 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for xxx__gvpi_user_subsystem
--- ----------------------------
-DROP TABLE IF EXISTS `xxx__gvpi_user_subsystem`;
-CREATE TABLE `xxx__gvpi_user_subsystem`  (
-  `user_id` int(11) NOT NULL,
-  `subsystem_id` int(11) NOT NULL,
-  `email_optin` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'n',
-  `hide_activity` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `parent_user_id` int(11) NOT NULL,
-  `administrative_group_id` int(11) NOT NULL,
-  `view_parent_user_reports` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'n',
-  `deleted` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'a',
-  `added_by_user_id` int(11) NOT NULL DEFAULT 1,
-  `date_added` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  `modified_by_user_id` int(11) NOT NULL,
-  `last_update` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  PRIMARY KEY (`user_id`, `subsystem_id`) USING BTREE,
-  INDEX `idxEmailOptin`(`email_optin`) USING BTREE,
-  INDEX `idxLogActivity`(`hide_activity`) USING BTREE,
-  INDEX `idxParentUserId`(`parent_user_id`) USING BTREE,
-  INDEX `idxAdministrativeGroupId`(`administrative_group_id`) USING BTREE,
-  INDEX `idxDeleted`(`deleted`) USING BTREE,
-  INDEX `FK_user_subsystem_subsystem`(`subsystem_id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for xxx__user_subsystem
--- ----------------------------
-DROP TABLE IF EXISTS `xxx__user_subsystem`;
-CREATE TABLE `xxx__user_subsystem`  (
-  `user_id` int(11) NOT NULL,
-  `subsystem_id` int(11) NOT NULL,
-  `email_optin` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'n',
-  `hide_activity` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `parent_user_id` int(11) NOT NULL,
-  `administrative_group_id` int(11) NOT NULL,
-  `view_parent_user_reports` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'n',
-  `deleted` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'a',
-  `added_by_user_id` int(11) NOT NULL DEFAULT 1,
-  `date_added` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  `modified_by_user_id` int(11) NOT NULL,
-  `last_update` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  PRIMARY KEY (`user_id`, `subsystem_id`) USING BTREE,
-  INDEX `idxEmailOptin`(`email_optin`) USING BTREE,
-  INDEX `idxLogActivity`(`hide_activity`) USING BTREE,
-  INDEX `idxParentUserId`(`parent_user_id`) USING BTREE,
-  INDEX `idxAdministrativeGroupId`(`administrative_group_id`) USING BTREE,
-  INDEX `idxDeleted`(`deleted`) USING BTREE,
-  INDEX `FK_user_subsystem_subsystem`(`subsystem_id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for xxx_gvpi_product
--- ----------------------------
-DROP TABLE IF EXISTS `xxx_gvpi_product`;
-CREATE TABLE `xxx_gvpi_product`  (
-  `product_id` int(11) NOT NULL AUTO_INCREMENT,
-  `subsystem_id` int(11) NOT NULL,
-  `product` varchar(200) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `product_description` varchar(1000) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `parent_product_id` int(11) NOT NULL DEFAULT 0,
-  `product_level` smallint(6) NOT NULL DEFAULT 0,
-  `inherit_parent_metadata` tinyint(1) NOT NULL DEFAULT 1,
-  `document_url` varchar(200) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `product_alias` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `email_id` int(11) NOT NULL,
-  `id_type` smallint(6) NULL DEFAULT NULL,
-  `counter_service` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `counter_database` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `counter_book` varchar(150) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `counter_journal_collection` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `id_code_1` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `id_code_2` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `id_code_3` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `id_code_4` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `publisher` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `platform` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `content_start_date_allowed` tinyint(1) NOT NULL DEFAULT 0,
-  `content_end_date_allowed` tinyint(1) NOT NULL DEFAULT 0,
-  `content_metadata_key` varchar(64) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL,
-  `content_start_date_flag` smallint(6) NULL DEFAULT NULL,
-  `content_end_date_flag` smallint(6) NULL DEFAULT NULL,
-  `perpetual_flag` smallint(6) NULL DEFAULT NULL,
-  `group_sort_order` int(11) NULL DEFAULT NULL,
-  `hide_in_product_access` tinyint(1) NOT NULL DEFAULT 0,
-  `hide_in_report_list` tinyint(1) NOT NULL DEFAULT 0,
-  `added_by_user_id` int(11) NOT NULL,
-  `date_added` datetime(0) NOT NULL,
-  `modified_by_user_id` int(11) NOT NULL,
-  `last_update` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  PRIMARY KEY (`product_id`) USING BTREE,
-  INDEX `idxParentProductId`(`parent_product_id`) USING BTREE,
-  INDEX `idxSubsystemId`(`subsystem_id`) USING BTREE,
-  INDEX `idxProductLevel`(`product_level`) USING BTREE,
-  INDEX `idxProductAlias`(`product_alias`) USING BTREE,
-  CONSTRAINT `xxx_gvpi_product_ibfk_1` FOREIGN KEY (`subsystem_id`) REFERENCES `xxx_subsystem` (`subsystem_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB AUTO_INCREMENT = 3824 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for xxx_gvpi_subscriptions
--- ----------------------------
-DROP TABLE IF EXISTS `xxx_gvpi_subscriptions`;
-CREATE TABLE `xxx_gvpi_subscriptions`  (
-  `user_id` int(11) NOT NULL,
-  `client_id` int(11) NOT NULL,
-  `product_id` int(11) NOT NULL,
-  `start_date` datetime(0) NOT NULL,
-  `end_date` datetime(0) NOT NULL,
-  `max_concurrency` int(11) NOT NULL,
-  `perpetual` tinyint(1) NOT NULL DEFAULT 0,
-  `modified_by_user_id` int(11) NOT NULL,
-  `last_update` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  PRIMARY KEY (`user_id`, `client_id`, `product_id`) USING BTREE,
-  INDEX `idxStartDate`(`start_date`) USING BTREE,
-  INDEX `idxEndDate`(`end_date`) USING BTREE,
-  INDEX `idxProductId`(`product_id`) USING BTREE,
-  CONSTRAINT `xxx_gvpi_subscriptions_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `api_products` (`product_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for xxx_gvpi_user_ip_addresses
--- ----------------------------
-DROP TABLE IF EXISTS `xxx_gvpi_user_ip_addresses`;
-CREATE TABLE `xxx_gvpi_user_ip_addresses`  (
-  `ip_addresses_id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL,
-  `subsystem_id` int(11) NOT NULL,
-  `start_ip_address` bigint(20) NOT NULL,
-  `end_ip_address` bigint(20) NOT NULL,
-  `modified_by_user_id` int(11) NOT NULL,
-  `last_update` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  PRIMARY KEY (`ip_addresses_id`) USING BTREE,
-  INDEX `idxSubsystemIdUserId`(`subsystem_id`, `user_id`) USING BTREE,
-  INDEX `idxStartIpAddress`(`start_ip_address`) USING BTREE,
-  INDEX `idxEndIpAddress`(`end_ip_address`) USING BTREE,
-  INDEX `idxUserId`(`user_id`) USING BTREE,
-  INDEX `FK_ip_addresses_user_subsystem`(`user_id`, `subsystem_id`) USING BTREE,
-  CONSTRAINT `xxx_gvpi_user_ip_addresses_ibfk_1` FOREIGN KEY (`user_id`, `subsystem_id`) REFERENCES `xxx_user_subsystem` (`user_id`, `subsystem_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB AUTO_INCREMENT = 28533 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for xxx_referrer_urls
--- ----------------------------
-DROP TABLE IF EXISTS `xxx_referrer_urls`;
-CREATE TABLE `xxx_referrer_urls`  (
-  `referrer_urls_id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL,
-  `referrer_url` varchar(500) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `modified_by_user_id` int(11) NOT NULL,
-  `last_update` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  PRIMARY KEY (`referrer_urls_id`) USING BTREE,
-  INDEX `idxSubsystemIdUserId`(`user_id`) USING BTREE,
-  INDEX `idxReferrerUrl`(`referrer_url`(255)) USING BTREE,
-  INDEX `idxUserId`(`user_id`) USING BTREE,
-  INDEX `FK_referrer_urls_user_subsystem`(`user_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1561 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for xxx_subsystem
--- ----------------------------
-DROP TABLE IF EXISTS `xxx_subsystem`;
-CREATE TABLE `xxx_subsystem`  (
-  `subsystem_id` int(11) NOT NULL,
-  `subsystem_name` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `domain_name` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `last_update` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  PRIMARY KEY (`subsystem_id`) USING BTREE,
-  UNIQUE INDEX `idxSubsystem_name`(`subsystem_name`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for xxx_user_subsystem
--- ----------------------------
-DROP TABLE IF EXISTS `xxx_user_subsystem`;
-CREATE TABLE `xxx_user_subsystem`  (
-  `user_id` int(11) NOT NULL,
-  `subsystem_id` int(11) NOT NULL,
-  `email_optin` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'n',
-  `hide_activity` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `parent_user_id` int(11) NOT NULL,
-  `administrative_group_id` int(11) NOT NULL,
-  `view_parent_user_reports` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'n',
-  `deleted` char(1) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'a',
-  `added_by_user_id` int(11) NOT NULL DEFAULT 1,
-  `date_added` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  `modified_by_user_id` int(11) NOT NULL,
-  `last_update` timestamp(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  PRIMARY KEY (`user_id`, `subsystem_id`) USING BTREE,
-  INDEX `idxEmailOptin`(`email_optin`) USING BTREE,
-  INDEX `idxLogActivity`(`hide_activity`) USING BTREE,
-  INDEX `idxParentUserId`(`parent_user_id`) USING BTREE,
-  INDEX `idxAdministrativeGroupId`(`administrative_group_id`) USING BTREE,
-  INDEX `idxDeleted`(`deleted`) USING BTREE,
-  INDEX `FK_user_subsystem_subsystem`(`subsystem_id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- View structure for vw_active_sessions
@@ -768,25 +640,25 @@ CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_cited_crosstab_w
 -- View structure for vw_stat_cited_in_all_years
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_stat_cited_in_all_years`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_cited_in_all_years` AS select `fullbiblioxml`.`rxCode` AS `cited_document_id`,count(0) AS `countAll` from (`fullbiblioxml` join `articles` `citing_article`) where ((`fullbiblioxml`.`articleID` = `citing_article`.`articleID`) and (`fullbiblioxml`.`rxCode` is not null) and (`fullbiblioxml`.`rxCode` <> '') and (substr(`fullbiblioxml`.`rxCode`,1,3) not in ('ZBK','IPL','SE.','GW.'))) group by `fullbiblioxml`.`rxCode` order by `countAll` desc;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_cited_in_all_years` AS select `api_biblioxml`.`bib_rx` AS `cited_document_id`,count(0) AS `countAll` from (`api_biblioxml` join `api_articles` `citing_article`) where ((`api_biblioxml`.`art_id` = `citing_article`.`art_id`) and (`api_biblioxml`.`bib_rx` is not null) and (`api_biblioxml`.`bib_rx` <> '') and (substr(`api_biblioxml`.`bib_rx`,1,3) not in ('ZBK','IPL','SE.','GW.'))) group by `api_biblioxml`.`bib_rx` order by `countAll` desc;
 
 -- ----------------------------
 -- View structure for vw_stat_cited_in_last_10_years
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_stat_cited_in_last_10_years`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_cited_in_last_10_years` AS select `fullbiblioxml`.`rxCode` AS `cited_document_id`,count(0) AS `count10` from (`fullbiblioxml` join `articles` `citing_article`) where ((`fullbiblioxml`.`articleID` = `citing_article`.`articleID`) and (`fullbiblioxml`.`rxCode` <> '') and (`fullbiblioxml`.`rxCode` is not null) and (`citing_article`.`year` > (year(now()) - 10)) and (substr(`fullbiblioxml`.`rxCode`,1,3) not in ('ZBK','IPL','SE.','GW.'))) group by `fullbiblioxml`.`rxCode` order by `count10` desc;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_cited_in_last_10_years` AS select `api_biblioxml`.`bib_rx` AS `cited_document_id`,count(0) AS `count10` from (`api_biblioxml` join `api_articles` `citing_article`) where ((`api_biblioxml`.`art_id` = `citing_article`.`art_id`) and (`api_biblioxml`.`bib_rx` is not null) and (`api_biblioxml`.`bib_rx` <> '') and (`citing_article`.`art_year` > (year(now()) - 10)) and (substr(`api_biblioxml`.`bib_rx`,1,3) not in ('ZBK','IPL','SE.','GW.'))) group by `api_biblioxml`.`bib_rx` order by `count10` desc;
 
 -- ----------------------------
 -- View structure for vw_stat_cited_in_last_20_years
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_stat_cited_in_last_20_years`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_cited_in_last_20_years` AS select `fullbiblioxml`.`rxCode` AS `cited_document_id`,count(0) AS `count20` from (`fullbiblioxml` join `articles` `citing_article`) where ((`fullbiblioxml`.`articleID` = `citing_article`.`articleID`) and (`fullbiblioxml`.`rxCode` is not null) and (`fullbiblioxml`.`rxCode` <> '') and (`citing_article`.`year` > (year(now()) - 20)) and (substr(`fullbiblioxml`.`rxCode`,1,3) not in ('ZBK','IPL','SE.','GW.'))) group by `fullbiblioxml`.`rxCode` order by `count20` desc;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_cited_in_last_20_years` AS select `api_biblioxml`.`bib_rx` AS `cited_document_id`,count(0) AS `count20` from (`api_biblioxml` join `api_articles` `citing_article`) where ((`api_biblioxml`.`art_id` = `citing_article`.`art_id`) and (`api_biblioxml`.`bib_rx` is not null) and (`api_biblioxml`.`bib_rx` <> '') and (`citing_article`.`art_year` > (year(now()) - 20)) and (substr(`api_biblioxml`.`bib_rx`,1,3) not in ('ZBK','IPL','SE.','GW.'))) group by `api_biblioxml`.`bib_rx` order by `count20` desc;
 
 -- ----------------------------
 -- View structure for vw_stat_cited_in_last_5_years
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_stat_cited_in_last_5_years`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_cited_in_last_5_years` AS select `fullbiblioxml`.`rxCode` AS `cited_document_id`,count(0) AS `count5` from (`fullbiblioxml` join `articles` `citing_article`) where ((`fullbiblioxml`.`articleID` = `citing_article`.`articleID`) and (`fullbiblioxml`.`rxCode` is not null) and (`fullbiblioxml`.`rxCode` <> '') and (`citing_article`.`year` > (year(now()) - 5)) and (substr(`fullbiblioxml`.`rxCode`,1,3) not in ('ZBK','IPL','SE.','GW.'))) group by `fullbiblioxml`.`rxCode` order by `count5` desc;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_cited_in_last_5_years` AS select `api_biblioxml`.`bib_rx` AS `cited_document_id`,count(0) AS `count5` from (`api_biblioxml` join `api_articles` `citing_article`) where ((`api_biblioxml`.`art_id` = `citing_article`.`art_id`) and (`api_biblioxml`.`bib_rx` is not null) and (`api_biblioxml`.`bib_rx` <> '') and (`citing_article`.`art_year` > (year(now()) - 5)) and (substr(`api_biblioxml`.`bib_rx`,1,3) not in ('ZBK','IPL','SE.','GW.'))) group by `api_biblioxml`.`bib_rx` order by `count5` desc;
 
 -- ----------------------------
 -- View structure for vw_stat_docviews_crosstab
@@ -798,37 +670,37 @@ CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_docviews_crossta
 -- View structure for vw_stat_docviews_last12months
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_stat_docviews_last12months`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_docviews_last12months` AS select `api_docviews`.`document_id` AS `document_id`,count(0) AS `views` from `api_docviews` where (`api_docviews`.`last_update` > (now() - interval 12 month)) group by `api_docviews`.`document_id`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_docviews_last12months` AS select `api_docviews`.`document_id` AS `document_id`,count(0) AS `views` from `api_docviews` where ((`api_docviews`.`last_update` > (now() - interval 12 month)) and (`api_docviews`.`type` = 'Document')) group by `api_docviews`.`document_id`;
 
 -- ----------------------------
 -- View structure for vw_stat_docviews_lastcalyear
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_stat_docviews_lastcalyear`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_docviews_lastcalyear` AS select `api_docviews`.`document_id` AS `document_id`,count(0) AS `views` from `api_docviews` where (year(`api_docviews`.`last_update`) = (year(now()) - 1)) group by `api_docviews`.`document_id`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_docviews_lastcalyear` AS select `api_docviews`.`document_id` AS `document_id`,count(0) AS `views` from `api_docviews` where ((year(`api_docviews`.`last_update`) = (year(now()) - 1)) and (`api_docviews`.`type` = 'Document')) group by `api_docviews`.`document_id`;
 
 -- ----------------------------
 -- View structure for vw_stat_docviews_lastmonth
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_stat_docviews_lastmonth`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_docviews_lastmonth` AS select `api_docviews`.`document_id` AS `document_id`,count(0) AS `views` from `api_docviews` where (`api_docviews`.`last_update` > (now() - interval 1 month)) group by `api_docviews`.`document_id`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_docviews_lastmonth` AS select `api_docviews`.`document_id` AS `document_id`,count(0) AS `views` from `api_docviews` where ((`api_docviews`.`last_update` > (now() - interval 1 month)) and (`api_docviews`.`type` = 'Document')) group by `api_docviews`.`document_id`;
 
 -- ----------------------------
 -- View structure for vw_stat_docviews_lastsixmonths
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_stat_docviews_lastsixmonths`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_docviews_lastsixmonths` AS select `api_docviews`.`document_id` AS `document_id`,count(0) AS `views` from `api_docviews` where (`api_docviews`.`last_update` > (now() - interval 6 month)) group by `api_docviews`.`document_id`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_docviews_lastsixmonths` AS select `api_docviews`.`document_id` AS `document_id`,count(0) AS `views` from `api_docviews` where ((`api_docviews`.`last_update` > (now() - interval 6 month)) and (`api_docviews`.`type` = 'Document')) group by `api_docviews`.`document_id`;
 
 -- ----------------------------
 -- View structure for vw_stat_docviews_lastweek
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_stat_docviews_lastweek`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_docviews_lastweek` AS select `api_docviews`.`document_id` AS `document_id`,any_value(`api_docviews`.`type`) AS `view_type`,count(0) AS `views` from `api_docviews` where (`api_docviews`.`last_update` > (now() - interval 7 day)) group by `api_docviews`.`document_id`;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_docviews_lastweek` AS select `api_docviews`.`document_id` AS `document_id`,any_value(`api_docviews`.`type`) AS `view_type`,count(0) AS `views` from `api_docviews` where ((`api_docviews`.`last_update` > (now() - interval 7 day)) and (`api_docviews`.`type` = 'Document')) group by `api_docviews`.`document_id`;
 
 -- ----------------------------
 -- View structure for vw_stat_most_viewed
 -- ----------------------------
 DROP VIEW IF EXISTS `vw_stat_most_viewed`;
-CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_most_viewed` AS select `vw_stat_docviews_crosstab`.`document_id` AS `document_id`,`vw_stat_docviews_crosstab`.`last_viewed` AS `last_viewed`,coalesce(`vw_stat_docviews_crosstab`.`lastweek`,0) AS `lastweek`,coalesce(`vw_stat_docviews_crosstab`.`lastmonth`,0) AS `lastmonth`,coalesce(`vw_stat_docviews_crosstab`.`last6months`,0) AS `last6months`,coalesce(`vw_stat_docviews_crosstab`.`last12months`,0) AS `last12months`,coalesce(`vw_stat_docviews_crosstab`.`lastcalyear`,0) AS `lastcalyear`,`opascentral`.`articles`.`hdgauthor` AS `hdgauthor`,`opascentral`.`articles`.`hdgtitle` AS `hdgtitle`,`opascentral`.`articles`.`srctitleseries` AS `srctitleseries`,`opascentral`.`articles`.`publisher` AS `publisher`,`opascentral`.`articles`.`jrnlcode` AS `jrnlcode`,`opascentral`.`articles`.`year` AS `pubyear`,`opascentral`.`articles`.`vol` AS `vol`,`opascentral`.`articles`.`pgrg` AS `pgrg`,`opascentral`.`articles`.`preserve` AS `preserve`,`opascentral`.`articles`.`filename` AS `filename`,`opascentral`.`articles`.`bktitle` AS `bktitle`,`opascentral`.`articles`.`bkauthors` AS `bkauthors`,`opascentral`.`articles`.`xmlref` AS `xmlref`,`opascentral`.`articles`.`authorMast` AS `authorMast`,`opascentral`.`articles`.`issue` AS `issue`,`opascentral`.`articles`.`updated` AS `updated` from (`opascentral`.`vw_stat_docviews_crosstab` join `opascentral`.`articles` on((convert(`opascentral`.`articles`.`articleID` using utf8) = `vw_stat_docviews_crosstab`.`document_id`))) order by coalesce(`vw_stat_docviews_crosstab`.`last12months`,0) desc;
+CREATE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `vw_stat_most_viewed` AS select `vw_stat_docviews_crosstab`.`document_id` AS `document_id`,`vw_stat_docviews_crosstab`.`last_viewed` AS `last_viewed`,coalesce(`vw_stat_docviews_crosstab`.`lastweek`,0) AS `lastweek`,coalesce(`vw_stat_docviews_crosstab`.`lastmonth`,0) AS `lastmonth`,coalesce(`vw_stat_docviews_crosstab`.`last6months`,0) AS `last6months`,coalesce(`vw_stat_docviews_crosstab`.`last12months`,0) AS `last12months`,coalesce(`vw_stat_docviews_crosstab`.`lastcalyear`,0) AS `lastcalyear`,`opascentral`.`articles`.`hdgauthor` AS `hdgauthor`,`opascentral`.`articles`.`hdgtitle` AS `hdgtitle`,`opascentral`.`articles`.`srctitleseries` AS `srctitleseries`,`opascentral`.`articles`.`publisher` AS `publisher`,`opascentral`.`articles`.`jrnlcode` AS `jrnlcode`,`opascentral`.`articles`.`year` AS `pubyear`,`opascentral`.`articles`.`vol` AS `vol`,`opascentral`.`articles`.`pgrg` AS `pgrg`,`opascentral`.`api_products`.`product_type` AS `source_type`,`opascentral`.`articles`.`preserve` AS `preserve`,`opascentral`.`articles`.`filename` AS `filename`,`opascentral`.`articles`.`bktitle` AS `bktitle`,`opascentral`.`articles`.`bkauthors` AS `bkauthors`,`opascentral`.`articles`.`xmlref` AS `xmlref`,`opascentral`.`articles`.`authorMast` AS `authorMast`,`opascentral`.`articles`.`issue` AS `issue`,`opascentral`.`articles`.`updated` AS `updated` from ((`opascentral`.`vw_stat_docviews_crosstab` join `opascentral`.`articles` on((convert(`opascentral`.`articles`.`articleID` using utf8) = convert(`vw_stat_docviews_crosstab`.`document_id` using utf8)))) left join `opascentral`.`api_products` on((convert(`opascentral`.`articles`.`jrnlcode` using utf8) = `opascentral`.`api_products`.`basecode`)));
 
 -- ----------------------------
 -- View structure for vw_subscriptions

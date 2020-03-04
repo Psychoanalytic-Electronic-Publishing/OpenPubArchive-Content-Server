@@ -15,7 +15,7 @@ Various support functions having to do with XML conversion (e.g., to HTML, ePub,
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0224.1"
+__version__     = "2020.0228.1"
 __status__      = "Development"
 
 import sys
@@ -25,6 +25,8 @@ import os.path
 import stdMessageLib
 import logging
 logger = logging.getLogger(__name__)
+import copy
+import urllib
 
 import lxml
 from lxml import etree
@@ -34,6 +36,84 @@ from ebooklib import epub
 import opasConfig
 from io import StringIO
 
+# -------------------------------------------------------------------------------------------------------
+class FirstPageCollector:
+    def __init__(self, skip_tags=["impx", "tab"], para_limit=6):
+        self.events = []
+        self.doc = "<abs>"
+        self.in_body = False
+        self.tag_stack = []
+        self.skip_tags = skip_tags
+        self.para_count = 0
+        self.para_limit = para_limit
+        
+    def start(self, tag, attrib):
+        if tag not in self.skip_tags and self.in_body:
+            self.events.append("start %s %r" % (tag, dict(attrib)))
+            att_str = ""
+            for key, val in attrib.items():
+                if key in ["url"]: # only do this in special cases...if it's a title, we don't want it quoted
+                    val = urllib.parse.quote_plus(val)
+                att_str += f'{key}="{val}" '
+            if att_str == "":
+                att_str = att_str.rstrip()
+                self.doc += f"<{tag}>"
+            else:
+                self.doc += f"<{tag} {att_str}>"
+            self.tag_stack.append(tag)
+            
+        if tag == "body":
+            self.in_body = True
+            
+    def end(self, tag):
+        if tag not in self.skip_tags and tag == "body" and self.in_body:
+            # no pb in body.  Stop recording.
+            self.in_body = False
+            #close outer tag
+            self.doc += "</abs>"
+            
+        if tag not in self.skip_tags and self.in_body:
+            self.events.append("end %s" % tag)
+            self.doc += f"</{tag}>"
+            if len(self.tag_stack) > 0:
+                self.tag_stack.pop()
+            if tag == "p": # count paras
+                self.para_count += 1
+                if self.para_count >= self.para_limit:
+                    print ("Paragraph limit for excerpt reached.")
+                
+        if self.in_body and (tag == "pb" or self.para_count >= self.para_limit):
+            self.in_body = False # skip the rest.
+            # print ("Closing Document!", self.tag_stack)
+            while len(self.tag_stack) > 0:
+                tag_to_close = self.tag_stack.pop()
+                self.doc += f"</{tag_to_close}>"
+                print(f"Closed tag: {tag_to_close}")
+            self.doc += "</abs>"
+            
+    def data(self, data):
+        if self.in_body:
+            if data == "&":
+                data = "&amp;" # reencode
+            elif data == "<":
+                data = "&lt;" # reencode
+            elif data == ">":
+                data = "&gt;" # reencode
+            elif data == "'":
+                data = "&apos;" # reencode    
+            elif data == '"':
+                data = "&quot;" # reencode    
+            self.events.append("data %r" % data)
+            self.doc += f"{data}"
+            
+    def comment(self, text):
+        self.events.append("comment %s" % text)
+        
+    def close(self):
+        self.events.append("close")
+        return self.doc
+
+# -------------------------------------------------------------------------------------------------------
 class XSLT_Transformer(object):
     # to allow transformers to be saved at class level in dict
     transformers = {}
@@ -53,22 +133,25 @@ class XSLT_Transformer(object):
                 try:
                     self.transformer_tree=etree.parse(self.file_spec)
                 except Exception as e:
-                    logger.error(f"Parse error for XSLT file {self.file_spec}.  Error {e}")
+                    raise Exception(f"Parse error for XSLT file {self.file_spec}.  Error {e}")
                 else:
                     try:
                         # save it to class dict by name
                         self.__class__.transformers[transformer_name] = etree.XSLT(self.transformer_tree)
-                    except:
+                    except Exception as e:
                         logger.error(f"Transform definition error for XSLT file {self.file_spec}.  Error {e}")
+                        raise Exception(f"Transform definition error for XSLT file {self.file_spec}.  Error {e}")
                     else:
                         break;
         if not os.path.exists(self.file_spec):
             raise FileNotFoundError("XSLT file missing for all folders in STYLE path.") 
         
+
+# -------------------------------------------------------------------------------------------------------
 # create module level persistent transformers
 g_transformer = XSLT_Transformer()
-g_transformer.set_transformer("XML_To_HTML", opasConfig.XSLT_XMLTOHTML)
-g_transformer.set_transformer("EXCERPT_HTML", opasConfig.XSLT_XMLTOTEXT_EXCERPT)
+g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML, opasConfig.XSLT_XMLTOHTML)
+g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOTEXT_EXCERPT, opasConfig.XSLT_XMLTOTEXT_EXCERPT)
 
 ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n")  # TODO - Move to module globals to optimize
 
@@ -331,7 +414,7 @@ def xml_get_subelement_textsingleton(element_node, subelement_name, default_retu
     """
     ret_val = default_return
     try:
-        ret_val = element_node.find(subelement_name).text
+        ret_val = element_node.findtext(subelement_name)
         ret_val = ret_val.strip()
     except Exception as err:
         logger.warning(err)
@@ -461,7 +544,9 @@ def xml_get_direct_subnode_textsingleton(element_node, subelement_name, default_
 
     if ret_val == []:
         ret_val = default_return
-
+    elif isinstance(ret_val, lxml.etree._Element):
+        ret_val = etree.tostring(ret_val).decode("utf8")
+        
     return ret_val
 
 def xml_elem_or_str_to_xmlstring(elem_or_xmlstr, default_return=""):
@@ -491,7 +576,67 @@ def xml_string_to_text(xmlstr, default_return=""):
     ret_val = clearText.text_content()
     return ret_val
 
-def xml_elem_or_str_to_excerpt(elem_or_xmlstr, transformer_name=opasConfig.XSLT_XMLTOTEXT_EXCERPT):
+
+#-----------------------------------------------------------------------------
+def get_first_page_excerpt_from_doc_root(elem_or_xmlstr, ret_format="HTML"):
+    try:
+        if isinstance(elem_or_xmlstr, lxml.etree._Element):
+            xmlstr = etree.tostring(elem_or_xmlstr, encoding="unicode")        
+        else:
+            xmlstr = elem_or_xmlstr
+    except Exception as err:
+        logger.error(err)
+        ret_val = None
+        
+    parser = etree.XMLParser(target = FirstPageCollector(skip_tags=["impx"]), resolve_entities=False)
+    ret_val = etree.XML(xmlstr, parser=parser)        # doctest: +ELLIPSIS
+    
+    return ret_val
+
+#-----------------------------------------------------------------------------
+def old_get_first_page_excerpt_from_doc_root(root, ret_format="HTML"):
+    ret_val = ""
+    # extract the first MAX_PARAS_FOR_SUMMARY paras
+    #ret_val = force_string_return_from_various_return_types(xml_document)
+    #ret_val = remove_encoding_string(ret_val)
+    #parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
+    #root = etree.parse(StringIO(ret_val), parser)
+    body = root.xpath("//*[self::h1 or self::p or self::p2 or self::pb]")
+    count = 0
+    for elem in body:
+        if elem.tag == "pb" or count >= opasConfig.MAX_PARAS_FOR_SUMMARY:
+            # we're done.
+            ret_val  += etree.tostring(elem, encoding='utf8').decode('utf8')
+            ret_val = "%s%s%s" % ("<abs><unit type='excerpt'>", ret_val, "</unit></abs>")
+            break
+        else:
+            # count paras
+            if elem.tag == "p" or elem.tag == "p2":
+                count += 1
+            ret_val  += etree.tostring(elem, encoding='utf8').decode('utf8')
+    
+    
+    if ret_val == "" or len(ret_val) > opasConfig.DEFAULT_LIMIT_FOR_EXCERPT_LENGTH:
+        # do it another way...convert to mostly text, so we can find pb
+        ret_val = xml_elem_or_str_to_excerpt(root)
+    else:
+        transformer = g_transformer.transformers.get(opasConfig.TRANSFORMER_XMLTOHTML, None)
+        if transformer is not None:
+            # transform the doc or fragment
+            # wrap it.
+            root = etree.fromstring(f"<div class='excerpt'>{ret_val}</div>")
+            ret_val = transformer(root)
+            ret_val = etree.tostring(ret_val)
+            ret_val = ret_val.decode("utf8")
+
+    return ret_val
+#-----------------------------------------------------------------------------
+def xml_iterate_tree(elemtree):
+    for n in elemtree.iter():
+        pass
+
+#-----------------------------------------------------------------------------
+def xml_elem_or_str_to_excerpt(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLTOTEXT_EXCERPT):
     """
     Use xslt to extract a formatted excerpt
     """
@@ -513,6 +658,7 @@ def xml_elem_or_str_to_excerpt(elem_or_xmlstr, transformer_name=opasConfig.XSLT_
             # return this error, so it will be displayed (for now) instead of the document
             ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
             logger.error(ret_val)
+            raise Exception(ret_val)
     else: # it's already etree (#TODO perhaps check?)
         source_data = elem_or_xmlstr
 
@@ -529,6 +675,7 @@ def xml_elem_or_str_to_excerpt(elem_or_xmlstr, transformer_name=opasConfig.XSLT_
             ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this excerpt right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
             logger.error(ret_val)
             ret_val = elem_or_xmlstr
+            raise Exception(ret_val)
         else:
             ret_val = str(transformed_data)
             pb = re.match("(?P<excerpt>.*?\<p class=\"pb.*?\</p\>)", ret_val, re.DOTALL)
@@ -570,7 +717,7 @@ def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
                 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
                 elem = etree.fromstring(elem_or_xmlstr, parser)
             else:
-                elem = elem_or_xmlstr
+                elem = copy.copy(elem_or_xmlstr) # etree will otherwise change calling parm elem_or_xmlstr when stripping
         except Exception as err:
             logger.error(err)
             ret_val = default_return
@@ -613,6 +760,17 @@ def xml_xpath_return_textlist(element_node, xpath, default_return=list()):
     
     return ret_val    
 
+def xml_xpath_with_default(element_node, xpath, default_return=None):
+    ret_val = default_return
+    try:
+        ret_val = element_node.xpath(xpath)
+        if ret_val is None or ret_val == []:
+            ret_val = default_return
+    except:
+        logging.warning("xpath error")
+
+    return ret_val
+        
 def xml_xpath_return_textsingleton(element_node, xpath, default_return=""):
     """
     Return text of element specified by xpath)
@@ -651,9 +809,12 @@ def xml_xpath_return_xmlsingleton(element_node, xpath, default_return=""):
     ret_val = default_return
     try:
         ret_val = element_node.xpath(xpath)
-        if isinstance(ret_val, list) and len(ret_val) > 0:
-            ret_val = ret_val[0]
-        ret_val = etree.tostring(ret_val, with_tail=False, encoding="unicode") 
+        if ret_val == []:
+            ret_val = default_return
+        else:
+            if isinstance(ret_val, list) and len(ret_val) > 0:
+                ret_val = ret_val[0]
+            ret_val = etree.tostring(ret_val, with_tail=False, encoding="unicode") 
                 
     except Exception as err:
         logger.error(err)
@@ -744,7 +905,7 @@ def xml_file_to_xmlstr(xml_file, remove_encoding=False, resolve_entities=True):
     
     return ret_val
 
-def xml_str_to_html(xml_text, transformer_name="XML_To_HTML"):
+def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML):
     """
     Convert XML to HTML per Doc level XSLT file configured as g_xslt_doc_transformer.
     
@@ -752,8 +913,16 @@ def xml_str_to_html(xml_text, transformer_name="XML_To_HTML"):
     314
     """
     ret_val = None
+    if isinstance(elem_or_xmlstr, lxml.etree._Element):
+        xml_tree = elem_or_xmlstr
+        xml_text = etree.tostring(elem_or_xmlstr).decode("utf8")
+    else:
+        xml_text = elem_or_xmlstr
+        
+    elem_or_xmlstr = None # just to free up memory
+    
     # make sure it's not HTML already
-    if re.match("<!DOCTYPE html .*", xml_text, re.IGNORECASE):
+    if re.match("<!DOCTYPE html.*>", xml_text, re.IGNORECASE):
         ret_val = xml_text
     else:
         try:
@@ -765,11 +934,15 @@ def xml_str_to_html(xml_text, transformer_name="XML_To_HTML"):
         if xml_text is not None and xml_text != "[]":
             try:
                 xml_text = remove_encoding_string(xml_text)
-                sourceFile = etree.fromstring(xml_text)
+                parser = etree.XMLParser(resolve_entities=False)
+                sourceFile = etree.XML(xml_text, parser=parser)
+                #sourceFile = etree.fromstring(xml_text, remove_entities=False)
             except Exception as e:
                 # return this error, so it will be displayed (for now) instead of the document
                 ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
                 logger.error(ret_val)
+                print (xml_text)
+                raise Exception(ret_val)
             else:
                 if xml_text is not None and xml_text != "[]":
                     try:
@@ -783,6 +956,8 @@ def xml_str_to_html(xml_text, transformer_name="XML_To_HTML"):
                         ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
                         logger.error(ret_val)
                         ret_val = xml_text
+                        print (xml_text)
+                        raise Exception(ret_val)
                     else:
                         ret_val = str(transformed_data)
     return ret_val

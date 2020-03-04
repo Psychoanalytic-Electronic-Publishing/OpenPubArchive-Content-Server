@@ -274,8 +274,8 @@
 
   <!-- abs -->
   <xsl:template match="abs">
-    <xsl:call-template name="assign-lang"/>
     <div id="abs" class="abs">
+      <xsl:call-template name="assign-lang"/>
       <xsl:apply-templates/>
     </div>
   </xsl:template>
@@ -413,8 +413,8 @@
   </xsl:template>
   
   <xsl:template match="quote">
-    <xsl:call-template name="assign-lang"/>
     <div class="quote">
+      <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
     </div>
@@ -429,8 +429,8 @@
   </xsl:template>
 
   <xsl:template match="dialog">
-    <xsl:call-template name="assign-lang"/>
     <div class="dialog">
+      <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
     </div>
