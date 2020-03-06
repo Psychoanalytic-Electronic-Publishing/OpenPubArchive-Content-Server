@@ -36,6 +36,8 @@ from ebooklib import epub
 import opasConfig
 from io import StringIO
 
+show_dbg_messages = False
+stop_on_exceptions = False
 # -------------------------------------------------------------------------------------------------------
 class FirstPageCollector:
     def __init__(self, skip_tags=["impx", "tab"], para_limit=6):
@@ -56,9 +58,9 @@ class FirstPageCollector:
                     val = urllib.parse.quote_plus(val)
                 att_str += f'{key}="{val}" '
             if att_str == "":
-                att_str = att_str.rstrip()
                 self.doc += f"<{tag}>"
             else:
+                att_str = att_str.rstrip()
                 self.doc += f"<{tag} {att_str}>"
             self.tag_stack.append(tag)
             
@@ -79,7 +81,7 @@ class FirstPageCollector:
                 self.tag_stack.pop()
             if tag == "p": # count paras
                 self.para_count += 1
-                if self.para_count >= self.para_limit:
+                if self.para_count >= self.para_limit and show_dbg_messages:
                     print ("Paragraph limit for excerpt reached.")
                 
         if self.in_body and (tag == "pb" or self.para_count >= self.para_limit):
@@ -88,7 +90,7 @@ class FirstPageCollector:
             while len(self.tag_stack) > 0:
                 tag_to_close = self.tag_stack.pop()
                 self.doc += f"</{tag_to_close}>"
-                print(f"Closed tag: {tag_to_close}")
+                # print(f"Closed tag: {tag_to_close}")
             self.doc += "</abs>"
             
     def data(self, data):
@@ -133,18 +135,29 @@ class XSLT_Transformer(object):
                 try:
                     self.transformer_tree=etree.parse(self.file_spec)
                 except Exception as e:
-                    raise Exception(f"Parse error for XSLT file {self.file_spec}.  Error {e}")
+                    err =  f"Parse error for XSLT file {self.file_spec}.  Error {e}"
+                    if stop_on_exceptions:
+                        raise Exception(err)
+                    else:
+                        logger.error(err)
                 else:
                     try:
                         # save it to class dict by name
                         self.__class__.transformers[transformer_name] = etree.XSLT(self.transformer_tree)
                     except Exception as e:
-                        logger.error(f"Transform definition error for XSLT file {self.file_spec}.  Error {e}")
-                        raise Exception(f"Transform definition error for XSLT file {self.file_spec}.  Error {e}")
+                        err = f"Transform definition error for XSLT file {self.file_spec}.  Error {e}"
+                        if stop_on_exceptions:
+                            raise Exception(err)
+                        else:
+                            logger.error(err)
                     else:
                         break;
         if not os.path.exists(self.file_spec):
-            raise FileNotFoundError("XSLT file missing for all folders in STYLE path.") 
+            err = f"XSLT file {self.file_spec} missing for all folders in STYLE path."
+            if stop_on_exceptions:
+                raise FileNotFoundError(err)
+            else:
+                logger.error(err)
         
 
 # -------------------------------------------------------------------------------------------------------
@@ -197,9 +210,9 @@ def author_mast_from_xmlstr(author_xmlstr, listed=True):
     curr_author_number = 0
     for n in author_xml_list:
         curr_author_number += 1
-        author_first_name = xml_xpath_return_textsingleton(n, "nfirst", "").strip()
-        author_last_name = xml_xpath_return_textsingleton(n, "nlast", "").strip()
-        author_mid_name = xml_xpath_return_textsingleton(n, "nmid", "").strip()
+        author_first_name = xml_xpath_return_textsingleton(n, "nfirst", "")
+        author_last_name = xml_xpath_return_textsingleton(n, "nlast", "")
+        author_mid_name = xml_xpath_return_textsingleton(n, "nmid", "")
         if author_mid_name != "":
             author_name = " ".join([author_first_name, author_mid_name, author_last_name])
         else:
@@ -478,17 +491,13 @@ def xml_get_element_attr(element_node, attr_name, default_return=""):
     'speech'
     >>> xml_get_element_attr(curr_element[0], "typeaaa", None)
     """
-    ret_val = default_return
     try:
-        ret_val = element_node.attrib[attr_name]
-        if ret_val == "":
-            ret_val = default_return
+        ret_val = element_node.attrib.get(attr_name, default_return)
     except Exception as err:
         logger.warning(err)
         ret_val = default_return
 
     return ret_val
-
 
 def xml_get_elements(element_node, xpath_def, default_return=list()):
     """
@@ -791,7 +800,10 @@ def xml_xpath_return_textsingleton(element_node, xpath, default_return=""):
         ret_val = default_return
     
     if type(ret_val) == type(element_node):  # if it comes back an element
-        ret_val = xml_elem_or_str_to_text(ret_val)    
+        ret_val = xml_elem_or_str_to_text(ret_val)
+        
+    if ret_val is not None:
+        ret_val = ret_val.strip()
         
     return ret_val    
 
@@ -942,7 +954,8 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                 ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
                 logger.error(ret_val)
                 print (xml_text)
-                raise Exception(ret_val)
+                if stop_on_exceptions:
+                    raise Exception(ret_val)
             else:
                 if xml_text is not None and xml_text != "[]":
                     try:
@@ -957,7 +970,8 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                         logger.error(ret_val)
                         ret_val = xml_text
                         print (xml_text)
-                        raise Exception(ret_val)
+                        if stop_on_exceptions:
+                            raise Exception(ret_val)
                     else:
                         ret_val = str(transformed_data)
     return ret_val

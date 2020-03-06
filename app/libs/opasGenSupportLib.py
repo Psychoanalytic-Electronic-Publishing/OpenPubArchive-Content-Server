@@ -23,6 +23,7 @@ import time
 from datetime import datetime
 import calendar
 import email.utils
+import localsecrets
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
@@ -35,21 +36,31 @@ __status__      = "Development"
   
 # This function returns value of each Roman symbol 
 
-def get_mod_date(file_path):
-    """
-    Get the date that a file was last modified
-    """
-    retVal = None
-    try:
-        retVal = os.path.getmtime(file_path)
-    except IOError:
-        # try where the script is running from instead.
-        logger.info("%s not found.", file_path)
-    except Exception as e:
-        logger.fatal("%s.", e)
+class FileInfo(object):
+    def __init__(self, filename): 
+        """
+        Get the date that a file was last modified
+        """
+        self.filename = filename
+        self.timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(localsecrets.TIME_FORMAT_STR)
+        self.timestamp_obj = datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.fileSize = os.path.getsize(filename)
+        self.buildDate = time.time()
 
-    return retVal
+#def get_mod_date(file_path):
+    #"""
+    #Get the date that a file was last modified
+    #"""
+    #retVal = None
+    #try:
+        #retVal = os.path.getmtime(file_path)
+    #except IOError:
+        ## try where the script is running from instead.
+        #logger.info("%s not found.", file_path)
+    #except Exception as e:
+        #logger.fatal("%s.", e)
 
+    #return retVal
   
 def roman_to_decimal(the_str: str) -> int:
     """
@@ -203,15 +214,15 @@ def pgrg_splitter(pgrg_str: str) -> tuple:
     
     """
     retVal = (None, None)
-    pgParts = pgrg_str.split("-")
+    # pgParts = pgrg_str.split("-")
+    # pgParts = re.split("[-–—]") # split for dash or ndash
+    pgParts = [n.strip() for n in re.split("[-–—]", pgrg_str)]
     try:
         pgStart = pgParts[0]
-        pgStart = pgStart.strip()
     except IndexError as e:
         pgStart = None
     try:
         pgEnd = pgParts[1]
-        pgEnd = pgEnd.strip()
     except IndexError as e:
         pgEnd = None
 
