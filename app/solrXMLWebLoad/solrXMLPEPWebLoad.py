@@ -56,8 +56,10 @@ __status__      = "Development"
                  # Will remove the now unused code next build after it gets put into the repository for longer term
                  # storage and study.
     
-    # 2020-03-05 Optimize performance, especially file discovery.  General cleanup and another pass at camelCase to 
-                 # snake_case conversion
+    # 2020-03-05 Optimize performance, especially file discovery.  Set up tp compare against Solr dates rather than 
+                 # MySQL because that way you make sure the articles are in Solr, which is most important.
+                 # General cleanup and another pass at camelCase to snake_case conversion
+
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
@@ -576,7 +578,7 @@ class ArticleInfo(object):
         self.art_issue_title = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artissinfo/isstitle/node()', default_return=None)
 
         self.art_year_str = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artyear/node()', default_return=None)
-        m = re.match("(?P<yearint>[0-9]+)(?P<yearsuffix>[a-zA-Z])?(\s*\-\s*)?((?P<year2int>[0-9]+)(?P<year2suffix>[a-zA-Z])?)?", self.art_vol)
+        m = re.match("(?P<yearint>[0-9]{4,4})(?P<yearsuffix>[a-zA-Z])?(\s*\-\s*)?((?P<year2int>[0-9]{4,4})(?P<year2suffix>[a-zA-Z])?)?", self.art_year_str)
         if m is not None:
             self.art_year = m.group("yearint")
             self.art_year_int = int(m.group("yearint"))
@@ -1659,9 +1661,7 @@ def main():
     # Docs, Authors and References go through a full set of regular XML files
     bib_total_reference_count = 0 # zero this here, it's checked at the end whether references are processed or not
     if (options.reference_core_update or options.fulltext_core_update) == True:
-        if options.forceRebuildAllFiles == False:
-            print ("Adding only files with newer modification dates than what's in Solr database")
-        else:
+        if options.forceRebuildAllFiles == True:
             print ("Forced Rebuild - All files added, regardless of whether they were marked in the as already added.")
     
         # find all processed XML files where build is (bEXP_ARCH1) in path
