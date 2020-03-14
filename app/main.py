@@ -185,14 +185,20 @@ Endpoint and model documentation automatically available when server is running 
              # Still needs css formatting applied and banner if
              # we want it (path issue right now)
              
-#Alpha 2     Released as Alpha2
+#2020.0311.1 Setup html conversion to substutute current server domain + api call
+             # for image src.  Changed xslt file as well.
+             
+#Alpha       Released as Alpha3
+
+#2020.0313   Updated schemaMap.py to include p_bib for biblios
+#2020.0314   Removed journal paran min length of 2, since sometimes it's empty!
 
 #----------------------------------------------------------------------------------------------
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0306.1.Alpha3"
+__version__     = "2020.0311.1.Alpha3.2"
 __status__      = "Development"
 
 import sys
@@ -213,7 +219,7 @@ import shlex
 from urllib import parse
 # from http import cookies
 
-from enum import Enum
+# from enum import Enum
 import uvicorn
 from fastapi import FastAPI, Query, Path, Cookie, Header, Depends, HTTPException, File, Form, UploadFile
 from starlette.requests import Request
@@ -232,7 +238,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import aiofiles
-from typing import List
+# from typing import List
 
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 
@@ -242,7 +248,7 @@ from pydantic import BaseModel
 # from pydantic.types import EmailStr
 from pydantic import ValidationError
 import solrpy as solr
-import json
+# import json
 import libs.opasConfig as opasConfig
 from opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES
 import logging
@@ -873,16 +879,20 @@ def get_license_status(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     # session_id = session_info.session_id
     # is the user authenticated? if so, loggedIn is true
-    logged_in = session_info.authenticated
-    user_id = session_info.user_id
-    username = session_info.username
-    #if user_id == 0:
-        ##user = ocd.get_user(user_id=user_id)
-        #username = "NotLoggedIn"
-        #logged_in = False
-    #elif user_id is not None:
-        #username = session_info.username
-
+    if session_info is not None:
+        logged_in = session_info.authenticated
+        user_id = session_info.user_id
+        username = session_info.username
+        #if user_id == 0:
+            ##user = ocd.get_user(user_id=user_id)
+            #username = "NotLoggedIn"
+            #logged_in = False
+        #elif user_id is not None:
+            #username = session_info.username
+    else:
+        logged_in = False
+        username = "NotLoggedIn"
+    
     # hide the password hash
     response_info = models.ResponseInfoLoginStatus(loggedIn = logged_in,
                                                    username = username,
@@ -1022,7 +1032,7 @@ def login_user(response: Response,
             )
 
     # this simple return without responseInfo matches the GVPi server return.
-    if err_code != None:
+    if err_code is not None:
         return err_return
     else:
         try:
@@ -1108,7 +1118,7 @@ def logout_user(response: Response,
             detail=ERR_MSG_LOGOUT_UNSUPPORTED
         )
 
-    if err_code != None:
+    if err_code is not None:
         return err_return
     else:
         license_info_struct = models.LicenseInfoStruct( responseInfo = response_info, 
@@ -1416,7 +1426,7 @@ async def search_documents_v1(response: Response,
                               zone1: str=Query("doc", title=opasConfig.TITLE_PARAZONE1_V1, description=opasConfig.DESCRIPTION_PARAZONE_V1),
                               synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS, description=opasConfig.DESCRIPTION_SYNONYMS),
                               # filters, v1 naming
-                              journal: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2), 
+                              journal: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                               volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
                               author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                               title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
@@ -1570,7 +1580,7 @@ async def search_paragraphs(response: Response,
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
     if ret_status[0] != HTTP_200_OK:
         #  throw an exception rather than return an object (which will fail)
-        return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your search input.")
+        return models.ErrorReturn(error="Search syntax error", error_description=f"The search engine returned an error ({ret_status[1].reason}:{ret_status[1].body}) from your search input (FQ:{solr_query_params.filterQ} Q:{solr_query_params.searchQ}).")
         #raise HTTPException(
             #status_code=ret_status[0], 
             #detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
@@ -3105,6 +3115,19 @@ def view_a_document(response: Response,
         #ret_val = view_a_glossary_entry(response, request, term_id=term_id, search=search, return_format=return_format)
         ret_val = view_a_glossary_entry(response, request, term_id=term_id, return_format=return_format)
     else:
+        m = re.match("(?P<docid>[A-Z]{2,12}\.[0-9]{3,3}[A-F]?\.(?P<pagestart>[0-9]{4,4})[A-Z]?)(\.P(?P<pagenbr>[0-9]{4,4}))?", documentID)
+        if m is not None:
+            documentID = m.group("docid")
+            page_number = m.group("pagenbr")
+            if page_number is not None:
+                try:
+                    page_start_int = int(m.group("pagestart"))
+                    page_number_int = int(page_number)
+                    offset = page_number_int - page_start_int
+                except Exception as e:
+                    logging.error(f"Page offset calc issue.  {e}")
+                    offset = 0
+                    
         doc_info = opasAPISupportLib.document_get_info(documentID, fields="art_id, art_sourcetype, art_year, file_classification, art_sourcecode")
         file_classification = doc_info.get("file_classification", opasConfig.DOCUMENT_ACCESS_UNDEFINED)
         try:
@@ -3256,7 +3279,7 @@ async def download_an_image(response: Response,
     filename = opas_fs.get_image_filename(filespec=imageID, path=localsecrets.IMAGE_SOURCE_PATH)    
     media_type='image/jpeg'
     if download == 0:
-        if filename == None:
+        if filename is None:
             response.status_code = HTTP_400_BAD_REQUEST 
             status_message = "Error: no filename specified"
             logger.error(status_message)
@@ -3403,7 +3426,7 @@ def download_a_document(response: Response,
         endpoint = opasCentralDBLib.API_DOCUMENTS_HTML
 
     filename = opasAPISupportLib.prep_document_download(documentID, ret_format=file_format, authenticated=session_info.authenticated, base_filename="opasDoc")    
-    if filename == None:
+    if filename is None:
         response.status_code = HTTP_400_BAD_REQUEST 
         status_message = "Error: no filename specified"
         logger.error(status_message)

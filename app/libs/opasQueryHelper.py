@@ -276,8 +276,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
     """
     
     # v1 translation:
-    if journal is not None:
-        source_name = journal
+    if journal is not None and journal != "":
+        source_code = journal
     
     # parent_tag is any parent of a child doc as stored in the schema child field parent_tag.  
 
@@ -385,7 +385,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)  
 
-    if source_name is not None: 
+    if source_name is not None and source_name != "": 
         # accepts a journal, book or video series name and optional wildcard.  No booleans.
         analyze_this = f"&& art_sourcetitlefull:({source_name}) "
         filter_q += analyze_this
@@ -398,7 +398,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  
 
-    if source_code is not None:
+    if source_code is not None and source_code != "":
         # accepts a journal or book code (no wildcards) or a list of journal or book codes (no wildcards)
         # ALSO can accept a single source name or partial name with an optional wildcard.  But
         #   that's really what argument source_name is for, so this is just extra and may be later removed.
@@ -517,7 +517,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         if m is not None:
             val = m.group("nbr")
             val_end = m.group("endnbr")
-            if val_end == None:
+            if val_end is None:
                 val_end = "*"
             period = m.group("period")
 

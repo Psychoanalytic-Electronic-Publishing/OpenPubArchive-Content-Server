@@ -109,6 +109,7 @@ import localsecrets
 
 # Module Globals
 gCitedTable = dict() # large table of citation counts, too slow to run one at a time.
+options = None
 bib_total_reference_count = 0
 
 
@@ -120,6 +121,7 @@ class FileTracker(object):
     """
     #----------------------------------------------------------------------------------------
     def __init__(self, ocd, solrcore):
+        global options
         self.filename = ""
         self.ocd = ocd
         self.solrcore = solrcore
@@ -129,14 +131,20 @@ class FileTracker(object):
         self.buildDate = None
         self.solrAPIURL = ""
         self.conn = self.ocd.open_connection(caller_name="FileTracker")
-        self.file_set = self.get_file_dates_solr()
+        self.fullfileset = {}
+        self.file_set = {}
+        # we load all the data for files unless we're rebuilding all anyway
+        if not options.forceRebuildAllFiles:
+            self.file_set = self.load_all_file_dates_solr()
+            self.load_all_file_dates_mysql()
+        
 
     #----------------------------------------------------------------------------------------
     def close(self):
         self.conn = self.ocd.close_connection(caller_name="FileTracker")
 
     #------------------------------------------------------------------------------------------------------
-    def load_for_file(self, filename):
+    def load_fileinfo(self, filename):
         """
         Load key info for file of interest
         """
@@ -148,7 +156,7 @@ class FileTracker(object):
         self.buildDate = time.time()
 
     #------------------------------------------------------------------------------------------------------
-    def get_file_dates_solr(self):
+    def load_all_file_dates_solr(self):
         """
         Fetch all of the the article mod dates
         """
@@ -171,41 +179,81 @@ class FileTracker(object):
                 ret_val = {}
         return ret_val
 
-
     #------------------------------------------------------------------------------------------------------
-    def get_file_article_record_solr(self, filename):
-        """
-        Fetch the article record from Solr based on the filename it was created from
+    #def get_file_article_record_solr(self, filename=None):
+        #"""
+        #Fetch the article record from Solr based on the filename it was created from
          
-        """
-        ret_val = {}
-        basefilename = os.path.basename(filename)
+        #"""
+        #ret_val = {}
+        #basefilename = self.base_filename # os.path.basename(filename)
+        ## basefilename = os.path.basename(filename)
     
-        getFileInfoSOLR = f'art_level:1 && file_name:"{basefilename}"'
-        try:
-            results = self.solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp")
-        except Exception as e:
-            logging.error(f"Solr Query Error {e}")
-        else:
-            if results.hits > 0:
-                ret_val = results.docs[0]
-            else:
-                ret_val = {}
+        #getFileInfoSOLR = f'art_level:1 && file_name:"{basefilename}"'
+        #try:
+            #results = self.solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp")
+        #except Exception as e:
+            #logging.error(f"Solr Query Error {e}")
+        #else:
+            #if results.hits > 0:
+                #ret_val = results.docs[0]
+            #else:
+                #ret_val = {}
 
-        return ret_val
+        #return ret_val
+
+    ##------------------------------------------------------------------------------------------------------
+    #def get_file_article_record(self, filename=None):
+        #"""
+        #Fetch the article record based on the filename it was created from from the database.
+        
+        #Used for comparing timestamps on the database record against a command line arguments
+           #to build/load based on when the file was added to the database.
+        
+        #"""
+        #ret_val = {}
+        #basefilename = self.base_filename # os.path.basename(filename)
+    
+        #getFileInfoSQL = """
+                            #SELECT
+                               #art_id,
+                               #filename,
+                               #filedatetime,
+                               #updated
+                            #FROM api_articles
+                            #WHERE filename = %s
+                        #"""
+        #try:
+            #c = self.ocd.db.cursor(pymysql.cursors.DictCursor)
+            #c.execute(getFileInfoSQL, basefilename)
+            #rows = c.fetchall()
+            #if rows == ():
+                ## no database record here
+                #ret_val = None
+            #elif len(rows) > 1:
+                #print ("Error: query returned multiple rows")
+                #ret_val = None
+            #else:
+                #ret_val = rows[0]
+    
+        #except pymysql.Error as e:
+            #print(e)
+            #ret_val = None
+    
+        #c.close()  # close cursor
+        #return ret_val
 
     #------------------------------------------------------------------------------------------------------
-    def get_file_article_record(self, filename):
+    def load_all_file_dates_mysql(self):
         """
-        Fetch the article record based on the filename it was created from from the database.
+        Fetch all of the records based.
         
         Used for comparing timestamps on the database record against a command line arguments
            to build/load based on when the file was added to the database.
         
         """
         ret_val = {}
-        basefilename = os.path.basename(filename)
-    
+   
         getFileInfoSQL = """
                             SELECT
                                art_id,
@@ -213,30 +261,29 @@ class FileTracker(object):
                                filedatetime,
                                updated
                             FROM api_articles
-                            WHERE filename = %s
                         """
         try:
             c = self.ocd.db.cursor(pymysql.cursors.DictCursor)
-            c.execute(getFileInfoSQL, basefilename)
+            c.execute(getFileInfoSQL)
             rows = c.fetchall()
             if rows == ():
                 # no database record here
-                ret_val = None
-            elif len(rows) > 1:
-                print ("Error: query returned multiple rows")
-                ret_val = None
+                ret_val = False
             else:
-                ret_val = rows[0]
+                for n in rows:
+                    filename = n["filename"]
+                    self.fullfileset[filename] = n
+                ret_val = True
     
         except pymysql.Error as e:
             print(e)
-            ret_val = None
+            ret_val = False
     
         c.close()  # close cursor
         return ret_val
 
     #------------------------------------------------------------------------------------------------------
-    def is_loaded_before_after(self, before=None, after=None):
+    def is_load_date_before_or_after(self, before=None, after=None):
         """
         To allow updating (reloading) files before or after a date, compare the date updated
         in the database to the before or after time passed in from args.
@@ -245,7 +292,8 @@ class FileTracker(object):
         
         """
         ret_val = False
-        files_db_record = self.get_file_article_record(self.filename)
+        # lookup the current file from the fullset (no db access needed)
+        files_db_record = self.fullfileset.get(self.base_filename, None)
 
         if before is not None:
             before_obj = dateutil.parser.parse(before)
@@ -284,7 +332,7 @@ class FileTracker(object):
         return ret_val
 
     #------------------------------------------------------------------------------------------------------
-    def is_file_in_set_modified(self):
+    def is_file_newer_than_solr_date(self):
         """
         The comparison against the downloaded Solr date records showing the version of each file in the
            Solr database to see what's newer than the version that was loaded.
@@ -312,69 +360,69 @@ class FileTracker(object):
     
         return ret_val
     
-    #------------------------------------------------------------------------------------------------------
-    def is_file_modified_solr(self):
-        """
-        Compare file modification date to the one stored in the Solr document core to see if it's
-          been updated (modified).
+    ##------------------------------------------------------------------------------------------------------
+    #def is_file_modified_solr(self):
+        #"""
+        #Compare file modification date to the one stored in the Solr document core to see if it's
+          #been updated (modified).
           
-        Returns True if so, or True if it's not found in Solr, else False (not changed)
+        #Returns True if so, or True if it's not found in Solr, else False (not changed)
         
-        """
-        ret_val = False
-        files_solr_record = self.get_file_article_record_solr(self.filename)
-        if files_solr_record != {}:
-            # it's in the Solr database
-            db_timestamp_str = files_solr_record.get("file_last_modified", None)
-            # stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
-            if db_timestamp_str is not None:
-                #  convert to datetime obj for < comparison
-                db_timestamp_obj = datetime.strptime(db_timestamp_str, localsecrets.TIME_FORMAT_STR)
-                if db_timestamp_obj < self.timestamp_obj:
-                    # file is modified
-                    # print ("File is modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
-                    ret_val = True
-                else: #File not modified
-                    ret_val = False
-            else: # db record has no value for timestamp, so consider modified
-                ret_val = True
-        else:
-            ret_val = True # no record of it, so effectively modified.
+        #"""
+        #ret_val = False
+        #files_solr_record = self.get_file_article_record_solr(self.filename)
+        #if files_solr_record != {}:
+            ## it's in the Solr database
+            #db_timestamp_str = files_solr_record.get("file_last_modified", None)
+            ## stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
+            #if db_timestamp_str is not None:
+                ##  convert to datetime obj for < comparison
+                #db_timestamp_obj = datetime.strptime(db_timestamp_str, localsecrets.TIME_FORMAT_STR)
+                #if db_timestamp_obj < self.timestamp_obj:
+                    ## file is modified
+                    ## print ("File is modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
+                    #ret_val = True
+                #else: #File not modified
+                    #ret_val = False
+            #else: # db record has no value for timestamp, so consider modified
+                #ret_val = True
+        #else:
+            #ret_val = True # no record of it, so effectively modified.
     
-        return ret_val
+        #return ret_val
         
-    #------------------------------------------------------------------------------------------------------
-    def is_file_modified(self):
-        """
-        Compare file modification date to the one stored in the MySQL database to see if it's
-          been updated (modified).
+    ##------------------------------------------------------------------------------------------------------
+    #def is_file_modified(self):
+        #"""
+        #Compare file modification date to the one stored in the MySQL database to see if it's
+          #been updated (modified).
           
-        Returns True if so, or True if it's not found in the api_articles table in MySQL, else False (not changed)
+        #Returns True if so, or True if it's not found in the api_articles table in MySQL, else False (not changed)
         
-        #Deprecated.  SLOW way to do this.  So not used now, since the full load from Solr is used instead.
+        ##Deprecated.  SLOW way to do this.  So not used now, since the full load from Solr is used instead.
         
-        """
-        ret_val = False
-        file_dbrecord = self.get_file_article_record(self.filename)
-        if file_dbrecord is not None:
-            # it's in the database
-            db_timestamp_str = file_dbrecord.get("filedatetime", None)
-            # stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
-            if db_timestamp_str is not None:
-                #  convert to datetime obj for < comparison
-                db_timestamp_obj = datetime.strptime(db_timestamp_str, localsecrets.TIME_FORMAT_STR)
-                if db_timestamp_obj < self.timestamp_obj:
-                    # file is modified
-                    # print ("File is modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
-                    ret_val = True
-                else: #File not modified
-                    ret_val = False
-            else: # db record has no value for timestamp, so consider modified
-                ret_val = True
-        else:
-            ret_val = True # no record of it, so effectively modified.
+        #"""
+        #ret_val = False
+        #file_dbrecord = self.get_file_article_record()
+        #if file_dbrecord is not None:
+            ## it's in the database
+            #db_timestamp_str = file_dbrecord.get("filedatetime", None)
+            ## stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
+            #if db_timestamp_str is not None:
+                ##  convert to datetime obj for < comparison
+                #db_timestamp_obj = datetime.strptime(db_timestamp_str, localsecrets.TIME_FORMAT_STR)
+                #if db_timestamp_obj < self.timestamp_obj:
+                    ## file is modified
+                    ## print ("File is modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
+                    #ret_val = True
+                #else: #File not modified
+                    #ret_val = False
+            #else: # db record has no value for timestamp, so consider modified
+                #ret_val = True
+        #else:
+            #ret_val = True # no record of it, so effectively modified.
     
-        return ret_val
+        #return ret_val
 
 
 class ExitOnExceptionHandler(logging.StreamHandler):
@@ -408,7 +456,7 @@ class BiblioEntry(object):
         self.pgrg = opasgenlib.first_item_grabber(self.pgrg, re_separator_ptn=";|,", def_return=self.pgrg)
         self.rx = opasxmllib.xml_get_element_attr(ref, "rx", default_return=None)
         self.rxcf = opasxmllib.xml_get_element_attr(ref, "rxcf", default_return=None) # related rx
-        if self.rx != None:
+        if self.rx is not None:
             self.rx_sourcecode = re.search("(.*?)\.", self.rx, re.IGNORECASE).group(1)
         else:
             self.rx_sourcecode = None
@@ -569,7 +617,7 @@ class ArticleInfo(object):
             return
 
         vol_actual = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvol/@actual', default_return=None)
-        if vol_actual == None:
+        if vol_actual is None:
             self.art_vol_str = self.art_vol = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvol/node()', default_return=None)
         else:
             self.art_vol_str = self.art_vol = vol_actual
@@ -715,7 +763,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
 
     """
     #------------------------------------------------------------------------------------------------------
-    #globals gCitedTable
+    # global gCitedTable
     
     print(("   ...Processing main file content for the %s core." % opasConfig.SOLR_DOCS))
 
@@ -1065,7 +1113,7 @@ def processBibForReferencesCore(pepxml, artInfo, solrbib):
         authorList = '; '.join(authorList)
         bibRefRxCf = opasxmllib.xml_get_element_attr(ref, "rxcf", default_return=None)
         bibRefRx = opasxmllib.xml_get_element_attr(ref, "rx", default_return=None)
-        if bibRefRx != None:
+        if bibRefRx is not None:
             bibRefRxSourceCode = re.search("(.*?)\.", bibRefRx, re.IGNORECASE).group(1)
         else:
             bibRefRxSourceCode = None
@@ -1492,7 +1540,9 @@ def get_file_dates_solr(solrcore):
 #------------------------------------------------------------------------------------------------------
 def main():
     
-    #global options  # so the information can be used in support functions
+    global options  # so the information can be used in support functions
+    global gCitedTable
+    
     programNameShort = "OPASWebLoaderPEP"  # used for log file
     # scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
     logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
@@ -1518,6 +1568,8 @@ def main():
     parser.add_option("-t", "--trackerdb", dest="fileTrackerDBPath", default=None,
                       help="Full path and database name where the File Tracking Database is located (sqlite3 db)")
 
+    parser.add_option("-q", "--quickload", dest="quickload", action="store_true", default=False,
+                      help="Load the full-set of database file records for a full solr db reload")
     parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
                       help="Whether to run the files selected in reverse")
     #parser.add_option("-u", "--url",
@@ -1672,7 +1724,14 @@ def main():
         skipped_files = 0
         new_files = 0
         total_files = 0
+        # filetracker should only be instantiated once, because for speed, it loads all the
+        # necessary database info.
+        # After it's initialized, you load each fileinfo using the load function, rather
+        #  than reinstantiating.  That way the fileinfo loaded can be compared to the entries
+        #  in the Solr and MySQL database quickly.  If you reinstantiate FileTracker, it will have
+        #  to reload the databases!
         currentfile_info = FileTracker(ocd, solrcore_docs2)
+        
         #all_solr_docs = get_file_dates_solr(solrcore_docs2)
         if re.match(".*\.xml$", options.rootFolder, re.IGNORECASE):
             # single file mode.
@@ -1686,6 +1745,12 @@ def main():
         else:
             # get a list of all the XML files that are new
             singleFileMode = False
+            # for speed, get all the DB records for the files
+            #if options.quickload:
+                #if not currentfile_info.get_all_file_article_records()
+                   #logger.error ("Load of database failed.")
+                   #sys,exit()
+                   
             for root, d_names, f_names in os.walk(options.rootFolder):
                 for f in f_names:
                     if file_pattern_match.match(f):
@@ -1695,21 +1760,23 @@ def main():
                             #print (f"{totalFiles} files checked so far") # print a dot to show progress, no CR
                         filename = os.path.join(root, f)
                         #currFileInfo = FileTrackingInfo()
-                        currentfile_info.load_for_file(filename)  # mod 2019-06-05 Just the base URL, not the core
+                        # reuse the currentfile_info instance each time by loading the new file
+                        currentfile_info.load_fileinfo(filename)  # mod 2019-06-05 Just the base URL, not the core
+
                         if options.forceRebuildAllFiles:
                             # fake it, make it look modified!
                             is_modified = True
                         else:
                             #isModified = currentfile_info.is_file_modified_solr()
-                            is_modified = currentfile_info.is_file_in_set_modified()
+                            is_modified = currentfile_info.is_file_newer_than_solr_date()
                             
                         if options.imported_after is not None:
                             is_modified =\
-                                currentfile_info.is_loaded_before_after(after=options.imported_after)
+                                currentfile_info.is_load_date_before_or_after(after=options.imported_after)
                             
                         if options.imported_before is not None:
                             is_modified =\
-                                currentfile_info.is_loaded_before_after(before=options.imported_before)
+                                currentfile_info.is_load_date_before_or_after(before=options.imported_before)
 
                         if not is_modified:
                             # file seen before, need to compare.

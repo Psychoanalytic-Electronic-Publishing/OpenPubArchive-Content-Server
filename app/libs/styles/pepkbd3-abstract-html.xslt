@@ -207,7 +207,7 @@
 
   <!-- In order of appearance... -->
 
-  <xsl:template match="arttitle" mode="metadata">
+  <xsl:template match="arttitle">
     <p class="title arttitle">
       <a href="/#/ArticleList/?journal={$journal-code}&amp;vol={$artvol}&amp;page={$artstartpg}">
         <xsl:apply-templates select="(text())[not(self::ftnx)]"/>

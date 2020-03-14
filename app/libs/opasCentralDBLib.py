@@ -455,7 +455,7 @@ class opasCentralDB(object):
         from models import SessionInfo # do this here to avoid circularity
         self.open_connection(caller_name="get_session_from_db") # make sure connection is open
         ret_val = None
-        if self.db != None:
+        if self.db is not None:
             curs = self.db.cursor(pymysql.cursors.DictCursor)
             # now insert the session
             sql = f"SELECT * FROM api_sessions WHERE session_id = '{session_id}'";
@@ -508,25 +508,25 @@ class opasCentralDB(object):
         self.open_connection(caller_name="update_session") # make sure connection is open
         setClause = "SET "
         added = 0
-        if access_token != None:
+        if access_token is not None:
             setClause += f" access_token = '{access_token}'"
             added += 1
-        if userID != None:
+        if userID is not None:
             if added > 0:
                 setClause += ", "
             setClause += f" user_id = '{userID}'"
             added += 1
-        if userIP != None:
+        if userIP is not None:
             if added > 0:
                 setClause += ", "
             setClause += f" user_ip = '{userIP}'"
             added += 1
-        if connected_via != None:
+        if connected_via is not None:
             if added > 0:
                 setClause += ", "
             setClause += f" connected_via = '{connected_via}'"
             added += 1
-        if session_end != None:
+        if session_end is not None:
             if added > 0:
                 setClause += ", "
             setClause += " session_end = '{}'".format(session_end) 
@@ -617,7 +617,7 @@ class opasCentralDB(object):
             else: # its open
                 session_start=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
                 session_admin = False
-                if self.db != None:  # don't need this check, but leave it.
+                if self.db is not None:  # don't need this check, but leave it.
                     cursor = self.db.cursor()
                     if username != "NotLoggedIn":
                         user = self.get_user(username=username)
@@ -625,7 +625,7 @@ class opasCentralDB(object):
                             userID = user.user_id
                             authenticated = True
                             session_admin = user.admin
-                            #if expiresTime == None:
+                            #if expiresTime is None:
                                 #from opasCentralDBLib import getMaxAge
                                 #maxAge = getMaxAge(keepActive)
                                 #expiresTime = datetime.utcfromtimestamp(time.time() + maxAge).strftime('%Y-%m-%d %H:%M:%S')
@@ -694,7 +694,7 @@ class opasCentralDB(object):
         ret_val = None
         self.open_connection(caller_name="close_expired_sessions") # make sure connection is open
 
-        if self.db != None:
+        if self.db is not None:
             try:
                 cursor = self.db.cursor()
                 sql = f""" UPDATE api_sessions
@@ -737,7 +737,7 @@ class opasCentralDB(object):
         ret_val = 0
         self.open_connection(caller_name="count_open_sessions") # make sure connection is open
 
-        if self.db != None:
+        if self.db is not None:
             try:
                 cursor = self.db.cursor()
                 sql = """SELECT COUNT(*)
@@ -773,7 +773,7 @@ class opasCentralDB(object):
         ret_val = 0
         self.open_connection(caller_name="close_expired_sessions") # make sure connection is open
 
-        if self.db != None:
+        if self.db is not None:
             try:
                 cursor = self.db.cursor()
                 sql = """UPDATE api_sessions
@@ -814,14 +814,14 @@ class opasCentralDB(object):
             try:
                 session_id = session_info.session_id         
             except:
-                if self.session_id == None:
+                if self.session_id is None:
                     # no session open!
                     logger.debug("No session is open")
                     return ret_val
                 else:
                     session_id = self.session_id
                 
-            if self.db != None:  # shouldn't need this test
+            if self.db is not None:  # shouldn't need this test
                 cursor = self.db.cursor()
                 # TODO: I removed returnStatusCode from here. Remove it from the DB
                 sql = """INSERT INTO 
@@ -858,7 +858,7 @@ class opasCentralDB(object):
         """
         ret_val = 0
         self.open_connection(caller_name="get_subscription_access") # make sure connection is open
-        if self.db != None:
+        if self.db is not None:
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
 
@@ -898,7 +898,7 @@ class opasCentralDB(object):
         user_products = []
         self.open_connection(caller_name="authenticate_user_product_request") # make sure connection is open
             
-        if self.db != None:
+        if self.db is not None:
             #  is the product free?
             #    -- need to do a query against the product database directly to answer
             # 
@@ -956,7 +956,7 @@ class opasCentralDB(object):
         #"""
         #ret_val = []
         ##self.open_connection(caller_name="get_basecodes_for_product") # make sure connection is open
-        ##if self.db != None:
+        ##if self.db is not None:
             ##try:
                 ##curs = self.db.cursor(pymysql.cursors.SSCursor)
 
@@ -983,7 +983,7 @@ class opasCentralDB(object):
         #"""
         #ret_val = {}
         #self.open_connection(caller_name="get_dict_of_products") # make sure connection is open
-        #if self.db != None:
+        #if self.db is not None:
             #try:
                 #curs = self.db.cursor(pymysql.cursors.DictCursor)
 
@@ -1049,7 +1049,7 @@ class opasCentralDB(object):
             if offset != 0:
                 limit_clause += f" OFFSET {offset}"
 
-        if self.db != None:
+        if self.db is not None:
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
                 if source is not None:
@@ -1069,7 +1069,7 @@ class opasCentralDB(object):
             else:
                 if res:
                     ret_val = curs.fetchall()
-                    if limit_clause != None:
+                    if limit_clause is not None:
                         # do another query to count possil
                         curs2 = self.db.cursor()
                         sqlCount = "SELECT COUNT(*) " + sqlAll
@@ -1406,7 +1406,7 @@ class opasCentralDB(object):
         if ret_val == (False, None):
             # try PaDSlogin
             user = self.auth_via_pads(username, password)
-            if user == None:
+            if user is None:
                 # Not a PaDS account
                 ret_val = (False, None)
             else:

@@ -2,7 +2,7 @@
 <!-- ============================================================= -->
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
 <!--     BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML   -->
-<!--  DATE:      Jan 9, 2020                                       -->
+<!--  DATE:      Mar 11, 2020                                       -->
 <!--  Revisions:                                                   
         2019-11-25: fix lang attribute insertion  
         2019-12-09: add xml to html video callout conversion  
@@ -118,8 +118,19 @@
   <!--  TOP LEVEL                                                    -->
   <!-- ============================================================= -->
   <!--Config Variables-->
-  <xsl:variable name="domain" select="'http://development.org:9100/'" />
-  <xsl:variable name="artimageurl" select="'v1/Documents/Downloads/Images/'" />
+  <!--The domains are placeholders...the server will change them per the localsecrets configuration file.
+      The OPAS_SERVER_DOMAIN will be changed to the API Server URL and the 
+      For example, for testing, the domain will be changed to: 
+          http://development.org:9100
+       and the opas image URL mapped to: 
+          http://development.org:9100/v2/Documents/Downloads/Images
+          
+      NOTE: In this latest 2020/03/11 revision, only imageurl is referenced/used. 
+            However, if Domain is needed anywhere, it can be used and will 
+            be supplied/substituted by the server
+  -->
+  <xsl:variable name="domain" select="'$OPAS_SERVER_DOMAIN;'" />
+  <xsl:variable name="imageurl" select="'$OPAS_IMAGE_URL;'" />
     
   <!--Global Variables-->
   <!--  used with translate to convert between case, since this is for XSLT 1.0 -->
@@ -658,7 +669,7 @@
             </xsl:variable>
             <!--<xsl:value-of select="concat('g/', $image, '.jpg')"/>-->
             <!--Use api call to grab image-->
-            <xsl:value-of select="concat($domain, $artimageurl, $image)"/>
+            <xsl:value-of select="concat($imageurl, $image)"/>
             <!--          <xsl:value-of select="."/>-->
           </xsl:attribute>
         </xsl:for-each>      

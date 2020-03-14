@@ -8,12 +8,16 @@ Schemamap
 2020.0106.1 - First version
 
 """
+# 2020-03-13 - Added Body to USER2SOLR_MAP as a standalone item, in case someone issues it like that through advanced.  But normally, you should use doc to include summaries or appxs
+
 SOLR2USER_MAP = {}
 import re
 
 # Map client names to schema names
 USER2SOLR_MAP = {
     "doc" : "(p_body OR p_summaries OR p_appxs)",
+    "body" : "(p_body)",
+    "abstract" : "(p_abstract)",
     "headings": "(p_heading)",
     "quotes": "(p_quote)",
     "dreams": "(p_dream)",

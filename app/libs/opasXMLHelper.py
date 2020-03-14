@@ -9,16 +9,22 @@ Various support functions having to do with XML conversion (e.g., to HTML, ePub,
     
 """
 #Revision Notes:
-   #2020.0224.1 - XSLT converter optimization (took to long to parse XSLT file) so loads only once.
+   #2020.0224.1 XSLT converter optimization (took to long to parse XSLT file) so loads only once.
+   #2020.0311.1 Setup html conversion to substutute current server domain + api call
+                # for image src.  Changed xslt file as well.
 
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0228.1"
+__version__     = "2020.0311.1"
 __status__      = "Development"
 
+
 import sys
+sys.path.append('../libs')
+sys.path.append('../config')
+
 import re
 import os
 import os.path
@@ -31,6 +37,7 @@ import urllib
 import lxml
 from lxml import etree
 import lxml.html as lhtml
+from localsecrets import APIURL, IMAGE_API_LINK
 
 from ebooklib import epub
 import opasConfig
@@ -974,6 +981,8 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                             raise Exception(ret_val)
                     else:
                         ret_val = str(transformed_data)
+                        # do substitutes
+                        ret_val = ret_val.replace("%24OPAS_IMAGE_URL;", APIURL + IMAGE_API_LINK)
     return ret_val
 
 def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=None, stylesheet=opasConfig.CSS_STYLESHEET): #  e.g., "./libs/styles/pep-html-preview.css"

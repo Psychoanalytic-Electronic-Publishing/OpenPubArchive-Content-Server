@@ -202,6 +202,7 @@ def get_session_info(request: Request,
                 # this is an error, and means there's no recorded session info.  Should we create a s
                 #  session record, return an error, or ignore? #TODO
                 # try creating a record
+                ocd, session_info = start_new_session(response, request, access_token=access_token, keep_active=keep_active, user=user) 
                 username="NotLoggedIn"
                 ret_val, session_info = ocd.save_session(session_id, 
                                                          userID=0,
@@ -268,7 +269,7 @@ def start_new_session(resp: Response, request: Request, session_id=None, access_
     # session_start=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
     max_age = get_max_age(keep_active)
     token_expiration_time=datetime.utcfromtimestamp(time.time() + max_age) # .strftime('%Y-%m-%d %H:%M:%S')
-    if session_id == None:
+    if session_id is None:
         session_id = secrets.token_urlsafe(16)
         logger.info("startNewSession assigning New Session ID: {}".format(session_id))
 
@@ -877,7 +878,7 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
       
     """
     
-    if pep_code != None:
+    if pep_code is not None:
         query = "art_sourcetype:video* AND art_sourcecode:{}".format(pep_code)
     else:
         query = "art_sourcetype:video*"
@@ -1613,7 +1614,7 @@ def get_abstract_or_summary_from_search_result(result, documentListItem: models.
         #   the style sheet application changed.
         # Note: this will return the entire body div if arttype=='TOC', as per PEP specs
         abstract = extract_abstract_from_html(abstractHTML, xpath_to_extract="//div[@id='abs']") 
-        if abstract == None:
+        if abstract is None:
             abstract = abstractHTML
 
     abstract = opasxmllib.add_headings_to_abstract_html( abstract=abstract, 
@@ -1762,7 +1763,7 @@ def documents_get_document(document_id,
                                                  page=page # start page specified
                                                )
         
-        if document_list == None or document_list.documentList.responseInfo.count == 0:
+        if document_list is None or document_list.documentList.responseInfo.count == 0:
             #sometimes the query is still sent back, even though the document was an independent selection.  So treat it as a simple doc fetch
             
             query = "art_id:{}".format(document_id)
@@ -2436,7 +2437,7 @@ def search_text(query,
         query = query.replace("*:* && ", "")
         logger.debug("Solr Query: %s", query)
 
-    if def_type != None:
+    if def_type is not None:
         query_type = def_type
     else:
         query_type = None

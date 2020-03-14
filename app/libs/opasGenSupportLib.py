@@ -36,6 +36,27 @@ __status__      = "Development"
   
 # This function returns value of each Roman symbol 
 
+class DocumentID(object):
+    def __init__(self, document_id):
+        #  See https://docs.google.com/document/d/1QmRG6MnM1jJOEq9irqCyoEY6Bt4U3mm8FY6TtZSt3-Y/edit#heading=h.mv7bvgdg7i7h for document ID information
+        m = re.match("(?P<docid>(?P<journalcode>[A-Z]{2,12})\.(?P<volume>[0-9]{3,3}(?P<volsuffix>[A-F]?))\.(?P<pagestart>[0-9]{4,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagenbr>[0-9]{4,4}))?", document_id)
+        if m is not None:
+            self.document_id = m.group("docid")
+            self.journal_code = m.group("journalcode")
+            self.volume = m.group("journalcode")
+            self.vol_suffix = m.group("volsuffix")
+            self.page_start = m.group("pagestart")
+            self.page_nbr = m.group("pagenbr")
+            self.page_number = m.group("pagenbr")
+            if page_number is not None:
+                try:
+                    page_start_int = int(m.group("pagestart"))
+                    page_number_int = int(page_number)
+                    offset = page_number_int - page_start_int
+                except Exception as e:
+                    logging.error(f"Page offset calc issue.  {e}")
+                    offset = 0
+
 class FileInfo(object):
     def __init__(self, filename): 
         """
@@ -62,79 +83,6 @@ class FileInfo(object):
 
     #return retVal
   
-def roman_to_decimal(the_str: str) -> int:
-    """
-    Roman to Decimal from GeeksforGeeks
-    
-    >>> roman_to_decimal("MCMIV")
-    1904
-    
-    >>> roman_to_decimal("vii")
-    7
-
-    >>> roman_to_decimal("42")
-    42
-
-    """
-    def roman_letter_value(r):
-        r = r.upper()
-        
-        if (r == 'I'): 
-            return 1
-        if (r == 'V'): 
-            return 5
-        if (r == 'X'): 
-            return 10
-        if (r == 'L'): 
-            return 50
-        if (r == 'C'): 
-            return 100
-        if (r == 'D'): 
-            return 500
-        if (r == 'M'): 
-            return 1000
-        return -1
-
-    ret_val = 0
-    i = 0
-    try:
-        ret_val = int(the_str)
-    except ValueError as e:
-        # must be roman, continue
-        convert = True
-    else:
-        convert = False
-        
-  
-    if convert:
-        while (i < len(the_str)): 
-      
-            # Getting value of symbol s[i] 
-            s1 = roman_letter_value(the_str[i]) 
-      
-            if (i+1 < len(the_str)): 
-      
-                # Getting value of symbol s[i+1] 
-                s2 = roman_letter_value(the_str[i+1]) 
-      
-                # Comparing both values 
-                if (s1 >= s2): 
-      
-                    # Value of current symbol is greater 
-                    # or equal to the next symbol 
-                    ret_val = ret_val + s1 
-                    i = i + 1
-                else: 
-      
-                    # Value of current symbol is greater 
-                    # or equal to the next symbol 
-                    ret_val = ret_val + s2 - s1 
-                    i = i + 2
-            else: 
-                ret_val = ret_val + s1 
-                i = i + 1
-  
-    return ret_val
 
 def year_grabber(year_str: str):
     """
@@ -275,6 +223,7 @@ def derive_author_mast(authorIDList):
 
     return retVal
 
+    
 # -------------------------------------------------------------------------------------------------------
 # run it!
 
@@ -283,4 +232,5 @@ if __name__ == "__main__":
    
     import doctest
     doctest.testmod()    
-    print ("Tests Completed")
+    print ("opasGenSupportLib Tests Completed")
+    
