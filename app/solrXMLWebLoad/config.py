@@ -8,7 +8,7 @@ options = None
 # constants
 COMMITLIMIT = 250  # commit the load to Solr every X articles
 #SOURCEINFODBFILENAME = 'PEPSourceInfo.json'
-DEFAULTDATAROOT = r"C:\solr-8.0.0\server\solr\pepwebproto\sampledata\_PEPA1"
+DEFAULTDATAROOT = r"X:\\_PEPA1\\_PEPa1v\\"
 DEFAULTSOLRHOME = "http://localhost:8983/solr/"
 
 AUTHORCORENAME = "pepwebauthors"

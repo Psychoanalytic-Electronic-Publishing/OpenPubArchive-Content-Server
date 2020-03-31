@@ -56,10 +56,16 @@ __status__      = "Development"
                  # Will remove the now unused code next build after it gets put into the repository for longer term
                  # storage and study.
     
-    # 2020-03-05 Optimize performance, especially file discovery.  Set up tp compare against Solr dates rather than 
+    #2020-03-05  Optimize performance, especially file discovery.  Set up tp compare against Solr dates rather than 
                  # MySQL because that way you make sure the articles are in Solr, which is most important.
                  # General cleanup and another pass at camelCase to snake_case conversion
+                 
+    #2020-03-26  Needed to set lang attribute from p up the ancestors in order to find all paragraphs in a particular
+                 # language when the lang attribute could be local or inherited at intermediate (e.g., section), levels
+                 # even.  It's a shame it's not done by default in lxml.
 
+    #2020-03-30  Removing the bibliocore code (commented out for now).  Instead the biblio will be managed simply in the
+                 # database
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
@@ -112,72 +118,234 @@ gCitedTable = dict() # large table of citation counts, too slow to run one at a 
 options = None
 bib_total_reference_count = 0
 
+def find_all(name_pat, path):
+    result = []
+    name_patc = re.compile(name_pat, re.IGNORECASE)
+    for root, dirs, files in os.walk(path):
+        for filename in files:
+            if name_patc.match(filename):
+                result.append(os.path.join(root, filename))
+    return result
 
-class FileTracker(object):
+class NewFileTracker(object):
     """
-    A class to store basic file info and compare to to the database and Solr records
-       about it, to control Solr loads.
-       
+    >>> ocd =  opasCentralDBLib.opasCentralDB()
+    >>> ft = NewFileTracker(ocd)
+    >>> fsel = r"X:\\_PEPA1\\_PEPa1v\\_PEPArchive\\IJP\\043\\IJP.043.0306A(bEXP_ARCH1).XML"
+    >>> ft.load_fs_fileinfo(fsel)
+    >>> ft.is_refresh_needed()
+    False
+    >>> ft.is_refresh_needed(before_date="2020-03-01")
+    True
+    >>> ft.is_refresh_needed(after_date="2019-01-01")
+    True
+    >>> ft.is_refresh_needed(after_date="2020-03-01")
+    False
+    >>> ft.is_refresh_needed(before_date="2019-01-01")
+    False
+    >>> ft.is_refresh_needed(after_date="2020-03-01")
+    False
+    >>> ft.is_refresh_needed(before_date="2019-01-01")
+    False
+    
+    
     """
     #----------------------------------------------------------------------------------------
-    def __init__(self, ocd, solrcore):
-        global options
+    def __init__(self, ocd):
         self.filename = ""
         self.ocd = ocd
-        self.solrcore = solrcore
-        # self.solrsearch = solrcore.search_handler(solrcore, "/select")
         self.fileModDate = None
         self.fileSize = 0
         self.buildDate = None
-        self.solrAPIURL = ""
         self.conn = self.ocd.open_connection(caller_name="FileTracker")
         self.fullfileset = {}
         self.file_set = {}
-        # we load all the data for files unless we're rebuilding all anyway
-        if not options.forceRebuildAllFiles:
-            self.file_set = self.load_all_file_dates_solr()
-            self.load_all_file_dates_mysql()
         
-
     #----------------------------------------------------------------------------------------
     def close(self):
         self.conn = self.ocd.close_connection(caller_name="FileTracker")
 
     #------------------------------------------------------------------------------------------------------
-    def load_fileinfo(self, filename):
+    def load_fs_fileinfo(self, filename):
         """
         Load key info for file of interest
         """
-        self.filename = filename
-        self.base_filename = os.path.basename(filename)
-        self.timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(localsecrets.TIME_FORMAT_STR)
-        self.timestamp_obj = datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
-        self.fileSize = os.path.getsize(filename)
-        self.buildDate = time.time()
+        if os.path.exists(filename):
+            self.filename = filename
+            self.base_filename = os.path.basename(filename)
+            self.timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(localsecrets.TIME_FORMAT_STR)
+            self.timestamp_obj = datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+            self.fileSize = os.path.getsize(filename)
+            self.buildDate = time.time()
 
     #------------------------------------------------------------------------------------------------------
-    def load_all_file_dates_solr(self):
+    def is_refresh_needed(self, filename, before_date=None, after_date=None):
         """
-        Fetch all of the the article mod dates
-        """
-        ret_val = {}
-        max_rows = 1000000
+        Compare the file's date with whichever is specified
+           1) before_date: is it before a specified date
+           2) after_date: is it after a specified date
+        if neither of those specified:
+           3) db_date: is the file newer
         
-        def convert(lst): # convert list to dict with field file_name as key
-            res_dct = {lst[i]["file_name"]: lst[i] for i in range(0, len(lst))} 
-            return res_dct        
-    
-        getFileInfoSOLR = f'art_level:1'
-        try:
-            results = self.solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp", rows=max_rows)
-        except Exception as e:
-            logging.error(f"Solr Query Error {e}")
-        else:
-            if results.hits > 0:
-                ret_val = convert(results.docs)
+        """
+        ret_val = False
+        self.load_fs_fileinfo(filename)
+
+        if before_date is not None:
+            before_obj = dateutil.parser.parse(before_date)
+            if self.timestamp_obj < before_obj:
+                ret_val = True
+
+        if after_date is not None:
+            after_obj = dateutil.parser.parse(after_date)
+            if self.timestamp_obj > after_obj:
+                ret_val = True
+
+        if ret_val == False: # check database
+            getFileInfoSQL = """
+                                SELECT
+                                   art_id,
+                                   filename,
+                                   filedatetime,
+                                   updated
+                                FROM api_articles
+                                WHERE filename = %s
+                            """
+            try:
+                c = self.ocd.db.cursor(pymysql.cursors.DictCursor)
+                c.execute(getFileInfoSQL, self.base_filename)
+                row = c.fetchone()
+                if row == None:
+                    # no database record here, so newer by default
+                    ret_val = True
+                else:
+                    self.db_fileinfo = row
+                    
+            except pymysql.Error as e:
+                print(e)
+                ret_val = False
             else:
-                ret_val = {}
+                if self.db_fileinfo["filedatetime"] < self.timestamp_str:
+                    ret_val = True
+            
+            c.close()  # close cursor
+
         return ret_val
+
+    #------------------------------------------------------------------------------------------------------
+    def is_load_date_before_or_after(self, before=None, after=None):
+        """
+        To allow updating (reloading) files before or after a date, compare the date updated
+        in the database to the before or after time passed in from args.
+        
+        Note that this uses the timestamp on the database record rather than the file mod date.
+        
+        """
+        ret_val = False
+        # lookup the current file from the fullset (no db access needed)
+        files_db_record = self.fullfileset.get(self.base_filename, None)
+
+        if before is not None:
+            before_obj = dateutil.parser.parse(before)
+            before_time = True
+        else:
+            before_time = False
+        
+        if after is not None:
+            after_obj = dateutil.parser.parse(after)
+            after_time = True
+        else:
+            after_time = False
+            
+        if files_db_record is not None:
+            # it's in the database
+            db_timestamp_obj = files_db_record.get("updated", None)
+            # stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
+            if db_timestamp_obj is not None:
+                # default return False, not modified
+                ret_val = False
+                if before_time:
+                    if db_timestamp_obj < before_obj:
+                        # file is modified
+                        # print ("File is considered modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
+                        ret_val = True
+                if after_time:
+                    if db_timestamp_obj > after_obj:
+                        # file is modified
+                        # print ("File is considered modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
+                        ret_val = True
+            else: # db record has no value for timestamp, so consider modified
+                ret_val = True
+        else:
+            ret_val = True # no record of it, so effectively modified.
+    
+        return ret_val
+
+#class FileTracker(object):
+    #"""
+    #A class to store basic file info and compare to to the database and Solr records
+       #about it, to control Solr loads.
+       
+    #"""
+    ##----------------------------------------------------------------------------------------
+    #def __init__(self, ocd, solrcore):
+        #global options
+        #self.filename = ""
+        #self.ocd = ocd
+        #self.solrcore = solrcore
+        ## self.solrsearch = solrcore.search_handler(solrcore, "/select")
+        #self.fileModDate = None
+        #self.fileSize = 0
+        #self.buildDate = None
+        #self.solrAPIURL = ""
+        #self.conn = self.ocd.open_connection(caller_name="FileTracker")
+        #self.fullfileset = {}
+        #self.file_set = {}
+        ## we load all the data for files unless we're rebuilding all anyway
+        #if not options.forceRebuildAllFiles:
+            #self.file_set = self.load_all_file_dates_solr(solrcore)
+            #self.load_all_file_dates_mysql()
+        
+
+    ##----------------------------------------------------------------------------------------
+    #def close(self):
+        #self.conn = self.ocd.close_connection(caller_name="FileTracker")
+
+    ##------------------------------------------------------------------------------------------------------
+    #def load_fileinfo(self, filename):
+        #"""
+        #Load key info for file of interest
+        #"""
+        #self.filename = filename
+        #self.base_filename = os.path.basename(filename)
+        #self.timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(localsecrets.TIME_FORMAT_STR)
+        #self.timestamp_obj = datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        #self.fileSize = os.path.getsize(filename)
+        #self.buildDate = time.time()
+
+    ##------------------------------------------------------------------------------------------------------
+    #def load_all_file_dates_solr(self, solrcore):
+        #"""
+        #Fetch all of the the article mod dates
+        #"""
+        #ret_val = {}
+        #max_rows = 1000000
+        
+        #def convert(lst): # convert list to dict with field file_name as key
+            #res_dct = {lst[i]["file_name"]: lst[i] for i in range(0, len(lst))} 
+            #return res_dct        
+    
+        #getFileInfoSOLR = f'art_level:1'
+        #try:
+            #results = solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp", rows=max_rows)
+        #except Exception as e:
+            #logging.error(f"Solr Query Error {e}")
+        #else:
+            #if results.hits > 0:
+                #ret_val = convert(results.docs)
+            #else:
+                #ret_val = {}
+        #return ret_val
 
     #------------------------------------------------------------------------------------------------------
     #def get_file_article_record_solr(self, filename=None):
@@ -243,122 +411,122 @@ class FileTracker(object):
         #c.close()  # close cursor
         #return ret_val
 
-    #------------------------------------------------------------------------------------------------------
-    def load_all_file_dates_mysql(self):
-        """
-        Fetch all of the records based.
+    ##------------------------------------------------------------------------------------------------------
+    #def load_all_file_dates_mysql(self):
+        #"""
+        #Fetch all of the records based.
         
-        Used for comparing timestamps on the database record against a command line arguments
-           to build/load based on when the file was added to the database.
+        #Used for comparing timestamps on the database record against a command line arguments
+           #to build/load based on when the file was added to the database.
         
-        """
-        ret_val = {}
+        #"""
+        #ret_val = {}
    
-        getFileInfoSQL = """
-                            SELECT
-                               art_id,
-                               filename,
-                               filedatetime,
-                               updated
-                            FROM api_articles
-                        """
-        try:
-            c = self.ocd.db.cursor(pymysql.cursors.DictCursor)
-            c.execute(getFileInfoSQL)
-            rows = c.fetchall()
-            if rows == ():
-                # no database record here
-                ret_val = False
-            else:
-                for n in rows:
-                    filename = n["filename"]
-                    self.fullfileset[filename] = n
-                ret_val = True
+        #getFileInfoSQL = """
+                            #SELECT
+                               #art_id,
+                               #filename,
+                               #filedatetime,
+                               #updated
+                            #FROM api_articles
+                        #"""
+        #try:
+            #c = self.ocd.db.cursor(pymysql.cursors.DictCursor)
+            #c.execute(getFileInfoSQL)
+            #rows = c.fetchall()
+            #if rows == ():
+                ## no database record here
+                #ret_val = False
+            #else:
+                #for n in rows:
+                    #filename = n["filename"]
+                    #self.fullfileset[filename] = n
+                #ret_val = True
     
-        except pymysql.Error as e:
-            print(e)
-            ret_val = False
+        #except pymysql.Error as e:
+            #print(e)
+            #ret_val = False
     
-        c.close()  # close cursor
-        return ret_val
+        #c.close()  # close cursor
+        #return ret_val
 
-    #------------------------------------------------------------------------------------------------------
-    def is_load_date_before_or_after(self, before=None, after=None):
-        """
-        To allow updating (reloading) files before or after a date, compare the date updated
-        in the database to the before or after time passed in from args.
+    ##------------------------------------------------------------------------------------------------------
+    #def is_load_date_before_or_after(self, before=None, after=None):
+        #"""
+        #To allow updating (reloading) files before or after a date, compare the date updated
+        #in the database to the before or after time passed in from args.
         
-        Note that this uses the timestamp on the database record rather than the file mod date.
+        #Note that this uses the timestamp on the database record rather than the file mod date.
         
-        """
-        ret_val = False
-        # lookup the current file from the fullset (no db access needed)
-        files_db_record = self.fullfileset.get(self.base_filename, None)
+        #"""
+        #ret_val = False
+        ## lookup the current file from the fullset (no db access needed)
+        #files_db_record = self.fullfileset.get(self.base_filename, None)
 
-        if before is not None:
-            before_obj = dateutil.parser.parse(before)
-            before_time = True
-        else:
-            before_time = False
+        #if before is not None:
+            #before_obj = dateutil.parser.parse(before)
+            #before_time = True
+        #else:
+            #before_time = False
         
-        if after is not None:
-            after_obj = dateutil.parser.parse(after)
-            after_time = True
-        else:
-            after_time = False
+        #if after is not None:
+            #after_obj = dateutil.parser.parse(after)
+            #after_time = True
+        #else:
+            #after_time = False
             
-        if files_db_record is not None:
-            # it's in the database
-            db_timestamp_obj = files_db_record.get("updated", None)
-            # stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
-            if db_timestamp_obj is not None:
-                # default return False, not modified
-                ret_val = False
-                if before_time:
-                    if db_timestamp_obj < before_obj:
-                        # file is modified
-                        # print ("File is considered modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
-                        ret_val = True
-                if after_time:
-                    if db_timestamp_obj > after_obj:
-                        # file is modified
-                        # print ("File is considered modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
-                        ret_val = True
-            else: # db record has no value for timestamp, so consider modified
-                ret_val = True
-        else:
-            ret_val = True # no record of it, so effectively modified.
+        #if files_db_record is not None:
+            ## it's in the database
+            #db_timestamp_obj = files_db_record.get("updated", None)
+            ## stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
+            #if db_timestamp_obj is not None:
+                ## default return False, not modified
+                #ret_val = False
+                #if before_time:
+                    #if db_timestamp_obj < before_obj:
+                        ## file is modified
+                        ## print ("File is considered modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
+                        #ret_val = True
+                #if after_time:
+                    #if db_timestamp_obj > after_obj:
+                        ## file is modified
+                        ## print ("File is considered modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
+                        #ret_val = True
+            #else: # db record has no value for timestamp, so consider modified
+                #ret_val = True
+        #else:
+            #ret_val = True # no record of it, so effectively modified.
     
-        return ret_val
+        #return ret_val
 
-    #------------------------------------------------------------------------------------------------------
-    def is_file_newer_than_solr_date(self):
-        """
-        The comparison against the downloaded Solr date records showing the version of each file in the
-           Solr database to see what's newer than the version that was loaded.
+    ##------------------------------------------------------------------------------------------------------
+    #def is_file_newer_than_solr_date(self):
+        #"""
+        #The comparison against the downloaded Solr date records showing the version of each file in the
+           #Solr database to see what's newer than the version that was loaded.
            
-        """
-        ret_val = False
-        file_set_entry = self.file_set.get(self.base_filename, {})
-        if file_set_entry != {}:
-            # it's in the Solr database
-            db_timestamp_str = file_set_entry.get("file_last_modified", None)
-            # stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
-            if db_timestamp_str is not None:
-                #  convert to datetime obj for < comparison
-                db_timestamp_obj = datetime.strptime(db_timestamp_str, localsecrets.TIME_FORMAT_STR)
-                if db_timestamp_obj < self.timestamp_obj:
-                    # file is modified
-                    # print ("File is modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
-                    ret_val = True
-                else: #File not modified
-                    ret_val = False
-            else: # db record has no value for timestamp, so consider modified
-                ret_val = True
-        else:
-            ret_val = True # no record of it, so effectively modified.
+        #"""
+        #ret_val = False
+        #file_set_entry = self.file_set.get(self.base_filename, {})
+        #if file_set_entry != {}:
+            ## it's in the Solr database
+            #db_timestamp_str = file_set_entry.get("file_last_modified", None)
+            ## stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
+            #if db_timestamp_str is not None:
+                ##  convert to datetime obj for < comparison
+                #db_timestamp_obj = datetime.strptime(db_timestamp_str, localsecrets.TIME_FORMAT_STR)
+                #if db_timestamp_obj < self.timestamp_obj:
+                    ## file is modified
+                    ## print ("File is modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
+                    #ret_val = True
+                #else: #File not modified
+                    #ret_val = False
+            #else: # db record has no value for timestamp, so consider modified
+                #ret_val = True
+        #else:
+            #ret_val = True # no record of it, so effectively modified.
     
-        return ret_val
+        #return ret_val
     
     ##------------------------------------------------------------------------------------------------------
     #def is_file_modified_solr(self):
@@ -423,7 +591,6 @@ class FileTracker(object):
             #ret_val = True # no record of it, so effectively modified.
     
         #return ret_val
-
 
 class ExitOnExceptionHandler(logging.StreamHandler):
     """
@@ -521,45 +688,45 @@ class BiblioEntry(object):
             self.ref_offsite_entry = None
         
         # setup for Solr load
-        self.thisRef = {
-                        "id" : self.ref_id,
-                        "art_id" : artInfo.art_id,
-                        "file_last_modified" : artInfo.filedatetime,
-                        "file_classification" : artInfo.file_classification,
-                        "file_size" : artInfo.file_size,
-                        "file_name" : artInfo.filename,
-                        "timestamp" : artInfo.processed_datetime,  # When batch was entered into core
-                        "art_title" : artInfo.art_title,
-                        "art_sourcecode" : artInfo.src_code,
-                        "art_sourcetitleabbr" : artInfo.src_title_abbr,
-                        "art_sourcetitlefull" : artInfo.src_title_full,
-                        "art_sourcetype" : artInfo.src_type,
-                        "art_authors" : artInfo.art_all_authors,
-                        "reference_count" :artInfo.ref_count,  # would be the same for each reference in article, but could still be useful
-                        "art_year" : artInfo.art_year,
-                        "art_year_int" : artInfo.art_year_int,
-                        "art_vol" : artInfo.art_vol,
-                        "art_pgrg" : artInfo.art_pgrg,
-                        "art_lang" : artInfo.art_lang,
-                        "art_citeas_xml" : artInfo.art_citeas_xml,
-                        "text_ref" : self.ref_entry_xml,                        
-                        "text_offsite_ref": self.ref_offsite_entry,
-                        "authors" : self.author_list_str,
-                        "title" : self.ref_title,
-                        "bib_articletitle" : self.ref_title, 
-                        "bib_sourcetitle" : self.source_title,
-                        "bib_authors_xml" : self.authors_xml,
-                        "bib_ref_id" : self.ref_id,
-                        "bib_ref_rx" : self.rx,
-                        "bib_ref_rxcf" : self.rxcf, # the not 
-                        "bib_ref_rx_sourcecode" : self.rx_sourcecode,
-                        "bib_sourcetype" : self.source_type,
-                        "bib_pgrg" : self.pgrg,
-                        "bib_year" : self.year_of_publication,
-                        "bib_year_int" : self.year_int,
-                        "bib_volume" : self.volume,
-                        "bib_publisher" : self.publishers
-                      }
+        #self.thisRef = {
+                        #"id" : self.ref_id,
+                        #"art_id" : artInfo.art_id,
+                        #"file_last_modified" : artInfo.filedatetime,
+                        #"file_classification" : artInfo.file_classification,
+                        #"file_size" : artInfo.file_size,
+                        #"file_name" : artInfo.filename,
+                        #"timestamp" : artInfo.processed_datetime,  # When batch was entered into core
+                        #"art_title" : artInfo.art_title,
+                        #"art_sourcecode" : artInfo.src_code,
+                        #"art_sourcetitleabbr" : artInfo.src_title_abbr,
+                        #"art_sourcetitlefull" : artInfo.src_title_full,
+                        #"art_sourcetype" : artInfo.src_type,
+                        #"art_authors" : artInfo.art_all_authors,
+                        #"reference_count" :artInfo.ref_count,  # would be the same for each reference in article, but could still be useful
+                        #"art_year" : artInfo.art_year,
+                        #"art_year_int" : artInfo.art_year_int,
+                        #"art_vol" : artInfo.art_vol,
+                        #"art_pgrg" : artInfo.art_pgrg,
+                        #"art_lang" : artInfo.art_lang,
+                        #"art_citeas_xml" : artInfo.art_citeas_xml,
+                        #"text_ref" : self.ref_entry_xml,                        
+                        #"text_offsite_ref": self.ref_offsite_entry,
+                        #"authors" : self.author_list_str,
+                        #"title" : self.ref_title,
+                        #"bib_articletitle" : self.ref_title, 
+                        #"bib_sourcetitle" : self.source_title,
+                        #"bib_authors_xml" : self.authors_xml,
+                        #"bib_ref_id" : self.ref_id,
+                        #"bib_ref_rx" : self.rx,
+                        #"bib_ref_rxcf" : self.rxcf, # the not 
+                        #"bib_ref_rx_sourcecode" : self.rx_sourcecode,
+                        #"bib_sourcetype" : self.source_type,
+                        #"bib_pgrg" : self.pgrg,
+                        #"bib_year" : self.year_of_publication,
+                        #"bib_year_int" : self.year_int,
+                        #"bib_volume" : self.volume,
+                        #"bib_publisher" : self.publishers
+                      #}
 
 
 class ArticleInfo(object):
@@ -680,7 +847,7 @@ class ArticleInfo(object):
         else:
             self.pgend_prefix, self.art_pgend, self.pgend_suffix = (None, None, None)
 
-        self.art_title = opasxmllib.xml_get_subelement_textsingleton(artInfoNode, "arttitle")
+        self.art_title = opasxmllib.xml_get_subelement_textsingleton(artInfoNode, "arttitle", skip_tags=["ftnx"])
         if self.art_title == "-": # weird title in ANIJP-CHI
             self.art_title = ""
 
@@ -770,6 +937,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
     art_lang = pepxml.xpath('//@lang')
     if art_lang == []:
         art_lang = ['EN']
+        
 
     # see if this is an offsite article
     if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE:
@@ -813,43 +981,55 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
     cited_counts = gCitedTable.get(artInfo.art_id, modelsOpasCentralPydantic.MostCitedArticles())
     # anywhere in the doc.
     children = doc_children() # new instance, reset child counter suffix
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body//p|//body//p2"),
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//body//p|//body//p2", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_body")
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//h1|//h2|//h3|//h4|//h5|//h6"),
+                          parent_tag="p_body",
+                          default_lang=art_lang[0])
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//h1|//h2|//h3|//h4|//h5|//h6", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_heading")
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//quote//p|//quote//p2"),
+                          parent_tag="p_heading",
+                          default_lang=art_lang[0])
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//quote//p|//quote//p2", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_quote")
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dream//p|//dream//p2"),
+                          parent_tag="p_quote",
+                          default_lang=art_lang[0])
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//dream//p|//dream//p2", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_dream")
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//poem//p|//poem//p2"),
+                          parent_tag="p_dream",
+                          default_lang=art_lang[0])
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//poem//p|//poem//p2", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_poem")
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//note//p|//note//p2"),
+                          parent_tag="p_poem",
+                          default_lang=art_lang[0])
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//note//p|//note//p2", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_note")
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dialog//p|//dialog//p2"),
+                          parent_tag="p_note",
+                          default_lang=art_lang[0])
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//dialog//p|//dialog//p2", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_dialog")
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel//p|//panel//p2"),
+                          parent_tag="p_dialog",
+                          default_lang=art_lang[0])
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//panel//p|//panel//p2", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_panel")
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//caption//p"),
+                          parent_tag="p_panel",
+                          default_lang=art_lang)
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//caption//p", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_caption")
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bib//be|//binc"),
+                          parent_tag="p_caption",
+                          default_lang=art_lang[0])
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//bib//be|//binc", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_bib")
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//appxs//p|//appxs//p2"),
+                          parent_tag="p_bib",
+                          default_lang=art_lang[0])
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//appxs//p|//appxs//p2", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_appxs")
+                          parent_tag="p_appxs",
+                          default_lang=art_lang[0])
     # summaries and abstracts
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//summaries//p|//summaries//p2|//abs//p|//abs//p2"),
+    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//summaries//p|//summaries//p2|//abs//p|//abs//p2", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
-                          parent_tag="p_summaries")
+                          parent_tag="p_summaries",
+                          default_lang=art_lang[0])
 
     # indented status
     print (f"   ...Adding children, tags/counts: {children.tag_counts}")
@@ -955,7 +1135,7 @@ class doc_children(object):
         self.child_list = []
         self.tag_counts = {}
         
-    def add_children(self, stringlist, parent_id, parent_tag=None, level=2):
+    def add_children(self, stringlist, parent_id, parent_tag=None, level=2, default_lang=None):
         """
         params:
          - stringlist is typically going to be the return of an xpath expression on an xml instance
@@ -970,10 +1150,14 @@ class doc_children(object):
                 self.tag_counts[parent_tag] += 1
             except: # initialize
                 self.tag_counts[parent_tag] = 1
-                
+            
+            # special attr handling.  Later look and see if this is slowing us down...
+            currelem = etree.fromstring(n)
+            lang = currelem.attrib.get("lang", default_lang)
             self.child_list.append({"id": parent_id + f".{self.count}",
                                     "art_level": level,
                                     "parent_tag": parent_tag,
+                                    "lang": lang,
                                     "para": n
                                   })
         return self.count
@@ -1052,140 +1236,140 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor):
         config.logger.error(errStr)
 
 #------------------------------------------------------------------------------------------------------
-def processBibForReferencesCore(pepxml, artInfo, solrbib):
-    """
-    Adds the bibliography data from a single document to the core per the pepwebrefs solr schema
+#def processBibForReferencesCore(pepxml, artInfo, solrbib):
+    #"""
+    #Adds the bibliography data from a single document to the core per the pepwebrefs solr schema
     
-    """
-    print(("   ...Processing %s references for the references database." % (artInfo.ref_count)))
-    #------------------------------------------------------------------------------------------------------
-    #<!-- biblio section fields -->
-    #Note: currently, this does not include footnotes or biblio include tagged data in document (binc)
-    bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-    retVal = artInfo.ref_count
-    #processedFilesCount += 1
-    bib_total_reference_count = 0
-    allRefs = []
-    for ref in bibReferences:
-        # bib_entry = BiblioEntry(artInfo, ref)
-        bib_total_reference_count += 1
-        bibRefEntry = etree.tostring(ref, with_tail=False)
-        bibRefID = opasxmllib.xml_get_element_attr(ref, "id")
-        refID = artInfo.art_id + "." + bibRefID
-        bibSourceTitle = opasxmllib.xml_get_subelement_textsingleton(ref, "j")
-        bibPublishers = opasxmllib.xml_get_subelement_textsingleton(ref, "bp")
-        if bibPublishers != "":
-            bibSourceType = "book"
-        else:
-            bibSourceType = "journal"
-        if bibSourceType == "book":
-            bibYearofPublication = opasxmllib.xml_get_subelement_textsingleton(ref, "bpd")
-            if bibYearofPublication == "":
-                bibYearofPublication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
-            if bibSourceTitle is None or bibSourceTitle == "":
-                # sometimes has markup
-                bibSourceTitle = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
-        else:
-            bibYearofPublication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
+    #"""
+    #print(("   ...Processing %s references for the references database." % (artInfo.ref_count)))
+    ##------------------------------------------------------------------------------------------------------
+    ##<!-- biblio section fields -->
+    ##Note: currently, this does not include footnotes or biblio include tagged data in document (binc)
+    #bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
+    #retVal = artInfo.ref_count
+    ##processedFilesCount += 1
+    #bib_total_reference_count = 0
+    #allRefs = []
+    #for ref in bibReferences:
+        ## bib_entry = BiblioEntry(artInfo, ref)
+        #bib_total_reference_count += 1
+        #bibRefEntry = etree.tostring(ref, with_tail=False)
+        #bibRefID = opasxmllib.xml_get_element_attr(ref, "id")
+        #refID = artInfo.art_id + "." + bibRefID
+        #bibSourceTitle = opasxmllib.xml_get_subelement_textsingleton(ref, "j")
+        #bibPublishers = opasxmllib.xml_get_subelement_textsingleton(ref, "bp")
+        #if bibPublishers != "":
+            #bibSourceType = "book"
+        #else:
+            #bibSourceType = "journal"
+        #if bibSourceType == "book":
+            #bibYearofPublication = opasxmllib.xml_get_subelement_textsingleton(ref, "bpd")
+            #if bibYearofPublication == "":
+                #bibYearofPublication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
+            #if bibSourceTitle is None or bibSourceTitle == "":
+                ## sometimes has markup
+                #bibSourceTitle = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
+        #else:
+            #bibYearofPublication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
            
-        if bibYearofPublication == "":
-            # try to match
-            try:
-                bibYearofPublication = re.search(r"\(([A-z]*\s*,?\s*)?([12][0-9]{3,3}[abc]?)\)", bibRefEntry).group(2)
-            except Exception as e:
-                logging.warning("no match %s/%s/%s" % (bibYearofPublication, ref, e))
+        #if bibYearofPublication == "":
+            ## try to match
+            #try:
+                #bibYearofPublication = re.search(r"\(([A-z]*\s*,?\s*)?([12][0-9]{3,3}[abc]?)\)", bibRefEntry).group(2)
+            #except Exception as e:
+                #logging.warning("no match %s/%s/%s" % (bibYearofPublication, ref, e))
             
-        try:
-            bibYearofPublication = re.sub("[^0-9]", "", bibYearofPublication)
-            bibYearofPublicationInt = int(bibYearofPublication[0:4])
-        except ValueError as e:
-            logging.warning("Error converting bibYearofPublication to int: %s / %s.  (%s)" % (bibYearofPublication, bibRefEntry, e))
-            bibYearofPublicationInt = 0
-        except Exception as e:
-            logging.warning("Error trying to find untagged bib year in %s (%s)" % (bibRefEntry, e))
-            bibYearofPublicationInt = 0
+        #try:
+            #bibYearofPublication = re.sub("[^0-9]", "", bibYearofPublication)
+            #bibYearofPublicationInt = int(bibYearofPublication[0:4])
+        #except ValueError as e:
+            #logging.warning("Error converting bibYearofPublication to int: %s / %s.  (%s)" % (bibYearofPublication, bibRefEntry, e))
+            #bibYearofPublicationInt = 0
+        #except Exception as e:
+            #logging.warning("Error trying to find untagged bib year in %s (%s)" % (bibRefEntry, e))
+            #bibYearofPublicationInt = 0
             
 
-        bibAuthorNameList = [etree.tostring(x, with_tail=False).decode("utf8") for x in ref.findall("a") if x is not None]
-        bibAuthorsXml = '; '.join(bibAuthorNameList)
-        #Note: Changed to is not None since if x gets warning - FutureWarning: The behavior of this method will change in future versions. Use specific 'len(elem)' or 'elem is not None' test instead
-        authorList = [opasxmllib.xml_elem_or_str_to_text(x) for x in ref.findall("a") if opasxmllib.xml_elem_or_str_to_text(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
-        authorList = '; '.join(authorList)
-        bibRefRxCf = opasxmllib.xml_get_element_attr(ref, "rxcf", default_return=None)
-        bibRefRx = opasxmllib.xml_get_element_attr(ref, "rx", default_return=None)
-        if bibRefRx is not None:
-            bibRefRxSourceCode = re.search("(.*?)\.", bibRefRx, re.IGNORECASE).group(1)
-        else:
-            bibRefRxSourceCode = None
+        #bibAuthorNameList = [etree.tostring(x, with_tail=False).decode("utf8") for x in ref.findall("a") if x is not None]
+        #bibAuthorsXml = '; '.join(bibAuthorNameList)
+        ##Note: Changed to is not None since if x gets warning - FutureWarning: The behavior of this method will change in future versions. Use specific 'len(elem)' or 'elem is not None' test instead
+        #authorList = [opasxmllib.xml_elem_or_str_to_text(x) for x in ref.findall("a") if opasxmllib.xml_elem_or_str_to_text(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
+        #authorList = '; '.join(authorList)
+        #bibRefRxCf = opasxmllib.xml_get_element_attr(ref, "rxcf", default_return=None)
+        #bibRefRx = opasxmllib.xml_get_element_attr(ref, "rx", default_return=None)
+        #if bibRefRx is not None:
+            #bibRefRxSourceCode = re.search("(.*?)\.", bibRefRx, re.IGNORECASE).group(1)
+        #else:
+            #bibRefRxSourceCode = None
             
-        # see if this is an offsite article
-        if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE: # "pepoffsite":
-            # certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
-            bibRefOffsiteEntry = bibRefEntry
-            #bibEntryXMLContents = """<html>
-                                 #<p>This reference is in an article or book where text is not is available on PEP. 
-                                    #Click <a href="//www.doi.org/%s" target="_blank">here</a> to show the article on another website 
-                                    #in another window or tab.
-                                 #</p>
-                                 #</html>
-                              #""" % urllib.quote(artInfo.artDOI)
-            # should we trust clients, or remove this data?  For now, remove.  Need to probably do this in biblio core too
-            bibRefEntry = None
-        else:
-            bibRefOffsiteEntry = None
+        ## see if this is an offsite article
+        #if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE: # "pepoffsite":
+            ## certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
+            #bibRefOffsiteEntry = bibRefEntry
+            ##bibEntryXMLContents = """<html>
+                                 ##<p>This reference is in an article or book where text is not is available on PEP. 
+                                    ##Click <a href="//www.doi.org/%s" target="_blank">here</a> to show the article on another website 
+                                    ##in another window or tab.
+                                 ##</p>
+                                 ##</html>
+                              ##""" % urllib.quote(artInfo.artDOI)
+            ## should we trust clients, or remove this data?  For now, remove.  Need to probably do this in biblio core too
+            #bibRefEntry = None
+        #else:
+            #bibRefOffsiteEntry = None
     
-        thisRef = {
-                    "id" : refID,
-                    "art_id" : artInfo.art_id,
-                    "file_last_modified" : artInfo.filedatetime,
-                    "file_classification" : artInfo.file_classification,
-                    "file_size" : artInfo.file_size,
-                    "file_name" : artInfo.filename,
-                    "timestamp" : artInfo.processed_datetime,  # When batch was entered into core
-                    "art_title" : artInfo.art_title,
-                    "art_sourcecode" : artInfo.src_code,
-                    "art_sourcetitleabbr" : artInfo.art_source_title_abbr,
-                    "art_sourcetitlefull" : artInfo.art_source_title_full,
-                    "art_sourcetype" : artInfo.art_source_type,
-                    "art_authors" : artInfo.artAllAuthors,
-                    "reference_count" :artInfo.ref_count,  # would be the same for each reference in article, but could still be useful
-                    "art_year" : artInfo.art_year,
-                    "art_year_int" : artInfo.art_year_int,
-                    "art_vol" : artInfo.art_vol,
-                    "art_pgrg" : artInfo.art_pgrg,
-                    "art_lang" : artInfo.art_lang,
-                    "art_citeas_xml" : artInfo.art_citeas_xml,
-                    "text_ref" : bibRefEntry,                        
-                    "text_offsite_ref": bibRefOffsiteEntry,
-                    "authors" : authorList,
-                    "title" : opasxmllib.xml_get_subelement_textsingleton(ref, "t"),
-                    "bib_authors_xml" : bibAuthorsXml,
-                    "bib_ref_id" : bibRefID,
-                    "bib_ref_rx" : bibRefRx,
-                    "bib_ref_rxcf" : bibRefRxCf, # the not 
-                    "bib_ref_rx_sourcecode" : bibRefRxSourceCode,
-                    "bib_articletitle" : opasxmllib.xml_get_subelement_textsingleton(ref, "t"),
-                    "bib_sourcetype" : bibSourceType,
-                    "bib_sourcetitle" : bibSourceTitle,
-                    "bib_pgrg" : opasxmllib.xml_get_subelement_textsingleton(ref, "pp"),
-                    "bib_year" : bibYearofPublication,
-                    "bib_year_int" : bibYearofPublicationInt,
-                    "bib_volume" : opasxmllib.xml_get_subelement_textsingleton(ref, "v"),
-                    "bib_publisher" : bibPublishers
-                  }
-        allRefs.append(thisRef)
+        #thisRef = {
+                    #"id" : refID,
+                    #"art_id" : artInfo.art_id,
+                    #"file_last_modified" : artInfo.filedatetime,
+                    #"file_classification" : artInfo.file_classification,
+                    #"file_size" : artInfo.file_size,
+                    #"file_name" : artInfo.filename,
+                    #"timestamp" : artInfo.processed_datetime,  # When batch was entered into core
+                    #"art_title" : artInfo.art_title,
+                    #"art_sourcecode" : artInfo.src_code,
+                    #"art_sourcetitleabbr" : artInfo.art_source_title_abbr,
+                    #"art_sourcetitlefull" : artInfo.art_source_title_full,
+                    #"art_sourcetype" : artInfo.art_source_type,
+                    #"art_authors" : artInfo.artAllAuthors,
+                    #"reference_count" :artInfo.ref_count,  # would be the same for each reference in article, but could still be useful
+                    #"art_year" : artInfo.art_year,
+                    #"art_year_int" : artInfo.art_year_int,
+                    #"art_vol" : artInfo.art_vol,
+                    #"art_pgrg" : artInfo.art_pgrg,
+                    #"art_lang" : artInfo.art_lang,
+                    #"art_citeas_xml" : artInfo.art_citeas_xml,
+                    #"text_ref" : bibRefEntry,                        
+                    #"text_offsite_ref": bibRefOffsiteEntry,
+                    #"authors" : authorList,
+                    #"title" : opasxmllib.xml_get_subelement_textsingleton(ref, "t"),
+                    #"bib_authors_xml" : bibAuthorsXml,
+                    #"bib_ref_id" : bibRefID,
+                    #"bib_ref_rx" : bibRefRx,
+                    #"bib_ref_rxcf" : bibRefRxCf, # the not 
+                    #"bib_ref_rx_sourcecode" : bibRefRxSourceCode,
+                    #"bib_articletitle" : opasxmllib.xml_get_subelement_textsingleton(ref, "t"),
+                    #"bib_sourcetype" : bibSourceType,
+                    #"bib_sourcetitle" : bibSourceTitle,
+                    #"bib_pgrg" : opasxmllib.xml_get_subelement_textsingleton(ref, "pp"),
+                    #"bib_year" : bibYearofPublication,
+                    #"bib_year_int" : bibYearofPublicationInt,
+                    #"bib_volume" : opasxmllib.xml_get_subelement_textsingleton(ref, "v"),
+                    #"bib_publisher" : bibPublishers
+                  #}
+        #allRefs.append(thisRef)
         
-    # We collected all the references.  Now lets save the whole shebang
-    try:
-        response_update = solrbib.add_many(allRefs)  # lets hold off on the , _commit=True)
+    ## We collected all the references.  Now lets save the whole shebang
+    #try:
+        #response_update = solrbib.add_many(allRefs)  # lets hold off on the , _commit=True)
 
-        if not re.search('"status">0</int>', response_update):
-            print (response_update)
-    except Exception as err:
-        #processingErrorCount += 1
-        config.logger.error("Solr call exception %s", err)
+        #if not re.search('"status">0</int>', response_update):
+            #print (response_update)
+    #except Exception as err:
+        ##processingErrorCount += 1
+        #config.logger.error("Solr call exception %s", err)
 
-    return retVal  # return the bibRefCount
+    #return retVal  # return the bibRefCount
 
 #------------------------------------------------------------------------------------------------------
 def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry):
@@ -1550,7 +1734,7 @@ def main():
     parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.14")
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
                       help="Option to force all files to be updated on the specified cores.  This does not reset the file tracker but updates it as files are processed.")
-    parser.add_option("-b", "--bibliocoreupdate", dest="reference_core_update", action="store_true", default=False,
+    parser.add_option("-b", "--bibliocoreupdate", dest="biblio_update", action="store_true", default=False,
                       help="Whether to update the biblio core")
     parser.add_option("-d", "--dataroot", dest="rootFolder", default=config.DEFAULTDATAROOT,
                       help="Root folder path where input data is located")
@@ -1579,6 +1763,8 @@ def main():
                       help="Display status and operational timing info as load progresses.")
     parser.add_option("--pw", dest="httpPassword", default=None,
                       help="Password for the server")
+    parser.add_option("--key", dest="file_key", default=None,
+                      help="Key for a single file to process")
     parser.add_option("--userid", dest="httpUserID", default=None,
                       help="UserID for the server")
     parser.add_option("--config", dest="config_info", default="Local",
@@ -1587,7 +1773,6 @@ def main():
                       help="Replace files done after this datetime")
     parser.add_option("--before", dest="imported_before", default=None,
                       help="Replace files done before this datetime")
-
 
     (options, args) = parser.parse_args()
 
@@ -1601,14 +1786,14 @@ def main():
     logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
 
     solrurl_docs = None
-    solrurl_refs = None
+    #solrurl_refs = None
     solrurl_authors = None
     solrurl_glossary = None
     
-    if (options.reference_core_update or options.fulltext_core_update or options.glossary_core_update) == True:
+    if (options.biblio_update or options.fulltext_core_update or options.glossary_core_update) == True:
         try:
             solrurl_docs = localsecrets.SOLRURL + opasConfig.SOLR_DOCS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
-            solrurl_refs = localsecrets.SOLRURL + opasConfig.SOLR_REFS  # e.g., http://localhost:8983/solr/  + pepwebrefs'
+            #solrurl_refs = localsecrets.SOLRURL + opasConfig.SOLR_REFS  # e.g., http://localhost:8983/solr/  + pepwebrefs'
             solrurl_authors = localsecrets.SOLRURL + opasConfig.SOLR_AUTHORS
             solrurl_glossary = localsecrets.SOLRURL + opasConfig.SOLR_GLOSSARY
             print("Logfile: ", logFilename)
@@ -1618,8 +1803,8 @@ def main():
             if options.fulltext_core_update:
                 print("Solr Full-Text Core will be updated: ", solrurl_docs)
                 print("Solr Authors Core will be updated: ", solrurl_authors)
-            if options.reference_core_update:
-                print("Solr References Core will be updated: ", solrurl_refs)
+            #if options.biblio_update:
+                #print("Solr References Core will be updated: ", solrurl_refs)
             if options.glossary_core_update:
                 print("Solr Glossary Core will be updated: ", solrurl_glossary)
         except Exception as e:
@@ -1653,30 +1838,25 @@ def main():
     # import data about the PEP codes for journals and books.
     #  Codes are like APA, PAH, ... and special codes like ZBK000 for a particular book
     sourceDB = opasCentralDBLib.SourceInfoDB()
-
+    solrcore_docs2 = None
+    solrcore_authors = None
+    #solrcore_references = None
+    solrcore_glossary = None
     #TODO: Try without the None test, the library should not try to use None as user name or password, so only the first case may be needed
     # The connection call is to solrpy (import was just solr)
     #if options.httpUserID is not None and options.httpPassword is not None:
     if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:
         if options.fulltext_core_update:
             # fulltext update always includes authors
-            #solrcore_docs = solr.SolrConnection(solrurl_docs, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
             solrcore_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
             solrcore_authors = solr.SolrConnection(solrurl_authors, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
-        if options.reference_core_update:
-            # as of 2019/11/30 this core isn't actually being used in the API.  May end up dropping this.
-            solrcore_references = solr.SolrConnection(solrurl_refs, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
         if options.glossary_core_update:
             solrcore_glossary = solr.SolrConnection(solrurl_glossary, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
     else: #  no user and password needed
         if options.fulltext_core_update:
             # fulltext update always includes authors
-            #solrcore_docs = solr.SolrConnection(solrurl_docs)
             solrcore_docs2 = pysolr.Solr(solrurl_docs)
             solrcore_authors = solr.SolrConnection(solrurl_authors)
-        if options.reference_core_update:
-            # as of 2019/11/30 this core isn't actually being used in the API.  May end up dropping this.
-            solrcore_references = solr.SolrConnection(solrurl_refs)
         if options.glossary_core_update:
             solrcore_glossary = solr.SolrConnection(solrurl_glossary)
 
@@ -1690,17 +1870,10 @@ def main():
             #solrcore_docs.commit()
             solrcore_authors.delete_query("*:*")
             solrcore_authors.commit()
-        if options.reference_core_update:
-            print ("*** Deleting all data from the References core ***")
-            solrcore_references.delete_query("*:*")
-            solrcore_references.commit()
         if options.glossary_core_update:
             print ("*** Deleting all data from the Glossary core ***")
             solrcore_glossary.delete_query("*:*")
             solrcore_glossary.commit()
-        # also reset the file tracker in both cases
-        #fileTracker.deleteAll()
-        #fileTracker.commit()
     else:
         # check for missing files and delete them from the core, since we didn't empty the core above
         pass
@@ -1712,27 +1885,34 @@ def main():
     
     # Docs, Authors and References go through a full set of regular XML files
     bib_total_reference_count = 0 # zero this here, it's checked at the end whether references are processed or not
-    if (options.reference_core_update or options.fulltext_core_update) == True:
+    if (options.biblio_update or options.fulltext_core_update) == True:
         if options.forceRebuildAllFiles == True:
             print ("Forced Rebuild - All files added, regardless of whether they were marked in the as already added.")
     
         # find all processed XML files where build is (bEXP_ARCH1) in path
         # glob.glob doesn't unfortunately work to do this in Py2.7.x
-        pat = r"(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
-        file_pattern_match = re.compile(pat)
-        filenames = []
-        skipped_files = 0
-        new_files = 0
-        total_files = 0
-        # filetracker should only be instantiated once, because for speed, it loads all the
-        # necessary database info.
-        # After it's initialized, you load each fileinfo using the load function, rather
-        #  than reinstantiating.  That way the fileinfo loaded can be compared to the entries
-        #  in the Solr and MySQL database quickly.  If you reinstantiate FileTracker, it will have
-        #  to reload the databases!
-        currentfile_info = FileTracker(ocd, solrcore_docs2)
+        if options.file_key != None:  
+            #selQry = "select distinct filename from articles where articleID
+            print (f"File Key Specified: {options.file_key}")
+            pat = fr"({options.file_key}.*)\(bEXP_ARCH1\)\.(xml|XML)$"
+            filenames = find_all(pat, options.rootFolder)
+        else:
+            pat = r"(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
+            file_pattern_match = re.compile(pat)
+            filenames = []
+            skipped_files = 0
+            new_files = 0
+            total_files = 0
+            # filetracker should only be instantiated once, because for speed, it loads all the
+            # necessary database info.
+            # After it's initialized, you load each fileinfo using the load function, rather
+            #  than reinstantiating.  That way the fileinfo loaded can be compared to the entries
+            #  in the Solr and MySQL database quickly.  If you reinstantiate FileTracker, it will have
+            #  to reload the databases!
+            # currentfile_info = FileTracker(ocd, solrcore_docs2)
         
         #all_solr_docs = get_file_dates_solr(solrcore_docs2)
+        skipped_files = 0
         if re.match(".*\.xml$", options.rootFolder, re.IGNORECASE):
             # single file mode.
             singleFileMode = True
@@ -1742,15 +1922,14 @@ def main():
                 new_files = 1
             else:
                 print(("Error: Single file mode name: {} does not exist.".format(options.rootfolder)))
+        elif filenames != []:
+            singleFileMode = False
+            total_files = len(filenames)
+            new_files = len(filenames)
         else:
             # get a list of all the XML files that are new
             singleFileMode = False
-            # for speed, get all the DB records for the files
-            #if options.quickload:
-                #if not currentfile_info.get_all_file_article_records()
-                   #logger.error ("Load of database failed.")
-                   #sys,exit()
-                   
+            currentfile_info = NewFileTracker(ocd)  
             for root, d_names, f_names in os.walk(options.rootFolder):
                 for f in f_names:
                     if file_pattern_match.match(f):
@@ -1761,22 +1940,20 @@ def main():
                         filename = os.path.join(root, f)
                         #currFileInfo = FileTrackingInfo()
                         # reuse the currentfile_info instance each time by loading the new file
-                        currentfile_info.load_fileinfo(filename)  # mod 2019-06-05 Just the base URL, not the core
 
                         if options.forceRebuildAllFiles:
                             # fake it, make it look modified!
                             is_modified = True
                         else:
-                            #isModified = currentfile_info.is_file_modified_solr()
-                            is_modified = currentfile_info.is_file_newer_than_solr_date()
+                            is_modified = currentfile_info.is_refresh_needed(filename, before_date=options.imported_before, after_date=options.imported_after)
                             
-                        if options.imported_after is not None:
-                            is_modified =\
-                                currentfile_info.is_load_date_before_or_after(after=options.imported_after)
-                            
-                        if options.imported_before is not None:
-                            is_modified =\
-                                currentfile_info.is_load_date_before_or_after(before=options.imported_before)
+                            #if options.imported_after is not None:
+                                #is_modified =\
+                                    #currentfile_info.is_load_date_before_or_after(after=options.imported_after)
+                                
+                            #if options.imported_before is not None:
+                                #is_modified =\
+                                    #currentfile_info.is_load_date_before_or_after(before=options.imported_before)
 
                         if not is_modified:
                             # file seen before, need to compare.
@@ -1788,9 +1965,10 @@ def main():
                             #print "File is NOT the same!  Scanning the data..."
                             filenames.append(filename)
         
-        # clear fileTracker it takes a lot of Memory
-        currentfile_info.close() # close the database
-        currentfile_info = None
+            # clear fileTracker it takes a lot of Memory
+            currentfile_info.close() # close the database
+            currentfile_info = None
+
         print((80*"-"))
         if singleFileMode:
             print(("Single File Mode Selected.  Only file {} will be imported".format(options.rootFolder)))
@@ -1862,12 +2040,11 @@ def main():
 
                 # input to the full-text code
                 if options.fulltext_core_update:
-                    # this option will also load the biblio and authors cores.
+                    # this option will also load the authors cores.
                     process_article_for_doc_core(pepxml, artInfo, solrcore_docs2, fileXMLContents)
-                    add_article_to_api_articles_table(ocd, artInfo)
-                    
                     process_info_for_author_core(pepxml, artInfo,
                                                  solrcore_authors)
+                    add_article_to_api_articles_table(ocd, artInfo)
                     
                     if precommit_file_count > config.COMMITLIMIT:
                         precommit_file_count = 0
@@ -1876,10 +2053,10 @@ def main():
                         #fileTracker.commit()
         
                 # input to the references core
-                if options.reference_core_update:
+                if options.biblio_update:
                     if artInfo.ref_count > 0:
                         bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-                        if options.display_verbose:
+                        if 1: # options.display_verbose:
                             print(("   ...Processing %s references for the references database." % (artInfo.ref_count)))
 
                         #processedFilesCount += 1
@@ -1907,19 +2084,19 @@ def main():
 
                 # close the file, and do the next
                 f.close()
-                if options.display_verbose:
+                if 1: # options.display_verbose:
                     print(("   ...Time: %s seconds." % (time.time() - fileTimeStart)))
         
             # all done with the files.  Do a final commit.
-            print ("Performing final commit.")
-            try:
-                if options.reference_core_update:
-                    solrcore_references.commit()
-                    # fileTracker.commit()
-            except Exception as e:
-                print(("Exception: ", e))
+            #try:
+                #if options.biblio_update:
+                    #solrcore_references.commit()
+                    ## fileTracker.commit()
+            #except Exception as e:
+                #print(("Exception: ", e))
             
             try:
+                print ("Performing final commit.")
                 if options.fulltext_core_update:
                     solrcore_docs2.commit()
                     solrcore_authors.commit()
@@ -1938,7 +2115,7 @@ def main():
     elapsed_seconds = timeEnd-timeStart
     elapsed_minutes = elapsed_seconds / 60
 
-    if (options.reference_core_update or options.fulltext_core_update) == True:
+    if (options.biblio_update or options.fulltext_core_update) == True:
         if bib_total_reference_count > 0:
             msg = f"Finished! Imported {len(filenames)} documents and {bib_total_reference_count} references. Elapsed time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes. Files per Min: {len(filenames)/elapsed_minutes:.4f})" 
         else:
@@ -1956,4 +2133,10 @@ def main():
 # run it!
 
 if __name__ == "__main__":
+    if 0:
+        import doctest
+        doctest.testmod()
+        print ("All Tests Completed")
+        sys.exit()
+
     main()

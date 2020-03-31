@@ -61,7 +61,7 @@ class TestDatabaseSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseInfo']['fullCount'] == 2)
+        assert(r['documentList']['responseInfo']['fullCount'] >= 1)
         assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
         response = client.get(base_api + '/v2/Database/Search/?title=psychoanalysis&sourcecode=CPS&startyear=1990&endyear=1995&fulltext1="child%20abuse"&sort=citeCount&limit=10&offset=0')
         # Confirm that the request-response cycle completed successfully.
