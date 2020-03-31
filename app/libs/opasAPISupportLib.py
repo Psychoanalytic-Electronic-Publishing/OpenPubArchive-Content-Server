@@ -62,6 +62,9 @@ from datetime import datetime
 
 import opasConfig
 import localsecrets
+import opasFileSupport
+opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
+
 from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, CONFIG, COOKIE_DOMAIN  
 from opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES 
 from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
@@ -1947,7 +1950,10 @@ def prep_document_download(document_id, ret_format="HTML", authenticated=True, b
                         filename = convert_xml_to_html_file(ret_val, output_filename=document_id + ".html")  # returns filename
                         ret_val = filename
                     elif ret_format.upper() == "PDFORIG":
-                        ret_val = find(document_id + ".PDF", opasConfig.PDFORIGDIR)
+                        # setup so can include year in path (folder names) in AWS, helpful.
+                        pub_year = art_info.get("art_year", None)
+                        filename = opas_fs.get_download_filename(filespec=document_id, path=localsecrets.PDF_ORIGINALS_PATH, year=pub_year, ext=".pdf")    
+                        ret_val = filename
                     elif ret_format.upper() == "PDF":
                         pisa.showLogging() # debug only
                         ret_val = opasxmllib.remove_encoding_string(ret_val)
@@ -2238,8 +2244,8 @@ def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LI
                                              terms_limit=limit
                                            )
         except Exception as e:
-            ret_status = (e.httpcode, e.reason, e.body) # default is like HTTP_200_OK
-            ret_val = models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your search input.")
+            # ret_status = (e.httpcode, e.reason, e.body) # default is like HTTP_200_OK
+            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error (Solr)", error_description=f"There's an error in your search input.")
         else:
             try:
                 ret_val = results.terms.get(term_field, {})
@@ -2272,8 +2278,8 @@ def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LI
                                             terms_sort="count"  # wildcard, pick highest
                                            )
         except solr.SolrException as e:
-            ret_status = (e.httpcode, e.reason, e.body) # default is like HTTP_200_OK
-            ret_val = models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your search input.")
+            # ret_status = (e.httpcode, e.reason, e.body) # default is like HTTP_200_OK
+            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error (Solr)", error_description=f"There's an error in your search input.")
             
         try:
             ret_val = results.terms.get(term_field, {})
@@ -2294,8 +2300,8 @@ def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LI
                                              terms_limit=1 # only one response needed
                                             )
         except solr.SolrException as e:
-            ret_status = (e.httpcode, e.reason, e.body) # default is like HTTP_200_OK
-            ret_val = models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your search input.")
+            # ret_status = (e.httpcode, e.reason, e.body) # default is like HTTP_200_OK
+            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error (Solr)", error_description=f"There's an error in your search input.")
         else:
             try:
                 ret_val = results.terms.get(term_field, {})
@@ -2649,6 +2655,8 @@ def search_text(query,
     
     return ret_val, ret_status
 
+def submit_file(submit_token: bytes, xml_data: bytes, pdf_data: bytes): 
+    pass
 
 def main():
 

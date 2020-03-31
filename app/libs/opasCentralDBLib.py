@@ -1369,7 +1369,140 @@ class opasCentralDB(object):
     
         self.close_connection(caller_name="create_user") # make sure connection is closed
         return ret_val
+
+    #----------------------------------------------------------------------------------------
+    def admin_change_user_password(self,
+                                   session_info,
+                                   username,
+                                   old_password,
+                                   new_password
+                    ):
+        """
+        Change user's password
         
+        >>> ocd = opasCentralDB()
+          
+        """
+        ret_val = None
+        self.open_connection(caller_name="change_user_password") # make sure connection is open
+        curs = self.db.cursor(pymysql.cursors.DictCursor)
+        if self.verify_admin(session_info):
+            # see if user exists:
+            user = self.get_user(username)
+            if user is not None: # good to go
+                if verify_password(old_password, user.password):
+                    new_hashed_password = get_password_hash(new_password)
+                    user.modified_by_user_id = session_info.user_id
+                    sql = """UPDATE api_user
+                             SET password = %s,
+                                 modified_by_user_id = %s,
+                                 last_update = %s
+                             WHERE user_id =%s
+                          """
+                    
+                    chgs = ( new_hashed_password,
+                                session_info.user_id,
+                                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                user.user_id
+                            )
+                if curs.execute(sql, chgs):
+                    msg = f"Updated user {user.username}"
+                    user.password = new_hashed_password
+                    print (msg)
+                    self.db.commit()
+                else:
+                    err = f"Could not update user {user.username}"
+                    logger.error(err)
+                    print (err)
+    
+                curs.close()
+                ret_val = User(**user.dict())
+            else:
+                err = f"Username {user.username} not found."
+                logger.error(err)
+                print (err)
+    
+        self.close_connection(caller_name="change_user_password") # make sure connection is closed
+        return ret_val
+        
+    #----------------------------------------------------------------------------------------
+    def admin_subscribe_user(self,
+                             session_info,
+                             username,
+                             start_date,
+                             end_date,
+                             product_code,
+                             product_parent_code,
+                             max_concurrency=0,
+                             perpetual=0
+                    ):
+        """
+        Add a subscription
+        
+        >>> ocd = opasCentralDB()
+          
+        """
+        ret_val = None
+        self.open_connection(caller_name="admin_subscribe_user") # make sure connection is open
+        curs = self.db.cursor(pymysql.cursors.DictCursor)
+        curs2 = self.db.cursor(pymysql.cursors.DictCursor)
+        if self.verify_admin(session_info):
+            # see if user exists:
+            user = self.get_user(username)
+            if user is not None: # good to go
+                # lookup product id
+                product_sql = """
+                              SELECT child_product_id, parent_product_id
+                              FROM vw_products_flattened
+                              WHERE child_basecode = %s
+                              AND parent_basecode = %s;
+                              """
+
+                sbscrpt_sql = """
+                              INSERT INTO api_subscriptions (
+                                user_id,
+                                product_id,
+                                start_date,
+                                end_date,
+                                max_concurrency,
+                                perpetual,
+                                modified_by_user_id
+                              )
+                              VALUES (%s, %s, %s, %s, %s, %s, %s);
+                              """
+
+                if curs.execute(product_sql, (product_code, product_parent_code)):
+                    product = curs.fetchone()
+                    if curs2.execute(sbscrpt_sql, (user.user_id,
+                                                   product.get("child_product_id", None), 
+                                                   start_date,
+                                                   end_date,
+                                                   max_concurrency,
+                                                   perpetual,
+                                                   session_info.user_id
+                                                   )):
+                        self.db.commit()
+                        msg = f"Added subscription to {product_parent_code}/{product_code}"
+                        print (msg)
+                    else:
+                        err = f"Could not add subscription to {product_parent_code}/{product_code}"
+                        logger.error(err)
+                        print (err)
+                else:
+                    err = f"Could not find product {product_parent_code}/{product_code}"
+                    logger.error(err)
+                    print (err)
+
+                curs.close()
+                curs2.close()
+                ret_val = User(**user.dict())
+            else:
+                err = f"Username {username} not found."
+                logger.error(err)
+                print (err)
+    
+        self.close_connection(caller_name="change_user_password") # make sure connection is closed
+        return ret_val
     
     def authenticate_user(self, username: str, password: str):
         """

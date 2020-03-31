@@ -185,9 +185,6 @@
 
   <field name="headings_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
 
-  <!-- include all languages in any element attribute -->
-  <field name="lang" type="string" indexed="true" stored="true" multiValued="true" docValues="true"/>
-
   <!-- Revision info for document -->
   <field name="meta_xml" type="text_simple" indexed="true" stored="true"/>
 
@@ -231,12 +228,15 @@
                       This is a single field with multiple paragraphs in a list structure -->
   <field name="art_para" type="text_general" indexed="true" stored="false" multiValued="true"/>
   <field name="art_level" type="pint" indexed="true" stored="false" docValues="true"/>
+  <!-- include all languages in any element attribute (moved here because it also applies to paras) -->
+  <field name="lang" type="string" indexed="true" stored="true" multiValued="true" docValues="true"/>
   
   <!--subdocument fields -->
   <field name="para" type="text_general" indexed="true" stored="true" multiValued="false"/>
   <field name="para_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
   <field name="parent_tag" type="string" indexed="true" stored="true"/>
   <copyField source="para" dest="para_syn"/>
+
 
   <!--<field name="level" type="pint" indexed="true" stored="false" docValues="true"/>-->
 

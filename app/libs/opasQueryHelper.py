@@ -80,6 +80,32 @@ def search_qualifiers(searchstr, field_label, field_thesaurus=None, paragraph_le
     return ret_val, search_specs
 
 #-----------------------------------------------------------------------------
+def comma_sep_list_to_simple_bool(termlist_str, boolpred="||"):
+    """
+    Take a comma separated term list or boolean list and change to a
+    bool type query list using the single boolpred as connecting term (e.g., for solr)
+    
+    Really meant for comma separated lists, but in case use input has
+    boolean connectors, it can remove those.
+    
+    **IMPORTANT: if your user is going to be entering boolean phrases, with various
+      logical connectors, you should not be calling this for processing the list
+    
+    >>> a = "EN, IT,  FR"
+    >>> termlist_to_bool(a)
+    'EN || IT || FR'
+    
+    >>> a = "EN AND IT OR  FR NOT EX"
+    >>> termlist_to_bool(a)
+    'EN || IT || FR || EX'
+
+    """
+    # split it
+    term_list = re.split("\W+", termlist_str)
+    term_list = [val for val in term_list if val not in ("NOT", "OR", "AND")] # list(filter(("OR").__ne__, term_list))
+    ret_val = f" {boolpred} ".join(term_list)
+    return ret_val
+#-----------------------------------------------------------------------------
 def termlist_to_doubleamp_query(termlist_str, field=None):
     """
     Take a comma separated term list and change to a
@@ -183,7 +209,7 @@ def year_arg_parser(year_arg):
         if start is None and end is None:
             logger.warning("Search - StartYear bad argument {}".format(year_arg))
         else:
-            if option == "^":
+            if option == "^" or separator == "-":
                 # between
                 # find endyear by parsing
                 if start is None:
@@ -235,6 +261,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   source_name=None,        # full name of journal or wildcarded
                                   source_code=None,        # series/source (e.g., journal code) or list of codes
                                   source_type=None,        # series source type, e.g., video, journal, book
+                                  source_lang_code=None,   # source language code
                                   vol=None,                # match only this volume (integer)
                                   issue=None,              # match only this issue (integer)
                                   author=None,             # author last name, optional first, middle.  Wildcards permitted
@@ -395,6 +422,16 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # accepts a source type or boolean combination of source types.
         source_type = qparse.markup(source_type, "art_sourcetype") # convert AND/OR/NOT, set up field
         analyze_this = f"&& {source_type} "
+        filter_q += analyze_this
+        search_analysis_term_list.append(analyze_this)  
+
+    if source_lang_code is not None:  # source_language code, e.g., "EN" (added 2020-03, was omitted)
+        # accepts a source language code list (e.g., EN, DE, ...).  If a list of codes with boolean connectors, changes to simple OR list
+        if "," in source_lang_code:
+            source_lang_code = comma_sep_list_to_simple_bool(source_lang_code) #  in case it's comma separated list, in any case, convert to ||
+
+        source_lang_code = qparse.markup(source_lang_code, "art_lang") # convert AND/OR/NOT, set up field
+        analyze_this = f"&& {source_lang_code} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  
 

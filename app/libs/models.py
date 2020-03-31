@@ -223,6 +223,26 @@ class DocumentStruct(BaseModel):
 class Documents(BaseModel):        # For the GVPi server, it returns a single object not an array of documents. But that's inconsistent with the abstract return.  Need to modify PEP-Easy and unify as a list.
     documents: DocumentListStruct
 
+# possible submission and return structure for file items loaded 3/20/2020, subject to change
+class FileItem(BaseModel):
+    uploadToken: bytes
+    sourceCode: str  # enough to generate a PEPCode/DocID
+    sourceVol: str
+    sourceYear: str
+    sourcePageStart: str
+    sourcePageEnd: str
+    sourceType: str
+    title: str
+    sourceXML: bytes
+    sourcePDF: bytes
+
+class FileItemListStruct(BaseModel):
+    responseInfo: ResponseInfo
+    responseSet: List[FileItem] = []
+
+class FileItemList(BaseModel):
+    fileItemList: FileItemListStruct
+    
 #-------------------------------------------------------
 class ImageURLListItem(BaseModel):    
     PEPCode: str

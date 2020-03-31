@@ -1,0 +1,19 @@
+{
+	"id": "9cba04e2-db9b-4a23-bc8b-fe57d51929eb",
+	"name": "pepopasserver alpha",
+	"values": [
+		{
+			"key": "username",
+			"value": "adminusername",
+			"enabled": true
+		},
+		{
+			"key": "pw",
+			"value": "adminpw",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2020-03-21T03:00:06.599Z",
+	"_postman_exported_using": "Postman/7.14.0-canary05"
+}

@@ -129,13 +129,47 @@ class FlexFileSystem(object):
         return ret_val     
     
     #-----------------------------------------------------------------------------
+    def get_download_filename(self, filespec, path="", year=None, ext=None):
+        """
+        Return the file name given the filespec, if it exists
+        
+        >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
+        >>> fs.get_download_filename("AIM.026.0021A.pdf", path=localsecrets.PDF_ORIGINALS_PATH)
+        'pep-web-files/pdforiginals/AIM/026/AIM.026.0021A.pdf'
+        >>> fs = FlexFileSystem()
+        >>> fs.get_download_filename(r"AIM.026.0021A.pdf")
+
+        """
+        # split name to get folder subpath for downloads
+        try:
+            fsplit = filespec.split(".")
+            jrnlcode, vol, pagenum = fsplit[0:3]
+            # remove any suffix for vol, so we don't need to separate the folders
+            vol_clean = ''.join(i for i in vol if i.isdigit())
+        except Exception as e:
+            logger.warning(f"Could not split filespec into path: {filespec}. ({e})")
+            subpath = ""
+        else:
+            subpath = f"/{jrnlcode}/{vol_clean}" #  pad volume to 3 digits with 0
+
+        ret_val = self.fullfilespec(path=path + subpath, filespec=filespec) # "pep-graphics/embedded-graphics"
+        if ext is not None:
+            ret_val = ret_val + ext  
+            
+        if not self.exists(ret_val):
+            logger.warning(f"Download file does not exist: {ret_val}")
+            
+        return ret_val
+    
+
+    #-----------------------------------------------------------------------------
     def get_image_filename(self, filespec, path=None):
         """
         Return the file name given the image id, if it exists
         
         >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
         >>> fs.get_image_filename("AIM.036.0275A.FIG001", path=localsecrets.IMAGE_SOURCE_PATH)
-        'pep-web-files/docs/g/BAP.01.0004.FIG001.jpg'        
+        'pep-web-files/docs/g/AIM.036.0275A.FIG001.jpg'        
         >>> fs = FlexFileSystem()
         >>> fs.get_image_filename(r"X:\PEP Dropbox\PEPWeb\_PEPA1\g\IJAPS.016.0181A.FIG002")
         'X:\\\\PEP Dropbox\\\\PEPWeb\\\\_PEPA1\\\\g\\\\IJAPS.016.0181A.FIG002.jpg'
