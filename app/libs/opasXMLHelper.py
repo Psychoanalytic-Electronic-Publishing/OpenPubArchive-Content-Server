@@ -420,22 +420,37 @@ def xml_get_elements_between_element(element_node, between_element="pb", offset1
     
     return ret_val
     
-def xml_get_subelement_textsingleton(element_node, subelement_name, default_return=""):
+def xml_get_subelement_textsingleton(element_node, subelement_name, skip_tags=[], with_tail=False, encoding="unicode", default_return=""):
     """
-    Text for elements with only CDATA underneath
-    
+    Get text-only underneath the subelement_name
+
+    >>> root = etree.fromstring('<p>Another <b>random</b> paragraph with multiple <b>subelements</b><note>a <b>bold</b> note<ftnx>10</ftnx> about nothing</note></p>')
+
+    >>> xml_get_subelement_textsingleton(root, "note", skip_tags=["ftnx"], default_return=None)
+    'a bold note about nothing'
+
+    >>> xml_get_subelement_textsingleton(root, "b", with_tail=False)
+    'random'
+
     >>> root = etree.fromstring(test_xml)
+
     >>> xml_get_subelement_textsingleton(root, "author")
     'this is just authoring test stuff'
-    >>> root = etree.fromstring('<p>Another <b>random</b> paragraph with multiple <b>subelements</b></p>')
-    >>> xml_get_subelement_textsingleton(root, "b")
-    'random'
-    >>> xml_get_subelement_textsingleton(root, "bxxx", None)
     """
     ret_val = default_return
+    
     try:
-        ret_val = element_node.findtext(subelement_name)
-        ret_val = ret_val.strip()
+        # go to subelement
+        elem = element_node.find(subelement_name)
+        elemcopy = copy.deepcopy(elem)
+        for tag_name in skip_tags:
+            for node in elemcopy.iter(tag_name):
+                tail = node.tail
+                node.clear() # (keep_tail) # .remove(node)
+                node.tail = tail
+                
+        # strip the tags
+        ret_val = etree.tostring(elemcopy, method="text", with_tail=with_tail, encoding=encoding)
     except Exception as err:
         logger.warning(err)
         ret_val = default_return
@@ -840,6 +855,53 @@ def xml_xpath_return_xmlsingleton(element_node, xpath, default_return=""):
 
     return ret_val
 
+def xml_xpath_return_xmlstringlist_withinheritance(element_node, xpath, default_return=list(), attr_to_find=None):
+    """
+    Return a list of tuples,
+    
+       (XML tagged strings, Attr_List)
+    
+    from the nodes in the specified xPath
+
+    Example:
+    strList = elementsToStrings(treeRoot, "//aut[@listed='true']")
+
+    >>> root = etree.fromstring(test_xml)
+    >>> stringList = xml_xpath_return_xmlstringlist_withinheritance(root, "//p")
+    >>> len(stringList)
+    8
+    >>> stringList[0]
+    '<p id="1">A random paragraph</p>'
+    >>> xml_xpath_return_xmlstringlist_withinheritance(root, "pxxxx", None)  # check default return
+    
+    """
+    ret_val = default_return
+    working_list = []
+    try:
+        # lset = [(n, [m.attrib for m in n.iterancestors() if m.attrib != {}]) for n in element_node.xpath(xpath)]
+        for node in element_node.xpath(xpath):
+            if attr_to_find is not None:
+                if node.attrib.get(attr_to_find, None):
+                    # already have it
+                    pass
+                else:
+                    for m in node.iterancestors():
+                        if m.attrib.get(attr_to_find, None):
+                            #  we have one
+                            node.attrib[attr_to_find] = m.attrib[attr_to_find]
+                            break
+
+            working_list.append(node)
+
+        if len(working_list) == 0:
+            ret_val = default_return
+        else:
+            ret_val = [etree.tostring(n, with_tail=False, encoding="unicode") for n in working_list]
+    except:
+        ret_val = default_return
+        
+    return ret_val
+
 def xml_xpath_return_xmlstringlist(element_node, xpath, default_return=list()):
     """
     Return a list of XML tagged strings from the nodes in the specified xPath
@@ -870,14 +932,29 @@ def get_running_head(source_title=None, pub_year=None, vol=None, issue=None, pgr
     Return the short running head at the top of articles and Abstracts
     """
     if issue is not None:
-        issue = "({})".format(issue)
+        issue = f"({issue})"
     else:
         issue = ""
+    
+    if vol is not None:
+        vol = f"({vol})"
+    else:
+        vol = ""
+    
+    if pgrg is not None:
+        pgrg = f":{pgrg}"
+    else:
+        pgrg = ""
+    
+    if source_title is not None:
+        source_title = f"{source_title}, "
+    else:
+        source_title = ""
         
-    ret_val = f"({pub_year}). {source_title}, {vol}{issue}:{pgrg}"
+    ret_val = f"({pub_year}). {source_title}{vol}{issue}{pgrg}"
     return ret_val
     
-def add_headings_to_abstract_html(abstract, source_title=None, pub_year=None, vol=None, issue=None, pgrg=None, title=None, author_mast=None, citeas=None, ret_format="HTML"):
+def add_headings_to_abstract_html(abstract, source_title=None, pub_year=None, vol=None, issue=None, pgrg=None, title="", author_mast="", citeas=None, ret_format="HTML"):
     """
     Format the top portion of the Abstracts presented by the client per the original GVPi model
     """
@@ -928,12 +1005,14 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
     """
     Convert XML to HTML per Doc level XSLT file configured as g_xslt_doc_transformer.
     
-    >>> len(xml_str_to_html(xml_text=test_xml3))
-    314
+    >>> len(xml_str_to_html(elem_or_xmlstr=test_xml))
+    1074
+    >>> len(xml_str_to_html(elem_or_xmlstr=test_xml2))
+    1454
     """
     ret_val = None
     if isinstance(elem_or_xmlstr, lxml.etree._Element):
-        xml_tree = elem_or_xmlstr
+        #xml_tree = elem_or_xmlstr
         xml_text = etree.tostring(elem_or_xmlstr).decode("utf8")
     else:
         xml_text = elem_or_xmlstr
@@ -1138,13 +1217,27 @@ if __name__ == "__main__":
 
     test_xml3 = xml_file_to_xmlstr("./tstfiles/IJP.051.0175A(bEXP_ARCH1).XML")
     page0 = xml_get_pages(test_xml3, 0, 1, inside="body", env="tes1")
-    page1 = xml_get_pages(test_xml3, 1, 2, env="body")
-    page2 = xml_get_pages(test_xml3, 2, 3, env="body")
+    print (page0[0][-33:])
+    txt = page0[0][-33:]
+    page0 = xml_get_pages(test_xml3, 1, 2, env="body")
+    assert ("177" == page0[0][-22:-19])
+    page0 = xml_get_pages(test_xml3, 2, 3, env="body")
+    print (page0[0][-33:])
+    assert ("179" == page0[0][-22:-19])
     test_xml3 = xml_file_to_xmlstr("./tstfiles/IJP.043.0306A(bEXP_ARCH1).XML")
     page0 = xml_get_pages(test_xml3, 0, 1, inside="body", env="tes2")
-    page1 = xml_get_pages(test_xml3, 1, 2, env="body")
-    page2 = xml_get_pages(test_xml3, 2, 3, env="body")
+    txt = page0[0][-33:]
+    #assert ("306" == page0[0][-22:-19])
+    print (page0[0][-33:])
+    page0 = xml_get_pages(test_xml3, 1, 2, env="body")
+    txt = page0[0][-33:]
+    print (page0[0][-33:])
+    #assert ("308" == page0[0][-22:-19])
+    page0 = xml_get_pages(test_xml3, 2, 3, env="body")
+    print (page0[0][-33:])
+    #assert ("309" == page0[0][-22:-19])
     doctest.testmod()
     print ("All Tests Completed")
+    sys.exit()
 
 
