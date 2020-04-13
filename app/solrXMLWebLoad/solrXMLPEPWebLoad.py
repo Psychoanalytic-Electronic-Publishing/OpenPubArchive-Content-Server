@@ -25,7 +25,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.03.05"
+__version__     = "2020.04.13"
 __status__      = "Development"
 
 #Revision Notes:
@@ -45,6 +45,7 @@ __status__      = "Development"
                  # (though the server now handles it this way fine, converting to HTML on output when necessary.)
                  # Starting to convert this to snake_case, per "pythonic-style".  But will put in more effort
                  # on this later
+                 
     #2020-03-03: Complete code to populate new api_articles and api_biblioxml tables which replace the ones 
                  # copied from the XML processing pepa1db tables.  This eliminates the need for the filetracking table
                  # since the file tracking can now be done in the api_articles table.  Run through fixes with new
@@ -66,6 +67,22 @@ __status__      = "Development"
 
     #2020-03-30  Removing the bibliocore code (commented out for now).  Instead the biblio will be managed simply in the
                  # database
+
+    #2020-04-13  Changed the way it checks for modified files...was in MySQL records but set it to use Solr file date instead
+                 # because it makes less sense to have one mySQL database per solr database.  This way, we can actually check
+                 # if that version of the file is in Solr.  (You don't know by checking mysql, especially if the database/solr
+                 # relation isn't one-to-one.)
+                 # 
+                 # Also: Added new options:
+                 # --before
+                 #     looks at file date, was it created before this date (use YYYY-MM-DD format)
+                 # --after
+                 #     looks at file date, was it created after this date (use YYYY-MM-DD format)
+                 # --reloadbefore
+                 #     looks at updated (load) date IN SOLR, was it loaded into solr before this date (use YYYY-MM-DD format)
+                 # --reloadafter
+                 #     looks at updated (load) date IN SOLR, was it loaded into solr after this date (use YYYY-MM-DD format)
+                 
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
@@ -201,7 +218,7 @@ class NewFileTracker(object):
             if self.timestamp_obj > after_obj:
                 ret_val = True
 
-        if ret_val == False: # check database
+        if before_date is None and after_date is None: # check database updated and 
             getFileInfoSQL = """
                                 SELECT
                                    art_id,
@@ -900,10 +917,39 @@ class ArticleInfo(object):
             self.art_qual = opasxmllib.xml_get_element_attr(art_qual_node[0], "rx", default_return=None)
         else:
             self.art_qual = None
-        bib_references = pepxml.xpath("/pepkbd3//be")
-        self.ref_count = len(bib_references)
+
+        refs = pepxml.xpath("/pepkbd3//be")
+        self.bib_authors = []
+        self.bib_rx = []
+        self.bib_title = []
+        self.bib_journaltitle = []
+        
+        for x in refs:
+            try:
+                if x.attrib["rx"] is not None:
+                    self.bib_rx.append(x.attrib["rx"])
+            except:
+                pass
+            journal = x.find("j")
+            if journal is not None:
+                self.bib_journaltitle.append(opasxmllib.xml_elem_or_str_to_text(journal))
+
+            title = x.find("t")
+            if title is not None:
+                self.bib_title.append(opasxmllib.xml_elem_or_str_to_text(title))
+
+            title = x.find("bst")
+            if title is not None:
+                self.bib_title.append(opasxmllib.xml_elem_or_str_to_text(title))
+
+            auths = x.findall("a")
+            for y in auths:
+                if opasxmllib.xml_elem_or_str_to_text(x) is not None:
+                    self.bib_authors.append(opasxmllib.xml_elem_or_str_to_text(y))
+        
+        self.ref_count = len(refs )
         # clear it, we aren't saving it.
-        bib_references = None
+        refs  = None
         
         self.bk_info_xml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "/pepkbd3//artbkinfo") # all book info in instance
         # break it down a bit for the database
@@ -1072,8 +1118,10 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "art_cited_10" : cited_counts.count10,
                 "art_cited_20" : cited_counts.count20,
                 #"art_body_xml" : bodyXml,
+                "authors" :  artInfo.author_list, # artInfo.art_all_authors,
                 "art_authors" : artInfo.author_list,
                 "art_authors_mast" : artInfo.art_auth_mast,
+                "art_authors_citation" : artInfo.art_auth_citation,
                 "art_authors_unlisted" : artInfo.art_auth_mast_unlisted_str,
                 "art_authors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//aut", default_return = None),
                 "art_year" : artInfo.art_year,
@@ -1091,7 +1139,6 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "art_kwds" : artInfo.art_kwds,
                 "art_type" : artInfo.art_type,
                 "art_newsecnm" : artInfo.start_sectname,
-                "authors" :  artInfo.art_all_authors,
                 "terms_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//impx[@type='TERM2']"),
                 "terms_highlighted" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//b") + opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//i"),
                 "dialogs_spkr" : pepxml.xpath("//dialog/spkr/node()"),
@@ -1107,6 +1154,10 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "reference_count" : artInfo.ref_count,
                 #"references_xml" : referencesXml,
                 "bk_pubyear" : pepxml.xpath("//bkpubyear/node()"),
+                "bib_authors" : artInfo.bib_authors,
+                "bib_title" : artInfo.bib_title,
+                "bib_journaltitle" : artInfo.bib_journaltitle,
+                "bib_rx" : artInfo.bib_rx,
                 "art_level" : 1,
                 #"art_para" : parasxml, 
                 "_doc" : children.child_list
@@ -1569,6 +1620,7 @@ def process_glossary_core(solr_glossary_core):
                 filenames.append(os.path.join(root, f))
 
     print ("Ready to import glossary records from %s files at path: %s" % (countFiles, options.rootFolder))
+    gloss_fileTimeStart = time.time()
     for n in filenames:
         f = open(n, encoding='utf8')
         fileXMLContents = f.read()
@@ -1664,6 +1716,16 @@ def process_glossary_core(solr_glossary_core):
         f.close()
 
     solr_glossary_core.commit()
+    gloss_fileTimeEnd = time.time()
+    
+    elapsed_seconds = gloss_fileTimeEnd-gloss_fileTimeStart # actual processing time going through files
+    elapsed_minutes = elapsed_seconds / 60
+    
+    msg2 = f"Imported {countFiles} glossary documents and {countTerms} terms. Glossary load time: {elapsed_seconds} secs ({elapsed_minutes} minutes)"
+    print(msg2) 
+    if countFiles > 0:
+        print(f"...Files per Min: {countFiles/elapsed_minutes:.4f}") 
+
     ret_val = (countFiles, countTerms) # File count, entry count
     return ret_val    
 
@@ -1700,14 +1762,86 @@ def collect_citation_counts(ocd):
     return citation_table
 
 #------------------------------------------------------------------------------------------------------
-def get_file_dates_solr(solrcore):
+def file_was_created_before(before_date, filename):
+    ret_val = False
+    try:
+        timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(localsecrets.TIME_FORMAT_STR)
+        if timestamp_str < before_date:
+            ret_val = True
+        else:
+            ret_val = False
+    except Exception as e:
+        ret_val = False # not found or error, return False
+        
+    return ret_val
+
+#------------------------------------------------------------------------------------------------------
+def file_was_created_after(after_date, filename):
+    ret_val = False
+    try:
+        timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(localsecrets.TIME_FORMAT_STR)
+        if timestamp_str >  after_date:
+            ret_val = True
+        else:
+            ret_val = False
+    except Exception as e:
+        ret_val = False # not found or error, return False
+        
+    return ret_val
+#------------------------------------------------------------------------------------------------------
+def file_was_loaded_before(solrcore, before_date, filename):
+    ret_val = False
+    try:
+        result = get_file_dates_solr(solrcore, filename)
+        if result[0]["timestamp"] < before_date:
+            ret_val = True
+        else:
+            ret_val = False
+    except Exception as e:
+        ret_val = True # not found or error, return true
+        
+    return ret_val
+
+#------------------------------------------------------------------------------------------------------
+def file_was_loaded_after(solrcore, after_date, filename):
+    ret_val = False
+    try:
+        result = get_file_dates_solr(solrcore, filename)
+        if result[0]["timestamp"] > after_date:
+            ret_val = True
+        else:
+            ret_val = False
+    except Exception as e:
+        ret_val = True # not found or error, return true
+        
+    return ret_val
+
+#------------------------------------------------------------------------------------------------------
+def file_is_same_as_in_solr(solrcore, filename):
+    ret_val = False
+    try:
+        timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(localsecrets.TIME_FORMAT_STR)
+        result = get_file_dates_solr(solrcore, filename)
+        if result[0]["file_last_modified"] == timestamp_str:
+            ret_val = True
+        else:
+            ret_val = False
+    except Exception as e:
+        ret_val = True # not found or error, return true
+        
+    return ret_val
+
+#------------------------------------------------------------------------------------------------------
+def get_file_dates_solr(solrcore, filename=None):
     """
-    Fetch all of the the article mod dates
+    Fetch the article dates
     """
     ret_val = {}
     max_rows = 1000000
 
-    getFileInfoSOLR = f'art_level:1'
+    basename = os.path.basename(filename)
+    getFileInfoSOLR = f'art_level:1 && file_name:"{basename}"'
+
     try:
         results = solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp", rows=max_rows)
     except Exception as e:
@@ -1734,12 +1868,12 @@ def main():
     parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.14")
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
                       help="Option to force all files to be updated on the specified cores.  This does not reset the file tracker but updates it as files are processed.")
-    parser.add_option("-b", "--bibliocoreupdate", dest="biblio_update", action="store_true", default=False,
-                      help="Whether to update the biblio core")
+    parser.add_option("-b", "--biblioupdate", dest="biblio_update", action="store_true", default=False,
+                      help="Whether to update the biblio table in the mysql database (used to be a core)")
     parser.add_option("-d", "--dataroot", dest="rootFolder", default=config.DEFAULTDATAROOT,
                       help="Root folder path where input data is located")
     parser.add_option("-f", "--fulltextcoreupdate", dest="fulltext_core_update", action="store_true", default=False,
-                      help="Whether to update the full-text and authors core")
+                      help="Whether to update the full-text and authors core. Use -d option to specify file folder root path.")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.INFO,
                       help="Level at which events should be logged")
     parser.add_option("--logfile", dest="logfile", default=logFilename,
@@ -1748,7 +1882,7 @@ def main():
                       action="store_true", dest="resetCoreData", default=False,
                       help="reset the data in the selected cores. (authorscore is reset with the fulltext core)")
     parser.add_option("-g", "--glossarycoreupdate", dest="glossary_core_update", action="store_true", default=False,
-                      help="Whether to update the glossary core")
+                      help="Whether to update the glossary core. Use -d option to specify glossary file folder root path.")
     parser.add_option("-t", "--trackerdb", dest="fileTrackerDBPath", default=None,
                       help="Full path and database name where the File Tracking Database is located (sqlite3 db)")
 
@@ -1769,10 +1903,14 @@ def main():
                       help="UserID for the server")
     parser.add_option("--config", dest="config_info", default="Local",
                       help="UserID for the server")
-    parser.add_option("--after", dest="imported_after", default=None,
-                      help="Replace files done after this datetime")
-    parser.add_option("--before", dest="imported_before", default=None,
-                      help="Replace files done before this datetime")
+    parser.add_option("--before", dest="created_before", default=None,
+                      help="Load files created before this datetime (use YYYY-MM-DD format)")
+    parser.add_option("--after", dest="created_after", default=None,
+                      help="Load files created after this datetime (use YYYY-MM-DD format)")
+    parser.add_option("--reloadbefore", dest="reload_before_date", default=None,
+                      help="Reload files added to Solr before this datetime (use YYYY-MM-DD format)")
+    parser.add_option("--reloadafter", dest="reload_after_date", default=None,
+                      help="Reload files added to Solr after this datetime (use YYYY-MM-DD format)")
 
     (options, args) = parser.parse_args()
 
@@ -1834,6 +1972,7 @@ def main():
             #sys.exit(0)
         
     timeStart = time.time()
+    print (f"Program started at ({time.ctime()})..")
     
     # import data about the PEP codes for journals and books.
     #  Codes are like APA, PAH, ... and special codes like ZBK000 for a particular book
@@ -1882,6 +2021,7 @@ def main():
     if options.glossary_core_update:
         # this option will process all files in the glossary core.
         glossary_file_count, glossary_terms = process_glossary_core(solrcore_glossary)
+        processed_files_count += glossary_file_count
     
     # Docs, Authors and References go through a full set of regular XML files
     bib_total_reference_count = 0 # zero this here, it's checked at the end whether references are processed or not
@@ -1903,13 +2043,6 @@ def main():
             skipped_files = 0
             new_files = 0
             total_files = 0
-            # filetracker should only be instantiated once, because for speed, it loads all the
-            # necessary database info.
-            # After it's initialized, you load each fileinfo using the load function, rather
-            #  than reinstantiating.  That way the fileinfo loaded can be compared to the entries
-            #  in the Solr and MySQL database quickly.  If you reinstantiate FileTracker, it will have
-            #  to reload the databases!
-            # currentfile_info = FileTracker(ocd, solrcore_docs2)
         
         #all_solr_docs = get_file_dates_solr(solrcore_docs2)
         skipped_files = 0
@@ -1938,22 +2071,25 @@ def main():
                         #if totalFiles % 1000 == 0:
                             #print (f"{totalFiles} files checked so far") # print a dot to show progress, no CR
                         filename = os.path.join(root, f)
-                        #currFileInfo = FileTrackingInfo()
-                        # reuse the currentfile_info instance each time by loading the new file
 
-                        if options.forceRebuildAllFiles:
-                            # fake it, make it look modified!
-                            is_modified = True
-                        else:
-                            is_modified = currentfile_info.is_refresh_needed(filename, before_date=options.imported_before, after_date=options.imported_after)
+                        # by default, build all files, but will check modified during actual run 
+                        is_modified = True 
+
+                        # this is quick, but if you use the same database for multiple solr installs, it's not accurate
+                        # is_modified = currentfile_info.is_refresh_needed(filename, before_date=options.created_before, after_date=options.created_after)
+                        # don't check solr database here, check to see when actually loading.  Takes to long to check each one
+                        # is_modified = file_is_same_as_in_solr(solrcore_docs2, filename=filename)
+
+                        # look at file date only (no database or solr, compare to create option)
+                        if options.created_after is not None:
+                            is_modified = file_was_created_after(after_date=options.created_after, filename=filename)
+                            #is_modified =\
+                                # currentfile_info.is_load_date_before_or_after(after=options.created_after)
                             
-                            #if options.imported_after is not None:
-                                #is_modified =\
-                                    #currentfile_info.is_load_date_before_or_after(after=options.imported_after)
-                                
-                            #if options.imported_before is not None:
-                                #is_modified =\
-                                    #currentfile_info.is_load_date_before_or_after(before=options.imported_before)
+                        if options.created_before is not None:
+                            is_modified = file_was_created_before(before_date=options.created_before, filename=filename)
+                            #is_modified =\
+                                #currentfile_info.is_load_date_before_or_after(before=options.created_before)
 
                         if not is_modified:
                             # file seen before, need to compare.
@@ -1973,13 +2109,16 @@ def main():
         if singleFileMode:
             print(("Single File Mode Selected.  Only file {} will be imported".format(options.rootFolder)))
         else:
-            print(("Ready to import records from %s files of %s at path: %s." % (new_files, total_files, options.rootFolder)))
-            print(("%s Skipped files (those not modified since the last run)" % (skipped_files)))
-            print(("%s Files to process" % (new_files )))
+            if options.forceRebuildAllFiles:
+                print(("Ready to import records from %s files of %s at path: %s." % (new_files, total_files, options.rootFolder)))
+            else:
+                print(("Ready to import %s files of %s *if modified* at path: %s." % (new_files, total_files, options.rootFolder)))               
+
+            print(("%s Skipped files (excluded by date options)" % (skipped_files)))
     
         print((80*"-"))
         precommit_file_count = 0
-        processed_files_count = 0
+        skipped_files = 0
         if new_files > 0:
             gCitedTable = collect_citation_counts(ocd)
                
@@ -1990,8 +2129,33 @@ def main():
             # ----------------------------------------------------------------------
             # Now walk through all the filenames selected
             # ----------------------------------------------------------------------
+            print (f"Load process started ({time.ctime()}).  Examining files.")
             for n in filenames:
                 fileTimeStart = time.time()
+                if not options.forceRebuildAllFiles:                    
+                    if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0:
+                        print (f"Skipped {skipped_files} so far...loaded {processed_files_count} out of {new_files} possible." )
+                    
+                    if options.reload_before_date is not None:
+                        if not file_was_loaded_before(solrcore_docs2, before_date=options.reload_before_date, filename=n):
+                            skipped_files += 1
+                            if options.display_verbose:
+                                print (f"Skipped - Not loaded before {options.reload_before_date} - {n}.")
+                            continue
+                        
+                    if options.reload_after_date is not None:
+                        if not file_was_loaded_before(solrcore_docs2, after_date=options.reload_after_date, filename=n):
+                            skipped_files += 1
+                            if options.display_verbose:
+                                print (f"Skipped - Not loaded after {options.reload_after_date} - {n}.")
+                            continue
+    
+                    if file_is_same_as_in_solr(solrcore_docs2, filename=n):
+                        skipped_files += 1
+                        if options.display_verbose:
+                            print (f"Skipped - No refresh needed for {n}")
+                        continue
+                
                 # get mod date/time, filesize, etc. for mysql database insert/update
                 processed_files_count += 1
                 f = open(n, encoding="utf-8")
@@ -2095,14 +2259,16 @@ def main():
             #except Exception as e:
                 #print(("Exception: ", e))
             
-            try:
-                print ("Performing final commit.")
-                if options.fulltext_core_update:
-                    solrcore_docs2.commit()
-                    solrcore_authors.commit()
-                    # fileTracker.commit()
-            except Exception as e:
-                print(("Exception: ", e))
+            print (f"Load process complete ({time.ctime()}).")
+            if processed_files_count > 0:
+                try:
+                    print ("Performing final commit.")
+                    if options.fulltext_core_update:
+                        solrcore_docs2.commit()
+                        solrcore_authors.commit()
+                        # fileTracker.commit()
+                except Exception as e:
+                    print(("Exception: ", e))
 
     # end of docs, authors, and/or references Adds
 
@@ -2112,20 +2278,31 @@ def main():
     timeEnd = time.time()
     #currentfile_info.close()
 
-    elapsed_seconds = timeEnd-timeStart
-    elapsed_minutes = elapsed_seconds / 60
-
+    # for logging
+    msg = msg2 = None
     if (options.biblio_update or options.fulltext_core_update) == True:
+        elapsed_seconds = timeEnd-fileTimeStart # actual processing time going through files
+        elapsed_minutes = elapsed_seconds / 60
         if bib_total_reference_count > 0:
-            msg = f"Finished! Imported {len(filenames)} documents and {bib_total_reference_count} references. Elapsed time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes. Files per Min: {len(filenames)/elapsed_minutes:.4f})" 
+            msg = f"Finished! Imported {processed_files_count} documents and {bib_total_reference_count} references. Total file inspection/load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "
+            print(msg)
         else:
-            msg = f"Finished! Imported {len(filenames)} documents. Elapsed time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes. Files per Min: {len(filenames)/elapsed_minutes:.4f})" 
+            msg = f"Finished! Imported {processed_files_count} documents. Total file load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
+            print(msg) 
+        if processed_files_count > 0:
+            print(f"...Files loaded per Min: {processed_files_count/elapsed_minutes:.4f}") 
+            print(f"...Files evaluated per Min: {len(filenames)/elapsed_minutes:.4f}") 
 
-    if options.glossary_core_update:
-        msg = f"Finished! Imported {glossary_file_count} glossary documents and {glossary_terms} terms. Elapsed time: {elapsed_seconds} secs ({elapsed_minutes} minutes, Files per Min: {glossary_file_count/elapsed_minutes:.4f})"
-
-    print (msg)
-    config.logger.info(msg)
+    elapsed_seconds = timeEnd-timeStart # actual processing time going through files
+    elapsed_minutes = elapsed_seconds / 60
+    print (f"Note: File load time is not total elapsed time. Total elapsed time is: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)")
+    if processed_files_count > 0:
+        print(f"Files per elapsed min: {processed_files_count/elapsed_minutes:.4f}") 
+    if msg:
+        config.logger.info(msg)
+    if msg2:
+        config.logger.info(msg)
+        
     #if processingWarningCount + processingErrorCount > 0:
         #print ("  Issues found.  Warnings: %s, Errors: %s.  See log file %s" % (processingWarningCount, processingErrorCount, logFilename))
 
