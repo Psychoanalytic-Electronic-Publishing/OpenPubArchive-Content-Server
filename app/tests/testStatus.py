@@ -52,7 +52,7 @@ class TestStatus(unittest.TestCase):
 
     def test_v2_session_whoami(self):
         # Send a request to the API server and store the response.
-        response = client.get(base_api + '/v2/Session/WhoAmI/')
+        response = client.get(base_api + '/v2/Temp/WhoAmI/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -62,7 +62,7 @@ class TestStatus(unittest.TestCase):
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
-        response = client.get(base_api + '/v2/Session/WhoAmI/')
+        response = client.get(base_api + '/v2/Temp/WhoAmI/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()

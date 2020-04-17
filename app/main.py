@@ -199,20 +199,28 @@ Endpoint and model documentation automatically available when server is running 
 #            Added:
 #                /v2/Admin/ChangeUserPassword/
 #                /v2/Admin/SubscribeUser/
-#            Tested database with RDS/MySQL and it's working as configured.    
+#            Tested database with RDS/MySQL and it's working as configured.
+
 #2020.0325   Removed deprecated response_model_skip_defaults and replaced with 
 #            response_model_exclude_unset per FastAPI change to be consistent with
 #            pydantic
-# 
+#
+
 #2020.0330   Updates to endpoint documentation headers for live documentation
 #            /v2/Database/TermCounts
+
+#2020.0401  In opasAPISupportLib.py lib: 
+#              Set it so user-agent is optional in session settings, in case client doesn't supply 
+#              it (as PaDS didn't)
+
+#2020.0408  Changes to fix bug and complete implementation (it wasn't fully implemented).
 
 #----------------------------------------------------------------------------------------------
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0330.1.Alpha3.3"
+__version__     = "2020.0416.1.Alpha3.3.1"
 __status__      = "Development"
 
 import sys
@@ -236,6 +244,7 @@ from urllib import parse
 # from enum import Enum
 import uvicorn
 from fastapi import FastAPI, Query, Path, Cookie, Header, Depends, HTTPException, File, Form, UploadFile
+from fastapi.openapi.utils import get_openapi
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, RedirectResponse, FileResponse
 from starlette.middleware.cors import CORSMiddleware
@@ -395,8 +404,10 @@ async def create_new_user(response: Response,
        
        Temporary admin for development
 
-       This is only be a stopgap for development
+       This is only a stopgap for development
        All authentication processing is to be done in PaDS as planned
+       (though it may be this stays conditionally for future iteration of local development TBD)
+       
 
     ## Return Type
        models.UserInfo
@@ -480,6 +491,10 @@ async def create_new_user(response: Response,
         #)        
     #return ret_val
 
+#-----------------------------------------------------------------------------
+@app.get("/v2/Admin/openapi.json", tags=["Temp"])
+async def get_open_api_endpoint():
+    return JSONResponse(get_openapi(title="FastAPI", version=1, routes=app.routes))
 
 #-----------------------------------------------------------------------------
 @app.post("/v2/Temp/Admin/ChangeUserPassword/", response_model=models.User, response_model_exclude_unset=True, tags=["Temp"])
@@ -495,8 +510,9 @@ async def change_user_password(response: Response,
        
        Temporary admin for development
 
-       This is only be a stopgap for development
+       This is only a stopgap for development
        All authentication processing is to be done in PaDS as planned
+       (though it may be this stays conditionally for future iteration of local development TBD)
        
     ## Return Type
        models.UserInfo
@@ -543,17 +559,24 @@ async def subscribe_user(response: Response,
        
        Admin user endpoint only
        
+       Temporary admin for development
+
+       This is only a stopgap for development
+       All authentication processing is to be done in PaDS as planned
+       (though it may be this stays conditionally for future iteration of local development TBD)
+
     ## Return Type
        models.UserInfo
 
     ## Status
-       Status: In Development
+       Status: Development Only Function
 
     ## Sample Call
          /v2/Admin/SubscribeUser/
 
     ## Notes
-       This may only be a stopgap for development if all authorization processing is done in PaDS as planned
+       This is only a temp feature to help with testing.
+       All subscriptions and authorization processing will be done in PaDS as planned
 
     ## Potential Errors
        NA
@@ -575,6 +598,39 @@ async def subscribe_user(response: Response,
             detail="Not authorized"
         )        
     return ret_val
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Temp/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Temp"])
+async def who_am_i(response: Response,
+                   request: Request):
+    """
+    ## Function
+       <b>Temporary endpoint for debugging purposes</b>
+
+       This is only a stopgap for development
+       All authentication processing is to be done in PaDS as planned
+       (though it may be this stays conditionally for future iteration of local development TBD)
+       
+
+    ## Return Type
+       models.SessionInfo
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+         /v2/Session/WhoAmI/
+
+    ## Notes
+       NA
+
+    ## Potential Errors
+       NA
+
+    """
+
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    return(session_info)
 
 
 #-----------------------------------------------------------------------------
@@ -652,34 +708,6 @@ async def get_the_server_status(response: Response,
 
     ocd.close_connection()
     return server_status_item
-
-#-----------------------------------------------------------------------------
-@app.get("/v2/Temp/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Temp"])
-async def who_am_i(response: Response,
-                   request: Request):
-    """
-    ## Function
-       <b>Temporary endpoint for debugging purposes</b>
-
-    ## Return Type
-       models.SessionInfo
-
-    ## Status
-       This endpoint is working.
-
-    ## Sample Call
-         /v2/Session/WhoAmI/
-
-    ## Notes
-       NA
-
-    ## Potential Errors
-       NA
-
-    """
-
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
-    return(session_info)
 
 ##-----------------------------------------------------------------------------
 #@app.get("/v2/Database/Alerts/", response_model=models.AlertList, response_model_exclude_unset=True, tags=["Database", "Planned"])
@@ -2276,12 +2304,12 @@ async def get_the_most_viewed_articles(response: Response,
                                        # period is str because it can be "all"
                                        pubperiod: int=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
                                        # viewperiod=4 Prior cal year, per PEP-Web design
+                                       viewperiod: int=Query(4, title=opasConfig.TITLE_MOST_VIEWED_PERIOD, description=opasConfig.DESCRIPTION_MOST_VIEWED_PERIOD), # 4=Prior year, per PEP-Web design
                                        author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                                        title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
                                        sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                                        sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                                        sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE), 
-                                       viewperiod: int=Query(4, title=opasConfig.TITLE_MOST_VIEWED_PERIOD, description=opasConfig.DESCRIPTION_MOST_VIEWED_PERIOD), # 4=Prior year, per PEP-Web design
                                        limit: int=Query(5, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT), # by PEP-Web standards, we want 10, but 5 is better for PEP-Easy
                                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                        ):
@@ -2688,13 +2716,43 @@ def get_a_list_of_journal_names(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Volumes/{SourceCode}/", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["Deprecated"])
-@app.get("/v2/Metadata/Volumes/{SourceCode}/", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["Metadata", "v2.0"])
+@app.get("/v1/Metadata/Volumes/{SourceCode}", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["Deprecated"])
 def get_a_list_of_volumes_for_a_journal(response: Response,
                                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                        SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                                         limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
+                                        sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
+                                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                                        # v1 arg
+                                        SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                                        ):
+    """
+    ## Function
+       <b>Return a list of volumes for a SourceCode (aka, PEPCode (e.g., IJP)) per the limit and offset parameters</b> 
+
+    ## Return Type
+       models.JournalInfoList
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+         http://localhost:9100/v1/Metadata/Volumes/CPS/
+
+    ## Notes
+
+    ## Potential Errors
+
+    """
+    ret_val = get_a_list_of_volumes_for_a_journal(response=response, request=request, sourcetype=sourcetype, sourcecode=SourceCode, limit=limit, offset=offset)
+    return ret_val # returns volumeList
+    
+@app.get("/v2/Metadata/Volumes/", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["Metadata", "v2.0"])
+def get_a_list_of_volumes_for_a_journal(response: Response,
+                                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                                        limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                        sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
+                                        sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                                         ):
     """
     ## Function
@@ -2717,15 +2775,19 @@ def get_a_list_of_volumes_for_a_journal(response: Response,
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     # Solr is case sensitive, make sure arg is upper
-    SourceCode = SourceCode.upper()
-    src_exists = ocd.get_sources(source=SourceCode)
-    if not src_exists[0]:
+    try:
+        source_code = sourcecode.upper()
+    except:
+        source_code = None
+
+    src_exists = ocd.get_sources(source_code=source_code)
+    if not src_exists[0] and source_code != "*" and source_code != "ZBK" and source_code is not None: # ZBK not in productbase table without booknum
         response.status_code = HTTP_400_BAD_REQUEST
-        status_message = f"Failure: Bad SourceCode {SourceCode}"
+        status_message = f"Failure: Bad SourceCode {source_code}"
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_VOLUME_INDEX,
                                     session_info=session_info, 
                                     params=request.url._url,
-                                    item_of_interest=f"{SourceCode}", 
+                                    item_of_interest=f"{source_code}", 
                                     return_status_code=response.status_code,
                                     status_message=status_message
                                     )
@@ -2735,14 +2797,14 @@ def get_a_list_of_volumes_for_a_journal(response: Response,
         )
     else:
         try:
-            ret_val = opasAPISupportLib.metadata_get_volumes(SourceCode, limit=limit, offset=offset)
+            ret_val = opasAPISupportLib.metadata_get_volumes(source_code, source_type=sourcetype, limit=limit, offset=offset)
         except Exception as e:
             response.status_code = HTTP_400_BAD_REQUEST,
             status_message = "Error: {}".format(e)
             ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_VOLUME_INDEX,
                                         session_info=session_info, 
                                         params=request.url._url,
-                                        item_of_interest=f"{SourceCode}", 
+                                        item_of_interest=f"{source_code}", 
                                         return_status_code=response.status_code,
                                         status_message=status_message
                                         )
@@ -2757,7 +2819,7 @@ def get_a_list_of_volumes_for_a_journal(response: Response,
             ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_VOLUME_INDEX,
                                         session_info=session_info, 
                                         params=request.url._url,
-                                        item_of_interest=f"{SourceCode}", 
+                                        item_of_interest=f"{source_code}", 
                                         return_status_code=response.status_code,
                                         status_message=status_message
                                         )
@@ -3505,7 +3567,7 @@ async def download_an_image(response: Response,
                 logger.info(status_message)
                 ocd.record_document_view(document_id=imageID,
                                          session_info=session_info,
-                                         view_type="file_format")
+                                         view_type=media_type)
                 # no need to record image return (happens many times per article)
                 #ocd.record_session_endpoint(api_endpoint_id=endpoint,
                 #session_info=session_info, 

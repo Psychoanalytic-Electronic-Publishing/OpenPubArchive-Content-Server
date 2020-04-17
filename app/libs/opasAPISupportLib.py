@@ -21,11 +21,13 @@ Also, some of these functions are reused in different API calls.
    #2020.0224.1 - Added biblioxml
    #2020.0226.1 - Support TOC instance as exception for abstracting extraction (extract_abstract_from_html)
                 # Python 3 only now
+   #2020.0401.1 - Set it so user-agent is optional in session settings, in case client doesn't supply it (as PaDS didn't)
+ 
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0226.1"
+__version__     = "2020.0401.1"
 __status__      = "Development"
 
 import os
@@ -93,7 +95,6 @@ import opasXMLHelper as opasxmllib
 import opasQueryHelper
 import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
-# import sourceInfoDB as SourceInfoDB
 import schemaMap
 sourceDB = opasCentralDBLib.SourceInfoDB()
 count_anchors = 0
@@ -207,12 +208,11 @@ def get_session_info(request: Request,
                 # try creating a record
                 ocd, session_info = start_new_session(response, request, access_token=access_token, keep_active=keep_active, user=user) 
                 username="NotLoggedIn"
-                ret_val, session_info = ocd.save_session(session_id, 
-                                                         userID=0,
-                                                         userIP=request.client.host, 
-                                                         connected_via=request.headers["user-agent"],
-                                                         username=username
-                                                        )  # returns save status and a session object (matching what was sent to the db)
+                ret_val, session_info = ocd.save_session(session_id,
+                                                         userID=0, userIP=request.client.host,
+                                                         connected_via=request.headers.get("user-agent", "Not Specified"),
+                                                         username=username ) # returns save status and a session
+                                                                             # object (matching what was sent to the db)
 
         except ValidationError as e:
             logger.error("Validation Error: %s", e.json())             
@@ -288,7 +288,7 @@ def start_new_session(resp: Response, request: Request, session_id=None, access_
                                                 userID=user.user_id,
                                                 expiresTime=token_expiration_time,
                                                 userIP=request.client.host, 
-                                                connected_via=request.headers["user-agent"],
+                                                connected_via=request.headers.get("user-agent", "Not Specified"),
                                                 accessToken = access_token
                                                 )
     else:
@@ -297,8 +297,9 @@ def start_new_session(resp: Response, request: Request, session_id=None, access_
                                                 userID=0,
                                                 expiresTime=token_expiration_time,
                                                 userIP=request.client.host, 
-                                                connected_via=request.headers["user-agent"],
-                                                username=username)  # returns save status and a session object (matching what was sent to the db)
+                                                connected_via=request.headers.get("user-agent", "Not Specified"),
+                                                username=username)  # returns save status and a session object 
+                                                                    # (matching what was sent to the db)
 
     resp.set_cookie(key=OPASSESSIONID,
                     value=session_id,
@@ -443,6 +444,8 @@ def database_get_most_viewed( publication_period: int=None,
                             ):
     """
     Return the most downloaded (viewed) journal articles duing the prior period years.
+    
+    This is used for the statistical summary function and accesses only the relational database, not full-text Solr.
     
     Args:
         publication_period (int or str, optional): Look only at articles this many years back to current.  Defaults to 5.
@@ -746,38 +749,84 @@ def database_get_whats_new(days_back=7, limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS
     #pass  # later
 
 #-----------------------------------------------------------------------------
-def metadata_get_volumes(pep_code, year="*", limit=opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, offset=0):
+def source_type_normalize(source_type):
+    """
+    Make it easier to ignore small inconsistencies in these key word arguments.
+    
+    >>> source_type_normalize("journals")
+    journal
+    >>> source_type_normalize("Journal")
+    journal
+    
+    """
+    ret_val = None
+    normal = {"journals": "journal",
+              "videostreams": "videostream",
+              "video": "videostream",
+              "videos": "videostream",
+              "books": "book"
+    }
+    if source_type is not None:
+        source_type = source_type.lower()
+        ret_val = normal.get(source_type, source_type)
+
+    return ret_val
+
+#-----------------------------------------------------------------------------
+def metadata_get_volumes(pep_code=None, source_type=None, limit=opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, offset=0):
     """
     Get a list of volumes for this pep_code.
     
-    #TODO: Not currently used in OPAS server though.  Deprecate?
-    
     """
     ret_val = []
-           
-    results = solr_docs.query( q = f"art_sourcecode:{pep_code} && art_year:{year}",  
-                               fields = "art_vol, art_year",
-                               sort="art_year", sort_order="asc",
-                               fq="{!collapse field=art_vol}",
-                               rows=limit, start=offset
-                             )
+    ocd = opasCentralDBLib.opasCentralDB()
+    count, results = ocd.get_volumes(source_code=pep_code, source_type=source_type, limit=limit, offset=offset)
+    
+    #results = solr_docs.query( q = f"art_sourcecode:{pep_code} && art_year:{year}",  
+                               #fields = "art_sourcecode, art_vol, art_year",
+                               #sort="art_year", sort_order="asc",
+                               #fq="{!collapse field=art_vol}",
+                               #rows=limit, start=offset
+                             #)
 
-    logger.debug("metadataGetVolumes Number found: %s", results._numFound)
-    response_info = models.ResponseInfo( count = len(results.results),
-                                         fullCount = results._numFound,
+    logger.debug("metadataGetVolumes Number found: %s", count)
+    response_info = models.ResponseInfo( count = count,
+                                         fullCount = count,
                                          limit = limit,
                                          offset = offset,
                                          listType="volumelist",
-                                         fullCountComplete = limit >= results._numFound,
+                                         fullCountComplete = (limit == 0 or limit >= count),
                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
                                        )
+    
+    #response_info = models.ResponseInfo( count = len(results.results),
+                                         #fullCount = results._numFound,
+                                         #limit = limit,
+                                         #offset = offset,
+                                         #listType="volumelist",
+                                         #fullCountComplete = limit >= results._numFound,
+                                         #timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                       #)
 
     volume_item_list = []
-    for result in results.results:
-        item = models.VolumeListItem( PEPCode = pep_code, 
-                                      year = result.get("art_year", None),
-                                      vol = result.get("art_vol", None),
-                                      score = result.get("score", None)
+    for result in results:
+        try:
+            pepcode = result[0]
+        except Exception as e:
+            pepcode = None
+
+        try:
+            vol = result[1]
+        except Exception as e:
+            vol = None
+        try:
+            yearif = result[2]
+        except Exception as e:
+            yearif = None
+
+        item = models.VolumeListItem( PEPCode = pepcode, 
+                                      vol = vol, 
+                                      year = yearif
                                     )
     
         #logger.debug(item)
@@ -973,7 +1022,7 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
     else: # get from mySQL
         try:
             if src_code != "*":
-                total_count, sourceData = ocd.get_sources(src_type = src_type, source=src_code, limit=limit, offset=offset)
+                total_count, sourceData = ocd.get_sources(src_type = src_type, source_code=src_code, limit=limit, offset=offset)
             else:
                 total_count, sourceData = ocd.get_sources(src_type = src_type, limit=limit, offset=offset)
                 
@@ -1108,10 +1157,10 @@ def metadata_get_source_by_code(src_code=None, limit=opasConfig.DEFAULT_LIMIT_FO
     
     # would need to add URL for the banner
     if src_code is not None:
-        total_count, source_info_dblist = ocd.get_sources(src_code)    #sourceDB.sourceData[pepCode]
+        total_count, source_info_dblist = ocd.get_sources(source_code=src_code)    #sourceDB.sourceData[pepCode]
         #sourceType = sourceInfoDBList.get("src_type", None)
     else:
-        total_count, source_info_dblist = ocd.get_sources(src_code)    #sourceDB.sourceData
+        total_count, source_info_dblist = ocd.get_sources(source_code=src_code)    #sourceDB.sourceData
         #sourceType = "All"
             
     count = len(source_info_dblist)
@@ -2411,7 +2460,7 @@ def search_text(query,
             summary_fields += ", text_xml"
     elif full_text_requested:
         if "text_xml" not in summary_fields:
-            summary_fields += ", text_xml"
+            summary_fields += ", text_xml, art_excerpt"
         
     if more_like_these:
         mlt_fl = "text_xml, headings_xml, terms_xml, references_xml"
@@ -2460,7 +2509,9 @@ def search_text(query,
                                   hl_fl = highlight_fields,
                                   hl_usePhraseHighlighter = 'true',
                                   hl_snippets = maxKWICReturns,
-                                  hl_maxAnalyzedChars=opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
+                                  hl_maxAnalyzedChars=opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE,
+                                  facet="on",
+                                  facet_field="art_lang", 
                                   #hl_method="unified",  # these don't work
                                   #hl_encoder="HTML",
                                   mlt = mlt,

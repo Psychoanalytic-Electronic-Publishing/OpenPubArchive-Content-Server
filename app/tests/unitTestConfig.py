@@ -6,11 +6,31 @@ This file has settings for the server tests, as well as a list of endpoint defin
   
 """
 
+# use the configured server.
+from localsecrets import APIURL
+# use this to test with whereever the local config points to 
+base_api = APIURL
+# or override below.
 # base_api = "http://stage.pep.gvpi.net/api"
-base_api = "http://127.0.0.1:9100"
+base_api = "http://127.0.0.1:9100" # local server
+
+# this must be set to the number of unique journals for testing to pass.
 JOURNALCOUNT = 77
+# this must be set to the exact number of unique books for testing to pass.
 BOOKCOUNT = 102
-VIDEOSOURCECOUNT = 12
+VIDEOSOURCECOUNT = 12 # Number of video sources (video journal codes)
+ARTICLE_COUNT_BJP = 2735 # Right.  2738 in everything with query "BJP (bEXP_ARCH1).xml", but 3 dups.
+ARTICLE_COUNT_VOL1_BJP = 49
+VOL_COUNT_ALL_JOURNALS = 2557
+VOL_COUNT_ALL_BOOKS = 140
+VOL_COUNT_ZBK = 70
+VOL_COUNT_GW = 18
+VOL_COUNT_SE = 24
+VOL_COUNT_IPL = 22
+VOL_COUNT_ALL_VOLUMES = 2580 #  journals and videos
+VOL_COUNT_VIDEOS = 30
+VOL_COUNT_VIDEOS_PEPVS = 4
+VOL_COUNT_IJPSP = 11 #  source code ended, 11 should always be correct
 
 # Can use constants for endpoints, which solves consistency in the tests, but I find it
 #  harder to read (and I'd need to remove the parameters).  Left just for documentation sake

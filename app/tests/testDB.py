@@ -34,7 +34,7 @@ class TestDatabase(unittest.TestCase):
         ocd = opasCentralDB()
         sources = ocd.get_sources()
         assert(sources[0] > 100)
-        sources = ocd.get_sources(source="IJP")
+        sources = ocd.get_sources(source_code="IJP")
         assert(sources[0] == 1)
         sources = ocd.get_sources(src_type="journal")
         assert(sources[0] > 70)

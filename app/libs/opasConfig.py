@@ -80,10 +80,11 @@ DEFAULT_MAX_KWIC_RETURNS = 5
 DEFAULT_LIMIT_FOR_SOLR_RETURNS = 10
 DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS = 1
 DEFAULT_LIMIT_FOR_WHATS_NEW = 5
-DEFAULT_LIMIT_FOR_VOLUME_LISTS = 100
+DEFAULT_LIMIT_FOR_VOLUME_LISTS = 10000 # 2020-04-06 raised from 100, so all volumes can be brought back at once
 DEFAULT_LIMIT_FOR_CONTENTS_LISTS = 100
 DEFAULT_LIMIT_FOR_METADATA_LISTS = 100
-
+DEFAULT_SOLR_SORT_FIELD = "art_cited_5" 
+DEFAULT_SOLR_SORT_DIRECTION = "asc" # desc or asc
 DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 4000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
 
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 2520000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
@@ -132,7 +133,7 @@ DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a f
 DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_MOST_CITED_PERIOD = "Most cited articles from this time period (years: 5, 10, 20, or all)"
-DESCRIPTION_PUBLICATION_PERIOD = "Number of Years to include (counting back from current year)" 
+DESCRIPTION_PUBLICATION_PERIOD = "Number of publication years to include (counting back from current year)" 
 DESCRIPTION_MOST_VIEWED_PERIOD = "Most viewed articles in this period (0=Last Cal year, 1=last month, 2=last month, 3=last 6 months, 4=last 12 months)"
 DESCRIPTION_CITED_MORETHAN = "Limit to articles cited more than this many times"
 
@@ -184,5 +185,17 @@ ENDPOINT_SUMMARY_MOST_VIEWED = "Get the most viewed journal articles published i
 TEMPDIRECTORY = tempfile.gettempdir()
 
 MAX_PARAS_FOR_SUMMARY = 10
+
+VIEW_PERIOD_LASTWEEK = "lastweek"
+VIEW_PERIOD_LASTMONTH = "lastmonth"
+VIEW_PERIOD_LAST6MONTHS = "last6months"
+VIEW_PERIOD_LAST12MONTHS = "last12months"
+VIEW_PERIOD_LASTCALYEAR = "lastcalendaryear"
+
+VIEW_DBNAME_LASTWEEK = "vw_stat_docviews_lastweek"
+VIEW_DBNAME_LASTMONTH = "vw_stat_docviews_lastmonth"
+VIEW_DBNAME_LAST6MONTHS = "vw_stat_docviews_lastsixmonths"
+VIEW_DBNAME_LAST12MONTHS = "vw_stat_docviews_last12months"
+VIEW_DBNAME_LASTCALYEAR = "vw_stat_docviews_lastcalyear"
 
 

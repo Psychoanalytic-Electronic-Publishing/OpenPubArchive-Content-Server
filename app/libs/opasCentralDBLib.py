@@ -36,9 +36,9 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
 
 """
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1110.1"
+__version__     = "2020.0407.1"
 __status__      = "Development"
 
 import sys
@@ -340,7 +340,7 @@ class opasCentralDB(object):
          4) show views in last 7 days, last month, last 6 months, last calendar year.
             This function returns them all.
          
-            download_periods = {
+            publication_period = {
                 0: "lastcalendaryear",
                 1: "lastweek",
                 2: "lastmonth",
@@ -368,7 +368,8 @@ class opasCentralDB(object):
                 #doc_type_clause = " AND jrnlcode like '%VS'"
             #else:
             doc_type_clause = ""  # all
-
+            vws_clause = ""
+            
             if author is not None:
                 author_clause = f" AND hdgauthor RLIKE '{author}'"
             else:
@@ -424,12 +425,134 @@ class opasCentralDB(object):
             else:
                 sort_by_col_name = "lastcalyear"
                 
-                
-            
             sort_by_clause = f" ORDER BY {sort_by_col_name} DESC"
 
             sql = f"""SELECT DISTINCTROW * FROM vw_stat_most_viewed WHERE 1 = 1 \
-                      {doc_type_clause}  {author_clause} {title_clause} {source_clause} {source_code_clause} {source_type_clause} {pub_year_clause} \
+                      {doc_type_clause}  {author_clause} {title_clause} {source_clause} {source_code_clause} {source_type_clause} {vws_clause} {pub_year_clause} \
+                      {sort_by_clause} \
+                      {limit_clause} \
+                    """
+            row_count = cursor.execute(sql)
+            if row_count:
+                ret_val = cursor.fetchall()
+                
+            # print (f"SQL: {sql}")
+            
+            cursor.close()
+        else:
+            logger.fatal("Connection not available to database.")
+        
+        self.close_connection(caller_name="get_most_downloaded") # make sure connection is closed
+        return row_count, ret_val
+               
+    def get_most_viewed_ids_for_fts( self,
+                                     minimum_views: int=1, 
+                                     view_period: str='4', # last 12 months
+                                     author=None,
+                                     title=None,
+                                     source_code: str=None,
+                                     source_type: str=None,
+                                     limit=100, # no more than 100 by default
+                                     offset=0
+                               ):
+        """
+        Get a list of the most viewed IDS for passing in a search to Solr.
+        
+        """
+        ret_val = None
+        self.open_connection(caller_name="get_most_viewed_ids") # make sure connection is open
+        if limit is not None:
+            limit_clause = f"LIMIT {offset}, {limit}"
+        else:
+            limit_clause = ""
+        
+        if self.db is not None:
+            cursor = self.db.cursor(pymysql.cursors.DictCursor)
+
+            if source_type == "journals":
+                source_type_clause = " AND document_id NOT RLIKE '(ZBK|SE|IPL|NPL|GW).*|(.*VS.*)'"
+            elif source_type == "books":
+                source_type_clause = " AND document_id RLIKE '(ZBK|SE|IPL|NPL|GW).*|(.*VS.*)'"
+            elif source_type == "videos":
+                source_type_clause = " AND document_id RLIKE '.*VS.*'"
+            else:
+                source_type_clause = ""  # all
+
+            if minimum_views != 0:
+                vws_clause = f"AND views >= {minimum_views}"
+            else:
+                vws_clause = f"AND views > 1" #  must be at least one view
+            
+            if author is not None:
+                # MySQL changes REG syntax in Version 8.04 and greater
+                try:
+                    mysqlmver = int(localsecrets.DBVER)
+                except:
+                    logger.warning("MySQL Version specification problem, just specify integer major version as DBVER={major}")
+                    mysqlmver = localsecrets.DBVER[0]
+                    
+                if mysqlmver >= 8:
+                    author_clause = fr" AND art_auth_citation RLIKE '.*\\b{author}\\b.*'"
+                else:
+                    author_clause = fr" AND art_auth_citation RLIKE '.*[[:<:]]{author}[[:>:]].*'"
+            else:
+                author_clause = ""
+                
+            if title is not None:
+                title_clause = f" AND hdgtitle RLIKE '{title}'"
+            else:
+                title_clause = ""
+
+            if source_code is not None:
+                src_split = source_code.split(",")
+                count = 0
+                for n in src_split:
+                    if count > 0:
+                        srcs_str += f", '{n.strip()}'"
+                    else:
+                        srcs_str = f"'{n.strip()}'"
+                    count += 1
+                source_code_clause = f" AND SUBSTRING_INDEX(document_id, '.', 1) IN ({srcs_str})"
+            else:
+                source_code_clause = ""
+            
+            try:
+                view_period_int = int(view_period)
+                if view_period_int == 1:
+                    view_period = opasConfig.VIEW_PERIOD_LASTWEEK
+                elif view_period_int == 2:
+                    view_period = opasConfig.VIEW_PERIOD_LASTMONTH
+                elif view_period_int == 3:
+                    view_period = opasConfig.VIEW_PERIOD_LAST6MONTHS
+                elif view_period_int == 0:
+                    view_period = opasConfig.VIEW_PERIOD_LASTCALYEAR
+                else:
+                    view_period = opasConfig.VIEW_PERIOD_LAST12MONTHS
+            except ValueError as e:
+                # it's not numeric
+                pass # it's ok, use that value below
+            except TypeError as e:
+                # it's likely None 
+                view_period == "last12months"
+            
+            # 1 through 5 reps the 5 different values
+            if view_period == opasConfig.VIEW_PERIOD_LASTWEEK:
+                view_name = opasConfig.VIEW_DBNAME_LASTWEEK
+            elif view_period == opasConfig.VIEW_PERIOD_LASTMONTH:
+                view_name = opasConfig.VIEW_DBNAME_LASTMONTH
+            elif view_period == opasConfig.VIEW_PERIOD_LAST6MONTHS:
+                view_name = opasConfig.VIEW_DBNAME_LAST6MONTHS
+            elif view_period == opasConfig.VIEW_PERIOD_LASTCALYEAR:
+                view_name = opasConfig.VIEW_DBNAME_LASTCALYEAR
+            else:
+                view_name = opasConfig.VIEW_DBNAME_LAST12MONTHS
+
+            # always sort by views
+            sort_by_clause = f" ORDER BY views DESC"
+
+            sql = f"""SELECT * FROM {view_name}, api_articles \
+                      WHERE document_id = api_articles.art_id \
+                      {author_clause} {title_clause} {source_code_clause} {source_type_clause} {vws_clause}  \
                       {sort_by_clause} \
                       {limit_clause} \
                     """
@@ -443,7 +566,7 @@ class opasCentralDB(object):
         else:
             logger.fatal("Connection not available to database.")
         
-        self.close_connection(caller_name="get_most_downloaded") # make sure connection is closed
+        self.close_connection(caller_name="get_most_viewed_ids") # make sure connection is closed
         return row_count, ret_val
                
     def get_session_from_db(self, session_id):
@@ -1029,11 +1152,11 @@ class opasCentralDB(object):
         ## returns a list of basecodes in that product, suitable for matching against.
         #return ret_val
 
-    def get_sources(self, source=None, src_type=None, limit=None, offset=0):
+    def get_sources(self, source_code=None, src_type=None, limit=None, offset=0):
         """
         Return a list of sources
-          - for a specific source (code),
-          - OR for a specific source type (e.g. journal)
+          - for a specific source_code
+          - OR for a specific source type (e.g. journal, book)
           - OR if source and src_type are not specified, bring back them all
           
         >>> ocd = opasCentralDB()
@@ -1052,8 +1175,8 @@ class opasCentralDB(object):
         if self.db is not None:
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
-                if source is not None:
-                    sqlAll = "FROM vw_api_productbase WHERE active = 1 and basecode = '%s'" % source
+                if source_code is not None:
+                    sqlAll = "FROM vw_api_productbase WHERE active = 1 and basecode = '%s'" % source_code
                 elif src_type is not None:
                     sqlAll = "FROM vw_api_productbase WHERE active = 1 and product_type = '%s'" % src_type
                 else:  # bring them all back
@@ -1086,6 +1209,136 @@ class opasCentralDB(object):
                     ret_val = None
             
         self.close_connection(caller_name="get_sources") # make sure connection is closed
+
+        # return session model object
+        return total_count, ret_val # None or Session Object
+
+    def get_volumes(self, source_code=None, source_type=None, limit=None, offset=0):
+        """
+        Return a list of volumes
+          - for a specific source_code (code),
+          - OR for a specific source_type (e.g. journal)
+          - OR if source_code and source_type are not specified, bring back them all
+          
+        >>> ocd = opasCentralDB()
+        >>> sources = ocd.get_volumes(source='IJP')
+
+        """
+        # returns multiple gw's and se's, 139 unique volumes counting those (at least in 2020)
+        # works for journal, videostreams have more than one year per vol.
+        # works for books, videostream vol numbers
+        distinct_return = "src_code, art_vol, art_year"
+
+        if source_type == "book" or source_code in ["GW", "SE", "IPL", "NLP", "ZBK"]:
+            if source_code is not None:
+                sql = f"""SELECT DISTINCT
+                           src_code,
+                           art_vol,
+                           art_year, 
+                           art_id
+                           FROM
+                              api_articles
+                           WHERE
+                              src_code = '{source_code}' 
+                           AND art_id IN (
+                               SELECT DISTINCT ( art_id	) 
+                           FROM
+                               api_articles AS a,
+                               api_productbase AS p 
+                           WHERE
+                               a.src_code = p.pepcode
+                               AND a.src_code = '{source_code}' 
+                               AND (a.main_toc_id = a.art_id OR a.main_toc_id is Null)
+                               AND p.active = 1 
+                           )         
+                        """
+            else:
+                sql = f"""SELECT DISTINCT
+                           src_code,
+                           art_vol,
+                           art_year, 
+                           art_id
+                           FROM
+                              api_articles
+                           WHERE
+                              src_code IN ("GW", "SE", "IPL", "NLP", "ZBK") 
+                              AND art_id IN (
+                                 SELECT DISTINCT (art_id) 
+                                 FROM
+                                     api_articles AS a,
+                                     api_productbase AS p 
+                                  WHERE
+                                      a.src_code = p.pepcode
+                                      AND (a.main_toc_id = a.art_id OR a.main_toc_id is Null)
+                                      AND p.active = 1 
+                           )         
+                        """
+                
+        else:
+            # No books
+            if source_type is None:
+                ins_type = f"""
+                              AND src_code IN
+                                   (SELECT DISTINCT src_code
+                                   FROM api_articles as a, api_productbase as p
+                                   WHERE a.src_code = p.pepcode
+                                   and p.active = 1
+                                   and p.pep_class <> "book")                
+                            """
+            else:
+                ins_type = f"""
+                              AND src_code IN
+                                   (SELECT DISTINCT src_code
+                                   FROM api_articles as a, api_productbase as p
+                                   WHERE a.src_code = p.pepcode
+                                   and p.active = 1
+                                   and p.pep_class = '{source_type}')                
+                            """
+        
+            if source_code is not None:
+                source_matches = f"AND src_code = '{source_code}'"
+            else:
+                source_matches = ""
+                
+            sql = f"""
+                      SELECT DISTINCT {distinct_return}
+                      FROM api_articles
+                      WHERE src_code not in ("GW", "SE", "IPL", "NLP", "ZBK")
+                         {source_matches}
+                         {ins_type}
+                  """
+        
+        self.open_connection(caller_name="get_volumes") # make sure connection is open
+        total_count = 0
+        ret_val = None
+        limit_clause = None
+        if limit is not None:
+            limit_clause = f" LIMIT {limit}"
+            if offset != 0:
+                limit_clause += f" OFFSET {offset}"
+        
+        if self.db is not None:
+            try:
+                curs = self.db.cursor(pymysql.cursors.DictCursor)
+                res = curs.execute(sql)
+            except Exception as e:
+                msg = f"get_volumes Error querying api_articles: {e}"
+                logger.error(msg)
+            else:
+                if res:
+                    ret_val = curs.fetchall()
+                    total_count = len(ret_val)
+                    curs.close()
+                    if limit_clause is not None:
+                        # do another query with limit
+                        curs = self.db.cursor()
+                        curs.execute(sql + limit_clause)
+                        ret_val = curs.fetchall()
+                        curs.close()
+                else:
+                    ret_val = None
+            
+        self.close_connection(caller_name="get_volumes") # make sure connection is closed
 
         # return session model object
         return total_count, ret_val # None or Session Object

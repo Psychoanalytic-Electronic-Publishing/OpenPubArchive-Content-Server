@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-#  This test module is in development...
+# Updates:
+#  2020-04-06 - Testing tightened to be exact.
 
 import sys
 import os.path
@@ -19,14 +17,10 @@ else: # python running from should be within folder app
     sys.path.append('./config')
 
 from starlette.testclient import TestClient
-
 import unittest
-# from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-# import jwt
-# from datetime import datetime
-
 import unitTestConfig
 from unitTestConfig import base_api, base_plus_endpoint_encoded
+import opasCentralDBLib
 from main import app
 
 client = TestClient(app)
@@ -40,6 +34,144 @@ class TestMetadata(unittest.TestCase):
     
     """   
 
+    def test_0_meta_volumes_db(self):
+        # New method to bring back lists of volumes, including all, or all of one type, or all of one type and code.
+        ocd = opasCentralDBLib.opasCentralDB()
+        count, vols = ocd.get_volumes(source_code=None, source_type=None)
+        print (f"DB All Vols Count {count}")
+        assert(count >= unitTestConfig.VOL_COUNT_ALL_VOLUMES)
+        
+        # ---------------------------------------------------------------------------------------
+        source_type = "book"
+        source_code = None       
+        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        print (f"DB {source_type} Vol Count {count}")
+        assert(count >= unitTestConfig.VOL_COUNT_ALL_BOOKS)
+        # ---------------------------------------------------------------------------------------
+        source_type = "book"
+        source_code = "GW"
+        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        print (f"DB {source_type} {source_code} Vol Count {count}")
+        assert(count >= unitTestConfig.VOL_COUNT_GW)
+        # ---------------------------------------------------------------------------------------
+        source_type = "journal"
+        source_code = None
+        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        print (f"DB {source_type} Vol Count {count}")
+        assert(count >= unitTestConfig.VOL_COUNT_ALL_JOURNALS)
+        # ---------------------------------------------------------------------------------------
+        source_type = "journal"
+        source_code = "IJPSP"
+        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        print (f"DB {source_type} {source_code} Vol Count {count}")
+        assert(count == unitTestConfig.VOL_COUNT_IJPSP)
+        # ---------------------------------------------------------------------------------------
+        source_type = "videostream"
+        source_code = None
+        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        print (f"DB {source_type} Vol Count {count}")
+        assert(count >= unitTestConfig.VOL_COUNT_VIDEOS)
+        # ---------------------------------------------------------------------------------------
+        source_type = "videostream"
+        source_code = "PEPVS"
+        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        print (f"DB {source_type} {source_code} Vol Count {count}")
+        assert(count >= unitTestConfig.VOL_COUNT_VIDEOS_PEPVS)
+        
+    def test_0_meta_volumes_api(self):
+        """
+        Journal Volumes Lists for a source
+        ​/v2​/Metadata​/Volumes​/
+        Arguments: sourcetype and sourcecode used.
+        
+        """
+        # ---------------------------------------------------------------------------------------
+        # Version 1 style, for backwards compat. only. sourcecode REQUIRED.  
+        # ---------------------------------------------------------------------------------------
+        response = client.get(base_api + '/v1/Metadata/Volumes/IJPSP') 
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print (f"IJPSP Vol Count: {r['volumeList']['responseInfo']['fullCount']}")
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_IJPSP) 
+        # ---------------------------------------------------------------------------------------
+        # Version 2 style, better, including sourcetype support
+        # ---------------------------------------------------------------------------------------
+        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcetype=book') #  all books
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print (f"Book Count: {r['volumeList']['responseInfo']['fullCount']}")
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_ALL_BOOKS) 
+        # ---------------------------------------------------------------------------------------
+        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcetype=journal') #  all journals
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['volumeList']['responseInfo']['fullCount'] >= unitTestConfig.VOL_COUNT_ALL_JOURNALS) 
+        # ---------------------------------------------------------------------------------------
+        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcetype=videostream') #  all videos
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_VIDEOS)
+        # ---------------------------------------------------------------------------------------
+        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=ZBK')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_ZBK) 
+        # ---------------------------------------------------------------------------------------
+        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=IJPSP')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_IJPSP) # 11
+        # ---------------------------------------------------------------------------------------
+        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=GW')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_GW) # 18 vols of GW
+        # ---------------------------------------------------------------------------------------
+        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=SE')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_SE) # 18 vols of SE
+        # ---------------------------------------------------------------------------------------
+        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=IPL')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_IPL) # 22 vols of IPL
+        # ---------------------------------------------------------------------------------------
+        # try an error
+        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=IJPNOT')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == False)
+        r = response.json()
+        assert(r["detail"] == "Failure: Bad SourceCode IJPNOT")
+        # ---------------------------------------------------------------------------------------
+        # all journals and videos 
+        # (books not included, ***perhaps this option should not exist since it seems inconsistent ***.)
+        response = client.get(base_api + '/v2/Metadata/Volumes/') 
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['volumeList']['responseInfo']['fullCount'] >= unitTestConfig.VOL_COUNT_ALL_VOLUMES) # count of journal and video volumes
+        
+
     def test_1_meta_contents_for_source(self):
         """
         Journal Content Lists for a source
@@ -50,7 +182,8 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['documentList']['responseInfo']['fullCount'] >= 2634)
+        print(r['documentList']['responseInfo']['fullCount']) # 2735
+        assert(r['documentList']['responseInfo']['fullCount'] == unitTestConfig.ARTICLE_COUNT_BJP)
         # print ("test_metadata_journals complete.")
        
     def test_2_meta_contents_source_volume(self):
@@ -63,7 +196,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['documentList']['responseInfo']['fullCount'] == 49)
+        assert(r['documentList']['responseInfo']['fullCount'] == unitTestConfig.ARTICLE_COUNT_VOL1_BJP)
 
         response = client.get(base_api + '/v1/Metadata/Contents/IJP/1/?limit=1')
         # Confirm that the request-response cycle completed successfully.
@@ -83,7 +216,8 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.VIDEOSOURCECOUNT)
+        print(r['sourceInfo']['responseInfo']['fullCount']) 
+        assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.VIDEOSOURCECOUNT)
 
         # try with src code parameter
         response = client.get(base_api + '/v1/Metadata/Videos/?SourceCode=AFCVS&limit=1')
@@ -104,13 +238,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.JOURNALCOUNT)
-
-        response = client.get(base_api + '/v1/Metadata/Journals/')
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        # test return
-        r = response.json()
+        print (f"Journal Count: {r['sourceInfo']['responseInfo']['fullCount']}")
         assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.JOURNALCOUNT)
 
         # try with src code parameter
@@ -119,35 +247,8 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
+        print (f"Journal title: {r['sourceInfo']['responseSet'][0]['title']}")
         assert(r['sourceInfo']['responseSet'][0]['title'] == 'British Journal of Psychotherapy')
-
-    def test_5_meta_volumes(self):
-        """
-        List of volumes for a source
-        /v1/Metadata/Volumes/{SourceCode}/
-        """
-        response = client.get(base_api + '/v1/Metadata/Volumes/IJPSP/')
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        # test return
-        r = response.json()
-        # Expect:
-        # {'volumeList': 
-        #     {'responseInfo': {'count': 17, 'limit': 100, 'offset': 0, 'fullCount': 17, 'fullCountComplete': True,  
-        #                       'listType':'volumelist', 
-        #                       'request': 'http://127.0.0.1:9100/v1/Metadata/Volumes/IJPSP/', 'timeStamp': '2019-10-28T04:44:22Z'}, 
-        #      'responseSet': [{'PEPCode': 'IJPSP', 'vol': '1', 'year': '2006'}, 
-        #                      {'PEPCode': 'IJPSP', 'vol': '2', 'year': '2007'}, 
-        #                      ...
-        #                      {'PEPCode': 'IJPSP', 'vol': '11', 'year': '2016'}, 
-        #                      {'PEPCode': 'IJPSP', 'vol': '11D', 'year': '2016'}]}}
-        assert(r['volumeList']['responseInfo']['fullCount'] == 17)
-        # try an error
-        response = client.get(base_api + '/v1/Metadata/Volumes/IJPNOT/')
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == False)
-        # test return
-        r = response.json()
 
     def test_6_meta_book_names(self):
         """
@@ -159,6 +260,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
+        print (f"Book Count: {r['sourceInfo']['responseInfo']['fullCount']}")
         assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.BOOKCOUNT)
 
     def test_7_meta_sourcenames(self):

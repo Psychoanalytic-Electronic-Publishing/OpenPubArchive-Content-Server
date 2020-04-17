@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Web Database Schema v.2020.01.05
+    PEP Web Database Schema
     for core PEPWebDocs
 
     2019-11-15: artvoltitle was at top but never used/loaded.  These are important for TOCs.
@@ -26,6 +26,14 @@
              
     2020-01-05: More schema clean up. 
     2020-01-20: Re-add summaries_xml used to display summaries when there's no abstract
+    2020-04-10: Added:
+                  Added art_authors_citations to allow sort by authors
+                  docValues for quotes_spkr set to true
+                  docValue whereever it was supported
+    2020-04-11: Added:
+                  strings type, boolean, booleans because it was required online going to Solr 8.5
+                  (cores would not load without that.)
+                  
     
    Schema version attribute note: 
    
@@ -62,9 +70,9 @@
   <!--FULL TEXT-->
   <!-- text_xml searches-->
   <!-- field text also includes other text objects, like text_xml_offsite -->
-  <field name="text_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="text" type="text_simple" indexed="true" stored="false" multiValued="true"/>
-  <field name="text_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
+  <field name="text_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/> # set to multivalued false
+  <field name="text" type="text_simple" indexed="true" stored="false" multiValued="false"/>
+  <field name="text_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
   <!--Offsite text is searchable but not store in its entirety by our contractual rules only citation style info and fields will be store -->
   <field name="text_xml_offsite" type="text_general" indexed="true" stored="false" multiValued="false"/>
   <field name="text_xml_offsite_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
@@ -74,8 +82,8 @@
   <!--......................................................................................................-->
   <!--TITLE-->
   <!-- Title includes subtitle -->
-  <field name="title" type="text_simple" indexed="true" stored="true" multiValued="true"/>
-  <field name="title_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
+  <field name="title" type="text_simple" indexed="true" stored="true" multiValued="false"/> # changed to multivalued false (no reason its multivalued)
+  <field name="title_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
   <copyField source="title" dest="title_syn"/>
   <field name="art_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_subtitle_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
@@ -123,10 +131,14 @@
   <field name="file_classification" type="string" indexed="true" stored="true"/>
 
   <!-- Article authors -->
-  <!-- So how can we do queries for partial last names...can't bunch authors in printable form.  Try two fields, one XML one presentation one multifield. -->
-  <field name="authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+  <!-- So how can we do queries for partial last names...can't bunch authors in printable form.  
+       Try two fields, one XML one presentation one multifield. -->
+  <!--Set docValues true to allow faceting authors -->
+  <field name="authors" type="string" indexed="true" stored="true" multiValued="true" docValues="true" />
   <field name="art_authors" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_mast" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  <!--Added 20200410 to allow sort by authors-->
+  <field name="art_authors_citation" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!--try to improve author search for single names and full names-->
   <!--Many of these are Temporary. fpr trying different search results.  #TODO-->
   <field name="art_authors_text" type="text_simple" indexed="true" stored="false" multiValued="true"/>
@@ -140,7 +152,7 @@
   <copyField source="art_authors_mast" dest="art_authors_mast_text"/>
   <copyField source="art_authors_mast" dest="art_authors_mast_ngrm"/>
 
-  <!--# by paras-->
+  <!-- by paras-->
   <!--<field name="art_body_xml" type="text_simple" indexed="true" stored="false" multiValued="false"/>-->
   <!-- deprecate this, no longer loaded-->
   <!--<field name="abstracts_xml" type="text_general" indexed="true" stored="true" multiValued="true"/> -->
@@ -169,10 +181,12 @@
   <!-- <copyfield source="author_name_str" dest="authors"/> -->
 
   <!-- Biblio fields -->
-  <field name="bib_authors" type="string" indexed="true" stored="true" multiValued="true"/>
-  <field name="bib_booktitle" type="text_simple" indexed="true" stored="true" multiValued="true"/>
-  <field name="bib_journaltitle" type="string" indexed="true" stored="true" multiValued="true"/>
-  <field name="reference_count" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!-- added docValues for faceting (also need to load in document database)-->
+  <field name="bib_authors" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/> 
+  <field name="bib_rx" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/> 
+  <field name="bib_title" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/>
+  <field name="bib_journaltitle" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/>
+  <field name="reference_count" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
   <!--<field name="references_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
   <!-- This is a special structured entry (a JSON field) -->
   <!--<field name="bib_entries_json" type="text_general" indexed="true" stored="true" multiValued="true"/>-->
@@ -189,7 +203,7 @@
   <field name="meta_xml" type="text_simple" indexed="true" stored="true"/>
 
   <field name="tagline" type="string_ci" indexed="true" stored="true" multiValued="true"/>
-  <field name="quotes_spkr"  type="string_ci" indexed="true" stored="true" multiValued="true"/>
+  <field name="quotes_spkr"  type="string_ci" indexed="true" stored="true" multiValued="true"/> 
 
   <!--#TODO: Deprecate these-->
   <!--<field name="quotes_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>-->
@@ -199,7 +213,7 @@
   <!--<field name="dreams_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
   <!--<field name="poems_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
 
-  <!--These are not displayed directly.  Search only.-->
+  <!--These are not displayed directly.  Search only. -->
   <!-- Special term fields -->
   <field name="terms_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
   <!-- Highlighted, e.g., italicized and otherwise called out terms -->
@@ -239,9 +253,6 @@
 
 
   <!--<field name="level" type="pint" indexed="true" stored="false" docValues="true"/>-->
-
-  <!-- The StrField type is not analyzed, but is indexed/stored verbatim. -->
-  <fieldType name="string" class="solr.StrField" sortMissingLast="true"/>
 
   <!-- The String case insensitive field.
        From: http://pietervogelaar.nl/solr-3-5-search-case-insensitive-on-a-string-field-for-exact-match
@@ -310,6 +321,14 @@
   </analyzer>
 </fieldType>
 
+<!-- The StrField type is not analyzed, but indexed/stored verbatim. -->
+<fieldType name="string" class="solr.StrField" sortMissingLast="true" docValues="true" />
+<fieldType name="strings" class="solr.StrField" sortMissingLast="true" multiValued="true" docValues="true" />
+
+<!-- boolean type: "true" or "false" -->
+<fieldType name="boolean" class="solr.BoolField" sortMissingLast="true"/>
+<fieldType name="booleans" class="solr.BoolField" sortMissingLast="true" multiValued="true"/>
+
 <fieldType name="pint" class="solr.IntPointField" docValues="true"/>
   <fieldType name="pfloat" class="solr.FloatPointField" docValues="true"/>
   <fieldType name="plong" class="solr.LongPointField" docValues="true"/>
@@ -349,17 +368,15 @@
 
   <!-- since fields of this type are by default not stored or indexed,
      any data added to them will be ignored outright.  -->
-  <fieldType name="ignored" stored="false" indexed="false" multiValued="true" class="solr.StrField" />
+  <fieldType name="ignored" stored="false" indexed="false" multiValued="true" class="solr.StrField"/>
 
   <!--text field which allows partial searches-->
   <fieldType name="text_ngrm" class="solr.TextField" positionIncrementGap="100">
-   
     <analyzer type="index">
        <tokenizer class="solr.WhitespaceTokenizerFactory"/>
         <filter class="solr.NGramFilterFactory" minGramSize="1" maxGramSize="50"/>
-        
-     <filter class="solr.LowerCaseFilterFactory"/>
-     </analyzer>
+        <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
      <analyzer type="query">
        <tokenizer class="solr.WhitespaceTokenizerFactory"/>
        <filter class="solr.LowerCaseFilterFactory"/>

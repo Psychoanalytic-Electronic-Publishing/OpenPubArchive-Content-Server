@@ -1,9 +1,0 @@
-This file is just used by PEP to indicate the database design
-compatibility / build.  
-
-Update it to distinguish this core from previous builds using
-standard semantic version numbering guidelines.
-
-https://semver.org/
-
-(nrs)

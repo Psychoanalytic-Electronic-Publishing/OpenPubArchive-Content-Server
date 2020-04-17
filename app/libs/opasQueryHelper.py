@@ -8,12 +8,13 @@ opasQueryHelper
 This library is meant to hold parsing and other functions which support query translation to Solr
 
 2019.1205.1 - First version
+2020.0416.1 - Sort fixes, new viewcount options
 
 """
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.1205.1"
+__version__     = "2020.0416.1"
 __status__      = "Development"
 
 import re
@@ -28,6 +29,7 @@ import schemaMap
 import opasConfig 
 
 sourceDB = opasCentralDBLib.SourceInfoDB()
+ocd = opasCentralDBLib.opasCentralDB()
 
 def strip_outer_matching_chars(s, outer_char):
     """
@@ -271,8 +273,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   startyear=None,          # can contain complete range syntax
                                   endyear=None,            # year only.
                                   citecount=None, 
-                                  viewcount=None, 
-                                  viewedwithin=None,
+                                  viewcount=None,          # minimum view count
+                                  viewedwithin=None,       # period to evaluate view count 0-4 (see view sort)  
                                   # sort field and direction
                                   sort=None, 
                                   # v1 parameters
@@ -314,6 +316,12 @@ def parse_search_query_parameters(search=None,             # url based parameter
     analyze_this = ""  # search analysis
     search_analysis_term_list = [] # component terms for search analysis
 
+    # Hold these for special view counts
+    vc_source_code = source_code # for view count query (if it can work this way)
+    vc_source_name = source_name # for view count query (if it can work this way)
+    vc_title = title # for view count query (if it can work this way)
+    vc_author = author # for view count query (if it can work this way)
+
     # used to remove prefix && added to queries.  
     # Could make it global to save a couple of CPU cycles, but I suspect it doesn't matter
     # and the function is cleaner this way.
@@ -324,10 +332,61 @@ def parse_search_query_parameters(search=None,             # url based parameter
     
     if sort is not None:  # not sure why this seems to have a slash, but remove it
         sort = re.sub("\/", "", sort)
-        if sort == "citeCount":
-            sort = "art_cited_all desc"
-        if re.search("asc|desc", sort, re.IGNORECASE) is None:
-            sort = sort + " desc"
+        sort = re.split("\s|,", sort)
+        try:
+            psort, porder = sort
+        except:
+            porder = None # set to default below
+            plength = len(sort)
+            if plength == 1:
+                psort = sort[0]
+            else:
+                psort = None # falls to default below
+
+        if psort is not None:
+            psort = psort.lower()
+        if porder is not None:
+            porder = porder.lower()
+            
+        if porder == "a" or porder == "asc":
+            porder = " asc"
+        elif porder == "d" or porder == "desc":
+            porder = " desc"
+        else:
+            porder = opasConfig.DEFAULT_SOLR_SORT_DIRECTION
+
+        if psort == "author":
+            sort = f"art_authors_citation {porder}" #  new field 20200410 for sorting (author names citation format)!
+        elif psort == "rank":
+            sort = f"score{porder}"
+        elif psort == "year":
+            sort = f"art_year{porder}"
+        elif psort == "source":
+            sort = f"art_sourcetitleabbr{porder}"
+        elif psort == "title":
+            sort = f"art_title_xml{porder}" 
+        elif psort == "citecountall":
+            if plength == 1: # default to desc, it makes the most sense
+                sort = f"art_cited_all desc"
+            else: # sort was explicit, obey
+                sort = f"art_cited_all {porder}" # need the space here
+        elif psort == "citecount10":
+            if plength == 1: # default to desc, it makes the most sense
+                sort = f"art_cited_10 desc"
+            else: # sort was explicit, obey
+                sort = f"art_cited_10 {porder}" # need the space here
+        elif psort == "citecount20":
+            if plength == 1: # default to desc, it makes the most sense
+                sort = f"art_cited_20 desc"
+            else: # sort was explicit, obey
+                sort = f"art_cited_20 {porder}" # need the space here
+        elif psort == "citecount5":
+            if plength == 1: # default to desc, it makes the most sense
+                sort = f"art_cited_5 desc"
+            else: # sort was explicit, obey
+                sort = f"art_cited_5 {porder}" # need the space here
+        else:
+            sort = f"{opasConfig.DEFAULT_SOLR_SORT_FIELD} {opasConfig.DEFAULT_SOLR_SORT_DIRECTION}"
 
     if solrQueryTermList is None:
         solrQueryOpts = models.SolrQueryOpts()
@@ -412,7 +471,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)  
 
-    if source_name is not None and source_name != "": 
+    if source_name is not None and source_name != "":
         # accepts a journal, book or video series name and optional wildcard.  No booleans.
         analyze_this = f"&& art_sourcetitlefull:({source_name}) "
         filter_q += analyze_this
@@ -567,6 +626,42 @@ def parse_search_query_parameters(search=None,             # url based parameter
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
 
+    if viewcount is not None:
+        # viewperiod = what period should viewcount be against?
+        # which means last 12 months
+        # bring back top documents viewed viewcount times
+        viewcount_int = int(viewcount)
+        if viewcount_int == 0:
+            viewcount_int = 1 # minimum times viewed
+
+        if viewedwithin is None:
+            viewperiod_int = 4 # default last 12 months
+        else:
+            viewperiod_int = int(viewedwithin) # note default is 4
+            # check range, set default if out of bounds
+            if viewperiod_int < 0 or viewperiod_int > 4:
+                viewperiod_int = 4
+
+        count, most_viewed = ocd.get_most_viewed_ids_for_fts(minimum_views=viewcount_int, 
+                                                             view_period=viewperiod_int, 
+                                                             source_code=vc_source_code,
+                                                             source_type=source_type, 
+                                                             limit=50
+                                                            )  # (most viewed)
+        doc_filter = ""
+        if most_viewed is not None:
+            for n in most_viewed:
+                doc_id = n.get("document_id", None)
+                if doc_id is not None:
+                    if doc_filter == "":
+                        doc_filter = f"{doc_id}"
+                    else:
+                        doc_filter += f" || {doc_id}"
+
+        if doc_filter != "":
+            analyze_this = f" && art_id:({doc_filter})"
+            search_analysis_term_list.append(analyze_this)
+            filter_q += analyze_this
 
     if solrSearchQ is not None:
         search_q = solrSearchQ # (overrides fields) # search = solrQ
@@ -587,6 +682,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
     
     if search_analysis_term_list is not []:
         search_analysis_term_list = [pat_prefix_amps.sub("", x) for x in search_analysis_term_list]
+
+    
 
     search_q = search_q.strip()
     filter_q = filter_q.strip()

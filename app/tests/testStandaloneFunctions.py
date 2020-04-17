@@ -28,12 +28,15 @@ from datetime import datetime
 import opasAPISupportLib
 import opasConfig
 import opasQueryHelper
+import opasCentralDBLib
 import models
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded
 # from main import app
 
 # client = TestClient(app)
+
+ocd = opasCentralDBLib.opasCentralDB()
 
 class TestStandaloneFunctions(unittest.TestCase):
     """
@@ -43,7 +46,39 @@ class TestStandaloneFunctions(unittest.TestCase):
           with forced order in the names.
     
     """
+    
+    def test_0_get_most_viewed(self):
+        for i in range(5): # view periods 0-4
+            print (f"view period: {i}")
+            count, most_viewed = ocd.get_most_viewed_ids_for_fts(minimum_views=2, 
+                                                                 view_period=i,
+                                                                 source_code="IJP",
+                                                                 source_type="journals", 
+                                                                 limit=50
+                                                                )  # (most viewed)
+            
+            print (count)
+            print (most_viewed)
         
+        for name in ["freud", "winnicott", "feld"]: 
+            count, most_viewed = ocd.get_most_viewed_ids_for_fts(minimum_views=2,
+                                                                 author=name, 
+                                                                 view_period='last12months',
+                                                                 limit=50
+                                                                )  # (most viewed)
+            
+            print (count)
+            if name == "freud":
+                assert (count >= 4)
+            elif name == "winnicott":
+                assert (count >= 2)
+            elif name == "winni":
+                assert (count >= 2)
+            elif name == "feld":
+                assert (count == 0)
+                
+            print (most_viewed)
+
     def test_0_parseToSolrQuery(self):
         """
         Test query formation via parse_search_query_parameters

@@ -79,9 +79,6 @@
   -->
   <!-- <dynamicField name="*" type="string" indexed="true" stored="true" multiValued="true"/> -->
 
-  <!-- The StrField type is not analyzed, but is indexed/stored verbatim. -->
-  <fieldType name="string" class="solr.StrField" sortMissingLast="true"/>
-
   <!-- The String case insensitive field.
        From: http://pietervogelaar.nl/solr-3-5-search-case-insensitive-on-a-string-field-for-exact-match
 
@@ -138,6 +135,14 @@
     </analyzer>
   </fieldType>
 
+  <!-- The StrField type is not analyzed, but indexed/stored verbatim. -->
+  <fieldType name="string" class="solr.StrField" sortMissingLast="true" docValues="true" />
+  <fieldType name="strings" class="solr.StrField" sortMissingLast="true" multiValued="true" docValues="true" />
+  
+  <!-- boolean type: "true" or "false" -->
+  <fieldType name="boolean" class="solr.BoolField" sortMissingLast="true"/>
+  <fieldType name="booleans" class="solr.BoolField" sortMissingLast="true" multiValued="true"/>
+  
   <fieldType name="pint" class="solr.IntPointField" docValues="true"/>
   <fieldType name="pfloat" class="solr.FloatPointField" docValues="true"/>
   <fieldType name="plong" class="solr.LongPointField" docValues="true"/>
