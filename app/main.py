@@ -214,6 +214,13 @@ Endpoint and model documentation automatically available when server is running 
 #              it (as PaDS didn't)
 
 #2020.0408  Changes to fix bug and complete implementation (it wasn't fully implemented).
+#           Added endpoint for openAPI (will add key next)
+#           All tests pass (though need more tests!)
+#2020.0417  Added API_KEY code, only applied to documentation functions now, and mainly as an
+#           example, since docs is not marked as protected right now.
+
+#           BasicLogin is now working.  Extracted common setup after login code
+#           to login_setup_user_session, so next it can be moved to other login endpoints.
 
 #----------------------------------------------------------------------------------------------
 
@@ -243,8 +250,11 @@ from urllib import parse
 
 # from enum import Enum
 import uvicorn
-from fastapi import FastAPI, Query, Path, Cookie, Header, Depends, HTTPException, File, Form, UploadFile
+from fastapi import FastAPI, Query, Path, Cookie, Header, Security, Depends, HTTPException, File, Form, UploadFile
 from fastapi.openapi.utils import get_openapi
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.security.api_key import APIKeyQuery, APIKeyCookie, APIKeyHeader, APIKey
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, RedirectResponse, FileResponse
 from starlette.middleware.cors import CORSMiddleware
@@ -259,12 +269,12 @@ from starlette.status import HTTP_200_OK, \
 
 import requests
 from requests.auth import HTTPBasicAuth
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import aiofiles
 # from typing import List
 
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 
+# to protect documentation, use: app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 app = FastAPI()
 
 from pydantic import BaseModel
@@ -277,9 +287,9 @@ from opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES
 import logging
 logger = logging.getLogger(__name__)
 
-from config.localsecrets import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+# from config.localsecrets import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 import jwt
-import localsecrets as localsecrets
+# import localsecrets as localsecrets
 import localsecrets
 import libs.opasAPISupportLib as opasAPISupportLib
 # import libs.opasBasicLoginLib as opasBasicLoginLib
@@ -383,8 +393,93 @@ def get_current_username(response: Response,
             headers={"WWW-Authenticate": "Basic"},
         )
     return user
+
 #-----------------------------------------------------------------------------
-@app.post("/v2/Temp/Admin/CreateUser/", response_model=models.User, response_model_exclude_unset=True, tags=["Temp"])
+# API Documentation section
+#-------------------------
+#An option that lets you check header and return company from database
+#see https://github.com/tiangolo/fastapi/issues/142
+#X_API_KEY = APIKeyHeader(name='X-API-Key')
+#class APIUser(BaseModel):  # snake_case names to match DB
+    #id: int = None
+    #key: str = ""
+    #companies: list = []
+    #sites: list = []
+
+#def check_authentication_header(x_api_key: str = Depends(X_API_KEY)):
+    #""" takes the X-API-Key header and converts it into the matching user object from the database """
+
+    ## this is where the SQL query for converting the API key into a user_id will go
+    #api_user = sql_query(x_api_key)
+    #if api_user:
+        ## if passes validation check, return user data for API Key
+        #return api_user
+    ## else raise 401
+    #raise HTTPException(
+        #status_code=status.HTTP_401_UNAUTHORIZED,
+        #detail="Invalid API Key",
+    #)
+
+#-----------------------------------------------------------------------------
+api_key_query = APIKeyQuery(name=localsecrets.API_KEY_NAME, auto_error=False)
+api_key_header = APIKeyHeader(name=localsecrets.API_KEY_NAME, auto_error=False)
+api_key_cookie = APIKeyCookie(name=localsecrets.API_KEY_NAME, auto_error=False)
+
+
+async def get_api_key(api_key_query: str = Security(api_key_query),
+                      api_key_header: str = Security(api_key_header),
+                      api_key_cookie: str = Security(api_key_cookie),
+                      ):
+    
+    if api_key_query == localsecrets.API_KEY:
+        return api_key_query
+    elif api_key_header == localsecrets.API_KEY:
+        return api_key_header
+    elif api_key_cookie == localsecrets.API_KEY:
+        return api_key_cookie
+    else:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN, detail="Could not validate credentials"
+        )
+
+@app.get("/v2/openapi.json", tags=["documentation"])
+async def get_open_api_endpoint(api_key: APIKey = Depends(get_api_key)):
+    """
+    This returns openapi documentation that can be loaded to Swagger, but only with the key.
+    
+    Also a good demo of the simplicity to add APIKey to any endpoint. The APIKey
+    can be added to the header (see postman example), in the interactive documentation
+    it's just a matter of pressing the lock icon and filling out the form.  It can also
+    be supplied as a query parameter in the endpoint call.
+    
+    """
+    response = JSONResponse(get_openapi(title="FastAPI", version=1, routes=app.routes))
+    return response
+
+
+@app.get("/v2/documentation", tags=["documentation"])
+async def get_documentation(api_key: APIKey = Depends(get_api_key)):
+    """
+    This enables interactive api documentation, but only with the key.
+    
+    It's really only useful if/when we turn off the free documentation
+    changing the app call to:
+
+       app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+    """
+    response = get_swagger_ui_html(openapi_url="/v2/openapi.json", title="docs")
+    response.set_cookie(
+        localsecrets.API_KEY_NAME,
+        value=api_key,
+        domain=localsecrets.COOKIE_DOMAIN,
+        httponly=True,
+        max_age=1800,
+        expires=1800,
+    )
+    return response
+#-----------------------------------------------------------------------------
+@app.post("/v2/Admin/CreateUser/", response_model=models.User, response_model_exclude_unset=True, tags=["Admin"])
 async def create_new_user(response: Response, 
                           request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                           username: str = Form(..., description="Username"),
@@ -492,12 +587,7 @@ async def create_new_user(response: Response,
     #return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Admin/openapi.json", tags=["Temp"])
-async def get_open_api_endpoint():
-    return JSONResponse(get_openapi(title="FastAPI", version=1, routes=app.routes))
-
-#-----------------------------------------------------------------------------
-@app.post("/v2/Temp/Admin/ChangeUserPassword/", response_model=models.User, response_model_exclude_unset=True, tags=["Temp"])
+@app.post("/v2/Admin/ChangeUserPassword/", response_model=models.User, response_model_exclude_unset=True, tags=["Admin"])
 async def change_user_password(response: Response, 
                           request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                           username: str = Form(..., description="Username"),
@@ -544,7 +634,7 @@ async def change_user_password(response: Response,
         )        
     return ret_val
 #-----------------------------------------------------------------------------
-@app.post("/v2/Temp/Admin/SubscribeUser/", response_model=models.User, response_model_exclude_unset=True, tags=["Temp"])
+@app.post("/v2/Admin/SubscribeUser/", response_model=models.User, response_model_exclude_unset=True, tags=["Admin"])
 async def subscribe_user(response: Response, 
                           request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                           username: str = Form(..., description="Username"),
@@ -872,6 +962,9 @@ async def document_submission(*,
     ## Function
        <b>An <i>authorized user</i> can submit an article in PDF</b>
 
+       This is currently only aimed at IJPOpen which is nnot supported in OPAS, and may be made into a separate
+       system.
+       
     ## Return Type
        models.XXX
 
@@ -911,14 +1004,17 @@ async def document_submission(*,
         )
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Session/BasicLogin/", response_model_exclude_unset=True, tags=["Planned"], description="Used for Basic Authentication")
-def read_current_user(response: Response, 
-                      request: Request,
-                      user: str = Depends(get_current_username), 
-                      ka=False):
+@app.get("/v2/Session/BasicLogin/", response_model_exclude_unset=True, tags=["Session"])
+def login_basic(response: Response, 
+                request: Request,
+                user: str = Depends(get_current_username), 
+                ka=False):
     """
     ## Function
        <b>Basic login Authentication.  Calls up a simple dialog allowing secure login.</b>
+       
+       Also can get username and password from the header information which is
+       secure in https.
 
     ## Return Type
        models.LoginReturnItem
@@ -927,86 +1023,58 @@ def read_current_user(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Users/BasicLogin/
+         /v2/Session/BasicLogin/
 
     ## Notes
 
     ## Potential Errors
 
     """
+    logger.debug("V2 Basic Login Request: ")
+    err_code = None
+    
     session_id = request.cookies.get(OPASSESSIONID) #  opasAPISupportLib.get_session_id(request)
     access_token = request.cookies.get(OPASACCESSTOKEN)   #  opasAPISupportLib.get_access_token(request)
     expiration_time = datetime.utcfromtimestamp(time.time() + opasAPISupportLib.get_max_age(keep_active=ka))
-    logger.debug("V2 Login Request: ")
 
-    if session_id is not None and access_token is not None:
+    # ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    if session_id is not None and access_token is not None and access_token != "":
         logger.debug("...note, already logged in...")
         pass # we are already logged in
     else: # 
         if user:
-            # user is authenticated
-            # we need to close any open sessions.
-            if session_id is not None and access_token is not None:
-                # do a logout
-                session_end_time = datetime.utcfromtimestamp(time.time())
-                success = ocd.update_session(session_id=session_id, 
-                                             session_end=session_end_time
-                                             )    
+            session_id, access_token = login_setup_user_session(response,
+                                                                request,
+                                                                user,
+                                                                session_id,
+                                                                access_token,
+                                                                expiration_time,
+                                                                ka)
+        else:
+            access_token = None # user rejected
+            err_code = response.status_code = HTTP_401_UNAUTHORIZED
+            err_return = models.ErrorReturn(error = ERR_CREDENTIALS,
+                                            error_message = ERR_MSG_LOGIN_CREDENTIALS)
 
-            # NOW lets give them a new session
-            # new session and then token
-            session_id = secrets.token_urlsafe(16)
-            max_age = opasAPISupportLib.get_max_age(ka)
-            # let people log in even without a current subscription (just can't access non-free data)
-            #user.start_date = user.start_date.timestamp()  # we may just want to null these in the jwt
-            #user.end_date = user.end_date.timestamp()
-            #user.last_update = user.last_update.timestamp()
-            access_token = jwt.encode({'exp': expiration_time.timestamp(),
-                                       'user': user.dict()
-                                       },
-                                      key=localsecrets.SECRET_KEY,
-                                      algorithm=localsecrets.ALGORITHM)
-            # start a new session, with this user (could even still be the old user
-            ocd, session_info = opasAPISupportLib.start_new_session(response,
-                                                                    request,
-                                                                    session_id=session_id,
-                                                                    access_token=access_token,
-                                                                    user=user)
-            # set accessToken (jwt) Cookie!
-            response.set_cookie(key=OPASSESSIONID,
-                                value=session_id,
-                                max_age=max_age, expires=None, 
-                                path="/",
-                                secure=False, 
-                                httponly=False)
 
-            response.set_cookie(key=OPASACCESSTOKEN,
-                                value=access_token,
-                                max_age=max_age, expires=None, 
-                                path="/",
-                                secure=False, 
-                                httponly=False)
-        else: # Can't log in!
-            raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED, 
-                detail="Bad credentials"
-            )
+    # this simple return without responseInfo matches the GVPi server return.
+    if err_code is not None:
+        return err_return
+    else:
+        try:
+            login_return_item = models.LoginReturnItem(token_type = "bearer", 
+                                                       session_id = session_id,
+                                                       access_token = access_token,
+                                                       authenticated = access_token is not None,
+                                                       session_expires_time = expiration_time,
+                                                       keep_active = ka,
+                                                       error_message = None,
+                                                       scope = None
+                                                       )
+        except ValidationError as e:
+            logger.error(e.json())             
 
-    try:
-        login_return_item = models.LoginReturnItem(token_type = "bearer", 
-                                                   session_id = session_id,
-                                                   access_token = access_token,
-                                                   authenticated = access_token is not None,
-                                                   session_expires_time = expiration_time,
-                                                   keep_active = ka,
-                                                   error_message = None,
-                                                   scope = None
-                                                   )
-    except ValidationError as e:
-        logger.error(e.json())             
-
-    return login_return_item
-
+        return login_return_item
 #-----------------------------------------------------------------------------
 @app.get("/v1/Token/", response_model_exclude_unset=True, tags=["Deprecated", "PEPEasy1"], description="Used by PEP-Easy to login; will be deprecated in V2")  
 def get_token(response: Response, 
@@ -1103,6 +1171,69 @@ def get_license_status(response: Response,
 
     license_info = models.LicenseStatusInfo(licenseInfo = license_info_struct)
     return license_info
+#-----------------------------------------------------------------------------
+def login_setup_user_session(response: Response, 
+                             request: Request,
+                             user, 
+                             session_id,
+                             access_token,
+                             expiration_time,
+                             ka):
+    # user must be already authenticated before calling here.
+    # we need to close any open sessions.
+    ocd = opasCentralDBLib.opasCentralDB()    
+    if session_id is not None and access_token is not None:
+        # do a logout
+        session_end_time = datetime.utcfromtimestamp(time.time())
+        success = ocd.update_session(session_id=session_id, 
+                                     session_end=session_end_time
+                                     )    
+        #opasAPISupportLib.deleteCookies(resp, session_id="", accessToken="")
+
+    # NOW lets give them a new session
+    # new session and then token
+    session_id = secrets.token_urlsafe(16)
+    max_age = opasAPISupportLib.get_max_age(ka)
+    # let people log in even without a current subscription (just can't access non-free data)
+    # user.start_date = user.start_date.timestamp()  # we may just want to null these in the jwt
+    # user.end_date = user.end_date.timestamp()
+    # user.last_update = user.last_update.timestamp()
+    access_token = jwt.encode({'exp': expiration_time.timestamp(),
+                               'user': user.user_id, # .dict(),
+                               'admin': user.admin,
+                               'orig_session_id': session_id,
+                               },
+                              key=localsecrets.SECRET_KEY,
+                              algorithm=localsecrets.ALGORITHM)
+
+    # this seems like a good time to close any expired sessions, 
+    # to free up resources in case this is a related user
+    # added 2019-11-21
+    count = ocd.close_expired_sessions()
+    logging.info(f"Setting up new session. Closed {count} expired sessions")
+
+    # start a new session, with this user (could even still be the old user)
+    ocd, session_info = opasAPISupportLib.start_new_session(response,
+                                                            request,
+                                                            session_id=session_id,
+                                                            access_token=access_token,
+                                                            user=user)
+    # new code
+    response.set_cookie(key=OPASSESSIONID,
+                        value=session_id,
+                        max_age=max_age, expires=None, 
+                        path="/",
+                        secure=False, 
+                        httponly=False)
+
+    response.set_cookie(key=OPASACCESSTOKEN,
+                        value=access_token,
+                        max_age=max_age, expires=None, 
+                        path="/",
+                        secure=False, 
+                        httponly=False)
+
+    return session_id, access_token
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Login/", response_model_exclude_unset=True, tags=["Deprecated"])
@@ -1191,7 +1322,7 @@ def login_user(response: Response,
                 # to free up resources in case this is a related user
                 # added 2019-11-21
                 count = ocd.close_expired_sessions()
-                logging.info(f"Setting up new session.  Closed %s expired sessions")
+                logging.info(f"Setting up new session.  Closed {count} expired sessions")
 
                 # start a new session, with this user (could even still be the old user)
                 ocd, session_info = opasAPISupportLib.start_new_session(response,
