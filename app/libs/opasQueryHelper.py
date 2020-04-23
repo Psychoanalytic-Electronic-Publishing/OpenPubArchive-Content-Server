@@ -27,9 +27,11 @@ logger = logging.getLogger(__name__)
 
 import schemaMap
 import opasConfig 
+import opasAPISupportLib
 
 sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
+
 
 def strip_outer_matching_chars(s, outer_char):
     """
@@ -263,7 +265,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   source_name=None,        # full name of journal or wildcarded
                                   source_code=None,        # series/source (e.g., journal code) or list of codes
                                   source_type=None,        # series source type, e.g., video, journal, book
-                                  source_lang_code=None,   # source language code
+                                  source_lang_code='EN',   # source language code
                                   vol=None,                # match only this volume (integer)
                                   issue=None,              # match only this issue (integer)
                                   author=None,             # author last name, optional first, middle.  Wildcards permitted
@@ -274,7 +276,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   endyear=None,            # year only.
                                   citecount=None, 
                                   viewcount=None,          # minimum view count
-                                  viewedwithin=None,       # period to evaluate view count 0-4 (see view sort)  
+                                  viewedwithin=None,       # period to evaluate view count 0-4 (see view sort)
+                                  facetfields=None,        # facetfields to return
                                   # sort field and direction
                                   sort=None, 
                                   # v1 parameters
@@ -303,6 +306,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
     'art_authors_ngrm:Tuckett '
     
     """
+    # always return SolrQueryOpts with SolrQuery
+    solrQueryOpts = models.SolrQueryOpts()
     
     # v1 translation:
     if journal is not None and journal != "":
@@ -335,6 +340,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         sort = re.split("\s|,", sort)
         try:
             psort, porder = sort
+            plength = 2
         except:
             porder = None # set to default below
             plength = len(sort)
@@ -358,35 +364,36 @@ def parse_search_query_parameters(search=None,             # url based parameter
         if psort == "author":
             sort = f"art_authors_citation {porder}" #  new field 20200410 for sorting (author names citation format)!
         elif psort == "rank":
-            sort = f"score{porder}"
+            sort = f"score {porder}"
         elif psort == "year":
-            sort = f"art_year{porder}"
+            sort = f"art_year {porder}"
         elif psort == "source":
-            sort = f"art_sourcetitleabbr{porder}"
+            sort = f"art_sourcetitleabbr {porder}"
         elif psort == "title":
-            sort = f"art_title_xml{porder}" 
-        elif psort == "citecountall":
-            if plength == 1: # default to desc, it makes the most sense
-                sort = f"art_cited_all desc"
-            else: # sort was explicit, obey
-                sort = f"art_cited_all {porder}" # need the space here
-        elif psort == "citecount10":
-            if plength == 1: # default to desc, it makes the most sense
-                sort = f"art_cited_10 desc"
-            else: # sort was explicit, obey
-                sort = f"art_cited_10 {porder}" # need the space here
-        elif psort == "citecount20":
-            if plength == 1: # default to desc, it makes the most sense
-                sort = f"art_cited_20 desc"
-            else: # sort was explicit, obey
-                sort = f"art_cited_20 {porder}" # need the space here
-        elif psort == "citecount5":
+            sort = f"art_title_xml {porder}" 
+        elif psort in ["citecount5", "art_cited_5"]:
             if plength == 1: # default to desc, it makes the most sense
                 sort = f"art_cited_5 desc"
             else: # sort was explicit, obey
                 sort = f"art_cited_5 {porder}" # need the space here
+        elif psort in ["citecount10", "art_cited_10"]:
+            if plength == 1: # default to desc, it makes the most sense
+                sort = f"art_cited_10 desc"
+            else: # sort was explicit, obey
+                sort = f"art_cited_10 {porder}" # need the space here
+        elif psort in ["citecount20", "art_cited_20"]:
+            if plength == 1: # default to desc, it makes the most sense
+                sort = f"art_cited_20 desc"
+            else: # sort was explicit, obey
+                sort = f"art_cited_20 {porder}" # need the space here
+        elif psort in ["citecountall", "art_cited_all"]:
+            if plength == 1: # default to desc, it makes the most sense
+                sort = f"art_cited_all desc"
+            else: # sort was explicit, obey
+                sort = f"art_cited_all {porder}" # need the space here
         else:
             sort = f"{opasConfig.DEFAULT_SOLR_SORT_FIELD} {opasConfig.DEFAULT_SOLR_SORT_DIRECTION}"
+            
 
     if solrQueryTermList is None:
         solrQueryOpts = models.SolrQueryOpts()
@@ -396,8 +403,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
         try:
             if solrQueryTermList.solrQueryOpts is not None:
                 solrQueryOpts = solrQueryTermList.solrQueryOpts
-            else: # defaults
-                solrQueryOpts = models.SolrQueryOpts()
+            #else: # defaults (already set to base model above)
+                #solrQueryOpts = models.SolrQueryOpts()
         except: # defaults
             solrQueryOpts = models.SolrQueryOpts()
 
@@ -427,6 +434,17 @@ def parse_search_query_parameters(search=None,             # url based parameter
         analyze_this = f"&& {q} "
         search_q += analyze_this
         search_analysis_term_list.append(analyze_this)
+
+    if facetfields is not None:
+        solrQueryOpts.facetFields = opasAPISupportLib.string_to_list(facetfields)
+        #if "," in facetfields:
+            ## change str with cslist to python list
+            #facetfields = re.sub("\s*,\s*", ",", facetfields)
+            #solrQueryOpts.facetFields = facetfields.split(",")
+        #else:
+            ## cleanup whitespace around str
+            #facetfields = re.sub("\s*(?P<field>\S*)\s*", "\g<field>", facetfields)
+            #solrQueryOpts.facetFields = facetfields       
 
     # note these are specific to pepwebdocs core.  #TODO Perhaps conditional on core later, or change to a class and do it better.
     if para_textsearch is not None:
@@ -625,6 +643,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         analyze_this = f"&& art_cited_{period.lower()}:[{val} TO {val_end}] "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
+        
 
     if viewcount is not None:
         # viewperiod = what period should viewcount be against?
@@ -662,19 +681,23 @@ def parse_search_query_parameters(search=None,             # url based parameter
             analyze_this = f" && art_id:({doc_filter})"
             search_analysis_term_list.append(analyze_this)
             filter_q += analyze_this
+            
 
     if solrSearchQ is not None:
         search_q = solrSearchQ # (overrides fields) # search = solrQ
         search_analysis_term_list = [solrSearchQ]
+        
 
     # now clean up the final components.
     if search_q is not None:
         # no need to start with '*:* && '.  Remove it.
         search_q = search_q.replace("*:* && ", "")
+        
 
     if filter_q is not None:
         # no need to start with '*:* && '.  Remove it.
         filter_q = filter_q.replace("*:* && ", "")
+        
 
     if analyze_this is not None:
         # no need to start with '&& '.  Remove it.
@@ -698,7 +721,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     )
 
     solrQuerySpec = models.SolrQuerySpec(
-        core="pepwebdocs", # for now, this is tied to this core
+        core="pepwebdocs", # for now, this is tied to this core #TODO maybe change later
         solrQuery=solrQuery,
         solrQueryOpts=solrQueryOpts
     )

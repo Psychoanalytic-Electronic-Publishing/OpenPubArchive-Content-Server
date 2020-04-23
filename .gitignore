@@ -57,3 +57,6 @@ solrCoreConfigurations/data/data - Shortcut.lnk
 solrCoreConfigurations/data/*.zip
 solrCoreConfigurations/data/*.7z
 solrCoreConfigurations/*.zip
+_gsdata_/
+_gsdata_/*
+*.gss

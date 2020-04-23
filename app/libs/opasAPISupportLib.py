@@ -174,6 +174,23 @@ def get_max_age(keep_active=False):
     return ret_val  # maxAge
 
 #-----------------------------------------------------------------------------
+def string_to_list(strlist: str):
+    """
+    Convert a comma separated string to a python list,
+    removing extra white space between items.
+    
+    """
+    if "," in strlist:
+        # change str with cslist to python list
+        ret_val = re.sub("\s*,\s*", ",", strlist)
+        ret_val = ret_val.split(",")
+    else:
+        # cleanup whitespace around str
+        ret_val = [re.sub("\s*(?P<field>\S*)\s*", "\g<field>", strlist)]
+
+    return ret_val
+        
+#-----------------------------------------------------------------------------
 def get_session_info(request: Request,
                      response: Response, 
                      access_token=None,
@@ -661,7 +678,7 @@ def database_get_whats_new(days_back=7, limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS
                                    fl = field_list,
                                    fq = "{!collapse field=art_sourcecode max=art_year_int}",
                                    sort=sort_by, sort_order="desc",
-                                   rows=limit, offset=0,
+                                   rows=limit, start=offset,
                                  )
     
         logger.debug("databaseWhatsNew Number found: %s", results._numFound)
@@ -1001,16 +1018,19 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
     source_info_dblist = []
     ocd = opasCentralDBLib.opasCentralDB()
     # standardize Source type, allow plural, different cases, but code below this part accepts only those three.
-    src_type = src_type.lower()
-    if src_type not in ["journal", "book"]:
-        if re.match("videos.*", src_type, re.IGNORECASE):
-            src_type = "videos"
-        elif re.match("video", src_type, re.IGNORECASE):
-            src_type = "videostream"
-        elif re.match("boo.*", src_type, re.IGNORECASE):
-            src_type = "book"
-        else: # default
-            src_type = "journal"
+    if src_type is None:
+        src_type = "journal"
+    else:
+        src_type = src_type.lower()
+        if src_type not in ["journal", "book"]:
+            if re.match("videos.*", src_type, re.IGNORECASE):
+                src_type = "videos"
+            elif re.match("video", src_type, re.IGNORECASE):
+                src_type = "videostream"
+            elif re.match("boo.*", src_type, re.IGNORECASE):
+                src_type = "book"
+            else: # default
+                src_type = "journal"
    
     # This is not part of the original API, it brings back individual videos rather than the videostreams
     # but here in case we need it.  In that case, your source must be videos.*, like videostream, in order
@@ -1254,7 +1274,7 @@ def authors_get_author_info(author_partial, limit=opasConfig.DEFAULT_LIMIT_FOR_S
                                       fields="authors, art_author_id",
                                       facet_field="art_author_id",
                                       facet="on",
-                                      facet_sort="index",
+                                      facet_sort=author_order,  # index or count (updated 20200418)
                                       facet_prefix="%s" % author_partial,
                                       facet_limit=limit,
                                       facet_offset=offset,
@@ -2404,16 +2424,17 @@ def search_text(query,
                                file_last_modified, \
                                timestamp, \
                                score",
-               highlight_fields = 'text_xml', 
+               highlight_fields = 'text_xml',
+               facet_fields = None, 
                sort="score desc",
                authenticated = None, 
                extra_context_len = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                maxKWICReturns = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
                limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
-               offset=0,
-               page_offset=None,
-               page_limit=None,
-               page=None
+               offset = 0,
+               page_offset = None,
+               page_limit = None,
+               page = None
                ):
     """
     Full-text search, via the Solr server api.
@@ -2491,11 +2512,17 @@ def search_text(query,
     if query is not None:
         query = query.replace("*:* && ", "")
         logger.debug("Solr Query: %s", query)
+        
+    if facet_fields is not None:
+        facet = "on"
+    else:
+        facet = "off"
 
     if def_type is not None:
         query_type = def_type
     else:
         query_type = None
+
     try:
         results = solr_docs.query(query,  
                                   fq = filter_query,
@@ -2510,8 +2537,8 @@ def search_text(query,
                                   hl_usePhraseHighlighter = 'true',
                                   hl_snippets = maxKWICReturns,
                                   hl_maxAnalyzedChars=opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE,
-                                  facet="on",
-                                  facet_field="art_lang", 
+                                  facet = facet,
+                                  facet_field = facet_fields, #["art_lang", "art_authors"], 
                                   #hl_method="unified",  # these don't work
                                   #hl_encoder="HTML",
                                   mlt = mlt,
@@ -2677,6 +2704,11 @@ def search_text(query,
                 if rowCount > limit:
                     break
         
+        try:
+            facet_counts = results.facet_counts
+        except:
+            facet_counts = None
+        
         # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
         #  was a full-text request with a page offset and limit
         # Solr search was ok
@@ -2691,6 +2723,7 @@ def search_text(query,
                                            scopeQuery=[scopeofquery], 
                                            fullCountComplete = limit >= results._numFound,
                                            solrParams = results._params,
+                                           facetCounts=facet_counts, 
                                            timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
                                          )
         

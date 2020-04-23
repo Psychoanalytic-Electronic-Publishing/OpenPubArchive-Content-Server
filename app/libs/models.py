@@ -90,6 +90,7 @@ class ResponseInfo(BaseModel):
     page: int = Schema(None, title="If the request for a document was for a specific page number, the page number is listed here.  Offset will then reflect the relative page number from the start of the document.")
     fullCount: int = Schema(None, title="The number of items that could be returned without a limit set.")
     fullCountComplete: bool = Schema(None, title="How many matches 'theoretically' matched, though they cannot be returned for some reason, such as a search engine limitation on returned data.")
+    facetCounts: dict = Schema(None, title="A dictionary of requested facet information (counts of results mapped for specified fields")
     totalMatchCount: int = Schema(None, title="The number of items in the complete match set that can be retrieved and paged through.")  # used in PEPEasy paging controls
     listLabel: str = Schema(None, title="Descriptive title of data return for SourceInfoList, e.g., Book List, Journal List, Video List. Should be used elsewhere too.")
     listType: ListTypeEnum = Schema(None, title="ListTypeEnum based identifier of the return structure, e.g., 'documentList'.")
@@ -394,6 +395,8 @@ class SolrQueryOpts(BaseModel):
     hlTagPre: str = Schema('#@@@@', title="Markup (tag) before hit term")
     hlSnippets: str = Schema(None, title="Max KWIC Returns", description="Max number of highlights permitted per field")
     hlUsePhraseHighlighter: str = Schema('true', title="Solr will highlight phrase queries (and other advanced position-sensitive queries) accurately – as phrases. If false, the parts of the phrase will be highlighted everywhere instead of only when it forms the given phrase.")
+    facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
+
     # hlQ: str = Schema(None, title="Query to use for highlighting", description="allows you to highlight different terms than those being used to retrieve documents.")
     # maybe move these to a third part of SolrQuerySpec
     moreLikeThis: str = Schema("false", title="", description="If set to true, activates the MoreLikeThis component and enables Solr to return MoreLikeThis results.")
