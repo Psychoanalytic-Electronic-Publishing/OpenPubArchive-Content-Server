@@ -25,7 +25,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.04.13"
+__version__     = "2020.04.23"
 __status__      = "Development"
 
 #Revision Notes:
@@ -82,7 +82,8 @@ __status__      = "Development"
                  #     looks at updated (load) date IN SOLR, was it loaded into solr before this date (use YYYY-MM-DD format)
                  # --reloadafter
                  #     looks at updated (load) date IN SOLR, was it loaded into solr after this date (use YYYY-MM-DD format)
-                 
+    
+    #2020-04-23  # Changes to excerpting in opasXMLHelper which affect loading, since that's when excerpts happen.
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
@@ -1862,6 +1863,8 @@ def main():
     global gCitedTable
     
     programNameShort = "OPASWebLoaderPEP"  # used for log file
+    cumulative_file_time_start = time.time()
+    
     # scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
     logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
 
@@ -2119,13 +2122,14 @@ def main():
         print((80*"-"))
         precommit_file_count = 0
         skipped_files = 0
+        cumulative_file_time_start = time.time()
         if new_files > 0:
             gCitedTable = collect_citation_counts(ocd)
                
             if options.run_in_reverse:
                 print ("-r option selected.  Running the files found in reverse order.")
                 filenames.reverse()
-
+            
             # ----------------------------------------------------------------------
             # Now walk through all the filenames selected
             # ----------------------------------------------------------------------
@@ -2281,7 +2285,7 @@ def main():
     # for logging
     msg = msg2 = None
     if (options.biblio_update or options.fulltext_core_update) == True:
-        elapsed_seconds = timeEnd-fileTimeStart # actual processing time going through files
+        elapsed_seconds = timeEnd-cumulative_file_time_start # actual processing time going through files
         elapsed_minutes = elapsed_seconds / 60
         if bib_total_reference_count > 0:
             msg = f"Finished! Imported {processed_files_count} documents and {bib_total_reference_count} references. Total file inspection/load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "

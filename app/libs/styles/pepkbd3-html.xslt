@@ -2,8 +2,18 @@
 <!-- ============================================================= -->
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
 <!--     BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML   -->
-<!--  DATE:      Mar 11, 2020                                       -->
+<!--  DATE:      Apr 21, 2020                                       -->
 <!--  Revisions:                                                   
+        
+        TBD:
+          - I've yet to remove the irrelevant JATS rules
+          - Decide if the data-pagehelper attributes are helpful 
+            for page return
+
+        2019-08:   Misc fixes
+                    - Fixed functions by adding fn namespace missing 
+                      from declaration
+                    - Added some cases of list types found.
         2019-11-25: fix lang attribute insertion  
         2019-12-09: add xml to html video callout conversion  
         2019-12-10: set video callout to newest Wistia player which 
@@ -14,27 +24,18 @@
                      paragraph correctly.  
         2020-02-22  Changed doctype generation to exclude ns from being 
                     included and generic html (5) instead of 4 loose.
+        2020-04-21  - Some cleanup (removed commented code) 
+                    - added experimental code to mark top level elements 
+                      to permit easy page returns (for delivering a page 
+                      or set of pages to the client app while keeping the 
+                      html intact)
+                    - removed some id prefixes (not sure why they were 
+                      being used)
+                    
 -->
 <!-- ============================================================= -->
 <!--
-    The design of the conversion from PEP KBD3 to HTML is to use class for 
-    the tag name, in either a div, p, or span element, depending on how we 
-    whether it's a block element, a char element, or a division.  
-    
-    The attributes are placed in HTML5 attributes, named data-x where x is the 
-    original attribute name.  
-
-    - at least for this first pass! - 2019-04-24
-    - this is by no means a complete conversion of the 
-       whole DTD, just sampling as a quick test.
-    - the class tagging is just temporary to keep track of what I add
-    - 2019-08
-      - Fixed functions by adding fn namespace missing from declaration
-      - Added some cases of list types found.
-    TBD:
-    - I've yet to remove the irrelevant JATS rules
-    - I haven't implemented or even checked on many structures like tables, figures, footnotes ... 
-    - Bib processing is basically per JATs and not what we'd want (e.g., not sure why they do it as a table)
+   
 -->
 
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
@@ -113,7 +114,17 @@
     </head>
   </xsl:template>
 
-
+  <!-- EXPERIMENTAL 20200421-->
+  <xsl:template name="data-pagehelper">
+    <xsl:if test="descendant::pb">
+      <xsl:attribute name="data-pagehelper">pageend</xsl:attribute>
+    </xsl:if>
+    <xsl:if test="not(preceding-sibling::*) and following-sibling::*">
+    <xsl:attribute name="data-pagehelper2">firstchild</xsl:attribute>
+    </xsl:if>
+  </xsl:template>
+  <!-- /EXPERIMENTAL CODE-->
+  
   <!-- ============================================================= -->
   <!--  TOP LEVEL                                                    -->
   <!-- ============================================================= -->
@@ -162,7 +173,6 @@
   <xsl:variable name="artstartpg">
     <xsl:value-of select="substring-before(($artpgrg), '-')"/>
   </xsl:variable>
-
   
   <xsl:template match="pepkbd3">
     <body>
@@ -182,7 +192,7 @@
       <xsl:apply-templates select="." mode="id"/>
     </xsl:variable>
 
-    <div id="{$this-article}-front" class="front">
+    <div id="front" class="frontmatter">
       <xsl:apply-templates select="front | front-stub" mode="metadata"/>
       <p class="banner">
         <a class="anchor" name="{$document-id}" id="{$document-id}"/>
@@ -215,7 +225,7 @@
     
     <!-- body -->
     <xsl:for-each select="body">
-      <div id="{$this-article}-body" class="body">
+      <div id="body" class="body">
         <xsl:call-template name="assign-lang"/>
         <xsl:apply-templates/>
       </div>
@@ -224,6 +234,7 @@
     <!-- summaries -->
     <xsl:for-each select="summaries">
       <div id="{$this-article}-summaries" class="summaries">
+        <xsl:call-template name="data-pagehelper"/>
         <xsl:call-template name="assign-lang"/>
         <xsl:apply-templates/>
       </div>
@@ -236,12 +247,6 @@
       </div>
     </xsl:for-each>
 
-    <!-- grp (***)  -->
-    <xsl:for-each select="body/grp">
-      <div id="grp-{$this-article}-{@id}" class="grp sec" data-name="{@name}">
-        <xsl:apply-templates/>
-      </div>
-    </xsl:for-each>
   </xsl:template>
 
   <!-- ============================================================= -->
@@ -370,7 +375,7 @@
   </xsl:template>
 
   <xsl:template match="arttitle" mode="metadata">
-    <p class="title arttitle">
+    <p class="title">
       <a href="/#/ArticleList/?journal={$journal-code}&amp;vol={$artvol}&amp;page={$artstartpg}">
         <xsl:apply-templates select="(text())[not(self::ftnx)]"/>
         <xsl:apply-templates select="i"/>
@@ -399,7 +404,7 @@
   
   <xsl:template match="artauth" mode="metadata">
     <div class="artauth">
-      <div class="authorwrapper title_author">
+      <div class="authorwrapper title_author" data-class="artauth">
         <xsl:for-each select="aut">
           <span>
             <xsl:apply-templates mode="metadata" select="."/>
@@ -412,15 +417,23 @@
               <xsl:text> </xsl:text>
               <span class="peppopup newauthortip">
                 <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>
+                <br></br>
                 <div class="peppopuptext" id="autaffinfo" hidden="True">
-                  <p>
-                    <span class="author">
+                  <div id="autcontent" class="autcontent">
+                    <p class="autaffname">
                       <xsl:apply-templates mode="metadata" select="nfirst"/>
                       <xsl:apply-templates mode="metadata" select="nlast"/>
-                    </span>
-                    <xsl:apply-templates mode="metadata" select="nbio"/>
+                    </p>
                     <xsl:apply-templates mode="metadata" select="../autaff"/>
-                  </p>
+                    <p class="autaffbio">
+                      <span class="autaffname" data-class="nbio">
+                        <xsl:apply-templates mode="metadata" select="nfirst"/>
+                        <xsl:apply-templates mode="metadata" select="nlast"/>
+                      </span>
+                      &#160; <!--&nbsp;-->
+                      <xsl:apply-templates mode="metadata" select="nbio"/>
+                    </p>
+                  </div>
                 </div>
               </span>
             </xsl:when>
@@ -434,7 +447,12 @@
   </xsl:template>
 
   <xsl:template match="autaff" mode="metadata">
-    <div class="autaff" data-affid="{@affid}">
+    <div data-class="autaff">
+      <xsl:if test="@affid">
+        <xsl:attribute name="data-affid">
+          <xsl:value-of select="@affid"/>
+        </xsl:attribute>
+      </xsl:if>
       <xsl:apply-templates mode="metadata" select="addr"/>
     </div>
   </xsl:template>
@@ -451,6 +469,34 @@
     <xsl:text>&#13;</xsl:text>
   </xsl:template>
 
+  <xsl:template match="ln" mode="metadata">
+    <span data-class="ln">
+      <xsl:apply-templates/><br/>
+    </span>
+  </xsl:template>
+    
+  <xsl:template match="addr" mode="metadata">
+    <p class="autaffaddr" data-class="addr">
+      <xsl:apply-templates mode="metadata"/>
+    </p>
+  </xsl:template>
+  
+  <xsl:template match="nbio" mode="metadata">
+    <span data-class="nbio">
+      <xsl:apply-templates mode="metadata"/>
+    </span>
+  </xsl:template>
+  
+  <xsl:template match="webx">
+    <span class="webx" data-type="{@type}" data-url="{@url}">
+      <xsl:value-of select="."/>
+    </span>
+  </xsl:template>
+  
+  <xsl:template match="cr">
+    <br/>
+  </xsl:template>  
+  
   <xsl:template match="nfirst" mode="metadata">
     <xsl:text>&#10;</xsl:text> <!-- newline character -->
     <span class="nfirst" data-type="{@type}" data-initials="{@initials}">
@@ -478,44 +524,15 @@
       <xsl:otherwise>
         <span class="ndeg" data-dgr="{@dgr}" data-other="{@other}">
           <xsl:text> </xsl:text> <!-- space character -->
-          <xsl:value-of select="."/>
+          <xsl:value-of select="@dgr"/>
         </span>
       </xsl:otherwise>
     </xsl:choose>
     <xsl:text> </xsl:text> <!-- space character -->
   </xsl:template>
 
-
-  <xsl:template match="ln" mode="metadata">
-    <p class="ln">
-      <xsl:apply-templates/>
-    </p>
-  </xsl:template>
-  
-
-  <xsl:template match="addr" mode="metadata">
-    <div class="addr autaffaddr">
-      <xsl:apply-templates mode="metadata" select="ln"/>
-    </div>
-  </xsl:template>
-
-  <xsl:template match="nbio" mode="metadata">
-    <div class="nbio">
-      <xsl:value-of select="."/>
-      <xsl:apply-templates mode="metadata" select="webx"/>
-    </div>
-  </xsl:template>
-  
   <xsl:template match="videoplayer">
-<!--    <xsl:text>&#xa;</xsl:text>
-    videoid: <xsl:value-of select="@videoid"/>
-    <xsl:text>  </xsl:text>
-    tprojectid: <xsl:value-of select="@tprojectid"/>
-    <xsl:text>  </xsl:text>
-    tplayerid: <xsl:value-of select="@tplayerid"/> 
-    <xsl:text>  </xsl:text>
-    usevideoid: <xsl:value-of select="@usevideoid"/>
--->    <xsl:if test="'1'='1'">
+    <xsl:if test="'1'='1'">
       <!--This is the new Wistia player-\-it allows seeking in the transcript, press the arrow on the captions, or use the "Search Video" on the cc menu.
           This works for old and new videos!
       -->
@@ -525,47 +542,8 @@
       </div>
       <script src="https://fast.wistia.net/assets/external/E-v1.js" async="async"></script>      
     </xsl:if>
-<!--    <xsl:if test="@tprojectid='11714' and @tplayerid='10627'">
-      <!-\-these are all on the old 3play account-\->
-      <div class="video-container projectid{@tprojectid} usevideoid{@usevideoid}" style="display: flex; flex-wrap: nowrap; align-content: flex-start; max-width: 900px; "> 
-        <xsl:text>&#xa;</xsl:text>
-        <iframe class="wistia_embed" allowtransparency="true" frameborder="0" scrolling="no" name="wistia_embed" width="540" height="360" id="wistia_embed_id" title="Video player" allowfullscreen="allowfullscreen" mozallowfullscreen="mozallowfullscreen" webkitallowfullscreen="webkitallowfullscreen" oallowfullscreen="oallowfullscreen" msallowfullscreen="msallowfullscreen" src="//fast.wistia.net/embed/iframe/{@videoid}"></iframe>
-        <xsl:text>&#xa;</xsl:text>
-        <div>
-          <script type="text/javascript" src="//static.3playmedia.com/p/projects/{@tprojectid}/files/{@transcriptid}/plugins/10627.js?usevideoid=0"></script>
-          <div id="transcript_p10627_{@transcriptid}"></div>
-          <div id="p3-js-main-root">
-            <script async="" src="//p3.3playmedia.com/p3.js">
-            </script>
-          </div>
-          <script type="text/javascript" src="//fast.wistia.net/assets/external/E-v1.js" async=""></script>
-        </div>
-      </div>
-    </xsl:if>
-    <xsl:if test="@tplayerid!='10627'">  <!-\-proj 16353 tplayerid=11097-\->
-      <div class="video-container projectid{@tprojectid} usevideoid{@usevideoid}" style="display: flex; flex-wrap: nowrap; align-content: flex-start; max-width: 900px; "> 
-        <xsl:text>&#xa;</xsl:text>
-        <iframe marginwidth='0px' marginheight='0px' width='800px' height='850px' frameBorder='0' src='//plugin.3playmedia.com/show?mf={@transcriptid}&amp;p3sdk_version=1.10.4&amp;p={@tprojectid}&amp;pt=563&amp;video_id={@videoid}&amp;video_target=tpm-plugin-p2l4xacj-\-{@videoid}'></iframe>      
-      </div>
-    </xsl:if>
-    <xsl:if test="'1'='0' and @tplayerid!='10627'"> <!-\-disabled, because the one from the test above includes transcription!-\-> 
-      <div class="video-container projectid{@tprojectid} usevideoid{@usevideoid}" style="display: flex; flex-wrap: nowrap; align-content: flex-start; max-width: 900px; ">
-        <!-\-  works for the video for these, but not transcription.-\->
-        <xsl:text>&#xa;</xsl:text>
-        <iframe class="wistia_embed" allowtransparency="true" frameborder="0" scrolling="no" name="wistia_embed" width="540" height="360" id="wistia_embed_id" title="Video player" allowfullscreen="allowfullscreen" mozallowfullscreen="mozallowfullscreen" webkitallowfullscreen="webkitallowfullscreen" oallowfullscreen="oallowfullscreen" msallowfullscreen="msallowfullscreen" src="//fast.wistia.net/embed/iframe/{@videoid}"></iframe>
-        <xsl:text>&#xa;</xsl:text>
-        <div> <script type="text/javascript" src="//static.3playmedia.com/p/projects/16353/files/2855158/plugins/11097.js?usevideoid=0"></script> <script type="text/javascript" src="//fast.wistia.net/assets/external/E-v1.js" async=""></script> </div>
-      </div>
-    </xsl:if>
--->
   </xsl:template>
   
-  <xsl:template match="webx" mode="metadata">
-    <span class="webx" data-type="{@type}" data-url="{@url}">
-      <xsl:value-of select="."/>
-    </span>
-  </xsl:template>
-
   <xsl:template match="pgx">
     <span class="pgx" data-type="pagelink" data-r="{@rx}">
       <a class="pgx" href="#/Document/{@rx}">
@@ -635,8 +613,58 @@
   <!--  REGULAR (DEFAULT) MODE                                       -->
   <!-- ============================================================= -->
 
+  <!--  Additional author info in document authsectinfo
+        Note this works right, but PEP-Easy loads the wrong 
+        info due to the fixed popup id in javascript 
+        the 
+  -->
+  <xsl:template match="hauth">
+    <div data-class="hauth">
+      <xsl:for-each select="aut">
+        <span>
+          <xsl:apply-templates mode="metadata" select="."/>
+        </span>
+        <xsl:choose>
+          <xsl:when test="position() = last() -1 ">
+            <xsl:text> and </xsl:text>
+          </xsl:when>
+          <xsl:when test="position() = last()">
+            <xsl:text> </xsl:text>
+            <span class="peppopup hauthortip">
+              <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>
+              <br></br>
+              <div class="peppopuptext" id="hautaffinfo" hidden="True">
+                <div id="hautcontent" class="hautcontent">
+                  <p class="autaffname">
+                    <xsl:apply-templates mode="metadata" select="nfirst"/>
+                    <xsl:apply-templates mode="metadata" select="nlast"/>
+                  </p>
+                  <xsl:apply-templates mode="metadata" select="autaff"/>
+                  <p class="autaffbio">
+                    <span class="autaffname" data-class="nbio">
+                      <xsl:apply-templates mode="metadata" select="nfirst"/>
+                      <xsl:apply-templates mode="metadata" select="nlast"/>
+                    </span>
+                    &#160; <!--&nbsp;-->
+                    <xsl:apply-templates mode="metadata" select="nbio"/>
+                  </p>
+                </div>
+              </div>
+            </span>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:text>, </xsl:text>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:for-each>
+    </div>    
+    
+  </xsl:template>
+
+
   <xsl:template match="figure">
     <p class="figure" id="{@id}">
+      <xsl:call-template name="data-pagehelper"/>
       <xsl:apply-templates/>
       <!--      <xsl:apply-templates select="graphic"/>-->
       <!--      <xsl:apply-templates/>-->
@@ -645,6 +673,7 @@
   
   <xsl:template match="caption">
     <p class="figtitle caption">
+      <xsl:call-template name="data-pagehelper"/>
       <xsl:value-of select="."/>
     </p>
   </xsl:template>
@@ -815,21 +844,12 @@
       <xsl:attribute name="text-align">
         <xsl:value-of select="@align"/>  
       </xsl:attribute>
+      <xsl:call-template name="data-pagehelper"/>
       <xsl:call-template name="named-anchor"/>
       <xsl:apply-templates/>
     </xsl:copy>
   </xsl:template>
 
-<!--  <xsl:template match="h2">
-    <h2>
-      <xsl:call-template name="assign-id"/>
-      <span class="heading">
-        <xsl:call-template name="assign-id"/>
-        <xsl:apply-templates/>
-      </span>
-    </h2>
-  </xsl:template>
--->
   <xsl:template match="glossary | gloss-group">
     <!-- gloss-group is from 2.3 -->
     <div class="glossary">
@@ -885,6 +905,7 @@
 
     <xsl:template match="list[@type = 'DASH' or @type = 'DIAMOND' or @type = 'ASTERISK']" mode="list">
     <xsl:variable name="style">
+      <xsl:call-template name="data-pagehelper"/>
       <xsl:choose>
         <xsl:when test="@type = 'DASH'">dash</xsl:when>
         <xsl:when test="@type = 'DIAMOND'">diamond</xsl:when>
@@ -923,7 +944,7 @@
   
   <xsl:template match="n">
     <xsl:apply-templates select="@content-type"/>
-    <p class="n pagenumber">
+    <p class="pagenumber">
       <xsl:if test="@nextpgnum">
         <xsl:attribute name="data-nextpgnum">
           <xsl:value-of select="@nextpgnum"/>
@@ -938,16 +959,14 @@
     </p>  
   </xsl:template>
   
-  
   <xsl:template match="pb">
-    <p class="pb pagebreak">
+    <p class="pagebreak">
       <xsl:call-template name="named-anchor"/>
-<!--      <xsl:call-template name="assign-id"/>
--->     
       <xsl:apply-templates select="@content-type"/>
       <xsl:apply-templates/>
     </p>
   </xsl:template>
+
 
   <xsl:template match="bx">
     <span class="peppopup bibtip" data-type="velcro" data-element="{@r}" data-maxwidth="300" data-direction="southeast">
@@ -975,6 +994,7 @@
 
   <xsl:template match="poem">
     <div class="poem">
+      <xsl:call-template name="data-pagehelper"/>
       <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
@@ -983,6 +1003,7 @@
   
   <xsl:template match="quote">
     <div class="quote">
+      <xsl:call-template name="data-pagehelper"/>
       <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
@@ -991,14 +1012,16 @@
   
   <xsl:template match="dream">
     <div class="dream">
+      <xsl:call-template name="data-pagehelper"/>
       <xsl:call-template name="assign-lang"/>
-      <xsl:call-template name="assign-id"/>
+       <xsl:call-template name="assign-id"/>  
       <xsl:apply-templates/>
     </div>
   </xsl:template>
 
   <xsl:template match="dialog">
     <div class="dialog">
+      <xsl:call-template name="data-pagehelper"/>
       <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
@@ -1008,6 +1031,7 @@
   <xsl:template match="p | p2">
     <p class="para">
       <xsl:call-template name="assign-lang"/>
+      <xsl:call-template name="data-pagehelper"/>
       <xsl:choose>
         <xsl:when test="ancestor::ftr and not(preceding-sibling::*)">
           <xsl:attribute name="class">ftr first</xsl:attribute>
@@ -1015,14 +1039,11 @@
         <xsl:when test="ancestor::ftr">
           <xsl:attribute name="class">ftr</xsl:attribute>
         </xsl:when>
-        <xsl:when test="not(preceding-sibling::*)">
-          <xsl:attribute name="class">first</xsl:attribute>
-        </xsl:when>
       </xsl:choose>
       <xsl:if test="name() = 'p2'">
         <!--        if you want to concatenate to the attribute class-->
         <!--          <xsl:value-of select="concat('continued',  ' ', @class)"/>-->
-        <xsl:attribute name="class">p2 paracont</xsl:attribute>
+        <xsl:attribute name="class">paracont</xsl:attribute>
       </xsl:if>
       
       <xsl:call-template name="assign-id"/>
@@ -1031,8 +1052,20 @@
     </p>
   </xsl:template>
 
+  <xsl:template match="note">
+    <div class="note" id='{@id}'>
+      <xsl:call-template name="data-pagehelper"/>
+      <xsl:if test="@label">
+        <xsl:attribute name="label">
+          <xsl:value-of select="@label"/>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:apply-templates/>
+    </div>
+  </xsl:template>
+  
   <xsl:template match="dictentrygrp">
-    <div class="dictentrygrp id='{@id}'">
+    <div class="dictentrygrp" id='{@id}'>
       <xsl:apply-templates/>
     </div>
   </xsl:template>
@@ -1099,8 +1132,7 @@
 
 
   <xsl:template match="be">
-      <div class="bib" id="{@id}">
-        <p class="bib_bib">
+        <p class="bibentry" id="{@id}">
           <span class="ref-content cell">
             <xsl:apply-templates/>
           </span>
@@ -1112,8 +1144,7 @@
               <xsl:text> [→]</xsl:text>
             </a>
           </xsl:if>
-       </p>
-      </div>
+        </p>
   </xsl:template>
   
   
@@ -1192,6 +1223,7 @@
   <xsl:template match="body//tbl">
     <!-- other labels are displayed as blocks -->
     <div class="table nrs">
+      <xsl:call-template name="data-pagehelper"/>
       <xsl:attribute name="id">
         <xsl:value-of select="@id"/>
       </xsl:attribute>
