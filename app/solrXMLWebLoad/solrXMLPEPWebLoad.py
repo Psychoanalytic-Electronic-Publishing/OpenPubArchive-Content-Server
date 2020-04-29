@@ -25,7 +25,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.04.23"
+__version__     = "2020.04.24"
 __status__      = "Development"
 
 #Revision Notes:
@@ -85,6 +85,12 @@ __status__      = "Development"
     
     #2020-04-23  # Changes to excerpting in opasXMLHelper which affect loading, since that's when excerpts happen.
 
+    #2020-04-24  # Added stop words to highlighted terms list.  Stop words in file opasConfig.HIGHLIGHT_STOP_WORDS_FILE 
+                 # Changed it so highlighted terms would have tagging stripped.
+                 # Verbose option -v removed.  Must use --verbose instead
+
+    #2020-04-25  # Changed from highlighted words collecting <i> and <b> to collecting <impx>, which are glossary terms. 
+
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
 
@@ -127,14 +133,61 @@ import opasConfig
 
 # from OPASFileTrackerMySQL import FileTracker, FileTrackingInfo
 import opasXMLHelper as opasxmllib
+import opasAPISupportLib
 import opasCentralDBLib
 import opasGenSupportLib as opasgenlib
 import localsecrets
+
+def read_stopwords(): 
+    with open(opasConfig.HIGHLIGHT_STOP_WORDS_FILE) as f:
+        stopWordList = f.read().splitlines()
+    
+    stopPattern = "<[ib]>[A-Z]</[ib]>"
+    for n in stopWordList:
+        stopPattern += f"|<[ib]>{n}</[ib]>"
+
+    ret_val = re.compile(stopPattern, re.IGNORECASE)
+    return ret_val
 
 # Module Globals
 gCitedTable = dict() # large table of citation counts, too slow to run one at a time.
 options = None
 bib_total_reference_count = 0
+rc_stopword_match = read_stopwords() # returns compile re for matching stopwords 
+
+def strip_tags(value, compiled_tag_pattern):
+    """
+    >>> strip_tags('<impx type="TERM2" rx="ZBK.069.0001t.YN0015395997200" grpname="Trauma">trauma</impx>')
+    'Trauma'
+    > strip_tags("<i>The Interpretation of Dreams</i>")
+    'The Interpretation of Dreams'
+    > strip_tags(r'<b>\\n\t\t\t\t\t\t\t<pb><n nextpgnum=\"P0234\" prefixused=\"\">233</n></pb>IX</b>')
+    'pagebreak'
+    """
+    ret_val = value
+    m = compiled_tag_pattern.match(value)
+    if m:
+        ret_val = m.group("word")
+        if ret_val == None:
+            ret_val = "pagebreak"
+        ret_val = ret_val.translate(str.maketrans('','', '!"#$%&\'()*+,./:;<=>?@[\\]^_`{|}~'))
+
+    return ret_val
+
+def remove_values_from_terms_highlighted_list(the_list, remove_stop_words=True, start_tag_pattern = "<(i|b|bi|bui|fi|impx[^>]*?)>", end_tag_pattern="</(i|b|bi|bui|impx|fi)>"):
+    """
+    Using the list of stop words read in at initialization, remove these from the words used for highlighted lists.
+    
+    >> remove_values_from_terms_highlighted_list(["<i>not</i>","<i>is</i>","<i>and</i>", "<i>she</i>", "<i>The Interpretation of Dreams</i>", "<i>will</i>", "<i>I</i>", "<i>be</i>" ])
+    ['The Interpretation of Dreams']
+    """
+    stripPattern = f".*<pb>.*|({start_tag_pattern}[\s\n\t]*)+(?P<word>[^<]+?)[\s\n]*({end_tag_pattern})+"
+    cStripPattern = re.compile(stripPattern, re.IGNORECASE)
+    # passing the compiled pattern saves from recompiling for every value in function
+    if remove_stop_words:
+        return [strip_tags(value, compiled_tag_pattern = cStripPattern) for value in the_list if not rc_stopword_match.match(value)]
+    else:
+        return [strip_tags(value, compiled_tag_pattern = cStripPattern) for value in the_list]
 
 def find_all(name_pat, path):
     result = []
@@ -151,19 +204,19 @@ class NewFileTracker(object):
     >>> ft = NewFileTracker(ocd)
     >>> fsel = r"X:\\_PEPA1\\_PEPa1v\\_PEPArchive\\IJP\\043\\IJP.043.0306A(bEXP_ARCH1).XML"
     >>> ft.load_fs_fileinfo(fsel)
-    >>> ft.is_refresh_needed()
+    >>> ft.is_refresh_needed(filename=fsel)
     False
-    >>> ft.is_refresh_needed(before_date="2020-03-01")
+    >>> ft.is_refresh_needed(filename=fsel, before_date="2020-03-01")
     True
-    >>> ft.is_refresh_needed(after_date="2019-01-01")
+    >>> ft.is_refresh_needed(filename=fsel, after_date="2019-01-01")
     True
-    >>> ft.is_refresh_needed(after_date="2020-03-01")
+    >>> ft.is_refresh_needed(filename=fsel, after_date="2020-03-01")
     False
-    >>> ft.is_refresh_needed(before_date="2019-01-01")
+    >>> ft.is_refresh_needed(filename=fsel, before_date="2019-01-01")
     False
-    >>> ft.is_refresh_needed(after_date="2020-03-01")
+    >>> ft.is_refresh_needed(filename=fsel, after_date="2020-03-01")
     False
-    >>> ft.is_refresh_needed(before_date="2019-01-01")
+    >>> ft.is_refresh_needed(filename=fsel, before_date="2019-01-01")
     False
     
     
@@ -298,317 +351,6 @@ class NewFileTracker(object):
             ret_val = True # no record of it, so effectively modified.
     
         return ret_val
-
-#class FileTracker(object):
-    #"""
-    #A class to store basic file info and compare to to the database and Solr records
-       #about it, to control Solr loads.
-       
-    #"""
-    ##----------------------------------------------------------------------------------------
-    #def __init__(self, ocd, solrcore):
-        #global options
-        #self.filename = ""
-        #self.ocd = ocd
-        #self.solrcore = solrcore
-        ## self.solrsearch = solrcore.search_handler(solrcore, "/select")
-        #self.fileModDate = None
-        #self.fileSize = 0
-        #self.buildDate = None
-        #self.solrAPIURL = ""
-        #self.conn = self.ocd.open_connection(caller_name="FileTracker")
-        #self.fullfileset = {}
-        #self.file_set = {}
-        ## we load all the data for files unless we're rebuilding all anyway
-        #if not options.forceRebuildAllFiles:
-            #self.file_set = self.load_all_file_dates_solr(solrcore)
-            #self.load_all_file_dates_mysql()
-        
-
-    ##----------------------------------------------------------------------------------------
-    #def close(self):
-        #self.conn = self.ocd.close_connection(caller_name="FileTracker")
-
-    ##------------------------------------------------------------------------------------------------------
-    #def load_fileinfo(self, filename):
-        #"""
-        #Load key info for file of interest
-        #"""
-        #self.filename = filename
-        #self.base_filename = os.path.basename(filename)
-        #self.timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(localsecrets.TIME_FORMAT_STR)
-        #self.timestamp_obj = datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
-        #self.fileSize = os.path.getsize(filename)
-        #self.buildDate = time.time()
-
-    ##------------------------------------------------------------------------------------------------------
-    #def load_all_file_dates_solr(self, solrcore):
-        #"""
-        #Fetch all of the the article mod dates
-        #"""
-        #ret_val = {}
-        #max_rows = 1000000
-        
-        #def convert(lst): # convert list to dict with field file_name as key
-            #res_dct = {lst[i]["file_name"]: lst[i] for i in range(0, len(lst))} 
-            #return res_dct        
-    
-        #getFileInfoSOLR = f'art_level:1'
-        #try:
-            #results = solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp", rows=max_rows)
-        #except Exception as e:
-            #logging.error(f"Solr Query Error {e}")
-        #else:
-            #if results.hits > 0:
-                #ret_val = convert(results.docs)
-            #else:
-                #ret_val = {}
-        #return ret_val
-
-    #------------------------------------------------------------------------------------------------------
-    #def get_file_article_record_solr(self, filename=None):
-        #"""
-        #Fetch the article record from Solr based on the filename it was created from
-         
-        #"""
-        #ret_val = {}
-        #basefilename = self.base_filename # os.path.basename(filename)
-        ## basefilename = os.path.basename(filename)
-    
-        #getFileInfoSOLR = f'art_level:1 && file_name:"{basefilename}"'
-        #try:
-            #results = self.solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp")
-        #except Exception as e:
-            #logging.error(f"Solr Query Error {e}")
-        #else:
-            #if results.hits > 0:
-                #ret_val = results.docs[0]
-            #else:
-                #ret_val = {}
-
-        #return ret_val
-
-    ##------------------------------------------------------------------------------------------------------
-    #def get_file_article_record(self, filename=None):
-        #"""
-        #Fetch the article record based on the filename it was created from from the database.
-        
-        #Used for comparing timestamps on the database record against a command line arguments
-           #to build/load based on when the file was added to the database.
-        
-        #"""
-        #ret_val = {}
-        #basefilename = self.base_filename # os.path.basename(filename)
-    
-        #getFileInfoSQL = """
-                            #SELECT
-                               #art_id,
-                               #filename,
-                               #filedatetime,
-                               #updated
-                            #FROM api_articles
-                            #WHERE filename = %s
-                        #"""
-        #try:
-            #c = self.ocd.db.cursor(pymysql.cursors.DictCursor)
-            #c.execute(getFileInfoSQL, basefilename)
-            #rows = c.fetchall()
-            #if rows == ():
-                ## no database record here
-                #ret_val = None
-            #elif len(rows) > 1:
-                #print ("Error: query returned multiple rows")
-                #ret_val = None
-            #else:
-                #ret_val = rows[0]
-    
-        #except pymysql.Error as e:
-            #print(e)
-            #ret_val = None
-    
-        #c.close()  # close cursor
-        #return ret_val
-
-    ##------------------------------------------------------------------------------------------------------
-    #def load_all_file_dates_mysql(self):
-        #"""
-        #Fetch all of the records based.
-        
-        #Used for comparing timestamps on the database record against a command line arguments
-           #to build/load based on when the file was added to the database.
-        
-        #"""
-        #ret_val = {}
-   
-        #getFileInfoSQL = """
-                            #SELECT
-                               #art_id,
-                               #filename,
-                               #filedatetime,
-                               #updated
-                            #FROM api_articles
-                        #"""
-        #try:
-            #c = self.ocd.db.cursor(pymysql.cursors.DictCursor)
-            #c.execute(getFileInfoSQL)
-            #rows = c.fetchall()
-            #if rows == ():
-                ## no database record here
-                #ret_val = False
-            #else:
-                #for n in rows:
-                    #filename = n["filename"]
-                    #self.fullfileset[filename] = n
-                #ret_val = True
-    
-        #except pymysql.Error as e:
-            #print(e)
-            #ret_val = False
-    
-        #c.close()  # close cursor
-        #return ret_val
-
-    ##------------------------------------------------------------------------------------------------------
-    #def is_load_date_before_or_after(self, before=None, after=None):
-        #"""
-        #To allow updating (reloading) files before or after a date, compare the date updated
-        #in the database to the before or after time passed in from args.
-        
-        #Note that this uses the timestamp on the database record rather than the file mod date.
-        
-        #"""
-        #ret_val = False
-        ## lookup the current file from the fullset (no db access needed)
-        #files_db_record = self.fullfileset.get(self.base_filename, None)
-
-        #if before is not None:
-            #before_obj = dateutil.parser.parse(before)
-            #before_time = True
-        #else:
-            #before_time = False
-        
-        #if after is not None:
-            #after_obj = dateutil.parser.parse(after)
-            #after_time = True
-        #else:
-            #after_time = False
-            
-        #if files_db_record is not None:
-            ## it's in the database
-            #db_timestamp_obj = files_db_record.get("updated", None)
-            ## stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
-            #if db_timestamp_obj is not None:
-                ## default return False, not modified
-                #ret_val = False
-                #if before_time:
-                    #if db_timestamp_obj < before_obj:
-                        ## file is modified
-                        ## print ("File is considered modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
-                        #ret_val = True
-                #if after_time:
-                    #if db_timestamp_obj > after_obj:
-                        ## file is modified
-                        ## print ("File is considered modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
-                        #ret_val = True
-            #else: # db record has no value for timestamp, so consider modified
-                #ret_val = True
-        #else:
-            #ret_val = True # no record of it, so effectively modified.
-    
-        #return ret_val
-
-    ##------------------------------------------------------------------------------------------------------
-    #def is_file_newer_than_solr_date(self):
-        #"""
-        #The comparison against the downloaded Solr date records showing the version of each file in the
-           #Solr database to see what's newer than the version that was loaded.
-           
-        #"""
-        #ret_val = False
-        #file_set_entry = self.file_set.get(self.base_filename, {})
-        #if file_set_entry != {}:
-            ## it's in the Solr database
-            #db_timestamp_str = file_set_entry.get("file_last_modified", None)
-            ## stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
-            #if db_timestamp_str is not None:
-                ##  convert to datetime obj for < comparison
-                #db_timestamp_obj = datetime.strptime(db_timestamp_str, localsecrets.TIME_FORMAT_STR)
-                #if db_timestamp_obj < self.timestamp_obj:
-                    ## file is modified
-                    ## print ("File is modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
-                    #ret_val = True
-                #else: #File not modified
-                    #ret_val = False
-            #else: # db record has no value for timestamp, so consider modified
-                #ret_val = True
-        #else:
-            #ret_val = True # no record of it, so effectively modified.
-    
-        #return ret_val
-    
-    ##------------------------------------------------------------------------------------------------------
-    #def is_file_modified_solr(self):
-        #"""
-        #Compare file modification date to the one stored in the Solr document core to see if it's
-          #been updated (modified).
-          
-        #Returns True if so, or True if it's not found in Solr, else False (not changed)
-        
-        #"""
-        #ret_val = False
-        #files_solr_record = self.get_file_article_record_solr(self.filename)
-        #if files_solr_record != {}:
-            ## it's in the Solr database
-            #db_timestamp_str = files_solr_record.get("file_last_modified", None)
-            ## stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
-            #if db_timestamp_str is not None:
-                ##  convert to datetime obj for < comparison
-                #db_timestamp_obj = datetime.strptime(db_timestamp_str, localsecrets.TIME_FORMAT_STR)
-                #if db_timestamp_obj < self.timestamp_obj:
-                    ## file is modified
-                    ## print ("File is modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
-                    #ret_val = True
-                #else: #File not modified
-                    #ret_val = False
-            #else: # db record has no value for timestamp, so consider modified
-                #ret_val = True
-        #else:
-            #ret_val = True # no record of it, so effectively modified.
-    
-        #return ret_val
-        
-    ##------------------------------------------------------------------------------------------------------
-    #def is_file_modified(self):
-        #"""
-        #Compare file modification date to the one stored in the MySQL database to see if it's
-          #been updated (modified).
-          
-        #Returns True if so, or True if it's not found in the api_articles table in MySQL, else False (not changed)
-        
-        ##Deprecated.  SLOW way to do this.  So not used now, since the full load from Solr is used instead.
-        
-        #"""
-        #ret_val = False
-        #file_dbrecord = self.get_file_article_record()
-        #if file_dbrecord is not None:
-            ## it's in the database
-            #db_timestamp_str = file_dbrecord.get("filedatetime", None)
-            ## stored format is human readable, UTC time, eg. 2020-02-24T00:41:53Z, per localsecrets.TIME_FORMAT_STR
-            #if db_timestamp_str is not None:
-                ##  convert to datetime obj for < comparison
-                #db_timestamp_obj = datetime.strptime(db_timestamp_str, localsecrets.TIME_FORMAT_STR)
-                #if db_timestamp_obj < self.timestamp_obj:
-                    ## file is modified
-                    ## print ("File is modified: %s.  %s > %s" % (curr_fileinfo.filename, curr_fileinfo.timestamp_str, db_timestamp_str))
-                    #ret_val = True
-                #else: #File not modified
-                    #ret_val = False
-            #else: # db record has no value for timestamp, so consider modified
-                #ret_val = True
-        #else:
-            #ret_val = True # no record of it, so effectively modified.
-    
-        #return ret_val
 
 class ExitOnExceptionHandler(logging.StreamHandler):
     """
@@ -1080,7 +822,23 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
 
     # indented status
     print (f"   ...Adding children, tags/counts: {children.tag_counts}")
-
+    art_kwds_str = opasAPISupportLib.string_to_list(artInfo.art_kwds)
+    terms_highlighted = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/b|//body/*/i|//body/*/bi|//body/*/bui")
+                        #opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/i") 
+    terms_highlighted = remove_values_from_terms_highlighted_list(terms_highlighted)
+    # include pep dictionary marked words
+    glossary_terms_list = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/impx")
+    # strip the tags, but keep stop words
+    glossary_terms_list = remove_values_from_terms_highlighted_list(glossary_terms_list, remove_stop_words=False)
+    
+    glossary_group_terms = pepxml.xpath("//body/*/impx/@grpname")
+    glossary_group_terms_list = []
+    if glossary_group_terms is not None:
+        for n in glossary_group_terms:
+            glossary_group_terms_list += opasAPISupportLib.string_to_list(n, sep=";")
+    freuds_italics = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/fi")
+    freuds_italics = remove_values_from_terms_highlighted_list(freuds_italics)
+    
     new_rec = {
                 "id": artInfo.art_id,                                         # important =  note this is unique id for every reference
                 "art_id" : artInfo.art_id,                                    # important                                     
@@ -1137,11 +895,15 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "art_issn" : artInfo.art_issn,
                 "art_origrx" : artInfo.art_orig_rx,
                 "art_qual" : artInfo.art_qual,
-                "art_kwds" : artInfo.art_kwds,
+                "art_kwds" : artInfo.art_kwds, # pure search field, but maybe not as good as str
+                "art_kwds_str" : art_kwds_str, # list, multivalue field for faceting
+                "glossary_terms": glossary_terms_list,
+                "glossary_group_terms": glossary_group_terms_list,
+                "freuds_italics": freuds_italics,
                 "art_type" : artInfo.art_type,
                 "art_newsecnm" : artInfo.start_sectname,
                 "terms_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//impx[@type='TERM2']"),
-                "terms_highlighted" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//b") + opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//i"),
+                "terms_highlighted" : terms_highlighted,
                 "dialogs_spkr" : pepxml.xpath("//dialog/spkr/node()"),
                 "panels_spkr" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel/spkr"),
                 "poems_src" : pepxml.xpath("//poem/src/node()"),
@@ -1896,7 +1658,7 @@ def main():
     #parser.add_option("-u", "--url",
                       #dest="solrURL", default=config.DEFAULTSOLRHOME,
                       #help="Base URL of Solr api (without core), e.g., http://localhost:8983/solr/", metavar="URL")
-    parser.add_option("-v", "--verbose", action="store_true", dest="display_verbose", default=False,
+    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
                       help="Display status and operational timing info as load progresses.")
     parser.add_option("--pw", dest="httpPassword", default=None,
                       help="Password for the server")
@@ -2034,21 +1796,21 @@ def main():
     
         # find all processed XML files where build is (bEXP_ARCH1) in path
         # glob.glob doesn't unfortunately work to do this in Py2.7.x
+        skipped_files = 0
+        new_files = 0
+        total_files = 0
         if options.file_key != None:  
             #selQry = "select distinct filename from articles where articleID
             print (f"File Key Specified: {options.file_key}")
             pat = fr"({options.file_key}.*)\(bEXP_ARCH1\)\.(xml|XML)$"
+            file_pattern_match = re.compile(pat)
             filenames = find_all(pat, options.rootFolder)
         else:
             pat = r"(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
             file_pattern_match = re.compile(pat)
             filenames = []
-            skipped_files = 0
-            new_files = 0
-            total_files = 0
         
         #all_solr_docs = get_file_dates_solr(solrcore_docs2)
-        skipped_files = 0
         if re.match(".*\.xml$", options.rootFolder, re.IGNORECASE):
             # single file mode.
             singleFileMode = True
