@@ -570,15 +570,16 @@
 
   <xsl:template match="ftr">
     <xsl:text>&#13;</xsl:text>
-    <div class="footer above-border">
+    <div class="footer above-border" data-class="ftr">
       <xsl:apply-templates/>
     </div>
   </xsl:template>  
   
   <xsl:template match="ftn">
-    <div class="ftn_group">
-      <div class="ftn" id="@id" label="@label"> 
-        <p class="ftn">
+        <p class="ftn" data-class="ftn_group">
+          <xsl:attribute name="id">
+            <xsl:value-of select="@id"/>
+          </xsl:attribute>
           <span class="ftnlabel">
             <sup>
               <xsl:value-of select="@label"/>
@@ -587,8 +588,7 @@
           <xsl:value-of select="."/>
 <!--          <xsl:apply-templates/>-->
         </p>  
-      </div> 
-    </div>
+
   </xsl:template>
   
   <xsl:template match="aff" mode="metadata">
@@ -960,11 +960,11 @@
   </xsl:template>
   
   <xsl:template match="pb">
-    <p class="pagebreak">
+    <div class="pagebreak" data-class="pb">
       <xsl:call-template name="named-anchor"/>
       <xsl:apply-templates select="@content-type"/>
       <xsl:apply-templates/>
-    </p>
+    </div>
   </xsl:template>
 
 

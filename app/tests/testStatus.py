@@ -58,7 +58,7 @@ class TestStatus(unittest.TestCase):
         r = response.json()
         assert(r["user_id"] == 0)
         assert(r["username"] == "NotLoggedIn")
-        full_URL = base_plus_endpoint_encoded(f'/v1/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)

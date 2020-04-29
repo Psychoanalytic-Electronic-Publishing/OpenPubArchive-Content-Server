@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
+# doctest_ellipsis.py
 
 """
 opasAPISupportLib
@@ -22,12 +23,17 @@ Also, some of these functions are reused in different API calls.
    #2020.0226.1 - Support TOC instance as exception for abstracting extraction (extract_abstract_from_html)
                 # Python 3 only now
    #2020.0401.1 - Set it so user-agent is optional in session settings, in case client doesn't supply it (as PaDS didn't)
- 
+   #2020.0423.1 - database_get_most_cited fixes, confusion between publication_period, and period, sorted.
+   #2020.0426.1 - Doc level testing of functions and doctest cleanup...
+                # setting doctests so they pass even though the data varies in the DB
+                # all tests now pass at least with a full database load.
+                # Note: ellipses in doctest now working, see configuration in main and in doctests, 
+                # e.g., document_get_info (line 417) and database_get_most_viewed (line 525)
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0401.1"
+__version__     = "2020.0426.1"
 __status__      = "Development"
 
 import os
@@ -113,7 +119,8 @@ count_anchors = 0
 if SOLRUSER is not None:
     solr_docs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_DOCS, http_user=SOLRUSER, http_pass=SOLRPW)
     solr_docs_term_search = solr.SearchHandler(solr_docs, "/terms")
-    solr_refs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_REFS, http_user=SOLRUSER, http_pass=SOLRPW)
+    #not used anymore
+    #solr_refs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_REFS, http_user=SOLRUSER, http_pass=SOLRPW)
     solr_gloss = solr.SolrConnection(SOLRURL + opasConfig.SOLR_GLOSSARY, http_user=SOLRUSER, http_pass=SOLRPW)
     solr_authors = solr.SolrConnection(SOLRURL + opasConfig.SOLR_AUTHORS, http_user=SOLRUSER, http_pass=SOLRPW)
     solr_author_term_search = solr.SearchHandler(solr_authors, "/terms")
@@ -121,13 +128,14 @@ if SOLRUSER is not None:
 else:
     solr_docs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_DOCS)
     solr_docs_term_search = solr.SearchHandler(solr_docs, "/terms")
-    solr_refs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_REFS)
+    #not used anymore
+    #solr_refs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_REFS)
     solr_gloss = solr.SolrConnection(SOLRURL + opasConfig.SOLR_GLOSSARY)
     solr_authors = solr.SolrConnection(SOLRURL + opasConfig.SOLR_AUTHORS)
     solr_author_term_search = solr.SearchHandler(solr_authors, "/terms")
 
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
-    
+
 #-----------------------------------------------------------------------------
 def get_basecode(document_id):
     """
@@ -174,20 +182,46 @@ def get_max_age(keep_active=False):
     return ret_val  # maxAge
 
 #-----------------------------------------------------------------------------
-def string_to_list(strlist: str):
+def string_to_list(strlist: str, sep=","):
     """
     Convert a comma separated string to a python list,
     removing extra white space between items.
     
-    """
-    if "," in strlist:
-        # change str with cslist to python list
-        ret_val = re.sub("\s*,\s*", ",", strlist)
-        ret_val = ret_val.split(",")
-    else:
-        # cleanup whitespace around str
-        ret_val = [re.sub("\s*(?P<field>\S*)\s*", "\g<field>", strlist)]
+    Returns list, even if strlist is the empty string
+    EXCEPT if you pass None in.
 
+    >>> string_to_list(strlist="term")
+    ['term']
+    
+    >>> string_to_list(strlist="A, B, C, D")
+    ['A', 'B', 'C', 'D']
+    
+    >>> string_to_list(strlist="A; B, C; D", sep=";")
+    ['A', 'B, C', 'D']
+    
+    >>> string_to_list(strlist="")
+    []
+
+    >>> string_to_list(strlist=None)
+
+    """
+    if strlist is None:
+        ret_val = None
+    elif strlist == '':
+        ret_val = []
+    else: # always return a list
+        ret_val = []
+        try:
+            if sep in strlist:
+                # change str with cslist to python list
+                ret_val = re.sub(f"\s*{sep}\s*", sep, strlist)
+                ret_val = ret_val.split(sep)
+            else:
+                # cleanup whitespace around str
+                ret_val = [re.sub("\s*(?P<field>\S*)\s*", "\g<field>", strlist)]
+        except Exception as e:
+            logger.error(f"Error in string_to_list - {e}")
+    
     return ret_val
         
 #-----------------------------------------------------------------------------
@@ -383,7 +417,7 @@ def document_get_info(document_id, fields="art_id, art_sourcetype, art_year, fil
     Gets key information about a single document for the specified fields.
     
     >>> document_get_info('PEPGRANTVS.001.0003A', fields='file_classification')
-    {'file_classification': 'pepfree', 'score': 5.1908216}
+    {'file_classification': 'free', 'score': ...}
     
     """
     ret_val = {}
@@ -489,9 +523,9 @@ def database_get_most_viewed( publication_period: int=None,
 
     Docstring Tests:
     
-    >>> result = database_get_most_downloaded()
+    >>> result = database_get_most_viewed()
     >>> result.documentList.responseSet[0].documentID
-    'ijp.030.0069a'
+    '...'
 
     """
 
@@ -588,9 +622,9 @@ def database_get_most_viewed( publication_period: int=None,
 
 
 #-----------------------------------------------------------------------------
-def database_get_most_cited( publication_period: int=0, 
-                             period: models.TimePeriod='5',
-                             more_than: int=25, # if they only want the top 100 or so, a large number here speeds the query
+def database_get_most_cited( publication_period: int=None,   # Limit the considered pubs to only those published in these years
+                             period: models.TimePeriod='5',  # 
+                             more_than: int=25,              # Has to be cited more than this number of times, a large nbr speeds the query
                              document_type: str="journal",
                              author: str=None,
                              title: str=None,
@@ -612,8 +646,8 @@ def database_get_most_cited( publication_period: int=0,
                  just set it so it's not so high you still get "limit" records back.
     
     >>> result = database_get_most_cited()
-    >>> result.documentList.responseSet[0].documentID
-    'PAQ.073.0005A'
+    >>> len(result.documentList.responseSet[0].documentID)>10
+    True
 
     """
     if str(period).lower() not in models.TimePeriod._value2member_map_:
@@ -771,9 +805,9 @@ def source_type_normalize(source_type):
     Make it easier to ignore small inconsistencies in these key word arguments.
     
     >>> source_type_normalize("journals")
-    journal
+    'journal'
     >>> source_type_normalize("Journal")
-    journal
+    'journal'
     
     """
     ret_val = None
@@ -794,6 +828,14 @@ def metadata_get_volumes(pep_code=None, source_type=None, limit=opasConfig.DEFAU
     """
     Get a list of volumes for this pep_code.
     
+    >>> results = metadata_get_volumes(pep_code="IJP", source_type="journal")
+    >>> results.volumeList.responseInfo.count >= 101
+    True
+
+    >>> results = metadata_get_volumes(pep_code=None, source_type="journal")
+    >>> results.volumeList.responseInfo.count >= 200
+    True
+
     """
     ret_val = []
     ocd = opasCentralDBLib.opasCentralDB()
@@ -816,38 +858,30 @@ def metadata_get_volumes(pep_code=None, source_type=None, limit=opasConfig.DEFAU
                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
                                        )
     
-    #response_info = models.ResponseInfo( count = len(results.results),
-                                         #fullCount = results._numFound,
-                                         #limit = limit,
-                                         #offset = offset,
-                                         #listType="volumelist",
-                                         #fullCountComplete = limit >= results._numFound,
-                                         #timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                       #)
-
     volume_item_list = []
-    for result in results:
-        try:
-            pepcode = result[0]
-        except Exception as e:
-            pepcode = None
-
-        try:
-            vol = result[1]
-        except Exception as e:
-            vol = None
-        try:
-            yearif = result[2]
-        except Exception as e:
-            yearif = None
-
-        item = models.VolumeListItem( PEPCode = pepcode, 
-                                      vol = vol, 
-                                      year = yearif
-                                    )
+    if count > 0:
+        for result in results:
+            try:
+                pepcode = result[0]
+            except Exception as e:
+                pepcode = None
     
-        #logger.debug(item)
-        volume_item_list.append(item)
+            try:
+                vol = result[1]
+            except Exception as e:
+                vol = None
+            try:
+                yearif = result[2]
+            except Exception as e:
+                yearif = None
+    
+            item = models.VolumeListItem( PEPCode = pepcode, 
+                                          vol = vol, 
+                                          year = yearif
+                                        )
+        
+            #logger.debug(item)
+            volume_item_list.append(item)
        
     response_info.count = len(volume_item_list)
     
@@ -868,10 +902,12 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     """
     Return a jounals contents
     
-    >>> metadata_get_contents("IJP", "1993", limit=5, offset=0)
-    <DocumentList documentList=<DocumentListStruct responseInfo=<ResponseInfo count=5 limit=5 offset=0 page=No…>
-    >>> metadata_get_contents("IJP", "1993", limit=5, offset=5)
-    <DocumentList documentList=<DocumentListStruct responseInfo=<ResponseInfo count=5 limit=5 offset=5 page=No…>
+    >>> results = metadata_get_contents("IJP", "1993", limit=5, offset=0)
+    >>> results.documentList.responseInfo.count == 5
+    True
+    >>> results = metadata_get_contents("IJP", "1993", limit=5, offset=5)
+    >>> results.documentList.responseInfo.count == 5
+    True
     """
     ret_val = []
     if year == "*" and vol != "*":
@@ -1005,14 +1041,18 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
     
     No attempt here to map to the correct structure, just checking what field/data items we have in sourceInfoDB.
     
-    >>> metadata_get_source_by_type(src_type="journal", limit=3)
-    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=3 limit=3 offset=0 page=None…>
-    >>> metadata_get_source_by_type(src_type="book", limit=3)
-    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=3 limit=3 offset=0 page=None…>
-    >>> metadata_get_source_by_type(src_type="journals", limit=5, offset=0)
-    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=5 limit=5 offset=0 page=None…>
-    >>> metadata_get_source_by_type(src_type="journals", limit=5, offset=6)
-    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=5 limit=5 offset=6 page=None…>
+    >>> results = metadata_get_source_by_type(src_type="journal", limit=3)
+    >>> results.sourceInfo.responseInfo.count >= 3
+    True
+    >>> results = metadata_get_source_by_type(src_type="book", limit=10)
+    >>> results.sourceInfo.responseInfo.count >= 5
+    True
+    >>> results = metadata_get_source_by_type(src_type="journals", limit=10, offset=0)
+    >>> results.sourceInfo.responseInfo.count >= 5
+    True
+    >>> results = metadata_get_source_by_type(src_type="journals", limit=10, offset=6)
+    >>> results.sourceInfo.responseInfo.count >= 5
+    True
     """
     ret_val = []
     source_info_dblist = []
@@ -1166,10 +1206,12 @@ def metadata_get_source_by_code(src_code=None, limit=opasConfig.DEFAULT_LIMIT_FO
     
     curl -X GET "http://stage.pep.gvpi.net/api/v1/Metadata/Journals/AJP/" -H "accept: application/json"
     
-    >>> metadata_get_source_by_code(src_code="APA")
-    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=1 limit=10 offset=0 page=Non…>
-    >>> metadata_get_source_by_code()
-    <SourceInfoList sourceInfo=<SourceInfoStruct responseInfo=<ResponseInfo count=192 limit=10 offset=0 page=N…>
+    >>> results = metadata_get_source_by_code(src_code="APA")
+    >>> results.sourceInfo.responseInfo.count == 1
+    True
+    >>> results = metadata_get_source_by_code()
+    >>> results.sourceInfo.responseInfo.count >= 192
+    True
     
     """
     ret_val = []
@@ -1260,7 +1302,7 @@ def authors_get_author_info(author_partial, limit=opasConfig.DEFAULT_LIMIT_FOR_S
     Docstring Tests:    
         >>> resp = authors_get_author_info("Tuck")
         >>> resp.authorIndex.responseInfo.count
-        8
+        7
         >>> resp = authors_get_author_info("Levins.*", limit=5)
         >>> resp.authorIndex.responseInfo.count
         5
@@ -1342,12 +1384,17 @@ def authors_get_author_publications(author_partial, limit=opasConfig.DEFAULT_LIM
     """
     Returns a list of publications (per authors partial name), and the number of articles by that author.
     
-    >>> authors_get_author_publications(author_partial="Tuck")
-    <AuthorPubList authorPubList=<AuthorPubListStruct responseInfo=<ResponseInfo count=10 limit=10 offset=0 page…>
-    >>> authors_get_author_publications(author_partial="Fonag")
-    <AuthorPubList authorPubList=<AuthorPubListStruct responseInfo=<ResponseInfo count=10 limit=10 offset=0 page…>
-    >>> authors_get_author_publications(author_partial="Levinson, Nadine A.")
-    <AuthorPubList authorPubList=<AuthorPubListStruct responseInfo=<ResponseInfo count=8 limit=10 offset=0 page=…>
+    >>> ret_val =authors_get_author_publications(author_partial="Tuck") # doctest: +ELLIPSIS
+    >>> type(ret_val)
+    <class 'models.AuthorPubList'>
+    >>> print (f"{ret_val}"[0:68])
+    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=10
+    >>> ret_val=authors_get_author_publications(author_partial="Fonag")
+    >>> print (f"{ret_val}"[0:68])
+    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=10
+    >>> ret_val=authors_get_author_publications(author_partial="Levinson, Nadine A.")
+    >>> print (f"{ret_val}"[0:67])
+    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=8
     """
     ret_val = {}
     query = "art_author_id:/{}/".format(author_partial)
@@ -1418,45 +1465,7 @@ def authors_get_author_publications(author_partial, limit=opasConfig.DEFAULT_LIM
     
     ret_val = author_pub_list
     return ret_val
-
-#-----------------------------------------------------------------------------
-def get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document, excerpt=None):
    
-    ret_val = None
-    # see if there's an abstract
-    ret_val = force_string_return_from_various_return_types(xml_abstract)
-    if ret_val is None:
-        # try the summary
-        ret_val = force_string_return_from_various_return_types(xml_summary)
-        if ret_val is None:
-            # get excerpt from the document
-            ret_val = force_string_return_from_various_return_types(excerpt)
-            if ret_val is None:
-                if xml_document is None: # we should not need this since excerpt should be prestored, but there still could be cases.
-                    # we fail.  Return None
-                    logger.warning("No excerpt can be found or generated.")
-                else:
-                    # extract the first 10 paras [#TODO not working correctly for nested pb]
-                    ret_val = force_string_return_from_various_return_types(xml_document)
-                    ret_val = opasxmllib.remove_encoding_string(ret_val)
-                    parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
-                    root = etree.parse(StringIO(ret_val), parser)
-                    body = root.xpath("//*[self::h1 or self::p or self::p2 or self::pb]")
-                    ret_val = ""
-                    count = 0
-                    for elem in body:
-                        if elem.tag == "pb" or count >= opasConfig.MAX_PARAS_FOR_SUMMARY:
-                            # we're done.
-                            ret_val  += etree.tostring(elem, encoding='utf8').decode('utf8')
-                            ret_val = "%s%s%s" % ("<abs><unit type='excerpt'>", ret_val, "</unit></abs>")
-                            break
-                        else:
-                            # count paras
-                            if elem.tag == "p" or elem.tag == "p2":
-                                count += 1
-                            ret_val  += etree.tostring(elem, encoding='utf8').decode('utf8')
-    return ret_val
-    
 #-----------------------------------------------------------------------------
 def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=False, limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
     """
@@ -1466,12 +1475,15 @@ def documents_get_abstracts(document_id, ret_format="TEXTONLY", authenticated=Fa
     The endpoint reminds me that we should be using documentID instead of "art" for article perhaps.
       Not thrilled about the prospect of changing it, but probably the right thing to do.
       
-    >>> documents_get_abstracts("IJP.075")
-    <Documents documents=<DocumentListStruct responseInfo=<ResponseInfo count=10 limit=10 offset=0 page=…>
-    >>> documents_get_abstracts("AIM.038.0279A")  # no abstract on this one
-    <Documents documents=<DocumentListStruct responseInfo=<ResponseInfo count=1 limit=10 offset=0 page=N…>
-    >>> documents_get_abstracts("AIM.040.0311A")
-    <Documents documents=<DocumentListStruct responseInfo=<ResponseInfo count=1 limit=10 offset=0 page=N…>
+    >>> results = documents_get_abstracts("IJP.075")
+    >>> results.documents.responseInfo.count == 10
+    True
+    >>> results = documents_get_abstracts("AIM.038.0279A")  # no abstract on this one
+    >>> results.documents.responseInfo.count == 1
+    True
+    >>> results = documents_get_abstracts("AIM.040.0311A")
+    >>> results.documents.responseInfo.count == 1
+    True
       
     """
     ret_val = None
@@ -1614,7 +1626,6 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
         art_excerpt  = "No abstract found for this title."
         logger.info("No excerpt for document ID: %s", documentListItem.documentID)
 
-    # abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document, art_excerpt)
     if art_excerpt == "[]" or art_excerpt is None:
         art_excerpt = None
     elif ret_format == "TEXTONLY":
@@ -1633,73 +1644,6 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
                                                        )
 
     # return it in the abstract field for display
-    documentListItem.abstract = abstract
-    
-    return documentListItem
-
-def get_abstract_or_summary_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="TEXTONLY"):
-    """
-    pass in the result from a solr query and this retrieves an abstract (one way or another!)
-    
-    TODO: Should we try to get data up to the first page break as a special case?
-    
-    """
-    # make sure basic info has been retrieved
-    if documentListItem.sourceTitle is None:
-        documentListItem = get_base_article_info_from_search_result(result, documentListItem)
-
-    try:
-        xml_abstract = result["abstract_xml"]
-    except KeyError as e:
-        xml_abstract = None
-        logger.info("No abstract for document ID: %s", documentListItem.documentID)
-
-    try:
-        xml_summary = result["summaries_xml"]
-    except KeyError as e:
-        xml_summary = None
-        logger.info("No summary for document ID: %s", documentListItem.documentID)
-
-    try:
-        art_excerpt = result["art_excerpt"]
-    except KeyError as e:
-        art_excerpt  = None
-        logger.info("No excerpt for document ID: %s", documentListItem.documentID)
-
-    if xml_abstract is None and xml_summary is None and art_excerpt is None:
-        try:
-            xml_document = result["text_xml"]
-        except KeyError as e:
-            xml_document = None
-            logger.error("No content matched document ID for: %s", documentListItem.documentID)
-    else:
-        xml_document = None
-
-    abstract = get_excerpt_from_abs_sum_or_doc(xml_abstract, xml_summary, xml_document, art_excerpt)
-    if abstract == "[]" or abstract is None:
-        abstract = None
-    elif ret_format == "TEXTONLY":
-        abstract = opasxmllib.xml_elem_or_str_to_text(abstract)
-    elif ret_format == "HTML":
-        abstractHTML = opasxmllib.xml_str_to_html(abstract)
-        # try to extract just the abstract.  Not sure why this used to work and now (20191111) doesn't for some articles.  Maybe sampling, or
-        #   the style sheet application changed.
-        # Note: this will return the entire body div if arttype=='TOC', as per PEP specs
-        abstract = extract_abstract_from_html(abstractHTML, xpath_to_extract="//div[@id='abs']") 
-        if abstract is None:
-            abstract = abstractHTML
-
-    abstract = opasxmllib.add_headings_to_abstract_html( abstract=abstract, 
-                                                         source_title=documentListItem.sourceTitle,
-                                                         pub_year=documentListItem.year,
-                                                         vol=documentListItem.vol, 
-                                                         pgrg=documentListItem.pgRg, 
-                                                         citeas=documentListItem.documentRefHTML, 
-                                                         title=documentListItem.title,
-                                                         author_mast=documentListItem.authorMast,
-                                                         ret_format=ret_format
-                                                       )
-
     documentListItem.abstract = abstract
     
     return documentListItem
@@ -1745,7 +1689,7 @@ def get_fulltext_from_search_results(result, text_xml, page, page_offset, page_l
         if reduce == True or page_limit is not None:
             # extract the requested pages
             try:
-                text_xml = opasxmllib.xml_get_pages(text_xml, offset, page_limit, inside="body", env="body")
+                text_xml = opasxmllib.xml_get_pages(text_xml, offset, page_limit, pagebrk="", inside="body", env="body")
                 text_xml = text_xml[0]
             except Exception as e:
                 logging.error(f"Page extraction from document failed. Error: {e}")
@@ -2055,13 +1999,13 @@ def prep_document_download(document_id, ret_format="HTML", authenticated=True, b
     return ret_val
 
 #-----------------------------------------------------------------------------
-def find(name, path):
-    """
-    Find the file name in the selected path
-    """
-    for root, dirs, files in os.walk(path):
-        if name.lower() in [x.lower() for x in files]:
-            return os.path.join(root, name)
+#def find(name, path): # Not used? 
+    #"""
+    #Find the file name in the selected path
+    #"""
+    #for root, dirs, files in os.walk(path):
+        #if name.lower() in [x.lower() for x in files]:
+            #return os.path.join(root, name)
 
 #-----------------------------------------------------------------------------
 def convert_xml_to_html_file(xmltext_str, output_filename=None):
@@ -2443,8 +2387,9 @@ def search_text(query,
        ret_val = a DocumentList model object
        ret_status = a status tuple, consisting of a HTTP status code and a status mesage. Default (HTTP_200_OK, "OK")
 
-    >>> search_text(query="art_title_xml:'ego identity'", limit=10, offset=0, full_text_requested=False)
-    (<DocumentList documentList=<DocumentListStruct responseInfo=<ResponseInfo count=10 limit=10 offset=0 page=…>, (200, 'OK'))
+    >>> resp, status = search_text(query="art_title_xml:'ego identity'", limit=10, offset=0, full_text_requested=False)
+    >>> resp.documentList.responseInfo.count >= 10
+    True
     
         Original Parameters in API
         Original API return model example, needs to be supported:
@@ -2742,35 +2687,12 @@ def search_text(query,
 def submit_file(submit_token: bytes, xml_data: bytes, pdf_data: bytes): 
     pass
 
-def main():
-
-    print (40*"*", "opasAPISupportLib Tests", 40*"*")
-    print ("Fini")
-
 # -------------------------------------------------------------------------------------------------------
-# run it!
+# run it (tests)!
 
 if __name__ == "__main__":
+    print (40*"*", "opasAPISupportLib Tests", 40*"*")
     print ("Running in Python %s" % sys.version_info[0])
-    
-    sys.path.append(r'E:/usr3/GitHub/openpubarchive/app')
-    sys.path.append(r'E:/usr3/GitHub/openpubarchive/app/config')
-    sys.path.append(r'E:/usr3/GitHub/openpubarchive/app/libs')
-    for n in sys.path:
-        print (n)
-
-    # Spot testing during Development
-    #metadataGetContents("IJP", "1993")
-    #getAuthorInfo("Tuck")
-    #metadataGetVolumes("IJP")
-    #authorsGetAuthorInfo("Tuck")
-    #authorsGetAuthorPublications("Tuck", limit=40, offset=0)    
-    #databaseGetMostCited(limit=10, offset=0)
-    #getArticleData("PAQ.073.0005A")
-    #databaseWhatsNew()
-    # docstring tests
-    # get_list_of_most_downloaded()
-    # sys.exit(0)
     logger = logging.getLogger(__name__)
     # extra logging for standalong mode 
     logger.setLevel(logging.WARN)
@@ -2784,19 +2706,28 @@ if __name__ == "__main__":
     # add ch to logger
     logger.addHandler(ch)
     
-    print (search_analysis("tuckett", "authors"))
-    print (get_term_count_list("mother, father, son, daughter"))
-    print (get_term_count_list(["incest", "flyer*", "jet"]))
-    print (get_term_count_list("jealous*"))
-    print (get_term_count_list("murder*"))
-
-    # document_get_info("PEPGRANTVS.001.0003A", fields="file_classification")
-    print (get_term_count_list("tuckett", "authors"))
-    print (get_term_count_list("mother, father, son, daughter"))
-    print (get_term_count_list(["incest", "flyer*", "jet"]))
-    print (get_term_count_list("jealous*"))
-    print (get_term_count_list("murder*"))
+    if 1: # run doctests
+        import doctest
+        doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
+        print ("All tests complete!")
+    else:    
+        sys.path.append(r'E:/usr3/GitHub/openpubarchive/app')
+        sys.path.append(r'E:/usr3/GitHub/openpubarchive/app/config')
+        sys.path.append(r'E:/usr3/GitHub/openpubarchive/app/libs')
+        for n in sys.path:
+            print (n)
     
-    #import doctest
-    #doctest.testmod()    
-    main()
+        print (search_analysis("tuckett", "authors"))
+        print (get_term_count_list("mother, father, son, daughter"))
+        print (get_term_count_list(["incest", "flyer*", "jet"]))
+        print (get_term_count_list("jealous*"))
+        print (get_term_count_list("murder*"))
+    
+        # document_get_info("PEPGRANTVS.001.0003A", fields="file_classification")
+        print (get_term_count_list("tuckett", "authors"))
+        print (get_term_count_list("mother, father, son, daughter"))
+        print (get_term_count_list(["incest", "flyer*", "jet"]))
+        print (get_term_count_list("jealous*"))
+        print (get_term_count_list("murder*"))
+    
+    print ("Fini")

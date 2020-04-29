@@ -118,7 +118,7 @@ class TestDatabaseSearch(unittest.TestCase):
         Get Author Pubs For Matching Author Names
         /v1​/Authors​/Publications​/{authorNamePartial}​/
         """
-        response = client.get(base_api + '/v1/Authors/Publications/maslow, a.*/')
+        response = client.get(base_api + '/v2/Authors/Publications/maslow, a.*/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -126,7 +126,7 @@ class TestDatabaseSearch(unittest.TestCase):
         assert(r['authorPubList']['responseInfo']['fullCount'] == 3)
         
         # Doesn't return an error, returns 0 matches.
-        response = client.get(base_api + '/v1/Authors/Publications/Flintstone, Fred.*/')
+        response = client.get(base_api + '/v2/Authors/Publications/Flintstone, Fred.*/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json() 

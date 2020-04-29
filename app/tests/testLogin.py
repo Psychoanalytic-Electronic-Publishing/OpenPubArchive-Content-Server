@@ -40,7 +40,7 @@ class TestLogin(unittest.TestCase):
     """
     
     def test_0_login(self):
-        full_URL = base_plus_endpoint_encoded(f'/v1/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -71,7 +71,7 @@ class TestLogin(unittest.TestCase):
                                           algorithms=ALGORITHM
                                          )
         assert(r["authenticated"] == True)
-        full_URL = base_plus_endpoint_encoded('/v1/Logout/')
+        full_URL = base_plus_endpoint_encoded('/v2/Session/Logout/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -97,7 +97,7 @@ class TestLogin(unittest.TestCase):
             print (decoded_access_token )
 
     def test_2_bad_login(self):
-        full_URL = base_plus_endpoint_encoded(f'/v1/Login/?grant_type=password&username={TESTUSER}&password="notthepassword"')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password="notthepassword"')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.status_code == 401) # Unauthorized Error

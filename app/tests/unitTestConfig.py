@@ -13,6 +13,7 @@ base_api = APIURL
 # or override below.
 # base_api = "http://stage.pep.gvpi.net/api"
 base_api = "http://127.0.0.1:9100" # local server
+base_api = "http://development.org:9100"
 
 # this must be set to the number of unique journals for testing to pass.
 JOURNALCOUNT = 77

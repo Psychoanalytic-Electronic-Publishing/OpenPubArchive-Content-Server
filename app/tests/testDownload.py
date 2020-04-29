@@ -41,7 +41,7 @@ class TestDownload(unittest.TestCase):
     """
     
     def test_0_login(self):
-        full_URL = base_plus_endpoint_encoded(f'/v1/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -59,25 +59,25 @@ class TestDownload(unittest.TestCase):
         print (decoded_access_token )
 
     def test_1_Download(self):
-        full_URL = base_plus_endpoint_encoded(f'/v1/Documents/Downloads/PDFORIG/IJP.077.0217A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/IJP.077.0217A/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
     def test_2_Download(self):
-        full_URL = base_plus_endpoint_encoded(f'/v1/Documents/Downloads/PDF/IFP.017.0240A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IFP.017.0240A/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
        
     def test_3_Download(self):
-        full_URL = base_plus_endpoint_encoded(f'/v1/Documents/Downloads/EPUB/IJPSP.009.0324A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/IJPSP.009.0324A/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
     def test_4_Download(self):
-        full_URL = base_plus_endpoint_encoded(f'/v1/Documents/Downloads/HTML/IJPSP.009.0324A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/HTML/IJPSP.009.0324A/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)

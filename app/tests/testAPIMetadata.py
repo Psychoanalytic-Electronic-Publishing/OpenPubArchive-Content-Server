@@ -177,7 +177,7 @@ class TestMetadata(unittest.TestCase):
         Journal Content Lists for a source
         /v1/Metadata/Contents/{SourceCode}/
         """
-        response = client.get(base_api + '/v1/Metadata/Contents/BJP/')
+        response = client.get(base_api + '/v2/Metadata/Contents/BJP/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return
@@ -191,14 +191,14 @@ class TestMetadata(unittest.TestCase):
         Journal Content Lists for a source and vol
         ​/v1​/Metadata​/Contents​/{SourceCode}​/{SourceVolume}​/
         """
-        response = client.get(base_api + '/v1/Metadata/Contents/BJP/1/')
+        response = client.get(base_api + '/v2/Metadata/Contents/BJP/1/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return
         r = response.json()
         assert(r['documentList']['responseInfo']['fullCount'] == unitTestConfig.ARTICLE_COUNT_VOL1_BJP)
 
-        response = client.get(base_api + '/v1/Metadata/Contents/IJP/1/?limit=1')
+        response = client.get(base_api + '/v2/Metadata/Contents/IJP/1/?limit=1')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return
@@ -268,7 +268,7 @@ class TestMetadata(unittest.TestCase):
         List of names for a specific source
         /v1/Metadata/{SourceType}/{SourceCode}/
         """
-        response = client.get(base_api + '/v1/Metadata/Journals/IJPSP/')
+        response = client.get(base_api + '/v2/Metadata/Journals/IJPSP/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return

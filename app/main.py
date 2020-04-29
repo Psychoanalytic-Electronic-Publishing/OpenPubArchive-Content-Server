@@ -243,6 +243,8 @@ Endpoint and model documentation automatically available when server is running 
 #             MAX_EXCERPT_CHARS = 2000
 #             MAX_EXCERPT_PARAS = 10
 #          Min means it will even go past a pb if there are less chars than 480.
+#
+
 #----------------------------------------------------------------------------------------------
 
 __author__      = "Neil R. Shapiro"
@@ -1750,6 +1752,10 @@ async def database_advanced_search(response: Response,
     if re.search(r"/Search/", request.url._url):
         logger.debug("Search Request: %s", request.url._url)
         
+    facet_fields = opasAPISupportLib.string_to_list(facet_fields)
+    if facet_fields == []:
+        facet_fields = None # string to list returns [] if no parameter, but to omit return data, send None for facet_fields
+        
     #  just to play let's try this direct instead using a nested para approach   
     ret_val, ret_status = opasAPISupportLib.search_text(query=advanced_query, 
                                                         filter_query = None,
@@ -1758,7 +1764,7 @@ async def database_advanced_search(response: Response,
                                                         query_debug = False, # TEMPORARY
                                                         def_type = def_type, # edisMax, disMax, or None
                                                         highlight_fields=highlight_fields,
-                                                        facet_fields = opasAPISupportLib.string_to_list(facet_fields), 
+                                                        facet_fields = facet_fields,
                                                         sort = sort,
                                                         limit=limit, 
                                                         offset=offset,
@@ -2549,7 +2555,13 @@ async def database_mostviewed(response: Response,
     ## Function
        <b>Return a list of documents which are the most downloaded (viewed)</b>
 
+            viewperiod = 0: lastcalendaryear
+                         1: lastweek
+                         2: lastmonth
+                         3: last6months
+                         4: last12months                                
 
+                         
     ## Return Type
        models.DocumentList
 

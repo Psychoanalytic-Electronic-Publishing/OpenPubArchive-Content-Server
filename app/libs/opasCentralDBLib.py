@@ -8,9 +8,6 @@ This library is supports the main functionality of the OPAS Central Database
 
 The database has use and usage information.
 
-2019.0708.1 - Python 3.7 compatible.  Work in progress.
-2019.1110.1 - Updates for database view/table naming cleanup
-
 OPASCENTRAL TABLES (and Views) CURRENTLY USED:
    vw_stat_most_viewed (depends on vw_stat_docviews_crosstab,
                                    table articles)
@@ -35,10 +32,14 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
     vw_latest_session_activity (list of sessions with date from table api_session_endpoints)
 
 """
+#2019.0708.1 - Python 3.7 compatible.  Work in progress.
+#2019.1110.1 - Updates for database view/table naming cleanup
+#2020.0426.1 - Updates to ensure doc tests working, a couple of parameters changed names
+
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0407.1"
+__version__     = "2020.0426.1"
 __status__      = "Development"
 
 import sys
@@ -132,7 +133,7 @@ def verify_password(plain_password, hashed_password):
     True
 
     >>> verify_password("pakistan", '$2b$12$z7F1BD8NhgcuBq090omf1.PfmP6obAaFN0QGyU1n/Gqv2oUvU9CGy')
-    True
+    False
 
     """
     return pwd_context.verify(plain_password, hashed_password)
@@ -141,6 +142,7 @@ def get_password_hash(password):
     """
     Returns the hashed password that's stored
     >>> get_password_hash("doogie")
+    '...'
     """
     return pwd_context.hash(password)
 
@@ -1014,8 +1016,8 @@ class opasCentralDB(object):
         see if the user has access to this product and year
         
         >>> ocd = opasCentralDB()
-        >>> ocd.authenticate_user_product_request(10, "IJP", 2016)
-        
+        >>> ocd.authenticate_user_product_request(10, "IJP", 2016) # but not logged in
+        False
         """
         ret_val = False
         user_products = []
@@ -1160,7 +1162,7 @@ class opasCentralDB(object):
           - OR if source and src_type are not specified, bring back them all
           
         >>> ocd = opasCentralDB()
-        >>> sources = ocd.get_sources(source='IJP')
+        >>> sources = ocd.get_sources(source_code='IJP')
 
         """
         self.open_connection(caller_name="get_sources") # make sure connection is open
@@ -1221,7 +1223,7 @@ class opasCentralDB(object):
           - OR if source_code and source_type are not specified, bring back them all
           
         >>> ocd = opasCentralDB()
-        >>> sources = ocd.get_volumes(source='IJP')
+        >>> sources = ocd.get_volumes(source_code='IJP')
 
         """
         # returns multiple gw's and se's, 139 unique volumes counting those (at least in 2020)
@@ -1938,5 +1940,6 @@ if __name__ == "__main__":
     #ocd.get_subscription_access("BIPPI", 421)
     #docstring tests
     import doctest
-    doctest.testmod()    
+    doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
+    #doctest.testmod()    
     print ("Tests complete.")

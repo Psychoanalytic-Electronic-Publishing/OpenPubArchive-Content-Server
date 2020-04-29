@@ -34,6 +34,11 @@
                   strings type, boolean, booleans because it was required online going to Solr 8.5
                   (cores would not load without that.)
                   
+    2020-04-25: Added: for faceting:
+                          art_kwds_str - string_ci
+                          glossary_terms- string_ci
+                          glossary_group_terms - string_ci
+                          freuds_italics - string_ci
     
    Schema version attribute note: 
    
@@ -173,6 +178,9 @@
   <field name="art_issn" type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="art_kwds"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_qual" type="string" indexed="true" stored="true" docValues="true" multiValued="false"/>
+  <!--Added for faceting use, 2020-04-25-->
+  <!--For faceting multi word keywords, may want to eventually just replace art_kwds with this -->
+  <field name="art_kwds_str"  type="string_ci" indexed="true" stored="true" multiValued="true"/>
   
   <!-- author data -->
   <field name="author_aff_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
@@ -213,8 +221,16 @@
   <!--<field name="dreams_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
   <!--<field name="poems_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
 
+  <!--Added for faceting use, 2020-04-25 Storage not required -->
+  <field name="glossary_terms" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  <field name="glossary_group_terms" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  <!--Store for debug only-->
+  <field name="freuds_italics" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  
   <!--These are not displayed directly.  Search only. -->
   <!-- Special term fields -->
+  
+  <!-- terms_xml may not be needed in the long-term, only good for search -->
   <field name="terms_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
   <!-- Highlighted, e.g., italicized and otherwise called out terms -->
   <field name="terms_highlighted" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/>

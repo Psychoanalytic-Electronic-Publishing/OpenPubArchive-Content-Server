@@ -2,11 +2,17 @@
 import logging
 import datetime
 import tempfile
+import os
+import urllib.request
 
 BASELOGFILENAME = "opasAPI"
 logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s'
 logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
+
+# required for catalog lookup by lxml
+xml_catalog_name = "x:/_PEPA1/catalog.xml" 
+os.environ['XML_CATALOG_FILES'] = r"file:" + urllib.request.pathname2url(xml_catalog_name)
 
 # These are the solr database names used
 SOLR_DOCS = "pepwebdocs"
@@ -54,6 +60,8 @@ HITMARKEREND = "@@@#"
 HITMARKERSTART_OUTPUTHTML = "<span class='searchhit'>"  # to convert the non-markup HIT markers to HTML, supply values here.  These match the current PEPEasy stylesheet.
 HITMARKEREND_OUTPUTHTML = "</span>"
       
+HIGHLIGHT_STOP_WORDS_FILE = r"E:\usr3\GitHub\openpubarchive\app\config\highlight_stop_words.txt"
+
 USER_NOT_LOGGED_IN_ID = 0
     
 COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
@@ -78,6 +86,8 @@ PDFORIGDIR = r"X:\PEP Dropbox\PEPWeb\Inventory\PEPDownloads\PDF"
 MIN_EXCERPT_CHARS = 480
 MAX_EXCERPT_CHARS = 2000
 MAX_EXCERPT_PARAS = 10
+MAX_PARAS_FOR_SUMMARY = 10
+
 
 DEFAULT_KWIC_CONTENT_LENGTH = 200  # On each side of match (so use 1/2 of the total you want)
 DEFAULT_MAX_KWIC_RETURNS = 5
@@ -90,6 +100,7 @@ DEFAULT_LIMIT_FOR_METADATA_LISTS = 100
 DEFAULT_SOLR_SORT_FIELD = "art_cited_5" 
 DEFAULT_SOLR_SORT_DIRECTION = "asc" # desc or asc
 DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 4000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
+DEFAULT_CITED_MORE_THAN = 25
 
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 2520000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
 
@@ -124,23 +135,23 @@ DESCRIPTION_ENDYEAR = "Find documents published before this year (e.g, 2001)"
 DESCRIPTION_CITECOUNT = "Find documents cited more than 'X' times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL"  
 DESCRIPTION_VIEWCOUNT = "Not yet implemented"    
 DESCRIPTION_VIEWEDWITHIN ="Not yet implemented"
-DESCRIPTION_FACETFIELDS = "List of fields for which to return facets"
-DESCRIPTION_SORT ="Comma separated list of field names to sort by"
-DESCRIPTION_LIMIT = "Number of items to return"
-DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)"
+DESCRIPTION_FACETFIELDS = "List of fields for which to return facet info. Field art_sourcetype, for example, will give results counts by type (journal, book, videostream)."
+DESCRIPTION_SORT ="Comma separated list of field names to sort by."
+DESCRIPTION_LIMIT = "Number of items to return."
+DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)."
 DESCRIPTION_PAGELIMIT = "Number of pages of a document to return"
 DESCRIPTION_PAGEREQUEST = "The page or page range (from the document's numbering) to return (e.g., 215, or 215-217)"
 DESCRIPTION_PAGEOFFSET = "Starting page to return for this document as an offset from the first page.)"
 DESCRIPTION_PAGEOFFSET = "The relative page number (1 is the first) to return"
 DESCRIPTION_SEARCHPARAM = "This is a document request, including search parameters, to show hits"
-DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review"
-DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)"
+DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review."
+DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)."
 DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_MOST_CITED_PERIOD = "Most cited articles from this time period (years: 5, 10, 20, or all)"
 DESCRIPTION_PUBLICATION_PERIOD = "Number of publication years to include (counting back from current year)" 
 DESCRIPTION_MOST_VIEWED_PERIOD = "Most viewed articles in this period (0=Last Cal year, 1=last month, 2=last month, 3=last 6 months, 4=last 12 months)"
-DESCRIPTION_CITED_MORETHAN = "Limit to articles cited more than this many times"
+DESCRIPTION_CITED_MORETHAN = f"Limit to articles cited more than this many times (default={DEFAULT_CITED_MORE_THAN})"
 
 TITLE_DAYSBACK = "Days Back"
 TITLE_AUTHORNAMEORPARTIAL = "Author name or partial/regex"
@@ -226,8 +237,6 @@ ENDPOINT_SUMMARY_DOCUMENT_DOWNLOAD = "Download a document"
 
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()
-
-MAX_PARAS_FOR_SUMMARY = 10
 
 VIEW_PERIOD_LASTWEEK = "lastweek"
 VIEW_PERIOD_LASTMONTH = "lastmonth"
