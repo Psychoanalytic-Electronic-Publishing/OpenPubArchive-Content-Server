@@ -1059,7 +1059,9 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
     ocd = opasCentralDBLib.opasCentralDB()
     # standardize Source type, allow plural, different cases, but code below this part accepts only those three.
     if src_type is None:
-        src_type = "journal"
+        src_type = "*"
+    elif src_type == "*":
+        src_type = "*"
     else:
         src_type = src_type.lower()
         if src_type not in ["journal", "book"]:
@@ -1070,7 +1072,8 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
             elif re.match("boo.*", src_type, re.IGNORECASE):
                 src_type = "book"
             else: # default
-                src_type = "journal"
+                logging.warning(f"Unknown source type '{src_type}'. Using a wildcard (*) instead.")
+                src_type = "*"
    
     # This is not part of the original API, it brings back individual videos rather than the videostreams
     # but here in case we need it.  In that case, your source must be videos.*, like videostream, in order
@@ -1081,19 +1084,23 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
         count = len(source_info_dblist)
     else: # get from mySQL
         try:
-            if src_code != "*":
-                total_count, sourceData = ocd.get_sources(src_type = src_type, source_code=src_code, limit=limit, offset=offset)
-            else:
+            if src_code == "*" and src_type == "*":
+                total_count, sourceData = ocd.get_sources(limit=limit, offset=offset)
+            elif src_code == "*":
                 total_count, sourceData = ocd.get_sources(src_type = src_type, limit=limit, offset=offset)
+            else:
+                total_count, sourceData = ocd.get_sources(src_type = src_type, source_code=src_code, limit=limit, offset=offset)
                 
             for sourceInfoDict in sourceData:
-                if sourceInfoDict["product_type"] == src_type:
+                if src_type == "*":
+                    source_info_dblist.append(sourceInfoDict)
+                elif sourceInfoDict["product_type"] == src_type:
                     # match
                     source_info_dblist.append(sourceInfoDict)
             if limit < total_count:
                 count = limit
             else:
-                count = total_count
+                count = len(source_info_dblist)
             logger.debug("MetadataGetSourceByType: Number found: %s", count)
         except Exception as e:
             errMsg = "MetadataGetSourceByType: Error getting source information.  {}".format(e)
@@ -1125,6 +1132,7 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
             pub_year = source.get("pub_year")
             publisher = source.get("publisher")
             bookCode = None
+            src_type = source.get("product_type")
             if src_type == "book":
                 bookCode = source.get("pepcode")
                 m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", bookCode, re.IGNORECASE)

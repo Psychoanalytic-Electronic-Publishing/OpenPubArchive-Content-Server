@@ -244,13 +244,16 @@ Endpoint and model documentation automatically available when server is running 
 #             MAX_EXCERPT_PARAS = 10
 #          Min means it will even go past a pb if there are less chars than 480.
 #
+#2020.0430 Added a sort clause to the database query behind the metadata/volume return so
+           # the data comes back better organized.
+           # Fixed it so metadata/sourcetype/sourcecode gets everything if you use * for each
 
 #----------------------------------------------------------------------------------------------
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0423.1.Alpha3.3.1"
+__version__     = "2020.0430.1.Alpha3.3.1"
 __status__      = "Development"
 
 import sys

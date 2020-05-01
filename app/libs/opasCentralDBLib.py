@@ -1252,7 +1252,8 @@ class opasCentralDB(object):
                                AND a.src_code = '{source_code}' 
                                AND (a.main_toc_id = a.art_id OR a.main_toc_id is Null)
                                AND p.active = 1 
-                           )         
+                           )
+                           ORDER BY 1,2
                         """
             else:
                 sql = f"""SELECT DISTINCT
@@ -1274,6 +1275,7 @@ class opasCentralDB(object):
                                       AND (a.main_toc_id = a.art_id OR a.main_toc_id is Null)
                                       AND p.active = 1 
                            )         
+                           ORDER BY 1,2
                         """
                 
         else:
@@ -1302,12 +1304,22 @@ class opasCentralDB(object):
             else:
                 source_matches = ""
                 
+
+            distinct_return_list = [a.strip() for a in distinct_return.split(",") if a != ""]
+            if len(distinct_return_list) == 1:
+                order_by = "ORDER BY 1"
+            elif len(distinct_return_list) == 2:
+                order_by = "ORDER BY 1, 2"
+            elif len(distinct_return_list) >= 3:
+                order_by = "ORDER BY 1, 3"
+            
             sql = f"""
                       SELECT DISTINCT {distinct_return}
                       FROM api_articles
                       WHERE src_code not in ("GW", "SE", "IPL", "NLP", "ZBK")
                          {source_matches}
                          {ins_type}
+                    {order_by}
                   """
         
         self.open_connection(caller_name="get_volumes") # make sure connection is open

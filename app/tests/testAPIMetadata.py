@@ -3,6 +3,7 @@
 
 # Updates:
 #  2020-04-06 - Testing tightened to be exact.
+#  2020-04-30 - Added test 8x to test source info retrieval with wildcards
 
 import sys
 import os.path
@@ -287,6 +288,66 @@ class TestMetadata(unittest.TestCase):
         assert(r['sourceInfo']['responseInfo']['fullCount'] == 1)
         assert(r['sourceInfo']['responseSet'][0]['displayTitle'] == 'International Journal of Psychoanalytic Self Psychology')
         
+    def test_8_meta_all_sources(self):
+        """
+        List of names for a specific source
+        /v1/Metadata/{SourceType}/{SourceCode}/
+        """
+        response = client.get(base_api + '/v2/Metadata/*/*/')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseInfo']['count'] == 193)
+
+    def test_8b_meta_all_sources(self):
+        """
+        List of names for a specific source
+        /v1/Metadata/{SourceType}/{SourceCode}/
+        """
+        response = client.get(base_api + '/v2/Metadata/*/IJP/')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseInfo']['count'] == 1)
+    
+    def test_8c_meta_all_sources_nonsense(self):
+        """
+        List of names for a source that doesn't match the type
+        /v1/Metadata/{SourceType}/{SourceCode}/
+        """
+        response = client.get(base_api + '/v2/Metadata/Books/IJP/')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseInfo']['count'] == 0)
+    def test_8d_meta_all_sourcetype_nonsense(self):
+        """
+        List of names for a source for an unknown type
+        /v1/Metadata/{SourceType}/{SourceCode}/
+        
+        Currently: just changes to Journal, maybe should change to "*"
+        """
+        response = client.get(base_api + '/v2/Metadata/Garbage/*/')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseInfo']['count'] != 0)
+        response = client.get(base_api + '/v2/Metadata/Garbage/IJP/')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseInfo']['count'] == 1)
+        response = client.get(base_api + '/v2/Metadata/Garbage/GW/')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseInfo']['count'] == 1)
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")

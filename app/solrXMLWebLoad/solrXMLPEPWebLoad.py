@@ -25,7 +25,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.04.24"
+__version__     = "2020.04.30"
 __status__      = "Development"
 
 #Revision Notes:
@@ -90,6 +90,8 @@ __status__      = "Development"
                  # Verbose option -v removed.  Must use --verbose instead
 
     #2020-04-25  # Changed from highlighted words collecting <i> and <b> to collecting <impx>, which are glossary terms. 
+    #2020-04-25  # Added --only option to match other PEP processing software for single file mode.  (-d still works as well)
+                 # fixed variable name problem in the error report when the file wasn't found.
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
@@ -1635,7 +1637,7 @@ def main():
                       help="Option to force all files to be updated on the specified cores.  This does not reset the file tracker but updates it as files are processed.")
     parser.add_option("-b", "--biblioupdate", dest="biblio_update", action="store_true", default=False,
                       help="Whether to update the biblio table in the mysql database (used to be a core)")
-    parser.add_option("-d", "--dataroot", dest="rootFolder", default=config.DEFAULTDATAROOT,
+    parser.add_option("-d", "--dataroot", "--only", dest="rootFolder", default=config.DEFAULTDATAROOT,
                       help="Root folder path where input data is located")
     parser.add_option("-f", "--fulltextcoreupdate", dest="fulltext_core_update", action="store_true", default=False,
                       help="Whether to update the full-text and authors core. Use -d option to specify file folder root path.")
@@ -1819,7 +1821,7 @@ def main():
                 total_files = 1
                 new_files = 1
             else:
-                print(("Error: Single file mode name: {} does not exist.".format(options.rootfolder)))
+                print(f"Error: Single file mode name: {options.rootFolder} does not exist.")
         elif filenames != []:
             singleFileMode = False
             total_files = len(filenames)
