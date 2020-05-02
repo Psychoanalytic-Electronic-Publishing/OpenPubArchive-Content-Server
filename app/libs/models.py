@@ -537,6 +537,19 @@ class WhatsNewListStruct(BaseModel):
 class WhatsNewList(BaseModel):
     whatsNew: WhatsNewListStruct
 
+#-------------------------------------------------------
+# Perhaps use termindex instead
+#class WordIndexItem(BaseModel):
+    #word: str = Schema(None, title="Word indexed by the system.")
+    #wordCount: int = Schema(None, title="The number of times the word was found.")
+    
+#class WordIndexStruct(BaseModel):
+    #responseInfo: ResponseInfo
+    #responseSet: List[WordIndexItem] = []
+
+#class WordIndex(BaseModel):
+    #wordIndex: WordIndexStruct
+    
 if __name__ == "__main__":
     pass
 

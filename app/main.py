@@ -247,13 +247,14 @@ Endpoint and model documentation automatically available when server is running 
 #2020.0430 Added a sort clause to the database query behind the metadata/volume return so
            # the data comes back better organized.
            # Fixed it so metadata/sourcetype/sourcecode gets everything if you use * for each
-
+#2020.0502 Added endpoint WordWheel and supporting function in opasAPISupportLib to collect
+           # a termlist from specified field.  Uses solr.SearchHandler(solr_docs, "/terms")
 #----------------------------------------------------------------------------------------------
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0430.1.Alpha3.3.1"
+__version__     = "2020.0502.1.Alpha3.3.1"
 __status__      = "Development"
 
 import sys
@@ -284,7 +285,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, RedirectResponse, FileResponse
 from starlette.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
+#from starlette.middleware.sessions import SessionMiddleware
 from starlette.status import HTTP_200_OK, \
                              HTTP_400_BAD_REQUEST, \
                              HTTP_401_UNAUTHORIZED, \
@@ -303,11 +304,11 @@ TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 # to protect documentation, use: app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 app = FastAPI()
 
-from pydantic import BaseModel
+# from pydantic import BaseModel
 # from pydantic.types import EmailStr
 from pydantic import ValidationError
 import solrpy as solr
-import json
+# import json
 import libs.opasConfig as opasConfig
 from opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES
 import logging
@@ -1102,9 +1103,9 @@ def session_login_basic(response: Response,
 @app.get("/v1/Token/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_TOKEN, description="Used by PEP-Easy to login; will be need to be changed in V2 for oauth")  
 def get_token(response: Response, 
               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-              grant_type=None, 
               username=None, 
               password=None, 
+              grant_type=None, 
               ka=False):
     """
     ## Function
@@ -1262,13 +1263,13 @@ def login_setup_user_session(response: Response,
 #@app.get("/v1/Login/", response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_LOGIN)
 @app.get("/v2/Session/Login/", response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_LOGIN) # I like it under Users so I did them both.
 def session_login_user(response: Response, 
-               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-               grant_type=None, 
-               username=None, 
-               password=None, 
-               ka=False, 
-               #user: bool = Depends(get_current_user)
-               ):
+                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                       grant_type=None, 
+                       username=None, 
+                       password=None, 
+                       ka=False, 
+                       #user: bool = Depends(get_current_user)
+                       ):
     """
     ## Function
        <b>Login the user, via the URL per the GVPi API/PEPEasy interaction.</b>
@@ -1484,11 +1485,11 @@ def session_logout_user(response: Response,
         return license_info
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Database/TermCounts/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_TERM_COUNTS)  #  removed for now: response_model=models.DocumentList, 
+@app.get("/v2/Database/TermCounts/", response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_TERM_COUNTS)  #  removed for now: response_model=models.DocumentList, 
 async def database_term_counts(response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                               termfield: str=Query("text", title=opasConfig.TITLE_TERMFIELD, description=opasConfig.DESCRIPTION_TERMFIELD),
                                termlist: str=Query(None, title=opasConfig.TITLE_TERMLIST, description=opasConfig.DESCRIPTION_TERMLIST),
+                               termfield: str=Query("text", title=opasConfig.TITLE_TERMFIELD, description=opasConfig.DESCRIPTION_TERMFIELD)
                                ):
     """
     ## Function
@@ -2297,6 +2298,7 @@ def database_searchanalysis(response: Response,
                             viewcount: str=Query(None, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),    
                             viewedwithin: str=Query(None, title=opasConfig.TITLE_VIEWEDWITHIN, description=opasConfig.DESCRIPTION_VIEWEDWITHIN),     
                             # return set control
+                            facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                             sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                             limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                             offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
@@ -2327,6 +2329,7 @@ def database_searchanalysis(response: Response,
                                                       citecount=citecount,
                                                       viewcount=viewcount,
                                                       viewedwithin=viewedwithin,
+                                                      facetfields=facetfields, 
                                                       sort = sort
                                                       )
 
@@ -2996,9 +2999,9 @@ def metadata_volumes_sourcecode(response: Response,
 @app.get("/v2/Metadata/Volumes/", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_VOLUMES)
 def metadata_volumes(response: Response,
                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                     limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                      sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
                      sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                     limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                      ):
     """
@@ -3972,6 +3975,70 @@ def documents_downloads(response: Response,
                                         )
 
     return ret_val
+
+@app.get("/v2/Database/WordWheel/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WORD_WHEEL)
+def database_word_wheel(response: Response,
+                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                        word: str=Query(None, title=opasConfig.TITLE_WORD, description=opasConfig.DESCRIPTION_WORD),
+                        field: str=Query("text", title=opasConfig.TITLE_WORDFIELD, description=opasConfig.DESCRIPTION_WORDFIELD),
+                        limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
+                        ):
+    """
+    ## Function
+       <b>Return a list (index) of words for the field matching the prefix.  </b>
+
+    ## Return Type
+       models.termIndex
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+       http://localhost:9100/v2/WordWheel?phleb
+
+    ## Notes
+
+    ## Potential Errors
+
+    """
+    ret_val = None 
+
+    # ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    try:
+        # returns models.TermIndex
+        term_to_check = word.lower()  # work with lower case only, since Solr is case sensitive.
+        ret_val = opasAPISupportLib.get_term_index(term_to_check, term_field=field, limit=limit, offset=offset)
+    except ConnectionRefusedError as e:
+        status_message = f"The server is not running or is currently not accepting connections: {e}"
+        logger.error(status_message)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=status_message
+        )
+
+    except Exception as e:
+        status_message = f"Error: {e}"
+        logger.error(status_message)
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=status_message
+        )
+    else:
+        status_message = "Success"
+        response.status_code = HTTP_200_OK
+        # fill in additional return structure status info
+        ret_val.termIndex.responseInfo.request = request.url._url
+
+    # for maximum speed since this is used for word_wheels, don't log the endpoint occurrences
+    #ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_AUTHORS_INDEX,
+                                        #params=request.url._url,
+                                        #returnStatusCode = resp.status_code = ,
+                                        #statusMessage=statusMessage
+                                        #)
+
+    return ret_val  # Return author information or error
+
 
 if __name__ == "__main__":
     print(f"Server Running ({localsecrets.BASEURL}:{localsecrets.API_PORT_MAIN})")

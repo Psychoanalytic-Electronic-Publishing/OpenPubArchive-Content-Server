@@ -1071,6 +1071,8 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
                 src_type = "videostream"
             elif re.match("boo.*", src_type, re.IGNORECASE):
                 src_type = "book"
+            elif re.match("jour.*", src_type, re.IGNORECASE):
+                src_type = "journal"
             else: # default
                 logging.warning(f"Unknown source type '{src_type}'. Using a wildcard (*) instead.")
                 src_type = "*"
@@ -1090,17 +1092,21 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
                 total_count, sourceData = ocd.get_sources(src_type = src_type, limit=limit, offset=offset)
             else:
                 total_count, sourceData = ocd.get_sources(src_type = src_type, source_code=src_code, limit=limit, offset=offset)
-                
-            for sourceInfoDict in sourceData:
-                if src_type == "*":
-                    source_info_dblist.append(sourceInfoDict)
-                elif sourceInfoDict["product_type"] == src_type:
-                    # match
-                    source_info_dblist.append(sourceInfoDict)
-            if limit < total_count:
-                count = limit
+
+            if sourceData is not None:
+                for sourceInfoDict in sourceData:
+                    if src_type == "*":
+                        source_info_dblist.append(sourceInfoDict)
+                    elif sourceInfoDict["product_type"] == src_type:
+                        # match
+                        source_info_dblist.append(sourceInfoDict)
+                if limit < total_count:
+                    count = limit
+                else:
+                    count = len(source_info_dblist)
             else:
-                count = len(source_info_dblist)
+                count = 0
+                
             logger.debug("MetadataGetSourceByType: Number found: %s", count)
         except Exception as e:
             errMsg = "MetadataGetSourceByType: Error getting source information.  {}".format(e)
@@ -2332,6 +2338,96 @@ def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LI
     return ret_val
 
 #-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+def get_term_index(term_partial, term_field="text", limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, order="index"):
+    """
+    Returns a list of matching names (per authors last name), and the number of articles in PEP found by that author.
+    
+    Args:
+        term_partial (str): String prefix of author names to return.
+        term_field (str): Where to look for term
+        limit (int, optional): Paging mechanism, return is limited to this number of items.
+        offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
+        order (str, optional): Return the list in this order, per Solr documentation.  Defaults to "index", which is the Solr determined indexing order.
+
+    Returns:
+        models.DocumentList: Pydantic structure (dict) for DocumentList.  See models.py
+
+    Docstring Tests:    
+        >>> resp = get_term_index("bion", term_field="art_kwds_str", limit=5)
+        >>> resp.termIndex.responseInfo.count
+        5
+        >>> resp = get_term_index("bion", term_field="art_kwds", limit=5)
+        >>> resp.termIndex.responseInfo.count
+        5
+        >>> resp = get_term_index("will", term_field="text", limit=5)
+        >>> resp.termIndex.responseInfo.count
+        5
+        >>> resp = get_term_index("david", term_field="art_authors_mast", limit=5)
+        >>> resp.termIndex.responseInfo.count
+        5
+        >>> resp = get_term_index("Inter.*", term_field="art_sourcetitlefull", limit=5)
+        >>> resp.termIndex.responseInfo.count
+        3
+        >>> resp = get_term_index("pand", limit=20)
+        >>> resp.termIndex.responseInfo.count
+        20
+        >>> resp = get_term_index("pand.*", limit=5)
+        >>> resp.termIndex.responseInfo.count
+        5
+    """
+    ret_val = {}
+    method = 2
+    
+    if method == 2:
+        # should be faster way, but about the same measuring tuck (method1) vs tuck.* (method2) both about 2 query time.  However, allowing regex here.
+        if "*" in term_partial or "?" in term_partial or "." in term_partial:
+            results = solr_docs_term_search( terms_fl=term_field,
+                                             terms_regex=term_partial.lower() + ".*",
+                                             terms_limit=limit,  
+                                             terms_sort=order  # index or count
+                                            )           
+        else:
+            results = solr_docs_term_search( terms_fl=term_field,
+                                             terms_prefix=term_partial.lower(),
+                                             terms_sort=order,  # index or count
+                                             terms_limit=limit
+                                            )
+    
+    response_info = models.ResponseInfo( limit=limit,
+                                         offset=offset,
+                                         listType="termindex",
+                                         scopeQuery=[f"Terms: {term_partial}"],
+                                         solrParams=results._params,
+                                         timeStamp=datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
+                                       )
+    
+    term_index_items = []
+    if method == 2:  # faster way
+        for key, value in results.terms[term_field].items():
+            if value > 0:
+                item = models.TermIndexItem(term = key, 
+                                            field = term_field,
+                                            termCount = value,
+                                            ) 
+                term_index_items.append(item)
+                logger.debug ("TermIndexInfo", item)
+       
+    response_info.count = len(term_index_items)
+    response_info.fullCountComplete = limit >= response_info.count
+        
+    term_index_struct = models.TermIndexStruct( responseInfo = response_info, 
+                                                responseSet = term_index_items
+                                               )
+    
+    term_index = models.TermIndex(termIndex = term_index_struct)
+    
+    ret_val = term_index
+    return ret_val
+
+
+
+
 #================================================================================================================
 def search_text(query, 
                filter_query = None,
