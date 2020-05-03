@@ -1128,6 +1128,7 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
     counter = 0
     for source in source_info_dblist:
         counter += 1
+        err = 0
         if counter < offset:
             continue
         if counter > limit:
@@ -1137,22 +1138,33 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
             authors = source.get("author")
             pub_year = source.get("pub_year")
             publisher = source.get("publisher")
-            bookCode = None
+            book_code = None
             src_type = source.get("product_type")
-            if src_type == "book":
-                bookCode = source.get("pepcode")
-                m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", bookCode, re.IGNORECASE)
-                if m is not None:
-                    code = m.group("code")
-                    num = m.group("num")
-                    bookCode = code + "." + num
+            start_year = source.get("yearFirst")
+            end_year = source.get("yearLast")
+            base_code = source.get("basecode")
+            if start_year is None:
+                start_year = pub_year
+            if end_year is None:
+                end_year = pub_year
                 
-                art_citeas = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="publisher">%s</span>.""" \
-                    %                   (authors,
-                                         source.get("pub_year"),
-                                         title,
-                                         publisher
-                                        )
+            if src_type == "book":
+                book_code = source.get("pepcode")
+                if book_code is None:
+                    logging.error(f"Book code information missing for requested basecode {base_code} in productbase")
+                else:
+                    m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", book_code, re.IGNORECASE)
+                    if m is not None:
+                        code = m.group("code")
+                        num = m.group("num")
+                        bookCode = code + "." + num
+                    
+                    art_citeas = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="publisher">%s</span>.""" \
+                        %                   (authors,
+                                             source.get("pub_year"),
+                                             title,
+                                             publisher
+                                            )
             elif src_type == "video":
                 art_citeas = source.get("art_citeas")
             else:
@@ -1164,31 +1176,33 @@ def metadata_get_source_by_type(src_type=None, src_code=None, limit=opasConfig.D
                                                   PEPCode = source.get("basecode"),
                                                   authors = authors,
                                                   pub_year = pub_year,
-                                                  documentID = source.get("art_id"),
+                                                  documentID = source.get("articleID"),
                                                   displayTitle = art_citeas,
                                                   title = title,
                                                   srcTitle = title,  # v1 Deprecated for future
-                                                  bookCode = bookCode,
+                                                  bookCode = book_code,
                                                   abbrev = source.get("bibabbrev"),
                                                   bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('basecode')}Logo.gif",
                                                   language = source.get("language"),
                                                   ISSN = source.get("ISSN"),
                                                   ISBN10 = source.get("ISBN-10"),
                                                   ISBN13 = source.get("ISBN-13"),
-                                                  yearFirst = source.get("start_year"),
-                                                  yearLast = source.get("end_year"),
+                                                  yearFirst = start_year,
+                                                  yearLast = end_year,
                                                   embargoYears = source.get("embargo")
                                                 ) 
                 #logger.debug("metadataGetSourceByType SourceInfoListItem: %s", item)
             except ValidationError as e:
                 logger.error("metadataGetSourceByType SourceInfoListItem Validation Error:")
-                logger.error(e.json())        
+                logger.error(e.json())
+                err = 1
 
         except Exception as e:
-                logger.error("metadataGetSourceByType: %s", e)        
+                logger.error("metadataGetSourceByType: %s", e)
+                err = 1
             
-
-        source_info_listitems.append(item)
+        if err == 0:
+            source_info_listitems.append(item)
         
     try:
         source_info_struct = models.SourceInfoStruct( responseInfo = response_info, 
@@ -2341,7 +2355,7 @@ def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LI
 #-----------------------------------------------------------------------------
 def get_term_index(term_partial, term_field="text", limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, order="index"):
     """
-    Returns a list of matching names (per authors last name), and the number of articles in PEP found by that author.
+    Returns a list of matching terms from an arbitrary field in the Solr docs database, using the /terms search handler
     
     Args:
         term_partial (str): String prefix of author names to return.
@@ -2802,7 +2816,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.WARN)
     # create console handler and set level to debug
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    ch.setLevel(logging.WARN)
     # create formatter
     formatter = logging.Formatter('%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s')    
     # add formatter to ch

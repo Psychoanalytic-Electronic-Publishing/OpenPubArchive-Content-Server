@@ -312,6 +312,29 @@ class TestMetadata(unittest.TestCase):
         r = response.json()
         assert(r['sourceInfo']['responseInfo']['count'] == 1)
     
+    def test_8b2_meta_all_sources(self):
+        """
+        List of names for a specific source, a book, but not spec'd as book
+        /v1/Metadata/{SourceType}/{SourceCode}/
+        """
+        # get all the PEP Codes
+        response = client.get(base_api + '/v2/Metadata/*/*/')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        pep_codes = []
+        for n in r['sourceInfo']['responseSet']:
+            pep_codes.append(n['PEPCode'])
+        # Now test to make sure they can be read (if there's missing data in the product table, can cause error)
+        for n in pep_codes:
+            response = client.get(base_api + f'/v2/Metadata/*/{n}/')
+            # Confirm that the request-response cycle completed successfully.
+            assert(response.ok == True)
+            # test return
+            r = response.json()
+            assert(r['sourceInfo']['responseInfo']['count'] == 1)
+
     def test_8c_meta_all_sources_nonsense(self):
         """
         List of names for a source that doesn't match the type

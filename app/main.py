@@ -249,12 +249,16 @@ Endpoint and model documentation automatically available when server is running 
            # Fixed it so metadata/sourcetype/sourcecode gets everything if you use * for each
 #2020.0502 Added endpoint WordWheel and supporting function in opasAPISupportLib to collect
            # a termlist from specified field.  Uses solr.SearchHandler(solr_docs, "/terms")
+#2020.0503 Found error when issuing meta call for sources when pepcode was missing for a book
+           # in the api_productbase table.  Fixed it (and missing data for IPL) and created a test
+           # test_8b2_meta_all_sources to check all the source codes.
+           # Also: documentID wasn't being filled in due to error in the dict lookup.  Fixed.
 #----------------------------------------------------------------------------------------------
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0502.1.Alpha3.3.1"
+__version__     = "2020.0503.1.Alpha3.3.1"
 __status__      = "Development"
 
 import sys
@@ -374,7 +378,9 @@ origins = [
     "http://*.development.org",
     "http://*.development.org:9999",
     "http://*.pep-web.rocks",
-    "http://*.pep-web.info"
+    "http://*.pep-web.info",
+    "http://*.localhost",
+    "http://localhost"
 ]
 
 app.add_middleware(
@@ -1101,6 +1107,7 @@ def session_login_basic(response: Response,
         return login_return_item
 #-----------------------------------------------------------------------------
 @app.get("/v1/Token/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_TOKEN, description="Used by PEP-Easy to login; will be need to be changed in V2 for oauth")  
+@app.get("/v2/Token/", response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_TOKEN, description="Used by PEP-Easy to login; will be need to be changed in V2 for oauth")  
 def get_token(response: Response, 
               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
               username=None, 
