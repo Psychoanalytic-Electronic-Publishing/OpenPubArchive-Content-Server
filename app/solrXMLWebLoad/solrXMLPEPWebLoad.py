@@ -25,7 +25,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.04.30"
+__version__     = "2020.05.07"
 __status__      = "Development"
 
 #Revision Notes:
@@ -93,11 +93,16 @@ __status__      = "Development"
     #2020-04-25  # Added --only option to match other PEP processing software for single file mode.  (-d still works as well)
                  # fixed variable name problem in the error report when the file wasn't found.
 
+    #2020-05-07  # Added art_pgcount and art_isbn to masterPEPWebDocsSchema and manually added them to Solr to match.
+                 # Added code to load these data.
+
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
 
 import sys
 sys.path.append('../libs')
+sys.path.append('../config')
+sys.path.append('../libs/configLib')
 import re
 import os
 import os.path
@@ -132,6 +137,8 @@ import pymysql
 
 import config
 import opasConfig
+import opasCoreConfig
+from opasCoreConfig import solr_authors
 
 # from OPASFileTrackerMySQL import FileTracker, FileTrackingInfo
 import opasXMLHelper as opasxmllib
@@ -591,6 +598,7 @@ class ArticleInfo(object):
             
         self.art_doi = opasxmllib.xml_get_element_attr(artInfoNode, "doi", default_return=None) 
         self.art_issn = opasxmllib.xml_get_element_attr(artInfoNode, "ISSN", default_return=None) 
+        self.art_isbn = opasxmllib.xml_get_element_attr(artInfoNode, "ISBN", default_return=None) 
         self.art_orig_rx = opasxmllib.xml_get_element_attr(artInfoNode, "origrx", default_return=None) 
         self.start_sectname = opasxmllib.xml_get_element_attr(artInfoNode, "newsecnm", default_return=None)
         if self.start_sectname is None:
@@ -599,6 +607,11 @@ class ArticleInfo(object):
         
         self.art_pgrg = opasxmllib.xml_get_subelement_textsingleton(artInfoNode, "artpgrg", default_return=None)  # note: getSingleSubnodeText(pepxml, "artpgrg")
         self.art_pgstart, self.art_pgend = opasgenlib.pgrg_splitter(self.art_pgrg)
+        try:
+            self.art_pgcount = int(pepxml.xpath("count(//pb)")) # 20200506
+        except Exception as e:
+            self.art_pgcount = 0
+            
         if self.art_pgstart is not None:
             self.art_pgstart_prefix, self.art_pgstart, self.pgstart_suffix = opasgenlib.pgnum_splitter(self.art_pgstart)
         else:
@@ -723,7 +736,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
     #------------------------------------------------------------------------------------------------------
     # global gCitedTable
     
-    print(("   ...Processing main file content for the %s core." % opasConfig.SOLR_DOCS))
+    print("   ...Processing main file content for the %s core." % opasCoreConfig.SOLR_DOCS)
 
     art_lang = pepxml.xpath('//@lang')
     if art_lang == []:
@@ -890,11 +903,13 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "art_vol" : artInfo.art_vol,
                 "art_vol_title" : artInfo.art_vol_title,
                 "art_pgrg" : artInfo.art_pgrg,
+                "art_pgcount" : artInfo.art_pgcount,
                 "art_iss" : artInfo.art_issue,
                 "art_iss_title" : artInfo.art_issue_title,
                 "art_doi" : artInfo.art_doi,
                 "art_lang" : artInfo.art_lang,
                 "art_issn" : artInfo.art_issn,
+                "art_isbn" : artInfo.art_isbn,
                 "art_origrx" : artInfo.art_orig_rx,
                 "art_qual" : artInfo.art_qual,
                 "art_kwds" : artInfo.art_kwds, # pure search field, but maybe not as good as str
@@ -1697,10 +1712,10 @@ def main():
     
     if (options.biblio_update or options.fulltext_core_update or options.glossary_core_update) == True:
         try:
-            solrurl_docs = localsecrets.SOLRURL + opasConfig.SOLR_DOCS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
+            solrurl_docs = localsecrets.SOLRURL + opasCoreConfig.SOLR_DOCS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
             #solrurl_refs = localsecrets.SOLRURL + opasConfig.SOLR_REFS  # e.g., http://localhost:8983/solr/  + pepwebrefs'
-            solrurl_authors = localsecrets.SOLRURL + opasConfig.SOLR_AUTHORS
-            solrurl_glossary = localsecrets.SOLRURL + opasConfig.SOLR_GLOSSARY
+            solrurl_authors = localsecrets.SOLRURL + opasCoreConfig.SOLR_AUTHORS
+            solrurl_glossary = localsecrets.SOLRURL + opasCoreConfig.SOLR_GLOSSARY
             print("Logfile: ", logFilename)
             print("Input data Root: ", options.rootFolder)
             print("Reset Core Data: ", options.resetCoreData)
@@ -1713,7 +1728,7 @@ def main():
             if options.glossary_core_update:
                 print("Solr Glossary Core will be updated: ", solrurl_glossary)
         except Exception as e:
-            msg = "cores specification error (e)."
+            msg = f"cores specification error ({e})."
             print((len(msg)*"-"))
             print (msg)
             print((len(msg)*"-"))
@@ -1744,42 +1759,46 @@ def main():
     # import data about the PEP codes for journals and books.
     #  Codes are like APA, PAH, ... and special codes like ZBK000 for a particular book
     sourceDB = opasCentralDBLib.SourceInfoDB()
-    solrcore_docs2 = None
-    solrcore_authors = None
-    #solrcore_references = None
-    solrcore_glossary = None
+    solr_docs2 = None
     #TODO: Try without the None test, the library should not try to use None as user name or password, so only the first case may be needed
     # The connection call is to solrpy (import was just solr)
     #if options.httpUserID is not None and options.httpPassword is not None:
     if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:
         if options.fulltext_core_update:
             # fulltext update always includes authors
-            solrcore_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
-            solrcore_authors = solr.SolrConnection(solrurl_authors, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
-        if options.glossary_core_update:
-            solrcore_glossary = solr.SolrConnection(solrurl_glossary, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+            solr_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
+            solr_docs = None
+            # this is now done in opasCoreConfig
+            #solr_authors = solr.SolrConnection(solrurl_authors, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+        #if options.glossary_core_update:
+            # this is now done in opasCoreConfig
+            #solr_gloss = solr.SolrConnection(solrurl_glossary, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
     else: #  no user and password needed
         if options.fulltext_core_update:
             # fulltext update always includes authors
-            solrcore_docs2 = pysolr.Solr(solrurl_docs)
-            solrcore_authors = solr.SolrConnection(solrurl_authors)
-        if options.glossary_core_update:
-            solrcore_glossary = solr.SolrConnection(solrurl_glossary)
+            solr_docs2 = pysolr.Solr(solrurl_docs)
+            # diconnect the other
+            solr_docs = None
+            # this is now done in opasCoreConfig
+            #solr_authors = solr.SolrConnection(solrurl_authors)
+        #if options.glossary_core_update:
+            # this is now done in opasCoreConfig
+            #solr_gloss = solr.SolrConnection(solrurl_glossary)
 
     # Reset core's data if requested (mainly for early development)
     if options.resetCoreData:
         if options.fulltext_core_update:
             print ("*** Deleting all data from the docs and author cores ***")
             #solrcore_docs.delete_query("*:*")
-            solrcore_docs2.delete(q='*:*')
-            solrcore_docs2.commit()
+            solr_docs2.delete(q='*:*')
+            solr_docs2.commit()
             #solrcore_docs.commit()
-            solrcore_authors.delete_query("*:*")
-            solrcore_authors.commit()
+            solr_authors.delete_query("*:*")
+            solr_authors.commit()
         if options.glossary_core_update:
             print ("*** Deleting all data from the Glossary core ***")
-            solrcore_glossary.delete_query("*:*")
-            solrcore_glossary.commit()
+            solr_gloss.delete_query("*:*")
+            solr_gloss.commit()
     else:
         # check for missing files and delete them from the core, since we didn't empty the core above
         pass
@@ -1787,7 +1806,7 @@ def main():
     # Glossary Processing only
     if options.glossary_core_update:
         # this option will process all files in the glossary core.
-        glossary_file_count, glossary_terms = process_glossary_core(solrcore_glossary)
+        glossary_file_count, glossary_terms = process_glossary_core(solr_gloss)
         processed_files_count += glossary_file_count
     
     # Docs, Authors and References go through a full set of regular XML files
@@ -1905,20 +1924,20 @@ def main():
                         print (f"Skipped {skipped_files} so far...loaded {processed_files_count} out of {new_files} possible." )
                     
                     if options.reload_before_date is not None:
-                        if not file_was_loaded_before(solrcore_docs2, before_date=options.reload_before_date, filename=n):
+                        if not file_was_loaded_before(solr_docs2, before_date=options.reload_before_date, filename=n):
                             skipped_files += 1
                             if options.display_verbose:
                                 print (f"Skipped - Not loaded before {options.reload_before_date} - {n}.")
                             continue
                         
                     if options.reload_after_date is not None:
-                        if not file_was_loaded_before(solrcore_docs2, after_date=options.reload_after_date, filename=n):
+                        if not file_was_loaded_before(solr_docs2, after_date=options.reload_after_date, filename=n):
                             skipped_files += 1
                             if options.display_verbose:
                                 print (f"Skipped - Not loaded after {options.reload_after_date} - {n}.")
                             continue
     
-                    if file_is_same_as_in_solr(solrcore_docs2, filename=n):
+                    if file_is_same_as_in_solr(solr_docs2, filename=n):
                         skipped_files += 1
                         if options.display_verbose:
                             print (f"Skipped - No refresh needed for {n}")
@@ -1973,15 +1992,15 @@ def main():
                 # input to the full-text code
                 if options.fulltext_core_update:
                     # this option will also load the authors cores.
-                    process_article_for_doc_core(pepxml, artInfo, solrcore_docs2, fileXMLContents)
+                    process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents)
                     process_info_for_author_core(pepxml, artInfo,
-                                                 solrcore_authors)
+                                                 solr_authors)
                     add_article_to_api_articles_table(ocd, artInfo)
                     
                     if precommit_file_count > config.COMMITLIMIT:
                         precommit_file_count = 0
-                        solrcore_docs2.commit()
-                        solrcore_authors.commit()
+                        solr_docs2.commit()
+                        solr_authors.commit()
                         #fileTracker.commit()
         
                 # input to the references core
@@ -2032,8 +2051,8 @@ def main():
                 try:
                     print ("Performing final commit.")
                     if options.fulltext_core_update:
-                        solrcore_docs2.commit()
-                        solrcore_authors.commit()
+                        solr_docs2.commit()
+                        solr_authors.commit()
                         # fileTracker.commit()
                 except Exception as e:
                     print(("Exception: ", e))
