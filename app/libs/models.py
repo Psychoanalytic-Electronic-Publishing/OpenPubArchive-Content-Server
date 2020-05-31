@@ -19,6 +19,7 @@ import datetime
 from datetime import datetime
 from typing import List, Generic, TypeVar, Optional
 from enum import Enum
+import opasConfig
 
 from pydantic import BaseModel, Schema
 # from pydantic.types import EmailStr
@@ -96,6 +97,7 @@ class ResponseInfo(BaseModel):
     listType: ListTypeEnum = Schema(None, title="ListTypeEnum based identifier of the return structure, e.g., 'documentList'.")
     scopeQuery: list = Schema(None, title="The query strings applied: [query_string, filter_string]")
     request: str = Schema(None, title="The URL request (endpoint) that resulted in this response.")
+    core: str = Schema(None, title="The Solr Core classname used (e.g., docs, authors).")
     solrParams: dict = Schema(None, title="A dictionary based set of the parameters passed to the Solr search engine for this request.")
     errors: ErrorReturn = Schema(None, title="Any Error information")
     timeStamp: str = Schema(None, title="Server timestamp of return data.")   
@@ -162,6 +164,7 @@ class AuthorIndex(BaseModel):
 #-------------------------------------------------------
 class DocumentListItem(BaseModel):
     documentID: str = Schema(None, title="Document ID/Locator", description="The multiple-section document ID, e.g., CPS.007B.0021A.B0012 in a biblio, or CPS.007B.0021A as a document ID.")
+    docType:  str = Schema(None, title="Document Type (Classification)", description="e.g., ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review")
     documentRef: str = Schema(None, title="Document Ref (bibliographic)", description="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
     documentRefHTML: str = Schema(None, title="Same as documentRef but in HTML.")
     title: str = Schema(None, title="Document Title")
@@ -170,10 +173,14 @@ class DocumentListItem(BaseModel):
     relatedrx: str = Schema(None, title="Closely Related Documents (documentID)", description="Document idref (documentID) associating all closely related documents to this one, e.g., this is a commentary on...")
     PEPCode: str = Schema(None, title="Source Acronym", description="Acronym-type code assigned to the document source e.g., CPS, IJP, ANIJP-EL, ZBK. (The first part of the document ID.)")
     sourceTitle: str = Schema(None, title="Source Title", description="The name of the document's source (title) in abbreviated, bibliographic format")
+    sourceType:  str = Schema(None, title="Source Type", description="Journal, Book, Videostream")
     kwicList: list = Schema(None, title="Key Words in Context", description="The matched terms in the matched document context, set by server config DEFAULT_KWIC_CONTENT_LENGTH ") # a real list, seems better long term
     kwic: str = Schema(None, title="Key Words in Context", description="KWIC as text, concatenated, not a list -- the way in v1 (May be deprecated later") # 
     vol: str = Schema(None, title="Serial Publication Volume", description="The volume number of the source, can be alphanumeric")
     year: str = Schema(None, title="Serial Publication Year", description="The four digit year of publication")
+    lang: list = Schema(None, title="Language", description="The list of languages in this article")
+    issn: str = Schema(None, title="The ISSN", description="The ISSN for the source") # 2020506 Not sure if we should include this, but we are at least already storing it at article level
+    #isbn: str = Schema(None, title="The ISBN", description="The ISBN for the source") #  2020506 isbn is not stored at article level, so not now at least
     doi: str = Schema(None, title="Document object identifier", description="Document object identifier, a standard id system admin by the International DOI Foundation (IDF)")
     issue: str = Schema(None, title="Serial Issue Number")
     issueTitle: str = Schema(None, title="Serial Issue Title", description="Issues may have titles, e.g., special topic")
@@ -198,6 +205,7 @@ class DocumentListItem(BaseModel):
     updated: datetime = Schema(None, title="Source file update date and time", description="The date and time the source file was updated last")
     score: float = Schema(None, title="The match score", description="Solr's score for the match in the search")
     rank: float = Schema(None, title="Document's Search Rank")
+    referenceCount: str = Schema(None, title="Number of references", description="The number of references listed in the document bibliography")
     #instanceCount: int = Schema(None, title="Counts", description="Reusable field to return counts requested")
     # |- new v2 field, but removed during cleanup, better ata is in stat.
     stat: dict = Schema(None, title="Statistics", description="Reusable field to return counts requested")
@@ -370,32 +378,35 @@ class Report(BaseModel):
 #-------------------------------------------------------
 # This is the model (SolrQuerySpec) 
 # populated by parse_search_query_parameters from api parameter or body field requests
+   
 class SolrQuery(BaseModel):
     # Solr Query Parameters as generated by opasQueryHelper.parse_search_query_parameters
     searchQ: str = Schema(None, title="Query in Solr syntax", description="Advanced Query in Solr Q syntax (see schema names)")
     filterQ: str = Schema(None, title="Filter query in Solr syntax", description="Filter Query in Solr syntax (see schema names)")
-    returnFields: str = Schema(None, title="List of return fields", description="Comma separated list of return fields.  Default=All fields.")
+    # returnFields: str = Schema(None, title="List of return fields", description="Comma separated list of return fields.  Default=All fields.")
     sort: str=Schema(None, title="Fields and direction by which to sort", description="arranges search results in either ascending (asc) or descending (desc) order. The parameter can be used with either numerical or alphabetical content. The directions can be entered in either all lowercase or all uppercase letters (i.e., both asc or ASC).")
     queryTermList: List[str] = None
     # extra fields
     analyzeThis: str = ""
     searchAnalysisTermList: List[str] = []
-    urlRequest: str = ""
 
 class SolrQueryOpts(BaseModel):
     # these all have proper defaults so technically, it can go into queries as is.
     qOper: str = Schema("AND", title="Implied Boolean connector", description="Implied Boolean connector between words in query")
     defType: QueryParserTypeEnum = Schema("lucene", title="Query parser to use, e.g., 'edismax'.  Default is 'standard' (lucene)")
-    hlFields: str = Schema(None, title="highlight fields (KWIC)", description="Turns on highlighting if specified.")
+    hl: str = Schema('true', title="Highlighting (KWIC)", description="Turns on highlighting if specified.")
+    hlFields: str = Schema('text_xml', title="highlight fields (KWIC)", description="Specific fields to highlight.")
     hlMethod: str = Schema("unified", title="Highlighter method", description="Use either unified (fastest) or original.")
-    hlFragsize: str = Schema(None, title="highlight fragment size", description="KWIC segment lengths")
+    hlFragsize: str = Schema(0, title="highlight fragment size", description="KWIC segment lengths")
     hlMaxAnalyzedChars: int = Schema(0, title="The character limit to look for highlights, after which no highlighting will be done. This is mostly only a performance concern")
+    hlMaxKWICReturns: int = Schema(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title="The character limit to look for highlights, after which no highlighting will be done. This is mostly only a performance concern")
     hlMultiterm: str = Schema('true', title="If set to true, Solr will highlight wildcard queries (and other MultiTermQuery subclasses). If false, they won’t be highlighted at all.")
     hlTagPost: str = Schema('@@@@#', title="Markup (tag) after hit term")
     hlTagPre: str = Schema('#@@@@', title="Markup (tag) before hit term")
     hlSnippets: str = Schema(None, title="Max KWIC Returns", description="Max number of highlights permitted per field")
     hlUsePhraseHighlighter: str = Schema('true', title="Solr will highlight phrase queries (and other advanced position-sensitive queries) accurately – as phrases. If false, the parts of the phrase will be highlighted everywhere instead of only when it forms the given phrase.")
-    facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
+    queryDebug: str = Schema("off", title="Turn Solr debug info 'on' or 'off' (default=off)")
+    # facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
 
     # hlQ: str = Schema(None, title="Query to use for highlighting", description="allows you to highlight different terms than those being used to retrieve documents.")
     # maybe move these to a third part of SolrQuerySpec
@@ -408,10 +419,19 @@ class SolrQuerySpec(BaseModel):
     urlRequest: str = Schema(None, title="URL Request Made")
     # for PEP Opas, this is almost always pepwebdocs
     core: str = Schema("pepwebdocs", title="Selected core", description="Selected Solr core")
+    fileClassification: str = Schema(None, title="File Status: free, current, archive, or offsite", description="File Status: free, current, archive, or offsite")
     # TODO: this may be a good place to set the more standard return field default, even if only for the standard (usual) core, pepwebdocs
-    fullReturn: bool = Schema(None, title="Request full length text return", description="Request full length text (XML) return (otherwise, return field length is capped)")
+    fullReturn: bool = Schema(False, title="Request full length text return", description="Request full length text (XML) return (otherwise, return field length is capped)")
+    abstractReturn: bool = Schema(False, title="Request return of abstracts or summaries", description="Request return of abstracts or summaries")
+    returnFields: str = Schema(None, title="List of return fields (ExtendedSearch Only)", description="Comma separated list of return fields.  Only applies to ExtendedSearch.")
+    returnFormat: str = Schema("HTML", title="Return type: XML, HTML, TEXT_ONLY", description="Return type: XML, HTML, TEXT_ONLY")
+    facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
     limit: int = Schema(15, title="Record Limit for Solr returns")
     offset: int = Schema(0, title="Record Offset in return set")
+    page: int = Schema(15, title="Page Number in return set")
+    page_limit: int = Schema(15, title="Page Limit for Solr returns")
+    page_offset: int = Schema(15, title="Page offset in return set")
+    # sub structures
     solrQuery: SolrQuery = None
     solrQueryOpts: SolrQueryOpts = None
 

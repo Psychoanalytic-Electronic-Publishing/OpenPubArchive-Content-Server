@@ -73,6 +73,64 @@ class TestMost(unittest.TestCase):
         #assert(r["db_server_ok"] == True)
         print (r)
 
+    def test_0_mostviewed_argument_robustness(self):
+        """
+        """
+        # Try it with variations of the sourcetype to test new robust argument values
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=0')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=v')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=j')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=b')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=x')
+        #  let's fail
+        r = response.json()
+        assert(response.ok == False)
+
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=videos&viewperiod=4&limit=5')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vids&viewperiod=4&limit=5')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vxds&viewperiod=4&limit=5')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+    def test_0_mostviewed_videos(self):
+        """
+        """
+        # request login to the API server
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=videostream&viewperiod=4&limit=5')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['count']}")
+        print (f"Limit: {r['documentList']['responseInfo']['limit']}")
+        #sometimes no data there
+        if r['documentList']['responseSet'] != []:
+            assert(r['documentList']['responseSet'][0]['stat']['downloads_last12months'] > 0)
+        #assert(r["text_server_ok"] == True)
+        #assert(r["db_server_ok"] == True)
+        print (r)
+        # Try it with variations of the sourcetype to test new robust argument values
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vid&viewperiod=4&limit=5')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
     def test_0_most_cited(self):
         """
         """

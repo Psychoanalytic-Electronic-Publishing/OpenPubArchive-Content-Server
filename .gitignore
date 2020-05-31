@@ -27,7 +27,7 @@ OPASServer/.vscode/*
 OPASServer/vs_opas.code-workspace
 OpenPubArchive.wpu
 SamplesAndTests/
-app/config/localsecrets.py
+localsecrets.py
 app/libs/Garbage*
 app/libs/examples/*
 app/libs/recreateUsers.py

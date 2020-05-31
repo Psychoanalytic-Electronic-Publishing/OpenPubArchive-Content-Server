@@ -25,11 +25,14 @@
                   art_body_xml
              
     2020-01-05: More schema clean up. 
+
     2020-01-20: Re-add summaries_xml used to display summaries when there's no abstract
+
     2020-04-10: Added:
                   Added art_authors_citations to allow sort by authors
                   docValues for quotes_spkr set to true
                   docValue whereever it was supported
+
     2020-04-11: Added:
                   strings type, boolean, booleans because it was required online going to Solr 8.5
                   (cores would not load without that.)
@@ -39,7 +42,10 @@
                           glossary_terms- string_ci
                           glossary_group_terms - string_ci
                           freuds_italics - string_ci
-    
+
+    2020-05-30: Added definitions for art_views_last... fields.  Now supports in place updates to 
+                  allow these to be updated weekly or monthly.
+        
    Schema version attribute note: 
    
    The default values for each property depend on the underlying FieldType class, which in turn may depend on the version 
@@ -105,6 +111,7 @@
   <field name="art_cited_5" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_cited_10" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_cited_20" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
+  
   <field name="art_sourcecode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_sourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_sourcetitlefull" type="text_simple" indexed="true" stored="true" multiValued="false"/>
@@ -174,8 +181,12 @@
   <field name="art_type" type="string" indexed="true" stored="true" multiValued="false" docValues="true" />
 
   <field name="art_pgrg" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!--Added 2020-05-06-->
+  <field name="art_pgcount" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_lang" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_issn" type="string" indexed="true" stored="true" multiValued="false"/>
+  <!--Added 2020-05-06-->
+  <field name="art_isbn" type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="art_kwds"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_qual" type="string" indexed="true" stored="true" docValues="true" multiValued="false"/>
   <!--Added for faceting use, 2020-04-25-->
@@ -266,8 +277,14 @@
   <field name="para_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
   <field name="parent_tag" type="string" indexed="true" stored="true"/>
   <copyField source="para" dest="para_syn"/>
-
-
+  <!--Added art_views_lastcalyear 2020-05 to meet search requirements-->
+  <!--These have to be false for all but docValues to allow in place updates-->
+  <field name="art_views_lastcalyear" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/> 
+  <field name="art_views_last1mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_last6mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_last12mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_lastweek" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  
   <!--<field name="level" type="pint" indexed="true" stored="false" docValues="true"/>-->
 
   <!-- The String case insensitive field.

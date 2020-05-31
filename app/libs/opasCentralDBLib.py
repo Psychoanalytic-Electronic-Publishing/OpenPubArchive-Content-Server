@@ -35,11 +35,12 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
 #2019.0708.1 - Python 3.7 compatible.  Work in progress.
 #2019.1110.1 - Updates for database view/table naming cleanup
 #2020.0426.1 - Updates to ensure doc tests working, a couple of parameters changed names
+#2020.0530.1 - Fixed doc tests for termindex, they were looking at number of terms rather than term counts
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0426.1"
+__version__     = "2020.0530.1"
 __status__      = "Development"
 
 import sys
@@ -47,6 +48,8 @@ sys.path.append('../libs')
 sys.path.append('../config')
 
 import opasConfig
+from opasConfig import norm_val # use short form everywhere
+
 import localsecrets
 # from localsecrets import DBHOST, DBUSER, DBPW, DBNAME
 
@@ -319,13 +322,12 @@ class opasCentralDB(object):
         
     def get_most_viewed( self,
                          publication_period=None, # default, all of time
-                         sort_by_view_period: int=0, # last calendar year
-                         document_type="journals",
+                         view_period=4, # last 12 months
                          author=None,
                          title=None,
                          source_name: str=None,  
                          source_code: str=None,
-                         source_type: str=None,
+                         source_type: str="journals", 
                          limit=None,
                          offset=0
                        ):
@@ -336,13 +338,13 @@ class opasCentralDB(object):
          1) Using documents published in the last publication_period N years (PEP-Web offers the last 5, 10, 20, or all years).
             publication_period takes an int and covers these or any other period (now - viewPeriod years).
          2) Filtering videos, journals, books, or all content.  Document type filters this.
-            Can be: "journals", "books", "videos", or "all" (default)
+            Can be: "journal", "book", "videostream", or "all" (default)
          3) Optionally filter for author, title, or specific journal.
             Per whatever the caller specifies in parameters.
-         4) show views in last 7 days, last month, last 6 months, last calendar year.
-            This function returns them all.
+         4) view_period shows rows with views either in last 7 days, last month, last 6 months, last calendar year.
+            All values for matches are returned, sort order is in views, descending.
          
-            publication_period = {
+            view_period = {
                 0: "lastcalendaryear",
                 1: "lastweek",
                 2: "lastmonth",
@@ -352,6 +354,9 @@ class opasCentralDB(object):
             
         """
         ret_val = None
+        row_count = 0
+        # always make sure we have the right input value
+        source_type = norm_val(source_type, opasConfig.VALS_SOURCETYPE)
         self.open_connection(caller_name="get_most_downloaded") # make sure connection is open
         if limit is not None:
             limit_clause = f"LIMIT {offset}, {limit}"
@@ -361,14 +366,6 @@ class opasCentralDB(object):
         if self.db is not None:
             cursor = self.db.cursor(pymysql.cursors.DictCursor)
 
-            #if document_type == "journals":
-                #doc_type_clause = " AND jrnlcode NOT IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW') \
-                                    #AND jrnlcode not like '%VS'"
-            #elif document_type == "books":
-                #doc_type_clause = " AND jrnlcode IN ('ZBK', 'SE', 'IPL', 'NPL', 'GW')"
-            #elif document_type == "videos":
-                #doc_type_clause = " AND jrnlcode like '%VS'"
-            #else:
             doc_type_clause = ""  # all
             vws_clause = ""
             
@@ -388,7 +385,7 @@ class opasCentralDB(object):
                 source_clause = ""
                 
             if source_type is not None:
-                source_type_clause = f" AND src_type RLIKE '{source_type}'"
+                source_type_clause = f" AND source_type RLIKE '{source_type}'"
             else:
                 source_type_clause = ""
 
@@ -405,22 +402,22 @@ class opasCentralDB(object):
             else:
                 source_code_clause = ""
                 
-            if publication_period is not None and publication_period != 0:
+            if publication_period is not None:
                 pub_year_clause = f" AND `pubyear` > YEAR(NOW()) - {publication_period}"  # consider only the past N years
             else:
                 pub_year_clause = ""
 
-            if sort_by_view_period is not None:
+            if view_period is not None:
                 # 1 through 5 reps the 5 different values
-                if sort_by_view_period == 1 or sort_by_view_period == "lastweek":
+                if view_period == 1 or view_period == "lastweek":
                     sort_by_col_name = "lastweek"
-                elif sort_by_view_period == 2 or sort_by_view_period == "lastmonth":
+                elif view_period == 2 or view_period == "lastmonth":
                     sort_by_col_name = "lastmonth"
-                elif sort_by_view_period == 3 or sort_by_view_period == "last6months":
+                elif view_period == 3 or view_period == "last6months":
                     sort_by_col_name = "last6months"
-                elif sort_by_view_period == 4 or sort_by_view_period == "last12months":
+                elif view_period == 4 or view_period == "last12months":
                     sort_by_col_name = "last12months"
-                elif sort_by_view_period == 0 or sort_by_view_period == "lastcalendaryear":
+                elif view_period == 0 or view_period == "lastcalendaryear":
                     sort_by_col_name = "lastcalyear"
                 else:
                     sort_by_col_name = "last12months"
@@ -429,7 +426,7 @@ class opasCentralDB(object):
                 
             sort_by_clause = f" ORDER BY {sort_by_col_name} DESC"
 
-            sql = f"""SELECT DISTINCTROW * FROM vw_stat_most_viewed WHERE 1 = 1 \
+            sql = f"""SELECT DISTINCTROW * FROM vw_stat_most_viewed WHERE {sort_by_col_name} > 0 \
                       {doc_type_clause}  {author_clause} {title_clause} {source_clause} {source_code_clause} {source_type_clause} {vws_clause} {pub_year_clause} \
                       {sort_by_clause} \
                       {limit_clause} \
@@ -447,129 +444,30 @@ class opasCentralDB(object):
         self.close_connection(caller_name="get_most_downloaded") # make sure connection is closed
         return row_count, ret_val
                
-    def get_most_viewed_ids_for_fts( self,
-                                     minimum_views: int=1, 
-                                     view_period: str='4', # last 12 months
-                                     author=None,
-                                     title=None,
-                                     source_code: str=None,
-                                     source_type: str=None,
-                                     limit=100, # no more than 100 by default
-                                     offset=0
-                               ):
+    def get_most_viewed_crosstab(self):
         """
-        Get a list of the most viewed IDS for passing in a search to Solr.
-        
+         Using the opascentral api_docviews table data, as dynamically statistically aggregated into
+           the view vw_stat_most_viewed return the most downloaded (viewed) Documents
+            
         """
         ret_val = None
-        self.open_connection(caller_name="get_most_viewed_ids") # make sure connection is open
-        if limit is not None:
-            limit_clause = f"LIMIT {offset}, {limit}"
-        else:
-            limit_clause = ""
+        row_count = 0
+        # always make sure we have the right input value
+        self.open_connection(caller_name="get_most_viewed_crosstab") # make sure connection is open
         
         if self.db is not None:
             cursor = self.db.cursor(pymysql.cursors.DictCursor)
-
-            if source_type == "journals":
-                source_type_clause = " AND document_id NOT RLIKE '(ZBK|SE|IPL|NPL|GW).*|(.*VS.*)'"
-            elif source_type == "books":
-                source_type_clause = " AND document_id RLIKE '(ZBK|SE|IPL|NPL|GW).*|(.*VS.*)'"
-            elif source_type == "videos":
-                source_type_clause = " AND document_id RLIKE '.*VS.*'"
-            else:
-                source_type_clause = ""  # all
-
-            if minimum_views != 0:
-                vws_clause = f"AND views >= {minimum_views}"
-            else:
-                vws_clause = f"AND views > 1" #  must be at least one view
-            
-            if author is not None:
-                # MySQL changes REG syntax in Version 8.04 and greater
-                try:
-                    mysqlmver = int(localsecrets.DBVER)
-                except:
-                    logger.warning("MySQL Version specification problem, just specify integer major version as DBVER={major}")
-                    mysqlmver = localsecrets.DBVER[0]
-                    
-                if mysqlmver >= 8:
-                    author_clause = fr" AND art_auth_citation RLIKE '.*\\b{author}\\b.*'"
-                else:
-                    author_clause = fr" AND art_auth_citation RLIKE '.*[[:<:]]{author}[[:>:]].*'"
-            else:
-                author_clause = ""
-                
-            if title is not None:
-                title_clause = f" AND hdgtitle RLIKE '{title}'"
-            else:
-                title_clause = ""
-
-            if source_code is not None:
-                src_split = source_code.split(",")
-                count = 0
-                for n in src_split:
-                    if count > 0:
-                        srcs_str += f", '{n.strip()}'"
-                    else:
-                        srcs_str = f"'{n.strip()}'"
-                    count += 1
-                source_code_clause = f" AND SUBSTRING_INDEX(document_id, '.', 1) IN ({srcs_str})"
-            else:
-                source_code_clause = ""
-            
-            try:
-                view_period_int = int(view_period)
-                if view_period_int == 1:
-                    view_period = opasConfig.VIEW_PERIOD_LASTWEEK
-                elif view_period_int == 2:
-                    view_period = opasConfig.VIEW_PERIOD_LASTMONTH
-                elif view_period_int == 3:
-                    view_period = opasConfig.VIEW_PERIOD_LAST6MONTHS
-                elif view_period_int == 0:
-                    view_period = opasConfig.VIEW_PERIOD_LASTCALYEAR
-                else:
-                    view_period = opasConfig.VIEW_PERIOD_LAST12MONTHS
-            except ValueError as e:
-                # it's not numeric
-                pass # it's ok, use that value below
-            except TypeError as e:
-                # it's likely None 
-                view_period == "last12months"
-            
-            # 1 through 5 reps the 5 different values
-            if view_period == opasConfig.VIEW_PERIOD_LASTWEEK:
-                view_name = opasConfig.VIEW_DBNAME_LASTWEEK
-            elif view_period == opasConfig.VIEW_PERIOD_LASTMONTH:
-                view_name = opasConfig.VIEW_DBNAME_LASTMONTH
-            elif view_period == opasConfig.VIEW_PERIOD_LAST6MONTHS:
-                view_name = opasConfig.VIEW_DBNAME_LAST6MONTHS
-            elif view_period == opasConfig.VIEW_PERIOD_LASTCALYEAR:
-                view_name = opasConfig.VIEW_DBNAME_LASTCALYEAR
-            else:
-                view_name = opasConfig.VIEW_DBNAME_LAST12MONTHS
-
-            # always sort by views
-            sort_by_clause = f" ORDER BY views DESC"
-
-            sql = f"""SELECT * FROM {view_name}, api_articles \
-                      WHERE document_id = api_articles.art_id \
-                      {author_clause} {title_clause} {source_code_clause} {source_type_clause} {vws_clause}  \
-                      {sort_by_clause} \
-                      {limit_clause} \
-                    """
+            sql = """SELECT DISTINCTROW * FROM vw_stat_docviews_crosstab"""
             row_count = cursor.execute(sql)
             if row_count:
                 ret_val = cursor.fetchall()
-                
-            print (f"SQL: {sql}")
-            
             cursor.close()
         else:
             logger.fatal("Connection not available to database.")
         
-        self.close_connection(caller_name="get_most_viewed_ids") # make sure connection is closed
+        self.close_connection(caller_name="get_most_downloaded_crosstab") # make sure connection is closed
         return row_count, ret_val
+
                
     def get_session_from_db(self, session_id):
         """
@@ -606,7 +504,6 @@ class opasCentralDB(object):
         
         >>> ocd = opasCentralDB()
         >>> ocd.get_mysql_version()
-        'Vers: 5.7.26'
         """
         ret_val = "Unknown"
         self.open_connection(caller_name="update_session") # make sure connection is open
@@ -1373,33 +1270,36 @@ class opasCentralDB(object):
             # no session open!
             logger.debug("No session is open")
             return ret_val
-
         try:
-            cursor = self.db.cursor()
-            sql = """INSERT INTO 
-                        api_docviews(user_id, 
-                                      document_id, 
-                                      session_id, 
-                                      type, 
-                                      datetimechar
-                                     )
-                                     VALUES 
-                                      (%s, %s, %s, %s, %s)"""
-            
-            ret_val = cursor.execute(sql,
-                                    (user_id,
-                                     document_id,
-                                     session_id, 
-                                     view_type, 
-                                     datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
-                                     )
-                                    )
-            self.db.commit()
-            cursor.close()
-
+            if view_type.lower() != "abstract" and view_type.lower() != "image/jpeg":
+                try:
+                    cursor = self.db.cursor()
+                    sql = """INSERT INTO 
+                                api_docviews(user_id, 
+                                              document_id, 
+                                              session_id, 
+                                              type, 
+                                              datetimechar
+                                             )
+                                             VALUES 
+                                              (%s, %s, %s, %s, %s)"""
+                    
+                    ret_val = cursor.execute(sql,
+                                            (user_id,
+                                             document_id,
+                                             session_id, 
+                                             view_type, 
+                                             datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+                                             )
+                                            )
+                    self.db.commit()
+                    cursor.close()
+        
+                except Exception as e:
+                    logger.warning(f"Error saving document view: {e}")
+                    
         except Exception as e:
-            logger.warning(f"record_document_view: {e}")
-            
+            logger.warning(f"Error checking document view type: {e}")
 
         self.close_connection(caller_name="record_document_view") # make sure connection is closed
 
@@ -1954,4 +1854,4 @@ if __name__ == "__main__":
     import doctest
     doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
     #doctest.testmod()    
-    print ("Tests complete.")
+    print ("Fini. Tests complete.")

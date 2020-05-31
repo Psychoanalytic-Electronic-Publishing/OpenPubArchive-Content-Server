@@ -9,12 +9,13 @@ This library is meant to hold parsing and other functions which support query tr
 
 2019.1205.1 - First version
 2020.0416.1 - Sort fixes, new viewcount options
+2020.0530.1 - Doc Test updates
 
 """
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0416.1"
+__version__     = "2020.0530.1"
 __status__      = "Development"
 
 import re
@@ -96,11 +97,11 @@ def comma_sep_list_to_simple_bool(termlist_str, boolpred="||"):
       logical connectors, you should not be calling this for processing the list
     
     >>> a = "EN, IT,  FR"
-    >>> termlist_to_bool(a)
+    >>> comma_sep_list_to_simple_bool(a)
     'EN || IT || FR'
     
     >>> a = "EN AND IT OR  FR NOT EX"
-    >>> termlist_to_bool(a)
+    >>> comma_sep_list_to_simple_bool(a)
     'EN || IT || FR || EX'
 
     """
@@ -150,7 +151,7 @@ class QueryTextToSolr():
     
     >>> qs = QueryTextToSolr()
     >>> qs.boolConnectorsToSymbols("a and band")
-    a && band
+    'a && band'
     
     """
     def __init__(self):
@@ -259,7 +260,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   para_textsearch=None,    # search paragraphs as child of scope
                                   para_scope="doc",        # parent_tag of the para, i.e., scope of the para ()
                                   fulltext1=None,          # term, phrases, and boolean connectors with optional fields for full-text search
-                                  solrSearchQ=None,        # the standard solr (advanced) query, overrides other query specs
+                                  #solrSearchQ=None,        # the standard solr (advanced) query, overrides other query specs
                                   synonyms=False,          # global field synonyn flag (for all applicable fields)
                                   # these are all going to the filter query
                                   source_name=None,        # full name of journal or wildcarded
@@ -276,7 +277,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   endyear=None,            # year only.
                                   citecount=None, 
                                   viewcount=None,          # minimum view count
-                                  viewedwithin=None,       # period to evaluate view count 0-4 (see view sort)
+                                  viewperiod=None,         # period to evaluate view count 0-4
                                   facetfields=None,        # facetfields to return
                                   # sort field and direction
                                   sort=None, 
@@ -302,13 +303,27 @@ def parse_search_query_parameters(search=None,             # url based parameter
          }        
         
     >>> search = parse_search_query_parameters(journal="IJP", vol=57, author="Tuckett")
-    >>> search.analyzeThis
-    'art_authors_ngrm:Tuckett '
+    >>> search.solrQuery.analyzeThis
+    'art_authors_text:(Tuckett) '
     
     """
     # always return SolrQueryOpts with SolrQuery
-    solrQueryOpts = models.SolrQueryOpts()
-    
+    if solrQueryTermList is not None:
+        if solrQueryTermList.solrQueryOpts is not None:
+            solrQueryOpts = solrQueryTermList.solrQueryOpts
+        else: # initialize a new model
+            solrQueryOpts = models.SolrQueryOpts()
+    else: # initialize a new model
+        solrQueryOpts = models.SolrQueryOpts()
+
+    # Set up return structure
+    solr_query_spec = \
+        models.SolrQuerySpec(
+                             core="pepwebdocs", # for now, this is tied to this core #TODO maybe change later
+                             solrQuery = models.SolrQuery(),
+                             solrQueryOpts=solrQueryOpts
+        )
+           
     # v1 translation:
     if journal is not None and journal != "":
         source_code = journal
@@ -359,7 +374,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
         elif porder == "d" or porder == "desc":
             porder = " desc"
         else:
-            porder = opasConfig.DEFAULT_SOLR_SORT_DIRECTION
+            if psort != "rank":
+                porder = opasConfig.DEFAULT_SOLR_SORT_DIRECTION
+            else:
+                porder = " desc" # asc gives a memory error in solr
 
         if psort == "author":
             sort = f"art_authors_citation {porder}" #  new field 20200410 for sorting (author names citation format)!
@@ -394,20 +412,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
         else:
             sort = f"{opasConfig.DEFAULT_SOLR_SORT_FIELD} {opasConfig.DEFAULT_SOLR_SORT_DIRECTION}"
             
-
-    if solrQueryTermList is None:
-        solrQueryOpts = models.SolrQueryOpts()
-    else:
+    if solrQueryTermList is not None:
         # used for a queryTermList structure which is typically sent via the API endpoint body.
         # It allows each term to set some individual patterns, like turning on synonyms and the field add-on for synonyns 
-        try:
-            if solrQueryTermList.solrQueryOpts is not None:
-                solrQueryOpts = solrQueryTermList.solrQueryOpts
-            #else: # defaults (already set to base model above)
-                #solrQueryOpts = models.SolrQueryOpts()
-        except: # defaults
-            solrQueryOpts = models.SolrQueryOpts()
-
         q = ""
         for query in solrQueryTermList.query:
             if query.field is None:
@@ -436,15 +443,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)
 
     if facetfields is not None:
-        solrQueryOpts.facetFields = opasAPISupportLib.string_to_list(facetfields)
-        #if "," in facetfields:
-            ## change str with cslist to python list
-            #facetfields = re.sub("\s*,\s*", ",", facetfields)
-            #solrQueryOpts.facetFields = facetfields.split(",")
-        #else:
-            ## cleanup whitespace around str
-            #facetfields = re.sub("\s*(?P<field>\S*)\s*", "\g<field>", facetfields)
-            #solrQueryOpts.facetFields = facetfields       
+        solr_query_spec.facetFields = opasAPISupportLib.string_to_list(facetfields)
 
     # note these are specific to pepwebdocs core.  #TODO Perhaps conditional on core later, or change to a class and do it better.
     if para_textsearch is not None:
@@ -644,89 +643,68 @@ def parse_search_query_parameters(search=None,             # url based parameter
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
         
-
-    if viewcount is not None:
-        # viewperiod = what period should viewcount be against?
-        # which means last 12 months
-        # bring back top documents viewed viewcount times
+    # if viewcount == 0, then it's not a criteria needed (same as None)
+    # if user inputs text instead, also no criteria.
+    try:
         viewcount_int = int(viewcount)
-        if viewcount_int == 0:
-            viewcount_int = 1 # minimum times viewed
+    except:
+        viewcount_int = 0
+    
+    if viewcount_int != 0:
+        # bring back top documents viewed viewcount times
 
-        if viewedwithin is None:
-            viewperiod_int = 4 # default last 12 months
+        view_periods = {
+            0: "art_views_lastcalyear",
+            1: "art_views_lastweek",
+            2: "art_views_last1mos",
+            3: "art_views_last6mos",
+            4: "art_views_last12mos",
+        }
+         
+        try:
+            viewedwithin = int(viewedwithin) # note default is 4
+        except:
+            viewedwithin = 4 # default last 12 months
         else:
-            viewperiod_int = int(viewedwithin) # note default is 4
             # check range, set default if out of bounds
-            if viewperiod_int < 0 or viewperiod_int > 4:
-                viewperiod_int = 4
+            if viewedwithin < 0 or viewedwithin > 4:
+                viewedwithin = 4
 
-        count, most_viewed = ocd.get_most_viewed_ids_for_fts(minimum_views=viewcount_int, 
-                                                             view_period=viewperiod_int, 
-                                                             source_code=vc_source_code,
-                                                             source_type=source_type, 
-                                                             limit=50
-                                                            )  # (most viewed)
-        doc_filter = ""
-        if most_viewed is not None:
-            for n in most_viewed:
-                doc_id = n.get("document_id", None)
-                if doc_id is not None:
-                    if doc_filter == "":
-                        doc_filter = f"{doc_id}"
-                    else:
-                        doc_filter += f" || {doc_id}"
-
-        if doc_filter != "":
-            analyze_this = f" && art_id:({doc_filter})"
-            search_analysis_term_list.append(analyze_this)
-            filter_q += analyze_this
-            
-
-    if solrSearchQ is not None:
-        search_q = solrSearchQ # (overrides fields) # search = solrQ
-        search_analysis_term_list = [solrSearchQ]
+        view_count_field = view_periods[viewedwithin]
         
+        # Get the viewcounts from the database
+        analyze_this = f"&& {view_count_field}:[{viewcount_int} TO *] "
+        filter_q += analyze_this
+        search_analysis_term_list.append(analyze_this)
 
     # now clean up the final components.
     if search_q is not None:
         # no need to start with '*:* && '.  Remove it.
         search_q = search_q.replace("*:* && ", "")
-        
 
     if filter_q is not None:
         # no need to start with '*:* && '.  Remove it.
         filter_q = filter_q.replace("*:* && ", "")
-        
-
+       
     if analyze_this is not None:
         # no need to start with '&& '.  Remove it.
         analyze_this = pat_prefix_amps.sub("", analyze_this)
     
     if search_analysis_term_list is not []:
-        search_analysis_term_list = [pat_prefix_amps.sub("", x) for x in search_analysis_term_list]
-
-    
+        search_analysis_term_list = [pat_prefix_amps.sub("", x) for x in search_analysis_term_list]  
 
     search_q = search_q.strip()
     filter_q = filter_q.strip()
     if search_q == "*:*" and filter_q == "*:*":
         filter_q = "art_level:1"
 
-    solrQuery = models.SolrQuery(analyzeThis = analyze_this,
-                                 searchQ = search_q,
-                                 filterQ = filter_q,
-                                 searchAnalysisTermList = search_analysis_term_list,
-                                 sort = sort
-    )
-
-    solrQuerySpec = models.SolrQuerySpec(
-        core="pepwebdocs", # for now, this is tied to this core #TODO maybe change later
-        solrQuery=solrQuery,
-        solrQueryOpts=solrQueryOpts
-    )
-        
-    return solrQuerySpec
+    solr_query_spec.solrQuery.searchQ = search_q
+    solr_query_spec.solrQuery.filterQ = filter_q
+    solr_query_spec.solrQuery.analyzeThis = analyze_this
+    solr_query_spec.solrQuery.searchAnalysisTermList = search_analysis_term_list
+    solr_query_spec.solrQuery.sort = sort
+    
+    return solr_query_spec
 
 # -------------------------------------------------------------------------------------------------------
 # run it!
@@ -736,7 +714,8 @@ if __name__ == "__main__":
     print ("Running in Python %s" % sys.version_info[0])
 
     import doctest
-    doctest.testmod()    
+    doctest.testmod()
+    print ("Fini. OpasQueryHelper Tests complete.")
     sys.exit()
     
     # this was a test for QueryTextToSolr class, the parser part, but not using that now.

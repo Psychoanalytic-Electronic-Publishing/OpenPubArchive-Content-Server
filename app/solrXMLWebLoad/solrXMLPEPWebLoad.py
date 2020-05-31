@@ -25,7 +25,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.05.07"
+__version__     = "2020.05.29"
 __status__      = "Development"
 
 #Revision Notes:
@@ -95,6 +95,16 @@ __status__      = "Development"
 
     #2020-05-07  # Added art_pgcount and art_isbn to masterPEPWebDocsSchema and manually added them to Solr to match.
                  # Added code to load these data.
+                 
+    #2020-05-29  # Added updates(!) to the docs database, allowing views to be included and updated with the weekly
+                 # Use the -v option to turn it on.  It will add data for any document that was viewed n the last month
+                 # during updates.  No user option to force the whole database, but it can be done easily by a one line
+                 # code tweak.
+                 # 
+                 # Note that Solr 8.5 is very tricky about updating db's with child documents that started after 8.2,
+                 # but it works as long as you just give the art_id (I tried adding art_level when I first got the error,
+                 # but that didn't work on 8.5.  To get it to work, I had to more closely follow the definitions for
+                 # the schema, with basically only doc_values defined.
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
@@ -166,12 +176,8 @@ rc_stopword_match = read_stopwords() # returns compile re for matching stopwords
 
 def strip_tags(value, compiled_tag_pattern):
     """
-    >>> strip_tags('<impx type="TERM2" rx="ZBK.069.0001t.YN0015395997200" grpname="Trauma">trauma</impx>')
-    'Trauma'
-    > strip_tags("<i>The Interpretation of Dreams</i>")
-    'The Interpretation of Dreams'
-    > strip_tags(r'<b>\\n\t\t\t\t\t\t\t<pb><n nextpgnum=\"P0234\" prefixused=\"\">233</n></pb>IX</b>')
-    'pagebreak'
+    Strip tags matching the compiled_tag_pattern.
+    
     """
     ret_val = value
     m = compiled_tag_pattern.match(value)
@@ -1372,6 +1378,55 @@ def add_article_to_api_articles_table(ocd, art_info):
     return ret_val  # return True for success
 
 #------------------------------------------------------------------------------------------------------
+def update_views_data(solrcon, view_period=0):
+    """
+    Use in-place updates to update the views data
+           
+    """
+    
+    ocd =  opasCentralDBLib.opasCentralDB()
+    
+    # viewed last calendar year, default
+    if view_period < 0 or view_period > 4:
+        view_period = 0
+
+    count, most_viewed = ocd.get_most_viewed_crosstab()
+    print ("Crosstab data downloaded.  Starting to update the Solr database with the views data.")
+    update_count = 0
+    if most_viewed is not None:
+        for n in most_viewed:
+            doc_id = n.get("document_id", None)
+            count_lastcalyear = n.get("lastcalyear", None) 
+            count_last12mos = n.get("last12months", None) 
+            count_last6mos = n.get("last6months", None) 
+            count_last1mos = n.get("lastmonth", None)
+            count_lastweek = n.get("lastweek", None)
+            
+            update_if_count = count_last6mos
+            if doc_id is not None and update_if_count > 0:
+                update_count += 1
+                upd_rec = {
+                            "id":doc_id,
+                            "art_views_lastcalyear": count_lastcalyear, 
+                            "art_views_last12mos": count_last12mos, 
+                            "art_views_last6mos": count_last6mos, 
+                            "art_views_last1mos": count_last1mos, 
+                            "art_views_lastweek": count_lastweek
+                }                    
+                try:
+                    solrcon.add([upd_rec], fieldUpdates={"art_views_lastcalyear": 'set',
+                                                         "art_views_last12mos": 'set',
+                                                         "art_views_last6mos": 'set',
+                                                         "art_views_last1mos": 'set',
+                                                         "art_views_lastweek": 'set',
+                                                         }, commit=True)
+                except Exception as err:
+                    errStr = "Solr call exception for views update on %s: %s" % (doc_id, err)
+                    print (errStr)
+                    
+    print (f"Finished updating Solr database with {update_count} article views/downloads.")
+
+#------------------------------------------------------------------------------------------------------
 def process_glossary_core(solr_glossary_core):
     """
     Process the special PEP Glossary documents.  These are linked to terms in the document
@@ -1672,6 +1727,8 @@ def main():
                       help="Load the full-set of database file records for a full solr db reload")
     parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
                       help="Whether to run the files selected in reverse")
+    parser.add_option("-v", "--viewsupdate", dest="views_update", action="store_true", default=False,
+                      help="Whether to update the views data in Solr when updating documents")
     #parser.add_option("-u", "--url",
                       #dest="solrURL", default=config.DEFAULTSOLRHOME,
                       #help="Base URL of Solr api (without core), e.g., http://localhost:8983/solr/", metavar="URL")
@@ -1803,6 +1860,9 @@ def main():
         # check for missing files and delete them from the core, since we didn't empty the core above
         pass
 
+    if options.views_update:
+        print(("Update 'View Counts' in Solr selected.  Counts to be updated for all files viewed in the last month.".format(options.rootFolder)))
+        
     # Glossary Processing only
     if options.glossary_core_update:
         # this option will process all files in the glossary core.
@@ -2046,6 +2106,12 @@ def main():
             #except Exception as e:
                 #print(("Exception: ", e))
             
+            # if called for with the -v option, do an update on all the views data, 
+            # it takes about 5 minutes to remote update 400 records on AWS
+            if options.views_update:
+                print (f"Updating Views Data Starting ({time.ctime()}).")
+                update_views_data(solr_docs2)
+            
             print (f"Load process complete ({time.ctime()}).")
             if processed_files_count > 0:
                 try:
@@ -2097,10 +2163,10 @@ def main():
 # run it!
 
 if __name__ == "__main__":
-    if 0:
+    if 1:
         import doctest
         doctest.testmod()
-        print ("All Tests Completed")
+        print ("Fini. SolrXMLPEPWebLoad Tests complete.")
         sys.exit()
 
     main()

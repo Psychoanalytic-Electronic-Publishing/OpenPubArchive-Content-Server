@@ -24,6 +24,41 @@ import urllib
 from unitTestConfig import base_api, base_plus_endpoint_encoded
 
 class TestSearch(unittest.TestCase):
+    def test_0a_possible_error(self): 
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewperiod=&fulltext1=cried&sort=rank&limit=15&offset=0')
+        response = requests.get(full_URL)
+        assert(response.ok == True) # rank is accepted, same as score
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["fullCount"] >= 6)
+        #print (response_set)
+        for n in response_set:
+            print (n["documentRef"])
+        # Confirm that the request-response cycle completed successfully.
+        
+    def test_0b_parameter_error(self):
+        # bad boolean parameter
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewperiod=&fulltext1=cried&sort=rank&synonyms=WTF')
+        response = requests.get(full_URL)
+        assert(response.ok == False)
+        r = response.json()
+
+    def test_0b_good_language_code(self):
+        # bad boolean parameter
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=cried&sourcelangcode=en')
+        response = requests.get(full_URL)
+        assert(response.ok == True)
+        r = response.json()
+
+    def test_0b_bad_language_code(self):
+        # bad boolean parameter
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewperiod=&fulltext1=cried&sourcelangcode=e')
+        response = requests.get(full_URL)
+        assert(response.ok == False)
+        r = response.json()
+
     def test_1a_search_mixedcase(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=Greenfield')

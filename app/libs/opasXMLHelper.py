@@ -60,7 +60,7 @@ __status__      = "Development"
 
 
 import sys
-sys.path.append('../libs')
+# sys.path.append('../libs')
 sys.path.append('../config')
 
 import re
@@ -77,10 +77,11 @@ os.environ['XML_CATALOG_FILES'] = urllib.request.pathname2url(r"X:\_PEPA1\catalo
 import lxml
 from lxml import etree
 import lxml.html as lhtml
+
+import opasConfig
 from localsecrets import APIURL, IMAGE_API_LINK
 
 from ebooklib import epub
-import opasConfig
 from io import StringIO, BytesIO
 
 show_dbg_messages = True
@@ -762,7 +763,7 @@ def xml_get_pages_html(xmlorhtmlstr, offset=0, limit=1, inside="div[@id='body']"
     
     >>> ret_tuple = xml_get_pages_html(realxmlinst, 21, 3, inside="div[@id='body']", env="html", remove_tags=["div[@id='front']"])
     >>> ret_tuple[0][:99]
-    '<html>\\n<p class="para" id="...">The chief importance however of the <i>aliquis</i> example...'
+    '<html>\\n<p class="para" id="...">The chief importance however of the <i>aliquis</i> ...'
     >>> ret_tuple[2:]
     ('13', '15')
     """

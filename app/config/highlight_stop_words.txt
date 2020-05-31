@@ -1,5 +1,7 @@
 about
 after
+a\.? priori\.?
+ad\.? hoc\.?
 against
 all
 also
@@ -11,14 +13,17 @@ as|as if
 be
 because
 before
+between
 both
+but
 by
 can(not)*
 could
 did
 do
 does
-et al
+et\.? al\.?
+false
 first
 five
 four
@@ -38,6 +43,7 @@ if
 in
 is
 it
+journal
 know
 may
 me
@@ -45,20 +51,25 @@ more
 must
 my
 never
+non?
 not
+new
 now
 of
 or
-one
+one?
+our
+own
 only
 op cit
 other
-per se
+per\.? se\.?
 qua
 really
 should
 see
 she
+sic
 six
 some
 that
@@ -67,16 +78,19 @@ themsel[f|ves]
 their
 they
 this
+there
 three
 to
+true
 two
+ucs
 was
 we
-we(\'re)?
+we(\'?re)?
 will
 what
 who
 why
-with(out)?
+with(out|in)?
 would
 you

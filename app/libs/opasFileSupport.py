@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+__author__      = "Neil R. Shapiro"
+__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
+__license__     = "Apache 2.0"
+__version__     = "2020.05.30"
+__status__      = "Development"
+
+#Revision Notes:
+    #20200530 Added front matter.  Fixed doctest reference (should have been doc rather than docs)
+
 import sys
 import localsecrets
 import s3fs # https://s3fs.readthedocs.io/en/latest/api.html#s3fs.core.S3FileSystem
@@ -142,6 +154,7 @@ class FlexFileSystem(object):
         """
         # split name to get folder subpath for downloads
         try:
+            filespec = filespec.strip()
             fsplit = filespec.split(".")
             jrnlcode, vol, pagenum = fsplit[0:3]
             # remove any suffix for vol, so we don't need to separate the folders
@@ -169,7 +182,7 @@ class FlexFileSystem(object):
         
         >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
         >>> fs.get_image_filename("AIM.036.0275A.FIG001", path=localsecrets.IMAGE_SOURCE_PATH)
-        'pep-web-files/docs/g/AIM.036.0275A.FIG001.jpg'        
+        'pep-web-files/doc/g/AIM.036.0275A.FIG001.jpg'        
         >>> fs = FlexFileSystem()
         >>> fs.get_image_filename(r"X:\PEP Dropbox\PEPWeb\_PEPA1\g\IJAPS.016.0181A.FIG002")
         'X:\\\\PEP Dropbox\\\\PEPWeb\\\\_PEPA1\\\\g\\\\IJAPS.016.0181A.FIG002.jpg'
@@ -282,14 +295,13 @@ if __name__ == "__main__":
 
     import doctest
     doctest.testmod()    
-    print ("Fini")
+    print ("Fini. opasFileSupport Tests complete.")
     sys.exit()
 
     # test S3FileSystem
     remfs = s3fs.S3FileSystem(anon=False, key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
     #fs.ls("embedded-graphics")
     filename_and_path = "pep-web-files/doc/g/BAP.01.0004.FIG001.jpg"
-    # filename_and_path = "pep-web-files/docs/g/pep.css"
     
     try:
         if remfs.ls(filename_and_path) != []:

@@ -97,6 +97,7 @@ DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 4000  # If the excerpt to first page break ex
 DEFAULT_CITED_MORE_THAN = 25
 
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 2520000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
+SOLR_HIGHLIGHT_RETURN_MIN_FRAGMENT_SIZE = 2000 # Abstract size
 
 #Standard Values for parameters
 # here anything matching the first 4 characters of type matches.
@@ -185,8 +186,8 @@ DESCRIPTION_SYNONYMS = "Expand search to include specially declared synonyms (Tr
 DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)."
 DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
-DESCRIPTION_VIEWCOUNT = "Not yet implemented"    
-DESCRIPTION_VIEWEDWITHIN ="Not yet implemented"
+DESCRIPTION_VIEWCOUNT = "Filter by # of times document downloaded (viewed) per the viewedwithin period.  Does not include abstract views."    
+DESCRIPTION_VIEWPERIOD = "One of a few preset time frames for which to evaluate viewcount; 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months."
 DESCRIPTION_VOLUMENUMBER = "The volume number if the source has one"
 DESCRIPTION_WORD = "A word prefix to return a limited word index (word-wheel)."
 DESCRIPTION_WORDFIELD = "The field for which to look up the prefix for matching index entries.  It must be a full-text indexed field (text field or derivative)"
@@ -230,8 +231,8 @@ TITLE_SYNONYMS = "Synonym expansion switch (True/False)"
 TITLE_TERMFIELD = "Default field for which to get term counts"
 TITLE_TERMLIST = "Comma separated list of terms for which to get counts"
 TITLE_TITLE = "Document Title"
-TITLE_VIEWCOUNT = "Find Documents viewed this many times"
-TITLE_VIEWEDWITHIN = "Find Documents viewed this many times within a period"
+TITLE_VIEWCOUNT = "Find Documents viewed this many times within the view period"
+TITLE_VIEWPERIOD = "One of the preset timeframes within which to evaluate viewcount"
 TITLE_VOLUMENUMBER = "Volume Number"
 TITLE_WORD = "Word prefix"
 TITLE_WORDFIELD = "Field to check word in index"
