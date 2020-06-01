@@ -38,7 +38,7 @@ Also, some of these functions are reused in different API calls.
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0530.1"
+__version__     = "2020.0601.1"
 __status__      = "Development"
 
 import os
@@ -2788,15 +2788,30 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
                     similarNumFound = None
 
                 
-                stat = None
+                stat = {}
                 count_all = result.get("art_cited_all", None)
                 if count_all is not None:
-                    stat = {}
                     stat["art_cited_5"] = result.get("art_cited_5", None)
                     stat["art_cited_10"] = result.get("art_cited_10", None)
                     stat["art_cited_20"] = result.get("art_cited_20", None)
                     stat["art_cited_all"] = count_all
                 
+                count0 = result.get("art_views_lastcalyear", 0)
+                count1 = result.get("art_views_lastweek", 0)
+                count2 = result.get("art_views_last1mos", 0)
+                count3 = result.get("art_views_last6mos", 0)
+                count4 = result.get("art_views_last12mos", 0)
+
+                if count0 + count1 + count2 + count3+ count4 > 0:
+                    stat["art_views_lastcalyear"] = count0
+                    stat["art_views_lastweek"] = count1
+                    stat["art_views_last1mos"] = count2
+                    stat["art_views_last6mos"] = count3
+                    stat["art_views_last12mos"] = count4
+
+                if stat == {}:
+                    stat = None
+                    
                 documentListItem.stat = stat
 
                 similarityMatch = None

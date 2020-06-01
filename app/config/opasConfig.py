@@ -328,6 +328,11 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, \
                                art_cited_5, \
                                art_cited_10, \
                                art_cited_20, \
+                               art_views_lastcalyear, \
+                               art_views_last1mos, \
+                               art_views_last6mos, \
+                               art_views_last12mos, \
+                               art_views_lastweek, \
                                reference_count, \
                                file_classification, \
                                file_last_modified, \

@@ -283,12 +283,16 @@ Endpoint and model documentation automatically available when server is running 
            # Finished implementing PDFOriginal download feature (was not fully built).  Tested, working ok.
            #    TestDownload succeeds, must run the full test since test_1 ... depends on test_0_login.
            #    In the process of uploading full set to S3.
+           
+#2020.0601 # Added art_views_* to stat field returned in documentListItems (and of course to the standard list of fields 
+           # returned by Solr for all but ExtendedSearch).
+
 #----------------------------------------------------------------------------------------------
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0530.1.Alpha3.3.2"
+__version__     = "2020.0601.1.Alpha3.3.4"
 __status__      = "Development"
 
 import sys
