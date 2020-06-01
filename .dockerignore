@@ -3,5 +3,7 @@
 .git
 .cache
 **/.venv
+**/solrCoreConfigurations/*.*
+**/sql/*.*
 
  

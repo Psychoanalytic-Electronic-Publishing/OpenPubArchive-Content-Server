@@ -33,6 +33,7 @@ app/libs/examples/*
 app/libs/recreateUsers.py
 app/libs/styles/defunct or example-only
 env/
+deprecated/
 ftp.passwd
 global set of requirements.txt
 libs/Garbage*

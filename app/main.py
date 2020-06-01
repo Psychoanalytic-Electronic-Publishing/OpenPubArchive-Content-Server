@@ -292,8 +292,8 @@ __version__     = "2020.0530.1.Alpha3.3.2"
 __status__      = "Development"
 
 import sys
-# sys.path.append('./config')
-# sys.path.append('./libs')
+sys.path.append('./config')
+sys.path.append('./libs')
 # sys.path.append('./libs/solrpy')
 
 import os.path
@@ -341,7 +341,7 @@ app = FastAPI()
 # from pydantic import BaseModel
 # from pydantic.types import EmailStr
 from pydantic import ValidationError
-import solrpy as solr
+# import solrpy as solr
 # import json
 from config.opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES
 import config.opasConfig as opasConfig
