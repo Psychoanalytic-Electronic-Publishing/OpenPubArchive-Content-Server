@@ -2123,7 +2123,7 @@ def search_analysis( query_list,
     rowCount = 0
     term_field = None
     # save classes to neutral names so we can change between documentList and termIndex
-    if api_version == "v1":
+    if 0: # api_version == "v1":
         RetItem = models.DocumentListItem
         RetStruct = models.DocumentListStruct
         RetList = models.DocumentList
@@ -2222,7 +2222,7 @@ def search_analysis( query_list,
     return_list_struct = RetStruct( responseInfo = response_info, 
                                     responseSet = return_item_list
                                   )
-    if api_version == "v1":
+    if 0: # api_version == "v1":
         ret_val = RetList(documentList = return_list_struct)
     else:
         ret_val = RetList(termIndex = return_list_struct)

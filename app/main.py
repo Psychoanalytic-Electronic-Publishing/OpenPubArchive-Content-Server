@@ -287,12 +287,17 @@ Endpoint and model documentation automatically available when server is running 
 #2020.0601 # Added art_views_* to stat field returned in documentListItems (and of course to the standard list of fields 
            # returned by Solr for all but ExtendedSearch).
 
+#2020.0602 # fixes to v1 endpoints to work properly with the current alpha of PEP-Easy
+           # (added back in datetype, and handled special before case)
+           # Set search_analysis_v1 to return term list, making it a requirement that
+           # any v1 UI would need a change, but that really only means PEP-Easy, which has
+           # been adjusted in other ways anyway.
 #----------------------------------------------------------------------------------------------
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0601.1.Alpha3.3.4"
+__version__     = "2020.0602.1.Alpha3.3.5"
 __status__      = "Development"
 
 import sys
@@ -1854,6 +1859,7 @@ async def database_search_v1(response: Response,
                              volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
                              author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                              title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
+                             datetype: str=Query(None, title=opasConfig.TITLE_DATETYPE, description=opasConfig.DESCRIPTION_DATETYPE), 
                              startyear: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
                              endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
                              sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
@@ -1886,6 +1892,13 @@ async def database_search_v1(response: Response,
     # need to decide if we should parse and cleanup fulltext1.
     # IMPORTANT NOTE: when calling another endpoint directly like this, you must include all parameters, or else what gets defaulted for that 
     #                 schema description which isn't what you want!
+    
+    # mainly to handle PEP-Easy, which can't put only the start year (without changes)
+    #  and this is a deprecated call anyway
+    if datetype == "Before":
+        endyear = startyear
+        startyear = "*"
+    
     ret_val = await database_search_paragraphs(response,
                                                request,
                                                paratext=fulltext1, #  no advanced search. Only words, phrases, prox ~ op, and booleans allowed
@@ -2053,7 +2066,7 @@ async def database_search_v2( response: Response,
                               sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
                               sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2), 
                               sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE), 
-                              sourcelangcode: str=Query("EN", min_length=2, title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE), 
+                              sourcelangcode: str=Query(None, min_length=2, title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE), 
                               volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
                               issue: str=Query(None, title=opasConfig.TITLE_ISSUE, description=opasConfig.DESCRIPTION_ISSUE),
                               author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
@@ -2254,6 +2267,7 @@ async def database_searchanalysis_v1(response: Response,
                                      volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
                                      author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                                      title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
+                                     datetype: str=Query(None, title=opasConfig.TITLE_DATETYPE, description=opasConfig.DESCRIPTION_DATETYPE), 
                                      startyear: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
                                      endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
                                      # return set control
@@ -2282,7 +2296,13 @@ async def database_searchanalysis_v1(response: Response,
 
     """
     # need to decide if we should parse and cleanup fulltext1.
-    
+
+    # mainly to handle PEP-Easy, which can't put only the start year (without changes)
+    #  and this is a deprecated call anyway
+    if datetype == "Before":
+        endyear = startyear
+        startyear = "*"
+
     solr_query_spec = \
         opasQueryHelper.parse_search_query_parameters(para_textsearch=fulltext1,     # v1 fulltext was by para  
                                                       para_scope=zone1,              # from v1 terminology
@@ -2292,6 +2312,7 @@ async def database_searchanalysis_v1(response: Response,
                                                       author=author,
                                                       title=title,
                                                       startyear=startyear,
+                                                      endyear=endyear,
                                                       sort = sort
                                                       )
 

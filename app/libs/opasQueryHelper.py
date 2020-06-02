@@ -193,8 +193,16 @@ def year_arg_parser(year_arg):
         1980-1990
         1970
 
+    >>> year_arg_parser("=1955")
+    '&& art_year_int:1970 '
     >>> year_arg_parser("1970")
     '&& art_year_int:1970 '
+    >>> year_arg_parser("-1990")
+    '&& art_year_int:[* TO 1990] '
+    >>> year_arg_parser("1980-")
+    '&& art_year_int:[1980 TO *] '
+    >>> year_arg_parser("1980-1980")
+    '&& art_year_int:[1980 TO 1980] '
     >>> year_arg_parser(">1977")
     '&& art_year_int:[1977 TO *] '
     >>> year_arg_parser("<1990")
@@ -214,36 +222,28 @@ def year_arg_parser(year_arg):
         if start is None and end is None:
             logger.warning("Search - StartYear bad argument {}".format(year_arg))
         else:
-            if option == "^" or separator == "-":
+            if option is None and separator is None:
+                search_clause = f"&& art_year_int:{year_arg} "
+            elif option == "=" and separator is None:
+                search_clause = f"&& art_year_int:{year_arg} "
+            elif separator == "-":
                 # between
                 # find endyear by parsing
                 if start is None:
-                    start = end # they put > in start rather than end.
-                elif end is None:
-                    end = start # they put < in start rather than end.
-                search_clause = "&& art_year_int:[{} TO {}] ".format(start, end)
+                    start = "*"
+                if end is None:
+                    end = "*"
+                search_clause = f"&& art_year_int:[{start} TO {end}] "
             elif option == ">":
                 # greater
-                if start is None:
+                if start is None and end is not None:
                     start = end # they put > in start rather than end.
-                search_clause = "&& art_year_int:[{} TO {}] ".format(start, "*")
+                search_clause = f"&& art_year_int:[{start} TO *] "
             elif option == "<":
                 # less than
-                if end is None:
-                    end = start # they put < in start rather than end.
-                search_clause = "&& art_year_int:[{} TO {}] ".format("*", end)
-            else: # on
-                if start is not None and end is not None:
-                    # they specified a range anyway
-                    search_clause = "&& art_year_int:[{} TO {}] ".format(start, end)
-                elif start is None and end is not None:
-                    # they specified '- endyear' without the start, so less than
-                    search_clause = "&& art_year_int:[{} TO {}] ".format("*", end)
-                elif start is not None and separator is not None:
-                    # they mean greater than
-                    search_clause = "&& art_year_int:[{} TO {}] ".format(start, "*")
-                else: # they mean on
-                    search_clause = "&& art_year_int:{} ".format(year_arg)
+                if end is None and start is not None:
+                    end = start  
+                search_clause = f"&& art_year_int:[* TO {end}] "
 
             ret_val = search_clause
 
@@ -266,7 +266,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   source_name=None,        # full name of journal or wildcarded
                                   source_code=None,        # series/source (e.g., journal code) or list of codes
                                   source_type=None,        # series source type, e.g., video, journal, book
-                                  source_lang_code='EN',   # source language code
+                                  source_lang_code=None,   # source language code
                                   vol=None,                # match only this volume (integer)
                                   issue=None,              # match only this issue (integer)
                                   author=None,             # author last name, optional first, middle.  Wildcards permitted
@@ -583,7 +583,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         pass
 
     if startyear is not None and endyear is None:
-        # put this in the filter query
+        # Only startyear specified, can use =. >, <, or - for range
         # parse startYear
         parsed_year_search = year_arg_parser(startyear)
         if parsed_year_search is not None:
@@ -595,7 +595,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if startyear is not None and endyear is not None:
         # put this in the filter query
         # should check to see if they are each dates
-        if re.match("[12][0-9]{3,3}", startyear) is None or re.match("[12][0-9]{3,3}", endyear) is None:
+        if re.match("[12][0-9]{3,3}|\*", startyear) is None or re.match("[12][0-9]{3,3}|\*", endyear) is None:
             logger.info("Search - StartYear {} /Endyear {} bad arguments".format(startyear, endyear))
         else:
             analyze_this = f"&& art_year_int:[{startyear} TO {endyear}] "

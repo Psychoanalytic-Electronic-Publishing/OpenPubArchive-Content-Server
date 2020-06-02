@@ -35,8 +35,8 @@ class TestSearchAnalysis(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
+        response_info = r["termIndex"]["responseInfo"]
+        response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 6)
         print (response_set)
         # Confirm that the request-response cycle completed successfully.       
