@@ -25,86 +25,99 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.05.29"
+__version__     = "2020.06.03"
 __status__      = "Development"
 
 #Revision Notes:
-    #2019-05-16: Addded command line options to specify a different path for PEPSourceInfo.json
-                 #Added error logging using python's built-in logging library default INFO level - nrs
+    #2019.0516  # Added command line options to specify a different path for PEPSourceInfo.json
+                # Added error logging using python's built-in logging library default INFO level - nrs
 
-    #2019-06-05: added int fields for year as they are needeed to do faceting ranges (though that's
-                 #beginning to be unclear) - nrs
+    #2019.0605  # added int fields for year as they are needeed to do faceting ranges (though that's
+                # beginning to be unclear) - nrs
 
-    #2019-07-05: added citedCounts processing to load the Solr core from the mySQL database 
-                 #table which calculates these. - nrs
-    #2019-12-31: Support remote datbase tunnel.  Fix use of SQL when not using SQLite.
-    #2020-01-05: Some fields marked xml were being loaded as text...fixed.
-    #2020-02-23: Populate biblio table.
-    #2020-02-24: Insert a summary excerpt to new Solr field art_excerpt, so server doesn't have to spend time extracting at runtime.
-                 # currently, it can be either XML or HTML but should change it to one or the other to make it more consistent.
-                 # (though the server now handles it this way fine, converting to HTML on output when necessary.)
-                 # Starting to convert this to snake_case, per "pythonic-style".  But will put in more effort
-                 # on this later
+    #2019.0705  # added citedCounts processing to load the Solr core from the mySQL database 
+                # table which calculates these. - nrs
+
+    #2019.1231  # Support remote datbase tunnel.  Fix use of SQL when not using SQLite.
+
+    #2020.0105  # Some fields marked xml were being loaded as text...fixed.
+
+    #2020.0223  # Populate biblio table.
+
+    #2020.0224  # Insert a summary excerpt to new Solr field art_excerpt, so server doesn't have to spend time extracting at runtime.
+                # currently, it can be either XML or HTML but should change it to one or the other to make it more consistent.
+                # (though the server now handles it this way fine, converting to HTML on output when necessary.)
+                # Starting to convert this to snake_case, per "pythonic-style".  But will put in more effort
+                # on this later
                  
-    #2020-03-03: Complete code to populate new api_articles and api_biblioxml tables which replace the ones 
-                 # copied from the XML processing pepa1db tables.  This eliminates the need for the filetracking table
-                 # since the file tracking can now be done in the api_articles table.  Run through fixes with new
-                 # database load, adjusting schema to accomodate the sometimes oddball data in the instances.
-                 # Finished new code to extract first page summaries, the old algorithm wasn't working properly 
-                 # across the database.  In this case, the new method using libxml's parseXML had some of it's
-                 # own issues because it automatically translated all entities, making it unsafe output for HTML.
-                 # Fixed though easily by catching those characters in the event framework.
-                 # Will remove the now unused code next build after it gets put into the repository for longer term
-                 # storage and study.
+    #2020.0303  # Complete code to populate new api_articles and api_biblioxml tables which replace the ones 
+                # copied from the XML processing pepa1db tables.  This eliminates the need for the filetracking table
+                # since the file tracking can now be done in the api_articles table.  Run through fixes with new
+                # database load, adjusting schema to accomodate the sometimes oddball data in the instances.
+                # Finished new code to extract first page summaries, the old algorithm wasn't working properly 
+                # across the database.  In this case, the new method using libxml's parseXML had some of it's
+                # own issues because it automatically translated all entities, making it unsafe output for HTML.
+                # Fixed though easily by catching those characters in the event framework.
+                # Will remove the now unused code next build after it gets put into the repository for longer term
+                # storage and study.
     
-    #2020-03-05  Optimize performance, especially file discovery.  Set up tp compare against Solr dates rather than 
-                 # MySQL because that way you make sure the articles are in Solr, which is most important.
-                 # General cleanup and another pass at camelCase to snake_case conversion
+    #2020.0305  # Optimize performance, especially file discovery.  Set up tp compare against Solr dates rather than 
+                # MySQL because that way you make sure the articles are in Solr, which is most important.
+                # General cleanup and another pass at camelCase to snake_case conversion
                  
-    #2020-03-26  Needed to set lang attribute from p up the ancestors in order to find all paragraphs in a particular
-                 # language when the lang attribute could be local or inherited at intermediate (e.g., section), levels
-                 # even.  It's a shame it's not done by default in lxml.
+    #2020.0326  # Needed to set lang attribute from p up the ancestors in order to find all paragraphs in a particular
+                # language when the lang attribute could be local or inherited at intermediate (e.g., section), levels
+                # even.  It's a shame it's not done by default in lxml.
 
-    #2020-03-30  Removing the bibliocore code (commented out for now).  Instead the biblio will be managed simply in the
-                 # database
+    #2020.0330  # Removing the bibliocore code (commented out for now).  Instead the biblio will be managed simply in the
+                # database
 
-    #2020-04-13  Changed the way it checks for modified files...was in MySQL records but set it to use Solr file date instead
-                 # because it makes less sense to have one mySQL database per solr database.  This way, we can actually check
-                 # if that version of the file is in Solr.  (You don't know by checking mysql, especially if the database/solr
-                 # relation isn't one-to-one.)
-                 # 
-                 # Also: Added new options:
-                 # --before
-                 #     looks at file date, was it created before this date (use YYYY-MM-DD format)
-                 # --after
-                 #     looks at file date, was it created after this date (use YYYY-MM-DD format)
-                 # --reloadbefore
-                 #     looks at updated (load) date IN SOLR, was it loaded into solr before this date (use YYYY-MM-DD format)
-                 # --reloadafter
-                 #     looks at updated (load) date IN SOLR, was it loaded into solr after this date (use YYYY-MM-DD format)
+    #2020.0413  # Changed the way it checks for modified files...was in MySQL records but set it to use Solr file date instead
+                # because it makes less sense to have one mySQL database per solr database.  This way, we can actually check
+                # if that version of the file is in Solr.  (You don't know by checking mysql, especially if the database/solr
+                # relation isn't one-to-one.)
+                # 
+                # Also: Added new options:
+                # --before
+                #     looks at file date, was it created before this date (use YYYY-MM-DD format)
+                # --after
+                #     looks at file date, was it created after this date (use YYYY-MM-DD format)
+                # --reloadbefore
+                #     looks at updated (load) date IN SOLR, was it loaded into solr before this date (use YYYY-MM-DD format)
+                # --reloadafter
+                #     looks at updated (load) date IN SOLR, was it loaded into solr after this date (use YYYY-MM-DD format)
     
-    #2020-04-23  # Changes to excerpting in opasXMLHelper which affect loading, since that's when excerpts happen.
+    #2020.0423  # Changes to excerpting in opasXMLHelper which affect loading, since that's when excerpts happen.
 
-    #2020-04-24  # Added stop words to highlighted terms list.  Stop words in file opasConfig.HIGHLIGHT_STOP_WORDS_FILE 
-                 # Changed it so highlighted terms would have tagging stripped.
-                 # Verbose option -v removed.  Must use --verbose instead
+    #2020.0424  # Added stop words to highlighted terms list.  Stop words in file opasConfig.HIGHLIGHT_STOP_WORDS_FILE 
+                # Changed it so highlighted terms would have tagging stripped.
+                # Verbose option -v removed.  Must use --verbose instead
 
-    #2020-04-25  # Changed from highlighted words collecting <i> and <b> to collecting <impx>, which are glossary terms. 
-    #2020-04-25  # Added --only option to match other PEP processing software for single file mode.  (-d still works as well)
-                 # fixed variable name problem in the error report when the file wasn't found.
+    #2020.0425  # Changed from highlighted words collecting <i> and <b> to collecting <impx>, which are glossary terms. 
 
-    #2020-05-07  # Added art_pgcount and art_isbn to masterPEPWebDocsSchema and manually added them to Solr to match.
-                 # Added code to load these data.
+    #2020.0425  # Added --only option to match other PEP processing software for single file mode.  (-d still works as well)
+                # fixed variable name problem in the error report when the file wasn't found.
+
+    #2020.0507  # Added art_pgcount and art_isbn to masterPEPWebDocsSchema and manually added them to Solr to match.
+                # Added code to load these data.
                  
-    #2020-05-29  # Added updates(!) to the docs database, allowing views to be included and updated with the weekly
-                 # Use the -v option to turn it on.  It will add data for any document that was viewed n the last month
-                 # during updates.  No user option to force the whole database, but it can be done easily by a one line
-                 # code tweak.
-                 # 
-                 # Note that Solr 8.5 is very tricky about updating db's with child documents that started after 8.2,
-                 # but it works as long as you just give the art_id (I tried adding art_level when I first got the error,
-                 # but that didn't work on 8.5.  To get it to work, I had to more closely follow the definitions for
-                 # the schema, with basically only doc_values defined.
+    #2020.0529  # Added updates(!) to the docs database, allowing views to be included and updated with the weekly
+                # Use the -v option to turn it on.  It will add data for any document that was viewed n the last month
+                # during updates.  No user option to force the whole database, but it can be done easily by a one line
+                # code tweak.
+                # 
+                # Note that Solr 8.5 is very tricky about updating db's with child documents that started after 8.2,
+                # but it works as long as you just give the art_id (I tried adding art_level when I first got the error,
+                # but that didn't work on 8.5.  To get it to work, I had to more closely follow the definitions for
+                # the schema, with basically only doc_values defined.
+
+    #2020.0603  # Moved the options out of main function to the implied main area at the end of the file 
+                #  (start of code processing).
+                # Added a highlighted area to show what database and core will be updated, and prompt the user
+                #  to ensure they want to continue.  This was done to prevent doing updates accidentally to
+                #  a production system when in fact it was meant for staging.
+                # Fixed a bug in the solr lookup of filenames to determine updates needed: was not escaping filename chars
+                #  that need to be escaped for solr, like ( and )
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
@@ -148,7 +161,7 @@ import pymysql
 import config
 import opasConfig
 import opasCoreConfig
-from opasCoreConfig import solr_authors
+from opasCoreConfig import solr_authors, solr_gloss
 
 # from OPASFileTrackerMySQL import FileTracker, FileTrackingInfo
 import opasXMLHelper as opasxmllib
@@ -170,7 +183,6 @@ def read_stopwords():
 
 # Module Globals
 gCitedTable = dict() # large table of citation counts, too slow to run one at a time.
-options = None
 bib_total_reference_count = 0
 rc_stopword_match = read_stopwords() # returns compile re for matching stopwords 
 
@@ -1439,6 +1451,7 @@ def process_glossary_core(solr_glossary_core):
           because the glossary isn't updated frequently.  However, it was felt that
           it was not as easy to keep in sync as a completely separate program.
     """
+    global options
     countFiles = 0
     countTerms = 0
     ret_val = (countFiles, countTerms) # File count, entry count
@@ -1448,13 +1461,23 @@ def process_glossary_core(solr_glossary_core):
     pat = r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
     filePatternMatch = re.compile(pat)
     filenames = []
-    for root, d_names, f_names in os.walk(options.rootFolder):
+    if options.singleFilePath is not None:
+        if os.path.exists(options.singleFilePath):
+            folderStart = options.singleFilePath
+        else:
+            print(f"Error: Single file mode name: {options.singleFilePath} does not exist.")
+    else:
+        folderStart = options.rootFolder
+        if options.subFolder is not None:
+            folderStart = os.path.join(folderStart, options.subFolder)
+        
+    for root, d_names, f_names in os.walk(folderStart):
         for f in f_names:
             if filePatternMatch.match(f):
                 countFiles += 1
                 filenames.append(os.path.join(root, f))
 
-    print ("Ready to import glossary records from %s files at path: %s" % (countFiles, options.rootFolder))
+    print (f"Ready to import glossary records from {countFiles} files at path: {folderStart}")
     gloss_fileTimeStart = time.time()
     for n in filenames:
         f = open(n, encoding='utf8')
@@ -1662,7 +1685,7 @@ def file_is_same_as_in_solr(solrcore, filename):
         else:
             ret_val = False
     except Exception as e:
-        ret_val = True # not found or error, return true
+        ret_val = False # error, return false so it's loaded anyway.
         
     return ret_val
 
@@ -1675,12 +1698,22 @@ def get_file_dates_solr(solrcore, filename=None):
     max_rows = 1000000
 
     basename = os.path.basename(filename)
-    getFileInfoSOLR = f'art_level:1 && file_name:"{basename}"'
+
+    # these legal file name chars are special chars to Solr, so escape them!
+    b_escaped = basename.translate(str.maketrans({"(":  r"\(", 
+                                                  ")":  r"\)", 
+                                                  "-":  r"\-", 
+                                                  ":":  r"\:", 
+                                                  }))    
+
+    getFileInfoSOLR = f'art_level:1 && file_name:"{b_escaped}"'
 
     try:
         results = solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp", rows=max_rows)
     except Exception as e:
         logging.error(f"Solr Query Error {e}")
+        # let me know whatever the logging is!
+        print (f"Warning: Solr Query Error: {e}")
     else:
         if results.hits > 0:
             ret_val = results.docs
@@ -1696,62 +1729,9 @@ def main():
     global options  # so the information can be used in support functions
     global gCitedTable
     
-    programNameShort = "OPASWebLoaderPEP"  # used for log file
     cumulative_file_time_start = time.time()
     
     # scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
-    logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
-
-    parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.14")
-    parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
-                      help="Option to force all files to be updated on the specified cores.  This does not reset the file tracker but updates it as files are processed.")
-    parser.add_option("-b", "--biblioupdate", dest="biblio_update", action="store_true", default=False,
-                      help="Whether to update the biblio table in the mysql database (used to be a core)")
-    parser.add_option("-d", "--dataroot", "--only", dest="rootFolder", default=config.DEFAULTDATAROOT,
-                      help="Root folder path where input data is located")
-    parser.add_option("-f", "--fulltextcoreupdate", dest="fulltext_core_update", action="store_true", default=False,
-                      help="Whether to update the full-text and authors core. Use -d option to specify file folder root path.")
-    parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.INFO,
-                      help="Level at which events should be logged")
-    parser.add_option("--logfile", dest="logfile", default=logFilename,
-                      help="Logfile name with full path where events should be logged")
-    parser.add_option("--resetcore",
-                      action="store_true", dest="resetCoreData", default=False,
-                      help="reset the data in the selected cores. (authorscore is reset with the fulltext core)")
-    parser.add_option("-g", "--glossarycoreupdate", dest="glossary_core_update", action="store_true", default=False,
-                      help="Whether to update the glossary core. Use -d option to specify glossary file folder root path.")
-    parser.add_option("-t", "--trackerdb", dest="fileTrackerDBPath", default=None,
-                      help="Full path and database name where the File Tracking Database is located (sqlite3 db)")
-
-    parser.add_option("-q", "--quickload", dest="quickload", action="store_true", default=False,
-                      help="Load the full-set of database file records for a full solr db reload")
-    parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
-                      help="Whether to run the files selected in reverse")
-    parser.add_option("-v", "--viewsupdate", dest="views_update", action="store_true", default=False,
-                      help="Whether to update the views data in Solr when updating documents")
-    #parser.add_option("-u", "--url",
-                      #dest="solrURL", default=config.DEFAULTSOLRHOME,
-                      #help="Base URL of Solr api (without core), e.g., http://localhost:8983/solr/", metavar="URL")
-    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
-                      help="Display status and operational timing info as load progresses.")
-    parser.add_option("--pw", dest="httpPassword", default=None,
-                      help="Password for the server")
-    parser.add_option("--key", dest="file_key", default=None,
-                      help="Key for a single file to process")
-    parser.add_option("--userid", dest="httpUserID", default=None,
-                      help="UserID for the server")
-    parser.add_option("--config", dest="config_info", default="Local",
-                      help="UserID for the server")
-    parser.add_option("--before", dest="created_before", default=None,
-                      help="Load files created before this datetime (use YYYY-MM-DD format)")
-    parser.add_option("--after", dest="created_after", default=None,
-                      help="Load files created after this datetime (use YYYY-MM-DD format)")
-    parser.add_option("--reloadbefore", dest="reload_before_date", default=None,
-                      help="Reload files added to Solr before this datetime (use YYYY-MM-DD format)")
-    parser.add_option("--reloadafter", dest="reload_after_date", default=None,
-                      help="Reload files added to Solr after this datetime (use YYYY-MM-DD format)")
-
-    (options, args) = parser.parse_args()
 
     processed_files_count = 0
     ocd =  opasCentralDBLib.opasCentralDB()
@@ -1774,16 +1754,32 @@ def main():
             solrurl_authors = localsecrets.SOLRURL + opasCoreConfig.SOLR_AUTHORS
             solrurl_glossary = localsecrets.SOLRURL + opasCoreConfig.SOLR_GLOSSARY
             print("Logfile: ", logFilename)
-            print("Input data Root: ", options.rootFolder)
+            if options.singleFilePath is not None:
+                print (f"Single file only mode: {options.singleFilePath} will be processed.")
+            else:
+                print("Input data Root: ", options.rootFolder)
+                print("Input data Subfolder: ", options.subFolder)
+
             print("Reset Core Data: ", options.resetCoreData)
+            print(80*"*")
             print(f"Database Location: {localsecrets.DBHOST}")
             if options.fulltext_core_update:
                 print("Solr Full-Text Core will be updated: ", solrurl_docs)
                 print("Solr Authors Core will be updated: ", solrurl_authors)
-            #if options.biblio_update:
-                #print("Solr References Core will be updated: ", solrurl_refs)
             if options.glossary_core_update:
                 print("Solr Glossary Core will be updated: ", solrurl_glossary)
+
+            #**********************************
+            #Not used at this time
+            #if options.biblio_update:
+                #print("Solr References Core will be updated: ", solrurl_refs)
+            #**********************************
+            print(80*"*")
+            cont = input ("The above databases will be updated.  Do you want to continue (y/n)?")
+            if cont.lower() == "n":
+                print ("User requested exit.  No data changed.")
+                sys.exit(0)
+            
         except Exception as e:
             msg = f"cores specification error ({e})."
             print((len(msg)*"-"))
@@ -1797,22 +1793,18 @@ def main():
         print((len(msg)*"-"))
         sys.exit(0)
         
-    ## instantiate the fileTracker.
-    #if options.fileTrackerDBPath is None:
-        #fileTracker = FileTracker()
-    #else:
-        #try:
-            #fileTracker = FileTracker(options.fileTrackerDBPath)
-        #except Exception as e:
-            #msg = f"Filetracker error ({e})."
-            #print((len(msg)*"-"))
-            #print (msg)
-            #print((len(msg)*"-"))
-            #sys.exit(0)
-        
     timeStart = time.time()
-    print (f"Program started at ({time.ctime()})..")
+    print (f"Processing started at ({time.ctime()})..")
     
+    if options.singleFilePath is not None:
+        singleFileMode = True
+        folderStart = options.singleFilePath
+    else:
+        singleFileMode = False
+        folderStart = options.rootFolder
+        if options.subFolder is not None:
+            folderStart = os.path.join(folderStart, options.subFolder)
+        
     # import data about the PEP codes for journals and books.
     #  Codes are like APA, PAH, ... and special codes like ZBK000 for a particular book
     sourceDB = opasCentralDBLib.SourceInfoDB()
@@ -1861,7 +1853,7 @@ def main():
         pass
 
     if options.views_update:
-        print(("Update 'View Counts' in Solr selected.  Counts to be updated for all files viewed in the last month.".format(options.rootFolder)))
+        print(("Update 'View Counts' in Solr selected.  Counts to be updated for all files viewed in the last month."))
         
     # Glossary Processing only
     if options.glossary_core_update:
@@ -1885,31 +1877,29 @@ def main():
             print (f"File Key Specified: {options.file_key}")
             pat = fr"({options.file_key}.*)\(bEXP_ARCH1\)\.(xml|XML)$"
             file_pattern_match = re.compile(pat)
-            filenames = find_all(pat, options.rootFolder)
+            filenames = find_all(pat, folderStart)
         else:
             pat = r"(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
             file_pattern_match = re.compile(pat)
             filenames = []
         
         #all_solr_docs = get_file_dates_solr(solrcore_docs2)
-        if re.match(".*\.xml$", options.rootFolder, re.IGNORECASE):
+        if singleFileMode: # re.match(".*\.xml$", folderStart, re.IGNORECASE):
             # single file mode.
-            singleFileMode = True
-            if os.path.exists(options.rootFolder):
-                filenames.append(options.rootFolder)
+            if os.path.exists(options.singleFilePath):
+                filenames.append(options.singleFilePath)
                 total_files = 1
                 new_files = 1
             else:
-                print(f"Error: Single file mode name: {options.rootFolder} does not exist.")
+                print(f"Error: Single file mode name: {options.singleFilePath} does not exist.")
         elif filenames != []:
-            singleFileMode = False
             total_files = len(filenames)
             new_files = len(filenames)
         else:
             # get a list of all the XML files that are new
             singleFileMode = False
             currentfile_info = NewFileTracker(ocd)  
-            for root, d_names, f_names in os.walk(options.rootFolder):
+            for root, d_names, f_names in os.walk(folderStart):
                 for f in f_names:
                     if file_pattern_match.match(f):
                         total_files += 1
@@ -1953,14 +1943,14 @@ def main():
 
         print((80*"-"))
         if singleFileMode:
-            print(("Single File Mode Selected.  Only file {} will be imported".format(options.rootFolder)))
+            print(f"Single File Mode Selected.  Only file {options.singleFilePath} will be imported") 
         else:
             if options.forceRebuildAllFiles:
-                print(("Ready to import records from %s files of %s at path: %s." % (new_files, total_files, options.rootFolder)))
+                print(f"Ready to import records from {new_files} files of {total_files} at path {folderStart}")
             else:
-                print(("Ready to import %s files of %s *if modified* at path: %s." % (new_files, total_files, options.rootFolder)))               
+                print(f"Ready to import {new_files} files of {total_files} *if modified* at path: {folderStart}")
 
-            print(("%s Skipped files (excluded by date options)" % (skipped_files)))
+            print(f"{skipped_files} Skipped files (excluded by date options)")
     
         print((80*"-"))
         precommit_file_count = 0
@@ -2163,7 +2153,68 @@ def main():
 # run it!
 
 if __name__ == "__main__":
-    if 1:
+    global options  # so the information can be used in support functions
+    options = None
+    programNameShort = "OPASWebLoaderPEP"  # used for log file
+    logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
+
+    parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.14")
+    parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
+                      help="Option to force all files to be updated on the specified cores.  This does not reset the file tracker but updates it as files are processed.")
+    parser.add_option("-b", "--biblioupdate", dest="biblio_update", action="store_true", default=False,
+                      help="Whether to update the biblio table in the mysql database (used to be a core)")
+    parser.add_option("-d", "--dataroot", dest="rootFolder", default=config.DEFAULTDATAROOT,
+                      help="Root folder path where input data is located")
+    parser.add_option("--only", dest="singleFilePath", default=None,
+                      help="Full path (including filename) of single file to process")
+    parser.add_option("-f", "--fulltextcoreupdate", dest="fulltext_core_update", action="store_true", default=False,
+                      help="Whether to update the full-text and authors core. Use -d option to specify file folder root path.")
+    parser.add_option("--key", dest="file_key", default=None,
+                      help="Key for a single file to process")
+    parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.INFO,
+                      help="Level at which events should be logged")
+    parser.add_option("--logfile", dest="logfile", default=logFilename,
+                      help="Logfile name with full path where events should be logged")
+    parser.add_option("--resetcore",
+                      action="store_true", dest="resetCoreData", default=False,
+                      help="reset the data in the selected cores. (authorscore is reset with the fulltext core)")
+    parser.add_option("-g", "--glossarycoreupdate", dest="glossary_core_update", action="store_true", default=False,
+                      help="Whether to update the glossary core. Use -d option to specify glossary file folder root path.")
+    parser.add_option("--pw", dest="httpPassword", default=None,
+                      help="Password for the server")
+    parser.add_option("-q", "--quickload", dest="quickload", action="store_true", default=False,
+                      help="Load the full-set of database file records for a full solr db reload")
+    parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
+                      help="Whether to run the files selected in reverse")
+    #parser.add_option("-t", "--trackerdb", dest="fileTrackerDBPath", default=None,
+                      #help="Full path and database name where the File Tracking Database is located (sqlite3 db)")
+    parser.add_option("--sub", dest="subFolder", default=None,
+                      help="Sub folder of root folder specified via -d to process")
+    parser.add_option("--test", dest="testmode", action="store_true", default=False,
+                      help="Run Doctests")
+    parser.add_option("-v", "--viewsupdate", dest="views_update", action="store_true", default=False,
+                      help="Whether to update the view count data in Solr when updating documents (adds about 5 minutes)")
+    #parser.add_option("-u", "--url",
+                      #dest="solrURL", default=config.DEFAULTSOLRHOME,
+                      #help="Base URL of Solr api (without core), e.g., http://localhost:8983/solr/", metavar="URL")
+    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
+                      help="Display status and operational timing info as load progresses.")
+    parser.add_option("--userid", dest="httpUserID", default=None,
+                      help="UserID for the server")
+    parser.add_option("--config", dest="config_info", default="Local",
+                      help="UserID for the server")
+    parser.add_option("--before", dest="created_before", default=None,
+                      help="Load files created before this datetime (use YYYY-MM-DD format)")
+    parser.add_option("--after", dest="created_after", default=None,
+                      help="Load files created after this datetime (use YYYY-MM-DD format)")
+    parser.add_option("--reloadbefore", dest="reload_before_date", default=None,
+                      help="Reload files added to Solr before this datetime (use YYYY-MM-DD format)")
+    parser.add_option("--reloadafter", dest="reload_after_date", default=None,
+                      help="Reload files added to Solr after this datetime (use YYYY-MM-DD format)")
+
+    (options, args) = parser.parse_args()
+
+    if options.testmode:
         import doctest
         doctest.testmod()
         print ("Fini. SolrXMLPEPWebLoad Tests complete.")
