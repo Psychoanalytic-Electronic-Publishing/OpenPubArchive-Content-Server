@@ -61,3 +61,4 @@ solrCoreConfigurations/*.zip
 _gsdata_/
 _gsdata_/*
 *.gss
+app/tests/wingtest_common.py

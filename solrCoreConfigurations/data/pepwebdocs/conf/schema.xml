@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Web Database Schema v.2020.01.05
+    PEP Web Database Schema
     for core PEPWebDocs
 
     2019-11-15: artvoltitle was at top but never used/loaded.  These are important for TOCs.
@@ -25,12 +25,35 @@
                   art_body_xml
              
     2020-01-05: More schema clean up. 
+
     2020-01-20: Re-add summaries_xml used to display summaries when there's no abstract
+
     2020-04-10: Added:
                   Added art_authors_citations to allow sort by authors
                   docValues for quotes_spkr set to true
+                  docValue whereever it was supported
+
+    2020-04-11: Added:
+                  strings type, boolean, booleans because it was required online going to Solr 8.5
+                  (cores would not load without that.)
                   
-    
+    2020-04-25: Added: for faceting:
+                          art_kwds_str - string_ci
+                          glossary_terms- string_ci
+                          glossary_group_terms - string_ci
+                          freuds_italics - string_ci
+
+    2020-05-30: Added definitions for art_views_last... fields.  Now supports in place updates to 
+                  allow these to be updated weekly or monthly.
+        
+    2020-07-06: Added bk fields to show when a book is a subdoc (not the maintoc) e.g., to bring back SE/GW mainTOCs, search
+                  for bk_subdoc==true, and art_sourcecode="SE" or "GW"
+                  
+                  Also art_info_xml (contains bk_ data too) so all metadata note
+                    part of the HTML is visible too (when returning HTML)
+                    
+                  Also added para_lgrid for SE/GW mapping.
+
    Schema version attribute note: 
    
    The default values for each property depend on the underlying FieldType class, which in turn may depend on the version 
@@ -67,6 +90,7 @@
   <!-- text_xml searches-->
   <!-- field text also includes other text objects, like text_xml_offsite -->
   <field name="text_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/> # set to multivalued false
+  <field name="art_info_xml" type="string" indexed="false" stored="true" multiValued="false" docValues="false"/>
   <field name="text" type="text_simple" indexed="true" stored="false" multiValued="false"/>
   <field name="text_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
   <!--Offsite text is searchable but not store in its entirety by our contractual rules only citation style info and fields will be store -->
@@ -80,7 +104,11 @@
   <!-- Title includes subtitle -->
   <field name="title" type="text_simple" indexed="true" stored="true" multiValued="false"/> # changed to multivalued false (no reason its multivalued)
   <field name="title_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
+  <field name="art_title" type="text_simple" indexed="true" stored="true" multiValued="false"/> # added back in for naming consistency
+  <field name="art_title_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/> # added back in for naming consistency
   <copyField source="title" dest="title_syn"/>
+  <copyField source="title" dest="art_title"/>
+  <copyField source="title" dest="art_title_syn"/>
   <field name="art_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_subtitle_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!--......................................................................................................-->
@@ -96,6 +124,7 @@
   <field name="art_cited_5" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_cited_10" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_cited_20" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
+  
   <field name="art_sourcecode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_sourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_sourcetitlefull" type="text_simple" indexed="true" stored="true" multiValued="false"/>
@@ -110,7 +139,9 @@
   <field name="bk_seriestitle_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_pubyear" type="string" indexed="true" stored="true" multiValued="false"/>
-
+  <!--Added 7/6 for SE/GW and to cover general book info (e.g., next/prev id)details which do not come back in the html-->
+  <field name="bk_subdoc" type="boolean" indexed="false" stored="true" multiValued="false"/>
+  
   
   <!-- ************************************************************************************************* -->
   <!-- End Key display fields! -->
@@ -165,10 +196,17 @@
   <field name="art_type" type="string" indexed="true" stored="true" multiValued="false" docValues="true" />
 
   <field name="art_pgrg" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_lang" type="string_ci" indexed="true" stored="true" multiValued="true"/>
+  <!--Added 2020-05-06-->
+  <field name="art_pgcount" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_lang" type="string_ci" indexed="true" stored="true" multiValued="false"/> <!--changed to multivalued=false, 2020-06-17 (it's an attribute of artinfo)-->
   <field name="art_issn" type="string" indexed="true" stored="true" multiValued="false"/>
+  <!--Added 2020-05-06-->
+  <field name="art_isbn" type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="art_kwds"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_qual" type="string" indexed="true" stored="true" docValues="true" multiValued="false"/>
+  <!--Added for faceting use, 2020-04-25-->
+  <!--For faceting multi word keywords, may want to eventually just replace art_kwds with this -->
+  <field name="art_kwds_str"  type="string_ci" indexed="true" stored="false" multiValued="true"/>
   
   <!-- author data -->
   <field name="author_aff_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
@@ -183,7 +221,7 @@
   <field name="bib_title" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/>
   <field name="bib_journaltitle" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/>
   <field name="reference_count" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
-  <!--<field name="references_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
+  <field name="references_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
   <!-- This is a special structured entry (a JSON field) -->
   <!--<field name="bib_entries_json" type="text_general" indexed="true" stored="true" multiValued="true"/>-->
 
@@ -201,16 +239,26 @@
   <field name="tagline" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="quotes_spkr"  type="string_ci" indexed="true" stored="true" multiValued="true"/> 
 
-  <!--#TODO: Deprecate these-->
-  <!--<field name="quotes_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>-->
-  <!--<field name="dialogs_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
-  <!--<field name="notes_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
-  <!--<field name="panels_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
-  <!--<field name="dreams_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
-  <!--<field name="poems_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>-->
+  <!--#TODO: reinstate these-->
+  <field name="quotes_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="dialogs_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="notes_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="panels_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="dreams_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="poems_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <!--New fields 6/10/2020-->
+  <field name="tables_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
 
+  <!--Added for faceting use, 2020-04-25 Storage not required -->
+  <field name="glossary_terms" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  <field name="glossary_group_terms" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  <!--Store for debug only-->
+  <field name="freuds_italics" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  
   <!--These are not displayed directly.  Search only. -->
   <!-- Special term fields -->
+  
+  <!-- terms_xml may not be needed in the long-term, only good for search -->
   <field name="terms_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
   <!-- Highlighted, e.g., italicized and otherwise called out terms -->
   <field name="terms_highlighted" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/>
@@ -244,10 +292,21 @@
   <!--subdocument fields -->
   <field name="para" type="text_general" indexed="true" stored="true" multiValued="false"/>
   <field name="para_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
+  <!--Added 2020-07-06 to allow GW/SE mapping-->
+  <field name="para_lgrid" type="string" indexed="false" stored="true"/>
+  <!--<field name="para_lgrx" type="string" indexed="false" stored="true" multiValued="true"/>-->
+  <field name="para_lgrx" type="string" indexed="true" stored="true" multiValued="true" docValues="true"/>
   <field name="parent_tag" type="string" indexed="true" stored="true"/>
   <copyField source="para" dest="para_syn"/>
-
-
+  
+  <!--Added art_views_lastcalyear 2020-05 to meet search requirements-->
+  <!--These have to be false for all but docValues to allow in place updates-->
+  <field name="art_views_lastcalyear" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_last1mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_last6mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_last12mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_lastweek" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  
   <!--<field name="level" type="pint" indexed="true" stored="false" docValues="true"/>-->
 
   <!-- The String case insensitive field.

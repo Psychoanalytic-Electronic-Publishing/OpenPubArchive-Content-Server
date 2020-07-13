@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Author Database Schema v.01
-    for core PEPWebAuthors
+    PEP Author Database Schema
+    for core PEPWebGlossary
+
+    2020-04-11: Added:
+                  strings type, boolean, booleans because it was required online going to Solr 8.5
+                  (cores would not load without that.)
+
 -->
 <!-- Schema name just for labeling, the managed-schema file name is what Solr looks for -->
 <schema name="pepwebauthors" version="1.61">

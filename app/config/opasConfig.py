@@ -140,6 +140,10 @@ VALS_SOURCETYPE = {DICTLEN_KEY: 1, 'j': 'journal', 'b': 'book', 'v': 'videostrea
 VALS_ARTTYPE = {DICTLEN_KEY: 3, 'article': 'ART', 'abstract': 'ABS', 'announcement': 'ANN', 'commentary': 'COM', 'errata': 'ERR', 'profile': 'PRO', 'report': 'REP', 'review': 'REV'}
 VALS_DOWNLOADFORMAT = {DICTLEN_KEY: 4, 'html': 'HTML', 'pdf': 'PDF', 'pdfo': 'PDFORIG', 'epub': 'EPUB'}
 VALS_YEAROPTIONS = {DICTLEN_KEY: 2, '5': '5', '10': '10', '20': '20', 'al': 'all'}
+# Standard view categories for View functions
+VALS_VIEWPERIODDICT = {1: "lastweek", 2: "last1mos", 3: "last6mos", 4: "last12mos", 5: "lastcalyear" }
+
+
 
 # parameter descriptions for documentation
 DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review."
@@ -161,7 +165,7 @@ DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_ISSUE = "The issue number if the source has one"
 DESCRIPTION_LIMIT = "Number of items to return."
 DESCRIPTION_MOST_CITED_PERIOD = f"Most cited articles from this time period (years: {list_values(VALS_YEAROPTIONS)})"
-DESCRIPTION_MOST_VIEWED_PERIOD = "Most viewed articles in this period (0=Last Cal year, 1=last month, 2=last month, 3=last 6 months, 4=last 12 months)"
+DESCRIPTION_MOST_VIEWED_PERIOD = "Most viewed articles in this period (0=Last Cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months)"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)."
 DESCRIPTION_PAGELIMIT = "Number of pages of a document to return"
 DESCRIPTION_PAGEOFFSET = "Starting page to return for this document as an offset from the first page.)"
@@ -183,6 +187,7 @@ DESCRIPTION_SOURCELANGCODE = "Source language code or comma separated list of co
 DESCRIPTION_SOURCENAME = "Name of Journal, Book, or Video name (e.g., 'international')"
 DESCRIPTION_STARTYEAR = "Find documents published on or after this year, or in this range of years (e.g, 1999, Between range: 1999-2010. After: >1999 Before: <1999" 
 DESCRIPTION_SYNONYMS = "Expand search to include specially declared synonyms (True/False)"
+DESCRIPTION_SIMILARCOUNT = "Return this count of similar documents for each document in the return set (0 is None)" 
 DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)."
 DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
@@ -229,6 +234,7 @@ TITLE_SOURCENAME = "Series name"
 TITLE_SOURCETYPE = "Source type"
 TITLE_STARTYEAR = "Start year or range"
 TITLE_SYNONYMS = "Synonym expansion switch (True/False)"
+TITLE_SIMILARCOUNT = "Return this many similar documents for each match"
 TITLE_TERMFIELD = "Default field for which to get term counts"
 TITLE_TERMLIST = "Comma separated list of terms for which to get counts"
 TITLE_TITLE = "Document Title"
@@ -296,6 +302,11 @@ VIEW_DBNAME_LAST6MONTHS = "vw_stat_docviews_lastsixmonths"
 VIEW_DBNAME_LAST12MONTHS = "vw_stat_docviews_last12months"
 VIEW_DBNAME_LASTCALYEAR = "vw_stat_docviews_lastcalyear"
 
+#Schema Field Name Suffix for Synonym Searching
+SYNONYM_SUFFIX = "_syn"
+
+DOCUMENT_VIEW_FACET_LIST = ["glossary_terms", "glossary_group_terms", "terms_highlighted", "art_kwds_str"]
+
 # Standard Document List Summary fields (potential data return in document list)
 DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, \
                                art_title, \
@@ -304,6 +315,7 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, \
                                art_author_id, \
                                art_authors, \
                                art_citeas_xml, \
+                               art_info_xml, \
                                art_sourcecode, \
                                art_sourcetitleabbr, \
                                art_sourcetitlefull, \
@@ -340,3 +352,10 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, \
                                file_last_modified, \
                                timestamp, \
                                score"
+
+running_head_fmts = {
+    'xml': "<p><cgrp name='pub_year'>({pub_year})</cgrp>. <cgrp name='source_title'>{source_title}</cgrp><cgrp name='vol'>{vol}</cgrp><cgrp name='issue'>{issue}</cgrp><cgrp name='pgrg'>{pgrg}</cgrp></p>", 
+    'html': "<span class='pub_year'>({pub_year})</span>. <span class='source_title'>{source_title}</span><span class='vol'>{vol}</span><span class='issue'>{issue}</span><span class='pgrg'>{pgrg}</span>",
+    'textonly': "({pub_year}). {source_title}{vol}{issue}{pgrg}"
+}
+

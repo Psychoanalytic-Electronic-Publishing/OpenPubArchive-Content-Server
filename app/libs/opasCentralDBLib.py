@@ -504,6 +504,7 @@ class opasCentralDB(object):
         
         >>> ocd = opasCentralDB()
         >>> ocd.get_mysql_version()
+        'Vers: 5.7.26'
         """
         ret_val = "Unknown"
         self.open_connection(caller_name="update_session") # make sure connection is open
@@ -1557,21 +1558,24 @@ class opasCentralDB(object):
             # see if user exists:
             user = self.get_user(username)
             if user is not None: # good to go
-                if verify_password(old_password, user.password):
-                    new_hashed_password = get_password_hash(new_password)
-                    user.modified_by_user_id = session_info.user_id
-                    sql = """UPDATE api_user
-                             SET password = %s,
-                                 modified_by_user_id = %s,
-                                 last_update = %s
-                             WHERE user_id =%s
-                          """
-                    
-                    chgs = ( new_hashed_password,
-                                session_info.user_id,
-                                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                                user.user_id
-                            )
+                # *********************************************************
+                # since only admin function, don't need old password
+                #   if verify_password(old_password, user.password):
+                # *********************************************************
+                new_hashed_password = get_password_hash(new_password)
+                user.modified_by_user_id = session_info.user_id
+                sql = """UPDATE api_user
+                         SET password = %s,
+                             modified_by_user_id = %s,
+                             last_update = %s
+                         WHERE user_id =%s
+                      """
+                
+                chgs = ( new_hashed_password,
+                            session_info.user_id,
+                            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            user.user_id
+                        )
                 if curs.execute(sql, chgs):
                     msg = f"Updated user {user.username}"
                     user.password = new_hashed_password

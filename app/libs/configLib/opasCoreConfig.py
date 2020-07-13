@@ -28,6 +28,7 @@ if SOLRUSER is not None:
     solr_gloss = solr.SolrConnection(SOLRURL + SOLR_GLOSSARY, http_user=SOLRUSER, http_pass=SOLRPW)
     solr_authors = solr.SolrConnection(SOLRURL + SOLR_AUTHORS, http_user=SOLRUSER, http_pass=SOLRPW)
     solr_authors_term_search = solr.SearchHandler(solr_authors, "/terms")
+    solr_like_this = solr.SearchHandler(solr_authors, "/mlt")
 
 else:
     solr_docs = solr.SolrConnection(SOLRURL + SOLR_DOCS)
@@ -38,4 +39,10 @@ else:
     solr_authors = solr.SolrConnection(SOLRURL + SOLR_AUTHORS)
     solr_authors_term_search = solr.SearchHandler(solr_authors, "/terms")
 
-
+# define cores for ExtendedSearch
+EXTENDED_CORES = {
+    "pepwebdocs": solr_docs,
+    "pepwebgloss": solr_gloss,
+    "pepwebauthors": solr_authors,
+    "pepwebauthors_terms": solr_authors_term_search,
+}

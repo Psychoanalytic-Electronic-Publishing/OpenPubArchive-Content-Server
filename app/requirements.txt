@@ -29,7 +29,7 @@ numpy==1.17.4
 pandas==0.25.3
 paramiko==2.6.0
 passlib==1.7.1
-Pillow==6.2.0
+Pillow==7.1.2
 pipreqs==0.4.10
 pycparser==2.19
 pydantic==1.2

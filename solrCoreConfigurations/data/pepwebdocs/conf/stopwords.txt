@@ -14,6 +14,17 @@
 # limitations under the License.
 
 a
+s
+w
+f
+g
+k
+p
+r
+h
+i.e
+e.g
+n'est
 about
 above
 after
@@ -38,6 +49,7 @@ between
 both
 but
 by
+can
 can't
 cannot
 could

@@ -184,7 +184,7 @@ class TestMetadata(unittest.TestCase):
         # test return
         r = response.json()
         print(r['documentList']['responseInfo']['fullCount']) # 2735
-        assert(r['documentList']['responseInfo']['fullCount'] == unitTestConfig.ARTICLE_COUNT_BJP)
+        assert(r['documentList']['responseInfo']['fullCount'] >= unitTestConfig.ARTICLE_COUNT_BJP)
         # print ("test_metadata_journals complete.")
        
     def test_2_meta_contents_source_volume(self):

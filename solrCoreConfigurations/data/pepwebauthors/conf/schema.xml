@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Author Database Schema v.01
+    PEP Author Database Schema
     for core PEPWebAuthors
     
     2019-07-*:  Added string_ci, to allow case insensitive search    
+    2020-04-11: Added:
+                  strings type, boolean, booleans because it was required online going to Solr 8.5
+                  (cores would not load without that.)
 
     
    Schema version attribute note: 

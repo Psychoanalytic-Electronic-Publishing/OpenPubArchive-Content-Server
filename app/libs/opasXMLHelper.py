@@ -84,7 +84,7 @@ from localsecrets import APIURL, IMAGE_API_LINK
 from ebooklib import epub
 from io import StringIO, BytesIO
 
-show_dbg_messages = True
+show_dbg_messages = False
 stop_on_exceptions = False
 
 #-----------------------------------------------------------------------------
@@ -1411,8 +1411,16 @@ def get_running_head(source_title=None, pub_year=None, vol=None, issue=None, pgr
         source_title = f"{source_title}, "
     else:
         source_title = ""
+
+    ret_format = ret_format.lower()
+
+    try:
+        s = opasConfig.running_head_fmts[ret_format]
+        ret_val = s.format(pub_year=pub_year, source_title=source_title, vol=vol, issue=issue, pgrg=pgrg)
+    except Exception as e:
+        print (e)
+        ret_val = f"({pub_year}). {source_title}{vol}{issue}{pgrg}"
         
-    ret_val = f"({pub_year}). {source_title}{vol}{issue}{pgrg}"
     return ret_val
     
 def add_headings_to_abstract_html(abstract, source_title=None, pub_year=None, vol=None, issue=None, pgrg=None, title="", author_mast="", citeas=None, ret_format="HTML"):
@@ -1420,7 +1428,7 @@ def add_headings_to_abstract_html(abstract, source_title=None, pub_year=None, vo
     Format the top portion of the Abstracts presented by the client per the original GVPi model
     """
 
-    heading = get_running_head(source_title=source_title, pub_year=pub_year, vol=vol, issue=issue, pgrg=pgrg, ret_format="HTML")
+    heading = get_running_head(source_title=source_title, pub_year=pub_year, vol=vol, issue=issue, pgrg=pgrg, ret_format=ret_format)
         
     if ret_format != "TEXTONLY":
         # BOTH HTML and XML.  May later want to handle XML separately

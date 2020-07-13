@@ -225,6 +225,13 @@ def find_all(name_pat, path):
                 result.append(os.path.join(root, filename))
     return result
 
+def non_empty_string(strval):
+    try:
+        return strval if strval != "" else None
+    except Exception as e:
+        return None
+        
+
 class NewFileTracker(object):
     """
     >>> ocd =  opasCentralDBLib.opasCentralDB()
@@ -534,6 +541,7 @@ class ArticleInfo(object):
         self.file_size = 0  
         self.filedatetime = ""
         self.filename = ""
+        self.bk_subdoc = None
 
         # now, the rest of the variables we can set from the data
         self.processed_datetime = datetime.utcfromtimestamp(time.time()).strftime(localsecrets.TIME_FORMAT_STR)
@@ -552,6 +560,8 @@ class ArticleInfo(object):
         #<!-- Common fields -->
         #<!-- Article front matter fields -->
         #---------------------------------------------
+        artinfo_xml = pepxml.xpath("//artinfo")[0] # grab full artinfo node, so it can be returned in XML easily.
+        self.artinfo_xml = etree.tostring(artinfo_xml)
         self.src_code = pepxml.xpath("//artinfo/@j")[0]
         try:
             self.src_code = self.src_code.upper()  # 20191115 - To make sure this is always uppercase
@@ -692,7 +702,18 @@ class ArticleInfo(object):
         if art_qual_node != []:
             self.art_qual = opasxmllib.xml_get_element_attr(art_qual_node[0], "rx", default_return=None)
         else:
-            self.art_qual = None
+            self.art_qual = pepxml.xpath("//artbkinfo/@extract")
+            if self.art_qual == []:
+                self.art_qual = None 
+
+            if self.art_qual is not None:
+                if self.art_qual[0] != self.art_id:
+                    self.bk_subdoc = True
+                else:
+                    self.bk_subdoc = False
+                
+            # will be None if not a book extract
+            # self.art_qual = None
 
         refs = pepxml.xpath("/pepkbd3//be")
         self.bib_authors = []
@@ -869,14 +890,15 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
     if glossary_group_terms is not None:
         for n in glossary_group_terms:
             glossary_group_terms_list += opasAPISupportLib.string_to_list(n, sep=";")
-    freuds_italics = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/fi")
-    freuds_italics = remove_values_from_terms_highlighted_list(freuds_italics)
+    freuds_italics = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/fi", default_return=None)
+    if freuds_italics is not None:
+        freuds_italics = remove_values_from_terms_highlighted_list(freuds_italics)
     
     new_rec = {
                 "id": artInfo.art_id,                                         # important =  note this is unique id for every reference
                 "art_id" : artInfo.art_id,                                    # important                                     
                 "title" : artInfo.art_title,                                  # important                                      
-                "art_title_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//arttitle"),
+                "art_title_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//arttitle", default_return = None),
                 "art_sourcecode" : artInfo.src_code,                 # important
                 "art_sourcetitleabbr" : artInfo.src_title_abbr,
                 "art_sourcetitlefull" : artInfo.src_title_full,
@@ -887,20 +909,23 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "art_excerpt" : excerpt,
                 # very important field for displaying the whole document or extracting parts
                 "text_xml" : file_xml_contents,                                # important
-                "text_xml_offsite" : offsite_contents,
+                "text_xml_offsite" : non_empty_string(offsite_contents),
                 "author_bio_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//nbio", default_return = None),
                 "author_aff_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//autaff", default_return = None),
                 "bk_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bktitle", default_return = None),
+                "bk_subdoc" : artInfo.bk_subdoc,
+                "art_info_xml" : artInfo.artinfo_xml,
                 "bk_alsoknownas_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bkalsoknownas", default_return = None),
                 "bk_editors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkeditors", default_return = None),
                 "bk_seriestitle_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkeditors", default_return = None),
                 "caption_text_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml,"//caption", default_return = None),
                 "caption_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//ctitle", default_return = None),
                 #"headings_xml" : headings,
-                "meta_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//meta"),"text_xml" : file_xml_contents,
+                "meta_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//meta", default_return = None),
+                "text_xml" : file_xml_contents,
                 "timestamp" : artInfo.processed_datetime,                     # important
                 "file_last_modified" : artInfo.filedatetime,
-                "file_classification" : artInfo.file_classification,
+                "file_classification" : non_empty_string(artInfo.file_classification),
                 "file_size" : artInfo.file_size,
                 "file_name" : artInfo.filename,
                 "art_subtitle_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//artsubtitle", default_return = None),
@@ -912,15 +937,15 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 #"art_body_xml" : bodyXml,
                 "authors" :  artInfo.author_list, # artInfo.art_all_authors,
                 "art_authors" : artInfo.author_list,
-                "art_authors_mast" : artInfo.art_auth_mast,
-                "art_authors_citation" : artInfo.art_auth_citation,
-                "art_authors_unlisted" : artInfo.art_auth_mast_unlisted_str,
+                "art_authors_mast" : non_empty_string(artInfo.art_auth_mast),
+                "art_authors_citation" : non_empty_string(artInfo.art_auth_citation),
+                "art_authors_unlisted" : non_empty_string(artInfo.art_auth_mast_unlisted_str),
                 "art_authors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//aut", default_return = None),
-                "art_year" : artInfo.art_year,
+                "art_year" : non_empty_string(artInfo.art_year),
                 "art_year_int" : artInfo.art_year_int,
-                "art_vol" : artInfo.art_vol,
-                "art_vol_title" : artInfo.art_vol_title,
-                "art_pgrg" : artInfo.art_pgrg,
+                "art_vol" : non_empty_string(artInfo.art_vol),
+                "art_vol_title" : non_empty_string(artInfo.art_vol_title),
+                "art_pgrg" : non_empty_string(artInfo.art_pgrg),
                 "art_pgcount" : artInfo.art_pgcount,
                 "art_iss" : artInfo.art_issue,
                 "art_iss_title" : artInfo.art_issue_title,
@@ -937,21 +962,21 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "freuds_italics": freuds_italics,
                 "art_type" : artInfo.art_type,
                 "art_newsecnm" : artInfo.start_sectname,
-                "terms_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//impx[@type='TERM2']"),
+                "terms_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//impx[@type='TERM2']", default_return=None),
                 "terms_highlighted" : terms_highlighted,
-                "dialogs_spkr" : pepxml.xpath("//dialog/spkr/node()"),
-                "panels_spkr" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel/spkr"),
-                "poems_src" : pepxml.xpath("//poem/src/node()"),
-                #"dialogs_xml" : dialogsXml,"dreams_xml" : dreamsXml,
-                #"notes_xml" : notesXml,
-                #"dreams_xml" : dreamsXml,
-                #"panels_xml" : panelsXml,
-                #"poems_xml" : poemsXml,
-                # "poems" : pepxml.xpath("//quote/spkr/node()"),
-                #"quotes_xml" : quotesXml,
+                "dialogs_spkr" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dialog/spkr/node()", default_return=None),
+                "panels_spkr" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel/spkr", default_return=None),
+                "poems_src" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//poem/src/node()", default_return=None), # multi
+                "dialogs_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dialog", default_return=None), # multi
+                "dreams_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dream", default_return=None), # multi
+                "notes_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//note", default_return=None),
+                "panels_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel", default_return=None),
+                "poems_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//poem", default_return=None), # multi
+                "quotes_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//quote", default_return=None), # multi
                 "reference_count" : artInfo.ref_count,
-                #"references_xml" : referencesXml,
-                "bk_pubyear" : pepxml.xpath("//bkpubyear/node()"),
+                "references_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//be|binc", default_return=None), # multi
+                "tables_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//tbl", default_return=None), # multi
+                "bk_pubyear" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkpubyear/node()", default_return=None), # multi
                 "bib_authors" : artInfo.bib_authors,
                 "bib_title" : artInfo.bib_title,
                 "bib_journaltitle" : artInfo.bib_journaltitle,
@@ -1003,11 +1028,18 @@ class doc_children(object):
             # special attr handling.  Later look and see if this is slowing us down...
             currelem = etree.fromstring(n)
             lang = currelem.attrib.get("lang", default_lang)
+            para_lgrid = currelem.attrib.get("lgrid", None)
+            para_lgrx = currelem.attrib.get("lgrx", None)
+            if para_lgrx is not None:
+                para_lgrx = [item.strip() for item in para_lgrx.split(',')]
+                
             self.child_list.append({"id": parent_id + f".{self.count}",
                                     "art_level": level,
                                     "parent_tag": parent_tag,
                                     "lang": lang,
-                                    "para": n
+                                    "para": n,
+                                    "para_lgrid" : para_lgrid,
+                                    "para_lgrx" : para_lgrx
                                   })
         return self.count
 

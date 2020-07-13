@@ -100,6 +100,7 @@ class ResponseInfo(BaseModel):
     core: str = Schema(None, title="The Solr Core classname used (e.g., docs, authors).")
     solrParams: dict = Schema(None, title="A dictionary based set of the parameters passed to the Solr search engine for this request.")
     errors: ErrorReturn = Schema(None, title="Any Error information")
+    dataSource: str = Schema(None, title="Version of the API server software")
     timeStamp: str = Schema(None, title="Server timestamp of return data.")   
 
 #-------------------------------------------------------
@@ -162,11 +163,17 @@ class AuthorIndex(BaseModel):
     authorIndex: AuthorIndexStruct
     
 #-------------------------------------------------------
+class MoreLikeThisItem(BaseModel):
+    documentID: str = Schema(None, title="Document ID/Locator", description="The multiple-section document ID, e.g., CPS.007B.0021A.B0012 in a biblio, or CPS.007B.0021A as a document ID.")
+    
+
 class DocumentListItem(BaseModel):
     documentID: str = Schema(None, title="Document ID/Locator", description="The multiple-section document ID, e.g., CPS.007B.0021A.B0012 in a biblio, or CPS.007B.0021A as a document ID.")
     docType:  str = Schema(None, title="Document Type (Classification)", description="e.g., ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review")
     documentRef: str = Schema(None, title="Document Ref (bibliographic)", description="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
     documentRefHTML: str = Schema(None, title="Same as documentRef but in HTML.")
+    documentMetaXML: str = Schema(None, title="Metadata content in XML, , e.g., element meta")
+    documentInfoXML: str = Schema(None, title="The document meta information in XML, e.g., element artinfo") 
     title: str = Schema(None, title="Document Title")
     authorMast: str = Schema(None, title="Author Names", description="The author names as displayed below the title in an article.")
     origrx: str = Schema(None, title="Original Document (documentID)", description="Document idref (documentID) linking this to an original document, e.g, this is a translation of...")
@@ -178,7 +185,7 @@ class DocumentListItem(BaseModel):
     kwic: str = Schema(None, title="Key Words in Context", description="KWIC as text, concatenated, not a list -- the way in v1 (May be deprecated later") # 
     vol: str = Schema(None, title="Serial Publication Volume", description="The volume number of the source, can be alphanumeric")
     year: str = Schema(None, title="Serial Publication Year", description="The four digit year of publication")
-    lang: list = Schema(None, title="Language", description="The list of languages in this article")
+    lang: str = Schema(None, title="Language", description="The primary language of this article")
     issn: str = Schema(None, title="The ISSN", description="The ISSN for the source") # 2020506 Not sure if we should include this, but we are at least already storing it at article level
     #isbn: str = Schema(None, title="The ISBN", description="The ISBN for the source") #  2020506 isbn is not stored at article level, so not now at least
     doi: str = Schema(None, title="Document object identifier", description="Document object identifier, a standard id system admin by the International DOI Foundation (IDF)")
@@ -210,6 +217,7 @@ class DocumentListItem(BaseModel):
     # |- new v2 field, but removed during cleanup, better ata is in stat.
     stat: dict = Schema(None, title="Statistics", description="Reusable field to return counts requested")
     # these are not all currently used
+    accessClassification: str = Schema(None, title="Document classification, e.g., Archive, Current, Free")
     accessLimited: bool = Schema(False, title="Access is limited, preventing full-text return")
     accessLimitedReason: str = Schema(None, title="Explanation of limited access status")
     accessLimitedDescription: str = Schema(None, title="")
@@ -229,7 +237,16 @@ class DocumentStruct(BaseModel):
     responseSet: DocumentListItem
 
 # modified PEPEasy2020 works with multiple 
-class Documents(BaseModel):        # For the GVPi server, it returns a single object not an array of documents. But that's inconsistent with the abstract return.  Need to modify PEP-Easy and unify as a list.
+class Documents(BaseModel):
+    """
+    Contains one or more documents (or abstracts) and associated data items.
+    
+    Note that the current API only supports return of one full-text document at a time, though multiple
+      abstracts may be returned via this structure.
+      
+    """
+    # For the GVPi server, it returns a single object not an array of documents.
+    # But that's inconsistent with the abstract return.  #ToDo Need to modify PEP-Easy and unify as a list.
     documents: DocumentListStruct
 
 # possible submission and return structure for file items loaded 3/20/2020, subject to change
@@ -273,6 +290,7 @@ class ResponseInfoLoginStatus(BaseModel):
     request: str = Schema(None, title="The URL of the request")
     #user: User = Schema(None, title="A user object for the user")
     error_message: str = Schema(None, title="If an error occurred, description")
+    dataSource: str = Schema(None, title="Version of the API server software")
     timeStamp: str = Schema(None, title="Server timestamp of return data.")   
 
 class LoginReturnItem(BaseModel):    
@@ -318,7 +336,8 @@ class ServerStatusItem(BaseModel):
     db_server_version: str = Schema(None, title="Version of the Database server")
     text_server_ok: bool = Schema(None, title="Text server is online")
     text_server_version: str = Schema(None, title="Version of the text server")
-    api_server_version: str = Schema(None, title="Version of the API server software")
+    opas_version: str = Schema(None, title="Version of OPAS")
+    dataSource: str = Schema(None, title="Version of the API server software")
     timeStamp: str = Schema(None, title="Current time")
     # admin only
     user_count:  int = Schema(0, title="Number of users online")
@@ -383,10 +402,12 @@ class SolrQuery(BaseModel):
     # Solr Query Parameters as generated by opasQueryHelper.parse_search_query_parameters
     searchQ: str = Schema(None, title="Query in Solr syntax", description="Advanced Query in Solr Q syntax (see schema names)")
     filterQ: str = Schema(None, title="Filter query in Solr syntax", description="Filter Query in Solr syntax (see schema names)")
+    searchQPrefix: str = Schema("", title="Prefix to searchQ", description="Prefix to SearchQ, e.g., for Level 2")
     # returnFields: str = Schema(None, title="List of return fields", description="Comma separated list of return fields.  Default=All fields.")
     sort: str=Schema(None, title="Fields and direction by which to sort", description="arranges search results in either ascending (asc) or descending (desc) order. The parameter can be used with either numerical or alphabetical content. The directions can be entered in either all lowercase or all uppercase letters (i.e., both asc or ASC).")
     queryTermList: List[str] = None
     # extra fields
+    likeThisID: str = Schema(None, title="DocumentID to use for reference to find documents like this.")
     analyzeThis: str = ""
     searchAnalysisTermList: List[str] = []
 
@@ -410,10 +431,23 @@ class SolrQueryOpts(BaseModel):
 
     # hlQ: str = Schema(None, title="Query to use for highlighting", description="allows you to highlight different terms than those being used to retrieve documents.")
     # maybe move these to a third part of SolrQuerySpec
-    moreLikeThis: str = Schema("false", title="", description="If set to true, activates the MoreLikeThis component and enables Solr to return MoreLikeThis results.")
-    moreLikeThisCount: str = Schema(None, title="MoreLikeThis count", description="Specifies the number of similar documents to be returned for each result. The default value is 5.")
+    # moreLikeThis: bool = Schema(False, title="", description="If set to true, activates the MoreLikeThis component and enables Solr to return MoreLikeThis results.")
+    moreLikeThisCount: int = Schema(0, title="MoreLikeThis count", description="Specifies the number of similar documents to be returned for each result. The default value is 5.")
     moreLikeThisFields: str = Schema(None, title="MoreLikeThis fields", description="Specifies the fields to use for similarity. If possible, these should have stored termVectors.")
 
+# Will try a dict approach first, rather than this.
+#class FacetSpec(BaseModel):
+    #mincount: int = Schema(0, title="Minimum count for a facet to be included")
+    #sort: str = Schema("count", title="Either 'count' (order by count) or 'index' (alphabetical)")
+    #prefix: str = Schema(None, title="Limit terms to those starting with the prefix (if in the return set otherwise)")
+    #contains: str = Schema(None, title="Limit terms to those containing the substring (if in the return set otherwise)")
+    #excludeTerms: str = Schema(None, title="List of terms to exclude (comma separated list)")
+    #facetRangesFields: str = Schema(None, title="Faceting Range field list (comma separated list)")
+    #facetRangesStart: int = Schema(0, title="Minimum count for a facet to be included")
+    #facetRangesEnd: int = Schema(0, title="Minimum count for a facet to be included")
+    #limit: int = Schema(100, title="Facet Limit for Solr returns")
+    #offset: int = Schema(0, title="Facet Offset in return set")
+    
 class SolrQuerySpec(BaseModel):
     label: str = Schema("default", title="User defined Label to save query spec")
     urlRequest: str = Schema(None, title="URL Request Made")
@@ -425,12 +459,21 @@ class SolrQuerySpec(BaseModel):
     abstractReturn: bool = Schema(False, title="Request return of abstracts or summaries", description="Request return of abstracts or summaries")
     returnFields: str = Schema(None, title="List of return fields (ExtendedSearch Only)", description="Comma separated list of return fields.  Only applies to ExtendedSearch.")
     returnFormat: str = Schema("HTML", title="Return type: XML, HTML, TEXT_ONLY", description="Return type: XML, HTML, TEXT_ONLY")
-    facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
     limit: int = Schema(15, title="Record Limit for Solr returns")
     offset: int = Schema(0, title="Record Offset in return set")
     page: int = Schema(15, title="Page Number in return set")
     page_limit: int = Schema(15, title="Page Limit for Solr returns")
     page_offset: int = Schema(15, title="Page offset in return set")
+    facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
+    facetMinCount: int = Schema(1, title="Minimum count to return a facet")
+    facetRanges: str = Schema(None, title="Faceting range list (comma separated list)", description="Returns faceting ranges if specified.")
+    # facetSpec can include any Solr facet options, except any that are listed above.
+    # option names should use _ instead of Solr's "."
+    # unfortunately, because _ is period, you cannot use options with field names embedded, if they have an _,
+    #   e.g., f.art_year_int_facet_range_start won't work to set the facet range start for art_year_int
+    # You should be able to do this if the field doesn't have an underscore, though we don't have int
+    #  fields like that currently.
+    facetSpec: dict = Schema({}, title="Flexible Dictionary for facet specifications (using _ rather than .) ")
     # sub structures
     solrQuery: SolrQuery = None
     solrQueryOpts: SolrQueryOpts = None
@@ -438,15 +481,27 @@ class SolrQuerySpec(BaseModel):
 #-------------------------------------------------------
 #  used to send individual components of the query, with individual options, to Opas (through API Body) 
 #    which then processes it into a SolrQuery and sends to Solr.
-class SolrQueryTerm(BaseModel):
-    words: str = Schema(None, title="words, phrase with or without proximity qualifier, boolean connectors")
-    parent: str = Schema(None, title="default parent to query or None")
+class SolrQueryTermSub(BaseModel):
+    connector: str = Schema(" && ", title="Boolean connector to prev term.  Must be && (default) or ||")
     field: str = Schema("para", title="Field to query")
+    words: str = Schema(None, title="if string field: string or pattern to match; if text field: words, phrase with or without proximity qualifier, boolean connectors")
+    parent: str = Schema(None, title="default parent to query or None")
     synonyms: bool = Schema(False, title="Request thesaurus expansion") # to turn on thesaurus match (appends syn) Default = False
-    synonyms_suffix: str = Schema("_syn", title="suffix for field to use thesaurus")
+    synonyms_suffix: str = Schema(opasConfig.SYNONYM_SUFFIX, title="suffix for field to use thesaurus; may not apply to all fields")
+
+class SolrQueryTerm(BaseModel):
+    connector: str = Schema(" && ", title="Boolean connector to prev term.  Must be && (default) or ||")
+    subClause: List[SolrQueryTermSub] = Schema([], title="A sublist of query terms, to aggregate within parentheses; only connector is used with a SolrQueryTerm subclause")
+    field: str = Schema("para", title="Field to query")
+    words: str = Schema(None, title="if string field: string or pattern to match; if text field: words, phrase with or without proximity qualifier, boolean connectors")
+    parent: str = Schema(None, title="default parent to query or None")
+    synonyms: bool = Schema(False, title="Request thesaurus expansion") # to turn on thesaurus match (appends syn) Default = False
+    synonyms_suffix: str = Schema(opasConfig.SYNONYM_SUFFIX, title="suffix for field to use thesaurus; may not apply to all fields")
     
 class SolrQueryTermList(BaseModel):
+    artLevel: int = Schema(None, title="1 for main document fields (e.g., text or title); 2 for child fields (e.g., para")
     query: List[SolrQueryTerm] = []
+    qfilter: List[SolrQueryTerm] = []
     solrQueryOpts: SolrQueryOpts = None
 
 #-------------------------------------------------------

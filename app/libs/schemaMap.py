@@ -15,7 +15,7 @@ import re
 
 # Map client names to schema names
 USER2SOLR_MAP = {
-    "doc" : "(p_body OR p_summaries OR p_appxs)",
+    "doc" : "(p_body || p_summaries || p_appxs)",
     "body" : "(p_body)",
     "abstract" : "(p_abstract)",
     "headings": "(p_heading)",
@@ -30,6 +30,20 @@ USER2SOLR_MAP = {
     "appendixes": "(p_appxs)",
     "summaries": "(p_summaries)",
 }
+
+FIELD2USER_MAP = {
+    "art_author" : "author",
+    "art_authors_text" : "author",
+    "art_year" : "year",
+    "art_pepsource" : "source",
+    "art_sourcecode" : "source",
+    "text_xml" : "text",
+    "text" : "text",
+    "art_cited_5" : "cited, cited in the last 5 years",
+    "art_cited_10" : "cited, cited in the last 10 years",
+    "art_cited_20" : "cited, cited in the last 20 years",
+}
+
 
 # reverse it for the SOLR2USER conversion
 for key, val in USER2SOLR_MAP.items():

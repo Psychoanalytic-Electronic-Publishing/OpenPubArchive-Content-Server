@@ -31,7 +31,7 @@ from main import app
 
 client = TestClient(app)
 
-class TestDownload(unittest.TestCase):
+class TestGetDocuments(unittest.TestCase):
     """
     Tests for basic login and Download
     
@@ -58,33 +58,22 @@ class TestDownload(unittest.TestCase):
         assert(session_id == orig_session_id)
         print (decoded_access_token )
 
-    def test_1_Download(self):
+    def test_1_get_document(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/IJP.077.0217A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/IJP.077.0217A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"] 
+        assert(response_info["count"] == 1)
+        print (response_set)
 
-    def test_2_Download(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IFP.017.0240A/')
-        response = client.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-       
-    def test_3_Download(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/IJPSP.009.0324A/')
-        response = client.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-
-    def test_4_Download(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/HTML/IJPSP.009.0324A/')
-        response = client.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
 
 if __name__ == '__main__':
     unittest.main()    

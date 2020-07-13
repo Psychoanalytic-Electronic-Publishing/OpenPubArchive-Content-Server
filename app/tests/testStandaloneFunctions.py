@@ -80,19 +80,84 @@ class TestStandaloneFunctions(unittest.TestCase):
     def test_0_parseToSolrQuery(self):
         """
         Test query formation via parse_search_query_parameters
+        
+        # Note: AS OF 2020-06-23:
+           artLevel=2 is NO LONGER implied if field is para (compare to test_0b)
+           The parent is NO LONGER IMPLIED
+          ** BE EXPLICIT ***
         """
         test1 =  models.SolrQueryTermList(
                     query = [
                                {
                                  "words":"child abuse",
-                                 "parent": "doc",
                                  "field": "para",
                                  "synonyms": "true",
                                }
                             ]
                 )
         resp = opasQueryHelper.parse_search_query_parameters(solrQueryTermList=test1)
-        assert (resp.solrQuery.searchQ == "{!parent which='art_level:1'} art_level:2 AND parent_tag:(p_body OR p_summaries OR p_appxs) AND para_syn:(child abuse)")
+        assert (resp.solrQuery.searchQ == "(para_syn:(child abuse))")
+
+    def test_0b_parseToSolrQuery(self):
+        """
+        Test query formation via parse_search_query_parameters
+        """
+        test1 =  models.SolrQueryTermList(
+            artLevel = 2, 
+            query = [
+                        {
+                          "words":"child abuse",
+                          "parent": "doc",
+                          "field": "para",
+                          "synonyms": "true",
+                        }
+                     ]
+            )
+        resp = opasQueryHelper.parse_search_query_parameters(solrQueryTermList=test1)
+        assert (resp.solrQuery.searchQ == "{!parent which='art_level:1'} art_level:2 && ((parent_tag:(p_body || p_summaries || p_appxs) && para_syn:(child abuse)))")
+
+    def test_0c_parseToSolrQuery(self):
+        """
+        Test query formation via parse_search_query_parameters
+        """
+        test1 =  models.SolrQueryTermList(
+            artLevel = 2, 
+            query = [
+                        {
+                          "words":"excited",
+                          "parent": "doc",
+                          "field": "para",
+                          "synonyms": "true",
+                        },
+                        {
+                          "words":"asylum",
+                          "parent": "doc",
+                          "field": "para",
+                          "synonyms": "false",
+                        }
+                        
+                     ]
+            )
+        resp = opasQueryHelper.parse_search_query_parameters(solrQueryTermList=test1)
+        assert (resp.solrQuery.searchQ == "{!parent which='art_level:1'} art_level:2 && ((parent_tag:(p_body || p_summaries || p_appxs) && para_syn:(excited)) && (parent_tag:(p_body || p_summaries || p_appxs) && para:(asylum)))")
+
+    def test_0d_parseToSolrQuery(self):
+        """
+        Test query formation via parse_search_query_parameters
+        """
+        test1 =  models.SolrQueryTermList(
+            artLevel = 2, 
+            query = [
+                        {
+                          "words":"mother became pale",
+                          "parent": "doc",
+                          "field": "para",
+                          "synonyms": "false",
+                        }
+                     ]
+            )
+        resp = opasQueryHelper.parse_search_query_parameters(solrQueryTermList=test1)
+        assert (resp.solrQuery.searchQ == "{!parent which='art_level:1'} art_level:2 && ((parent_tag:(p_body || p_summaries || p_appxs) && para:(mother became pale)))")
 
     def test_1a_get_article_abstract_data(self):
         """

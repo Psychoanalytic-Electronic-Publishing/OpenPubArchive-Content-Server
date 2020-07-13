@@ -42,7 +42,7 @@ class TestSearchAnalysis(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.       
 
     def test_v2_searchanalysis(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?author=greenfield')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?author=rangell&fulltext1=transference&soucecode=AOP')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
@@ -50,12 +50,13 @@ class TestSearchAnalysis(unittest.TestCase):
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         print (f"Term: {response_set[0]['term']} Count: {response_set[0]['termCount']}")
-        assert(response_set[0]["termCount"] >= 7)
+        assert(response_set[0]["termCount"] >= 38847)
+        assert(response_set[1]["termCount"] >= 132)
         print (response_set)
         # Confirm that the request-response cycle completed successfully.       
 
     def test_v2_searchanalysis_author_and_journalcode(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?author=tuckett&sourcecode=BIP')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?author=tuckett&sourcecode=AOP')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
@@ -64,11 +65,11 @@ class TestSearchAnalysis(unittest.TestCase):
         print (f"Term: {response_set[0]['term']} Count: {response_set[0]['termCount']}")
         print (f"Term: {response_set[1]['term']} Count: {response_set[1]['termCount']}")
         term0 = r["termIndex"]["responseSet"][0]["term"]
-        assert(term0 == '(BIP) ( in art_sourcecode)')
-        assert(r["termIndex"]["responseSet"][0]["termCount"] >= 699)
+        assert(term0 == '(AOP) (in source)')
+        assert(r["termIndex"]["responseSet"][0]["termCount"] == 631)
         term1 = r["termIndex"]["responseSet"][1]["term"]
-        assert(term1 == '(tuckett) ( in author)')
-        assert(r["termIndex"]["responseSet"][1]["termCount"] >= 53)
+        assert(term1 == '(tuckett) (in author)')
+        assert(r["termIndex"]["responseSet"][1]["termCount"] >= 59)
 
     def test_v2_searchanalysis_author_and_journalcode_and_paratext(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?sourcecode=BAP&paratext=freud%20psychoanalysis')
@@ -81,11 +82,11 @@ class TestSearchAnalysis(unittest.TestCase):
         print (f"Term: {response_set[0]['term']} Count: {response_set[0]['termCount']}")
         print (f"Term: {response_set[1]['term']} Count: {response_set[1]['termCount']}")
         term0 = r["termIndex"]["responseSet"][0]["term"]
-        assert(term0 == '(freud psychoanalysis)  ( in paras in doc)')
+        assert(term0 == 'freud psychoanalysis')
         assert(r["termIndex"]["responseSet"][0]["termCount"] >= 19000)
         term1 = r["termIndex"]["responseSet"][1]["term"]
-        assert(term1 == '(BAP) ( in art_sourcecode)')
-        assert(r["termIndex"]["responseSet"][1]["termCount"] >= 401)
+        assert(term1 == '(BAP) (in source)')
+        assert(r["termIndex"]["responseSet"][1]["termCount"] >= 403)
 
     def test_v2_searchanalysis_author_and_journalcode_and_text(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?sourcecode=PCT&citecount=3')
@@ -98,10 +99,10 @@ class TestSearchAnalysis(unittest.TestCase):
         print (f"Term: {response_set[0]['term']} Count: {response_set[0]['termCount']}")
         print (f"Term: {response_set[1]['term']} Count: {response_set[1]['termCount']}")
         term0 = r["termIndex"]["responseSet"][0]["term"]
-        assert(term0 == '(PCT) ( in art_sourcecode)')
+        assert(term0 == '(PCT) (in source)')
         assert(r["termIndex"]["responseSet"][0]["termCount"] == 482)
         term1 = r["termIndex"]["responseSet"][1]["term"]
-        assert(term1 == '[3 TO *] ( in art_cited_5)')
+        assert(term1 == '[3 TO *] (in cited, cited in the last 5 years)')
         assert(r["termIndex"]["responseSet"][1]["termCount"] >= 2322)
 
     def test_v2_searchanalysis_author_and_journalcode_and_text_and_articletype(self):

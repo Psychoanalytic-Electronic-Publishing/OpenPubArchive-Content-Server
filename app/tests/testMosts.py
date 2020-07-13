@@ -49,9 +49,12 @@ class TestMost(unittest.TestCase):
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['count']}")
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
-        print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['downloads_last12months']}")
-        assert(r['documentList']['responseInfo']['count'] == r['documentList']['responseInfo']['limit'])
-        assert(r['documentList']['responseSet'][0]['stat']['downloads_last12months'] >= 0)
+        if r['documentList']['responseInfo']['count'] > 0:
+            print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['art_views_last12mos']}")
+            assert(r['documentList']['responseInfo']['count'] == r['documentList']['responseInfo']['limit'])
+            assert(r['documentList']['responseSet'][0]['stat']['art_views_last12mos'] >= 0)
+        else:
+            print("Test skipped...no view data currently available.")
         #assert(r["text_server_ok"] == True)
         #assert(r["db_server_ok"] == True)
         print (r)
@@ -68,7 +71,7 @@ class TestMost(unittest.TestCase):
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
         #sometimes no data there
         if r['documentList']['responseSet'] != []:
-            assert(r['documentList']['responseSet'][0]['stat']['downloads_last12months'] > 0)
+            assert(r['documentList']['responseSet'][0]['stat']['art_views_last12mos'] > 0)
         #assert(r["text_server_ok"] == True)
         #assert(r["db_server_ok"] == True)
         print (r)
@@ -122,7 +125,7 @@ class TestMost(unittest.TestCase):
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
         #sometimes no data there
         if r['documentList']['responseSet'] != []:
-            assert(r['documentList']['responseSet'][0]['stat']['downloads_last12months'] > 0)
+            assert(r['documentList']['responseSet'][0]['stat']['art_views_last12mos'] > 0)
         #assert(r["text_server_ok"] == True)
         #assert(r["db_server_ok"] == True)
         print (r)
