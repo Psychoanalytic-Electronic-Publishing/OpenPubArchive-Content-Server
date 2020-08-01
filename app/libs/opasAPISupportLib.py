@@ -126,7 +126,7 @@ def get_basecode(document_id):
         parts = document_id.split(".")
         ret_val = parts[0]
     except Exception as e:
-        logging.error(f"Bad document_id {document_id} to get_basecode. {e}")
+        logger.error(f"Bad document_id {document_id} to get_basecode. {e}")
     
     #TODO: later we might want to check for special book basecodes.
     
@@ -487,11 +487,11 @@ def database_get_most_viewed( publication_period: int=5,
         source_type (str, optional): journals, books, or videostreams.
         view_period (int, optional): defaults to last12months
         
-            view_period = { 0: "lastcalendaryear",
+            view_period = { 0: "lastcalyear",
                             1: "lastweek",
-                            2: "lastmonth",
-                            3: "last6months",
-                            4: "last12months",
+                            2: "last1mos",
+                            3: "last6mos",
+                            4: "last12mos",
                            }
             
         limit (int, optional): Paging mechanism, return is limited to this number of items.
@@ -507,7 +507,7 @@ def database_get_most_viewed( publication_period: int=5,
     '...'
 
     """
-    period_suffix = opasConfig.VALS_VIEWPERIODDICT.get(view_period, "last12months")
+    period_suffix = opasConfig.VALS_VIEWPERIODDICT.get(view_period, "last12mos")
     sort = f"art_views_{period_suffix} desc"
     
     start_year = dtime.date.today().year
@@ -1012,7 +1012,7 @@ def metadata_get_source_by_type(src_type=None,
             elif re.match("jour.*", src_type, re.IGNORECASE):
                 src_type = "journal"
             else: # default
-                logging.warning(f"Unknown source type '{src_type}'. Using a wildcard (*) instead.")
+                logger.warning(f"Unknown source type '{src_type}'. Using a wildcard (*) instead.")
                 src_type = "*"
    
     # This is not part of the original API, it brings back individual videos rather than the videostreams
@@ -1090,7 +1090,7 @@ def metadata_get_source_by_type(src_type=None,
             if src_type == "book":
                 book_code = source.get("pepcode")
                 if book_code is None:
-                    logging.error(f"Book code information missing for requested basecode {base_code} in productbase")
+                    logger.error(f"Book code information missing for requested basecode {base_code} in productbase")
                 else:
                     m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", book_code, re.IGNORECASE)
                     if m is not None:
@@ -1745,7 +1745,7 @@ def get_fulltext_from_search_results(result, text_xml, page, page_offset, page_l
                 text_xml = opasxmllib.xml_get_pages(text_xml, offset, page_limit, pagebrk="", inside="body", env="body")
                 text_xml = text_xml[0]
             except Exception as e:
-                logging.error(f"Page extraction from document failed. Error: {e}")
+                logger.error(f"Page extraction from document failed. Error: {e}")
 
     try:
         format_requested_ci = format_requested.lower() # just in case someone passes in a wrong type
@@ -2225,7 +2225,7 @@ def search_analysis( query_list,
                                       start = 0)
         except Exception as e:
             # try to return an error message for now.
-            # logging.error(HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=e))
+            # logger.error(HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=e))
             # raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Bad Search syntax")
             return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
             
@@ -2488,7 +2488,7 @@ def get_term_index(term_partial,
         term_index = core_term_indexers[core]
     except:
         # error
-        logging.error("Specified core does not have a term index configured")
+        logger.error("Specified core does not have a term index configured")
     else:
         if "*" in term_partial or "?" in term_partial or "." in term_partial:
             results = term_index( terms_fl=term_field,
@@ -2535,150 +2535,6 @@ def get_term_index(term_partial,
         ret_val = term_index
 
     return ret_val
-
-#================================================================================================================
-def search_text_query_spec(solr_query_spec: models.SolrQuerySpec = None,
-                           core = None, 
-                           url_request = None, 
-                           query = None, 
-                           filter_query = None,
-                           query_debug = None,
-                           similar_count = None,
-                           full_text_requested = None,
-                           abstract_requested = None, 
-                           file_classification = None, 
-                           format_requested = None,
-                           def_type = None,
-                           summary_fields=opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
-                           highlight_fields = None,
-                           facet_fields = None, 
-                           sort= None,
-                           authenticated = None, 
-                           extra_context_len = None,
-                           maxKWICReturns = None,
-                           limit = None, 
-                           offset = None,
-                           page_offset = None,
-                           page_limit = None,
-                           page = None
-                           ):
-    """
-    This function supports an alternate form of Solr querying, with the caller specifying the Solr  query and filter query fields
-    and other options directly.
-
-    The caller sends the Query using the models.SolrQuerySpec, with the option of including other parameters to override
-    the values in models.SolrQuerySpec.
-    
-    """
-    if solr_query_spec is None:
-        #  create it
-        
-        solr_query_spec = models.SolrQuerySpec(
-                                               solrQuery=models.SolrQuery(), 
-                                               solrQueryOpts=models.SolrQueryOpts()
-        )
-        
-    if solr_query_spec.solrQuery is None:
-        solr_query_spec.solrQuery = models.SolrQuery() 
-    
-    if solr_query_spec.solrQueryOpts is None:
-        solr_query_spec.solrQueryOpts = models.SolrQueryOpts() 
-    
-    solr_query_spec.returnFields = summary_fields 
-
-    # parameters specified override QuerySpec
-    
-    if file_classification is not None:
-        solr_query_spec.fileClassification = file_classification 
-
-    if query_debug is not None:
-        solr_query_spec.solrQueryOpts.queryDebug = query_debug 
-
-    if solr_query_spec.solrQueryOpts.queryDebug != "on":
-        solr_query_spec.solrQueryOpts.queryDebug = "off"
-
-    if url_request is not None:
-        solr_query_spec.urlRequest = url_request
-
-    if full_text_requested is not None:
-        solr_query_spec.fullReturn = full_text_requested
-
-    if abstract_requested is not None:
-        solr_query_spec.abstractReturn = abstract_requested 
-
-    if format_requested is not None:
-        solr_query_spec.returnFormat = format_requested
-
-    if limit is not None:
-        solr_query_spec.limit = limit
-
-    if offset is not None:
-        solr_query_spec.offset = offset
-
-    if page_offset is not None:
-        solr_query_spec.page_offset = page_offset
-
-    if page_limit is not None:
-        solr_query_spec.page_limit = page_limit
-
-    if page is not None:
-        solr_query_spec.page = page
-
-    # part of the query model
-
-    if query is not None:
-        solr_query_spec.solrQuery.searchQ = query
-        
-    if solr_query_spec.solrQuery.searchQ is None:
-        solr_query_spec.solrQuery.searchQ = "*:*"       
-
-    if filter_query is not None:
-        solr_query_spec.solrQuery.filterQ = filter_query
-
-    if solr_query_spec.solrQuery.filterQ is not None:
-        # for logging/debug
-        solr_query_spec.solrQuery.filterQ = solr_query_spec.solrQuery.filterQ.replace("*:* && ", "")
-        logger.debug("Solr FilterQ: %s", filter_query)
-    else:
-        solr_query_spec.solrQuery.filterQ = "*:*"
-        
-    #  clean up spaces and cr's from in code readable formatting
-    if solr_query_spec.returnFields is not None:
-        solr_query_spec.returnFields = ", ".join(e.lstrip() for e in solr_query_spec.returnFields.split(","))
-
-    if sort is not None:
-        solr_query_spec.solrQuery.sort = sort
-
-    #  part of the options model
-
-    if similar_count is not None:
-        solr_query_spec.solrQueryOpts.moreLikeThisCount = similar_count
-        
-    if def_type is not None:
-        solr_query_spec.solrQueryOpts.defType = def_type 
-
-    if highlight_fields is not None:
-        solr_query_spec.solrQueryOpts.hlFields = highlight_fields 
-
-    if facet_fields is not None:
-        facet_fields = string_to_list(facet_fields)
-        solr_query_spec.facetFields = facet_fields 
-    else:
-        facet_fields = string_to_list(solr_query_spec.facetFields)
-        solr_query_spec.facetFields = facet_fields 
-        
-    if extra_context_len is not None:
-        solr_query_spec.solrQueryOpts.hlFragsize = max(extra_context_len, opasConfig.DEFAULT_KWIC_CONTENT_LENGTH)
-    else:
-        solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
-
-    if maxKWICReturns is not None:
-        solr_query_spec.solrQueryOpts.hlSnippets = maxKWICReturns 
-       
-    # try the query
-    ret_val, ret_status = search_text_qs(solr_query_spec, authenticated)
-    
-    return ret_val, ret_status
 
 #================================================================================================================
 def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
@@ -2748,18 +2604,24 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
         facet = "off"
 
     #  checks
-    
+
+    # TODO
+    # Need to check what fields they asked for, and make sure no document fields were specified!
     if solr_query_spec.returnFields is None:
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
-    # else TODO
-    #   Need to check what fields they asked for, and make sure no document fields were specified!
+    elif solr_query_spec.returnFields == "TOC":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_TOC_FIELDS
+    elif solr_query_spec.returnFields == "META":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_META_FIELDS
 
-    try:
-        if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars < 200: # let caller configure, but not 0!
-            solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE
-    except:
-        solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE
-    # else: OK, leave it be!
+    #Always add id and file_classification
+    solr_query_spec.returnFields += ", id, file_classification" #  need to always return id
+    
+    # don't let them specify text fields to bring back full-text content in at least PEP schema fields in 
+    #   docs or glossary.
+    # however, we add it if they are authenticated, and then check by document.
+    # Should we take away para?
+    solr_query_spec.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solr_query_spec.returnFields)
 
     #  try to reduce amount of data coming back based on needs...
     #  Set it to use the main structure returnFields; eventually delete the one in the query sub
@@ -2771,17 +2633,16 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
         if "summaries_xml" not in solr_query_spec.returnFields:
             solr_query_spec.returnFields += ", summaries_xml"
     elif solr_query_spec.fullReturn and authenticated:
+        # NOTE: we add this here, but in return data, access by document will be checked.
         if "text_xml" not in solr_query_spec.returnFields:
             solr_query_spec.returnFields += ", text_xml, art_excerpt"
 
-    if solr_query_spec.returnFields is None:
-        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
-        # solr_query_spec.solrQuery.returnFields = "id, file_classification" #  need to always return id
-    else:
-        solr_query_spec.returnFields += ", id, file_classification" #  need to always return id
-
-    # don't let them bring back full-text content in at least PEP schema fields in docs or glossary
-    solr_query_spec.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solr_query_spec.returnFields)
+    try:
+        if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars < 200: # let caller configure, but not 0!
+            solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE
+    except:
+        solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE
+    #else: OK, leave it be!
 
     try: # must have value
         if solr_query_spec.solrQueryOpts.hlFragsize < opasConfig.DEFAULT_KWIC_CONTENT_LENGTH:
@@ -3125,11 +2986,13 @@ def search_text(query,
         mlt = "true"
         mlt_minwl = 4
         mlt_count = similar_count
+        mlt_interestingTerms = "list"
     else:
         mlt_fl = None
         mlt = "false"
         mlt_minwl = None
         mlt_count = 0
+        mlt_interestingTerms = None
     
     if query_debug:
         query_debug = "on"
@@ -3183,7 +3046,7 @@ def search_text(query,
                                   mlt_fl = mlt_fl,
                                   mlt_count = mlt_count,
                                   mlt_minwl = mlt_minwl,
-                                  mlt_interestingTerms = "list",
+                                  mlt_interestingTerms = mlt_interestingTerms,
                                   rows = limit,
                                   start = offset,
                                   sort=sort,
@@ -3432,28 +3295,7 @@ if __name__ == "__main__":
     # add ch to logger
     logger.addHandler(ch)
     
-    if 1: # run doctests
-        import doctest
-        doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
-        print ("All tests complete!")
-    else:    
-        sys.path.append(r'E:/usr3/GitHub/openpubarchive/app')
-        sys.path.append(r'E:/usr3/GitHub/openpubarchive/app/config')
-        sys.path.append(r'E:/usr3/GitHub/openpubarchive/app/libs')
-        for n in sys.path:
-            print (n)
-    
-        print (search_analysis("tuckett", "authors"))
-        print (get_term_count_list("mother, father, son, daughter"))
-        print (get_term_count_list(["incest", "flyer*", "jet"]))
-        print (get_term_count_list("jealous*"))
-        print (get_term_count_list("murder*"))
-    
-        # document_get_info("PEPGRANTVS.001.0003A", fields="file_classification")
-        print (get_term_count_list("tuckett", "authors"))
-        print (get_term_count_list("mother, father, son, daughter"))
-        print (get_term_count_list(["incest", "flyer*", "jet"]))
-        print (get_term_count_list("jealous*"))
-        print (get_term_count_list("murder*"))
-    
+    import doctest
+    doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
+    print ("All tests complete!")
     print ("Fini")

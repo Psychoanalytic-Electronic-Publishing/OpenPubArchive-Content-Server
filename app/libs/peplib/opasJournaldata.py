@@ -9,8 +9,8 @@ import re, string, sys
 import logging
 logger = logging.getLogger(__name__)
 
-import opasStringSupport
-import opasDocuments
+import peplib.opasStringSupport as opasStringSupport
+import peplib.opasDocuments as opasDocuments
 
 #from sciHLPyxie import *
 

@@ -18,8 +18,8 @@ import string, re # , exceptions
 import logging
 logger = logging.getLogger(__name__)
 
-import opasMath
-import opasStringSupport
+import peplib.opasMath as opasMath
+import peplib.opasStringSupport as opasStringSupport
 #import sciSupport
 #import sciErrorLogging
 # import sciUnicode

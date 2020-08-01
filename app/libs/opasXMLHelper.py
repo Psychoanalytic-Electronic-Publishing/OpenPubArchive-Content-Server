@@ -109,7 +109,7 @@ def xml_remove_tags(root, remove_tags=[]):
             for n in remove_these:
                 n.getparent().remove(n)
     except Exception as e:
-        logging.error(f"Error removing requested tags for xml_get_pages: {e}")
+        logger.error(f"Error removing requested tags for xml_get_pages: {e}")
         ret_val = False
         
     return ret_val
@@ -458,17 +458,17 @@ def xmlstr_to_etree(xmlstr):
         try:
             root = etree.parse(BytesIO(xmlstr))
         except Exception as e:
-            logging.error(f"Error parsing Bytes xmlstr: {e}")
+            logger.error(f"Error parsing Bytes xmlstr: {e}")
     elif isinstance(xmlstr, str):
         try:
             xmlstr = xmlstr.replace("encoding=\'UTF-8\'", "")
             root = etree.parse(StringIO(xmlstr))
         except Exception as e:
-            logging.error(f"Error parsing xmlstr: {e}")
+            logger.error(f"Error parsing xmlstr: {e}")
     elif etree.iselement(xmlstr):
         root = xmlstr
     else:
-        logging.error("Unknown type to xmlstr_to_etree: ", type(xmlstr))
+        logger.error("Unknown type to xmlstr_to_etree: ", type(xmlstr))
         
     return root
     
@@ -498,7 +498,7 @@ def xml_get_pagebreak_dict(xmlstr, inside="body", pagebrk="pb", pagenbr="n", rem
             else:
                 pb_dict[pn_node.text] = (count, pb, pn_node)
     except Exception as e:
-        logging.error(f"Error compiling pagebreak dict: {e}")
+        logger.error(f"Error compiling pagebreak dict: {e}")
     else:
         ret_val = (pb_dict, root)
 
@@ -553,11 +553,11 @@ def xml_get_pages_starting_with(xmlstr, start_with, limit=1, inside="body", env=
                 frag = etree.tostring(n).decode("utf8") + "\n" # separate for monitoring the fragment
                 new_xml += frag
             except Exception as e:
-                logging.warning(f"Error converting node: {e}")
+                logger.warning(f"Error converting node: {e}")
         # close the new xml string
         new_xml += f"</{env}>\n"
     except Exception as e:
-        logging.error(f"Error getting pages starting with: {e}")
+        logger.error(f"Error getting pages starting with: {e}")
     else:
         ret_val = new_xml
         
@@ -625,30 +625,12 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
     ret_val = ("", [], no_page_nbr, no_page_nbr)
 
     if offset == 0:
-        logging.error("Bad page offset requested.  First offset is 0")
+        logger.error("Bad page offset requested.  First offset is 0")
         offset = 1 # First offset is 1
 
     offset1 = offset - 1 # offset 2 is the second page, so from the first pb to the one before
     offset2 = offset1 + limit
     
-    #if isinstance(xmlstr, bytes):
-        #try:
-            #root = etree.parse(BytesIO(xmlstr))
-        #except Exception as e:
-            #logging.error(f"Error parsing Bytes xmlstr: {e}")
-            #print (f"Error parsing Bytes xmlstr: {e}")
-    #elif isinstance(xmlstr, str):
-        #try:
-            #xmlstr = xmlstr.replace("encoding=\'UTF-8\'", "")
-            #root = etree.parse(StringIO(xmlstr))
-        #except Exception as e:
-            #logging.error(f"Error parsing xmlstr: {e}")
-            #print (f"Error parsing xmlstr: {e}")
-    #elif etree.iselement(xmlstr):
-        #root = xmlstr
-    #else:
-        #logging.error("Unknown type to xml_get_pages: ", type(xmlstr))
-        
     root = xmlstr_to_etree(xmlstr)
     xml_remove_tags(root, remove_tags=remove_tags)
 
@@ -671,7 +653,7 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
                 first_pn = no_page_nbr
         except Exception as e:
             #firstpbfrag = ""
-            logging.warning(f"Could not get first pagebreak: {e}")
+            logger.warning(f"Could not get first pagebreak: {e}")
             
         try: # get second page break
             pb2 = root.xpath(f'//{inside}/{pagebrk}[{offset2}]')
@@ -691,7 +673,7 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
                 
         except Exception as e:
             secondpbfrag = ""
-            logging.warning(f"Could not get ending pagebreak: {e}")
+            logger.warning(f"Could not get ending pagebreak: {e}")
         
         # Now let's get the text between, or before, if offset1 == 0 (first break)
         if offset1 == 0: # get all tags before the first pb (offset passed in was 1)
@@ -712,7 +694,7 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
                 frag = etree.tostring(n).decode("utf8") + "\n" # separate for monitoring the fragment
                 new_xml += frag
             except Exception as e:
-                logging.warning(f"Error converting node: {e}")
+                logger.warning(f"Error converting node: {e}")
 
         # add the last pb
         new_xml += secondpbfrag
@@ -778,7 +760,7 @@ def xml_get_pages_html(xmlorhtmlstr, offset=0, limit=1, inside="div[@id='body']"
     no_page_nbr = "npn"
     ret_val = ("", [], no_page_nbr, no_page_nbr)
     if offset == 0:
-        logging.error("Bad page offset requested.  First offset is 0")
+        logger.error("Bad page offset requested.  First offset is 0")
         offset = 1 # First offset is 1
 
     offset1 = offset - 1 # offset 2 is the second page, so from the first pb to the one before
@@ -820,7 +802,7 @@ def xml_get_pages_html(xmlorhtmlstr, offset=0, limit=1, inside="div[@id='body']"
                 first_pn = no_page_nbr
         except:
             #firstpbfrag = ""
-            logging.warning(f"Could not get first pagebreak: {e}")
+            logger.warning(f"Could not get first pagebreak: {e}")
             
         try: # get second page break
             pb2 = root.xpath(f'//{inside}/{pagebrk}[{offset2}]')
@@ -840,7 +822,7 @@ def xml_get_pages_html(xmlorhtmlstr, offset=0, limit=1, inside="div[@id='body']"
                 
         except Exception as e:
             #secondpbfrag = ""
-            logging.warning(f"Could not get ending pagebreak: {e}")
+            logger.warning(f"Could not get ending pagebreak: {e}")
         
         # Now let's get the text between, or before, if offset1 == 0 (first break)
         if offset1 == 0: # get all tags before the first pb (offset passed in was 1)
@@ -859,7 +841,7 @@ def xml_get_pages_html(xmlorhtmlstr, offset=0, limit=1, inside="div[@id='body']"
                 frag = etree.tostring(n).decode("utf8") 
                 new_html += frag
             except Exception as e:
-                logging.warning(f"Error converting node: {e}")
+                logger.warning(f"Error converting node: {e}")
                 
         # add the last pb
         #new_xml += secondpbfrag
@@ -899,7 +881,7 @@ def xml_get_elements_between_element(element_node, inside="*", between_element="
     try:
         ret_val = element_node.xpath(path)
     except Exception as e:
-        logging.error(f"Problem ({e}) extracting xpath nodes: {xpath}")
+        logger.error(f"Problem ({e}) extracting xpath nodes: {xpath}")
     
     return ret_val
     
@@ -1249,7 +1231,7 @@ def xml_xpath_with_default(element_node, xpath, default_return=None):
         if ret_val is None or ret_val == []:
             ret_val = default_return
     except:
-        logging.warning("xpath error")
+        logger.warning("xpath error")
 
     return ret_val
         

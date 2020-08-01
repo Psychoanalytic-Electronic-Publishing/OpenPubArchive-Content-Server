@@ -126,7 +126,14 @@ Endpoint and model documentation automatically available when server is running 
            
 #2020.0714 # Preliminary new AWS alpha...passes all tests, but need to go through the list of scheduled
            #   updates before finalizing.  Still, checking it in to Github.
-  
+           #  fix bug in mostviews, lastcalyear is 0, not 5 (now both)
+
+#2020.0718 # Initial implementation of smarttext parameter and smartsearch module
+
+#2020.0721 # Changed several instances of calls to Logging to module level Logger (misuse of library)
+
+           # Try a new smartsearch approach - lookup in Solr to determine
+           #   word semantics.
            
 # --------------------------------------------------------------------------------------------
 # IMPORTANT TODOs (List)
@@ -140,14 +147,12 @@ Endpoint and model documentation automatically available when server is running 
 
 
 
-
-
 #----------------------------------------------------------------------------------------------
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0714.1.Alpha"
+__version__     = "2020.0721.1.Alpha"
 __status__      = "Development"
 
 import sys
@@ -209,11 +214,8 @@ logger = logging.getLogger(__name__)
 
 # from config.localsecrets import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 import jwt
-# import localsecrets as localsecrets
 import localsecrets
 import libs.opasAPISupportLib as opasAPISupportLib
-# import libs.opasBasicLoginLib as opasBasicLoginLib
-#from libs.opasBasicLoginLib import get_current_user
 
 from errorMessages import *
 import models
@@ -689,6 +691,7 @@ async def session_status(response: Response,
                                                          opas_version = __version__, 
                                                          db_server_url = localsecrets.DBHOST,
                                                          db_server_version = mysql_ver,
+                                                         cors_regex=localsecrets.CORS_REGEX, 
                                                          config_name = config_name,
                                                          user_count = 0
                                                          )
@@ -1123,7 +1126,7 @@ def login_setup_user_session(response: Response,
     # to free up resources in case this is a related user
     # added 2019-11-21
     count = ocd.close_expired_sessions()
-    logging.info(f"Setting up new session. Closed {count} expired sessions")
+    logger.info(f"Setting up new session. Closed {count} expired sessions")
 
     # start a new session, with this user (could even still be the old user)
     ocd, session_info = opasAPISupportLib.start_new_session(response,
@@ -1242,7 +1245,7 @@ def session_login_user(response: Response,
                 ## to free up resources in case this is a related user
                 ## added 2019-11-21
                 #count = ocd.close_expired_sessions()
-                #logging.info(f"Setting up new session.  Closed {count} expired sessions")
+                #logger.info(f"Setting up new session.  Closed {count} expired sessions")
 
                 ## start a new session, with this user (could even still be the old user)
                 #ocd, session_info = opasAPISupportLib.start_new_session(response,
@@ -1664,17 +1667,34 @@ async def database_advanced_search(response: Response,
     if re.search(r"/Search/", request.url._url):
         logger.debug("Search Request: %s", request.url._url)
         
-    ret_val, ret_status = \
-        opasAPISupportLib.search_text_query_spec(solr_query_spec=solrQuerySpec, 
-                                                 query=advanced_query, 
-                                                 filter_query = filter_query,
-                                                 def_type = def_type, # edisMax, disMax, or None
-                                                 highlight_fields = highlight_fields, 
-                                                 facet_fields = facet_fields, 
-                                                 sort = sort,
-                                                 limit=limit, 
-                                                 offset=offset
-                                                 )
+    solr_query_spec = \
+        opasQueryHelper.parse_to_query_spec(solr_query_spec=solrQuerySpec, 
+                                            query=advanced_query, 
+                                            filter_query = filter_query,
+                                            def_type = def_type, # edisMax, disMax, or None
+                                            summary_fields=return_fields, 
+                                            highlight_fields = highlight_fields, 
+                                            facet_fields = facet_fields, 
+                                            sort = sort,
+                                            limit=limit, 
+                                            offset=offset
+                                            )
+    # try the query
+    ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec,
+                                                           session_info.authenticated)
+
+    #ret_val, ret_status = \
+        #opasAPISupportLib.search_text_query_spec(solr_query_spec=solrQuerySpec, 
+                                                 #query=advanced_query, 
+                                                 #filter_query = filter_query,
+                                                 #def_type = def_type, # edisMax, disMax, or None
+                                                 #summary_fields=return_fields, 
+                                                 #highlight_fields = highlight_fields, 
+                                                 #facet_fields = facet_fields, 
+                                                 #sort = sort,
+                                                 #limit=limit, 
+                                                 #offset=offset
+                                                 #)
 
     
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
@@ -1935,6 +1955,111 @@ async def database_search_paragraphs(response: Response,
                                 )
 
     return ret_val
+
+#---------------------------------------------------------------------------------------------------------
+@app.get("/v2/Database/SmartSearch/", response_model_exclude_unset=True, tags=["Database", "In Development"]) 
+async def database_smartsearch(response: Response, 
+                               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                               smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
+                               # filters, v1 naming
+                               sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                               facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
+                               limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                               offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
+                              ):
+    """
+    ## Function
+    
+    Convenience function for testing the smarttext searching (smartsearch).  With fewer parameters, it's easier to
+    test and experiment with in the OpenAPI interface.  The results would be the same calling the Search endpoint and providing the
+    same argument to smarttext, but if this is all you need, use it directly.
+    
+    Also, this endpoint provides an easier way to isolate and document the types of calls interpreted by smarttext.
+
+    ## Return Type
+       models.DocumentList
+
+    ## Status
+       Status: In Early Development
+
+    ## Sample Call
+    
+    Below, here are some values and the style you can submit in parameter smarttext.  To see what they
+    are interpreted to in Solr syntax, see the scopeQuery field of ResponseInfo in the response, where the first
+    value is Solr q and the second is fq.
+    
+    "scopeQuery": [
+        [
+          "*:*",
+          "art_id:(NLP.001.0001A)"
+        ]
+    
+    1a) Author Names and dates (best detection to use standard form, parentheses around the date.)
+        Last names should be initial capitalized without first initials, e.g.,
+
+       Shapiro, Shapiro, Zinner and Berkowitz (1977)   --> 1 hit
+       Tuckett and Fonagy 2012                         --> 1 hit
+       Kohut, H. & Wolf, E. S. (1978)                  --> 1 hit
+       
+    1b) Author names without dates, e.g.,
+       
+       Shapiro, Shapiro, Zinner and Berkowitz          --> 3 hits
+       
+    2) Special IDs
+    2a) DOIs, e.g., (all 1 hit each)
+        
+        10.1111/j.1745-8315.2012.00606.x
+        10.3280/PU2019-004002
+        
+    2b) PEP Locators (IDs)
+        
+        AOP.033.0079A
+        PEP/AOP.033.0079A
+       
+    
+    2) Search any schema field, use Solr type notation, but one schema field per entry. 
+    art_type: ART or COM
+    
+
+    ## Notes
+
+    ## Potential Errors
+
+    """
+    
+    ret_val = await database_search_v2(response,
+                                       request,
+                                       fulltext1=None,
+                                       paratext=None, 
+                                       parascope=None,
+                                       smarttext=smarttext, 
+                                       synonyms=False,
+                                       similarcount=0, 
+                                       sourcecode=None,
+                                       sourcename=None, 
+                                       sourcetype=None, 
+                                       sourcelangcode=None, 
+                                       volume=None,
+                                       issue=None, 
+                                       author=None,
+                                       title=None,
+                                       articletype=None, 
+                                       startyear=None,
+                                       endyear=None, 
+                                       citecount=None,   
+                                       viewcount=None,   
+                                       viewperiod=None, 
+                                       facetfields=facetfields,
+                                       facetmincount=1,
+                                       facetlimit=15,
+                                       facetoffset=0,
+                                       abstract=True, 
+                                       sort=sort,
+                                       limit=limit,
+                                       offset=offset
+                                       )
+    return ret_val
+
 #---------------------------------------------------------------------------------------------------------
 @app.get("/v2/Database/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_V2)
 #@app.get("/v2/Database/MoreLikeThese/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_MORE_LIKE_THESE)
@@ -1943,6 +2068,7 @@ async def database_search_v2( response: Response,
                               termlist: models.SolrQueryTermList=None, # allows full specification
                               fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
                               paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
+                              smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
                               parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
                               synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS, description=opasConfig.DESCRIPTION_SYNONYMS),
                               similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
@@ -2094,6 +2220,7 @@ async def database_search_v2( response: Response,
                                                       para_scope=parascope, # scope for par_search
                                                       similar_count=similarcount, # Turn on morelikethis for the search, return this many similar docs for each
                                                       fulltext1=fulltext1,  # more flexible search, including fields, anywhere in the doc, across paras
+                                                      smarttext=smarttext, # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
                                                       vol=volume,
                                                       issue=issue,
@@ -2880,13 +3007,14 @@ def metadata_contents(SourceCode: str,
         status_code = HTTP_200_OK
         ret_val.documentList.responseInfo.request = request.url._url
 
-    ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_CONTENTS_FOR_VOL,
-                                session_info=session_info, 
-                                item_of_interest="{}.{}".format(SourceCode, SourceVolume), 
-                                params=request.url._url,
-                                return_status_code = status_code,
-                                status_message=status_message
-                                )
+    # 2020-07-23 No need to log success for these, can be excessive.
+    #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_CONTENTS_FOR_VOL,
+                                #session_info=session_info, 
+                                #item_of_interest="{}.{}".format(SourceCode, SourceVolume), 
+                                #params=request.url._url,
+                                #return_status_code = status_code,
+                                #status_message=status_message
+                                #)
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -3081,13 +3209,14 @@ def metadata_volumes(response: Response,
         else:
             response.status_code = HTTP_200_OK
             status_message = "Success"
-            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_VOLUME_INDEX,
-                                        session_info=session_info, 
-                                        params=request.url._url,
-                                        item_of_interest=f"{source_code}", 
-                                        return_status_code=response.status_code,
-                                        status_message=status_message
-                                        )
+            # 2020-07-23 No need to log success for these, can be excessive.
+            #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_VOLUME_INDEX,
+                                        #session_info=session_info, 
+                                        #params=request.url._url,
+                                        #item_of_interest=f"{source_code}", 
+                                        #return_status_code=response.status_code,
+                                        #status_message=status_message
+                                        #)
 
     return ret_val # returns volumeList
 
@@ -3173,9 +3302,17 @@ def metadata_by_sourcetype_sourcecode(response: Response,
 
     except Exception as e:
         status_message = "Error: {}".format(e)
+        response.status_code = HTTP_400_BAD_REQUEST
         logger.error(status_message)
+        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_SOURCEINFO,
+                                    session_info=session_info, 
+                                    params=request.url._url,
+                                    item_of_interest="{}".format(SourceType), 
+                                    return_status_code = response.status_code,
+                                    status_message=status_message
+                                    )
         raise HTTPException(
-            status_code=HTTP_400_BAD_REQUEST,
+            status_code=response.status_code, 
             detail=status_message
         )
     else:
@@ -3184,13 +3321,14 @@ def metadata_by_sourcetype_sourcecode(response: Response,
         # fill in additional return structure status info
         ret_val.sourceInfo.responseInfo.request = request.url._url
 
-    ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_SOURCEINFO,
-                                session_info=session_info, 
-                                params=request.url._url,
-                                item_of_interest="{}".format(SourceType), 
-                                return_status_code = response.status_code,
-                                status_message=status_message
-                                )
+    # 2020-07-23 No need to log success for these, can be excessive.
+    #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_METADATA_SOURCEINFO,
+                                #session_info=session_info, 
+                                #params=request.url._url,
+                                #item_of_interest="{}".format(SourceType), 
+                                #return_status_code = response.status_code,
+                                #status_message=status_message
+                                #)
 
     return ret_val
 
@@ -3439,7 +3577,8 @@ async def database_glossary_search(response: Response,
     ret_val = await database_search_v2(response,
                                         request,
                                         termlist=termlist,
-                                        fulltext1=fulltext1, 
+                                        fulltext1=fulltext1,
+                                        smarttext=None, 
                                         paratext=paratext, #  no advanced search. Only words, phrases, prox ~ op, and booleans allowed
                                         parascope=parascope,
                                         similarcount=0, 
@@ -3661,7 +3800,7 @@ def documents_document_fetch(response: Response,
                     page_number_int = int(page_number)
                     offset = page_number_int - page_start_int
                 except Exception as e:
-                    logging.error(f"Page offset calc issue.  {e}")
+                    logger.error(f"Page offset calc issue.  {e}")
                     offset = 0
         
         # TODO: do we really need to do this extra query?  Why not just let get_document do the work?
@@ -4137,8 +4276,10 @@ def database_word_wheel(response: Response,
 
 
 if __name__ == "__main__":
+    from localsecrets import CONFIG
     print(f"Server Running ({localsecrets.BASEURL}:{localsecrets.API_PORT_MAIN})")
     print (f"Running in Python {sys.version_info[0]}.{sys.version_info[1]}")
+    print (f"Configuration used: {CONFIG}")
     uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=True)
         # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
     print ("Now we're exiting...")

@@ -30,7 +30,7 @@ from main import app #  this causes wingware not to finish running the test.  Pe
 
 client = TestClient(app)
 
-class TestTesting(unittest.TestCase):
+class TestGlossary(unittest.TestCase):
     """
     Test of wingware testing
     """   

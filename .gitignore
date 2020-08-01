@@ -62,3 +62,7 @@ _gsdata_/
 _gsdata_/*
 *.gss
 app/tests/wingtest_common.py
+app/config/localsecrets - Copy.py
+app/solrXMLWebLoad/2019-01-16
+app/req20200723
+app/solrXMLWebLoad/2019-01-16

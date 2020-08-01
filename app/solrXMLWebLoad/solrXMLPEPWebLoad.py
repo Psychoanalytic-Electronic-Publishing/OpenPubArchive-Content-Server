@@ -25,7 +25,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.06.03"
+__version__     = "2020.07.23"
 __status__      = "Development"
 
 #Revision Notes:
@@ -118,6 +118,11 @@ __status__      = "Development"
                 #  a production system when in fact it was meant for staging.
                 # Fixed a bug in the solr lookup of filenames to determine updates needed: was not escaping filename chars
                 #  that need to be escaped for solr, like ( and )
+                
+    #2020.0709  # Updates for schema changes
+
+    #2020.0723  # Change author core field authors (multivalued) to art_author_id_list.  The author record
+                #  is for a specific author, but this is the set of authors for that paper.
 
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
@@ -447,7 +452,7 @@ class BiblioEntry(object):
             try:
                 self.year_of_publication = re.search(r"\(([A-z]*\s*,?\s*)?([12][0-9]{3,3}[abc]?)\)", self.ref_entry_xml).group(2)
             except Exception as e:
-                logging.warning("no match %s/%s/%s" % (self.year_of_publication, ref, e))
+                logger.warning("no match %s/%s/%s" % (self.year_of_publication, ref, e))
             
         self.year_of_publication_int = 0
         if self.year_of_publication != "" and self.year_of_publication is not None:
@@ -456,11 +461,11 @@ class BiblioEntry(object):
                 try:
                     self.year_of_publication_int = int(self.year_of_publication[0:4])
                 except ValueError as e:
-                    logging.warning("Error converting year_of_publication to int: %s / %s.  (%s)" % (self.year_of_publication, self.ref_entry_xml, e))
+                    logger.warning("Error converting year_of_publication to int: %s / %s.  (%s)" % (self.year_of_publication, self.ref_entry_xml, e))
                 except Exception as e:
-                    logging.warning("Error trying to find untagged bib year in %s (%s)" % (self.ref_entry_xml, e))
+                    logger.warning("Error trying to find untagged bib year in %s (%s)" % (self.ref_entry_xml, e))
             else:
-                logging.warning("Non-numeric year of pub: %s" % (self.ref_entry_xml))
+                logger.warning("Non-numeric year of pub: %s" % (self.ref_entry_xml))
 
         self.year = self.year_of_publication
 
@@ -599,7 +604,7 @@ class ArticleInfo(object):
                 art_year_for_int = re.sub("[^0-9]", "", self.art_year)
                 self.art_year_int = int(art_year_for_int)
             except ValueError as err:
-                logging.warning("Error converting art_year to int: %s", self.art_year)
+                logger.warning("Error converting art_year to int: %s", self.art_year)
                 self.art_year_int = 0
 
 
@@ -680,12 +685,29 @@ class ArticleInfo(object):
         # ToDo: I think I should add an author ID to bib aut too.  But that will have
         #  to wait until later.
         self.art_author_id_list = opasxmllib.xml_xpath_return_textlist(pepxml, '//artinfo/artauth/aut[@listed="true"]/@authindexid')
+        self.art_author_count = len(self.author_list)
         if self.art_author_id_list == []: # no authindexid
-            logging.warning("This document %s does not have an author list; may be missing authindexids" % art_id)
+            logger.warning("This document %s does not have an author list; may be missing authindexids" % art_id)
             self.art_author_id_list = self.author_list
+        else:
+            self.author_ids_str = ", ".join(self.art_author_id_list)
+            
         self.art_auth_mast, self.art_auth_mast_list = opasxmllib.author_mast_from_xmlstr(self.author_xml, listed=True)
         self.art_auth_mast_unlisted_str, self.art_auth_mast_unlisted_list = opasxmllib.author_mast_from_xmlstr(self.author_xml, listed=False)
         self.art_auth_count = len(self.author_xml_list)
+        self.art_author_lastnames = opasxmllib.xml_xpath_return_textlist(pepxml, '//artinfo/artauth/aut[@listed="true"]/nlast')
+        self.author_ids_str = ", ".join(self.art_author_id_list)
+        #for n in self.author_xml_list:
+            #curr_author_number += 1
+            #authorID = n.attrib.get('authindexid', None)
+            #author_first_name = xml_xpath_return_textsingleton(n, "nfirst", "")
+            #author_last_name = xml_xpath_return_textsingleton(n, "nlast", "")
+            #author_mid_name = xml_xpath_return_textsingleton(n, "nmid", "")
+            #if author_mid_name != "":
+                #author_name = " ".join([author_first_name, author_mid_name, author_last_name])
+            #else:
+                #author_name = " ".join([author_first_name, author_last_name])
+        
         self.art_all_authors = self.art_auth_mast + " (" + self.art_auth_mast_unlisted_str + ")"
         self.art_kwds = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/artkwds/node()", None)
 
@@ -937,6 +959,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 #"art_body_xml" : bodyXml,
                 "authors" :  artInfo.author_list, # artInfo.art_all_authors,
                 "art_authors" : artInfo.author_list,
+                "art_author_count" : artInfo.art_author_count,
                 "art_authors_mast" : non_empty_string(artInfo.art_auth_mast),
                 "art_authors_citation" : non_empty_string(artInfo.art_auth_citation),
                 "art_authors_unlisted" : non_empty_string(artInfo.art_auth_mast_unlisted_str),
@@ -1084,7 +1107,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor):
                 response_update = solrAuthor.add(id = authorDocid,         # important =  note this is unique id for every author + artid
                                                  art_id = artInfo.art_id,
                                                  title = artInfo.art_title,
-                                                 authors = artInfo.art_all_authors,
+                                                 authors = artInfo.art_author_id_list,
                                                  art_author_id = authorID,
                                                  art_author_listed = authorListed,
                                                  art_author_pos_int = authorPos,
@@ -1158,16 +1181,16 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor):
             #try:
                 #bibYearofPublication = re.search(r"\(([A-z]*\s*,?\s*)?([12][0-9]{3,3}[abc]?)\)", bibRefEntry).group(2)
             #except Exception as e:
-                #logging.warning("no match %s/%s/%s" % (bibYearofPublication, ref, e))
+                #logger.warning("no match %s/%s/%s" % (bibYearofPublication, ref, e))
             
         #try:
             #bibYearofPublication = re.sub("[^0-9]", "", bibYearofPublication)
             #bibYearofPublicationInt = int(bibYearofPublication[0:4])
         #except ValueError as e:
-            #logging.warning("Error converting bibYearofPublication to int: %s / %s.  (%s)" % (bibYearofPublication, bibRefEntry, e))
+            #logger.warning("Error converting bibYearofPublication to int: %s / %s.  (%s)" % (bibYearofPublication, bibRefEntry, e))
             #bibYearofPublicationInt = 0
         #except Exception as e:
-            #logging.warning("Error trying to find untagged bib year in %s (%s)" % (bibRefEntry, e))
+            #logger.warning("Error trying to find untagged bib year in %s (%s)" % (bibRefEntry, e))
             #bibYearofPublicationInt = 0
             
 
@@ -1637,7 +1660,7 @@ def collect_citation_counts(ocd):
                     citation_table[row.cited_document_id] = row
                 cursor.close()
             else:
-                logging.error("Cursor execution failed.  Can't fetch.")
+                logger.error("Cursor execution failed.  Can't fetch.")
                 
         except MemoryError as e:
             print(("Memory error loading table: {}".format(e)))
@@ -1743,7 +1766,7 @@ def get_file_dates_solr(solrcore, filename=None):
     try:
         results = solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp", rows=max_rows)
     except Exception as e:
-        logging.error(f"Solr Query Error {e}")
+        logger.error(f"Solr Query Error {e}")
         # let me know whatever the logging is!
         print (f"Warning: Solr Query Error: {e}")
     else:

@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 # Replace this later.
 #import 	libPEPBiblioDB
 
-import opasStringSupport
-import opasDocuments
+import peplib.opasStringSupport as opasStringSupport 
+import peplib.opasDocuments as opasDocuments
 #import PEPLocalID
 
 # set to 1 for doctests only

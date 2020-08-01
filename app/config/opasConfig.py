@@ -141,9 +141,7 @@ VALS_ARTTYPE = {DICTLEN_KEY: 3, 'article': 'ART', 'abstract': 'ABS', 'announceme
 VALS_DOWNLOADFORMAT = {DICTLEN_KEY: 4, 'html': 'HTML', 'pdf': 'PDF', 'pdfo': 'PDFORIG', 'epub': 'EPUB'}
 VALS_YEAROPTIONS = {DICTLEN_KEY: 2, '5': '5', '10': '10', '20': '20', 'al': 'all'}
 # Standard view categories for View functions
-VALS_VIEWPERIODDICT = {1: "lastweek", 2: "last1mos", 3: "last6mos", 4: "last12mos", 5: "lastcalyear" }
-
-
+VALS_VIEWPERIODDICT = {1: "lastweek", 2: "last1mos", 3: "last6mos", 4: "last12mos", 5: "lastcalyear", 0: "lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
 
 # parameter descriptions for documentation
 DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review."
@@ -174,6 +172,7 @@ DESCRIPTION_PAGEREQUEST = "The page or page range (from the document's numbering
 DESCRIPTION_PARAM_SOURCETYPE = f"Source type (One of: {list_values(VALS_SOURCETYPE)})"
 DESCRIPTION_PARASCOPE = "scope: doc, dreams, dialogs, biblios, per the schema (all the p_ prefixed scopes are also recognized without the p_ here)"
 DESCRIPTION_PARATEXT = "Words or phrases (in quotes) in a paragraph in the document"
+DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that."
 DESCRIPTION_PARAZONE_V1 = "scope: doc, dreams, dialogs, biblios, per the schema (all the p_ prefixed scopes are also recognized without the p_ here)"
 DESCRIPTION_PATH_SOURCETYPE = f"Source type.  One of: {list_values(VALS_SOURCETYPE)})"
 DESCRIPTION_PUBLICATION_PERIOD = "Number of publication years to include (counting back from current year, 0 means current year)" 
@@ -222,6 +221,7 @@ TITLE_PAGEOFFSET = "Relative page number (1 is the first) to return"
 TITLE_PAGEREQUEST = "Document's Page or page range"
 TITLE_PARASCOPE = "Scope for paragraph search"
 TITLE_PARATEXT = "Paragraph based search"
+TITLE_SMARTSEARCH = "Search input parser"
 TITLE_PARAZONE1_V1 = "Zone for paragraph search"
 TITLE_PUBLICATION_PERIOD = "Number of Years to include" 
 TITLE_REQUEST = "HTTP Request" 
@@ -337,7 +337,6 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, \
                                art_origrx, \
                                art_qual, \
                                art_kwds, \
-                               art_type, \
                                art_cited_all, \
                                art_cited_5, \
                                art_cited_10, \
@@ -348,10 +347,48 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, \
                                art_views_last12mos, \
                                art_views_lastweek, \
                                reference_count, \
-                               file_classification, \
                                file_last_modified, \
                                timestamp, \
                                score"
+
+DOCUMENT_ITEM_TOC_FIELDS = "art_id, \
+                            art_info_xml, \
+                            art_title_xml, \
+                            art_subtitle_xml, \
+                            art_authors_xml, \
+                            art_citeas_xml, \
+                            art_sourcecode, \
+                            art_sourcetitleabbr, \
+                            art_sourcetitlefull, \
+                            art_level, \
+                            art_vol, \
+                            art_type, \
+                            art_vol_title, \
+                            art_year, \
+                            art_iss, \
+                            art_iss_title, \
+                            art_newsecnm, \
+                            art_pgrg, \
+                            art_lang, \
+                            art_doi, \
+                            art_issn, \
+                            art_origrx, \
+                            art_qual, \
+                            art_kwds, \
+                            score"
+
+DOCUMENT_ITEM_META_FIELDS ="art_id, \
+                            art_citeas_xml, \
+                            art_title_xml, \
+                            art_subtitle_xml, \
+                            art_authors_xml, \
+                            art_sourcecode, \
+                            art_sourcetitleabbr, \
+                            art_sourcetitlefull, \
+                            art_vol, \
+                            art_year, \
+                            art_pgrg, \
+                            score"
 
 running_head_fmts = {
     'xml': "<p><cgrp name='pub_year'>({pub_year})</cgrp>. <cgrp name='source_title'>{source_title}</cgrp><cgrp name='vol'>{vol}</cgrp><cgrp name='issue'>{issue}</cgrp><cgrp name='pgrg'>{pgrg}</cgrp></p>", 

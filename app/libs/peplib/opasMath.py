@@ -9,7 +9,7 @@ Includes a Roman number class (new, 2009-07-17) which allows roman numbers and a
 
 import string, sys, re
 # import arabicToRoman
-import opasStringSupport
+import peplib.opasStringSupport as opasStringSupport
 import logging
 logger = logging.getLogger(__name__)
 

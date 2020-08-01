@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 import schemaMap
 import opasConfig 
 import opasAPISupportLib
+import smartsearch
 
 sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
@@ -50,8 +51,8 @@ def cleanup_solr_query(solrquery):
         ret_val = ret_val.replace("*:* {", "{")  # if it's before a solr join for level 2 queries
         ret_val = pat_prefix_amps.sub("", ret_val)
 
-    ret_val = re.sub("\s+(AND)\s+", " && ", ret_val)
-    ret_val = re.sub("\s+(OR)\s+", " || ", ret_val)
+    ret_val = re.sub("\s+(AND)\s+", " && ", ret_val, flags=re.IGNORECASE)
+    ret_val = re.sub("\s+(OR)\s+", " || ", ret_val, flags=re.IGNORECASE)
  
     return ret_val
 
@@ -197,10 +198,15 @@ class QueryTextToSolr():
         
         return ret_val
         
-    def markup(self, str_input, field_label, field_thesaurus=None):
+    def markup(self, str_input, field_label, field_thesaurus=None, quoted=False):
 
-        return self.boolConnectorsToSymbols(f"{field_label}:({str_input})")
-    
+        if quoted == False:
+            ret_val = self.boolConnectorsToSymbols(f"{field_label}:({str_input})")
+        else:
+            ret_val = self.boolConnectorsToSymbols(f'{field_label}:("{str_input}")')
+        
+        ret_val = re.sub("([A-Z]\.)([A-Z])", "\g<1> \g<2>", ret_val)
+        return ret_val    
 
 #-----------------------------------------------------------------------------
 def year_arg_parser(year_arg):
@@ -326,6 +332,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   like_this_id=None,       # for morelikethis
                                   similar_count:int=0, # Turn on morelikethis for the set
                                   fulltext1=None,          # term, phrases, and boolean connectors with optional fields for full-text search
+                                  smarttext=None,          # experimental detection of search parameters
                                   #solrSearchQ=None,       # the standard solr (advanced) query, overrides other query specs
                                   synonyms=False,          # global field synonyn flag (for all applicable fields)
                                   # these are all going to the filter query
@@ -532,7 +539,75 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 sort = f"art_cited_all {porder}" # need the space here
         else:
             sort = f"{opasConfig.DEFAULT_SOLR_SORT_FIELD} {opasConfig.DEFAULT_SOLR_SORT_DIRECTION}"
+
+    if smarttext is not None:
+        search_dict = smartsearch.smart_search(smarttext)
+        # set up parameters as a solrQueryTermList to share that processing
+        # solr_query_spec.solrQueryOpts.qOper = "OR"
+        schema_field = search_dict.get("schema_field")
+        limit = 0
+        if schema_field is not None:
+            schema_value = search_dict.get("schema_value")
+            filter_q += f"&& {schema_field}:({schema_value}) "
+            limit = 1
+        else:
+            syntax = search_dict.get("syntax")
+            if syntax is not None:
+                if syntax == "solr" and search_q == "*:*":
+                    query = search_dict.get("query")
+                    search_q = f"{query}"
+                    limit = 1
+            else:
+                doi = search_dict.get("doi")
+                if doi is not None:
+                    filter_q += f"&& art_doi:({doi}) "
+                    limit = 1
+                    
+        if limit == 0: # not found special token
+            art_id = search_dict.get("art_id")
+            if art_id is not None:
+                limit = 1
+                filter_q += f"&& art_id:({art_id}) "
+            else:
+                art_vol = search_dict.get("vol")
+                if art_vol is not None:
+                    if vol is None:
+                        vol = art_vol.lstrip("0")
+        
+                art_pgrg = search_dict.get("pgrg")
+                if art_pgrg is not None:
+                    # art_pgrg1 = art_pgrg.split("-")
+                    if "-" in art_pgrg:
+                        filter_q += f"&& art_pgrg:({art_pgrg}) "
+                    else:
+                        filter_q += f"&& art_pgrg:({art_pgrg}-*) "
+        
+                art_yr = search_dict.get("yr")
+                if art_yr is not None:
+                    if startyear is None and endyear is None:
+                        startyear = art_yr
+        
+                art_authors = search_dict.get("author_list")
+                if art_authors is not None:
+                    if author is None:
+                        author = art_authors
+                
+                art_author = search_dict.get("author")
+                if art_author is not None:
+                    if author is None:
+                        author = f'"{art_author}"'
+    
+                title_search = search_dict.get("title")
+                if title_search is not None:
+                    if title is None:
+                        title = title_search
+                        
+                word_search = search_dict.get("wordsearch")
+                if word_search is not None:
+                    if para_textsearch is None:
+                        para_textsearch = word_search
             
+
     if para_textsearch is not None:
         # set up parameters as a solrQueryTermList to share that processing
         query_term_from_params = [
@@ -815,8 +890,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
         author = author
         # if there's or and or not in lowercase, need to uppercase them
         # author = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", author)])
-        author = qparse.markup(author, "art_authors_text") # convert AND/OR/NOT, set up field query
-        analyze_this = f" && {author} " # search analysis
+        # art_authors_citation:("tuckett, D.") OR art_authors_text:("tuckett, David")
+        author_text = qparse.markup(author, "art_authors_text", quoted=False) # convert AND/OR/NOT, set up field query
+        author_cited = qparse.markup(author, "art_authors_citation", quoted=False)
+        analyze_this = f' && ({author_text} || {author_cited}) ' # search analysis
         filter_q += analyze_this        # query filter qf
         search_analysis_term_list.append(analyze_this)  
         query_term_list.append(author)       
@@ -953,6 +1030,150 @@ def parse_search_query_parameters(search=None,             # url based parameter
     solr_query_spec.solrQuery.sort = sort
     
     return solr_query_spec
+
+#================================================================================================================
+def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
+                        core = None, 
+                        url_request = None, 
+                        query = None, 
+                        filter_query = None,
+                        query_debug = None,
+                        similar_count = None,
+                        full_text_requested = None,
+                        abstract_requested = None, 
+                        file_classification = None, 
+                        format_requested = None,
+                        def_type = None,
+                        summary_fields=opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
+                        highlight_fields = None,
+                        facet_fields = None, 
+                        sort= None,
+                        authenticated = None, 
+                        extra_context_len = None,
+                        maxKWICReturns = None,
+                        limit = None, 
+                        offset = None,
+                        page_offset = None,
+                        page_limit = None,
+                        page = None
+                        ):
+    """
+    This function creates or updates a SolrQuerySpec, with the caller specifying the Solr query and filter query fields
+    and other options directly.
+
+    The caller sends the Query using the models.SolrQuerySpec, with the option of including other parameters to override
+    the values in models.SolrQuerySpec.
+    
+    """
+    if solr_query_spec is None:
+        #  create it
+        
+        solr_query_spec = models.SolrQuerySpec(
+                                               solrQuery=models.SolrQuery(), 
+                                               solrQueryOpts=models.SolrQueryOpts()
+        )
+        
+    if solr_query_spec.solrQuery is None:
+        solr_query_spec.solrQuery = models.SolrQuery() 
+    
+    if solr_query_spec.solrQueryOpts is None:
+        solr_query_spec.solrQueryOpts = models.SolrQueryOpts() 
+    
+    solr_query_spec.returnFields = summary_fields 
+
+    # parameters specified override QuerySpec
+    
+    if file_classification is not None:
+        solr_query_spec.fileClassification = file_classification 
+
+    if query_debug is not None:
+        solr_query_spec.solrQueryOpts.queryDebug = query_debug 
+
+    if solr_query_spec.solrQueryOpts.queryDebug != "on":
+        solr_query_spec.solrQueryOpts.queryDebug = "off"
+
+    if url_request is not None:
+        solr_query_spec.urlRequest = url_request
+
+    if full_text_requested is not None:
+        solr_query_spec.fullReturn = full_text_requested
+
+    if abstract_requested is not None:
+        solr_query_spec.abstractReturn = abstract_requested 
+
+    if format_requested is not None:
+        solr_query_spec.returnFormat = format_requested
+
+    if limit is not None:
+        solr_query_spec.limit = limit
+
+    if offset is not None:
+        solr_query_spec.offset = offset
+
+    if page_offset is not None:
+        solr_query_spec.page_offset = page_offset
+
+    if page_limit is not None:
+        solr_query_spec.page_limit = page_limit
+
+    if page is not None:
+        solr_query_spec.page = page
+
+    # part of the query model
+
+    if query is not None:
+        solr_query_spec.solrQuery.searchQ = query
+        
+    if solr_query_spec.solrQuery.searchQ is None:
+        solr_query_spec.solrQuery.searchQ = "*:*"       
+
+    if filter_query is not None:
+        solr_query_spec.solrQuery.filterQ = filter_query
+
+    if solr_query_spec.solrQuery.filterQ is not None:
+        # for logging/debug
+        solr_query_spec.solrQuery.filterQ = solr_query_spec.solrQuery.filterQ.replace("*:* && ", "")
+        logger.debug("Solr FilterQ: %s", filter_query)
+    else:
+        solr_query_spec.solrQuery.filterQ = "*:*"
+        
+    #  clean up spaces and cr's from in code readable formatting
+    if solr_query_spec.returnFields is not None:
+        solr_query_spec.returnFields = ", ".join(e.lstrip() for e in solr_query_spec.returnFields.split(","))
+
+    if sort is not None:
+        solr_query_spec.solrQuery.sort = sort
+
+    #  part of the options model
+
+    if similar_count is not None:
+        solr_query_spec.solrQueryOpts.moreLikeThisCount = similar_count
+        
+    if def_type is not None:
+        solr_query_spec.solrQueryOpts.defType = def_type 
+
+    if highlight_fields is not None:
+        solr_query_spec.solrQueryOpts.hlFields = highlight_fields 
+
+    if facet_fields is not None:
+        facet_fields = opasAPISupportLib.string_to_list(facet_fields)
+        solr_query_spec.facetFields = facet_fields 
+    else:
+        facet_fields = opasAPISupportLib.string_to_list(solr_query_spec.facetFields)
+        solr_query_spec.facetFields = facet_fields 
+        
+    if extra_context_len is not None:
+        solr_query_spec.solrQueryOpts.hlFragsize = max(extra_context_len, opasConfig.DEFAULT_KWIC_CONTENT_LENGTH)
+    else:
+        solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
+
+    if maxKWICReturns is not None:
+        solr_query_spec.solrQueryOpts.hlSnippets = maxKWICReturns 
+       
+    ret_val = solr_query_spec
+    
+    return ret_val
+
 
 # -------------------------------------------------------------------------------------------------------
 # run it!

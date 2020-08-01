@@ -68,7 +68,7 @@ class TestSearchAnalysis(unittest.TestCase):
         assert(term0 == '(AOP) (in source)')
         assert(r["termIndex"]["responseSet"][0]["termCount"] == 631)
         term1 = r["termIndex"]["responseSet"][1]["term"]
-        assert(term1 == '(tuckett) (in author)')
+        assert(term1 == '(art_authors_text:(tuckett) || art_authors_citation:(tuckett))')
         assert(r["termIndex"]["responseSet"][1]["termCount"] >= 59)
 
     def test_v2_searchanalysis_author_and_journalcode_and_paratext(self):

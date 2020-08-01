@@ -447,7 +447,9 @@ class opasCentralDB(object):
     def get_most_viewed_crosstab(self):
         """
          Using the opascentral api_docviews table data, as dynamically statistically aggregated into
-           the view vw_stat_most_viewed return the most downloaded (viewed) Documents
+           the view vw_stat_most_viewed return the most downloaded (viewed) documents
+           
+         Supports the updates to Solr via solrXMLPEPWebload, used for view count queries.
             
         """
         ret_val = None
@@ -785,7 +787,6 @@ class opasCentralDB(object):
         self.close_connection(caller_name="count_open_sessions") # make sure connection is closed
         return ret_val
     
-
     def close_expired_sessions(self):
         """
         Close any sessions past the set expiration time set in the record
@@ -970,87 +971,6 @@ class opasCentralDB(object):
         self.close_connection(caller_name="authenticate_user_product_request") # make sure connection is closed
         # returns True if user is granted access
         return ret_val
-
-    #def get_basecodes_for_product(self, product_id):
-        #"""
-        #given a product_id, return a list of basecodes for that product
-        
-        ##TODO: Delete or Not - Perhaps Not Needed!  
-        #"""
-        #ret_val = []
-        ##self.open_connection(caller_name="get_basecodes_for_product") # make sure connection is open
-        ##if self.db is not None:
-            ##try:
-                ##curs = self.db.cursor(pymysql.cursors.SSCursor)
-
-                ##sqlCount = "SELECT basecode FROM vw_products_with_productbase WHERE product_id = %s and active = 1"
-                ##curs.execute(sqlCount, product_id)
-                ##ret_val = list(itertools.chain.from_iterable(curs))
-                    
-            ##except Exception as e:
-                ##logger.error(f"get_sources Error querying vw_api_products: {e}")
-            ##else:
-                ##curs.close()
-            
-        ##self.close_connection(caller_name="get_basecodes_for_product") # make sure connection is closed
-        ## returns a list of basecodes in that product, suitable for matching against.
-        #return ret_val
-
-    #def get_dict_of_products(self):
-        #"""
-        #get a complete dictionary of products, with each including a list of basecodes for that product
-        
-        #>>> ocd = opasCentralDB()
-        #>>> ocd.get_dict_of_products()
-        
-        #"""
-        #ret_val = {}
-        #self.open_connection(caller_name="get_dict_of_products") # make sure connection is open
-        #if self.db is not None:
-            #try:
-                #curs = self.db.cursor(pymysql.cursors.DictCursor)
-
-                #sql = "SELECT product_id FROM vw_api_product_list_with_basecodes"
-                #curs.execute(sql)
-                #product_list = list(itertools.chain.from_iterable(curs))
-                #for n in product_list:
-                    #basecodes = self.get_basecodes_for_product(n)
-                    #ret_val[n] = basecodes
-                    
-            #except Exception as e:
-                #logger.error(f"get_sources Error querying vw_api_products: {e}")
-            #else:
-                #curs.close()
-            
-        #self.close_connection(caller_name="get_dict_of_products") # make sure connection is closed
-        ## returns a list of basecodes in that product, suitable for matching against.
-        #return ret_val
-
-    #def get_article_metadata(self, article_id):
-        #"""
-        #given a article_id, the article metadata from the database (not solr)
-        #- Thought this was needed but it wasn't...unused/untested.  Deprecate for now.
-        #"""
-        #ret_val = {}
-        #self.open_connection(caller_name="get_article_metadata") # make sure connection is open
-        #if self.db is not None:
-            #try:
-                #curs = self.db.cursor(pymysql.cursors.DictCursor)
-                #sqlCount = "SELECT * FROM articles WHERE articleID = %s;"
-                #result = curs.execute(sqlCount, article_id)
-                #if result:
-                    #ret_val = curs.fetchone()
-                #else:
-                    #ret_val = {}
-            
-            #except Exception as e:
-                #logger.error(f"get_article_metadata error querying articles: {e}")
-            #else:
-                #curs.close()
-            
-        #self.close_connection(caller_name="get_article_metadata") # make sure connection is closed
-        ## returns a list of basecodes in that product, suitable for matching against.
-        #return ret_val
 
     def get_sources(self, source_code=None, src_type=None, limit=None, offset=0):
         """
@@ -1395,7 +1315,6 @@ class opasCentralDB(object):
                                     request,
                                     doc_id):
         pass
-    
     
     #----------------------------------------------------------------------------------------
     def do_action_query(self, querytxt, queryparams, contextStr=None):

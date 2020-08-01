@@ -12,10 +12,12 @@ cryptography==2.7
 dnspython==1.16.0
 docopt==0.6.2
 docutils==0.15.2
+dropbox==9.4.0
 EbookLib==0.17.1
-email-validator==1.0.5
-fastapi==0.44.1
-future==0.18.2
+email-validator==1.0.4
+fastapi==0.44.0
+fsspec==0.6.1
+future==0.17.1
 h11==0.8.1
 html5lib==1.0.1
 idna==2.8
@@ -24,11 +26,13 @@ itsdangerous==1.1.0
 jmespath==0.9.4
 libmagic==1.0
 lxml==4.4.1
+nameparser==1.0.6
+namesparser==1.0.0
 numpy==1.17.4
 pandas==0.25.3
 paramiko==2.6.0
 passlib==1.7.1
-Pillow==6.2.0
+Pillow==7.2.0
 pipreqs==0.4.10
 pycparser==2.19
 pydantic==1.2
@@ -56,5 +60,5 @@ uvicorn==0.9.0
 webencodings==0.5.1
 websockets==8.0.2
 wget==3.2
-xhtml2pdf==0.2.3
+xhtml2pdf==0.2.4
 yarg==0.1.9

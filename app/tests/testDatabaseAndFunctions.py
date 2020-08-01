@@ -49,8 +49,8 @@ class TestSQLStructure(unittest.TestCase):
         assert (dbok == True)
         tables = ["vw_products_flattened",
                   "vw_active_sessions",
-                  "vw_api_product_list_with_basecodes",
-                  "vw_api_session_endpoints_with_descriptor ",
+                  #"vw_api_product_list_with_basecodes",
+                  #"vw_api_session_endpoints_with_descriptor ",
                   "vw_api_sourceinfodb",
                   "vw_api_user",
                   "vw_api_user_subscriptions_with_basecodes",

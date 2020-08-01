@@ -54,7 +54,7 @@ class DocumentID(object):
                     page_number_int = int(page_number)
                     offset = page_number_int - page_start_int
                 except Exception as e:
-                    logging.error(f"Page offset calc issue.  {e}")
+                    logger.error(f"Page offset calc issue.  {e}")
                     offset = 0
 
 class FileInfo(object):
@@ -217,7 +217,7 @@ def derive_author_mast(authorIDList):
                     authorMast += authMastName    
             except Exception as e:
                 authorMast += aut
-                logging.warning("Could not derive Author Mast name")
+                logger.warning("Could not derive Author Mast name")
             
         retVal = authorMast.strip()
 
