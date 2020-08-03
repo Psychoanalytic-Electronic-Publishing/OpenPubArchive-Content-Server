@@ -134,11 +134,15 @@ Endpoint and model documentation automatically available when server is running 
 
            # Try a new smartsearch approach - lookup in Solr to determine
            #   word semantics.
+
+#2020.0802 # Smartsearch module candidate in place.  Passes tests, but needs user stress testing.
+           # Likely not robust in that way.
            
 # --------------------------------------------------------------------------------------------
 # IMPORTANT TODOs (List)
 # --------------------------------------------------------------------------------------------
 # - Fix abstract return - Lead in needs to be inside HTML tagging (though works fine for display right now)
+# - Think about what to do when a Solr query is in error, and solr dumps back.
 # --------------------------------------------------------------------------------------------
 # Not necessarily in the server code, but General TODOs
 # --------------------------------------------------------------------------------------------
@@ -152,7 +156,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0721.1.Alpha"
+__version__     = "2020.0802.1.Alpha"
 __status__      = "Development"
 
 import sys
