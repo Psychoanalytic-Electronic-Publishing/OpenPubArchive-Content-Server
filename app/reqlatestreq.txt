@@ -53,7 +53,7 @@ sshtunnel==0.1.5
 starlette==0.12.9
 treelib==1.5.5
 urllib3==1.25.3
-uvicorn==0.9.0
+uvicorn==0.11.7
 webencodings==0.5.1
 websockets==8.0.2
 wget==3.2
