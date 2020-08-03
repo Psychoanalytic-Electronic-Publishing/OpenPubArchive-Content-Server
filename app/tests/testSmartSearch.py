@@ -229,7 +229,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["count"] == 1)
         print (response_set[0])
 
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Goldberg, E.L. Myers, W.A. Zeifman, I.')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Goldberg, E.L., Myers, W.A., Zeifman, I.')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
@@ -322,6 +322,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (response_info["count"])
         assert(response_info["count"] == 3)  # two reviews and the original paper.
         print (response_set[0]) 
 
@@ -334,7 +335,8 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 1)
+        print (response_info["fullCount"])
+        assert(response_info["count"] >= 1)
         print (response_set[0])
 
     def test_13_references(self):
@@ -347,6 +349,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (response_info["count"])
         assert(response_info["count"] == 1)
         print (response_set[0])
 
@@ -356,6 +359,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (response_info["count"])
         assert(response_info["count"] == 1)
         print (response_set[0])
 

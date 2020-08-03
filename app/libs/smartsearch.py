@@ -62,7 +62,7 @@ def cleanup_solr_query(solrquery):
 def is_value_in_field(value,
                       field="title",
                       core="docs",
-                      match_type="exact", # exact, ordered, or bool
+                      match_type="exact", # exact, ordered, proximate, or bool
                       limit=10):
     """
     Returns True if the value is found in the field specified in the docs core.
@@ -108,7 +108,9 @@ def is_value_in_field(value,
     if match_type == "exact":
         q = f'{field}:"{value}"'
     elif match_type == "ordered":
-        q = f'{field}:"{value}"~50'
+        q = f'{field}:"{value}"~10'
+    elif match_type == "proximate":
+        q = f'{field}:"{value}"~25'
     else:
         q = f'{field}:({value})'
         
@@ -317,18 +319,25 @@ def smart_search(smart_search_text):
             # nothing found yet.
             # see if it's a title
             words = smart_search_text.split(" ")
+            word_count = len(words)
             words = [re.sub('\"|\\\:', "", n) for n in words]
             words = " ".join(words)
-            if is_value_in_field(words, "title", match_type="ordered"):
-                ret_val["title"] = words
-            else:
-                # see if it's a list of names
-                if is_value_in_field(words, core="doc", field="art_authors_citation"):
+            words = cleanup_solr_query(words)
+            if word_count == 1 and len(words) > 3:
+                # could still be an author name
+                if is_value_in_field(words, core="authors", field="authors"):
                     ret_val["schema_field"] = "art_authors_citation" 
-                    ret_val["schema_value"] = f"{words}"
-            # see if this is a name
-            new_q = ""
-            if " " in smart_search_text:
+                    ret_val["schema_value"] = f"{words}"            elif is_value_in_field(words, "title", match_type="ordered"):
+                ret_val["title"] = words
+            elif is_value_in_field(words, core="doc", field="art_authors_citation"):
+                # see if it's a list of names
+                ret_val["schema_field"] = "art_authors_citation" 
+                ret_val["schema_value"] = f"{words}"
+            elif is_value_in_field(words, core="doc", field="text", match_type="proximate"):
+                ret_val["wordsearch"] = re.sub(":", "\:", smart_search_text)
+            else:
+                # try to build a list of names, and check them individually
+                new_q = ""
                 names = name_id_list(smart_search_text)
                 for name in names:
                     try:
@@ -344,13 +353,12 @@ def smart_search(smart_search_text):
                 if new_q != "":
                     ret_val["schema_field"] = "authors" 
                     ret_val["schema_value"] = f"{new_q}"
-            else:
-                if is_value_in_field(smart_search_text, core="doc", field="art_authors_citation"):
-                    new_q += f"'{smart_search_text}'"
-                    
-                if new_q != "":
-                    ret_val["schema_field"] = "art_authors_citation" 
-                    ret_val["schema_value"] = f"{new_q}"
+                else:
+                    #  join the names
+                    name_conjunction = " && ".join(names)
+                    if is_value_in_field(name_conjunction, core="doc", field="art_authors_citation", match_type="bool"):
+                        ret_val["schema_field"] = "art_authors_citation" 
+                        ret_val["schema_value"] = f"{name_conjunction}"
     
     #  cleanup 
     if ret_val.get("art_id") is not None:

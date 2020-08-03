@@ -44,7 +44,7 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         """
         result =  smartsearch.smart_search("10.3280/PU2019-004002")
         print (result)
-        assert (result == {'doi': '10.3280/PU2019'})
+        assert (result == {'doi': '10.3280/PU2019-004002'})
 
     def test_0_Locator(self):
         """
@@ -105,7 +105,7 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         """
         result =  smartsearch.smart_search("Tuckett, D.")
         print (result)
-        assert (result == {'author_list': 'Tuckett, D.'})
+        assert (result == {'schema_field': 'art_authors_citation', 'schema_value': 'Tuckett, D.'})
 
     def test_1B_multiple_name(self):
         """
@@ -113,12 +113,12 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         """
         result =  smartsearch.smart_search("Rapaport, D. and Gill, M. M.")
         print (result)
-        assert (result == {'author_list': 'Rapaport, D. && Gill, M. M.'})
+        assert (result == {'schema_field': 'art_authors_citation', 'schema_value': 'Rapaport, D. && Gill, M. M.'})
         
-        result =  smartsearch.smart_search("Goldberg, E.L. Myers, W.A. Zeifman, I.")
+        result =  smartsearch.smart_search("Goldberg, E.L., Myers, W.A., and Zeifman, I.")
         print (result)
-        assert (result == {'author_list': 'Goldberg, E.L. Myers, W.A. Zeifman, I.'})
-
+        assert (result == {'schema_field': 'art_authors_citation', 'schema_value': 'Goldberg, E. && Myers, W. && Zeifman, I.'})
+        
     def test_2_names_and_dates(self):
         """
         
@@ -153,7 +153,7 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         """
         result =  smartsearch.smart_search("Psychoanalysis of Developmental Arrests: Theory and Treatment.")
         print (result)
-        assert (result == {'title': 'Psychoanalysis of Developmental Arrests: Theory and Treatment.'})
+        assert (result == {'title': 'Psychoanalysis of Developmental Arrests: Theory && Treatment.'})
         
     def test_2c_word_search(self):
         """
