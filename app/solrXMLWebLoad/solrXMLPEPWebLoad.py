@@ -566,7 +566,7 @@ class ArticleInfo(object):
         #<!-- Article front matter fields -->
         #---------------------------------------------
         artinfo_xml = pepxml.xpath("//artinfo")[0] # grab full artinfo node, so it can be returned in XML easily.
-        self.artinfo_xml = etree.tostring(artinfo_xml)
+        self.artinfo_xml = etree.tostring(artinfo_xml).decode("utf8")
         self.src_code = pepxml.xpath("//artinfo/@j")[0]
         try:
             self.src_code = self.src_code.upper()  # 20191115 - To make sure this is always uppercase
