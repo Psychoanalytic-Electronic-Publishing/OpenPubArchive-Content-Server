@@ -160,7 +160,8 @@ import dateutil.parser
 from optparse import OptionParser
 
 from lxml import etree
-import solrpy as solr
+#now uses pysolr exclusively!
+# import solrpy as solr 
 import pymysql
 
 import config
@@ -479,12 +480,12 @@ class BiblioEntry(object):
         self.author_list = [opasxmllib.xml_elem_or_str_to_text(x) for x in ref.findall("a") if opasxmllib.xml_elem_or_str_to_text(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
         self.author_list_str = '; '.join(self.author_list)
 
-        if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE: # "pepoffsite":
-            # certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
-            self.ref_offsite_entry = self.bibRefEntry
-            self.bibRefEntry = None
-        else:
-            self.ref_offsite_entry = None
+        #if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE: # "pepoffsite":
+            ## certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
+            #self.ref_offsite_entry = self.bibRefEntry
+            #self.bibRefEntry = None
+        #else:
+            #self.ref_offsite_entry = None
         
         # setup for Solr load
         #self.thisRef = {
@@ -807,21 +808,19 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
     # see if this is an offsite article
     if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE:
         # certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
-        offsite_contents = file_xml_contents
-        
-        file_xml_contents = """<html>
-                               <p>This article or book is available online on a non-PEP website. 
-                               Click <a href="//www.doi.org/%s" target="_blank">here</a> to open that website 
-                               in another window or tab.
-                               </p>
-                               </html>
-                            """ % urllib.parse.quote(artInfo.art_doi)
-        
-        # should we trust clients, or remove this data?  For now, remove.  Need to probably do this in biblio core too
-        # dialogsXml = dreamsXml = notesXml = panelsXml = poemsXml = quotesXml = None    
-        #referencesXml = abstractsXml = summariesXml = None
-    else: # other PEP classified files, peparchive, pepcurrent, pepfree can have the full-text
-        offsite_contents = ""
+        offsite_contents = True
+        offsite_ref =  """<p>This article or book is available online on a non-PEP website. 
+                            Click <a href="//www.doi.org/%s" target="_blank">here</a> to open that website 
+                            in another window or tab.
+                            </p>
+                        """ % urllib.parse.quote(artInfo.art_doi)
+        summaries_xml = f"""<abs>
+                            {offsite_ref}
+                            </abs>
+                         """
+        excerpt = abstracts_xml = summaries_xml
+    else:
+        offsite_contents = False
         summaries_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//summaries", default_return=None)
         abstracts_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//abs", default_return=None)
         # multiple data fields, not needed, search children instead, which allows search by para
@@ -931,7 +930,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "art_excerpt" : excerpt,
                 # very important field for displaying the whole document or extracting parts
                 "text_xml" : file_xml_contents,                                # important
-                "text_xml_offsite" : non_empty_string(offsite_contents),
+                "art_offsite" : offsite_contents, #  true if it's offsite
                 "author_bio_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//nbio", default_return = None),
                 "author_aff_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//autaff", default_return = None),
                 "bk_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bktitle", default_return = None),
@@ -1830,11 +1829,12 @@ def main():
                 #print("Solr References Core will be updated: ", solrurl_refs)
             #**********************************
             print(80*"*")
-            cont = input ("The above databases will be updated.  Do you want to continue (y/n)?")
-            if cont.lower() == "n":
-                print ("User requested exit.  No data changed.")
-                sys.exit(0)
-            
+            if not options.no_check:
+                cont = input ("The above databases will be updated.  Do you want to continue (y/n)?")
+                if cont.lower() == "n":
+                    print ("User requested exit.  No data changed.")
+                    sys.exit(0)
+                
         except Exception as e:
             msg = f"cores specification error ({e})."
             print((len(msg)*"-"))
@@ -1871,7 +1871,7 @@ def main():
         if options.fulltext_core_update:
             # fulltext update always includes authors
             solr_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
-            solr_docs = None
+            # solr_docs = None
             # this is now done in opasCoreConfig
             #solr_authors = solr.SolrConnection(solrurl_authors, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
         #if options.glossary_core_update:
@@ -1882,7 +1882,7 @@ def main():
             # fulltext update always includes authors
             solr_docs2 = pysolr.Solr(solrurl_docs)
             # diconnect the other
-            solr_docs = None
+            # solr_docs = None
             # this is now done in opasCoreConfig
             #solr_authors = solr.SolrConnection(solrurl_authors)
         #if options.glossary_core_update:
@@ -2254,6 +2254,8 @@ if __name__ == "__main__":
                       #help="Base URL of Solr api (without core), e.g., http://localhost:8983/solr/", metavar="URL")
     parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
                       help="Display status and operational timing info as load progresses.")
+    parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
+                      help="Display status and check whether to proceed.")
     parser.add_option("--userid", dest="httpUserID", default=None,
                       help="UserID for the server")
     parser.add_option("--config", dest="config_info", default="Local",
