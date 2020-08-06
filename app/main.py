@@ -138,6 +138,14 @@ Endpoint and model documentation automatically available when server is running 
 #2020.0802 # Smartsearch module candidate in place.  Passes tests, but needs user stress testing.
            # Likely not robust in that way.
            
+#2020.0805 # Adjustments to restrict return data for offsite articles, since those aren't allowed
+           # to display text, and the change on 08/04 to the way they're loaded in solrxmlload now treats
+           # them (mostly) as regular articles so they may be searched.
+
+           # Mapped search_text to search_text_qs eliminating the redundant functionality
+           # that was due to the "evolution" in the code.
+           # (search_text is parameterized, and search_text_qs uses a querySpec).
+           
 # --------------------------------------------------------------------------------------------
 # IMPORTANT TODOs (List)
 # --------------------------------------------------------------------------------------------
@@ -156,7 +164,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0802.1.Alpha"
+__version__     = "2020.0805.1.Alpha"
 __status__      = "Development"
 
 import sys
@@ -1681,11 +1689,13 @@ async def database_advanced_search(response: Response,
                                             facet_fields = facet_fields, 
                                             sort = sort,
                                             limit=limit, 
-                                            offset=offset
+                                            offset=offset, 
+                                            req_url=request.url._url
                                             )
     # try the query
     ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec,
-                                                           session_info.authenticated)
+                                                           authenticated=session_info.authenticated
+                                                           )
 
     #ret_val, ret_status = \
         #opasAPISupportLib.search_text_query_spec(solr_query_spec=solrQuerySpec, 
@@ -1906,9 +1916,9 @@ async def database_search_paragraphs(response: Response,
                                                       abstract_requested=abstract, 
                                                       limit=limit,
                                                       offset=offset,
-                                                      sort=sort
+                                                      sort=sort,
+                                                      req_url = request.url._url
                                                     )
-    solr_query_spec.urlRequest = request.url._url
     solr_query_params = solr_query_spec.solrQuery
     solr_query_opts = solr_query_spec.solrQueryOpts
        
@@ -1916,7 +1926,8 @@ async def database_search_paragraphs(response: Response,
         ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec,
                                                                extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                                                limit=limit,
-                                                               offset=offset
+                                                               offset=offset,
+                                                               authenticated=session_info.authenticated
                                                                )
     #else:
         #ret_val, ret_status = opasAPISupportLib.search_text(query=solr_query_params.searchQ, 
@@ -2243,9 +2254,9 @@ async def database_search_v2( response: Response,
                                                       abstract_requested=abstract,
                                                       limit=limit,
                                                       offset=offset,
-                                                      sort=sort
+                                                      sort=sort,
+                                                      req_url = request.url._url
                                                       )
-    solr_query_spec.urlRequest = request.url._url
 
     #try:
         #ret_fields = returnfields.lower()
@@ -2262,7 +2273,9 @@ async def database_search_v2( response: Response,
         ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec, 
                                                                extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                                                limit=limit,
-                                                               offset=offset)
+                                                               offset=offset,
+                                                               authenticated=session_info.authenticated
+                                                               )
         
     #else:
         #ret_val, ret_status = opasAPISupportLib.search_text(query=solr_query_spec.solrQuery.searchQ, 
@@ -2289,7 +2302,7 @@ async def database_search_v2( response: Response,
 
     if ret_val != {}:
         matches = len(ret_val.documentList.responseSet)
-        ret_val.documentList.responseInfo.request = request.url._url
+        # ret_val.documentList.responseInfo.request = request.url._url
     else:
         matches = 0
 
@@ -2366,7 +2379,8 @@ async def database_searchanalysis_v1(response: Response,
                                                       title=title,
                                                       startyear=startyear,
                                                       endyear=endyear,
-                                                      sort = sort
+                                                      sort = sort,
+                                                      req_url = request.url._url
                                                       )
 
     solr_query_spec.urlRequest = request.url._url
@@ -2442,7 +2456,8 @@ def database_searchanalysis(response: Response,
                                                       viewcount=viewcount,
                                                       viewperiod=viewperiod,
                                                       facetfields=facetfields, 
-                                                      sort = sort
+                                                      sort = sort,
+                                                      req_url = request.url._url
                                                       )
 
     solr_query_spec.urlRequest = request.url._url
@@ -3834,7 +3849,8 @@ def documents_document_fetch(response: Response,
                                                                     #file_classification=file_classification, 
                                                                     page_offset=offset, # starting page
                                                                     page_limit=limit, # number of pages
-                                                                    page=page # specific page number request (rather than offset)
+                                                                    page=page, # specific page number request (rather than offset),
+                                                                    req_url=request.url._url
                                                                     )
             else:
                 logger.debug("user is not authenticated.  Returning abstract only)")
@@ -3843,7 +3859,8 @@ def documents_document_fetch(response: Response,
                                                                      ret_format=return_format,
                                                                      authenticated=session_info.authenticated,
                                                                      limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
-                                                                     offset=0
+                                                                     offset=0,
+                                                                     req_url=request.url._url
                                                                      )
 
         except Exception as e:

@@ -363,7 +363,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   limit=None,
                                   offset=None, 
                                   # v1 parameters
-                                  journal=None
+                                  journal = None,
+                                  req_url = None
                                   ):
     """
     This function parses various parameters in the api parameter and body to convert them
@@ -431,7 +432,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
         models.SolrQuerySpec(
                              core="pepwebdocs", # for now, this is tied to this core #TODO maybe change later
                              solrQuery = models.SolrQuery(),
-                             solrQueryOpts=solrQueryOpts
+                             solrQueryOpts=solrQueryOpts,
+                             req_url=req_url
         )
 
     if limit is not None:
@@ -1034,7 +1036,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
 #================================================================================================================
 def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
                         core = None, 
-                        url_request = None, 
+                        req_url = None, 
                         query = None, 
                         filter_query = None,
                         query_debug = None,
@@ -1046,11 +1048,11 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
                         def_type = None,
                         summary_fields=opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
                         highlight_fields = None,
-                        facet_fields = None, 
-                        sort= None,
-                        authenticated = None, 
+                        facet_fields = None,
+                        facet_mincount = None, 
                         extra_context_len = None,
                         maxKWICReturns = None,
+                        sort= None,
                         limit = None, 
                         offset = None,
                         page_offset = None,
@@ -1092,8 +1094,8 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     if solr_query_spec.solrQueryOpts.queryDebug != "on":
         solr_query_spec.solrQueryOpts.queryDebug = "off"
 
-    if url_request is not None:
-        solr_query_spec.urlRequest = url_request
+    if req_url is not None:
+        solr_query_spec.urlRequest = req_url
 
     if full_text_requested is not None:
         solr_query_spec.fullReturn = full_text_requested
@@ -1161,6 +1163,9 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     else:
         facet_fields = opasAPISupportLib.string_to_list(solr_query_spec.facetFields)
         solr_query_spec.facetFields = facet_fields 
+        
+    if facet_mincount is not None:
+        solr_query_spec.facetMinCount = facet_mincount
         
     if extra_context_len is not None:
         solr_query_spec.solrQueryOpts.hlFragsize = max(extra_context_len, opasConfig.DEFAULT_KWIC_CONTENT_LENGTH)

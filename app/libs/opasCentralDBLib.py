@@ -677,22 +677,26 @@ class opasCentralDB(object):
                                               )
                                               VALUES 
                                                 (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
-                    
-                    success = cursor.execute(sql, 
-                                             (session_id, 
-                                              userID, 
-                                              username,
-                                              userIP,
-                                              connected_via,
-                                              referrer,
-                                              session_start, 
-                                              expiresTime,
-                                              accessToken,
-                                              authenticated,
-                                              session_admin, 
-                                              apiClientID
-                                              )
-                                             )
+                    try:
+                        success = cursor.execute(sql, 
+                                                 (session_id, 
+                                                  userID, 
+                                                  username,
+                                                  userIP,
+                                                  connected_via,
+                                                  referrer,
+                                                  session_start, 
+                                                  expiresTime,
+                                                  accessToken,
+                                                  authenticated,
+                                                  session_admin, 
+                                                  apiClientID
+                                                  )
+                                                 )
+                    except Exception as e:
+                        success = False
+                        logger.error(f"Save Session Exception: {e}")
+                       
                     if success:
                         msg = f"save_session: Session {session_id} Record Saved"
                         #print (msg)

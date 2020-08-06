@@ -105,7 +105,7 @@ class TestMetadata(unittest.TestCase):
         # test return
         r = response.json()
         print (f"Book Count: {r['volumeList']['responseInfo']['fullCount']}")
-        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_ALL_BOOKS) 
+        assert(r['volumeList']['responseInfo']['fullCount'] >= unitTestConfig.VOL_COUNT_ALL_BOOKS) 
         # ---------------------------------------------------------------------------------------
         response = client.get(base_api + '/v2/Metadata/Volumes/?sourcetype=journal') #  all journals
         # Confirm that the request-response cycle completed successfully.
@@ -126,7 +126,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_ZBK) 
+        assert(r['volumeList']['responseInfo']['fullCount'] >= unitTestConfig.VOL_COUNT_ZBK) 
         # ---------------------------------------------------------------------------------------
         response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=IJPSP')
         # Confirm that the request-response cycle completed successfully.

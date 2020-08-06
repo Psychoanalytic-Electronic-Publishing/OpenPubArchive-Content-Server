@@ -101,6 +101,7 @@ class ResponseInfo(BaseModel):
     solrParams: dict = Schema(None, title="A dictionary based set of the parameters passed to the Solr search engine for this request.")
     errors: ErrorReturn = Schema(None, title="Any Error information")
     dataSource: str = Schema(None, title="Version of the API server software")
+    authenticated: bool = Schema(None, title="If request was processed as authenticated")
     timeStamp: str = Schema(None, title="Server timestamp of return data.")   
 
 #-------------------------------------------------------
@@ -462,9 +463,9 @@ class SolrQuerySpec(BaseModel):
     returnFormat: str = Schema("HTML", title="Return type: XML, HTML, TEXT_ONLY", description="Return type: XML, HTML, TEXT_ONLY")
     limit: int = Schema(15, title="Record Limit for Solr returns")
     offset: int = Schema(0, title="Record Offset in return set")
-    page: int = Schema(15, title="Page Number in return set")
-    page_limit: int = Schema(15, title="Page Limit for Solr returns")
-    page_offset: int = Schema(15, title="Page offset in return set")
+    page: int = Schema(None, title="Page Number in return set")
+    page_limit: int = Schema(None, title="Page Limit for Solr returns")
+    page_offset: int = Schema(0, title="Page offset in return set")
     facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
     facetMinCount: int = Schema(1, title="Minimum count to return a facet")
     facetRanges: str = Schema(None, title="Faceting range list (comma separated list)", description="Returns faceting ranges if specified.")
