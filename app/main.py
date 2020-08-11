@@ -146,6 +146,17 @@ Endpoint and model documentation automatically available when server is running 
            # that was due to the "evolution" in the code.
            # (search_text is parameterized, and search_text_qs uses a querySpec).
            
+#2020.0810 # Metadata volumes now uses a Solr pivot rather than the relational DB (rDB) tables.  This ensures
+           # the data returned is in sync with the actual database (since deletions can be done in the Solr db
+           # don't propagate to the rDB, they can be out of sync.)
+           #
+           # SolrLoad now adds the source year to the biblio record table; this means the join with the articles
+           # table isn't necessary to build the citation counts by interval.  However, the joined views are
+           # significantly faster than the single table grouping views, so the predefined views for
+           # vw_stat_cited_in_last_5_years, vw_stat_cited_in_last_10_years, and vw_stat_cited_in_last_20_years
+           # still use the articles table anyway.  Note this only affects solr db loads in either case since the
+           # query data for citations is kept in the solr docs core.
+           
 # --------------------------------------------------------------------------------------------
 # IMPORTANT TODOs (List)
 # --------------------------------------------------------------------------------------------
@@ -164,7 +175,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0805.1.Alpha"
+__version__     = "2020.0810.1.Alpha"
 __status__      = "Development"
 
 import sys
@@ -3130,14 +3141,14 @@ def metadata_journals(response: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/Metadata/Volumes/{SourceCode}", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_VOLUMES)
-def metadata_volumes_sourcecode(response: Response,
-                                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                        limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                                        sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
-                                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                                        # v1 arg
-                                        SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                                        ):
+def metadata_volumes_v1(response: Response,
+                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                        limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                        sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
+                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                        # v1 arg
+                        SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                        ):
     """
     ## Function
        <b>Return a list of volumes for a SourceCode (aka, PEPCode (e.g., IJP)) per the limit and offset parameters</b> 
@@ -3159,6 +3170,7 @@ def metadata_volumes_sourcecode(response: Response,
     ret_val = metadata_volumes(response=response, request=request, sourcetype=sourcetype, sourcecode=SourceCode, limit=limit, offset=offset)
     return ret_val # returns volumeList
     
+#-----------------------------------------------------------------------------
 @app.get("/v2/Metadata/Volumes/", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_VOLUMES)
 def metadata_volumes(response: Response,
                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -3278,12 +3290,12 @@ def metadata_books(response: Response,
 #@app.get("/v1/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_SOURCE_NAMES)
 @app.get("/v2/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_SOURCE_NAMES)
 def metadata_by_sourcetype_sourcecode(response: Response,
-                               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                               SourceType: str=Path(..., title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PATH_SOURCETYPE), 
-                               SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                               limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                               offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
-                               ):
+                                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                                      SourceType: str=Path(..., title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PATH_SOURCETYPE), 
+                                      SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                                      limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
+                                      ):
     """
 
     ## Function

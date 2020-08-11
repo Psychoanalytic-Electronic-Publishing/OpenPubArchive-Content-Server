@@ -30,7 +30,7 @@ rx_author_name_list = "(?P<author_list>([A-Z][A-z]+\,?\s+?(([A-Z]\.?\s?){0,2})((
 # rx_author_name_list_year = rx_author_name_list + rx_space_req + rx_year
 rx_author_list_and_year = "(?P<author_list>[A-Z][A-z\s\,\.\-]+?)" + rx_space_req + rx_year
 rx_series_of_author_last_names = "(?P<author_list>([A-Z][a-z]+((\,\s+)|(\s*and\s+))?)+)"
-rx_doi = "((h.*?://)?(doi.org/)?)(?P<doi>(10\.[0-9]+/[A-z0-9\.\-/]+)|(doi.org/[A-z0-9\-\./]+))"
+rx_doi = "((h.*?://)?(.*?/))?(?P<doi>(10\.[0-9]{4,4}/[A-z0-9\.\-/]+)|(doi.org/[A-z0-9\-\./]+))"
 # schema fields must have a _ in them to use.
 rx_solr_field = "(?P<schema_field>([a-z]+_[a-z_]{2,13})|text|authors)\:(?P<schema_value>(.*$))"
 rx_syntax = "(?P<syntax>^[a-z]{3,9})\:\:(?P<query>.+$)"

@@ -7,6 +7,5 @@ options = None
 
 # constants
 COMMITLIMIT = 250  # commit the load to Solr every X articles
-#SOURCEINFODBFILENAME = 'PEPSourceInfo.json'
 DEFAULTDATAROOT = r"X:\\_PEPA1\\_PEPa1v\\"
 

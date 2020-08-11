@@ -585,6 +585,8 @@ class VolumeListItem(BaseModel):
     PEPCode: str = Schema(None, title="")
     vol: str = Schema(None, title="")
     year: str = Schema(None, title="")
+    years: list = Schema([], title="")
+    count: int = Schema(0, title="")
     
 #-------------------------------------------------------
 

@@ -98,25 +98,26 @@ class MostCitedArticles(BaseModel):
     count5: int = 0
     count10: int = 0
     count20: int = 0
-    
-class MostCitedArticlesWithDetails(MostCitedArticles):
-    """
-    __Table vw_stat_cited_crosstab_with_details__ # was MostCitedArticlesWithDetails
-    based on 
-    __Table vw_stat_cited_crosstab__
 
-    A view with rxCode counts derived from the fullbiblioxml table and the articles table
-      for citing sources in one of the date ranges.
+# Deleted since article table being deprecated 2020-08-09    
+#class MostCitedArticlesWithDetails(MostCitedArticles):
+    #"""
+    #__Table vw_stat_cited_crosstab_with_details__ # was MostCitedArticlesWithDetails
+    #based on 
+    #__Table vw_stat_cited_crosstab__
 
-    Adds to MostCitedArticles model more of the cited article information for display
+    #A view with rxCode counts derived from the fullbiblioxml table and the articles table
+      #for citing sources in one of the date ranges.
+
+    #Adds to MostCitedArticles model more of the cited article information for display
     
-    """
-    hdgauthor: str = None
-    hdgtitle: str = None
-    srctitleseries: str = None
-    year: int = None
-    vol: str = None
-    pgrg: str = None
+    #"""
+    #hdgauthor: str = None
+    #hdgtitle: str = None
+    #srctitleseries: str = None
+    #year: int = None
+    #vol: str = None
+    #pgrg: str = None
     
 class Products(BaseModel):
     product_id: int = None

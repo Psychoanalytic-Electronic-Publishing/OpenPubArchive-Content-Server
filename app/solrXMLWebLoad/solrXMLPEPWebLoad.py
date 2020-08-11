@@ -416,20 +416,25 @@ class BiblioEntry(object):
             self.ref_entry_xml = self.ref_entry_xml.decode("utf8") # convert from bytes
         self.ref_entry_text = opasxmllib.xml_elem_or_str_to_text(ref)
         self.art_id = artInfo.art_id
+        self.art_year_int = artInfo.art_year_int
         self.ref_local_id= opasxmllib.xml_get_element_attr(ref, "id")
         self.ref_id = artInfo.art_id + "." + self.ref_local_id
-        self.ref_title = opasxmllib.xml_get_subelement_textsingleton(ref, "t") 
+        self.ref_title = opasxmllib.xml_get_subelement_textsingleton(ref, "t")
+        self.ref_title = self.ref_title[:1023]
         self.pgrg = opasxmllib.xml_get_subelement_textsingleton(ref, "pp")
         self.pgrg = opasgenlib.first_item_grabber(self.pgrg, re_separator_ptn=";|,", def_return=self.pgrg)
+        self.pgrg = self.pgrg[:23]
         self.rx = opasxmllib.xml_get_element_attr(ref, "rx", default_return=None)
         self.rxcf = opasxmllib.xml_get_element_attr(ref, "rxcf", default_return=None) # related rx
         if self.rx is not None:
             self.rx_sourcecode = re.search("(.*?)\.", self.rx, re.IGNORECASE).group(1)
         else:
             self.rx_sourcecode = None
-        self.volume = opasxmllib.xml_get_subelement_textsingleton(ref, "v") 
+        self.volume = opasxmllib.xml_get_subelement_textsingleton(ref, "v")
+        self.volume = self.volume[:23]
         self.source_title = opasxmllib.xml_get_subelement_textsingleton(ref, "j")
         self.publishers = opasxmllib.xml_get_subelement_textsingleton(ref, "bp")
+        self.publishers = self.publishers[:254]
         if self.publishers != "":
             self.source_type = "book"
         else:
@@ -439,16 +444,16 @@ class BiblioEntry(object):
             self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "bpd")
             if self.year_of_publication == "":
                 self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
-                if self.year_of_publication != "":
-                    # make sure it's not a range or list of some sort.  Grab first year
-                    self.year_of_publication = opasgenlib.year_grabber(self.year_of_publication)
             if self.source_title is None or self.source_title == "":
                 # sometimes has markup
                 self.source_title = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
         else:
             self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
-           
-        if self.year_of_publication == "":
+         
+        if self.year_of_publication != "":
+            # make sure it's not a range or list of some sort.  Grab first year
+            self.year_of_publication = opasgenlib.year_grabber(self.year_of_publication)
+        else:
             # try to match
             try:
                 self.year_of_publication = re.search(r"\(([A-z]*\s*,?\s*)?([12][0-9]{3,3}[abc]?)\)", self.ref_entry_xml).group(2)
@@ -477,8 +482,10 @@ class BiblioEntry(object):
             
         self.author_name_list = [etree.tostring(x, with_tail=False).decode("utf8") for x in ref.findall("a") if x is not None]
         self.authors_xml = '; '.join(self.author_name_list)
+        self.authors_xml = self.authors_xml[:2040]
         self.author_list = [opasxmllib.xml_elem_or_str_to_text(x) for x in ref.findall("a") if opasxmllib.xml_elem_or_str_to_text(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
         self.author_list_str = '; '.join(self.author_list)
+        self.author_list_str = self.author_list_str[:2040]
 
         #if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE: # "pepoffsite":
             ## certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
@@ -578,7 +585,11 @@ class ArticleInfo(object):
         except KeyError as err:
             self.src_title_abbr = None
             self.src_title_full = None
-            self.src_type = None
+            if self.src_code in ["ZBK"]:
+                self.src_type = "book"
+            else:           
+                self.src_type = None
+                
             self.src_embargo = None
             logger.warning("Error: PEP Source %s not found in source info db.  Use the 'PEPSourceInfo export' after fixing the issn table in MySQL DB", self.src_code)
         except Exception as err:
@@ -620,7 +631,7 @@ class ArticleInfo(object):
         m = re.match("(?P<volint>[0-9]+)(?P<volsuffix>[a-zA-Z])?(\s*\-\s*)?((?P<vol2int>[0-9]+)(?P<vol2suffix>[a-zA-Z])?)?", self.art_vol)
         if m is not None:
             self.art_vol_suffix = m.group("volsuffix")
-            self.art_vol = m.group("volint")
+            # self.art_vol = m.group("volint")
         else:
             self.art_vol_suffix = None
             
@@ -729,14 +740,18 @@ class ArticleInfo(object):
             if self.art_qual == []:
                 self.art_qual = None 
 
-            if self.art_qual is not None:
-                if self.art_qual[0] != self.art_id:
-                    self.bk_subdoc = True
-                else:
-                    self.bk_subdoc = False
+        # will be None if not a book extract
+        # self.art_qual = None
+        if self.art_qual is not None:
+            if isinstance(self.art_qual, list):
+                self.art_qual = str(self.art_qual[0])
                 
-            # will be None if not a book extract
-            # self.art_qual = None
+            if self.art_qual != self.art_id:
+                self.bk_subdoc = True
+            else:
+                self.bk_subdoc = False
+        else:
+            self.bk_subdoc = False           
 
         refs = pepxml.xpath("/pepkbd3//be")
         self.bib_authors = []
@@ -966,6 +981,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "art_year" : non_empty_string(artInfo.art_year),
                 "art_year_int" : artInfo.art_year_int,
                 "art_vol" : non_empty_string(artInfo.art_vol),
+                "art_vol_suffix" : non_empty_string(artInfo.art_vol_suffix),
                 "art_vol_title" : non_empty_string(artInfo.art_vol_title),
                 "art_pgrg" : non_empty_string(artInfo.art_pgrg),
                 "art_pgcount" : artInfo.art_pgcount,
@@ -1299,6 +1315,7 @@ def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry):
                                INTO api_biblioxml (
                                     art_id,
                                     bib_local_id,
+                                    art_year,
                                     bib_rx,
                                     bib_sourcecode, 
                                     bib_rxcf, 
@@ -1317,6 +1334,7 @@ def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry):
                                     )
                                 values (%(art_id)s,
                                         %(ref_local_id)s,
+                                        %(art_year_int)s,
                                         %(rx)s,
                                         %(rx_sourcecode)s,
                                         %(rxcf)s,
@@ -1869,8 +1887,8 @@ def main():
     #if options.httpUserID is not None and options.httpPassword is not None:
     if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:
         if options.fulltext_core_update:
-            # fulltext update always includes authors
             solr_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
+            # fulltext update always includes authors
             # solr_docs = None
             # this is now done in opasCoreConfig
             #solr_authors = solr.SolrConnection(solrurl_authors, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
@@ -1878,13 +1896,12 @@ def main():
             # this is now done in opasCoreConfig
             #solr_gloss = solr.SolrConnection(solrurl_glossary, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
     else: #  no user and password needed
-        if options.fulltext_core_update:
-            # fulltext update always includes authors
-            solr_docs2 = pysolr.Solr(solrurl_docs)
-            # diconnect the other
-            # solr_docs = None
-            # this is now done in opasCoreConfig
-            #solr_authors = solr.SolrConnection(solrurl_authors)
+        solr_docs2 = pysolr.Solr(solrurl_docs)
+        # fulltext update always includes authors
+        # disconnect the other
+        # solr_docs = None
+        # this is now done in opasCoreConfig
+        #solr_authors = solr.SolrConnection(solrurl_authors)
         #if options.glossary_core_update:
             # this is now done in opasCoreConfig
             #solr_gloss = solr.SolrConnection(solrurl_glossary)

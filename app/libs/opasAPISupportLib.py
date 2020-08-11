@@ -110,7 +110,6 @@ import opasQueryHelper
 import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
 import schemaMap
-sourceDB = opasCentralDBLib.SourceInfoDB()
 count_anchors = 0
 
 
@@ -681,7 +680,9 @@ def database_get_whats_new(days_back=7,
         volume = result.get("art_vol", None)
         issue = result.get("art_iss", "")
         year = result.get("art_year", None)
-        abbrev = sourceDB.sourceData[PEPCode].get("sourcetitleabbr", "")
+        abbrev = result.get("art_sourcetitleabbr", None)
+        src_title = result.get("art_sourcetitlefull", None)
+        
         updated = result.get("file_last_modified", None)
         updated = updated.strftime('%Y-%m-%d')
         display_title = abbrev + " v%s.%s (%s) " % (volume, issue, year)
@@ -690,7 +691,7 @@ def database_get_whats_new(days_back=7,
         else:
             already_seen.append(display_title)
         volume_url = "/v1/Metadata/Contents/%s/%s" % (PEPCode, issue)
-        src_title = sourceDB.sourceData[PEPCode].get("sourcetitlefull", "")
+        
 
         item = models.WhatsNewListItem( documentID = result.get("art_id", None),
                                         displayTitle = display_title,
@@ -719,10 +720,6 @@ def database_get_whats_new(days_back=7,
     return ret_val   # WhatsNewList
 
 #-----------------------------------------------------------------------------
-#def search_like_the_pep_api():
-    #pass  # later
-
-#-----------------------------------------------------------------------------
 def source_type_normalize(source_type):
     """
     Make it easier to ignore small inconsistencies in these key word arguments.
@@ -746,80 +743,117 @@ def source_type_normalize(source_type):
 
     return ret_val
 
-#-----------------------------------------------------------------------------
-def metadata_get_volumes(pep_code=None,
+def metadata_get_volumes(source_code=None,
                          source_type=None,
                          req_url: str=None, 
-                         limit=opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS,
+                         limit=1,
                          offset=0):
     """
-    Get a list of volumes for this pep_code.
-
-    >>> results = metadata_get_volumes(pep_code="IJP", source_type="journal")
-    >>> results.volumeList.responseInfo.count >= 101
-    True
-
-    >>> results = metadata_get_volumes(pep_code=None, source_type="journal")
-    >>> results.volumeList.responseInfo.count >= 200
-    True
-
+    Return a list of volumes
+      - for a specific source_code (code),
+      - OR for a specific source_type (e.g. journal)
+      - OR if source_code and source_type are not specified, bring back them all
+      
+    This is a new version (08/2020) using Solr pivoting rather than the OCD database.
+      
     """
-    ret_val = []
-    ocd = opasCentralDBLib.opasCentralDB()
-    count, results = ocd.get_volumes(source_code=pep_code, source_type=source_type, limit=limit, offset=offset)
-
+    # returns multiple gw's and se's, 139 unique volumes counting those (at least in 2020)
+    # works for journal, videostreams have more than one year per vol.
+    # works for books, videostream vol numbers
     #results = solr_docs.query( q = f"art_sourcecode:{pep_code} && art_year:{year}",  
                                 #fields = "art_sourcecode, art_vol, art_year",
-                                #sort="art_year", sort_order="asc",
+                                #sort="art_sourcecode, art_year", sort_order="asc",
                                 #fq="{!collapse field=art_vol}",
                                 #rows=limit, start=offset
                                 #)
+    
+    distinct_return = "art_sourcecode, art_vol, art_year, art_sourcetype"
+    limit = 6
+    count = 0
+    ret_val = None
+    
+    q_str = "bk_subdoc:false"
+    if source_code is not None:
+        q_str += f" && art_sourcecode:{source_code}"
+    if source_type is not None:
+        q_str += f" && art_sourcetype:{source_type}"
+    facet_fields = ["art_vol", "art_sourcecode"]
+    facet_pivot = "art_sourcecode,art_year,art_vol" # important ...no spaces!
+    try:
+        result = solr_docs.query( q = q_str,
+                                  fq="*:*", 
+                                  fields = distinct_return,
+                                  sort="art_sourcecode, art_year", sort_order="asc",
+                                  #fq="{!collapse field=art_sourcecode, art_vol}",
+                                  facet="on", 
+                                  facet_fields = facet_fields, 
+                                  facet_pivot=facet_pivot,
+                                  facet_mincount=1,
+                                  facet_sort="art_year asc", 
+                                  rows=limit
+                                 )
+        facet_pivot = result.facet_counts["facet_pivot"][facet_pivot]
+        #ret_val = [(piv['value'], [n["value"] for n in piv["pivot"]]) for piv in facet_pivot]
 
-    logger.debug("metadataGetVolumes Number found: %s", count)
-    response_info = models.ResponseInfo( count = count,
-                                         fullCount = count,
-                                         limit = limit,
-                                         offset = offset,
-                                         listType="volumelist",
-                                         fullCountComplete = (limit == 0 or limit >= count),
-                                         request=f"{req_url}",
-                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                         )
+        response_info = models.ResponseInfo( count = count,
+                                             fullCount = count,
+                                             limit = limit,
+                                             offset = offset,
+                                             listType="volumelist",
+                                             fullCountComplete = (limit == 0 or limit >= count),
+                                             request=f"{req_url}",
+                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                             )
 
-    volume_item_list = []
-    if count > 0:
-        for result in results:
-            try:
-                pepcode = result[0]
-            except Exception as e:
-                pepcode = None
+        
+        volume_item_list = []
+        volume_dup_check = {}
+        for m1 in facet_pivot:
+            journal_code = m1["value"]
+            seclevel = m1["pivot"]
+            for m2 in seclevel:
+                secfield = m2["field"]
+                secval = m2["value"]
+                thirdlevel = m2["pivot"]
+                for m3 in thirdlevel:
+                    thirdfield = m3["field"]
+                    thirdval = m3["value"]
+                    PEPCode = journal_code
+                    year = secval
+                    vol = thirdval
+                    count = m3["count"]
+                    pep_code_vol = PEPCode + vol 
+                    cur_code = volume_dup_check.get(pep_code_vol)
+                    if cur_code is None:
+                        volume_dup_check[pep_code_vol] = [year]
+                        volume_list_item = models.VolumeListItem(PEPCode=PEPCode,
+                                                                 vol=vol,
+                                                                 year=year,
+                                                                 years=[year],
+                                                                 count=count
+                        )
+                        volume_item_list.append(volume_list_item)
+                    else:
+                        volume_dup_check[pep_code_vol].append(year)
+                        if year not in volume_list_item.years:
+                            volume_list_item.years.append(year)
+                        volume_list_item.count += count
 
-            try:
-                vol = result[1]
-            except Exception as e:
-                vol = None
-            try:
-                yearif = result[2]
-            except Exception as e:
-                yearif = None
-
-            item = models.VolumeListItem( PEPCode = pepcode, 
-                                          vol = vol, 
-                                          year = yearif
-                                          )
-
-            #logger.debug(item)
-            volume_item_list.append(item)
-
-    response_info.count = len(volume_item_list)
-
-    volume_list_struct = models.VolumeListStruct( responseInfo = response_info, 
-                                                  responseSet = volume_item_list
-                                                  )
-
-    volume_list = models.VolumeList(volumeList = volume_list_struct)
-
-    ret_val = volume_list
+                
+    except Exception as e:
+        print (f"Error: {e}")
+    else:
+        response_info.count = len(volume_item_list)
+        response_info.fullCount = len(volume_item_list)
+    
+        volume_list_struct = models.VolumeListStruct( responseInfo = response_info, 
+                                                      responseSet = volume_item_list
+                                                      )
+    
+        volume_list = models.VolumeList(volumeList = volume_list_struct)
+    
+        ret_val = volume_list
+        
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -856,8 +890,8 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
 
     results = solr_docs.query(q = f"art_sourcecode:{pep_code} && {field}:{search_val}",  
                               fields = "art_id, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, title, art_author_id, art_citeas_xml, art_info_xml",
-                             sort="art_year, art_pgrg", sort_order="asc",
-                             rows=limit, start=offset
+                              sort="art_year, art_pgrg", sort_order="asc",
+                              rows=limit, start=offset
                              )
 
     response_info = models.ResponseInfo( count = len(results.results),
@@ -886,17 +920,17 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
 
         item = models.DocumentListItem(PEPCode = pep_code, 
                                        year = result.get("art_year", None),
-                                vol = result.get("art_vol", None),
-                                pgRg = result.get("art_pgrg", None),
-                                pgStart = pgStart,
-                                pgEnd = pgEnd,
-                                authorMast = authorMast,
-                                documentID = result.get("art_id", None),
-                                documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
-                                documentRefHTML = citeAs,
-                                documentInfoXML=result.get("art_info_xml"), 
-                                score = result.get("score", None)
-                                )
+                                       vol = result.get("art_vol", None),
+                                       pgRg = result.get("art_pgrg", None),
+                                       pgStart = pgStart,
+                                       pgEnd = pgEnd,
+                                       authorMast = authorMast,
+                                       documentID = result.get("art_id", None),
+                                       documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
+                                       documentRefHTML = citeAs,
+                                       documentInfoXML=result.get("art_info_xml"), 
+                                       score = result.get("score", None)
+                                       )
         #logger.debug(item)
         document_item_list.append(item)
 

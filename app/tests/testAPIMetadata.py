@@ -35,49 +35,49 @@ class TestMetadata(unittest.TestCase):
     
     """   
 
-    def test_0_meta_volumes_db(self):
-        # New method to bring back lists of volumes, including all, or all of one type, or all of one type and code.
-        ocd = opasCentralDBLib.opasCentralDB()
-        count, vols = ocd.get_volumes(source_code=None, source_type=None)
-        print (f"DB All Vols Count {count}")
-        assert(count >= unitTestConfig.VOL_COUNT_ALL_VOLUMES)
+    #def test_0_meta_volumes_db(self):
+        ## New method to bring back lists of volumes, including all, or all of one type, or all of one type and code.
+        #ocd = opasCentralDBLib.opasCentralDB()
+        #count, vols = ocd.get_volumes(source_code=None, source_type=None)
+        #print (f"DB All Vols Count {count}")
+        #assert(count >= unitTestConfig.VOL_COUNT_ALL_VOLUMES)
         
-        # ---------------------------------------------------------------------------------------
-        source_type = "book"
-        source_code = None       
-        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
-        print (f"DB {source_type} Vol Count {count}")
-        assert(count >= unitTestConfig.VOL_COUNT_ALL_BOOKS)
-        # ---------------------------------------------------------------------------------------
-        source_type = "book"
-        source_code = "GW"
-        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
-        print (f"DB {source_type} {source_code} Vol Count {count}")
-        assert(count >= unitTestConfig.VOL_COUNT_GW)
-        # ---------------------------------------------------------------------------------------
-        source_type = "journal"
-        source_code = None
-        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
-        print (f"DB {source_type} Vol Count {count}")
-        assert(count >= unitTestConfig.VOL_COUNT_ALL_JOURNALS)
-        # ---------------------------------------------------------------------------------------
-        source_type = "journal"
-        source_code = "IJPSP"
-        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
-        print (f"DB {source_type} {source_code} Vol Count {count}")
-        assert(count == unitTestConfig.VOL_COUNT_IJPSP)
-        # ---------------------------------------------------------------------------------------
-        source_type = "videostream"
-        source_code = None
-        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
-        print (f"DB {source_type} Vol Count {count}")
-        assert(count >= unitTestConfig.VOL_COUNT_VIDEOS)
-        # ---------------------------------------------------------------------------------------
-        source_type = "videostream"
-        source_code = "PEPVS"
-        count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
-        print (f"DB {source_type} {source_code} Vol Count {count}")
-        assert(count >= unitTestConfig.VOL_COUNT_VIDEOS_PEPVS)
+        ## ---------------------------------------------------------------------------------------
+        #source_type = "book"
+        #source_code = None       
+        #count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        #print (f"DB {source_type} Vol Count {count}")
+        #assert(count >= unitTestConfig.VOL_COUNT_ALL_BOOKS)
+        ## ---------------------------------------------------------------------------------------
+        #source_type = "book"
+        #source_code = "GW"
+        #count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        #print (f"DB {source_type} {source_code} Vol Count {count}")
+        #assert(count >= unitTestConfig.VOL_COUNT_GW)
+        ## ---------------------------------------------------------------------------------------
+        #source_type = "journal"
+        #source_code = None
+        #count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        #print (f"DB {source_type} Vol Count {count}")
+        #assert(count >= unitTestConfig.VOL_COUNT_ALL_JOURNALS)
+        ## ---------------------------------------------------------------------------------------
+        #source_type = "journal"
+        #source_code = "IJPSP"
+        #count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        #print (f"DB {source_type} {source_code} Vol Count {count}")
+        #assert(count == unitTestConfig.VOL_COUNT_IJPSP)
+        ## ---------------------------------------------------------------------------------------
+        #source_type = "videostream"
+        #source_code = None
+        #count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        #print (f"DB {source_type} Vol Count {count}")
+        #assert(count >= unitTestConfig.VOL_COUNT_VIDEOS)
+        ## ---------------------------------------------------------------------------------------
+        #source_type = "videostream"
+        #source_code = "PEPVS"
+        #count, vols = ocd.get_volumes(source_code=source_code, source_type=source_type)
+        #print (f"DB {source_type} {source_code} Vol Count {count}")
+        #assert(count >= unitTestConfig.VOL_COUNT_VIDEOS_PEPVS)
         
     def test_0_meta_volumes_api(self):
         """

@@ -46,6 +46,24 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         print (result)
         assert (result == {'doi': '10.3280/PU2019-004002'})
 
+    def test_0b_DOI(self):
+        """
+        doi = Just enter a DOI
+           10.1111/j.1745-8315.2012.00606.x 
+        """
+        result =  smartsearch.smart_search("https://dx.doi.org/10.1080/07351690.2011.553161")
+        print (result)
+        assert (result == {'doi': '10.1080/07351690.2011.553161'})
+
+    def test_0c_DOI(self):
+        """
+        doi = Just enter a DOI
+           10.1111/j.1745-8315.2012.00606.x 
+        """
+        result =  smartsearch.smart_search("http://www.tandfonline.com/doi/abs/10.1080/07351690.2011.553161")
+        print (result)
+        assert (result == {'doi': '10.1080/07351690.2011.553161'})
+
     def test_0_Locator(self):
         """
         """
@@ -96,8 +114,25 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         
         result = smartsearch.smart_search("art_authors_text:[tucket and fonagy]")
         print (result)
-        assert (result == {'schema_field': 'art_authors_text', 'schema_value': '[tucket and fonagy]'})       
-       
+        assert (result == {'schema_field': 'art_authors_text', 'schema_value': '[tucket and fonagy]'})
+        
+        result = smartsearch.smart_search("art_kwds:malaise")
+        print (result)
+        assert (result == {'schema_field': 'art_kwds', 'schema_value': 'malaise'})
+
+        result = smartsearch.smart_search("art_kwds:dissociation")
+        print (result)
+        assert (result == {'schema_field': 'art_kwds', 'schema_value': 'dissociation'})
+
+        result = smartsearch.smart_search("art_kwds_str:memory and desire")
+        print (result)
+        assert (result == {'schema_field': 'art_kwds_str', 'schema_value': 'memory and desire'})
+
+        result = smartsearch.smart_search("art_kwds_str:(memory and desire)")
+        print (result)
+        assert (result == {'schema_field': 'art_kwds_str', 'schema_value': '(memory and desire)'})
+ 
+ 
 
     def test_1A_single_name(self):
         """

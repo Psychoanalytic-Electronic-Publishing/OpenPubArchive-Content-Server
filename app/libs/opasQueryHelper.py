@@ -550,7 +550,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
         limit = 0
         if schema_field is not None:
             schema_value = search_dict.get("schema_value")
-            filter_q += f"&& {schema_field}:({schema_value}) "
+            if "'" in schema_value or '"' in schema_value:
+                search_q += f"&& {schema_field}:{schema_value} "
+            else:
+                search_q += f"&& {schema_field}:({schema_value}) "
             limit = 1
         else:
             syntax = search_dict.get("syntax")

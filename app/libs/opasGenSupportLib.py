@@ -88,6 +88,8 @@ def year_grabber(year_str: str):
     """
     From a string containing a year, possibly more than one, pull out the first.
     
+    >>> year_grabber("1948194819491949195019501951")
+    
     >>> year_grabber("abs1987")
     '1987'
 
