@@ -15,7 +15,9 @@ logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.WARNING, 
 xml_catalog_name = "x:/_PEPA1/catalog.xml" 
 os.environ['XML_CATALOG_FILES'] = r"file:" + urllib.request.pathname2url(xml_catalog_name)
 
+# General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
+BOOK_CODES_ALL = ("GW", "SE", "ZBK", "NLP", "IPL")
 
 # folders, configure per install
 # uploads

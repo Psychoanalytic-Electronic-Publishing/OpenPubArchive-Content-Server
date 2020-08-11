@@ -104,12 +104,12 @@ class TestDatabaseSearch(unittest.TestCase):
         assert(r['documentList']['responseInfo']['fullCountComplete'] == False)
 
     def test_v2_database_search_citedcount(self):
-        response = client.get(base_api + '/v2/Database/Search/?citecount=6%20TO%2010&sourcecode=IJP%20OR%20APA&startyear=1990&endyear=2010&fulltext1=theoretical%20underpinnings&sort=citeCount&limit=10&offset=0')
+        response = client.get(base_api + '/v2/Database/Search/?citecount=6%20TO%2010&sourcecode=IJP%20OR%20APA&startyear=1990&endyear=2010&paratext=theoretical%20underpinnings&sort=citeCount&limit=10&offset=0')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseInfo']['fullCount'] >= 5)
+        assert(r['documentList']['responseInfo']['fullCount'] >= 3)
         assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
        
 

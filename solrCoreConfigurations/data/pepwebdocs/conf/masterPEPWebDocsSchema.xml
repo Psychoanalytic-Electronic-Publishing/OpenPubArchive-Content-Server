@@ -143,6 +143,9 @@
   <field name="bk_pubyear" type="string" indexed="true" stored="true" multiValued="false"/>
   <!--Added 7/6 for SE/GW and to cover general book info (e.g., next/prev id)details which do not come back in the html-->
   <field name="bk_subdoc" type="boolean" indexed="false" stored="true" multiValued="false"/>
+  <field name="bk_main_toc_id" type="boolean" indexed="false" stored="true" multiValued="false"/>
+  
+  
   
   
   <!-- ************************************************************************************************* -->

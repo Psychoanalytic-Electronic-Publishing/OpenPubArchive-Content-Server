@@ -7,7 +7,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 from namesparser import HumanNames
-import peplib.opasLocator as opasLocator
 rx_space_req = "(\s+|\s*)"
 rx_space_opt = "(\s*|\s*)"
 rx_space_end_opt = "(\s*|\s*)$"
@@ -286,9 +285,13 @@ def smart_search(smart_search_text):
     ret_val = {}
     # get rid of leading spaces and zeros
     smart_search_text = smart_search_text.lstrip(" 0")
-    if opasLocator.isLocator(smart_search_text):
-        ret_val = {"art_id": smart_search_text}
-    else:
+    
+    if re.match("[A-Z\-]{2,9}\.[0-9]{3,3}[A-Z]?\.[0-9]{4,4}[A-Z]?", smart_search_text, flags=re.IGNORECASE):
+        loc_corrected = smart_search_text.upper()
+        if is_value_in_field(loc_corrected, "art_id"):
+            ret_val = {"art_id": loc_corrected}
+    
+    if ret_val == {}:
         patterns1 = {
                     rx_author_list_and_year : "author_list_and_year",
                     rx_year_pgrg : "rx_year_pgrg",

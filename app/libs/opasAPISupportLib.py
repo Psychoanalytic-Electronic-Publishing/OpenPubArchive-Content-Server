@@ -809,20 +809,23 @@ def metadata_get_volumes(source_code=None,
         volume_item_list = []
         volume_dup_check = {}
         for m1 in facet_pivot:
-            journal_code = m1["value"]
+            journal_code = m1["value"] # pepcode
             seclevel = m1["pivot"]
             for m2 in seclevel:
-                secfield = m2["field"]
+                secfield = m2["field"] # year
                 secval = m2["value"]
                 thirdlevel = m2["pivot"]
                 for m3 in thirdlevel:
-                    thirdfield = m3["field"]
+                    thirdfield = m3["field"] # vol
                     thirdval = m3["value"]
                     PEPCode = journal_code
                     year = secval
                     vol = thirdval
                     count = m3["count"]
-                    pep_code_vol = PEPCode + vol 
+                    pep_code_vol = PEPCode + vol
+                    # if it's a journal, Supplements are not a separate vol, they are an issue.
+                    if pep_code_vol[-1] == "S" and journal_code not in opasConfig.BOOK_CODES_ALL:
+                        pep_code_vol = pep_code_vol[:-1]
                     cur_code = volume_dup_check.get(pep_code_vol)
                     if cur_code is None:
                         volume_dup_check[pep_code_vol] = [year]

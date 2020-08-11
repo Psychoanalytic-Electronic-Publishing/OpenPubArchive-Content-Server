@@ -156,6 +156,10 @@ Endpoint and model documentation automatically available when server is running 
            # vw_stat_cited_in_last_5_years, vw_stat_cited_in_last_10_years, and vw_stat_cited_in_last_20_years
            # still use the articles table anyway.  Note this only affects solr db loads in either case since the
            # query data for citations is kept in the solr docs core.
+
+#2020.0811 # Was using the PEPlib library just for locator recognition, but that was a lot of code baggage for so little,
+           # so did it in a different but even more effective way: rather than using the extensive patterns there for PEP recognition, 
+           # looks up the correctly formatted locator in the Solr index to ensure it's really a PEP locator.
            
 # --------------------------------------------------------------------------------------------
 # IMPORTANT TODOs (List)
@@ -175,7 +179,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0810.1.Alpha"
+__version__     = "2020.0811.1.Alpha"
 __status__      = "Development"
 
 import sys

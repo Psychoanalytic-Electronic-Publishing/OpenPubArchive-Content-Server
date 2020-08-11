@@ -71,9 +71,9 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         print (result)
         assert (result == {'art_id': 'AOP.033.0079A'})
         
-        result = smartsearch.smart_search("IJP.100.0410A")
+        result = smartsearch.smart_search("IJP.100.0052A")
         print (result)
-        assert (result == {'art_id': 'IJP.100.0410A'})       
+        assert (result == {'art_id': 'IJP.100.0052A'})       
 
     def test_0_year_and_page(self):
         """
