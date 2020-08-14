@@ -161,6 +161,17 @@ Endpoint and model documentation automatically available when server is running 
            # so did it in a different but even more effective way: rather than using the extensive patterns there for PEP recognition, 
            # looks up the correctly formatted locator in the Solr index to ensure it's really a PEP locator.
            
+#2020.0814 # Abstract return only when requested in search, and no longer fills in the document field with the
+           # abstract, that was a convenience so apps could ignore abstract, but adds lots of data.
+           # (There was an error, so if the document was accesslimited, abstract always was returned,
+           #  even if not requested in the search.)
+
+           # XML return of the abstract is now supported in search, and a field is added to allow that.
+           # The XML is a fragment...you can add your own front matter with the documentInfoXML field
+           #  which is currently always returned. Very easy to turn that and the abstract into a
+           #  pepkbd3 compliant document with the returned data, and I think it's better to give the 
+           #  client the choice here.  (Also added to the new SmartSearch endpoint.)
+
 # --------------------------------------------------------------------------------------------
 # IMPORTANT TODOs (List)
 # --------------------------------------------------------------------------------------------
@@ -1993,6 +2004,8 @@ async def database_smartsearch(response: Response,
                                smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
                                # filters, v1 naming
                                sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                               abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
+                               formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                                facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
@@ -2085,6 +2098,8 @@ async def database_smartsearch(response: Response,
                                        facetoffset=0,
                                        abstract=True, 
                                        sort=sort,
+                                       abstract=abstract,
+                                       format_requested=formatrequested, 
                                        limit=limit,
                                        offset=offset
                                        )
@@ -2120,6 +2135,7 @@ async def database_search_v2( response: Response,
                               # return set control
                               returnfields: str=Query(None, title="Fields to return (see limitations)", description="Comma separated list of field names"),
                               abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
+                              formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                               facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                               facetmincount: int=Query(1, title="Minimum count to return a facet"),
                               facetlimit: int=Query(15, title="Maximum number of facet values to return"),
@@ -2267,6 +2283,7 @@ async def database_search_v2( response: Response,
                                                       facetlimit=facetlimit,
                                                       facetoffset=facetoffset,                                                        
                                                       abstract_requested=abstract,
+                                                      format_requested=formatrequested, 
                                                       limit=limit,
                                                       offset=offset,
                                                       sort=sort,

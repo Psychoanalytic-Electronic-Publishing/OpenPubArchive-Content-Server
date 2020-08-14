@@ -6,6 +6,6 @@ bibTotalReferenceCount = 0
 options = None
 
 # constants
-COMMITLIMIT = 250  # commit the load to Solr every X articles
+COMMITLIMIT = 1000  # commit the load to Solr every X articles
 DEFAULTDATAROOT = r"X:\\_PEPA1\\_PEPa1v\\"
 

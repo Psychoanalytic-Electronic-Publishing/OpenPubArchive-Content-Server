@@ -47,7 +47,7 @@
                   allow these to be updated weekly or monthly.
         
     2020-07-06: Added bk fields to show when a book is a subdoc (not the maintoc) e.g., to bring back SE/GW mainTOCs, search
-                  for bk_subdoc==true, and art_sourcecode="SE" or "GW"
+                  for "bk_subdoc:false && art_sourcecode:SE || GW"
                   
                   Also art_info_xml (contains bk_ data too) so all metadata note
                     part of the HTML is visible too (when returning HTML)
@@ -56,6 +56,14 @@
 
     2020-08-04: Changed the way offsite documents are handled; schema value art_offsite controls whether text can be returned,
                  otherwise, it's like other documents.
+
+    2020-08-13: Add art_excerpt_xml, since art_excerpt is in HTML and computed at load time.  This way the client app can do their
+                own XSLT by requesting XML version.
+
+    2020-08-14: Fixed bib fields (in this core) for search or faceting only -- they don't show up in return results, but you can see values in schema
+                analysis or facets.
+                
+                Fixed loader to normalize these for faceting: removed punctuation and set to lower case.
 
    Schema version attribute note: 
    
@@ -136,17 +144,19 @@
   <!--name for this section of an issue, e.g., section name in a issue TOC-->
   <field name="art_newsecnm" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!-- extra metadata for books -->
+  <field name="bk_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_alsoknownas_xml"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_editors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <field name="bk_seriestitle_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="bk_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_pubyear" type="string" indexed="true" stored="true" multiValued="false"/>
   <!--Added 7/6 for SE/GW and to cover general book info (e.g., next/prev id)details which do not come back in the html-->
-  <field name="bk_subdoc" type="boolean" indexed="false" stored="true" multiValued="false"/>
-  <field name="bk_main_toc_id" type="boolean" indexed="false" stored="true" multiValued="false"/>
-  
-  
-  
+  <field name="bk_subdoc" type="boolean" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!--New fields for book management 2020-08-11 -->
+  <!--Books with a TOC (main book in series or single book) point to themselves; others point to where the TOC is.-->
+  <field name="bk_main_toc_id" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="bk_series_toc_id" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!--This is in the schema because it can be used to sort a multiple instance book by sequence-->
+  <field name="bk_next_id" type="string" indexed="true" stored="false" multiValued="false" docValues="true" sortMissingFirst="true"/>
   
   <!-- ************************************************************************************************* -->
   <!-- End Key display fields! -->
@@ -182,7 +192,7 @@
   <!--Added 7/21 to facilitate smartsearch-->
   <field name="art_authors_lastnames" type="string_ci" indexed="true" stored="false" multiValued="true"/>
   <!--Added 7/24 to facilitate smartsearch-->
-  <field name="art_authors_count" type="pint" indexed="true" stored="true" docValues="true", multiValued="false"/>
+  <field name="art_authors_count" type="pint" indexed="true" stored="true" docValues="true" multiValued="false"/>
   
   <copyField source="art_authors" dest="art_authors_text"/>
   <copyField source="art_authors" dest="art_authors_ngrm"/>
@@ -199,6 +209,8 @@
   <field name="summaries_xml" type="text_general" indexed="true" stored="true" multiValued="true"/> <!--this is used to display-->
   <!--Precompute an extract for docs without abstracts or summaries.  May be xml or html -->
   <field name="art_excerpt" type="text_general" indexed="true" stored="true" multiValued="false" uninvertible="false"/> <!--this is used to display-->
+  <!--Store XML version of displayab;e summary/abstract so the client can do their own XSLT transform. 2020-08-13 -->
+  <field name="art_excerpt_xml" type="text_general" indexed="true" stored="true" multiValued="false" uninvertible="false"/> <!--this is used to display-->
 
   <!-- Added this 6/25 to allow any part of a journal name to be searched.-->
   <!-- journal, book, or video -->
@@ -226,10 +238,10 @@
 
   <!-- Biblio fields -->
   <!-- added docValues for faceting (also need to load in document database)-->
-  <field name="bib_authors" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/> 
-  <field name="bib_rx" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/> 
-  <field name="bib_title" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/>
-  <field name="bib_journaltitle" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/>
+  <field name="bib_authors" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
+  <field name="bib_rx" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
+  <field name="bib_title" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
+  <field name="bib_journaltitle" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="reference_count" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
   <field name="references_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
   <!-- This is a special structured entry (a JSON field) -->
@@ -271,7 +283,7 @@
   <!-- terms_xml may not be needed in the long-term, only good for search -->
   <field name="terms_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
   <!-- Highlighted, e.g., italicized and otherwise called out terms -->
-  <field name="terms_highlighted" type="string" indexed="true" stored="false" multiValued="true" docValues="true"/>
+  <field name="terms_highlighted" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="dialogs_spkr"  type="string" indexed="true" stored="false" multiValued="true"/>
   <field name="panels_spkr"  type="string" indexed="true" stored="false" multiValued="true"/>
   <field name="poems_src"  type="string" indexed="true" stored="false" multiValued="true"/>
@@ -303,7 +315,7 @@
   <field name="para" type="text_general" indexed="true" stored="true" multiValued="false"/>
   <field name="para_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
   <!--Added 2020-07-06 to allow GW/SE mapping-->
-  <field name="para_lgrid" type="string" indexed="false" stored="true"/>
+  <field name="para_lgrid" type="string" indexed="true" stored="true" docValues="true"/>
   <!--<field name="para_lgrx" type="string" indexed="false" stored="true" multiValued="true"/>-->
   <field name="para_lgrx" type="string" indexed="true" stored="true" multiValued="true" docValues="true"/>
   <field name="parent_tag" type="string" indexed="true" stored="true"/>
@@ -311,11 +323,11 @@
   
   <!--Added art_views_lastcalyear 2020-05 to meet search requirements-->
   <!--These have to be false for all but docValues to allow in place updates-->
-  <field name="art_views_lastcalyear" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_views_last1mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_views_last6mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_views_last12mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_views_lastweek" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_lastcalyear" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
+  <field name="art_views_last1mos" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
+  <field name="art_views_last6mos" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
+  <field name="art_views_last12mos" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
+  <field name="art_views_lastweek" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
   
   <!--<field name="level" type="pint" indexed="true" stored="false" docValues="true"/>-->
 

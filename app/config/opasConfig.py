@@ -27,8 +27,10 @@ UPLOAD_DIR = r"z:\\back\\"
 STYLE_PATH = r"./libs/styles;../libs/styles"
 XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
 XSLT_XMLTOTEXT_EXCERPT = r"pepkbd3-abstract-text.xslt"
+XSLT_XMLTOHTML_EXCERPT = r"pepkbd3-abstract-html.xslt"
 TRANSFORMER_XMLTOHTML = "XML_TO_HTML" 
-TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_HTML"
+TRANSFORMER_XMLTOHTML_EXCERPT = "EXCERPT_HTML"
+TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"
 
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
 

@@ -160,48 +160,48 @@ def get_max_age(keep_active=False):
         ret_val = opasConfig.COOKIE_MIN_KEEP_TIME     
     return ret_val  # maxAge
 
-#-----------------------------------------------------------------------------
-def string_to_list(strlist: str, sep=","):
-    """
-    Convert a comma separated string to a python list,
-    removing extra white space between items.
+##-----------------------------------------------------------------------------
+#def string_to_list(strlist: str, sep=","):
+    #"""
+    #Convert a comma separated string to a python list,
+    #removing extra white space between items.
 
-    Returns list, even if strlist is the empty string
-    EXCEPT if you pass None in.
+    #Returns list, even if strlist is the empty string
+    #EXCEPT if you pass None in.
 
-    >>> string_to_list(strlist="term")
-    ['term']
+    #>>> string_to_list(strlist="term")
+    #['term']
 
-    >>> string_to_list(strlist="A, B, C, D")
-    ['A', 'B', 'C', 'D']
+    #>>> string_to_list(strlist="A, B, C, D")
+    #['A', 'B', 'C', 'D']
 
-    >>> string_to_list(strlist="A; B, C; D", sep=";")
-    ['A', 'B, C', 'D']
+    #>>> string_to_list(strlist="A; B, C; D", sep=";")
+    #['A', 'B, C', 'D']
 
-    >>> string_to_list(strlist="")
-    []
+    #>>> string_to_list(strlist="")
+    #[]
 
-    >>> string_to_list(strlist=None)
+    #>>> string_to_list(strlist=None)
 
-    """
-    if strlist is None:
-        ret_val = None
-    elif strlist == '':
-        ret_val = []
-    else: # always return a list
-        ret_val = []
-        try:
-            if sep in strlist:
-                # change str with cslist to python list
-                ret_val = re.sub(f"\s*{sep}\s*", sep, strlist)
-                ret_val = ret_val.split(sep)
-            else:
-                # cleanup whitespace around str
-                ret_val = [re.sub("\s*(?P<field>\S*)\s*", "\g<field>", strlist)]
-        except Exception as e:
-            logger.error(f"Error in string_to_list - {e}")
+    #"""
+    #if strlist is None:
+        #ret_val = None
+    #elif strlist == '':
+        #ret_val = []
+    #else: # always return a list
+        #ret_val = []
+        #try:
+            #if sep in strlist:
+                ## change str with cslist to python list
+                #ret_val = re.sub(f"\s*{sep}\s*", sep, strlist)
+                #ret_val = ret_val.split(sep)
+            #else:
+                ## cleanup whitespace around str
+                #ret_val = [re.sub("\s*(?P<field>\S*)\s*", "\g<field>", strlist)]
+        #except Exception as e:
+            #logger.error(f"Error in string_to_list - {e}")
 
-    return ret_val
+    #return ret_val
 
 #-----------------------------------------------------------------------------
 def get_session_info(request: Request,
@@ -1704,7 +1704,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
 
     return documentListItem # return a partially filled document list item
 
-def get_excerpt_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="TEXTONLY"):
+def get_excerpt_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="HTML"):
     """
     pass in the result from a solr query and this retrieves the abstract/excerpt from the excerpt field
      which is stored based on the abstract or summary or the first page of the document.
@@ -1722,21 +1722,53 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
         logger.info("No excerpt for document ID: %s", documentListItem.documentID)
 
     if art_excerpt == "[]" or art_excerpt is None:
-        art_excerpt = None
-    elif ret_format == "TEXTONLY":
-        art_excerpt = opasxmllib.xml_elem_or_str_to_text(art_excerpt)
-    #elif ret_format == "HTML": #(Excerpt is in HTML already)
+        abstract = None
+    else:
+        heading = opasxmllib.get_running_head(source_title=documentListItem.sourceTitle,
+                                              pub_year=documentListItem.year,
+                                              vol=documentListItem.vol,
+                                              issue=documentListItem.issue,
+                                              pgrg=documentListItem.pgRg,
+                                              ret_format=ret_format)
+        if ret_format == "TEXTONLY":
+            art_excerpt = opasxmllib.xml_elem_or_str_to_text(art_excerpt)
+            abstract = f"""
+                        {heading}\n{documentListItem.title}\n{documentListItem.authorMast}\n\n
+                        {art_excerpt}
+                        """
+        elif ret_format == "XML":
+            # for now, this is only an xml fragment so it's not quite as DTD specific.
+            abstract = result.get("art_excerpt_xml", art_excerpt)
+            # to make a complete pepkbd3 document, this is the structure...
+            #abstract = f"""
+                        #<pepkbd3>
+                        #{documentListItem.documentInfoXML}
+                        #{abstract}
+                        #<body></body>
+                        #</pepkbd3>
+                        #"""
+        
+        else: # ret_format == "HTML":
+            abstract = f"""
+                    <p class="heading">{heading}</p>
+                    <p class="title">{documentListItem.title}</p>
+                    <p class="title_author">{documentListItem.authorMast}</p>
+                    <div class="abstract">{art_excerpt}</div>
+                    """
+            
+        
+    # elif ret_format == "HTML": #(Excerpt is in HTML already)
 
-    abstract = opasxmllib.add_headings_to_abstract_html( abstract=art_excerpt, 
-                                                         source_title=documentListItem.sourceTitle,
-                                                         pub_year=documentListItem.year,
-                                                         vol=documentListItem.vol, 
-                                                         pgrg=documentListItem.pgRg, 
-                                                         citeas=documentListItem.documentRefHTML, 
-                                                         title=documentListItem.title,
-                                                         author_mast=documentListItem.authorMast,
-                                                         ret_format=ret_format
-                                                         )
+    #abstract = opasxmllib.add_headings_to_abstract_html( abstract=art_excerpt, 
+                                                         #source_title=documentListItem.sourceTitle,
+                                                         #pub_year=documentListItem.year,
+                                                         #vol=documentListItem.vol, 
+                                                         #pgrg=documentListItem.pgRg, 
+                                                         #citeas=documentListItem.documentRefHTML, 
+                                                         #title=documentListItem.title,
+                                                         #author_mast=documentListItem.authorMast,
+                                                         #ret_format=ret_format
+                                                         #)
 
     # return it in the abstract field for display
     documentListItem.abstract = abstract
@@ -2747,13 +2779,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
         if "abstract_xml" not in solr_query_spec.returnFields:
             solr_query_spec.returnFields += ", abstract_xml"
         if "art_excerpt" not in solr_query_spec.returnFields:
-            solr_query_spec.returnFields += ", art_excerpt"
+            solr_query_spec.returnFields += ", art_excerpt, art_excerpt_xml"
         if "summaries_xml" not in solr_query_spec.returnFields:
             solr_query_spec.returnFields += ", summaries_xml"
     elif solr_query_spec.fullReturn and authenticated:
         # NOTE: we add this here, but in return data, access by document will be checked.
         if "text_xml" not in solr_query_spec.returnFields:
-            solr_query_spec.returnFields += ", text_xml, art_excerpt"
+            solr_query_spec.returnFields += ", text_xml, art_excerpt, art_excerpt_xml"
 
     try:
         if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars < 200: # let caller configure, but not 0!
@@ -2771,7 +2803,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
         pass # else, it's ok
 
     solr_param_dict = { 
-        "q": solr_query_spec.solrQuery.searchQ,
+                        "q": solr_query_spec.solrQuery.searchQ,
                         "fq": solr_query_spec.solrQuery.filterQ,
                         "q_op": solr_query_spec.solrQueryOpts.qOper, 
                         "debugQuery": solr_query_spec.solrQueryOpts.queryDebug,
@@ -2877,8 +2909,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
                     text_xml = [text_xml]
 
                 # do this before we potentially clear text_xml if no full text requested below
-                if solr_query_spec.abstractReturn or documentListItem.accessLimited:
-                    documentListItem = get_excerpt_from_search_result(result, documentListItem, "HTML")
+                if solr_query_spec.abstractReturn:
+                    documentListItem = get_excerpt_from_search_result(result, documentListItem, solr_query_spec.returnFormat)
 
                 # no kwic list when full-text is requested.
                 if text_xml is not None and not solr_query_spec.fullReturn:
@@ -2910,8 +2942,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
                 # no full-text if accessLimited or offsite article
                 if solr_query_spec.fullReturn and not documentListItem.accessLimited and not offsite:
                     documentListItem = get_fulltext_from_search_results(result, text_xml, solr_query_spec.page, solr_query_spec.page_offset, solr_query_spec.page_limit, documentListItem)
-                else:
-                    documentListItem.document = documentListItem.abstract
+                #else:
+                    #documentListItem.document = documentListItem.abstract
 
                 stat = {}
                 count_all = result.get("art_cited_all", None)

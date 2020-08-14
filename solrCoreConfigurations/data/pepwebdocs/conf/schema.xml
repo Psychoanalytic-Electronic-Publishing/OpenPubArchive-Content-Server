@@ -47,12 +47,18 @@
                   allow these to be updated weekly or monthly.
         
     2020-07-06: Added bk fields to show when a book is a subdoc (not the maintoc) e.g., to bring back SE/GW mainTOCs, search
-                  for bk_subdoc==true, and art_sourcecode="SE" or "GW"
+                  for "bk_subdoc:false && art_sourcecode:SE || GW"
                   
                   Also art_info_xml (contains bk_ data too) so all metadata note
                     part of the HTML is visible too (when returning HTML)
                     
                   Also added para_lgrid for SE/GW mapping.
+
+    2020-08-04: Changed the way offsite documents are handled; schema value art_offsite controls whether text can be returned,
+                 otherwise, it's like other documents.
+
+    2020-08-13: Add art_excerpt_xml, since art_excerpt is in HTML and computed at load time.  This way the client app can do their
+                own XSLT by requesting XML version.
 
    Schema version attribute note: 
    
@@ -93,12 +99,10 @@
   <field name="art_info_xml" type="string" indexed="false" stored="true" multiValued="false" docValues="false"/>
   <field name="text" type="text_simple" indexed="true" stored="false" multiValued="false"/>
   <field name="text_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
-  <!--Offsite text is searchable but not store in its entirety by our contractual rules only citation style info and fields will be store -->
-  <field name="text_xml_offsite" type="text_general" indexed="true" stored="false" multiValued="false"/>
-  <field name="text_xml_offsite_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
+  <!--If offsite text, then the server shall return a pointer to the data, rather than the full-text.  But it will be searchable. -->
+  <field name="art_offsite" type="boolean" indexed="true" stored="true" docValues="true" multiValued="false"/>
   <copyField source="text_xml*" dest="text"/>
   <copyField source="text_xml*" dest="text_syn"/>
-  <copyField source="text_xml_offsite" dest="text_xml_offsite_syn"/>
   <!--......................................................................................................-->
   <!--TITLE-->
   <!-- Title includes subtitle -->
@@ -114,6 +118,7 @@
   <!--......................................................................................................-->
   <!--DOCUMENT METADATA-->
   <field name="art_vol" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_vol_suffix" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_vol_title" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_iss"  type="string" indexed="true" stored="true" multiValued="false"/>
   <field name="art_iss_title" type="string_ci" indexed="true" stored="true" multiValued="false"/>
@@ -134,14 +139,19 @@
   <!--name for this section of an issue, e.g., section name in a issue TOC-->
   <field name="art_newsecnm" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!-- extra metadata for books -->
+  <field name="bk_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_alsoknownas_xml"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_editors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <field name="bk_seriestitle_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="bk_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_pubyear" type="string" indexed="true" stored="true" multiValued="false"/>
   <!--Added 7/6 for SE/GW and to cover general book info (e.g., next/prev id)details which do not come back in the html-->
   <field name="bk_subdoc" type="boolean" indexed="false" stored="true" multiValued="false"/>
-  
+  <!--New fields for book management 2020-08-11 -->
+  <!--Books with a TOC (main book in series or single book) point to themselves; others point to where the TOC is.-->
+  <field name="bk_main_toc_id" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="bk_series_toc_id" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!--This is in the schema because it can be used to sort a multiple instance book by sequence-->
+  <field name="bk_next_id" type="string" indexed="true" stored="false" multiValued="false" docValues="true" sortMissingFirst="true"/>
   
   <!-- ************************************************************************************************* -->
   <!-- End Key display fields! -->
@@ -174,6 +184,11 @@
   <field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>
   <field name="art_authors_unlisted" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+  <!--Added 7/21 to facilitate smartsearch-->
+  <field name="art_authors_lastnames" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  <!--Added 7/24 to facilitate smartsearch-->
+  <field name="art_authors_count" type="pint" indexed="true" stored="true" docValues="true", multiValued="false"/>
+  
   <copyField source="art_authors" dest="art_authors_text"/>
   <copyField source="art_authors" dest="art_authors_ngrm"/>
   <copyField source="art_authors_mast" dest="art_authors_mast_text"/>
@@ -189,6 +204,8 @@
   <field name="summaries_xml" type="text_general" indexed="true" stored="true" multiValued="true"/> <!--this is used to display-->
   <!--Precompute an extract for docs without abstracts or summaries.  May be xml or html -->
   <field name="art_excerpt" type="text_general" indexed="true" stored="true" multiValued="false" uninvertible="false"/> <!--this is used to display-->
+  <!--Store XML version of displayab;e summary/abstract so the client can do their own XSLT transform. 2020-08-13 -->
+  <field name="art_excerpt_xml" type="text_general" indexed="true" stored="true" multiValued="false" uninvertible="false"/> <!--this is used to display-->
 
   <!-- Added this 6/25 to allow any part of a journal name to be searched.-->
   <!-- journal, book, or video -->

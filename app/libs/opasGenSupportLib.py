@@ -224,6 +224,51 @@ def derive_author_mast(authorIDList):
         retVal = authorMast.strip()
 
     return retVal
+#-----------------------------------------------------------------------------
+def string_to_list(strlist: str, sep=","):
+    """
+    Convert a comma separated string to a python list,
+    removing extra white space between items.
+
+    Returns list, even if strlist is the empty string
+    EXCEPT if you pass None in.
+    
+    (2020-08-13 Moved from opasAPISupportLib since a general function)
+
+    >>> string_to_list(strlist="term")
+    ['term']
+
+    >>> string_to_list(strlist="A, B, C, D")
+    ['A', 'B', 'C', 'D']
+
+    >>> string_to_list(strlist="A; B, C; D", sep=";")
+    ['A', 'B, C', 'D']
+
+    >>> string_to_list(strlist="")
+    []
+
+    >>> string_to_list(strlist=None)
+
+    """
+    if strlist is None:
+        ret_val = None
+    elif strlist == '':
+        ret_val = []
+    else: # always return a list
+        ret_val = []
+        try:
+            if sep in strlist:
+                # change str with cslist to python list
+                ret_val = re.sub(f"\s*{sep}\s*", sep, strlist)
+                ret_val = ret_val.split(sep)
+            else:
+                # cleanup whitespace around str
+                ret_val = [re.sub("\s*(?P<field>\S*)\s*", "\g<field>", strlist)]
+        except Exception as e:
+            logger.error(f"Error in string_to_list - {e}")
+
+    return ret_val
+
 
     
 # -------------------------------------------------------------------------------------------------------

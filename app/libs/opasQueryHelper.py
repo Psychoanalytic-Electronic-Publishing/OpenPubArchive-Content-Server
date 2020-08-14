@@ -21,14 +21,13 @@ __status__      = "Development"
 import re
 import models
 import opasCentralDBLib
-import shlex
 
 import logging
 logger = logging.getLogger(__name__)
 
 import schemaMap
 import opasConfig 
-import opasAPISupportLib
+import opasGenSupportLib as opasgenlib
 import smartsearch
 
 sourceDB = opasCentralDBLib.SourceInfoDB()
@@ -357,7 +356,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   facetlimit=None,
                                   facetoffset=0,
                                   facetSpec: dict={}, 
-                                  abstract_requested: bool=False, 
+                                  abstract_requested: bool=False,
+                                  format_requested:str="HTML", 
                                   sort=None,
                                   extra_context_len=None,
                                   limit=None,
@@ -743,7 +743,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             search_analysis_term_list.append(analyze_this)
 
     if facetfields is not None:
-        solr_query_spec.facetFields = opasAPISupportLib.string_to_list(facetfields)
+        solr_query_spec.facetFields = opasgenlib.string_to_list(facetfields)
         solr_query_spec.facetMinCount=facetmincount
         solr_query_spec.facetSpec = facetSpec
         if facetlimit is not None:
@@ -1025,7 +1025,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if search_q == "*:*" and filter_q == "*:*":
         filter_q = "art_level:1"
 
-    solr_query_spec.abstractReturn = abstract_requested 
+    solr_query_spec.abstractReturn = abstract_requested
+    solr_query_spec.returnFormat = format_requested # HTML, TEXT_ONLY, XML
     solr_query_spec.solrQuery.searchQ = search_q
     solr_query_spec.solrQuery.searchQPrefix = search_q_prefix
     solr_query_spec.solrQuery.filterQ = filter_q
@@ -1161,10 +1162,10 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
         solr_query_spec.solrQueryOpts.hlFields = highlight_fields 
 
     if facet_fields is not None:
-        facet_fields = opasAPISupportLib.string_to_list(facet_fields)
+        facet_fields = opasgenlib.string_to_list(facet_fields)
         solr_query_spec.facetFields = facet_fields 
     else:
-        facet_fields = opasAPISupportLib.string_to_list(solr_query_spec.facetFields)
+        facet_fields = opasgenlib.string_to_list(solr_query_spec.facetFields)
         solr_query_spec.facetFields = facet_fields 
         
     if facet_mincount is not None:
