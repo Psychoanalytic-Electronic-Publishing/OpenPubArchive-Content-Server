@@ -116,7 +116,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        print (f"Video Count: {r['volumeList']['responseInfo']['fullCount']}")
+        print (f"Journal Vol Count: {r['volumeList']['responseInfo']['fullCount']}")
         assert(r['volumeList']['responseInfo']['fullCount'] >= unitTestConfig.VOL_COUNT_ALL_JOURNALS) 
 
     def test_0_meta_volumes_api_videostream(self): 
@@ -126,6 +126,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
+        print (f"Video Source Count: {r['volumeList']['responseInfo']['fullCount']}")
         assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_VIDEOS)
 
     def test_0_meta_volumes_api_ZBK(self): 
@@ -135,6 +136,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
+        print (f"ZBK Volume Count: {r['volumeList']['responseInfo']['fullCount']}")
         assert(r['volumeList']['responseInfo']['fullCount'] >= unitTestConfig.VOL_COUNT_ZBK) 
 
     def test_0_meta_volumes_api_IJPSP(self): 
@@ -153,6 +155,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
+        print (f"GW Volume Count: {r['volumeList']['responseInfo']['fullCount']}")
         assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_GW) # 18 vols of GW
 
     def test_0_meta_volumes_api_SE(self): 
@@ -162,7 +165,8 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_SE) # 18 vols of SE
+        print (f"SE Volume Count: {r['volumeList']['responseInfo']['fullCount']}")
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_SE + 1) # 24 vols of SE + new overview vol 0
 
     def test_0_meta_volumes_api_IPL(self): 
         # ---------------------------------------------------------------------------------------
@@ -171,6 +175,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
+        print (f"IPL Volume Count: {r['volumeList']['responseInfo']['fullCount']}")
         assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_IPL) # 22 vols of IPL
 
     def test_0_meta_volumes_api_error(self): 
@@ -319,7 +324,7 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['count'] == 193)
+        assert(r['sourceInfo']['responseInfo']['count'] >= 200)
 
     def test_8b_meta_all_sources(self):
         """

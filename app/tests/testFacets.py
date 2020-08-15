@@ -68,7 +68,7 @@ class TestFacets(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         print(response_info["facetCounts"]["facet_fields"]["bib_title"])
         assert(response_info["fullCount"] >= 135000)
-        assert(response_info["facetCounts"]["facet_fields"]["bib_title"]["Standard Edition"] >= 7808)
+        assert(response_info["facetCounts"]["facet_fields"]["bib_title"]["standard edition"] >= 7808)
 
     def test_1c_facet_art_lang(self):
         # Send a request to the API server and store the response.

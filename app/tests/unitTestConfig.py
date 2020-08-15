@@ -22,14 +22,14 @@ BOOKCOUNT = 100 # 100 book in 2020 on PEP-Web including 96 various ZBK, NLP, IPL
 VIDEOSOURCECOUNT = 12 # Number of video sources (video journal codes)
 ARTICLE_COUNT_BJP = 2735 # Right.  2738 in everything with query "BJP (bEXP_ARCH1).xml", but 3 dups.
 ARTICLE_COUNT_VOL1_BJP = 49
-VOL_COUNT_ALL_JOURNALS = 2554
+VOL_COUNT_ALL_JOURNALS = 2400
 VOL_COUNT_ALL_BOOKS = 114
 VOL_COUNT_ZBK = 72 #  includes 2 offline books (by Kohut)
 VOL_COUNT_GW = 18
 VOL_COUNT_SE = 24
 VOL_COUNT_IPL = 22
 VOL_COUNT_ALL_VOLUMES = 2580 #  journals and videos
-VOL_COUNT_VIDEOS = 30
+VOL_COUNT_VIDEOS = VIDEOSOURCECOUNT # no actual volumes for videos, just the sources
 VOL_COUNT_VIDEOS_PEPVS = 4
 VOL_COUNT_IJPSP = 11 #  source code ended, 11 should always be correct
 

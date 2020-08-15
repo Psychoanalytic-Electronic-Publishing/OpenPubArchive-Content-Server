@@ -62,10 +62,10 @@ class TestSolrAPIStandaloneFunctions(unittest.TestCase):
         count = data.volumeList.responseInfo.count
         assert(count == 72)
 
-    def test_1_get_source_list_IPL(self):
+    def test_1_get_source_list_SE(self):
         data = opasAPISupportLib.metadata_get_volumes(source_code="SE", source_type="book")
         count = data.volumeList.responseInfo.count
-        assert(count == 24)
+        assert(count == 25)
 
     def test_1_get_source_list_gw(self):
         data = opasAPISupportLib.metadata_get_volumes(source_code="GW", source_type="book")
@@ -75,7 +75,7 @@ class TestSolrAPIStandaloneFunctions(unittest.TestCase):
     def test_1_get_source_list_book(self):
         data = opasAPISupportLib.metadata_get_volumes(source_type="book")
         count = data.volumeList.responseInfo.count
-        assert(count == 142)
+        assert(count == 143)
 
     def test_1_get_source_list_NLP(self):
         data = opasAPISupportLib.metadata_get_volumes(source_code="NLP") # , source_type="book")
@@ -105,7 +105,7 @@ class TestSolrAPIStandaloneFunctions(unittest.TestCase):
     def test_1d_get_source_list_journal(self):
         data = opasAPISupportLib.metadata_get_volumes(source_type="journal")
         count = data.volumeList.responseInfo.count
-        assert(count >= 2491)
+        assert(count >= 2489)
         
 if __name__ == '__main__':
     unittest.main()
