@@ -2098,7 +2098,7 @@ async def database_smartsearch(response: Response,
                                        facetoffset=0,
                                        abstract=abstract,
                                        sort=sort,
-                                       format_requested=formatrequested, 
+                                       formatrequested=formatrequested, 
                                        limit=limit,
                                        offset=offset
                                        )
