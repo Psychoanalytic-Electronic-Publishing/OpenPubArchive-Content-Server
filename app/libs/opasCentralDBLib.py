@@ -117,6 +117,7 @@ API_DATABASE_ADVANCEDSEARCH = 46
 API_DATABASE_TERMCOUNTS = 47
 API_DATABASE_GLOSSARY_SEARCH = 48	#/Database/Search/
 API_DATABASE_EXTENDEDSEARCH = 49
+API_DATABASE_SEARCHTERMLIST = 50
 
 #def verifyAccessToken(session_id, username, access_token):
     #return pwd_context.verify(session_id+username, access_token)
@@ -267,7 +268,7 @@ class opasCentralDB(object):
                     logger.debug(f"Database close request, but not open ({caller_name})")
                     
             except Exception as e:
-                logger.error(f"closeConnection: {caller_name} the db is not open ({e})")
+                logger.error(f"caller: {caller_name} the db is not open ({e})")
 
         # make sure to mark the connection false in any case
         self.connected = False           
@@ -317,6 +318,25 @@ class opasCentralDB(object):
                 ret_val = sourceData
         else:
             logger.fatal("Connection not available to database.")
+        self.close_connection(caller_name="get_productbase_data") # make sure connection is closed
+        return ret_val
+        
+    def get_article_year(self, doc_id):
+        """
+        Load the article data for a document id
+        """
+        ret_val = None
+        self.open_connection(caller_name="get_productbase_data") # make sure connection is open
+        if self.db is not None:
+            curs = self.db.cursor(pymysql.cursors.DictCursor)
+            sql = f"SELECT art_year from api_articles where art_id='{doc_id}';"
+            row_count = curs.execute(sql)
+            if row_count:
+                sourceData = curs.fetchall()
+                ret_val = sourceData[0]["art_year"]
+        else:
+            logger.fatal("Connection not available to database.")
+
         self.close_connection(caller_name="get_productbase_data") # make sure connection is closed
         return ret_val
         
@@ -499,7 +519,8 @@ class opasCentralDB(object):
                          userIP=None,
                          connected_via=None,
                          referrer=None,
-                         apiClientID=0, 
+                         apiClientID=0,
+                         apiClientSession=None, 
                          accessToken=None,
                          keepActive=False
                          ):
@@ -549,10 +570,11 @@ class opasCentralDB(object):
                                                       access_token, 
                                                       authenticated,
                                                       admin,
-                                                      api_client_id
+                                                      api_client_id,
+                                                      api_client_session
                                               )
                                               VALUES 
-                                                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
+                                                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
                     try:
                         success = cursor.execute(sql, 
                                                  (session_id, 
@@ -566,22 +588,22 @@ class opasCentralDB(object):
                                                   accessToken,
                                                   authenticated,
                                                   session_admin, 
-                                                  apiClientID
+                                                  apiClientID,
+                                                  apiClientSession
                                                   )
                                                  )
                     except Exception as e:
                         success = False
-                        logger.error(f"Save Session Exception: {e}")
+                        logger.error(f"Save: {e}")
                        
                     if success:
-                        msg = f"save_session: Session {session_id} Record Saved"
+                        # msg = f"Session {session_id} Record Saved"
                         #print (msg)
                         ret_val = True
                     else:
                         msg = f"save_session {session_id} Record Could not be Saved"
-                        print (msg)
-                        ret_val = False
                         logger.warning(msg)
+                        ret_val = False
                     
                     self.db.commit()
                     cursor.close()
@@ -776,10 +798,11 @@ class opasCentralDB(object):
                     else:
                         ret_val = 0
                 except Exception as e:
+                    logger.debug(f"{e}")
                     ret_val = 0
                     
             except Exception as e:
-                msg = f"get_sources Error querying vw_api_products: {e}"
+                msg = f"Error querying vw_api_products: {e}"
                 logger.error(msg)
             else:
                 curs.close()
@@ -818,7 +841,7 @@ class opasCentralDB(object):
                 
                     
             except Exception as e:
-                logger.error(f"get_sources Error querying vw_api_products: {e}")
+                logger.error(f"Error querying vw_api_products: {e}")
             else:
                 curs.close()
                 
@@ -886,7 +909,7 @@ class opasCentralDB(object):
                 res = curs.execute(sql)
                     
             except Exception as e:
-                msg = f"get_sources Error querying vw_api_productbase: {e}"
+                msg = f"Error querying vw_api_productbase: {e}"
                 logger.error(msg)
                 # print (msg)
             else:
@@ -912,148 +935,6 @@ class opasCentralDB(object):
 
         # return session model object
         return total_count, ret_val # None or Session Object
-
-    #def get_volumes(self, source_code=None, source_type=None, limit=None, offset=0):
-        #"""
-        #Return a list of volumes
-          #- for a specific source_code (code),
-          #- OR for a specific source_type (e.g. journal)
-          #- OR if source_code and source_type are not specified, bring back them all
-          
-        #>>> ocd = opasCentralDB()
-        #>>> sources = ocd.get_volumes(source_code='IJP')
-
-        #"""
-        ## returns multiple gw's and se's, 139 unique volumes counting those (at least in 2020)
-        ## works for journal, videostreams have more than one year per vol.
-        ## works for books, videostream vol numbers
-        #distinct_return = "src_code, art_vol, art_year"
-
-        #if source_type == "book" or source_code in ["GW", "SE", "IPL", "NLP", "ZBK"]:
-            #if source_code is not None:
-                #sql = f"""SELECT DISTINCT
-                           #src_code,
-                           #art_vol,
-                           #art_year, 
-                           #art_id
-                           #FROM
-                              #api_articles
-                           #WHERE
-                              #src_code = '{source_code}' 
-                           #AND art_id IN (
-                               #SELECT DISTINCT ( art_id	) 
-                           #FROM
-                               #api_articles AS a,
-                               #api_productbase AS p 
-                           #WHERE
-                               #a.src_code = p.pepcode
-                               #AND a.src_code = '{source_code}' 
-                               #AND (a.main_toc_id = a.art_id OR a.main_toc_id is Null)
-                               #AND p.active = 1 
-                           #)
-                           #ORDER BY 1,2
-                        #"""
-            #else:
-                #sql = f"""SELECT DISTINCT
-                           #src_code,
-                           #art_vol,
-                           #art_year, 
-                           #art_id
-                           #FROM
-                              #api_articles
-                           #WHERE
-                              #src_code IN ("GW", "SE", "IPL", "NLP", "ZBK") 
-                              #AND art_id IN (
-                                 #SELECT DISTINCT (art_id) 
-                                 #FROM
-                                     #api_articles AS a,
-                                     #api_productbase AS p 
-                                  #WHERE
-                                      #a.src_code = p.pepcode
-                                      #AND (a.main_toc_id = a.art_id OR a.main_toc_id is Null)
-                                      #AND p.active = 1 
-                           #)         
-                           #ORDER BY 1,2
-                        #"""
-                
-        #else:
-            ## No books
-            #if source_type is None:
-                #ins_type = f"""
-                              #AND src_code IN
-                                   #(SELECT DISTINCT src_code
-                                   #FROM api_articles as a, api_productbase as p
-                                   #WHERE a.src_code = p.pepcode
-                                   #and p.active = 1
-                                   #and p.pep_class <> "book")                
-                            #"""
-            #else:
-                #ins_type = f"""
-                              #AND src_code IN
-                                   #(SELECT DISTINCT src_code
-                                   #FROM api_articles as a, api_productbase as p
-                                   #WHERE a.src_code = p.pepcode
-                                   #and p.active = 1
-                                   #and p.pep_class = '{source_type}')                
-                            #"""
-        
-            #if source_code is not None:
-                #source_matches = f"AND src_code = '{source_code}'"
-            #else:
-                #source_matches = ""
-                
-
-            #distinct_return_list = [a.strip() for a in distinct_return.split(",") if a != ""]
-            #if len(distinct_return_list) == 1:
-                #order_by = "ORDER BY 1"
-            #elif len(distinct_return_list) == 2:
-                #order_by = "ORDER BY 1, 2"
-            #elif len(distinct_return_list) >= 3:
-                #order_by = "ORDER BY 1, 3"
-            
-            #sql = f"""
-                      #SELECT DISTINCT {distinct_return}
-                      #FROM api_articles
-                      #WHERE src_code not in ("GW", "SE", "IPL", "NLP", "ZBK")
-                         #{source_matches}
-                         #{ins_type}
-                    #{order_by}
-                  #"""
-        
-        #self.open_connection(caller_name="get_volumes") # make sure connection is open
-        #total_count = 0
-        #ret_val = None
-        #limit_clause = None
-        #if limit is not None:
-            #limit_clause = f" LIMIT {limit}"
-            #if offset != 0:
-                #limit_clause += f" OFFSET {offset}"
-        
-        #if self.db is not None:
-            #try:
-                #curs = self.db.cursor(pymysql.cursors.DictCursor)
-                #res = curs.execute(sql)
-            #except Exception as e:
-                #msg = f"get_volumes Error querying api_articles: {e}"
-                #logger.error(msg)
-            #else:
-                #if res:
-                    #ret_val = curs.fetchall()
-                    #total_count = len(ret_val)
-                    #curs.close()
-                    #if limit_clause is not None:
-                        ## do another query with limit
-                        #curs = self.db.cursor()
-                        #curs.execute(sql + limit_clause)
-                        #ret_val = curs.fetchall()
-                        #curs.close()
-                #else:
-                    #ret_val = None
-            
-        #self.close_connection(caller_name="get_volumes") # make sure connection is closed
-
-        ## return session model object
-        #return total_count, ret_val # None or Session Object
 
     def record_document_view(self, document_id, session_info=None, view_type="Abstract"):
         """

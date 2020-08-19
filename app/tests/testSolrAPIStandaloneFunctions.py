@@ -70,12 +70,12 @@ class TestSolrAPIStandaloneFunctions(unittest.TestCase):
     def test_1_get_source_list_gw(self):
         data = opasAPISupportLib.metadata_get_volumes(source_code="GW", source_type="book")
         count = data.volumeList.responseInfo.count
-        assert(count == 18)
+        assert(count == 19)
 
     def test_1_get_source_list_book(self):
         data = opasAPISupportLib.metadata_get_volumes(source_type="book")
         count = data.volumeList.responseInfo.count
-        assert(count == 143)
+        assert(count == 119)
 
     def test_1_get_source_list_NLP(self):
         data = opasAPISupportLib.metadata_get_volumes(source_code="NLP") # , source_type="book")

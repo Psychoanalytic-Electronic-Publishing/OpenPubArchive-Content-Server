@@ -156,7 +156,7 @@ class TestMetadata(unittest.TestCase):
         # test return
         r = response.json()
         print (f"GW Volume Count: {r['volumeList']['responseInfo']['fullCount']}")
-        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_GW) # 18 vols of GW
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_GW + 1) # 18 vols of GW
 
     def test_0_meta_volumes_api_SE(self): 
         # ---------------------------------------------------------------------------------------

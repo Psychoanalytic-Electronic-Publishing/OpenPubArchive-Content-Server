@@ -123,6 +123,7 @@
   <!--......................................................................................................-->
   <!--DOCUMENT METADATA-->
   <field name="art_vol" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_vol_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_vol_suffix" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_vol_title" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_iss"  type="string" indexed="true" stored="true" multiValued="false"/>

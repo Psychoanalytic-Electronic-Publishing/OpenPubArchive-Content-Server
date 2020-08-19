@@ -57,13 +57,13 @@ class TestStandaloneFunctions(unittest.TestCase):
           ** BE EXPLICIT ***
         """
         test1 =  models.SolrQueryTermList(
-                    query = [
+                    qt = [
                                {
                                  "words":"child abuse",
                                  "field": "para",
                                  "synonyms": "true",
                                }
-                            ]
+                    ]
                 )
         resp = opasQueryHelper.parse_search_query_parameters(solrQueryTermList=test1)
         assert (resp.solrQuery.searchQ == "(para_syn:(child abuse))")
@@ -74,7 +74,7 @@ class TestStandaloneFunctions(unittest.TestCase):
         """
         test1 =  models.SolrQueryTermList(
             artLevel = 2, 
-            query = [
+            qt = [
                         {
                           "words":"child abuse",
                           "parent": "doc",
@@ -92,7 +92,7 @@ class TestStandaloneFunctions(unittest.TestCase):
         """
         test1 =  models.SolrQueryTermList(
             artLevel = 2, 
-            query = [
+            qt = [
                         {
                           "words":"excited",
                           "parent": "doc",
@@ -117,7 +117,7 @@ class TestStandaloneFunctions(unittest.TestCase):
         """
         test1 =  models.SolrQueryTermList(
             artLevel = 2, 
-            query = [
+            qt = [
                         {
                           "words":"mother became pale",
                           "parent": "doc",

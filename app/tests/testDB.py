@@ -21,16 +21,26 @@ import unittest
 #import urllib
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded
+from opasCentralDBLib import opasCentralDB
 
 class TestDatabase(unittest.TestCase):
+    def test_0_art_year(self):
+        ocd = opasCentralDB()
+        year = ocd.get_article_year("FD.026.0007A")
+        assert(year == 2020)
+    
+    def test_1_art_year(self):
+        import timeit
+        timing = timeit.timeit('artyear = ocd.get_article_year("FD.026.0007A")', setup='from opasCentralDBLib import opasCentralDB; ocd = opasCentralDB()', number=10)
+        print (f"timing: {timing}")
+        assert(timing < 0.1)
+    
     def test_count_open_sessions(self):
-        from opasCentralDBLib import opasCentralDB
         ocd = opasCentralDB()
         count = ocd.count_open_sessions()
         assert(count > 0)
 
     def test_opasdb_getsources(self):
-        from opasCentralDBLib import opasCentralDB
         ocd = opasCentralDB()
         sources = ocd.get_sources()
         assert(sources[0] > 100)
@@ -38,8 +48,7 @@ class TestDatabase(unittest.TestCase):
         assert(sources[0] == 1)
         sources = ocd.get_sources(src_type="journal")
         assert(sources[0] > 70)
-       
-       
+           
         
 if __name__ == '__main__':
     unittest.main()    

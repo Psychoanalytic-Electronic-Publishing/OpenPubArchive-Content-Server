@@ -355,7 +355,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   facetmincount=1,
                                   facetlimit=None,
                                   facetoffset=0,
-                                  facetSpec: dict={}, 
+                                  facetspec: dict={}, 
                                   abstract_requested: bool=False,
                                   format_requested:str="HTML", 
                                   sort=None,
@@ -420,11 +420,38 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     # always return SolrQueryOpts with SolrQuery
     if solrQueryTermList is not None:
-        if solrQueryTermList.solrQueryOpts is not None:
-            solrQueryOpts = solrQueryTermList.solrQueryOpts
-        else: # initialize a new model
+        try:
+            if solrQueryTermList.solrQueryOpts is not None:
+                solrQueryOpts = solrQueryTermList.solrQueryOpts
+            else: # initialize a new model
+                solrQueryOpts = models.SolrQueryOpts()
+        except Exception as e:
+            solrQueryTermList = None
             solrQueryOpts = models.SolrQueryOpts()
-    else: # initialize a new model
+            if isinstance(solrQueryTermList, str):
+                logger.warning(f"solrQueryTermList must be a model {e}")
+            else:
+                logger.warning(f"solrQueryTermList error {e}")
+
+        if solrQueryTermList.abstractReturn is not None and abstract_requested is None:
+            abstract_requested = solrQueryTermList.abstractReturn
+
+        if solrQueryTermList.facetFields is not None and facetfields is None:
+            facetfields = solrQueryTermList.facetFields
+
+        if solrQueryTermList.facetMinCount is not None and facetmincount is None:
+            facetmincount = solrQueryTermList.facetMinCount
+
+        if solrQueryTermList.facetSpec != {} and facetspec == {}:
+            facetspec = solrQueryTermList.facetSpec
+
+        if solrQueryTermList.returnFormat is not None and format_requested is None:
+            format_requested = solrQueryTermList.returnFormat
+    
+        if solrQueryTermList.similarCount != 0 and similar_count == 0:
+            similar_count = solrQueryTermList.similarCount
+                
+    else: # initialize a new model (qtermlist didn't supply and no other upper structure passed)
         solrQueryOpts = models.SolrQueryOpts()
 
     # Set up return structure
@@ -466,10 +493,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
     query_term_list = [] #  the terms themselves
 
     # Hold these for special view counts
-    vc_source_code = source_code # for view count query (if it can work this way)
-    vc_source_name = source_name # for view count query (if it can work this way)
-    vc_title = title # for view count query (if it can work this way)
-    vc_author = author # for view count query (if it can work this way)
+    #vc_source_code = source_code # for view count query (if it can work this way)
+    #vc_source_name = source_name # for view count query (if it can work this way)
+    #vc_title = title # for view count query (if it can work this way)
+    #vc_author = author # for view count query (if it can work this way)
 
     # used to remove prefix && added to queries.  
     # Could make it global to save a couple of CPU cycles, but I suspect it doesn't matter
@@ -628,10 +655,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
         #  if a term list is supplied, add it to the list, otherwise, create list
         if solrQueryTermList is None:
-            solrQueryTermList = models.SolrQueryTermList(query=query_term_from_params)
+            solrQueryTermList = models.SolrQueryTermList(qt=query_term_from_params)
             solrQueryTermList.artLevel = 2;
         else:
-            solrQueryTermList.query.extend(query_term_from_params)
+            solrQueryTermList.qt.extend(query_term_from_params)
             solrQueryTermList.artLevel = 2;           
 
     if solrQueryTermList is not None:
@@ -654,7 +681,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # look for query clauses in body queryTermList       
         last_parent = None
         query = models.SolrQueryTerm()
-        for query in solrQueryTermList.query:
+        for query in solrQueryTermList.qt:
             boolean_connector = query.connector
             if artLevel == 2:
                 if query.parent is None:
@@ -709,8 +736,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # now look for filter clauses in body queryTermList       
         filter_sub_clause = ""
         qfilterTerm = ""
-        filter_sub_clause = get_term_list_spec(solrQueryTermList.qfilter)
-        #for qfilter in solrQueryTermList.qfilter:
+        filter_sub_clause = get_term_list_spec(solrQueryTermList.qf)
+        #for qfilter in solrQueryTermList.qf:
             #boolean_connector = qfilter.connector
             #qfilterTerm += f"({boolean_connector} {get_term_list_spec(qfilter)})"
 
@@ -745,7 +772,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if facetfields is not None:
         solr_query_spec.facetFields = opasgenlib.string_to_list(facetfields)
         solr_query_spec.facetMinCount=facetmincount
-        solr_query_spec.facetSpec = facetSpec
+        solr_query_spec.facetSpec = facetspec
         if facetlimit is not None:
             solr_query_spec.facetSpec["facet_limit"] = facetlimit
         if facetoffset is not None:
@@ -793,6 +820,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         analyze_this = f"&& {fulltext1} "
         if artLevel == 1:
             search_q += analyze_this
+            filter_q += "&& art_level:1 "
         else: # we are looking at a child query, so put top level queries in the filter.
             filter_q += analyze_this
             

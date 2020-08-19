@@ -8,7 +8,7 @@ from enum import Enum
 
 BASELOGFILENAME = "opasAPI"
 logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
-FORMAT = '%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s'
+FORMAT = '%(asctime)s %(name)s %(funcName)s %(lineno)d - %(levelname)s %(message)s'
 logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 
 # required for catalog lookup by lxml
@@ -193,6 +193,7 @@ DESCRIPTION_SYNONYMS = "Expand search to include specially declared synonyms (Tr
 DESCRIPTION_SIMILARCOUNT = "Return this count of similar documents for each document in the return set (0 is None)" 
 DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)."
 DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."
+DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification"
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
 DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
 DESCRIPTION_VIEWCOUNT = "Filter by # of times document downloaded (viewed) per the viewedwithin period.  Does not include abstract views."    
@@ -240,7 +241,8 @@ TITLE_STARTYEAR = "Start year or range"
 TITLE_SYNONYMS = "Synonym expansion switch (True/False)"
 TITLE_SIMILARCOUNT = "Return this many similar documents for each match"
 TITLE_TERMFIELD = "Default field for which to get term counts"
-TITLE_TERMLIST = "Comma separated list of terms for which to get counts"
+TITLE_TERMLIST = "List of terms"
+TITLE_QTERMLIST = "Opas Model SolrQeryTermList"
 TITLE_TITLE = "Document Title"
 TITLE_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
 TITLE_VIEWCOUNT = "Find Documents viewed this many times within the view period"
@@ -279,7 +281,8 @@ ENDPOINT_SUMMARY_SEARCH_ANALYSIS = "Analyze search and return term/clause counts
 ENDPOINT_SUMMARY_SEARCH_MORE_LIKE_THESE = "Full Search implementation, but expand the results to include 'More like these'"
 ENDPOINT_SUMMARY_SEARCH_PARAGRAPHS = "Search at the paragraph (lowest) level by paragraph scope (doc, dreams, ...)"
 ENDPOINT_SUMMARY_SEARCH_V1 = "Search at the paragraph level by document zone (API v1 backwards compatible)"
-ENDPOINT_SUMMARY_SEARCH_V2 = "Full search implementation, search at the full document or paragraph level"
+ENDPOINT_SUMMARY_SEARCH_V2 = "Full search implementation, at the document or paragraph level"
+ENDPOINT_SUMMARY_SEARCH_V3 = "Full search implementation, at the document or paragraph level with body (termlist)"
 ENDPOINT_SUMMARY_SERVER_STATUS = "Return the server status"
 ENDPOINT_SUMMARY_SOURCE_NAMES = "Return a list of available sources"
 ENDPOINT_SUMMARY_SUBSCRIBE_USER = "Add a new publication subscription for a user (Restricted)"
@@ -356,6 +359,7 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, \
                                score"
 
 DOCUMENT_ITEM_TOC_FIELDS = "art_id, \
+                            meta_xml, \
                             art_info_xml, \
                             art_title_xml, \
                             art_subtitle_xml, \
@@ -382,6 +386,7 @@ DOCUMENT_ITEM_TOC_FIELDS = "art_id, \
                             score"
 
 DOCUMENT_ITEM_META_FIELDS ="art_id, \
+                            meta_xml, \
                             art_citeas_xml, \
                             art_title_xml, \
                             art_subtitle_xml, \
@@ -393,6 +398,20 @@ DOCUMENT_ITEM_META_FIELDS ="art_id, \
                             art_year, \
                             art_pgrg, \
                             score"
+
+# for Glossary Core
+GLOSSARY_ITEM_DEFAULT_FIELDS = """
+                                art_id,
+                                term_id,
+                                group_id,
+                                term,
+                                term_type,
+                                term_source,
+                                term_def_xml,
+                                term_def_rest_xml,
+                                group_name,
+                                group_term_count
+"""
 
 running_head_fmts = {
     'xml': "<p><cgrp name='pub_year'>({pub_year})</cgrp>. <cgrp name='source_title'>{source_title}</cgrp><cgrp name='vol'>{vol}</cgrp><cgrp name='issue'>{issue}</cgrp><cgrp name='pgrg'>{pgrg}</cgrp></p>", 

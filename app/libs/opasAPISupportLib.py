@@ -77,6 +77,8 @@ from datetime import datetime
 
 import opasConfig
 import localsecrets
+from localsecrets import CLIENT_DB
+
 import opasFileSupport
 opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 
@@ -85,6 +87,8 @@ from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, CO
 # import configLib.opasCoreConfig as opasCoreConfig
 from configLib.opasCoreConfig import solr_docs, solr_authors, solr_gloss, solr_docs_term_search, solr_authors_term_search
 from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
+from configLib.opasCoreConfig import EXTENDED_CORES
+
 # from fastapi import HTTPException
 
 # Removed support for Py2, only Py3 supported now
@@ -217,36 +221,61 @@ def get_session_info(request: Request,
 
     """
     session_id = get_session_id(request)
+    client_session_id = request.headers.get("client-session", None)
+    client_id = int(request.headers.get("client-id", '0'))
+    try:
+        client_dict = CLIENT_DB[client_id]
+        client_name = client_dict.get("api_client_name", None)
+    except:
+        client_dict = {}
+        client_name = "Unknown"
+    
     logger.debug("Get Session Info, Session ID via GetSessionID: %s", session_id)
+    expiration_time = get_expiration_time(request)
 
-    if session_id is None or session_id=='' or force_new_session:  # we need to set it
-        # get new sessionID...even if they already had one, this call forces a new one
-        logger.debug("session_id is none (or forcedNewSession).  We need to start a new session.")
-        ocd, session_info = start_new_session(response, request, access_token, keep_active=keep_active, user=user)  
-
-    else: # we already have a session_id, no need to recreate it.
-        # see if an access_token is already in cookies
-        access_token = get_access_token(request)
-        expiration_time = get_expiration_time(request)
-        logger.debug(f"session_id {session_id} is already set.")
-        try:
-            ocd = opasCentralDBLib.opasCentralDB(session_id, access_token, expiration_time)
-            session_info = ocd.get_session_from_db(session_id)
-            if session_info is None:
-                # this is an error, and means there's no recorded session info.  Should we create a s
-                #  session record, return an error, or ignore? #TODO
-                # try creating a record
-                ocd, session_info = start_new_session(response, request, access_token=access_token, keep_active=keep_active, user=user) 
-                username="NotLoggedIn"
-                ret_val, session_info = ocd.save_session(session_id,
-                                                         userID=0, userIP=request.client.host,
-                                                         connected_via=request.headers.get("user-agent", "Not Specified"),
-                                                         username=username ) # returns save status and a session
-                                                                                # object (matching what was sent to the db)
-
-        except ValidationError as e:
-            logger.error("Validation Error: %s", e.json())             
-
+    if client_session_id is not None:
+        ocd = opasCentralDBLib.opasCentralDB(client_session_id, access_token=None)
+        session_info = ocd.get_session_from_db(session_id)
+        if session_info is None:
+            # right now this is going to be PEP-Web and PaDS.  
+            ret_val, session_info = ocd.save_session(session_id,
+                                                     userID=0,
+                                                     userIP=request.client.host,
+                                                     connected_via=request.headers.get("user-agent", "Not Specified"),
+                                                     apiClientID=client_id,
+                                                     apiClientSession=True, 
+                                                     username=client_name) # returns save status and a session
+                                                                            # object (matching what was sent to the db)
+            
+        
+    else:
+        if session_id is None or session_id=='' or force_new_session:  # we need to set it
+            # get new sessionID...even if they already had one, this call forces a new one
+            logger.debug("session_id is none (or forcedNewSession).  We need to start a new session.")
+            ocd, session_info = start_new_session(response, request, access_token, keep_active=keep_active, user=user)
+    
+        else: # we already have a session_id, no need to recreate it.
+            # see if an access_token is already in cookies
+            access_token = get_access_token(request)
+            logger.debug(f"session_id {session_id} is already set.")
+            try:
+                ocd = opasCentralDBLib.opasCentralDB(session_id, access_token, expiration_time)
+                session_info = ocd.get_session_from_db(session_id)
+                if session_info is None:
+                    # this is an error, and means there's no recorded session info.  Should we create a s
+                    #  session record, return an error, or ignore? #TODO
+                    # try creating a record
+                    ocd, session_info = start_new_session(response, request, access_token=access_token, keep_active=keep_active, user=user) 
+                    username="NotLoggedIn"
+                    ret_val, session_info = ocd.save_session(session_id,
+                                                             userID=0, userIP=request.client.host,
+                                                             connected_via=request.headers.get("user-agent", "Not Specified"),
+                                                             username=username ) # returns save status and a session
+                                                                                    # object (matching what was sent to the db)
+    
+            except ValidationError as e:
+                logger.error("Validation Error: %s", e.json())             
+    
     logger.debug("getSessionInfo: %s", session_info)
     return ocd, session_info
 
@@ -344,14 +373,10 @@ def start_new_session(resp: Response, request: Request, session_id=None, access_
 #-----------------------------------------------------------------------------
 def get_session_id(request):
     ret_val = request.cookies.get(opasConfig.OPASSESSIONID, None)
+    if ret_val is None:
+        # this will be a sesson ID from the client--must be in every call!
+        ret_val = request.headers.get("client-session", None)
 
-    #if ret_val is None:
-        #cookie_dict = parse_cookies_from_header(request)
-        #ret_val = cookie_dict.get(OPASSESSIONID, None)
-        #if ret_val is not None:
-            #logger.debug("getSessionID: Session cookie had to be retrieved from header: {}".format(ret_val))
-    #else:
-        #logger.debug ("getSessionID: Session cookie from client: {}".format(ret_val))
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -467,6 +492,7 @@ def database_get_most_viewed( publication_period: int=5,
                               source_name: str=None,  
                               source_code: str=None,
                               source_type: str="journal",
+                              abstract_requested: bool=True, 
                               view_period: int=4,      # 4=last12months default
                               more_than: int=1,        # up this later
                               req_url: str=None, 
@@ -524,6 +550,7 @@ def database_get_most_viewed( publication_period: int=5,
                                                       author=author,
                                                       title=title,
                                                       startyear=start_year,
+                                                      abstract_requested=abstract_requested, 
                                                       sort = sort,
                                                       req_url = req_url
         )
@@ -551,6 +578,7 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                              source_name: str=None,  
                              source_code: str=None,
                              source_type: str=None,
+                             abstract_requested: bool=True, 
                              req_url: str=None, 
                              limit: int=10,
                              offset: int=0, 
@@ -593,6 +621,7 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                                                       author=author,
                                                       title=title,
                                                       startyear=start_year,
+                                                      abstract_requested=abstract_requested, 
                                                       sort = sort,
                                                       req_url = req_url
                                                       
@@ -603,7 +632,7 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
     ret_val, ret_status = search_text( query=f"art_cited_{period}:[{more_than} TO *]", 
                                        filter_query = solr_query_params.filterQ,
                                        full_text_requested=False,
-                                       abstract_requested=True, 
+                                       abstract_requested=solr_query_spec.abstractReturn, 
                                        format_requested = "HTML",
                                        sort = solr_query_params.sort,
                                        req_url=req_url, 
@@ -1661,6 +1690,7 @@ def get_access_limitations(result, documentListItem: models.DocumentListItem, au
     return documentListItem # return a partially filled document list item
 
 def get_base_article_info_from_search_result(result, documentListItem: models.DocumentListItem):
+    
     if result is not None:
         documentListItem.documentID = result.get("art_id", None)
         documentListItem.PEPCode = result.get("art_sourcecode", None)
@@ -1730,6 +1760,12 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
                                               issue=documentListItem.issue,
                                               pgrg=documentListItem.pgRg,
                                               ret_format=ret_format)
+        try:
+            ret_format = ret_format.upper()
+        except Exception as e:
+            logger.warning(f"Invalid return format: {ret_format}.  Using default. Error {e}.")
+            ret_format = "HTML"
+
         if ret_format == "TEXTONLY":
             art_excerpt = opasxmllib.xml_elem_or_str_to_text(art_excerpt)
             abstract = f"""
@@ -2686,10 +2722,14 @@ def search_text(query,
 #================================================================================================================
 def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
                    extra_context_len=None,
-                   req_url: str=None, 
+                   req_url: str=None,
+                   facet_limit=None,
+                   facet_offset=None, 
                    limit=None,
-                   offset=None, 
-                   authenticated=False
+                   offset=None,
+                   sort=None, 
+                   authenticated=False,
+                   session_info=None
                    ):
     """
     Full-text search, via the Solr server api.
@@ -2722,15 +2762,15 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
     global count_anchors
+    
+    if solr_query_spec.solrQueryOpts is None: # initialize a new model
+        solr_query_spec.solrQueryOpts = models.SolrQueryOpts()
+
+    if solr_query_spec.solrQuery is None: # initialize a new model
+        solr_query_spec.solrQuery = models.SolrQuery()
 
     #if authenticated is None:
         #authenticated = solr_query_spec.a
-
-    if limit is not None:
-        solr_query_spec.limit = limit
-
-    if offset is not None:
-        solr_query_spec.offset = offset
 
     if extra_context_len is not None:
         solr_query_spec.solrQueryOpts.hlFragsize = extra_context_len
@@ -2755,14 +2795,23 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
 
     #  checks
 
-    # TODO
+    # Use SET to offer predefined set of returned fields, so we know what can come back.
+    # Note that the larger fields, e.g., abstract, document, are added later based on other attributes
     # Need to check what fields they asked for, and make sure no document fields were specified!
-    if solr_query_spec.returnFields is None:
+    if solr_query_spec.returnFieldSet is not None:
+        solr_query_spec.returnFieldSet = solr_query_spec.returnFieldSet.upper()
+        
+    if solr_query_spec.returnFieldSet == "DEFAULT":
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
-    elif solr_query_spec.returnFields == "TOC":
+    elif solr_query_spec.returnFieldSet == "TOC":
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_TOC_FIELDS
-    elif solr_query_spec.returnFields == "META":
+    elif solr_query_spec.returnFieldSet == "META":
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_META_FIELDS
+    elif solr_query_spec.returnFieldSet == "FULL":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
+    else: #  true default!
+        solr_query_spec.returnFieldSet = "DEFAULT"
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
 
     #Always add id and file_classification
     solr_query_spec.returnFields += ", id, file_classification" #  need to always return id
@@ -2801,6 +2850,15 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
         solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
     else:
         pass # else, it's ok
+    
+    if limit is not None:
+        solr_query_spec.limit = limit
+
+    if offset is not None:
+        solr_query_spec.offset = offset
+
+    if sort is not None:
+        solr_query_spec.solrQuery.sort = sort
 
     solr_param_dict = { 
                         "q": solr_query_spec.solrQuery.searchQ,
@@ -2840,8 +2898,25 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
         else:
             solr_param_dict[key] = value
 
+    #allow core parameter here
+    if solr_query_spec.core is not None:
+        try:
+            solr_core = EXTENDED_CORES.get(solr_query_spec.core, None)
+        except Exception as e:
+            detail=f"Bad Extended Request. Core Specification Error. {e}"
+            logger.error(detail)
+            ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
+        else:
+            if solr_core is None:
+                detail=f"Bad Extended Request. Unknown core specified."
+                logger.warning(detail)
+                ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
+    else:
+        solr_query_spec.core = "pepwebdocs"
+        solr_core = solr_docs
+
     try:
-        results = solr_docs.query(**solr_param_dict)
+        results = solr_core.query(**solr_param_dict)
 
     except solr.SolrException as e:
         if e.httpcode == 400:
@@ -3046,6 +3121,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
                                            facetCounts=facet_counts,
                                            authenticated=authenticated, 
                                            request=f"{req_url}",
+                                           core=solr_query_spec.core, 
                                            timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
         )
 

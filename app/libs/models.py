@@ -169,6 +169,7 @@ class MoreLikeThisItem(BaseModel):
     
 
 class DocumentListItem(BaseModel):
+    coreName: str = Schema(None, title="Core", description="Core from which the item was retrieved")
     documentID: str = Schema(None, title="Document ID/Locator", description="The multiple-section document ID, e.g., CPS.007B.0021A.B0012 in a biblio, or CPS.007B.0021A as a document ID.")
     docType:  str = Schema(None, title="Document Type (Classification)", description="e.g., ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review")
     documentRef: str = Schema(None, title="Document Ref (bibliographic)", description="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
@@ -196,8 +197,6 @@ class DocumentListItem(BaseModel):
     pgRg: str = Schema(None, title="Page Range as Published", description="The published start and end pages of the document, separated by a dash")
     pgStart: str = Schema(None, title="Starting Page Number as Published", description="The published start page number of the document")
     pgEnd: str = Schema(None, title="Ending Page Number as Published", description="The published end page number of the document")
-    term: str = Schema(None, title="Search Analysis Term", description="For search analysis, the clause or term being reported")
-    termCount: int = Schema(None, title="Search Analysis Term Count", description="For search analysis, the count of occurences of the clause or term being reported")
     abstract: str = Schema(None, title="Abstract", description="The document abstract, with markup")
     document: str = Schema(None, title="Document", description="The full-text document, with markup")
     docPagingInfo: dict = Schema(None, title="Requested document page, limit, and offset", description="The document is limited per the call: shows requested page, limit, and offset in a dict")
@@ -217,14 +216,26 @@ class DocumentListItem(BaseModel):
     #instanceCount: int = Schema(None, title="Counts", description="Reusable field to return counts requested")
     # |- new v2 field, but removed during cleanup, better ata is in stat.
     stat: dict = Schema(None, title="Statistics", description="Reusable field to return counts requested")
+    similarityMatch: dict = Schema(None, title="Information about similarity matches")
+    # Search Analysis fields (and shared Glossary term)
+    term: str = Schema(None, title="Search Analysis Term", description="For search analysis, the clause or term being reported")
+    termCount: int = Schema(None, title="Search Analysis Term Count", description="For search analysis, the count of occurences of the clause or term being reported")
+    # Glossary core specific fields
+    termID: str = Schema(None, title="Term ID", description="")
+    groupID: str = Schema(None, title="Group ID", description="")
+    groupName: str = Schema(None, title="Group Name", description="")
+    groupTermCount: str = Schema(None, title="Group Term Count", description="")
+    termType: str = Schema(None, title="", description="")
+    termSource: str = Schema(None, title="", description="")
+    termDefPartXML: str = Schema(None, title="", description="")
+    termDefRefXML: str = Schema(None, title="", description="")
     # these are not all currently used
     accessClassification: str = Schema(None, title="Document classification, e.g., Archive, Current, Free")
     accessLimited: bool = Schema(False, title="Access is limited, preventing full-text return")
     accessLimitedReason: str = Schema(None, title="Explanation of limited access status")
     accessLimitedDescription: str = Schema(None, title="")
     accessLimitedCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
-    similarityMatch: dict = Schema(None, title="Information about similarity matches")
-        
+    
 class DocumentListStruct(BaseModel):
     responseInfo: ResponseInfo
     responseSet: List[DocumentListItem] = []
@@ -328,7 +339,8 @@ class SessionInfo(BaseModel):
     authenticated: bool = Schema(False, title="")
     keep_active: bool = False
     scope: str = Schema(None, title="")
-    api_client_id: int = None            
+    api_client_id: int = None
+    api_client_session: bool = Schema(False, title="True if the session_id is from the header via the client")
 
 #-------------------------------------------------------
     
@@ -456,11 +468,11 @@ class SolrQuerySpec(BaseModel):
     # for PEP Opas, this is almost always pepwebdocs
     core: str = Schema("pepwebdocs", title="Selected core", description="Selected Solr core")
     fileClassification: str = Schema(None, title="File Status: free, current, archive, or offsite", description="File Status: free, current, archive, or offsite")
-    # TODO: this may be a good place to set the more standard return field default, even if only for the standard (usual) core, pepwebdocs
     fullReturn: bool = Schema(False, title="Request full length text return", description="Request full length text (XML) return (otherwise, return field length is capped)")
     abstractReturn: bool = Schema(False, title="Request return of abstracts or summaries", description="Request return of abstracts or summaries")
+    returnFieldSet: str = Schema(None, title="Return field predefined set: DEFAULT, TOC, META, applies only to AdvancedSearch")
     returnFields: str = Schema(None, title="List of return fields (ExtendedSearch Only)", description="Comma separated list of return fields.  Only applies to ExtendedSearch.")
-    returnFormat: str = Schema("HTML", title="Return type: XML, HTML, TEXT_ONLY", description="Return type: XML, HTML, TEXT_ONLY")
+    returnFormat: str = Schema("HTML", title="Return type: XML, HTML, TEXT_ONLY", description="Return type applies to abstract and document fields only.")
     limit: int = Schema(15, title="Record Limit for Solr returns")
     offset: int = Schema(0, title="Record Offset in return set")
     page: int = Schema(None, title="Page Number in return set")
@@ -468,6 +480,7 @@ class SolrQuerySpec(BaseModel):
     page_offset: int = Schema(0, title="Page offset in return set")
     facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
     facetMinCount: int = Schema(1, title="Minimum count to return a facet")
+    # TODO: facetRanges not yet implemented
     facetRanges: str = Schema(None, title="Faceting range list (comma separated list)", description="Returns faceting ranges if specified.")
     # facetSpec can include any Solr facet options, except any that are listed above.
     # option names should use _ instead of Solr's "."
@@ -475,7 +488,7 @@ class SolrQuerySpec(BaseModel):
     #   e.g., f.art_year_int_facet_range_start won't work to set the facet range start for art_year_int
     # You should be able to do this if the field doesn't have an underscore, though we don't have int
     #  fields like that currently.
-    facetSpec: dict = Schema({}, title="Flexible Dictionary for facet specifications (using _ rather than .) ")
+    facetSpec: dict = Schema({}, title="Flexible Dictionary for facet specifications (using _ rather than .) Can include any Solr facet options, except any that are listed as fields above.")
     # sub structures
     solrQuery: SolrQuery = None
     solrQueryOpts: SolrQueryOpts = None
@@ -502,9 +515,22 @@ class SolrQueryTerm(BaseModel):
     
 class SolrQueryTermList(BaseModel):
     artLevel: int = Schema(None, title="1 for main document fields (e.g., text or title); 2 for child fields (e.g., para")
-    query: List[SolrQueryTerm] = []
-    qfilter: List[SolrQueryTerm] = []
+    qt: List[SolrQueryTerm] = []
+    qf: List[SolrQueryTerm] = []
     solrQueryOpts: SolrQueryOpts = None
+    # additions 2020-08-17 to make termlist a more complete solution for seaching
+    similarCount: int = Schema(0, title=opasConfig.TITLE_SIMILARCOUNT)
+    returnFields: str = Schema(None, title="List of return fields (ExtendedSearch Only)", description="Comma separated list of return fields.  Only applies to ExtendedSearch.")
+    returnFormat: str = Schema("HTML", title="Return type: XML, HTML, TEXT_ONLY", description="Return type: XML, HTML, TEXT_ONLY")
+    #fullReturn: bool = Schema(False, title="Request full length text return", description="Request full length text (XML) return (otherwise, return field length is capped)")
+    abstractReturn: bool = Schema(False, title="Request return of abstracts or summaries", description="Request return of abstracts or summaries")
+    facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
+    facetMinCount: int = Schema(1, title="Minimum count to return a facet")
+    # TODO: facetRanges not yet implemented
+    facetRanges: str = Schema(None, title="Faceting range list (comma separated list)", description="Returns faceting ranges if specified.")
+    # facetSpec can include any Solr facet options, except any that are listed above.
+    # option names should use _ instead of Solr's "."
+    facetSpec: dict = Schema({}, title="Flexible Dictionary for facet specifications (using _ rather than .) ")
 
 #-------------------------------------------------------
 # advanced Solr Raw return

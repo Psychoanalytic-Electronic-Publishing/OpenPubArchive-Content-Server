@@ -4,6 +4,7 @@ from datetime import datetime
 from optparse import OptionParser
 from configLib.opasCoreConfig import solr_docs, solr_authors, solr_gloss, solr_docs_term_search, solr_authors_term_search
 import logging
+
 logger = logging.getLogger(__name__)
 
 from namesparser import HumanNames
@@ -102,6 +103,7 @@ def is_value_in_field(value,
     try:
         solr_core = cores[core]
     except Exception as e:
+        logger.warning(f"Core selection: {core}. 'docs' is default {e}")
         solr_core  = solr_docs    
 
     if match_type == "exact":
@@ -113,11 +115,14 @@ def is_value_in_field(value,
     else:
         q = f'{field}:({value})'
         
-
-    results = solr_core.query(q=q,  
-                              fields = f"{field}", 
-                              rows = limit,
-                              )
+    try:
+        results = solr_core.query(q=q,  
+                                  fields = f"{field}", 
+                                  rows = limit,
+                                  )
+    except Exception as e:
+        logger.warning(f"Solr query: {q} fields {field} {e}")
+        results = []
        
     if len(results) > 0:
         ret_val = True
@@ -212,6 +217,7 @@ def name_id_list(names_mess):
                 ret_val.append(n.first)
             
     except Exception as e:
+        logger.warning(f"name parse: {names_mess} {e}")
         print (e)
 
     return ret_val
@@ -351,7 +357,7 @@ def smart_search(smart_search_text):
                             #else:
                                 #new_q += f"'{name}'"
                     except Exception as e:
-                        logger.warning(f"SmartSearch Error {e}")
+                        logger.warning(f"Value error for {name}. {e}")
                 
                 if new_q != "":
                     ret_val["schema_field"] = "authors" 
