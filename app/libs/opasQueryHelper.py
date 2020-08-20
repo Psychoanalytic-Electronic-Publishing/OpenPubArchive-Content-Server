@@ -1078,7 +1078,8 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
                         file_classification = None, 
                         format_requested = None,
                         def_type = None,
-                        summary_fields=opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
+                        return_field_set = None, 
+                        summary_fields = None, 
                         highlight_fields = None,
                         facet_fields = None,
                         facet_mincount = None, 
@@ -1113,7 +1114,46 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     if solr_query_spec.solrQueryOpts is None:
         solr_query_spec.solrQueryOpts = models.SolrQueryOpts() 
     
-    solr_query_spec.returnFields = summary_fields 
+    # Use SET to offer predefined set of returned fields, so we know what can come back.
+    # Note that the larger fields, e.g., abstract, document, are added later based on other attributes
+    # Need to check what fields they asked for, and make sure no document fields were specified!
+    if solr_query_spec.returnFieldSet is not None:
+        solr_query_spec.returnFieldSet = solr_query_spec.returnFieldSet.upper()
+        
+    if solr_query_spec.returnFieldSet == "DEFAULT":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
+    elif solr_query_spec.returnFieldSet == "TOC":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_TOC_FIELDS
+    elif solr_query_spec.returnFieldSet == "META":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_META_FIELDS
+    elif solr_query_spec.returnFieldSet == "FULL":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
+    else: #  true default!
+        solr_query_spec.returnFieldSet = "DEFAULT"
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
+
+    #Always add id and file_classification
+    solr_query_spec.returnFields += ", id, file_classification" #  need to always return id
+
+    # don't let them specify text fields to bring back full-text content in at least PEP schema fields in 
+    #   docs or glossary.
+    # however, we add it if they are authenticated, and then check by document.
+    # Should we take away para?
+    solr_query_spec.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solr_query_spec.returnFields)
+
+    #  try to reduce amount of data coming back based on needs...
+    #  Set it to use the main structure returnFields; eventually delete the one in the query sub
+    if solr_query_spec.abstractReturn:
+        if "abstract_xml" not in solr_query_spec.returnFields:
+            solr_query_spec.returnFields += ", abstract_xml"
+        if "art_excerpt" not in solr_query_spec.returnFields:
+            solr_query_spec.returnFields += ", art_excerpt, art_excerpt_xml"
+        if "summaries_xml" not in solr_query_spec.returnFields:
+            solr_query_spec.returnFields += ", summaries_xml"
+    elif solr_query_spec.fullReturn: #and session_info.XXXauthenticated:
+        # NOTE: we add this here, but in return data, access by document will be checked.
+        if "text_xml" not in solr_query_spec.returnFields:
+            solr_query_spec.returnFields += ", text_xml, art_excerpt, art_excerpt_xml"
 
     # parameters specified override QuerySpec
     

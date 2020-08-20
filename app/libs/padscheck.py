@@ -22,7 +22,12 @@ def pads_session_check(session_id, doc_id, doc_year):
     response = requests.get(full_URL)
     if response.ok == True:
         ret_resp = response.json()
-        ret_val = permit = ret_resp["Permit"]
+        ret_val = ret_resp["Permit"]
 
     return ret_val, ret_resp      
         
+
+def server_session_check(session_id, doc_id, doc_year):
+    ret_val = False
+    ret_resp = None
+    

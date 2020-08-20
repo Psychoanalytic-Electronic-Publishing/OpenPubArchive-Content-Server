@@ -23,6 +23,8 @@ class User(BaseModel):  # snake_case names to match DB
     company: str = None
     modified_by_user_id: int = None
     enabled: bool = True
+    authorized_peparchive: bool = False
+    authorized_pepcurrent: bool = False
     admin: bool = False
     user_agrees_date: datetime = None
     user_agrees_to_tracking: bool = None
@@ -98,6 +100,11 @@ class MostCitedArticles(BaseModel):
     count5: int = 0
     count10: int = 0
     count20: int = 0
+
+class AdminClientConfigs(BaseModel):
+    client_id: int = 0
+    configName: str = None
+    configSettings: dict = {}
 
 # Deleted since article table being deprecated 2020-08-09    
 #class MostCitedArticlesWithDetails(MostCitedArticles):

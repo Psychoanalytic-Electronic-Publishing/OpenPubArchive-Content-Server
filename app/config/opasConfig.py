@@ -70,6 +70,7 @@ SESSION_INACTIVE_LIMIT = 30  # minutes
 OPASSESSIONID = "opasSessionID"
 OPASACCESSTOKEN = "opasSessionInfo"
 OPASEXPIRES= "OpasExpiresTime"
+CLIENTSESSIONID = "client_session"
 
 # file classifications (from documents in the Solr database)
 DOCUMENT_ACCESS_FREE = "free"
@@ -148,6 +149,8 @@ VALS_YEAROPTIONS = {DICTLEN_KEY: 2, '5': '5', '10': '10', '20': '20', 'al': 'all
 VALS_VIEWPERIODDICT = {1: "lastweek", 2: "last1mos", 3: "last6mos", 4: "last12mos", 5: "lastcalyear", 0: "lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
 
 # parameter descriptions for documentation
+DESCRIPTION_ADMINCONFIG = "Global settings by an administrator for the specific client app"
+DESCRIPTION_ADMINCONFIGNAME = "Name for the global settings (configuration) for the specific client app"
 DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review."
 DESCRIPTION_AUTHOR = "Author name, use wildcard * for partial entries (e.g., Johan*)"
 DESCRIPTION_AUTHORNAMEORPARTIAL = "The author name or a partial name (regex type wildcards [.*] permitted EXCEPT at the end of the string--the system will try that automatically)"
@@ -203,6 +206,8 @@ DESCRIPTION_WORD = "A word prefix to return a limited word index (word-wheel)."
 DESCRIPTION_WORDFIELD = "The field for which to look up the prefix for matching index entries.  It must be a full-text indexed field (text field or derivative)"
 DESCRIPTION_YEAR = "The year for which to return data"
 
+TITLE_ADMINCONFIG = "Administrative global settings"
+TITLE_ADMINCONFIGNAME = "Configuration Name"
 TITLE_ARTICLETYPE = "Filter by the type of article" 
 TITLE_AUTHOR = "Author name"
 TITLE_AUTHORNAMEORPARTIAL = "Author name or partial/regex"
@@ -260,6 +265,8 @@ ENDPOINT_SUMMARY_CHANGE_PASSWORD = "Change the user's password"
 ENDPOINT_SUMMARY_CONTENTS_SOURCE = "Return the contents of the specified source in bibliographic format"
 ENDPOINT_SUMMARY_CONTENTS_SOURCE_VOLUME = "Return the contents of the specified volume in bibliographic format"
 ENDPOINT_SUMMARY_CREATE_USER = "Create a new user for the system"
+ENDPOINT_SUMMARY_SAVE_CONFIGURATION = "Save the global configuration"
+ENDPOINT_SUMMARY_GET_CONFIGURATION = "Get the global configuration"
 ENDPOINT_SUMMARY_DOCUMENTATION = "Return a HTML page for the interactive API documentation"
 ENDPOINT_SUMMARY_DOCUMENT_DOWNLOAD = "Download a document"
 ENDPOINT_SUMMARY_DOCUMENT_SUBMIT = "document_submission"
@@ -293,6 +300,10 @@ ENDPOINT_SUMMARY_VOLUMES = "Return a list of available volumes (and years) for s
 ENDPOINT_SUMMARY_WHATS_NEW = "Return the newest uploaded issues"
 ENDPOINT_SUMMARY_WHO_AM_I = "Return information about the current user"
 ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the specified field"
+
+ACCESSLIMITED_DESCRIPTION_LIMITED = "This is a summary excerpt from the full text of the article. The full text of the document may be available on the publisher's website"
+ACCESSLIMITED_DESCRIPTION_FREE = "This content is currently free to all users."
+ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This content is available for you to access"
 
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()

@@ -114,11 +114,17 @@ import opasQueryHelper
 import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
 import schemaMap
-count_anchors = 0
+import padscheck
 
+count_anchors = 0
 
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 
+def authorized(session_info, art_id):
+    if session_info.authenticated == True:
+        ret_val = True
+    else:
+        pads
 #-----------------------------------------------------------------------------
 def get_basecode(document_id):
     """
@@ -235,10 +241,10 @@ def get_session_info(request: Request,
 
     if client_session_id is not None:
         ocd = opasCentralDBLib.opasCentralDB(client_session_id, access_token=None)
-        session_info = ocd.get_session_from_db(session_id)
+        session_info = ocd.get_session_from_db(client_session_id)
         if session_info is None:
             # right now this is going to be PEP-Web and PaDS.  
-            ret_val, session_info = ocd.save_session(session_id,
+            ret_val, session_info = ocd.save_session(client_session_id,
                                                      userID=0,
                                                      userIP=request.client.host,
                                                      connected_via=request.headers.get("user-agent", "Not Specified"),
@@ -268,7 +274,8 @@ def get_session_info(request: Request,
                     ocd, session_info = start_new_session(response, request, access_token=access_token, keep_active=keep_active, user=user) 
                     username="NotLoggedIn"
                     ret_val, session_info = ocd.save_session(session_id,
-                                                             userID=0, userIP=request.client.host,
+                                                             userID=0,
+                                                             userIP=request.client.host,
                                                              connected_via=request.headers.get("user-agent", "Not Specified"),
                                                              username=username ) # returns save status and a session
                                                                                     # object (matching what was sent to the db)
@@ -345,6 +352,8 @@ def start_new_session(resp: Response, request: Request, session_id=None, access_
         ret_val, sessionInfo = ocd.save_session(session_id=session_id, 
                                                 username=user.username,
                                                 userID=user.user_id,
+                                                authorized_peparchive=user.authorized_peparchive,
+                                                authorized_pepcurrent=user.authorized_pepcurrent,
                                                 expiresTime=token_expiration_time,
                                                 userIP=request.client.host, 
                                                 connected_via=request.headers.get("user-agent", "Not Specified"),
@@ -372,13 +381,12 @@ def start_new_session(resp: Response, request: Request, session_id=None, access_
 
 #-----------------------------------------------------------------------------
 def get_session_id(request):
+    # this will be a sesson ID from the client--must be in every call!
     ret_val = request.cookies.get(opasConfig.OPASSESSIONID, None)
     if ret_val is None:
-        # this will be a sesson ID from the client--must be in every call!
-        ret_val = request.headers.get("client-session", None)
+        ret_val = request.headers.get(opasConfig.CLIENTSESSIONID, None)
 
     return ret_val
-
 #-----------------------------------------------------------------------------
 def get_access_token(request):
     ret_val = request.cookies.get(opasConfig.OPASACCESSTOKEN, None)
@@ -497,7 +505,8 @@ def database_get_most_viewed( publication_period: int=5,
                               more_than: int=1,        # up this later
                               req_url: str=None, 
                               limit: int=10,           # Get top 10 from the period
-                              offset=0
+                              offset=0,
+                              session_info=None
                             ):
     """
     Return the most viewed journal articles (often referred to as most downloaded) duing the prior period years.
@@ -542,8 +551,14 @@ def database_get_most_viewed( publication_period: int=5,
         start_year -= publication_period
         start_year = f">{start_year}"
 
+    viewcount=None,          # minimum view count
+    viewperiod=None,         # period to evaluate view count 0-4
+
+    query_views = f"art_views_{period_suffix}:[{more_than} TO *]"
+    
     solr_query_spec = \
-        opasQueryHelper.parse_search_query_parameters(
+        opasQueryHelper.parse_search_query_parameters(viewcount=more_than, 
+                                                      viewperiod=view_period, 
                                                       source_name=source_name,
                                                       source_code=source_code,
                                                       source_type=source_type, 
@@ -554,18 +569,13 @@ def database_get_most_viewed( publication_period: int=5,
                                                       sort = sort,
                                                       req_url = req_url
         )
-    solr_query_params = solr_query_spec.solrQuery
 
-    ret_val, ret_status = search_text( query=f"art_views_{period_suffix}:[{more_than} TO *]", 
-                                       filter_query = solr_query_params.filterQ,
-                                       full_text_requested=False,
-                                       abstract_requested=False, 
-                                       format_requested = "HTML",
-                                       sort = solr_query_params.sort,
-                                       req_url=req_url, 
-                                       limit=limit,
-                                       offset=offset
-                                       )
+    ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                         limit=limit,
+                                         offset=offset,
+                                         #authenticated=session_info.authenticated
+                                         session_info=session_info
+                                        )
 
     return ret_val   
 
@@ -582,7 +592,8 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                              req_url: str=None, 
                              limit: int=10,
                              offset: int=0, 
-                             sort:str=None
+                             sort:str=None,
+                             session_info=None
                              ):
     """
     Return the most cited journal articles duing the prior period years.
@@ -613,8 +624,9 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
         start_year -= publication_period
         start_year = f">{start_year}"
 
+    cite_count = f"{more_than} in {period}"
     solr_query_spec = \
-        opasQueryHelper.parse_search_query_parameters(
+        opasQueryHelper.parse_search_query_parameters(citecount=cite_count, 
                                                       source_name=source_name,
                                                       source_code=source_code,
                                                       source_type=source_type, 
@@ -624,29 +636,24 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                                                       abstract_requested=abstract_requested, 
                                                       sort = sort,
                                                       req_url = req_url
-                                                      
                                                     )
 
-    solr_query_params = solr_query_spec.solrQuery
-
-    ret_val, ret_status = search_text( query=f"art_cited_{period}:[{more_than} TO *]", 
-                                       filter_query = solr_query_params.filterQ,
-                                       full_text_requested=False,
-                                       abstract_requested=solr_query_spec.abstractReturn, 
-                                       format_requested = "HTML",
-                                       sort = solr_query_params.sort,
-                                       req_url=req_url, 
-                                       limit=limit, 
-                                       offset=offset
-                                       )
-
+    ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                         limit=limit,
+                                         offset=offset,
+                                         #authenticated=session_info.authenticated
+                                         session_info=session_info
+                                        )
+        
     return ret_val, ret_status   
 
 #-----------------------------------------------------------------------------
 def database_get_whats_new(days_back=7,
                            limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS_NEW,
                            req_url:str=None,
-                           source_type="journal", offset=0):
+                           source_type="journal",
+                           offset=0,
+                           session_info=None):
     """
     Return what JOURNALS have been updated in the last week
 
@@ -668,21 +675,6 @@ def database_get_whats_new(days_back=7,
         logger.debug("databaseWhatsNew Number found: %s", results._numFound)
     except Exception as e:
         logger.error(f"Solr Search Exception: {e}")
-
-    # why do this?  I think it was only when there was nothing to find.    
-    #if results._numFound == 0:
-        #try:
-            #results = solr_docs.query( q = "art_sourcetype:journal",  
-                                        #fl = field_list,
-                                        #fq = "{!collapse field=art_sourcecode max=art_year_int}",
-                                        #sort=sort_by, sort_order="desc",
-                                        #rows=limit, offset=0,
-                                        #)
-
-            #logger.debug("databaseWhatsNew Expanded search to most recent...Number found: %s", results._numFound)
-
-        #except Exception as e:
-            #logger.error(f"Solr Search Exception: {e}")
 
     response_info = models.ResponseInfo( count = len(results.results),
                                          fullCount = results._numFound,
@@ -1234,7 +1226,8 @@ def metadata_get_source_by_type(src_type=None,
 #-----------------------------------------------------------------------------
 def metadata_get_source_by_code(src_code=None,
                                 req_url:str=None, 
-                                limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0):
+                                limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
+                                offset=0):
     """
     Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
 
@@ -1521,7 +1514,9 @@ def documents_get_abstracts(document_id,
                             sort: str=None, 
                             limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
                             req_url: str=None, 
-                            offset=0):
+                            offset=0,
+                            session_info=None
+                            ):
     """
     Returns an abstract or summary for the specified document
     If part of a documentID is supplied, multiple abstracts will be returned.
@@ -1556,14 +1551,15 @@ def documents_get_abstracts(document_id,
                                                  full_text_requested=False,
                                                  abstract_requested=True, 
                                                  format_requested = ret_format,
-                                                 authenticated=authenticated,
+                                                 #authenticated=authenticated,
                                                  similar_count=similar_count,
                                                  facet_fields=opasConfig.DOCUMENT_VIEW_FACET_LIST,
                                                  facet_mincount=1,
                                                  sort=sort, 
                                                  limit=limit,   
                                                  offset=offset, 
-                                                 req_url=req_url
+                                                 req_url=req_url,
+                                                 session_info=session_info
                                                  )
 
         documents = models.Documents(documents = document_list.documentList)
@@ -1655,38 +1651,51 @@ def documents_get_abstracts(document_id,
 
     #return ret_val
 
-def get_access_limitations(result, documentListItem: models.DocumentListItem, authenticated):
+def get_access_limitations(result, documentListItem: models.DocumentListItem, session_info):
     # if we get here from a art_level:2 only advanced query, there's no file classification.
     # for now, we'll consider it part of the archive.  That would also handle an entry with the
     # classiification data empty.
+
     documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_ARCHIVE)
-    documentListItem.accessLimitedDescription = f"""This is a summary excerpt from the full text of the journal article.  The full text of the document is available to journal subscribers on the publisher's website"""
+
     doi = result.get("art_doi", None)
     if doi is not None:
-        documentListItem.accessLimitedDescription += f""" <a href=\"http://dx.doi.org/{doi}\" target=\"_blank\">here</a>."""
-        # print (documentListItem.accessLimitedDescription)
+        accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_LIMITED + f""" <a href=\"http://dx.doi.org/{doi}\" target=\"_blank\">here</a>."""
     else:
-        documentListItem.accessLimitedDescription += f"."
+        accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_LIMITED + "."
 
-    if documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
-        documentListItem.accessLimitedCurrentContent = True
-
-    if not authenticated:
-        if documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_FREE):
+    if documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_FREE):
+        documentListItem.accessLimited = False
+        documentListItem.accessLimitedCurrentContent = False
+        #"This content is currently free to all users."
+        documentListItem.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
+    elif documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED): # PEPCurrent
+        if session_info.authorized_pepcurrent:
+            documentListItem.accessLimitedCurrentContent = False
+            # "This content is available for you to access"
+            documentListItem.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+        else:
+            documentListItem.accessLimitedCurrentContent = True
+            documentListItem.accessLimitedDescription = accessLimitedDescription # limited...get it elsewhere
+    elif documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE):
+        if session_info.authorized_peparchive:
             documentListItem.accessLimited = False
             documentListItem.accessLimitedCurrentContent = False
-            documentListItem.accessLimitedDescription = "This content is currently free to all users."
+            # "This content is available for you to access"
+            documentListItem.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
         else:
             documentListItem.accessLimited = True
-    else: # authenticated
-        if documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE, opasConfig.DOCUMENT_ACCESS_FREE):
-            documentListItem.accessLimited = False
-            documentListItem.accessLimitedCurrentContent = False
-            documentListItem.accessLimitedDescription = "This content is available for you to access"
-        else:
-            documentListItem.accessLimited = True
+            documentListItem.accessLimitedDescription = accessLimitedDescription # limited...get it elsewhere
 
-    # print (f"AccessLimited:{documentListItem.accessLimited}")
+    # We COULD check the session_id in PADS here with the art_id and year, for EVERY return!
+    #  would it be slow?  Certainly for more than a dozen records, could be
+    if session_info.api_client_session and session_info.api_client_id in localsecrets.PADS_BASED_CLIENT_IDS:
+        authorized, resp = padscheck.pads_session_check(session_id=session_info.session_id, doc_id=documentListItem.documentID, doc_year=documentListItem.year)
+        if authorized:
+            documentListItem.accessLimitedCurrentContent = False
+            # "This content is available for you to access"
+            documentListItem.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+            
     return documentListItem # return a partially filled document list item
 
 def get_base_article_info_from_search_result(result, documentListItem: models.DocumentListItem):
@@ -1888,13 +1897,14 @@ def get_fulltext_from_search_results(result, text_xml, page, page_offset, page_l
 def documents_get_document(document_id,
                            solr_query_spec=None,
                            ret_format="XML",
-                           authenticated=True,
                            similar_count=0,
                            #file_classification=None,
                            req_url:str=None, 
                            page_offset=None,
                            page_limit=None,
-                           page=None
+                           page=None, 
+                           authenticated=True,
+                           session_info=None
                            ):
     """
     For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
@@ -1948,7 +1958,7 @@ def documents_get_document(document_id,
                                                  full_text_requested=True,
                                                  abstract_requested=True, 
                                                  format_requested = ret_format,
-                                                 authenticated=authenticated,
+                                                 #authenticated=authenticated,
                                                  similar_count=0,
                                                  #file_classification=file_classification, 
                                                  query_debug = False,
@@ -1959,7 +1969,8 @@ def documents_get_document(document_id,
                                                  page_offset=page_offset, #  e.g., start with the 5th page
                                                  page_limit=page_limit,    #        return limit pages
                                                  page=page, # start page specified
-                                                 req_url=req_url
+                                                 req_url=req_url,
+                                                 session_info=session_info
                                                  )
 
         if document_list is None or document_list.documentList.responseInfo.count == 0:
@@ -1972,7 +1983,7 @@ def documents_get_document(document_id,
                                                      full_text_requested=True,
                                                      abstract_requested=True, 
                                                      format_requested = ret_format,
-                                                     authenticated=authenticated,
+                                                     #authenticated=authenticated,
                                                      similar_count=0,
                                                      query_debug = False,
                                                      limit=1, # document call returns only one document.  limit and offset used for something else
@@ -1982,13 +1993,16 @@ def documents_get_document(document_id,
                                                      page_offset=page_offset, #  e.g., start with the 5th page
                                                      page_limit=page_limit,    #        return limit pages
                                                      page=page, # start page specified
-                                                     req_url=req_url
+                                                     req_url=req_url,
+                                                     session_info=session_info
                                                      )
 
         try:
             matches = document_list.documentList.responseInfo.count
             # get the first document item only
             document_list_item = document_list.documentList.responseSet[0]
+            # is user authorized?
+            
         except Exception as e:
             logger.info("get_document: No matches or error: %s", e)
         else:
@@ -2098,7 +2112,10 @@ def documents_get_glossary_entry(term_id,
         return ret_val
 
 #-----------------------------------------------------------------------------
-def prep_document_download(document_id, ret_format="HTML", authenticated=True, base_filename="opasDoc"):
+def prep_document_download(document_id,
+                           ret_format="HTML",
+                           authenticated=True,
+                           base_filename="opasDoc"):
     """
     For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
     For authenticated users, it returns with the document itself
@@ -2653,12 +2670,12 @@ def search_text(query,
                 format_requested = "HTML",
                 def_type = None, # edisMax, disMax, or None
                 # bring text_xml back in summary fields in case it's missing in highlights! I documented a case where this happens!
-                summary_fields=opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
+                return_field_set=None, 
+                summary_fields=None, 
                 highlight_fields = 'text_xml',
                 facet_fields = None,
                 facet_mincount = 1, 
-                authenticated = None, 
-                extra_context_len = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                extra_context_len = None,
                 maxKWICReturns = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
                 sort="score desc",
                 limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
@@ -2666,7 +2683,9 @@ def search_text(query,
                 page_offset = None,
                 page_limit = None,
                 page = None,
-                req_url:str=None
+                req_url:str = None, 
+                #authenticated = None,
+                session_info = None 
                 ):
     """
     Full-text search, via the Solr server api.
@@ -2693,7 +2712,8 @@ def search_text(query,
                                                 abstract_requested=abstract_requested,
                                                 format_requested=format_requested,
                                                 def_type = def_type, # edisMax, disMax, or None
-                                                summary_fields = summary_fields,
+                                                return_field_set=return_field_set, 
+                                                summary_fields = summary_fields,  # deprecate?
                                                 highlight_fields = highlight_fields,
                                                 facet_fields = facet_fields,
                                                 facet_mincount=facet_mincount,
@@ -2709,11 +2729,11 @@ def search_text(query,
                                                 )
 
     ret_val, ret_status = search_text_qs(solr_query_spec,
-                                         extra_context_len=extra_context_len,
                                          limit=limit,
                                          offset=offset, 
-                                         authenticated=authenticated,
-                                         req_url=req_url
+                                         req_url=req_url, 
+                                         #authenticated=authenticated,
+                                         session_info=session_info
                                          )
 
     return ret_val, ret_status
@@ -2728,7 +2748,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
                    limit=None,
                    offset=None,
                    sort=None, 
-                   authenticated=False,
+                   #authenticated=False,
                    session_info=None
                    ):
     """
@@ -2792,49 +2812,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
         facet = "on"
     else:
         facet = "off"
-
-    #  checks
-
-    # Use SET to offer predefined set of returned fields, so we know what can come back.
-    # Note that the larger fields, e.g., abstract, document, are added later based on other attributes
-    # Need to check what fields they asked for, and make sure no document fields were specified!
-    if solr_query_spec.returnFieldSet is not None:
-        solr_query_spec.returnFieldSet = solr_query_spec.returnFieldSet.upper()
-        
-    if solr_query_spec.returnFieldSet == "DEFAULT":
-        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
-    elif solr_query_spec.returnFieldSet == "TOC":
-        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_TOC_FIELDS
-    elif solr_query_spec.returnFieldSet == "META":
-        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_META_FIELDS
-    elif solr_query_spec.returnFieldSet == "FULL":
-        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
-    else: #  true default!
-        solr_query_spec.returnFieldSet = "DEFAULT"
-        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
-
-    #Always add id and file_classification
-    solr_query_spec.returnFields += ", id, file_classification" #  need to always return id
-
-    # don't let them specify text fields to bring back full-text content in at least PEP schema fields in 
-    #   docs or glossary.
-    # however, we add it if they are authenticated, and then check by document.
-    # Should we take away para?
-    solr_query_spec.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solr_query_spec.returnFields)
-
-    #  try to reduce amount of data coming back based on needs...
-    #  Set it to use the main structure returnFields; eventually delete the one in the query sub
-    if solr_query_spec.abstractReturn:
-        if "abstract_xml" not in solr_query_spec.returnFields:
-            solr_query_spec.returnFields += ", abstract_xml"
-        if "art_excerpt" not in solr_query_spec.returnFields:
-            solr_query_spec.returnFields += ", art_excerpt, art_excerpt_xml"
-        if "summaries_xml" not in solr_query_spec.returnFields:
-            solr_query_spec.returnFields += ", summaries_xml"
-    elif solr_query_spec.fullReturn and authenticated:
-        # NOTE: we add this here, but in return data, access by document will be checked.
-        if "text_xml" not in solr_query_spec.returnFields:
-            solr_query_spec.returnFields += ", text_xml, art_excerpt, art_excerpt_xml"
 
     try:
         if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars < 200: # let caller configure, but not 0!
@@ -2950,12 +2927,12 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
             documentItemList = []
             rowCount = 0
             # rowOffset = 0
-            if solr_query_spec.fullReturn:
-                # if we're not authenticated, then turn off the full-text request and behave as if we didn't try
-                if not authenticated: # and file_classification != opasConfig.DOCUMENT_ACCESS_FREE:
-                    # can't bring back full-text
-                    logger.warning("Fulltext requested--by API--but not authenticated.")
-                    solr_query_spec.fullReturn = False
+            #if solr_query_spec.fullReturn:
+                ## if we're not authenticated, then turn off the full-text request and behave as if we didn't try
+                #if not authenticated: # and file_classification != opasConfig.DOCUMENT_ACCESS_FREE:
+                    ## can't bring back full-text
+                    #logger.warning("Fulltext requested--by API--but not authenticated.")
+                    #solr_query_spec.fullReturn = False
 
             for result in results.results:
                 # reset anchor counts for full-text markup re.sub
@@ -2963,7 +2940,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
                 # authorIDs = result.get("art_authors", None)
                 documentListItem = models.DocumentListItem()
                 documentListItem = get_base_article_info_from_search_result(result, documentListItem)
-                documentListItem = get_access_limitations(result, documentListItem, authenticated)
+                documentListItem = get_access_limitations(result, documentListItem, session_info)
                 documentListItem.score = result.get("score", None)               
                 documentID = documentListItem.documentID
                 try:
@@ -3013,12 +2990,20 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
 
                 # see if this article is an offsite article
                 offsite = result.get("art_offsite", False)
-
-                # no full-text if accessLimited or offsite article
+                # ########################################################################
+                # This is the room where where full-text return HAPPENS
+                # ########################################################################
                 if solr_query_spec.fullReturn and not documentListItem.accessLimited and not offsite:
-                    documentListItem = get_fulltext_from_search_results(result, text_xml, solr_query_spec.page, solr_query_spec.page_offset, solr_query_spec.page_limit, documentListItem)
-                #else:
-                    #documentListItem.document = documentListItem.abstract
+                    documentListItem = get_fulltext_from_search_results(result,
+                                                                        text_xml,
+                                                                        solr_query_spec.page,
+                                                                        solr_query_spec.page_offset,
+                                                                        solr_query_spec.page_limit,
+                                                                        documentListItem)
+                else: # by virtue of not calling that...
+                    # no full-text if accessLimited or offsite article
+                    # free up some memory, since it may be large
+                    result["text_xml"] = None                   
 
                 stat = {}
                 count_all = result.get("art_cited_all", None)
@@ -3119,7 +3104,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec = None,
                                            fullCountComplete = solr_query_spec.limit >= results._numFound,
                                            solrParams = results._params,
                                            facetCounts=facet_counts,
-                                           authenticated=authenticated, 
+                                           #authenticated=authenticated, 
                                            request=f"{req_url}",
                                            core=solr_query_spec.core, 
                                            timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     

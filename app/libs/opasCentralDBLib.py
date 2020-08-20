@@ -520,9 +520,11 @@ class opasCentralDB(object):
                          connected_via=None,
                          referrer=None,
                          apiClientID=0,
-                         apiClientSession=None, 
+                         apiClientSession=False, 
                          accessToken=None,
-                         keepActive=False
+                         keepActive=False,
+                         authorized_peparchive=False,
+                         authorized_pepcurrent=False,
                          ):
         """
         Save the session info to the database
@@ -571,10 +573,12 @@ class opasCentralDB(object):
                                                       authenticated,
                                                       admin,
                                                       api_client_id,
-                                                      api_client_session
+                                                      api_client_session,
+                                                      authorized_peparchive,
+                                                      authorized_pepcurrent
                                               )
                                               VALUES 
-                                                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
+                                                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
                     try:
                         success = cursor.execute(sql, 
                                                  (session_id, 
@@ -589,7 +593,9 @@ class opasCentralDB(object):
                                                   authenticated,
                                                   session_admin, 
                                                   apiClientID,
-                                                  apiClientSession
+                                                  apiClientSession, 
+                                                  authorized_peparchive,
+                                                  authorized_pepcurrent
                                                   )
                                                  )
                     except Exception as e:

@@ -261,6 +261,14 @@ class Documents(BaseModel):
     # But that's inconsistent with the abstract return.  #ToDo Need to modify PEP-Easy and unify as a list.
     documents: DocumentListStruct
 
+class AdminConfig(BaseModel):
+    """
+    Dictionary to hold client configuration settings as set by the client administrator
+    """
+    clientID: int = Schema(None, title="ID assigned to the client app for which this configuration is valid (2 for PEP-Web)")
+    configName: str = Schema(None, title="Unique name (within client ID) to save and retrieve configuration")
+    configSettings: dict = Schema({}, title="Dictionary with all configuration settings")
+
 # possible submission and return structure for file items loaded 3/20/2020, subject to change
 class FileItem(BaseModel):
     uploadToken: bytes
@@ -337,6 +345,8 @@ class SessionInfo(BaseModel):
     access_token: str = Schema(None, title="A generated session token identifying the client's access privileges")
     token_type: str = Schema(None, title="")
     authenticated: bool = Schema(False, title="")
+    authorized_peparchive: bool = False
+    authorized_pepcurrent: bool = False   
     keep_active: bool = False
     scope: str = Schema(None, title="")
     api_client_id: int = None
