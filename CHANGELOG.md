@@ -14,10 +14,10 @@
 
 **2020.0820** - Finished draft implementation of access checks with PaDS.  
 
-- This now checks for all returned documentListItem data in a search; the goal is to allow the client to know in advance what items the user can view in full-text.
+- This now checks for all returned *documentListItem* data in a search; the goal is to allow the client to know in advance what items the user can view in full-text.
            
-- For endpoints that return documentListItems (search based), and where indicated, if the caller requests a limit above the server setting for opasConfig.MAX_LIMIT_SETTING_FOR_ACCESS_INFO_RETURN (default = 100)  individual document permissions in the return set will not be checked  or returned in the document item records.  
-	- This will speed up cases where  a large number of records are retrieved, for example, to build a summary table of most cited or most viewed articles.  If the request would return full-text however, the document access settings are always checked and accessLimited fields  will be included in the return set.
+- For endpoints that return *documentListItems* (search based), and where indicated, if the caller requests a limit above the server setting for *opasConfig.MAX_LIMIT_SETTING_FOR_ACCESS_INFO_RETURN* (default = 100)  individual document permissions in the return set will not be checked  or returned in the document item records.  
+	- This will speed up cases where  a large number of records are retrieved, for example, to build a summary table of most cited or most viewed articles.  If the request would return full-text however, the document access settings are always checked and *accessLimited* fields  will be included in the return set.
 
 **2020.0819** - Added Administrative Global config settings endpoints for the client app
            
@@ -28,12 +28,10 @@
 **2020.0818** - Header values now accepted:
 - apimode = debug (adds extra data for diagnostic purposes)
 - client-session - Session ID from client, e.g., as received by PaDS
-
 	- For now at least, you can still use the regular login method if your account is on the server.
 			client-id in the header is the API client ID, e.g., 1 for pep-easy, 2 for the new pep-web,
 			3 for pads directly.  The api_client_key is now tied to client-id (client_id in Python)
 			which for now, is in localsecrets rather than the DB
-
 - AdvancedSearch updates
     - core is now supported.
     - returnFieldSet added to solrQuerySpec.
@@ -41,18 +39,16 @@
 	      - it can be DEFAULT, TOC, META or None (sets as Default) 
 
 **2020.0817** - Create new endpoint for term search
-
 -  Change endpoints with bodies to POST
--  Remove termlist from main v2 search endpoints (eliminating the "body" issue for them)
+-  Remove *termlist* from main v2 search endpoints (eliminating the "body" issue for them)
 
 **2020.0814** - Abstract return only when requested in search, and no longer fills in the document field with the
 abstract, that was a convenience so apps could ignore abstract, but adds lots of data.
 
-There was an error, so if the document was accesslimited, abstract always was returned,
+- There was an error, so if the document was *accesslimited*, abstract always was returned,
 even if not requested in the search.)
-
 - XML return of the abstract is now supported in search, and a field is added to allow that.
-- The XML is a fragment...you can add your own front matter with the documentInfoXML field which is currently always returned. Very easy to turn that and the abstract into a pepkbd3 compliant document with the returned data, and I think it's better to give the client the choice here.  (Also added to the new SmartSearch endpoint.)
+- The XML is a fragment...you can add your own front matter with the *documentInfoXML* field which is currently always returned. Very easy to turn that and the abstract into a *pepkbd3* compliant document with the returned data, and I think it's better to give the client the choice here.  (Also added to the new SmartSearch endpoint.)
 
 **2020.0811** - Was using the PEPlib library just for locator recognition, but that was a lot of code baggage for so little, so did it in a different but even more effective way: rather than using the extensive patterns there for PEP recognition,  looks up the correctly formatted locator in the Solr index to ensure it's really a PEP locator.
 
@@ -94,16 +90,13 @@ the current document.
 **2020.0705** - Inline documentation updates
 
 **2020.0702** - Get MoreLikeThis changed completely.  
-- Now all you have to do, in more calls, is set
- similarcount > 0 and similarDocs will be included in the similarityMatch field of the results.
-           
-- Also, changed getAbstract code to use search_text, so you can now get MoreLikeThis for
+- Now all you have to do, in more calls, is set similarcount > 0 and similarDocs will be included in the similarityMatch field of the results.
+- Also, changed *getAbstract* code to use search_text, so you can now get MoreLikeThis for
 an abstract when retrieving it.
 
 **2020.0611** - Optimizing code...example: checking for file_classification when search_text and search_text_qs do it for you and return  only the abstract anyway.
            
 - Tested masterPEPWebDocsSchema changes by regenerating local Solr database.
-
 - Note: art_lang is now a string, not a list.  Temporary code injected to handle online case where solr database is not
 yet in sync.
 
@@ -118,7 +111,6 @@ yet in sync.
            # downloads_last6months             art_views_last6mos
            # downloads_last12months            art_views_last12mos
            # downloads_lastcalyear             art_views_lastcalyear
-           # 
 ```
 - Switching most (if not all) calls from search_text to search_text_qs which uses solrQuerySpec as the input model rather than parameters.  Note it's important for hl_fragsize to be set properly!
            
@@ -152,6 +144,7 @@ been adjusted in other ways anyway.
 returned by Solr for all but ExtendedSearch).
 
 **2020.0530** - Fix to format of datetimechar in api_docviews.  Pysql was complaining about the utc format I was saving.
+
 - Abstract views are no longer logged as docviews since we don't count them and they add a lot of rows to the table.
 - Finished implementing PDFOriginal download feature (was not fully built).  Tested, working ok.
 - TestDownload succeeds, must run the full test since test_1 ... depends on test_0_login.
@@ -163,37 +156,37 @@ to do in the other calls, but really, the other calls take the query parameters 
 SolrQuerySpec for the caller; SolrQuerySpec is more for entering the primary Solr Query and Filter specs
 directly.
 
-**2020.0506** - Added some additional types to document item return (and models) that I had
-           #   assumed would be ok for clients to get from the XML or Sourceinfo, but
-           #   in fact, for producing a list of results, that could be desirable to have
-           #   in the document info returned at the article level.
-           # Also: Starting to add parameter checks.  I decided it's beneficial
-           #   for the server to return an error rather than 0 results if one of the parameters
-           #   is not specified correctly.
-           # Along with that, added norm_val which will allow some parameters to be
-           #   shortened to the minimum unique letters, for example, journals, books videos
-           #   as j, b, v.  The advantage is that if the mininum is met, the client could
-           #   get the rest of the letters wrong, and it will work.
-           # Added testing for the above.
-           # Still more of the above to do.
+**2020.0506** - Added some additional types to document item return (and models) that I had assumed would be ok for clients to get from the XML or Sourceinfo, but in fact, for producing a list of results, that could be desirable to have
+in the document info returned at the article level.
+
+- Also: Starting to add parameter checks.  I decided it's beneficial
+for the server to return an error rather than 0 results if one of the parameters
+is not specified correctly.
+- Along with that, added norm_val which will allow some parameters to be
+shortened to the minimum unique letters, for example, journals, books videos
+as j, b, v.  The advantage is that if the mininum is met, the client could
+get the rest of the letters wrong, and it will work.
+- Added testing for the above.
+- Still more of the above to do.
 
 **2020.0505** - Cleaning up parameters, and starting to work on normalization and documentation
-           - Moved opasConfig.py to config folder from libs.  Makes more sense.
+- Moved opasConfig.py to config folder from libs.  Makes more sense.
 
 **2020.0504** Added core to the new endpoint WordWheel and updated documentation for it
-           - Settings for cores moved to config_cores, currently in under lib/configLib
-           -   perhaps this would be good to get into the config folder (some trouble trying)
+- Settings for cores moved to config_cores, currently in under lib/configLib
+-   perhaps this would be good to get into the config folder (some trouble trying)
 
 **2020.0503** Found error when issuing meta call for sources when pepcode was missing for a book
-           # in the api_productbase table.  Fixed it (and missing data for IPL) and created a test
-           # test_8b2_meta_all_sources to check all the source codes.
-           - Also: documentID wasn't being filled in due to error in the dict lookup.  Fixed.
+in the api_productbase table.  
+- Fixed it (and missing data for IPL) and created a test
+test_8b2_meta_all_sources to check all the source codes.
+- Also: documentID wasn't being filled in due to error in the dict lookup.  Fixed.
 
 **2020.0502** Added endpoint WordWheel and supporting function in opasAPISupportLib to collect
-           # a termlist from specified field.  Uses solr.SearchHandler(solr_docs, "/terms")
+a termlist from specified field.  Uses solr.SearchHandler(solr_docs, "/terms")
 
 **2020.0430** Added a sort clause to the database query behind the metadata/volume return so
-           # the data comes back better organized.
+the data comes back better organized.
            - Fixed it so metadata/sourcetype/sourcecode gets everything if you use * for each
 
 **2020.0423** Changed excerpting in SolrXMLPEPWebLoad to remove words in the trailing sentence 
@@ -211,30 +204,26 @@ MAX_EXCERPT_PARAS = 10
 Min means it will even go past a pb if there are less chars than 480.
 
 **2020.0419**  Fixed endpoint function names to match endpoints (easier to find when programming) 
-           Added endpoint summary to replace what the descriptive function names were doing
-
-           - A few bug fixes.
-           - Added facet return in responseInfo if facefields specified in endpoint params 
+- Added endpoint summary to replace what the descriptive function names were doing
+- A few bug fixes.
+- Added facet return in responseInfo if facefields specified in endpoint params 
              or SolrQuery input.
 
-**2020.0418**  More fixes to parse_search_query_parameters() regarding sort
-           and a solr query param which was offset=0 rather than start=offset
-           in database_get_whats_new()
+**2020.0418**  More fixes to parse_search_query_parameters() regarding sort and a solr query param which was offset=0 rather than start=offset in database_get_whats_new()
 
-**2020.0417**  Added API_KEY code, only applied to documentation functions now, and mainly as an
-           example, since docs is not marked as protected right now.
+**2020.0417**  Added API_KEY code, only applied to documentation functions now, and mainly as an example, since docs is not marked as protected right now.
 
-           BasicLogin is now working.  Extracted common setup after login code
-           to login_setup_user_session, so next it can be moved to other login endpoints.
+- BasicLogin is now working.  Extracted common setup after login code
+to login_setup_user_session, so next it can be moved to other login endpoints.
 
 **2020.0408**  Changes to fix bug and complete implementation (it wasn't fully implemented).
-           Added endpoint for openAPI (will add key next)
-           All tests pass (though need more tests!)
+- Added endpoint for openAPI (will add key next)
+- All tests pass (though need more tests!)
 
 **2020.0401**  In opasAPISupportLib.py lib: 
 
-             Set it so user-agent is optional in session settings, in case client doesn't supply 
-             it (as PaDS didn't)
+- Set it so user-agent is optional in session settings, in case client doesn't supply 
+it (as PaDS didn't)
 
 **2020.0330**   Updates to endpoint documentation headers for live documentation
 
@@ -250,38 +239,32 @@ Min means it will even go past a pb if there are less chars than 480.
             subscriptions in the meanwhile.
 
             Added:
-			
                 /v2/Admin/ChangeUserPassword/
-				
                 /v2/Admin/SubscribeUser/
 				
-            Tested database with RDS/MySQL and it's working as configured.
+- Tested database with RDS/MySQL and it's working as configured.
 
 **2020.0314**   Removed journal paran min length of 2, since sometimes it's empty!
 
-2020.0313   Updated schemaMap.py to include p_bib for biblios
+**2020.0313**   Updated schemaMap.py to include p_bib for biblios
 
 ### Alpha       Released as Alpha3
 
 **2020.0311.1** Setup html conversion to substutute current server domain + api call
-            for image src.  Changed xslt file as well.
-             
+            for image src.  Changed xslt file as well.            
 
 **2020.0222.1** Fix for PDF downloads, document declaration was causing errors and .
-            utf char conversions which caused errors.
+utf char conversions which caused errors.
             
-			Also added running head and copyright notice.
-            
-			Still needs css formatting applied and banner if
+- Also added running head and copyright notice.        
+- Still needs css formatting applied and banner if
             we want it (path issue right now)
 
 **2020.0215.1** Partial fix for nested pb in files, like Bion, W. R. (1962).  Those were showing complete data when an excerpt (it has no abstract) was being generated.
             
-			solved by an excerpting XSLT file which gets rid of the p tags and all other tags other than the pb, then translates to html.
+- solved by an excerpting XSLT file which gets rid of the p tags and all other tags other than the pb, then translates to html.
             
-			But this translation needs a lot more work due to lack of formatting (and perhaps more.)
-            
-			TODO MORE
+	- But this translation needs a lot more work due to lack of formatting (and perhaps more.)            
 
 **2020.0114.1** Fixed problem with Documents/Documents on a secondary request, added check there with embargo and authentication info.
 
