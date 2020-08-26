@@ -12,6 +12,7 @@ CONFIG = "AWSCodesyper"
 # Template for local settings, including sensitive info
 # These are the defaults, if not overridden below
 DEBUG_DOCUMENTS = 1
+SOLR_DEBUG = "off"
 DBPORT = 3306
 API_PORT_MAIN = 9100
 SSH_HOST = None # if set, ssh tunnel is active for database

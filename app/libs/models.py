@@ -21,7 +21,7 @@ from typing import List, Generic, TypeVar, Optional
 from enum import Enum
 import opasConfig
 
-from pydantic import BaseModel, Schema
+from pydantic import BaseModel, Schema, Field
 # from pydantic.types import EmailStr
 from modelsOpasCentralPydantic import User
 #from opasCentralDBLib import opasCentralDB
@@ -50,10 +50,14 @@ class ListTypeEnum(Enum):
     mostViewedList = "mostviewed"
     searchAnalysisList = "srclist"
     TermIndex = "termindex"
+    reportList = "reportlist"
     
 class ReportTypeEnum(str, Enum):
-    mostViewed = "mostViewed"
-    mostCited = "mostCited"
+    #mostViewed = "mostViewed"
+    #mostCited = "mostCited"
+    sessionLog = "Session-Log"
+    userSearches = "User-Searches"
+    #sessionEndpointLog = "sessionEndpointLog"
     
 class QueryParserTypeEnum(Enum):
     edismax = "edismax"
@@ -104,6 +108,17 @@ class ResponseInfo(BaseModel):
     authenticated: bool = Schema(None, title="If request was processed as authenticated")
     timeStamp: str = Schema(None, title="Server timestamp of return data.")   
 
+#-------------------------------------------------------
+# General Data Encapsulation classes
+#-------------------------------------------------------
+class AccessLimitations(BaseModel):
+    accessLimited: bool = Schema(True, title="True if the data can not be provided for this user")
+    accessLimitedCurrentContent: bool = Schema(False, title="True if the data is considered Current Content (embargoed)")
+    accessLimitedReason: str = Schema(None, title="Explanation of limited access status")
+    accessLimitedDescription: str = Schema(None, title="Description of why access is limited")
+    accessLimitedPubLink: str = Schema(None, title="Link to publisher") 
+    doi: str = Schema(None, title="Document Object Identifier, without base URL")
+    
 #-------------------------------------------------------
 # Data Return classes
 #-------------------------------------------------------
@@ -164,10 +179,19 @@ class AuthorIndex(BaseModel):
     authorIndex: AuthorIndexStruct
     
 #-------------------------------------------------------
+class ClientConfig(BaseModel):
+    """
+    Dictionary to hold client configuration settings as set by the client administrator
+    """
+    configName: str = Schema(None, title="Unique name (within client ID) to save and retrieve configuration")
+    configSettings: dict = Schema({}, title="Dictionary with all configuration settings")
+
+#-------------------------------------------------------
 class MoreLikeThisItem(BaseModel):
     documentID: str = Schema(None, title="Document ID/Locator", description="The multiple-section document ID, e.g., CPS.007B.0021A.B0012 in a biblio, or CPS.007B.0021A as a document ID.")
     
 
+#-------------------------------------------------------
 class DocumentListItem(BaseModel):
     coreName: str = Schema(None, title="Core", description="Core from which the item was retrieved")
     documentID: str = Schema(None, title="Document ID/Locator", description="The multiple-section document ID, e.g., CPS.007B.0021A.B0012 in a biblio, or CPS.007B.0021A as a document ID.")
@@ -190,7 +214,7 @@ class DocumentListItem(BaseModel):
     lang: str = Schema(None, title="Language", description="The primary language of this article")
     issn: str = Schema(None, title="The ISSN", description="The ISSN for the source") # 2020506 Not sure if we should include this, but we are at least already storing it at article level
     #isbn: str = Schema(None, title="The ISBN", description="The ISBN for the source") #  2020506 isbn is not stored at article level, so not now at least
-    doi: str = Schema(None, title="Document object identifier", description="Document object identifier, a standard id system admin by the International DOI Foundation (IDF)")
+    doi: str = Field(None, title="Document object identifier", description="Document object identifier, a standard id system admin by the International DOI Foundation (IDF)")
     issue: str = Schema(None, title="Serial Issue Number")
     issueTitle: str = Schema(None, title="Serial Issue Title", description="Issues may have titles, e.g., special topic")
     newSectionName: str = Schema(None, title="Name of Serial Section Starting", description="The name of the section of the issue, appears for the first article of a section")
@@ -212,6 +236,7 @@ class DocumentListItem(BaseModel):
     updated: datetime = Schema(None, title="Source file update date and time", description="The date and time the source file was updated last")
     score: float = Schema(None, title="The match score", description="Solr's score for the match in the search")
     rank: float = Schema(None, title="Document's Search Rank")
+    rankfield: str = Schema(None, title="Field in rank", description="Which field is in rank")
     referenceCount: str = Schema(None, title="Number of references", description="The number of references listed in the document bibliography")
     #instanceCount: int = Schema(None, title="Counts", description="Reusable field to return counts requested")
     # |- new v2 field, but removed during cleanup, better ata is in stat.
@@ -230,11 +255,12 @@ class DocumentListItem(BaseModel):
     termDefPartXML: str = Schema(None, title="", description="")
     termDefRefXML: str = Schema(None, title="", description="")
     # these are not all currently used
-    accessClassification: str = Schema(None, title="Document classification, e.g., Archive, Current, Free")
-    accessLimited: bool = Schema(False, title="Access is limited, preventing full-text return")
-    accessLimitedReason: str = Schema(None, title="Explanation of limited access status")
-    accessLimitedDescription: str = Schema(None, title="")
+    accessClassification: str = Schema(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
+    accessLimited: bool = Schema(True, title="Access is limited, preventing full-text return")
+    accessLimitedReason: str = Schema(None, title="Explanation of user's access to this")
+    accessLimitedDescription: str = Schema(None, title="Description of the access limitation applied")
     accessLimitedCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
+    accessLimitedPubLink: str = Schema(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
     
 class DocumentListStruct(BaseModel):
     responseInfo: ResponseInfo
@@ -260,14 +286,6 @@ class Documents(BaseModel):
     # For the GVPi server, it returns a single object not an array of documents.
     # But that's inconsistent with the abstract return.  #ToDo Need to modify PEP-Easy and unify as a list.
     documents: DocumentListStruct
-
-class AdminConfig(BaseModel):
-    """
-    Dictionary to hold client configuration settings as set by the client administrator
-    """
-    clientID: int = Schema(None, title="ID assigned to the client app for which this configuration is valid (2 for PEP-Web)")
-    configName: str = Schema(None, title="Unique name (within client ID) to save and retrieve configuration")
-    configSettings: dict = Schema({}, title="Dictionary with all configuration settings")
 
 # possible submission and return structure for file items loaded 3/20/2020, subject to change
 class FileItem(BaseModel):
@@ -333,24 +351,23 @@ class LicenseStatusInfo(BaseModel):
 
 #-------------------------------------------------------
 class SessionInfo(BaseModel):    
-    #ocd: Optional[OpasDB]
     session_id: str = Schema(None, title="A generated session Identifier number the client passes in the header to identify the session")
-    user_id: int = Schema(None, title="User ID (numeric)")
+    user_id: int = Schema(None, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
     username: str = Schema(None, title="Registered user name, for convenience here")
-    user_ip: str = None
-    connected_via: str = None
-    session_start: datetime = None
-    session_end: datetime = None
+    user_ip: str = Schema(None, title="IP from which the user is connected")
+    connected_via: str = Schema(None, title="connection info (e.g., browser, os) per the standard field in the request")
+    session_start: datetime = Schema(None, title="The datetime when the user started the session")
+    session_end: datetime = Schema(None, title="The datetime when the user ended the session")
     session_expires_time: datetime = Schema(None, title="The limit on the user's session information without renewing")
-    access_token: str = Schema(None, title="A generated session token identifying the client's access privileges")
-    token_type: str = Schema(None, title="")
-    authenticated: bool = Schema(False, title="")
-    authorized_peparchive: bool = False
-    authorized_pepcurrent: bool = False   
-    keep_active: bool = False
-    scope: str = Schema(None, title="")
-    api_client_id: int = None
-    api_client_session: bool = Schema(False, title="True if the session_id is from the header via the client")
+    access_token: str = Schema(None, title="Not currently used by the OPAS server")
+    token_type: str = Schema(None, title="Not currently used by the OPAS server")
+    scope: str = Schema(None, title="Not currently used by the OPAS server")
+    authenticated: bool = Schema(False, title="True if the user has been authenticated.")
+    keep_active: bool = Schema(False, title="ka field was set on login...don't timeout this user.")
+    authorized_peparchive: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the archive.")
+    authorized_pepcurrent: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the current issues.")
+    api_client_id: int = Schema(None, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
+    api_client_session: bool = Schema(False, title="True if the session_id is from the header via the client rather than a cookie")
 
 #-------------------------------------------------------
     
@@ -394,21 +411,13 @@ class JournalInfoList(BaseModel):
     sourceInfo: JournalInfoStruct
 
 #-------------------------------------------------------
-   
-class ReportRow(BaseModel):
-    row: List = []
 
 class ReportListItem(BaseModel):
-    title: str = Schema(None, title="The report title")
-    filterDescription: str = Schema(None, title="Textuall description of filter applied")
-    startDate: datetime =  Schema(None, title="Report data from this start date")
-    endDate: datetime =  Schema(None, title="Report data to this end date")
-    rowCount: int = Schema(None, title="Reusable field to return counts requested")
-    row: List[ReportRow] = []
+    row: dict = Schema({}, title="Fully flexible content report row from Database")
     
 class ReportStruct(BaseModel):
     responseInfo: ResponseInfo
-    responseSet: ReportListItem
+    responseSet: List[ReportListItem] = []
 
 class Report(BaseModel):
     report: ReportStruct

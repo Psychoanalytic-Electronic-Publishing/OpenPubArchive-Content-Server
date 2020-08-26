@@ -33,6 +33,7 @@ if SOLRUSER is not None:
 else:
     solr_docs = solr.SolrConnection(SOLRURL + SOLR_DOCS)
     solr_docs_term_search = solr.SearchHandler(solr_docs, "/terms")
+    
     #not used anymore
     #solr_refs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_REFS)
     solr_gloss = solr.SolrConnection(SOLRURL + SOLR_GLOSSARY, http_user=SOLRUSER, http_pass=SOLRPW)
@@ -61,6 +62,13 @@ EXTENDED_CORES = {
     "pepwebauthors": solr_authors,
     "pepwebauthors_terms": solr_authors_term_search,
 }
+
+def direct_endpoint_call(endpoint, base_api=None):
+    if base_api == None:
+        base_api = SOLRURL
+        
+    ret_val = base_api + endpoint
+    return ret_val
 
 if __name__ == "__main__":
     import sys

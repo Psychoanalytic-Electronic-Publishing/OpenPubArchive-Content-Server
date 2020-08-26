@@ -23,6 +23,7 @@ import urllib
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded
 import opasAPISupportLib
+import timeit
 
 class TestWordWheel(unittest.TestCase):
 
@@ -33,6 +34,13 @@ class TestWordWheel(unittest.TestCase):
                                                 order="index")
         print (resp.termIndex.responseInfo.count)
         assert(resp.termIndex.responseInfo.count >= 10)
+
+    def test_0a_get_term_index_timing(self):
+        test = 'opasAPISupportLib.get_term_index("psycho",term_field="text",core="docs",order="index")'
+
+        timing = timeit.timeit(test, setup="import opasAPISupportLib", number=1)
+        print (f"timing: {timing}")
+        assert(timing < .4)
 
     def test_1a_get_term_index(self):
         resp = opasAPISupportLib.get_term_index("tuck",

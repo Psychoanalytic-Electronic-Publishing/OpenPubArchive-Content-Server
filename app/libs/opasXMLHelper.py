@@ -630,84 +630,96 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
     no_page_nbr = "npn"
     ret_val = ("", [], no_page_nbr, no_page_nbr)
 
-    if offset == 0:
-        logger.error("Bad page offset requested.  First offset is 0")
-        offset = 1 # First offset is 1
-
-    offset1 = offset - 1 # offset 2 is the second page, so from the first pb to the one before
-    offset2 = offset1 + limit
+    if limit is None: # this should not happen, it should assign the default as specd.  Not sure why it does.
+        ret_val = (xmlstr, [], no_page_nbr, no_page_nbr)
+    else:
+        try:
+            if offset == 0:
+                #logger.error("Bad page offset requested.  First offset is 0 instead of 1")
+                offset = 1 # First page is 1 (even though we're not jumping)
+                offset1 = offset - 1 # offset 2 is the second page, so from the first pb to the one before
+            else:
+                offset1 = offset # offset 2 is the second page, so from the first pb to the one before
+            
+            offset2 = offset1 + limit
+            
+        except Exception as e:
+            logger.warning(f"Offset/Limit specification error: {e}")
     
-    root = xmlstr_to_etree(xmlstr)
-    xml_remove_tags(root, remove_tags=remove_tags)
-
-    if 1:
-        try: # get first page break
-            pb = root.xpath(f'//{inside}/{pagebrk}[{offset1+1}]') # for first page nbr, which is 1 pb after the offset1 since pb is at end of page
-            if pb != []:
-                #firstpbfrag  = etree.tostring(pb[0]).decode("utf8") + "\n"
-                # make sure we were given the subelement spec
-                if pagenbr is not None:
-                    try:
-                        pn_node = pb[0].xpath(pagenbr)[0]
-                    except Exception as e:
-                        # no page number
-                        first_pn = no_page_nbr
-                    else:
-                        first_pn = pn_node.text
-            else:
-                #firstpbfrag = ""
-                first_pn = no_page_nbr
+        try:
+            root = xmlstr_to_etree(xmlstr)
+            xml_remove_tags(root, remove_tags=remove_tags)
         except Exception as e:
-            #firstpbfrag = ""
-            logger.warning(f"Could not get first pagebreak: {e}")
-            
-        try: # get second page break
-            pb2 = root.xpath(f'//{inside}/{pagebrk}[{offset2}]')
-            if pb2 != []:
-                secondpbfrag = etree.tostring(pb2[0]).decode("utf8") + "\n"
-                if pagenbr is not None:
-                    try:
-                        pn2_node = pb2[0].xpath(pagenbr)[0]
-                    except Exception as e:
-                        # no page number
-                        last_pn = no_page_nbr
-                    else:
-                        last_pn = pn2_node.text
-            else:
-                secondpbfrag = "" 
-                last_pn = no_page_nbr
-                
-        except Exception as e:
-            secondpbfrag = ""
-            logger.warning(f"Could not get ending pagebreak: {e}")
-        
-        # Now let's get the text between, or before, if offset1 == 0 (first break)
-        if offset1 == 0: # get all tags before the first pb (offset passed in was 1)
-            elem_list = root.xpath(f'//{inside}/{pagebrk}[{offset2}]/preceding::*')
-            for n in reversed(elem_list):
-                if n.getparent() in elem_list:
-                    elem_list.remove(n)
-            
-        else: # get all content between offset1 and offset2
-            # get list of elements between
-            elem_list = xml_get_elements_between_element(root, inside=inside, between_element=pagebrk, offset1=offset1, offset2=offset2)
-            # no need to add end page
-            secondpbfrag = ""
-            
-        new_xml = f"<{env}>\n"
-        for n in elem_list:
-            try:
-                frag = etree.tostring(n).decode("utf8") + "\n" # separate for monitoring the fragment
-                new_xml += frag
+            logger.error(f"xml conversion (extract) error: {e}. Returning full xml instance")
+            ret_val = (xmlstr, [], no_page_nbr, no_page_nbr)
+        else:
+            try: # get first page break
+                pb = root.xpath(f'//{inside}/{pagebrk}[{offset1+1}]') # for first page nbr, which is 1 pb after the offset1 since pb is at end of page
+                if pb != []:
+                    #firstpbfrag  = etree.tostring(pb[0]).decode("utf8") + "\n"
+                    # make sure we were given the subelement spec
+                    if pagenbr is not None:
+                        try:
+                            pn_node = pb[0].xpath(pagenbr)[0]
+                        except Exception as e:
+                            # no page number
+                            first_pn = no_page_nbr
+                        else:
+                            first_pn = pn_node.text
+                else:
+                    #firstpbfrag = ""
+                    first_pn = no_page_nbr
             except Exception as e:
-                logger.warning(f"Error converting node: {e}")
-
-        # add the last pb
-        new_xml += secondpbfrag
-        # close the new xml string
-        new_xml += f"</{env}>\n"
+                #firstpbfrag = ""
+                logger.warning(f"Could not get first pagebreak: {e}")
+                
+            try: # get second page break
+                pb2 = root.xpath(f'//{inside}/{pagebrk}[{offset2}]')
+                if pb2 != []:
+                    secondpbfrag = etree.tostring(pb2[0]).decode("utf8") + "\n"
+                    if pagenbr is not None:
+                        try:
+                            pn2_node = pb2[0].xpath(pagenbr)[0]
+                        except Exception as e:
+                            # no page number
+                            last_pn = no_page_nbr
+                        else:
+                            last_pn = pn2_node.text
+                else:
+                    secondpbfrag = "" 
+                    last_pn = no_page_nbr
+                    
+            except Exception as e:
+                secondpbfrag = ""
+                logger.warning(f"Could not get ending pagebreak: {e}")
+            
+            # Now let's get the text between, or before, if offset1 == 0 (first break)
+            if offset1 == 0: # get all tags before the first pb (offset passed in was 1)
+                elem_list = root.xpath(f'//{inside}/{pagebrk}[{offset2}]/preceding::*')
+                for n in reversed(elem_list):
+                    if n.getparent() in elem_list:
+                        elem_list.remove(n)
+                
+            else: # get all content between offset1 and offset2
+                # get list of elements between
+                elem_list = xml_get_elements_between_element(root, inside=inside, between_element=pagebrk, offset1=offset1, offset2=offset2)
+                # no need to add end page
+                secondpbfrag = ""
+                
+            new_xml = f"<{env}>\n"
+            for n in elem_list:
+                try:
+                    frag = etree.tostring(n).decode("utf8") + "\n" # separate for monitoring the fragment
+                    new_xml += frag
+                except Exception as e:
+                    logger.warning(f"Error converting node: {e}")
         
-        ret_val = (new_xml, elem_list, first_pn, last_pn)
+            # add the last pb
+            new_xml += secondpbfrag
+            # close the new xml string
+            new_xml += f"</{env}>\n"
+            
+            ret_val = (new_xml, elem_list, first_pn, last_pn)
 
     return ret_val
 
@@ -766,7 +778,7 @@ def xml_get_pages_html(xmlorhtmlstr, offset=0, limit=1, inside="div[@id='body']"
     no_page_nbr = "npn"
     ret_val = ("", [], no_page_nbr, no_page_nbr)
     if offset == 0:
-        logger.error("Bad page offset requested.  First offset is 0")
+        logger.error("Bad page offset requested.  First offset is 0 instead of 1")
         offset = 1 # First offset is 1
 
     offset1 = offset - 1 # offset 2 is the second page, so from the first pb to the one before
@@ -1420,12 +1432,12 @@ def get_running_head(source_title=None, pub_year=None, vol=None, issue=None, pgr
         
     return ret_val
     
-def xml_file_to_xmlstr(xml_file, remove_encoding=False, resolve_entities=True):
+def xml_file_to_xmlstr(xml_file, remove_encoding=False, resolve_entities=True, dtd_validations=True):
     """
     Read XML file and convert it to an XML string, expanding all entities
     
     """
-    parser = etree.XMLParser(resolve_entities=resolve_entities, dtd_validation=True)
+    parser = etree.XMLParser(resolve_entities=resolve_entities, dtd_validation=dtd_validations)
     try:
         doc_DOM = etree.parse(xml_file, parser=parser)
     except Exception as e:

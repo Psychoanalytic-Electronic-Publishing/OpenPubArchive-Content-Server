@@ -118,11 +118,13 @@ Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c6
 
 We use [SemVer](http://semver.org/) standards for versioning. We will use the build date as year.moday as the first two parts of the version numbers followed by a sequential differentiating number for any given day in case there are more than one builds for that day.
 
-For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
+For the versions available, see the [tags on this repository](https://githuhttps://github.com/Psychoanalytic-Electronic-Publishing/openpubarchive/tags). 
+
+A changelog with more details than github can be found in CHANGELOG.MD: 
 
 ## Authors
 
-See the list of [contributors](https://github.com/nrshapiro/openpubarchive/contributors) who participated in this project.
+See the list of [contributors](https://github.com/Psychoanalytic-Electronic-Publishing/openpubarchive/openpubarchive/contributors) who participated in this project.
 
 ## License
 

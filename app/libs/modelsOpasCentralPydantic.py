@@ -101,10 +101,13 @@ class MostCitedArticles(BaseModel):
     count10: int = 0
     count20: int = 0
 
-class AdminClientConfigs(BaseModel):
+class ClientConfigs(BaseModel):
+    config_id: int = 0
     client_id: int = 0
-    configName: str = None
-    configSettings: dict = {}
+    config_name: str = None
+    config_settings: str = None
+    session_id: str
+    last_update: datetime = None
 
 # Deleted since article table being deprecated 2020-08-09    
 #class MostCitedArticlesWithDetails(MostCitedArticles):

@@ -1,5 +1,13 @@
+## Running Changelog of the OPAS server Code 
+(maintained at https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server/wiki/CHANGELOG.md)
 
-## OpenPubArchive - Open Publications Archive Software (OPAS) Change log
+**2020.08.26** - Testing and resolving issues with new endpoints (and updates to counts where they can change with data  in tests).
+ - Renamed id column with user id as global_uid in views to cover any sort of user id from the authentication system (still should be unique)
+ - fixed problem where dates with dashes weren't accepted (system just removes dashes from input)
+ 
+**2020.08.25** - Adding new endpoint for querying the activity log, which is  represented in the RDS table (view) vw_user_session_activity.
+
+**2020.0824** - Added more error trapping to catch errors occurring in the interaction between PEP-Easy and OPAS.  Caught a few places where, under some input conditions, values needed were not being set.  Still have one problem, but it's in PEP-Easy, where the URL asking for a document produces a 404 error, having to do with the ?search= parameter which provides the information about the prior search so the highlights
 
 **2020.0823** - Implemented CRUD code for new ClientConfiguration endpoints. Built tests.
            

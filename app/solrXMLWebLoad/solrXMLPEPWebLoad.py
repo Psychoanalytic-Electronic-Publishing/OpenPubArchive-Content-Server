@@ -2011,12 +2011,13 @@ def main():
         total_files = 0
         if options.file_key != None:  
             #selQry = "select distinct filename from articles where articleID
+            #New for 2021 - built TOCs as "Series TOC rather than hard coding them."
             print (f"File Key Specified: {options.file_key}")
-            pat = fr"({options.file_key}.*)\(bEXP_ARCH1\)\.(xml|XML)$"
+            pat = fr"({options.file_key}.*)\(bEXP_ARCH1|bSeriesTOC\)\.(xml|XML)$"
             file_pattern_match = re.compile(pat)
             filenames = find_all(pat, folderStart)
         else:
-            pat = r"(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
+            pat = r"(.*)\(bEXP_ARCH1|bSeriesTOC\)\.(xml|XML)$"
             file_pattern_match = re.compile(pat)
             filenames = []
         
