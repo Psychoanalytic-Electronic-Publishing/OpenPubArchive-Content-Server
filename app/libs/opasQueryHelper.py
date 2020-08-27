@@ -21,14 +21,13 @@ __status__      = "Development"
 import re
 import models
 import opasCentralDBLib
-import shlex
 
 import logging
 logger = logging.getLogger(__name__)
 
 import schemaMap
 import opasConfig 
-import opasAPISupportLib
+import opasGenSupportLib as opasgenlib
 import smartsearch
 
 sourceDB = opasCentralDBLib.SourceInfoDB()
@@ -356,8 +355,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   facetmincount=1,
                                   facetlimit=None,
                                   facetoffset=0,
-                                  facetSpec: dict={}, 
-                                  abstract_requested: bool=False, 
+                                  facetspec: dict={}, 
+                                  abstract_requested: bool=False,
+                                  format_requested:str="HTML",
+                                  return_field_set=None, 
                                   sort=None,
                                   extra_context_len=None,
                                   limit=None,
@@ -420,11 +421,38 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     # always return SolrQueryOpts with SolrQuery
     if solrQueryTermList is not None:
-        if solrQueryTermList.solrQueryOpts is not None:
-            solrQueryOpts = solrQueryTermList.solrQueryOpts
-        else: # initialize a new model
+        try:
+            if solrQueryTermList.solrQueryOpts is not None:
+                solrQueryOpts = solrQueryTermList.solrQueryOpts
+            else: # initialize a new model
+                solrQueryOpts = models.SolrQueryOpts()
+        except Exception as e:
+            solrQueryTermList = None
             solrQueryOpts = models.SolrQueryOpts()
-    else: # initialize a new model
+            if isinstance(solrQueryTermList, str):
+                logger.warning(f"solrQueryTermList must be a model {e}")
+            else:
+                logger.warning(f"solrQueryTermList error {e}")
+
+        if solrQueryTermList.abstractReturn is not None and abstract_requested is None:
+            abstract_requested = solrQueryTermList.abstractReturn
+
+        if solrQueryTermList.facetFields is not None and facetfields is None:
+            facetfields = solrQueryTermList.facetFields
+
+        if solrQueryTermList.facetMinCount is not None and facetmincount is None:
+            facetmincount = solrQueryTermList.facetMinCount
+
+        if solrQueryTermList.facetSpec != {} and facetspec == {}:
+            facetspec = solrQueryTermList.facetSpec
+
+        if solrQueryTermList.returnFormat is not None and format_requested is None:
+            format_requested = solrQueryTermList.returnFormat
+    
+        if solrQueryTermList.similarCount != 0 and similar_count == 0:
+            similar_count = solrQueryTermList.similarCount
+                
+    else: # initialize a new model (qtermlist didn't supply and no other upper structure passed)
         solrQueryOpts = models.SolrQueryOpts()
 
     # Set up return structure
@@ -435,6 +463,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                              solrQueryOpts=solrQueryOpts,
                              req_url=req_url
         )
+    
+    set_return_fields(solr_query_spec, return_field_set)
 
     if limit is not None:
         solr_query_spec.limit = limit
@@ -466,10 +496,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
     query_term_list = [] #  the terms themselves
 
     # Hold these for special view counts
-    vc_source_code = source_code # for view count query (if it can work this way)
-    vc_source_name = source_name # for view count query (if it can work this way)
-    vc_title = title # for view count query (if it can work this way)
-    vc_author = author # for view count query (if it can work this way)
+    #vc_source_code = source_code # for view count query (if it can work this way)
+    #vc_source_name = source_name # for view count query (if it can work this way)
+    #vc_title = title # for view count query (if it can work this way)
+    #vc_author = author # for view count query (if it can work this way)
 
     # used to remove prefix && added to queries.  
     # Could make it global to save a couple of CPU cycles, but I suspect it doesn't matter
@@ -550,7 +580,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
         limit = 0
         if schema_field is not None:
             schema_value = search_dict.get("schema_value")
-            filter_q += f"&& {schema_field}:({schema_value}) "
+            if "'" in schema_value or '"' in schema_value:
+                search_q += f"&& {schema_field}:{schema_value} "
+            else:
+                search_q += f"&& {schema_field}:({schema_value}) "
             limit = 1
         else:
             syntax = search_dict.get("syntax")
@@ -612,137 +645,145 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if para_textsearch is not None:
         # set up parameters as a solrQueryTermList to share that processing
-        query_term_from_params = [
-                                    models.SolrQueryTerm (
-                                                          connector="AND", 
-                                                          parent = para_scope,
-                                                          field = "para",
-                                                          words = para_textsearch,
-                                                          synonyms = synonyms,
-                                                          synonyms_suffix = opasConfig.SYNONYM_SUFFIX
-                                                        )
-                                 ]
-
-        #  if a term list is supplied, add it to the list, otherwise, create list
-        if solrQueryTermList is None:
-            solrQueryTermList = models.SolrQueryTermList(query=query_term_from_params)
-            solrQueryTermList.artLevel = 2;
-        else:
-            solrQueryTermList.query.extend(query_term_from_params)
-            solrQueryTermList.artLevel = 2;           
+        try:
+            query_term_from_params = [
+                                        models.SolrQueryTerm (
+                                                              connector="AND", 
+                                                              parent = para_scope,
+                                                              field = "para",
+                                                              words = para_textsearch,
+                                                              synonyms = synonyms,
+                                                              synonyms_suffix = opasConfig.SYNONYM_SUFFIX
+                                                            )
+                                     ]
+    
+            #  if a term list is supplied, add it to the list, otherwise, create list
+            if solrQueryTermList is None:
+                solrQueryTermList = models.SolrQueryTermList(qt=query_term_from_params)
+                solrQueryTermList.artLevel = 2;
+            else:
+                solrQueryTermList.qt.extend(query_term_from_params)
+                solrQueryTermList.artLevel = 2;
+        except Exception as e:
+            logger.error("Error setting up query term list from para_textsearch")
 
     if solrQueryTermList is not None:
         # used for a queryTermList structure which is typically sent via the API endpoint body.
         # It allows each term to set some individual patterns, like turning on synonyms and the field add-on for synonyns
         # Right now, handles two levels...not sure yet how to do 3 if it ever comes to pass.
         # NOTE: default is now 1 for artLevel. Always specify it otherwise
-        if solrQueryTermList.artLevel is None:
-            artLevel = 1
-        else:
-            artLevel = solrQueryTermList.artLevel
-            
-        query_sub_clause = ""
-        if artLevel == 2:
-            # Set up child search prefix
-            search_q_prefix = "{!parent which='art_level:1'} art_level:2 "
-        else:
-            search_q_prefix = ""
-        
-        # look for query clauses in body queryTermList       
-        last_parent = None
-        query = models.SolrQueryTerm()
-        for query in solrQueryTermList.query:
-            boolean_connector = query.connector
+        try:
+                
+            if solrQueryTermList.artLevel is None:
+                artLevel = 1
+            else:
+                artLevel = solrQueryTermList.artLevel
+                
+            query_sub_clause = ""
             if artLevel == 2:
-                if query.parent is None:
-                    solr_parent = schemaMap.user2solr("doc") # default
-                else:
-                    solr_parent = schemaMap.user2solr(query.parent)
-
-                if last_parent is None:
-                    last_parent = solr_parent
-
-                if last_parent != solr_parent:
-                    boolean_connector = " || " # otherwise it will always rsult in empty sete
-
-            if query.field is None:
-                if artLevel == 2:
-                    use_field = "para"
-                else:
-                    use_field = "text"
+                # Set up child search prefix
+                search_q_prefix = "{!parent which='art_level:1'} art_level:2 "
             else:
-                use_field = query.field
-    
-            if query.synonyms:
-                use_field = use_field + query.synonyms_suffix
+                search_q_prefix = ""
             
-            if use_field is not None and query.words is not None:
-                sub_clause = f"{use_field}:({query.words})"
-            else:
-                if query.words is not None:
-                    sub_clause = f"({query.words})"
+            # look for query clauses in body queryTermList       
+            last_parent = None
+            query = models.SolrQueryTerm()
+            for query in solrQueryTermList.qt:
+                boolean_connector = query.connector
+                if artLevel == 2:
+                    if query.parent is None:
+                        solr_parent = schemaMap.user2solr("doc") # default
+                    else:
+                        solr_parent = schemaMap.user2solr(query.parent)
+    
+                    if last_parent is None:
+                        last_parent = solr_parent
+    
+                    if last_parent != solr_parent:
+                        boolean_connector = " || " # otherwise it will always rsult in empty sete
+    
+                if query.field is None:
+                    if artLevel == 2:
+                        use_field = "para"
+                    else:
+                        use_field = "text"
                 else:
-                    sub_clause = ""
-
-            query_term_list.append(sub_clause)
+                    use_field = query.field
+        
+                if query.synonyms:
+                    use_field = use_field + query.synonyms_suffix
+                
+                if use_field is not None and query.words is not None:
+                    sub_clause = f"{use_field}:({query.words})"
+                else:
+                    if query.words is not None:
+                        sub_clause = f"({query.words})"
+                    else:
+                        sub_clause = ""
+    
+                query_term_list.append(sub_clause)
+                
+                if query_sub_clause != "":
+                    query_sub_clause += boolean_connector
+                    
+                if artLevel == 2 and solr_parent is not None:
+                    query_sub_clause += f" (parent_tag:{solr_parent} AND {sub_clause}) "
+                else:
+                    query_sub_clause += f" {sub_clause}"
             
             if query_sub_clause != "":
-                query_sub_clause += boolean_connector
-                
-            if artLevel == 2 and solr_parent is not None:
-                query_sub_clause += f" (parent_tag:{solr_parent} AND {sub_clause}) "
-            else:
-                query_sub_clause += f" {sub_clause}"
-        
-        if query_sub_clause != "":
-            analyze_this = f"{search_q_prefix} && ({query_sub_clause})"
-            #if search_q_prefix == "":
-            #else:
-                #analyze_this = f"&& {search_q_prefix} {query_sub_clause}"
-
-            search_q += analyze_this
-            search_analysis_term_list.append(analyze_this)
-
-        # now look for filter clauses in body queryTermList       
-        filter_sub_clause = ""
-        qfilterTerm = ""
-        filter_sub_clause = get_term_list_spec(solrQueryTermList.qfilter)
-        #for qfilter in solrQueryTermList.qfilter:
-            #boolean_connector = qfilter.connector
-            #qfilterTerm += f"({boolean_connector} {get_term_list_spec(qfilter)})"
-
-            #if qfilter.subField != []:
-                #for qfilterSub in qfilter.subField:
-                
-            #if qfilter.field is None:
-                #use_field = "text"
-            #else:
-                #use_field = qfilter.field
-    
-            #if qfilter.synonyms:
-                #use_field = use_field + qfilter.synonyms_suffix
-            
-            #if use_field is not None and qfilter.words is not None:
-                #sub_clause = f"{use_field}:({qfilter.words})"
-            #else:
-                #if query.words is not None:
-                    #sub_clause = f"({qfilter.words})"
+                analyze_this = f"{search_q_prefix} && ({query_sub_clause})"
+                #if search_q_prefix == "":
                 #else:
-                    #sub_clause = ""
-            #if qfilterTerm == "":
-                #qfilterTerm += f"{sub_clause}"
-            #else:
-                #qfilterTerm += f" {boolean_connector} {sub_clause}"
+                    #analyze_this = f"&& {search_q_prefix} {query_sub_clause}"
     
-        if filter_sub_clause != "":
-            analyze_this = f"&& ({filter_sub_clause})"
-            filter_q += analyze_this
-            search_analysis_term_list.append(analyze_this)
-
+                search_q += analyze_this
+                search_analysis_term_list.append(analyze_this)
+    
+            # now look for filter clauses in body queryTermList       
+            filter_sub_clause = ""
+            qfilterTerm = ""
+            filter_sub_clause = get_term_list_spec(solrQueryTermList.qf)
+            #for qfilter in solrQueryTermList.qf:
+                #boolean_connector = qfilter.connector
+                #qfilterTerm += f"({boolean_connector} {get_term_list_spec(qfilter)})"
+    
+                #if qfilter.subField != []:
+                    #for qfilterSub in qfilter.subField:
+                    
+                #if qfilter.field is None:
+                    #use_field = "text"
+                #else:
+                    #use_field = qfilter.field
+        
+                #if qfilter.synonyms:
+                    #use_field = use_field + qfilter.synonyms_suffix
+                
+                #if use_field is not None and qfilter.words is not None:
+                    #sub_clause = f"{use_field}:({qfilter.words})"
+                #else:
+                    #if query.words is not None:
+                        #sub_clause = f"({qfilter.words})"
+                    #else:
+                        #sub_clause = ""
+                #if qfilterTerm == "":
+                    #qfilterTerm += f"{sub_clause}"
+                #else:
+                    #qfilterTerm += f" {boolean_connector} {sub_clause}"
+        
+            if filter_sub_clause != "":
+                analyze_this = f"&& ({filter_sub_clause})"
+                filter_q += analyze_this
+                search_analysis_term_list.append(analyze_this)
+        except Exception as e:
+            logger.error("Error setting up query term list from para_textsearch")
+            
+            
     if facetfields is not None:
-        solr_query_spec.facetFields = opasAPISupportLib.string_to_list(facetfields)
+        solr_query_spec.facetFields = opasgenlib.string_to_list(facetfields)
         solr_query_spec.facetMinCount=facetmincount
-        solr_query_spec.facetSpec = facetSpec
+        solr_query_spec.facetSpec = facetspec
         if facetlimit is not None:
             solr_query_spec.facetSpec["facet_limit"] = facetlimit
         if facetoffset is not None:
@@ -790,6 +831,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         analyze_this = f"&& {fulltext1} "
         if artLevel == 1:
             search_q += analyze_this
+            filter_q += "&& art_level:1 "
         else: # we are looking at a child query, so put top level queries in the filter.
             filter_q += analyze_this
             
@@ -1022,7 +1064,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if search_q == "*:*" and filter_q == "*:*":
         filter_q = "art_level:1"
 
-    solr_query_spec.abstractReturn = abstract_requested 
+    solr_query_spec.abstractReturn = abstract_requested
+    solr_query_spec.returnFormat = format_requested # HTML, TEXT_ONLY, XML
     solr_query_spec.solrQuery.searchQ = search_q
     solr_query_spec.solrQuery.searchQPrefix = search_q_prefix
     solr_query_spec.solrQuery.filterQ = filter_q
@@ -1033,6 +1076,36 @@ def parse_search_query_parameters(search=None,             # url based parameter
     
     return solr_query_spec
 
+# -------------------------------------------------------------------------------------------------------
+def set_return_fields(solr_query_spec: models.SolrQuerySpec,
+                      return_field_set=None, 
+                      ):
+
+    if solr_query_spec is None:
+        solr_query_spec = models.SolrQuerySpec() 
+    
+    if return_field_set is not None:
+        solr_query_spec.returnFieldSet = return_field_set
+    
+    if solr_query_spec.returnFieldSet is not None:
+        solr_query_spec.returnFieldSet = solr_query_spec.returnFieldSet.upper()
+        
+    if solr_query_spec.returnFieldSet == "DEFAULT":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
+    elif solr_query_spec.returnFieldSet == "TOC":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_TOC_FIELDS
+    elif solr_query_spec.returnFieldSet == "META":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_META_FIELDS
+    elif solr_query_spec.returnFieldSet == "FULL":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
+    elif solr_query_spec.returnFieldSet == "STAT":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_STAT_FIELDS
+    else: #  true default!
+        solr_query_spec.returnFieldSet = "DEFAULT"
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
+
+    return    
+    
 #================================================================================================================
 def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
                         core = None, 
@@ -1045,8 +1118,9 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
                         abstract_requested = None, 
                         file_classification = None, 
                         format_requested = None,
+                        return_field_set=None, 
                         def_type = None,
-                        summary_fields=opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
+                        summary_fields = None, 
                         highlight_fields = None,
                         facet_fields = None,
                         facet_mincount = None, 
@@ -1081,7 +1155,34 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     if solr_query_spec.solrQueryOpts is None:
         solr_query_spec.solrQueryOpts = models.SolrQueryOpts() 
     
-    solr_query_spec.returnFields = summary_fields 
+    # Use SET to offer predefined set of returned fields, so we know what can come back.
+    # Note that the larger fields, e.g., abstract, document, are added later based on other attributes
+    # Need to check what fields they asked for, and make sure no document fields were specified!
+    
+    set_return_fields(solr_query_spec, return_field_set=return_field_set)
+    
+    #Always add id and file_classification to return fields
+    solr_query_spec.returnFields += ", id, file_classification" #  need to always return id
+
+    # don't let them specify text fields to bring back full-text content in at least PEP schema fields in 
+    #   docs or glossary.
+    # however, we add it if they are authenticated, and then check by document.
+    # Should we take away para?
+    solr_query_spec.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solr_query_spec.returnFields)
+
+    #  try to reduce amount of data coming back based on needs...
+    #  Set it to use the main structure returnFields; eventually delete the one in the query sub
+    if solr_query_spec.abstractReturn:
+        if "abstract_xml" not in solr_query_spec.returnFields:
+            solr_query_spec.returnFields += ", abstract_xml"
+        if "art_excerpt" not in solr_query_spec.returnFields:
+            solr_query_spec.returnFields += ", art_excerpt, art_excerpt_xml"
+        if "summaries_xml" not in solr_query_spec.returnFields:
+            solr_query_spec.returnFields += ", summaries_xml"
+    elif solr_query_spec.fullReturn: #and session_info.XXXauthenticated:
+        # NOTE: we add this here, but in return data, access by document will be checked.
+        if "text_xml" not in solr_query_spec.returnFields:
+            solr_query_spec.returnFields += ", text_xml, art_excerpt, art_excerpt_xml"
 
     # parameters specified override QuerySpec
     
@@ -1158,11 +1259,12 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
         solr_query_spec.solrQueryOpts.hlFields = highlight_fields 
 
     if facet_fields is not None:
-        facet_fields = opasAPISupportLib.string_to_list(facet_fields)
-        solr_query_spec.facetFields = facet_fields 
+        if type(facet_fields) == list:
+            solr_query_spec.facetFields = facet_fields
+        else:
+            solr_query_spec.facetFields = opasgenlib.string_to_list(facet_fields)
     else:
-        facet_fields = opasAPISupportLib.string_to_list(solr_query_spec.facetFields)
-        solr_query_spec.facetFields = facet_fields 
+        solr_query_spec.facetFields = opasgenlib.string_to_list(solr_query_spec.facetFields)
         
     if facet_mincount is not None:
         solr_query_spec.facetMinCount = facet_mincount
@@ -1170,12 +1272,21 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     if extra_context_len is not None:
         solr_query_spec.solrQueryOpts.hlFragsize = max(extra_context_len, opasConfig.DEFAULT_KWIC_CONTENT_LENGTH)
     else:
-        solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
-
+        try:
+            solr_query_spec.solrQueryOpts.hlFragsize = max(solr_query_spec.solrQueryOpts.hlFragsize, opasConfig.DEFAULT_KWIC_CONTENT_LENGTH)
+        except:
+            solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
+            
+    if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is 0 or solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is None:
+        solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = solr_query_spec.solrQueryOpts.hlFragsize  
+        
     if maxKWICReturns is not None:
         solr_query_spec.solrQueryOpts.hlSnippets = maxKWICReturns 
        
     ret_val = solr_query_spec
+    
+    if ret_val is None:
+        logger.error("Parse to query spec should never return none.")
     
     return ret_val
 

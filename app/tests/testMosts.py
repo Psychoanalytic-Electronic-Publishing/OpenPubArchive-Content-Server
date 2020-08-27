@@ -150,6 +150,21 @@ class TestMost(unittest.TestCase):
         #assert(r["db_server_ok"] == True)
         print (r)
 
+    def test_0_most_cited_for_source(self):
+        """
+        """
+        response = client.get(base_api + '/v2/Database/MostCited/?limit=5&sourcecode=PAQ')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['count']}")
+        print (f"Limit: {r['documentList']['responseInfo']['limit']}")
+        print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")
+        assert(r['documentList']['responseSet'][0]['stat']['art_cited_5'] >= 15)
+        #assert(r["text_server_ok"] == True)
+        #assert(r["db_server_ok"] == True)
+        print (r)
+
     def test_1_most_cited_pubperiod_author_viewperiod(self):
         """
         """

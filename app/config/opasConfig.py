@@ -6,16 +6,28 @@ import os
 import urllib.request
 from enum import Enum
 
+# Share httpCodes definition with all OPAS modules that need it.  Starlette provides the symbolic declarations for us.
+import starlette.status as httpCodes # HTTP_ codes, e.g.
+                                     # HTTP_200_OK, \
+                                     # HTTP_400_BAD_REQUEST, \
+                                     # HTTP_401_UNAUTHORIZED, \
+                                     # HTTP_403_FORBIDDEN, \
+                                     # HTTP_404_NOT_FOUND, \
+                                     # HTTP_500_INTERNAL_SERVER_ERROR, \
+                                     # HTTP_503_SERVICE_UNAVAILABLE
+ 
 BASELOGFILENAME = "opasAPI"
 logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
-FORMAT = '%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s'
+FORMAT = '%(asctime)s %(name)s %(funcName)s %(lineno)d - %(levelname)s %(message)s'
 logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 
 # required for catalog lookup by lxml
 xml_catalog_name = "x:/_PEPA1/catalog.xml" 
 os.environ['XML_CATALOG_FILES'] = r"file:" + urllib.request.pathname2url(xml_catalog_name)
 
+# General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
+BOOK_CODES_ALL = ("GW", "SE", "ZBK", "NLP", "IPL")
 
 # folders, configure per install
 # uploads
@@ -25,10 +37,13 @@ UPLOAD_DIR = r"z:\\back\\"
 STYLE_PATH = r"./libs/styles;../libs/styles"
 XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
 XSLT_XMLTOTEXT_EXCERPT = r"pepkbd3-abstract-text.xslt"
+XSLT_XMLTOHTML_EXCERPT = r"pepkbd3-abstract-html.xslt"
 TRANSFORMER_XMLTOHTML = "XML_TO_HTML" 
-TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_HTML"
+TRANSFORMER_XMLTOHTML_EXCERPT = "EXCERPT_HTML"
+TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"
 
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
+MAX_RECORDS_FOR_ACCESS_INFO_RETURN = 100
 
 # Special xpaths and attributes for data handling in solrXMLPEPWebLoad
 ARTINFO_ARTTYPE_TOC_INSTANCE = "TOC" # the whole instance is a TOC ()
@@ -66,6 +81,7 @@ SESSION_INACTIVE_LIMIT = 30  # minutes
 OPASSESSIONID = "opasSessionID"
 OPASACCESSTOKEN = "opasSessionInfo"
 OPASEXPIRES= "OpasExpiresTime"
+CLIENTSESSIONID = "client_session"
 
 # file classifications (from documents in the Solr database)
 DOCUMENT_ACCESS_FREE = "free"
@@ -95,6 +111,7 @@ DEFAULT_SOLR_SORT_FIELD = "art_cited_5"
 DEFAULT_SOLR_SORT_DIRECTION = "asc" # desc or asc
 DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 4000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
 DEFAULT_CITED_MORE_THAN = 25
+DEFAULT_PAGE_LIMIT = 999
 
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 2520000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
 SOLR_HIGHLIGHT_RETURN_MIN_FRAGMENT_SIZE = 2000 # Abstract size
@@ -144,17 +161,21 @@ VALS_YEAROPTIONS = {DICTLEN_KEY: 2, '5': '5', '10': '10', '20': '20', 'al': 'all
 VALS_VIEWPERIODDICT = {1: "lastweek", 2: "last1mos", 3: "last6mos", 4: "last12mos", 5: "lastcalyear", 0: "lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
 
 # parameter descriptions for documentation
+DESCRIPTION_ADMINCONFIG = "Global settings by an administrator for the specific client app"
+DESCRIPTION_ADMINCONFIGNAME = "Name for the global settings (configuration) for the specific client app"
 DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review."
 DESCRIPTION_AUTHOR = "Author name, use wildcard * for partial entries (e.g., Johan*)"
 DESCRIPTION_AUTHORNAMEORPARTIAL = "The author name or a partial name (regex type wildcards [.*] permitted EXCEPT at the end of the string--the system will try that automatically)"
 DESCRIPTION_AUTHORNAMEORPARTIALNOWILD = "The author name or a author partial name (prefix)"
 DESCRIPTION_CITECOUNT = "Find documents cited more than 'X' times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL"  
 DESCRIPTION_CITED_MORETHAN = f"Limit to articles cited more than this many times (default={DEFAULT_CITED_MORE_THAN})"
+DESCRIPTION_CLIENT_ID = "Numeric ID assigned to a client app by Opas Administrator"
 DESCRIPTION_CORE = "The preset name for the specif core to use (e.g., docs, authors, etc.)"
 DESCRIPTION_DAYSBACK = "Number of days to look back to assess what's new"
 DESCRIPTION_DOCDOWNLOADFORMAT = f"The format of the downloaded document data.  One of: {list_values(VALS_DOWNLOADFORMAT)}"
 DESCRIPTION_DOCIDORPARTIAL = "The document ID (e.g., IJP.077.0217A) or a partial ID (e.g., IJP.077,  no wildcard) for which to return data"
-DESCRIPTION_ENDYEAR = "Find documents published before this year (e.g, 2001)" 
+DESCRIPTION_ENDDATE = "Find records on or before this date (input date as 2020-08-10 or 20200810)"
+DESCRIPTION_ENDYEAR = "Find documents published on or before this year (e.g, 2001)" 
 DESCRIPTION_FACETFIELDS = "List of fields for which to return facet info. Field art_sourcetype, for example, will give results counts by type (journal, book, videostream)."
 DESCRIPTION_FULLTEXT1 = "Words or phrases (in quotes) across the document (booleans search is not paragraph level). Field specifications are allowed."
 DESCRIPTION_FULLTEXT1_V1 = "Words or phrases (in quotes) in a paragraph in the document."
@@ -184,11 +205,13 @@ DESCRIPTION_SOURCECODE = "Assigned short code for Source (e.g., APA, CPS, IJP, P
 DESCRIPTION_SOURCECODE = "The 2-8 character PEP Code for source (of various types, e.g., journals: APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE; books: GW, SE, ZBK; videos: PEPGRANTVS, PEPTOPAUTHVS)"
 DESCRIPTION_SOURCELANGCODE = "Source language code or comma separated list of codes (e.g., EN, ES, DE, ...)"
 DESCRIPTION_SOURCENAME = "Name of Journal, Book, or Video name (e.g., 'international')"
+DESCRIPTION_STARTDATE = "Find records on or after this date (input date as 2020-08-10 or 20200810)"
 DESCRIPTION_STARTYEAR = "Find documents published on or after this year, or in this range of years (e.g, 1999, Between range: 1999-2010. After: >1999 Before: <1999" 
 DESCRIPTION_SYNONYMS = "Expand search to include specially declared synonyms (True/False)"
 DESCRIPTION_SIMILARCOUNT = "Return this count of similar documents for each document in the return set (0 is None)" 
 DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)."
 DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."
+DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification"
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
 DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
 DESCRIPTION_VIEWCOUNT = "Filter by # of times document downloaded (viewed) per the viewedwithin period.  Does not include abstract views."    
@@ -198,14 +221,18 @@ DESCRIPTION_WORD = "A word prefix to return a limited word index (word-wheel)."
 DESCRIPTION_WORDFIELD = "The field for which to look up the prefix for matching index entries.  It must be a full-text indexed field (text field or derivative)"
 DESCRIPTION_YEAR = "The year for which to return data"
 
+TITLE_ADMINCONFIG = "Administrative global settings"
+TITLE_ADMINCONFIGNAME = "Configuration Name"
 TITLE_ARTICLETYPE = "Filter by the type of article" 
 TITLE_AUTHOR = "Author name"
 TITLE_AUTHORNAMEORPARTIAL = "Author name or partial/regex"
 TITLE_CITECOUNT = "Find Documents cited this many times"
 TITLE_CITED_MORETHAN = "Cited more than this many times"
+TITLE_CLIENT_ID = "Client App Numeric ID"
 TITLE_CORE = "Core to use"
 TITLE_DAYSBACK = "Days Back"
 TITLE_DOCUMENT_ID = "Document ID or Partial ID"
+TITLE_ENDDATE = "End date"
 TITLE_ENDYEAR = "End year"
 TITLE_FACETFIELDS = "List of field names for faceting"
 TITLE_FULLTEXT1 = "Document-wide search"
@@ -233,10 +260,12 @@ TITLE_SOURCELANGCODE = "Source language code"
 TITLE_SOURCENAME = "Series name"
 TITLE_SOURCETYPE = "Source type"
 TITLE_STARTYEAR = "Start year or range"
+TITLE_STARTDATE = "Start date"
 TITLE_SYNONYMS = "Synonym expansion switch (True/False)"
 TITLE_SIMILARCOUNT = "Return this many similar documents for each match"
 TITLE_TERMFIELD = "Default field for which to get term counts"
-TITLE_TERMLIST = "Comma separated list of terms for which to get counts"
+TITLE_TERMLIST = "List of terms"
+TITLE_QTERMLIST = "Opas Model SolrQeryTermList"
 TITLE_TITLE = "Document Title"
 TITLE_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
 TITLE_VIEWCOUNT = "Find Documents viewed this many times within the view period"
@@ -254,6 +283,10 @@ ENDPOINT_SUMMARY_CHANGE_PASSWORD = "Change the user's password"
 ENDPOINT_SUMMARY_CONTENTS_SOURCE = "Return the contents of the specified source in bibliographic format"
 ENDPOINT_SUMMARY_CONTENTS_SOURCE_VOLUME = "Return the contents of the specified volume in bibliographic format"
 ENDPOINT_SUMMARY_CREATE_USER = "Create a new user for the system"
+ENDPOINT_SUMMARY_DELETE_CONFIGURATION = "Delete the specified named configuration by the client app"
+ENDPOINT_SUMMARY_SAVE_CONFIGURATION = "Save a named configuration by the client app (must not exist)."
+ENDPOINT_SUMMARY_SAVEORREPLACE_CONFIGURATION = "Save (or replace) the named configuration by the client app"
+ENDPOINT_SUMMARY_GET_CONFIGURATION = "Get the named client app configuration"
 ENDPOINT_SUMMARY_DOCUMENTATION = "Return a HTML page for the interactive API documentation"
 ENDPOINT_SUMMARY_DOCUMENT_DOWNLOAD = "Download a document"
 ENDPOINT_SUMMARY_DOCUMENT_SUBMIT = "document_submission"
@@ -275,7 +308,8 @@ ENDPOINT_SUMMARY_SEARCH_ANALYSIS = "Analyze search and return term/clause counts
 ENDPOINT_SUMMARY_SEARCH_MORE_LIKE_THESE = "Full Search implementation, but expand the results to include 'More like these'"
 ENDPOINT_SUMMARY_SEARCH_PARAGRAPHS = "Search at the paragraph (lowest) level by paragraph scope (doc, dreams, ...)"
 ENDPOINT_SUMMARY_SEARCH_V1 = "Search at the paragraph level by document zone (API v1 backwards compatible)"
-ENDPOINT_SUMMARY_SEARCH_V2 = "Full search implementation, search at the full document or paragraph level"
+ENDPOINT_SUMMARY_SEARCH_V2 = "Full search implementation, at the document or paragraph level"
+ENDPOINT_SUMMARY_SEARCH_V3 = "Full search implementation, at the document or paragraph level with body (termlist)"
 ENDPOINT_SUMMARY_SERVER_STATUS = "Return the server status"
 ENDPOINT_SUMMARY_SOURCE_NAMES = "Return a list of available sources"
 ENDPOINT_SUMMARY_SUBSCRIBE_USER = "Add a new publication subscription for a user (Restricted)"
@@ -286,6 +320,20 @@ ENDPOINT_SUMMARY_VOLUMES = "Return a list of available volumes (and years) for s
 ENDPOINT_SUMMARY_WHATS_NEW = "Return the newest uploaded issues"
 ENDPOINT_SUMMARY_WHO_AM_I = "Return information about the current user"
 ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the specified field"
+
+ACCESS_SUMMARY_DESCRIPTION = "This is a summary excerpt from the full text of the document. "
+ACCESS_SUMMARY_FORSUBSCRIBERS = "The full content of the document is available to subscribers. "
+ACCESS_SUMMARY_EMBARGOED = "The full content of the document is embargoed per an agreement with the publisher. "
+ACCESS_SUMMARY_EMBARGOED_YEARS = "The full content of the document is embargoed for %s years per an agreement with the publisher. "
+ACCESS_SUMMARY_PUBLISHER_INFO = "The full content of the document may be available on the publisher's website. "
+ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = "<a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>."
+ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."
+
+ACCESSLIMITED_DESCRIPTION_OFFSITE = "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
+ACCESSLIMITED_DESCRIPTION_LIMITED = "This is a summary excerpt from the full text of the article. The full text of the document may be available on the publisher's website"
+ACCESSLIMITED_DESCRIPTION_FREE = "This content is currently free to all users."
+ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access"
+ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access"
 
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()
@@ -378,6 +426,7 @@ DOCUMENT_ITEM_TOC_FIELDS = "art_id, \
                             score"
 
 DOCUMENT_ITEM_META_FIELDS ="art_id, \
+                            meta_xml, \
                             art_citeas_xml, \
                             art_title_xml, \
                             art_subtitle_xml, \
@@ -389,6 +438,41 @@ DOCUMENT_ITEM_META_FIELDS ="art_id, \
                             art_year, \
                             art_pgrg, \
                             score"
+
+DOCUMENT_ITEM_STAT_FIELDS = "art_id, \
+                             art_citeas_xml, \
+                             art_title, \
+                             art_authors, \
+                             art_sourcecode, \
+                             art_sourcetitleabbr, \
+                             art_sourcetitlefull, \
+                             art_vol, \
+                             art_year, \
+                             art_cited_all, \
+                             art_cited_5, \
+                             art_cited_10, \
+                             art_cited_20, \
+                             art_views_lastcalyear, \
+                             art_views_last1mos, \
+                             art_views_last6mos, \
+                             art_views_last12mos, \
+                             art_views_lastweek, \
+                             reference_count, \
+                             score"
+
+# for Glossary Core
+GLOSSARY_ITEM_DEFAULT_FIELDS = """
+                                art_id,
+                                term_id,
+                                group_id,
+                                term,
+                                term_type,
+                                term_source,
+                                term_def_xml,
+                                term_def_rest_xml,
+                                group_name,
+                                group_term_count
+"""
 
 running_head_fmts = {
     'xml': "<p><cgrp name='pub_year'>({pub_year})</cgrp>. <cgrp name='source_title'>{source_title}</cgrp><cgrp name='vol'>{vol}</cgrp><cgrp name='issue'>{issue}</cgrp><cgrp name='pgrg'>{pgrg}</cgrp></p>", 

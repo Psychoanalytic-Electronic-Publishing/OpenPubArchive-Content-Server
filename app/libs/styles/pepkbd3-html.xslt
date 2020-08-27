@@ -39,9 +39,7 @@
 -->
 
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
-  xmlns:xlink="http://www.w3.org/1999/xlink" 
-  xmlns:mml="http://www.w3.org/1998/Math/MathML"
-  exclude-result-prefixes="xlink mml">
+  xmlns:xlink="http://www.w3.org/1999/xlink">
   <!--  xmlns:fn="http://www.w3.org/2005/xpath-functions" -->
 
    <xsl:import
@@ -176,7 +174,7 @@
   
   <xsl:template match="pepkbd3">
     <body>
-      <div class="pepkbd3">
+      <div class="pepkbd3" data-ver="2012-08-13.FULL">
         <xsl:call-template name="assign-lang"/>
         <xsl:call-template name="make-article"/>
       </div>
@@ -418,6 +416,7 @@
               <span class="peppopup newauthortip">
                 <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>
                 <br></br>
+                <xsl:text>&#xa;</xsl:text>
                 <div class="peppopuptext" id="autaffinfo" hidden="True">
                   <div id="autcontent" class="autcontent">
                     <p class="autaffname">
@@ -841,9 +840,12 @@
   <xsl:template match="h1|h2|h3|h4|h5|h6">
     <xsl:copy>
       <xsl:call-template name="assign-lang"/>
-      <xsl:attribute name="text-align">
-        <xsl:value-of select="@align"/>  
-      </xsl:attribute>
+      <xsl:if test="@align">
+        <xsl:attribute name="style">
+          <xsl:value-of select="concat('text-align:',  @align)"/>
+          <!--        <xsl:value-of select="@align"/>  -->
+        </xsl:attribute>
+      </xsl:if>
       <xsl:call-template name="data-pagehelper"/>
       <xsl:call-template name="named-anchor"/>
       <xsl:apply-templates/>

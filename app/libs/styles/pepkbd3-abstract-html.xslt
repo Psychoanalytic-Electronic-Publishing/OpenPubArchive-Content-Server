@@ -35,9 +35,9 @@
     - Bib processing is basically per JATs and not what we'd want (e.g., not sure why they do it as a table)
 -->
 
-<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:fn="http://www.w3.org/2005/xpath-functions" 
-  xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mml="http://www.w3.org/1998/Math/MathML"
-  exclude-result-prefixes="xlink mml">
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
+  xmlns:fn="http://www.w3.org/2005/xpath-functions" 
+  xmlns:xlink="http://www.w3.org/1999/xlink" >
 
   <xsl:output doctype-public="-//W3C//DTD HTML 4.01 Transitional//EN"
     doctype-system="http://www.w3.org/TR/html4/loose.dtd" encoding="UTF-8"/>
@@ -145,7 +145,7 @@
   
   <xsl:template match="pepkbd3">
     <body>
-      <div class="pepkbd3">
+      <div class="pepkbd3" data-ver="2020-08-12.ABS">
         <xsl:call-template name="assign-lang"/>
         <xsl:call-template name="make-article"/>
       </div>
@@ -192,7 +192,7 @@
     </xsl:for-each>
 
     <!-- grp (***)  -->
-    <xsl:for-each select="body/grp">
+    <xsl:for-each select="grp">
       <div id="grp-{$this-article}-{@id}" class="grp sec" data-name="{@name}">
         <xsl:apply-templates/>
       </div>
@@ -283,9 +283,7 @@
   <xsl:template match="h1|h2|h3|h4|h5|h6">
     <xsl:copy>
       <xsl:call-template name="assign-lang"/>
-      <xsl:attribute name="text-align">
-        <xsl:value-of select="@align"/>  
-      </xsl:attribute>
+      <xsl:call-template name="assign-styles"/>
       <xsl:call-template name="named-anchor"/>
       <xsl:apply-templates/>
     </xsl:copy>
@@ -498,6 +496,7 @@
   <xsl:template match="body//tbl">
     <!-- other labels are displayed as blocks -->
     <div class="table nrs">
+      <xsl:call-template name="assign-styles"/>
       <xsl:attribute name="id">
         <xsl:value-of select="@id"/>
       </xsl:attribute>
@@ -1217,7 +1216,18 @@
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
-
+  
+  <xsl:template name="assign-styles">
+    <xsl:choose>
+      <xsl:when test="@align">
+        <xsl:attribute name="align">
+           <!--          <xsl:value-of select="concat('text-align:',  @align)"/>-->
+          <xsl:value-of select="@align"/>  
+        </xsl:attribute>
+      </xsl:when>
+    </xsl:choose>
+  </xsl:template>
+  
   <xsl:template name="assign-lang">
     <xsl:choose>
       <xsl:when test="@lang">

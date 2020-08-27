@@ -74,6 +74,22 @@ class TestGetDocuments(unittest.TestCase):
         assert(response_info["count"] == 1)
         print (response_set)
 
+    def test_2_get_document_with_search_context(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
+        response = client.get(full_URL)
+        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A/?search=?journal=&fulltext1=mother love&sort=citeCount')
+        # local, this works...but fails in the response.py code trying to convert self.status to int.
+        response = client.get(full_URL)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"] 
+        assert(response_info["count"] == 1)
+        print (response_set)
+
 
 if __name__ == '__main__':
     unittest.main()    

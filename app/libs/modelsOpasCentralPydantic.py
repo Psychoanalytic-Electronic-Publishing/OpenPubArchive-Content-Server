@@ -23,6 +23,8 @@ class User(BaseModel):  # snake_case names to match DB
     company: str = None
     modified_by_user_id: int = None
     enabled: bool = True
+    authorized_peparchive: bool = False
+    authorized_pepcurrent: bool = False
     admin: bool = False
     user_agrees_date: datetime = None
     user_agrees_to_tracking: bool = None
@@ -98,25 +100,34 @@ class MostCitedArticles(BaseModel):
     count5: int = 0
     count10: int = 0
     count20: int = 0
-    
-class MostCitedArticlesWithDetails(MostCitedArticles):
-    """
-    __Table vw_stat_cited_crosstab_with_details__ # was MostCitedArticlesWithDetails
-    based on 
-    __Table vw_stat_cited_crosstab__
 
-    A view with rxCode counts derived from the fullbiblioxml table and the articles table
-      for citing sources in one of the date ranges.
+class ClientConfigs(BaseModel):
+    config_id: int = 0
+    client_id: int = 0
+    config_name: str = None
+    config_settings: str = None
+    session_id: str
+    last_update: datetime = None
 
-    Adds to MostCitedArticles model more of the cited article information for display
+# Deleted since article table being deprecated 2020-08-09    
+#class MostCitedArticlesWithDetails(MostCitedArticles):
+    #"""
+    #__Table vw_stat_cited_crosstab_with_details__ # was MostCitedArticlesWithDetails
+    #based on 
+    #__Table vw_stat_cited_crosstab__
+
+    #A view with rxCode counts derived from the fullbiblioxml table and the articles table
+      #for citing sources in one of the date ranges.
+
+    #Adds to MostCitedArticles model more of the cited article information for display
     
-    """
-    hdgauthor: str = None
-    hdgtitle: str = None
-    srctitleseries: str = None
-    year: int = None
-    vol: str = None
-    pgrg: str = None
+    #"""
+    #hdgauthor: str = None
+    #hdgtitle: str = None
+    #srctitleseries: str = None
+    #year: int = None
+    #vol: str = None
+    #pgrg: str = None
     
 class Products(BaseModel):
     product_id: int = None

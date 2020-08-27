@@ -4,10 +4,10 @@ from datetime import datetime
 from optparse import OptionParser
 from configLib.opasCoreConfig import solr_docs, solr_authors, solr_gloss, solr_docs_term_search, solr_authors_term_search
 import logging
+
 logger = logging.getLogger(__name__)
 
 from namesparser import HumanNames
-import peplib.opasLocator as opasLocator
 rx_space_req = "(\s+|\s*)"
 rx_space_opt = "(\s*|\s*)"
 rx_space_end_opt = "(\s*|\s*)$"
@@ -30,7 +30,7 @@ rx_author_name_list = "(?P<author_list>([A-Z][A-z]+\,?\s+?(([A-Z]\.?\s?){0,2})((
 # rx_author_name_list_year = rx_author_name_list + rx_space_req + rx_year
 rx_author_list_and_year = "(?P<author_list>[A-Z][A-z\s\,\.\-]+?)" + rx_space_req + rx_year
 rx_series_of_author_last_names = "(?P<author_list>([A-Z][a-z]+((\,\s+)|(\s*and\s+))?)+)"
-rx_doi = "((h.*?://)?(doi.org/)?)(?P<doi>(10\.[0-9]+/[A-z0-9\.\-/]+)|(doi.org/[A-z0-9\-\./]+))"
+rx_doi = "((h.*?://)?(.*?/))?(?P<doi>(10\.[0-9]{4,4}/[A-z0-9\.\-/]+)|(doi.org/[A-z0-9\-\./]+))"
 # schema fields must have a _ in them to use.
 rx_solr_field = "(?P<schema_field>([a-z]+_[a-z_]{2,13})|text|authors)\:(?P<schema_value>(.*$))"
 rx_syntax = "(?P<syntax>^[a-z]{3,9})\:\:(?P<query>.+$)"
@@ -103,6 +103,7 @@ def is_value_in_field(value,
     try:
         solr_core = cores[core]
     except Exception as e:
+        logger.warning(f"Core selection: {core}. 'docs' is default {e}")
         solr_core  = solr_docs    
 
     if match_type == "exact":
@@ -114,11 +115,14 @@ def is_value_in_field(value,
     else:
         q = f'{field}:({value})'
         
-
-    results = solr_core.query(q=q,  
-                              fields = f"{field}", 
-                              rows = limit,
-                              )
+    try:
+        results = solr_core.query(q=q,  
+                                  fields = f"{field}", 
+                                  rows = limit,
+                                  )
+    except Exception as e:
+        logger.warning(f"Solr query: {q} fields {field} {e}")
+        results = []
        
     if len(results) > 0:
         ret_val = True
@@ -213,6 +217,7 @@ def name_id_list(names_mess):
                 ret_val.append(n.first)
             
     except Exception as e:
+        logger.warning(f"name parse: {names_mess} {e}")
         print (e)
 
     return ret_val
@@ -286,9 +291,13 @@ def smart_search(smart_search_text):
     ret_val = {}
     # get rid of leading spaces and zeros
     smart_search_text = smart_search_text.lstrip(" 0")
-    if opasLocator.isLocator(smart_search_text):
-        ret_val = {"art_id": smart_search_text}
-    else:
+    
+    if re.match("[A-Z\-]{2,9}\.[0-9]{3,3}[A-Z]?\.[0-9]{4,4}[A-Z]?", smart_search_text, flags=re.IGNORECASE):
+        loc_corrected = smart_search_text.upper()
+        if is_value_in_field(loc_corrected, "art_id"):
+            ret_val = {"art_id": loc_corrected}
+    
+    if ret_val == {}:
         patterns1 = {
                     rx_author_list_and_year : "author_list_and_year",
                     rx_year_pgrg : "rx_year_pgrg",
@@ -348,7 +357,7 @@ def smart_search(smart_search_text):
                             #else:
                                 #new_q += f"'{name}'"
                     except Exception as e:
-                        logger.warning(f"SmartSearch Error {e}")
+                        logger.warning(f"Value error for {name}. {e}")
                 
                 if new_q != "":
                     ret_val["schema_field"] = "authors" 

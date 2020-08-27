@@ -52,10 +52,13 @@ Various support functions having to do with XML conversion (e.g., to HTML, ePub,
                 
                 # All doctests currently pass
 
+    #2020.0812.1 - Cleaned up some error print messages.
+
+
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0429.1"
+__version__     = "2020.0812.1"
 __status__      = "Development"
 
 
@@ -85,14 +88,14 @@ from ebooklib import epub
 from io import StringIO, BytesIO
 
 show_dbg_messages = False
-stop_on_exceptions = False
+stop_on_exceptions = True
 
 #-----------------------------------------------------------------------------
 # at least for testing
 def read_file(filename):
     """
     >> html = read_file(r"X:\\_PEPA1\\_PEPa1v\\_PEPArchive\\IJP\\043\\IJP.043.0306A(bEXP_ARCH1).XML")
-    >>> html = read_file(r"X:\\_PEPA1\\_PEPa1v\\_PEPArchive\\SE\\004-005\\SE.004.R0009A(bEXP_ARCH1).XML")
+    >> html = read_file(r"X:\\_PEPA1\\_PEPa1v\\_PEPArchive\\SE\\004-005\\SE.004.R0009A(bEXP_ARCH1).XML")
     """
     xml_data = b""
     with open(filename, 'rb') as filehandle:
@@ -202,7 +205,9 @@ class FirstPageCollector:
                         else:
                             # not sure why this would be, don't do anything
                             # print (google_safe2_list[-1])
-                            logger.warning("Why am I here?")
+                            # logger.warning("Why am I here?")
+                            logger.warning(f"Unaccounted for text when excerpting...first 50 chars of discarded text: {google_safe2_list[-1][:50]}")
+                            # self.doc + google_safe2_list[-1] # there's sometimes extra \n and an outler tag like li
                     
             self.doc += f"</{tag}>"
             if len(self.tag_stack) > 0:
@@ -293,6 +298,7 @@ class XSLT_Transformer(object):
 g_transformer = XSLT_Transformer()
 g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML, opasConfig.XSLT_XMLTOHTML)
 g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOTEXT_EXCERPT, opasConfig.XSLT_XMLTOTEXT_EXCERPT)
+g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML_EXCERPT, opasConfig.XSLT_XMLTOHTML_EXCERPT)
 
 ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n")  # TODO - Move to module globals to optimize
 
@@ -624,84 +630,96 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
     no_page_nbr = "npn"
     ret_val = ("", [], no_page_nbr, no_page_nbr)
 
-    if offset == 0:
-        logger.error("Bad page offset requested.  First offset is 0")
-        offset = 1 # First offset is 1
-
-    offset1 = offset - 1 # offset 2 is the second page, so from the first pb to the one before
-    offset2 = offset1 + limit
+    if limit is None: # this should not happen, it should assign the default as specd.  Not sure why it does.
+        ret_val = (xmlstr, [], no_page_nbr, no_page_nbr)
+    else:
+        try:
+            if offset == 0:
+                #logger.error("Bad page offset requested.  First offset is 0 instead of 1")
+                offset = 1 # First page is 1 (even though we're not jumping)
+                offset1 = offset - 1 # offset 2 is the second page, so from the first pb to the one before
+            else:
+                offset1 = offset # offset 2 is the second page, so from the first pb to the one before
+            
+            offset2 = offset1 + limit
+            
+        except Exception as e:
+            logger.warning(f"Offset/Limit specification error: {e}")
     
-    root = xmlstr_to_etree(xmlstr)
-    xml_remove_tags(root, remove_tags=remove_tags)
-
-    if 1:
-        try: # get first page break
-            pb = root.xpath(f'//{inside}/{pagebrk}[{offset1+1}]') # for first page nbr, which is 1 pb after the offset1 since pb is at end of page
-            if pb != []:
-                #firstpbfrag  = etree.tostring(pb[0]).decode("utf8") + "\n"
-                # make sure we were given the subelement spec
-                if pagenbr is not None:
-                    try:
-                        pn_node = pb[0].xpath(pagenbr)[0]
-                    except Exception as e:
-                        # no page number
-                        first_pn = no_page_nbr
-                    else:
-                        first_pn = pn_node.text
-            else:
-                #firstpbfrag = ""
-                first_pn = no_page_nbr
+        try:
+            root = xmlstr_to_etree(xmlstr)
+            xml_remove_tags(root, remove_tags=remove_tags)
         except Exception as e:
-            #firstpbfrag = ""
-            logger.warning(f"Could not get first pagebreak: {e}")
-            
-        try: # get second page break
-            pb2 = root.xpath(f'//{inside}/{pagebrk}[{offset2}]')
-            if pb2 != []:
-                secondpbfrag = etree.tostring(pb2[0]).decode("utf8") + "\n"
-                if pagenbr is not None:
-                    try:
-                        pn2_node = pb2[0].xpath(pagenbr)[0]
-                    except Exception as e:
-                        # no page number
-                        last_pn = no_page_nbr
-                    else:
-                        last_pn = pn2_node.text
-            else:
-                secondpbfrag = "" 
-                last_pn = no_page_nbr
-                
-        except Exception as e:
-            secondpbfrag = ""
-            logger.warning(f"Could not get ending pagebreak: {e}")
-        
-        # Now let's get the text between, or before, if offset1 == 0 (first break)
-        if offset1 == 0: # get all tags before the first pb (offset passed in was 1)
-            elem_list = root.xpath(f'//{inside}/{pagebrk}[{offset2}]/preceding::*')
-            for n in reversed(elem_list):
-                if n.getparent() in elem_list:
-                    elem_list.remove(n)
-            
-        else: # get all content between offset1 and offset2
-            # get list of elements between
-            elem_list = xml_get_elements_between_element(root, inside=inside, between_element=pagebrk, offset1=offset1, offset2=offset2)
-            # no need to add end page
-            secondpbfrag = ""
-            
-        new_xml = f"<{env}>\n"
-        for n in elem_list:
-            try:
-                frag = etree.tostring(n).decode("utf8") + "\n" # separate for monitoring the fragment
-                new_xml += frag
+            logger.error(f"xml conversion (extract) error: {e}. Returning full xml instance")
+            ret_val = (xmlstr, [], no_page_nbr, no_page_nbr)
+        else:
+            try: # get first page break
+                pb = root.xpath(f'//{inside}/{pagebrk}[{offset1+1}]') # for first page nbr, which is 1 pb after the offset1 since pb is at end of page
+                if pb != []:
+                    #firstpbfrag  = etree.tostring(pb[0]).decode("utf8") + "\n"
+                    # make sure we were given the subelement spec
+                    if pagenbr is not None:
+                        try:
+                            pn_node = pb[0].xpath(pagenbr)[0]
+                        except Exception as e:
+                            # no page number
+                            first_pn = no_page_nbr
+                        else:
+                            first_pn = pn_node.text
+                else:
+                    #firstpbfrag = ""
+                    first_pn = no_page_nbr
             except Exception as e:
-                logger.warning(f"Error converting node: {e}")
-
-        # add the last pb
-        new_xml += secondpbfrag
-        # close the new xml string
-        new_xml += f"</{env}>\n"
+                #firstpbfrag = ""
+                logger.warning(f"Could not get first pagebreak: {e}")
+                
+            try: # get second page break
+                pb2 = root.xpath(f'//{inside}/{pagebrk}[{offset2}]')
+                if pb2 != []:
+                    secondpbfrag = etree.tostring(pb2[0]).decode("utf8") + "\n"
+                    if pagenbr is not None:
+                        try:
+                            pn2_node = pb2[0].xpath(pagenbr)[0]
+                        except Exception as e:
+                            # no page number
+                            last_pn = no_page_nbr
+                        else:
+                            last_pn = pn2_node.text
+                else:
+                    secondpbfrag = "" 
+                    last_pn = no_page_nbr
+                    
+            except Exception as e:
+                secondpbfrag = ""
+                logger.warning(f"Could not get ending pagebreak: {e}")
+            
+            # Now let's get the text between, or before, if offset1 == 0 (first break)
+            if offset1 == 0: # get all tags before the first pb (offset passed in was 1)
+                elem_list = root.xpath(f'//{inside}/{pagebrk}[{offset2}]/preceding::*')
+                for n in reversed(elem_list):
+                    if n.getparent() in elem_list:
+                        elem_list.remove(n)
+                
+            else: # get all content between offset1 and offset2
+                # get list of elements between
+                elem_list = xml_get_elements_between_element(root, inside=inside, between_element=pagebrk, offset1=offset1, offset2=offset2)
+                # no need to add end page
+                secondpbfrag = ""
+                
+            new_xml = f"<{env}>\n"
+            for n in elem_list:
+                try:
+                    frag = etree.tostring(n).decode("utf8") + "\n" # separate for monitoring the fragment
+                    new_xml += frag
+                except Exception as e:
+                    logger.warning(f"Error converting node: {e}")
         
-        ret_val = (new_xml, elem_list, first_pn, last_pn)
+            # add the last pb
+            new_xml += secondpbfrag
+            # close the new xml string
+            new_xml += f"</{env}>\n"
+            
+            ret_val = (new_xml, elem_list, first_pn, last_pn)
 
     return ret_val
 
@@ -760,7 +778,7 @@ def xml_get_pages_html(xmlorhtmlstr, offset=0, limit=1, inside="div[@id='body']"
     no_page_nbr = "npn"
     ret_val = ("", [], no_page_nbr, no_page_nbr)
     if offset == 0:
-        logger.error("Bad page offset requested.  First offset is 0")
+        logger.error("Bad page offset requested.  First offset is 0 instead of 1")
         offset = 1 # First offset is 1
 
     offset1 = offset - 1 # offset 2 is the second page, so from the first pb to the one before
@@ -907,15 +925,17 @@ def xml_get_subelement_textsingleton(element_node, subelement_name, skip_tags=[]
     try:
         # go to subelement
         elem = element_node.find(subelement_name)
-        elemcopy = copy.deepcopy(elem)
-        for tag_name in skip_tags:
-            for node in elemcopy.iter(tag_name):
-                tail = node.tail
-                node.clear() # (keep_tail) # .remove(node)
-                node.tail = tail
-                
-        # strip the tags
-        ret_val = etree.tostring(elemcopy, method="text", with_tail=with_tail, encoding=encoding)
+        if elem is not None:
+            elemcopy = copy.deepcopy(elem)
+            for tag_name in skip_tags:
+                for node in elemcopy.iter(tag_name):
+                    tail = node.tail
+                    node.clear() # (keep_tail) # .remove(node)
+                    node.tail = tail
+                    
+            # strip the tags
+            ret_val = etree.tostring(elemcopy, method="text", with_tail=with_tail, encoding=encoding)
+
     except Exception as err:
         logger.warning(err)
         ret_val = default_return
@@ -939,9 +959,16 @@ def xml_get_subelement_xmlsingleton(element_node, subelement_name, default_retur
     """
     ret_val = default_return
     try:
-        ret_val = etree.tostring(element_node.find(subelement_name), with_tail=False, encoding="unicode")
-        if ret_val == "":
+        node = element_node.find(subelement_name)
+        if node is not None:
+            ret_val = etree.tostring(node, with_tail=False, encoding="unicode")
+            if ret_val == "":
+                logger.debug(f"Element {subelement_name} was empty")
+                ret_val = default_return
+        else:
+            logger.warning(f"Element {subelement_name} was not found")
             ret_val = default_return
+
     except Exception as err:
         logger.warning(err)
         ret_val = default_return
@@ -1400,41 +1427,17 @@ def get_running_head(source_title=None, pub_year=None, vol=None, issue=None, pgr
         s = opasConfig.running_head_fmts[ret_format]
         ret_val = s.format(pub_year=pub_year, source_title=source_title, vol=vol, issue=issue, pgrg=pgrg)
     except Exception as e:
-        print (e)
+        print (f"Exception: {e}")
         ret_val = f"({pub_year}). {source_title}{vol}{issue}{pgrg}"
         
     return ret_val
     
-def add_headings_to_abstract_html(abstract, source_title=None, pub_year=None, vol=None, issue=None, pgrg=None, title="", author_mast="", citeas=None, ret_format="HTML"):
-    """
-    Format the top portion of the Abstracts presented by the client per the original GVPi model
-    """
-
-    heading = get_running_head(source_title=source_title, pub_year=pub_year, vol=vol, issue=issue, pgrg=pgrg, ret_format=ret_format)
-        
-    if ret_format != "TEXTONLY":
-        # BOTH HTML and XML.  May later want to handle XML separately
-        ret_val = f"""
-                <p class="heading">{heading}</p>
-                <p class="title">{title}</p>
-                <p class="title_author">{author_mast}</p>
-                <div class="abstract">{abstract}</p>
-                """
-    else:
-        ret_val = f"""
-                {heading}\n{title}\n{author_mast}\n\n
-                {abstract}
-                """
-        
-        
-    return ret_val
-
-def xml_file_to_xmlstr(xml_file, remove_encoding=False, resolve_entities=True):
+def xml_file_to_xmlstr(xml_file, remove_encoding=False, resolve_entities=True, dtd_validations=True):
     """
     Read XML file and convert it to an XML string, expanding all entities
     
     """
-    parser = etree.XMLParser(resolve_entities=resolve_entities, dtd_validation=True)
+    parser = etree.XMLParser(resolve_entities=resolve_entities, dtd_validation=dtd_validations)
     try:
         doc_DOM = etree.parse(xml_file, parser=parser)
     except Exception as e:
@@ -1488,7 +1491,7 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                 # return this error, so it will be displayed (for now) instead of the document
                 ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
                 logger.error(ret_val)
-                print (xml_text)
+                print (f"Error processing this text: {xml_text}")
                 if stop_on_exceptions:
                     raise Exception(ret_val)
             else:
@@ -1496,15 +1499,20 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                     try:
                         #xslt_doc_transformer_file = etree.parse(xslt_file)
                         #xslt_doc_transformer = etree.XSLT(xslt_doc_transformer_file)
-                        transformer = g_transformer.transformers.get(transformer_name, None)
+                        transformer = g_transformer.transformers[transformer_name]
                         # transform the doc or fragment
                         transformed_data = transformer(sourceFile)
+                    except KeyError as e:
+                        if transformer is None:
+                            logger.error(f"Selected Transformer: {transformer_name} not found ({e})")
+                            if stop_on_exceptions:
+                                raise Exception(ret_val)
                     except Exception as e:
                         # return this error, so it will be displayed (for now) instead of the document
                         ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
                         logger.error(ret_val)
                         ret_val = xml_text
-                        print (xml_text)
+                        print (f"Error processing this text: {xml_text}.  Transformer: {transformer_name}")
                         if stop_on_exceptions:
                             raise Exception(ret_val)
                     else:
@@ -1594,21 +1602,6 @@ def remove_encoding_string(xmlstr):
     # Get rid of the encoding for lxml
     ret_val = ENCODER_MATCHER.sub("", xmlstr)                
     return ret_val
-
-#def remove_encoding_string(xmlstr):
-    #"""
-    #Remove the encoding string, as required by lxml in some functions
-    
-    #>>> remove_encoding_string('<?xml version="1.0" encoding="ISO-8859-1" ?>\n<!DOCTYPE pepkbd3></>')
-    
-    #"""
-    #p=re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n")  # TODO - Move to module globals to optimize
-    #ret_val = xmlstr
-    #ret_val = p.sub("", ret_val)                
-    
-    #return ret_val
-
-
 
 # -------------------------------------------------------------------------------------------------------
 # run it! (for testing)

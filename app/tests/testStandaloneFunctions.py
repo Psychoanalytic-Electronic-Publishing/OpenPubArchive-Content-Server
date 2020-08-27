@@ -47,36 +47,6 @@ class TestStandaloneFunctions(unittest.TestCase):
     
     """
     
-    def test_0_get_most_viewed(self):
-        for i in range(5): # view periods 0-4
-            print (f"view period: {i}")
-            count, most_viewed = ocd.get_most_viewed(view_period=i,
-                                                     source_code="IJP",
-                                                     source_type="journals", 
-                                                     limit=150
-                                                    )  # (most viewed)
-            assert (count >= 0)
-            #print (f"Count: {count}")
-            #print (f"MostViewed: {most_viewed}")
-        
-        for name in ["freud", "winnicott", "feld"]: 
-            count, most_viewed = ocd.get_most_viewed(author=name, 
-                                                     view_period='last12months',
-                                                     limit=150
-                                                    )  # (most viewed)
-            
-            print (f"Name/Count: {name}/{count}")
-            if name == "freud":
-                assert (count >= 1)
-            elif name == "winnicott":
-                assert (count >= 2)
-            elif name == "winni":
-                assert (count >= 2)
-            elif name == "feld":
-                assert (count >= 0)
-                
-            print (most_viewed)
-
     def test_0_parseToSolrQuery(self):
         """
         Test query formation via parse_search_query_parameters
@@ -87,13 +57,13 @@ class TestStandaloneFunctions(unittest.TestCase):
           ** BE EXPLICIT ***
         """
         test1 =  models.SolrQueryTermList(
-                    query = [
+                    qt = [
                                {
                                  "words":"child abuse",
                                  "field": "para",
                                  "synonyms": "true",
                                }
-                            ]
+                    ]
                 )
         resp = opasQueryHelper.parse_search_query_parameters(solrQueryTermList=test1)
         assert (resp.solrQuery.searchQ == "(para_syn:(child abuse))")
@@ -104,7 +74,7 @@ class TestStandaloneFunctions(unittest.TestCase):
         """
         test1 =  models.SolrQueryTermList(
             artLevel = 2, 
-            query = [
+            qt = [
                         {
                           "words":"child abuse",
                           "parent": "doc",
@@ -122,7 +92,7 @@ class TestStandaloneFunctions(unittest.TestCase):
         """
         test1 =  models.SolrQueryTermList(
             artLevel = 2, 
-            query = [
+            qt = [
                         {
                           "words":"excited",
                           "parent": "doc",
@@ -147,7 +117,7 @@ class TestStandaloneFunctions(unittest.TestCase):
         """
         test1 =  models.SolrQueryTermList(
             artLevel = 2, 
-            query = [
+            qt = [
                         {
                           "words":"mother became pale",
                           "parent": "doc",

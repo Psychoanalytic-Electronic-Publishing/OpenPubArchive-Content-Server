@@ -225,3 +225,77 @@
            #    TestDownload succeeds, must run the full test since test_1 ... depends on test_0_login.
            #    In the process of uploading full set to S3.
            
+#2020.0601 # Added art_views_* to stat field returned in documentListItems (and of course to the standard list of fields 
+           # returned by Solr for all but ExtendedSearch).
+
+#2020.0602 # fixes to v1 endpoints to work properly with the current alpha of PEP-Easy
+           # (added back in datetype, and handled special before case)
+           # Set search_analysis_v1 to return term list, making it a requirement that
+           # any v1 UI would need a change, but that really only means PEP-Easy, which has
+           # been adjusted in other ways anyway.
+
+#2020.0604 # fixes to extended because returnfields was moved to solrqueryspec.
+           # constrained extended core selection to predefined cores in opasconfig (dev in progress)
+           # faceting mincount added and defaulted to 1
+
+#2020.0608 # Fix passthrough of requested document format (was being ignored)
+           # Added case insensitivity to format (though must all be same case, not mixed)
+
+#2020.0609 # Working on Problems with the way termlist query is implemented handling mixed level query
+
+#2020.0610 # Reconsidering child method for paras; slight advantage in search for long paras; very
+           #  big complications for general querying though.  May not be worth it.  Readding in
+           #  para context elements at top level.  For testing, we'll offer both methods of search.
+           
+           # Added abstract parameter to search endpoints, to request that abstracts are returned with
+           #  results.  Prior to this, you had to do a documents/abstract call to get the abstract for any
+           #  doc.
+
+#2020.0611 # Added opas_version to status return.  Lucene version moved to non-admin return.
+
+           # Changed most_viewed to use new Solr data instead of database.
+           #  Note: field names now changed to solr std:
+           #
+           # downloads_lastweek                art_views_lastweek
+           # downloads_lastmonth               art_views_last1mos
+           # downloads_last6months             art_views_last6mos
+           # downloads_last12months            art_views_last12mos
+           # downloads_lastcalyear             art_views_lastcalyear
+           # 
+
+           # Switching most (if not all) calls from search_text to search_text_qs which uses solrQuerySpec 
+           #   as the input model rather than parameters.  Note it's important for hl_fragsize to be set properly!
+           
+           # Removed need to enter old password to change password--this is admin only function (and for 'stage' really)
+
+#2020.0611 # Optimizing code...example: checking for file_classification when search_text and search_text_qs do it for you and return
+           #   only the abstract anyway.
+           
+           # Tested masterPEPWebDocsSchema changes by regenerating local Solr database.
+           #  Note: art_lang is now a string, not a list.  Temporary code injected to handle online case where solr database is not
+           #    yet in sync.
+           
+#2020.0702 # Get MoreLikeThis changed completely.  Now all you have to do, in more calls, is set
+           #   similarcount > 0 and similarDocs will be included in the similarityMatch field of the results.
+           
+           # Also, changed getAbstract code to use search_text, so you can now get MoreLikeThis for
+           #   an abstract when retrieving it.
+           # 
+           # 
+
+#2020.0705 # Inline documentation updates
+
+#2020.0709 # Added facet return info to document and abstract return, to allow term clouds for
+           #  the current document.
+           
+#2020.0714 # Preliminary new AWS alpha...passes all tests, but need to go through the list of scheduled
+           #   updates before finalizing.  Still, checking it in to Github.
+           #  fix bug in mostviews, lastcalyear is 0, not 5 (now both)
+
+#2020.0718 # Initial implementation of smarttext parameter and smartsearch module
+
+#2020.0721 # Changed several instances of calls to Logging to module level Logger (misuse of library)
+
+           # Try a new smartsearch approach - lookup in Solr to determine
+           #   word semantics.
+
