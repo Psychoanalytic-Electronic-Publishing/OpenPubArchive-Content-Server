@@ -372,6 +372,7 @@ class TestMetadata(unittest.TestCase):
         # test return
         r = response.json()
         assert(r['sourceInfo']['responseInfo']['count'] == 0)
+    
     def test_8d_meta_all_sourcetype_nonsense(self):
         """
         List of names for a source for an unknown type
@@ -397,6 +398,30 @@ class TestMetadata(unittest.TestCase):
         # test return
         r = response.json()
         assert(r['sourceInfo']['responseInfo']['count'] == 1)
+        
+    def test_9a_meta_journal_parameter_errors(self):
+        """
+        /v2/Metadata/Journals/ (with sample of errors)
+        /v1/Metadata/Journals/ (with sample of errors)
+        """
+        response = client.get(base_api + '/v2/Metadata/Journals/?limit=20&offset=0&sourcecode=a')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print (f"Journal Count: {r['sourceInfo']['responseInfo']['fullCount']}")
+        assert(r['sourceInfo']['responseInfo']['fullCount'] == 0)
+
+        #  TEST v1 for now
+        response = client.get(base_api + '/v1/Metadata/Journals/?limit=20&offset=0&journal=a')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print (f"Journal Count: {r['sourceInfo']['responseInfo']['fullCount']}")
+        assert(r['sourceInfo']['responseInfo']['fullCount'] == 0)
+
+        
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")

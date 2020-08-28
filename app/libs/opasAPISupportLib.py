@@ -1271,10 +1271,9 @@ def metadata_get_source_by_code(src_code=None,
         total_count, source_info_dblist = ocd.get_sources(source_code=src_code)    #sourceDB.sourceData
         #sourceType = "All"
 
-    count = len(source_info_dblist)
-    logger.debug("metadataGetSourceByCode: Number found: %s", count)
+    logger.debug("metadataGetSourceByCode: Number found: %s", total_count)
 
-    response_info = models.ResponseInfo( count = count,
+    response_info = models.ResponseInfo( count = total_count,
                                          fullCount = total_count,
                                          limit = limit,
                                          offset = offset,
@@ -1288,31 +1287,32 @@ def metadata_get_source_by_code(src_code=None,
 
     source_info_list_items = []
     counter = 0
-    for source in source_info_dblist:
-        counter += 1
-        if counter < offset:
-            continue
-        if counter > limit:
-            break
-        try:
-            # remove leading and trailing spaces from strings in response.
-            source = {k:v.strip() if isinstance(v, str) else v for k, v in source.items()}
-            item = models.SourceInfoListItem( ISSN = source.get("ISSN"),
-                                              PEPCode = source.get("src_code"),
-                                              abbrev = source.get("bib_abbrev"),
-                                              bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('src_code')}Logo.gif",
-                                              displayTitle = source.get("title"),
-                                              language = source.get("language"),
-                                              yearFirst = source.get("start_year"),
-                                              yearLast = source.get("end_year"),
-                                              sourceType = source.get("src_type"),
-                                              title = source.get("title")
-                                              ) 
-        except ValidationError as e:
-            logger.info("metadataGetSourceByCode: SourceInfoListItem Validation Error:")
-            logger.error(e.json())
-
-        source_info_list_items.append(item)
+    if total_count > 0:
+        for source in source_info_dblist:
+            counter += 1
+            if counter < offset:
+                continue
+            if counter > limit:
+                break
+            try:
+                # remove leading and trailing spaces from strings in response.
+                source = {k:v.strip() if isinstance(v, str) else v for k, v in source.items()}
+                item = models.SourceInfoListItem( ISSN = source.get("ISSN"),
+                                                  PEPCode = source.get("src_code"),
+                                                  abbrev = source.get("bib_abbrev"),
+                                                  bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('src_code')}Logo.gif",
+                                                  displayTitle = source.get("title"),
+                                                  language = source.get("language"),
+                                                  yearFirst = source.get("start_year"),
+                                                  yearLast = source.get("end_year"),
+                                                  sourceType = source.get("src_type"),
+                                                  title = source.get("title")
+                                                  ) 
+            except ValidationError as e:
+                logger.info("metadataGetSourceByCode: SourceInfoListItem Validation Error:")
+                logger.error(e.json())
+    
+            source_info_list_items.append(item)
 
     try:
         source_info_struct = models.SourceInfoStruct( responseInfo = response_info, 

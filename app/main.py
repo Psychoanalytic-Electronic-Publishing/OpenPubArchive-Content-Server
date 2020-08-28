@@ -78,7 +78,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0826.1.Alpha"
+__version__     = "2020.0828.1.Alpha"
 __status__      = "Development"
 
 import sys
@@ -1666,16 +1666,16 @@ async def database_term_counts(response: Response,
     
     Can specify a field per the schema to limit it. e.g.,
     
-       text - all text
-       title - within titles
-       author -
-       author_bio_xml - in author bio
-       art_kwds - in keyword lists
-       art_lang - can look at frequency of en, fr, ... at article level
-       lang - can look at frequency of en, fr, ... at paragraph level
-       meta_xml - meta document data, including description of fixes, edits to documents
+       - text - all text
+       - title - within titles
+       - author -
+       - author_bio_xml - in author bio
+       - art_kwds - in keyword lists
+       - art_lang - can look at frequency of en, fr, ... at article level
+       - lang - can look at frequency of en, fr, ... at paragraph level
+       - meta_xml - meta document data, including description of fixes, edits to documents
        
-       Note: it appears the field must be listed as stored, not just indexed.
+       Note: The field must be listed as stored, not just indexed.
         
     ## Return Type
        models.TermIndex
@@ -1687,12 +1687,12 @@ async def database_term_counts(response: Response,
 
     ## Notes
 
+    See also: /v2/Database/WordWheel/
+
     ## Potential Errors
     
-    ### Doctests/Example Calls
+    ## Example Calls
 
-      >>> get_term_counts(termlist="'author:tuckett, levinson, mosher', 'text:playfull, joy*'")
-      
     """
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     session_id = session_info.session_id
@@ -4029,7 +4029,7 @@ def metadata_volumes(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         http://localhost:9100/v1/Metadata/Volumes/CPS/
+         {url}/v2/Metadata/Volumes/?sourcecode=ijp
 
     ## Notes
 
@@ -4096,7 +4096,7 @@ def metadata_volumes(response: Response,
 @app.get("/v2/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
 def metadata_books(response: Response,
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                             SourceCode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                             sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                              limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                              offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                              ):
@@ -4115,7 +4115,7 @@ def metadata_books(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         http://localhost:9100/v1/Metadata/Books
+         {url}/v2/Metadata/Books/?sourcecode=ipl
 
     ## Notes
 
@@ -4123,7 +4123,7 @@ def metadata_books(response: Response,
 
     """
 
-    ret_val = metadata_by_sourcetype_sourcecode(response, request, SourceType="Book", SourceCode=SourceCode, limit=limit, offset=offset)
+    ret_val = metadata_by_sourcetype_sourcecode(response, request, SourceType="Book", SourceCode=sourcecode, limit=limit, offset=offset)
     return ret_val
 
 #-----------------------------------------------------------------------------

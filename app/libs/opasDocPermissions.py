@@ -10,11 +10,9 @@ from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
 base = "https://padstest.zedra.net/PEPSecure/api"
 
 def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW):
-    ret_val = False
     full_URL = base + f"/v1/Authenticate?UserName={username}&Password={password}"
     response = requests.get(full_URL)
-    if response.ok == True:
-        ret_val = response.json()
+    ret_val = response.json()
     return ret_val
     
 def pads_session_check(session_id, doc_id, doc_year):
@@ -93,16 +91,28 @@ def get_access_limitations(doc_id, classification, session_info, year=None, doi=
 
     # We COULD check the session_id in PADS here with the art_id and year, for EVERY return!
     #  would it be slow?  Certainly for more than a dozen records, might...this is just for one instance though.
+    # print (f"SessionID {session_info.session_id}, classificaton: {ret_val.accessLimited} and client_session: {session_info.api_client_session}")
     try:
-        if session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS and ret_val.accessLimited == True:
+        if ret_val.accessLimited == True and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
+
             authorized, resp = pads_session_check(session_id=session_info.session_id,
                                                   doc_id=doc_id,
                                                   doc_year=year)
+
+            # if this is True, then as long as session_info is valid, it won't need to check again
+            # if accessLimited is ever True again, e.g., now a different type of document, it will check again.
+            # should markedly decrease the number of calls to PaDS to check.
+            if resp.get("HasArchiveAccess", True):
+                session_info.authorized_peparchive = True
             
+            if resp.get("HasCurrentAccess", True):
+                session_info.authorized_pepcurrent = True
+
             if authorized:
                 ret_val.accessLimitedCurrentContent = False
                 # "This content is available for you to access"
                 ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+
             if authorized:
                 ret_val.accessLimited = False
                 #documentListItem.accessLimitedCurrentContent = False

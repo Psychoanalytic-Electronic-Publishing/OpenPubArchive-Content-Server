@@ -75,7 +75,7 @@ class TestStandalonePageExtractFunctions(unittest.TestCase):
         xmlpages = opasXMLHelper.xml_get_pages(xmlstr, 1, 1, inside="body", env="pepkbd3", remove_tags=["meta"])
         extract_size = len(xmlpages)
         orig_size = len(xmlstr)
-        print (extract_size < orig_size, extract_size, orig_size)
+        print ("Extract size smaller: {extract_size < orig_size}, extract size: {extract_size}, {orig_size}")
         print ("warning: test development incomplete. TODO")
         # assert (xmlpages == "")
         
