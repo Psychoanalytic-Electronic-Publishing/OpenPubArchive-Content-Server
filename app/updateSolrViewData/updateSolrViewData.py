@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# To run:
+#     python3 updateSolrviewData
+
 print(
     """
-    UpdateSolrViewData - Program to update the view stat child records in the pepwebdocs
-                        Solr instance
+    UpdateSolrViewData - Program to update the view stat child records in the pepwebdocs Solr instance
+      The records added are controlled by the database view: vw_stat_to_update_solr_docviews
     """
 )
 __author__      = "Neil R. Shapiro"
@@ -25,7 +28,9 @@ from datetime import datetime
 programNameShort = "updateSolrviewData"  # used for log file
 logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
 logger = logging.getLogger(programNameShort)
-logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
+start_notice = f"Started at {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}. Logfile {logFilename}"
+print (start_notice)
+logger.info(start_notice)
 
 class opasCentralDBMini(object):
     """
@@ -201,7 +206,6 @@ if __name__ == "__main__":
     else: #  no user and password needed
         solr_docs2 = pysolr.Solr(solrurl_docs)
     start_time = time.time()
-    logger.info(f"Started at {start_time}")
     updates = update_views_data(solr_docs2)
     total_time = time.time() - start_time
     final_stat = f"{time.ctime()} Updated {updates} Solr records in {total_time} secs)."
