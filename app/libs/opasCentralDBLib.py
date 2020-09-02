@@ -52,7 +52,7 @@ sys.path.append('../libs')
 sys.path.append('../config')
 
 import opasConfig
-from opasConfig import norm_val # use short form everywhere
+from opasConfig import normalize_val # use short form everywhere
 
 import localsecrets
 # from localsecrets import DBHOST, DBUSER, DBPW, DBNAME
@@ -73,7 +73,6 @@ import jwt
 import json
 
 #import opasAuthBasic
-from localsecrets import url_pads, SECRET_KEY
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 import requests
@@ -124,7 +123,7 @@ API_DATABASE_SEARCHANALYSIS_FOR_TERMS = 40	#/Database/SearchAnalysis/{searchTerm
 API_DATABASE_SEARCH = 41	#/Database/Search/
 API_DATABASE_WHATSNEW = 42	#/Database/WhatsNew/
 API_DATABASE_MOSTCITED = 43	#/Database/MostCited/
-API_DATABASE_MOSTDOWNLOADED = 44	#/Database/MostDownloaded/
+API_DATABASE_MOSTVIEWED = 44	#/Database/MostViewed/ (Logged only CSV downloads)
 API_DATABASE_SEARCHANALYSIS = 45	#/Database/SearchAnalysis/
 API_DATABASE_ADVANCEDSEARCH = 46	
 API_DATABASE_TERMCOUNTS = 47
@@ -387,7 +386,7 @@ class opasCentralDB(object):
         Generic retrieval from database, just the count
         
         >>> ocd = opasCentralDB()
-        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches WHERE user_id = 12;")
+        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches WHERE global_uid = 'nrs';")
         >>> count > 1000
         True
         
@@ -417,7 +416,7 @@ class opasCentralDB(object):
         Generic retrieval from database, into dict
         
         >>> ocd = opasCentralDB()
-        >>> records = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity WHERE user_id = 10;")
+        >>> records = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity WHERE global_uid = 'nrs';")
         >>> len(records) > 1
         True
 
@@ -953,16 +952,53 @@ class opasCentralDB(object):
         # returns True if user is granted access
         return ret_val
 
-    def get_sources(self, source_code=None, src_type=None, limit=None, offset=0):
+    def get_sources(self, src_code=None, src_type=None, src_name=None, limit=None, offset=0):
         """
         Return a list of sources
           - for a specific source_code
           - OR for a specific source type (e.g. journal, book)
           - OR if source and src_type are not specified, bring back them all
+          - OR rlike a src_name (any word(s) within src_name, or can be regex.  Always matches the start and end words")
           
         >>> ocd = opasCentralDB()
-        >>> sources = ocd.get_sources(source_code='IJP')
+        >>> count, resp = ocd.get_sources(src_code='IJP')
+        >>> resp[0]["basecode"]
+        'IJP'
+        >>> count
+        1
 
+        >>> ocd = opasCentralDB()
+        >>> count, resp = ocd.get_sources(src_type='book')
+        >>> count
+        140
+
+        # test normalize src_type (req len of input=4, expands to full, standard value)
+        >>> ocd = opasCentralDB()
+        >>> count, resp = ocd.get_sources(src_type='vide') 
+        >>> count
+        12
+
+        >>> count, resp = ocd.get_sources(src_name='Psychoanalysis')
+        >>> count > 34
+        True
+        >>> resp[0]["basecode"]
+        'AJP'
+
+        >>> count, resp = ocd.get_sources(src_name='Psychoan.*')
+        >>> count > 34
+        True
+        >>> resp[0]["basecode"]
+        'ADPSA'
+
+        >>> count, resp = ocd.get_sources(src_code='IJP', src_name='Psychoanalysis', limit=5)
+        >>> resp[0]["basecode"]
+        'IJP'
+        >>> count
+        1
+
+        >>> count, resp = ocd.get_sources()
+        >>> count
+        235
         """
         self.open_connection(caller_name="get_sources") # make sure connection is open
         total_count = 0
@@ -974,16 +1010,29 @@ class opasCentralDB(object):
                 limit_clause += f" OFFSET {offset}"
 
         if self.db is not None:
+            src_code_clause = ""
+            prod_type_clause = ""
+            src_title_clause = ""
+            
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
-                if source_code is not None:
-                    sqlAll = "FROM vw_api_productbase WHERE active = 1 and basecode = '%s'" % source_code
-                elif src_type is not None:
-                    sqlAll = "FROM vw_api_productbase WHERE active = 1 and product_type = '%s'" % src_type
-                else:  # bring them all back
-                    sqlAll = "FROM vw_api_productbase WHERE active = 1 and product_type <> 'bookseriessub'"
+                if src_code is not None and src_code != "*":
+                    src_code_clause = f"AND basecode = '{src_code}'"
+                if src_type is not None and src_type != "*":
+                    src_type = normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
+                    prod_type_clause = f"AND product_type = '{src_type}'"
+                if src_name is not None:
+                    src_title_clause = f"AND title rlike '(.*\s)?{src_name}(\s.*)?'"
 
-                sql = f"SELECT * {sqlAll} ORDER BY title {limit_clause}"
+                sqlAll = f"""FROM vw_api_productbase
+                             WHERE active = 1
+                                AND product_type <> 'bookseriessub'
+                                {src_code_clause}
+                                {prod_type_clause}
+                                {src_title_clause}
+                             ORDER BY title {limit_clause}"""
+                
+                sql = "SELECT * " + sqlAll
                 res = curs.execute(sql)
                     
             except Exception as e:
@@ -993,6 +1042,8 @@ class opasCentralDB(object):
             else:
                 if res:
                     ret_val = curs.fetchall()
+                    curs.close()
+
                     if limit_clause is not None:
                         # do another query to count possil
                         curs2 = self.db.cursor()
@@ -1003,7 +1054,6 @@ class opasCentralDB(object):
                         except:
                             total_count  = 0
                         curs2.close()
-                        curs.close()
                     else:
                         total_count = len(ret_val)
                 else:
@@ -1249,12 +1299,13 @@ class opasCentralDB(object):
         False
         """
         ret_val = False
-        try:
-            logged_in_user = jwt.decode(session_info.access_token, localsecrets.SECRET_KEY)
-            ret_val = logged_in_user["admin"]
-        except:
-            err_msg = f"Not logged in or error getting admin status"
-            logger.error(err_msg)
+        if session_info is not None:
+            try:
+                logged_in_user = jwt.decode(session_info.access_token, localsecrets.SECRET_KEY)
+                ret_val = logged_in_user.get("admin", False)
+            except Exception as e:
+                err_msg = f"Not logged in or error getting admin status ({e})"
+                logger.error(err_msg)
             
         return ret_val   
        
@@ -1322,7 +1373,7 @@ class opasCentralDB(object):
         Create a new user!
         
         >>> ocd = opasCentralDB()
-        >>> ocd.create_user("nobody2", "nothing", "TemporaryDeveloper", "temporaryLover", "USGS", "nobody@usgs.com")
+        >>> ocd.create_user(session_info=None, username="TemporaryDeveloper", password="temporaryLover", company="USGS", email="nobody@usgs.com")
           
         """
         ret_val = None
@@ -1649,7 +1700,7 @@ class opasCentralDB(object):
         headers = {'content-type': 'text/xml'}
         ns = {"pepprod": "http://localhost/PEPProduct/PEPProduct"}
         soap_message = authenticate_more
-        response = requests.post(url_pads, data=soap_message, headers=headers)
+        response = requests.post(localsecrets.url_pads, data=soap_message, headers=headers)
         #print (response.content)
         root = ET.fromstring(response.content)
         # parse XML return

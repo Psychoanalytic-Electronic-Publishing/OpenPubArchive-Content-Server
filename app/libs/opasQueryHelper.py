@@ -701,7 +701,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                         last_parent = solr_parent
     
                     if last_parent != solr_parent:
-                        boolean_connector = " || " # otherwise it will always rsult in empty sete
+                        boolean_connector = " || " # otherwise it will always rsult in empty set
+                                                   #  because a paragraph can only be in parent
     
                 if query.field is None:
                     if artLevel == 2:

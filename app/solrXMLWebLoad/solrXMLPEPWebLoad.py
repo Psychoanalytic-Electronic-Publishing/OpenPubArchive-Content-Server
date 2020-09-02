@@ -592,8 +592,11 @@ class ArticleInfo(object):
             self.src_code = self.src_code.upper()  # 20191115 - To make sure this is always uppercase
             self.src_title_abbr = sourceinfodb_data[self.src_code].get("sourcetitleabbr", None)
             self.src_title_full = sourceinfodb_data[self.src_code].get("sourcetitlefull", None)
-            self.src_type = sourceinfodb_data[self.src_code].get("product_type", None)  # journal, book, video...
             self.src_embargo = sourceinfodb_data[self.src_code].get("wall", None)
+            if self.src_code in ["GW", "SE"]:
+                self.src_type = "book"
+            else:
+                self.src_type = sourceinfodb_data[self.src_code].get("product_type", None)  # journal, book, video...
         except KeyError as err:
             self.src_title_abbr = None
             self.src_title_full = None
@@ -863,7 +866,8 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
     art_lang = pepxml.xpath('//@lang')
     if art_lang == []:
         art_lang = ['EN']
-        
+    
+    body_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body", default_return=None)
 
     # see if this is an offsite article
     if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE:
@@ -1035,7 +1039,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "art_cited_5" : cited_counts.count5,
                 "art_cited_10" : cited_counts.count10,
                 "art_cited_20" : cited_counts.count20,
-                #"art_body_xml" : bodyXml,
+                "body_xml" : body_xml[0],
                 "authors" :  artInfo.author_list, # artInfo.art_all_authors,
                 "art_authors" : artInfo.author_list,
                 "art_authors_count" : artInfo.art_authors_count,
@@ -1085,6 +1089,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "bib_journaltitle" : artInfo.bib_journaltitle,
                 "bib_rx" : artInfo.bib_rx,
                 "art_level" : 1,
+                "meta_marked_corrections" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//cgrp[@type='ERA2']", default_return=None), # multi,
                 #"art_para" : parasxml, 
                 "_doc" : children.child_list
               }
@@ -1137,6 +1142,7 @@ class doc_children(object):
                 para_lgrx = [item.strip() for item in para_lgrx.split(',')]
                 
             self.child_list.append({"id": parent_id + f".{self.count}",
+                                    "para_art_id": parent_id,
                                     "art_level": level,
                                     "parent_tag": parent_tag,
                                     "lang": lang,
@@ -2013,11 +2019,11 @@ def main():
             #selQry = "select distinct filename from articles where articleID
             #New for 2021 - built TOCs as "Series TOC rather than hard coding them."
             print (f"File Key Specified: {options.file_key}")
-            pat = fr"({options.file_key}.*)\(bEXP_ARCH1|bSeriesTOC\)\.(xml|XML)$"
+            pat = fr"({options.file_key}.*)\((bEXP_ARCH1|bSeriesTOC)\)\.(xml|XML)$"
             file_pattern_match = re.compile(pat)
             filenames = find_all(pat, folderStart)
         else:
-            pat = r"(.*)\(bEXP_ARCH1|bSeriesTOC\)\.(xml|XML)$"
+            pat = r"(.*?)\((bEXP_ARCH1|bSeriesTOC)\)\.(xml|XML)$"
             file_pattern_match = re.compile(pat)
             filenames = []
         

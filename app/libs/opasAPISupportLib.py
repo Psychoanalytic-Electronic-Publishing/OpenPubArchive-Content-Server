@@ -231,7 +231,7 @@ def get_session_info(request: Request,
     client_id = int(request.headers.get("client-id", '0'))
     try:
         client_dict = CLIENT_DB[client_id]
-        client_name = client_dict.get("api_client_name", None)
+        client_name = client_dict.get("api-client-name", None)
     except:
         client_dict = {}
         client_name = "Unknown"
@@ -507,6 +507,7 @@ def database_get_most_viewed( publication_period: int=5,
                               stat:bool=False, 
                               limit: int=5,           # Get top 10 from the period
                               offset=0,
+                              download=False, 
                               session_info=None
                             ):
     """
@@ -582,7 +583,7 @@ def database_get_most_viewed( publication_period: int=5,
                                             )
     except Exception as e:
         logger.warning(f"Search error {e}")
-       
+
     return ret_val   
 
 #-----------------------------------------------------------------------------
@@ -617,7 +618,7 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
     True
 
     """
-    period = opasConfig.norm_val(period, opasConfig.VALS_YEAROPTIONS, default='5')
+    period = opasConfig.normalize_val(period, opasConfig.VALS_YEAROPTIONS, default='5')
     #if str(period).lower() not in models.TimePeriod._value2member_map_:
         #period = '5'
 
@@ -753,30 +754,6 @@ def database_get_whats_new(days_back=7,
     ret_val = models.WhatsNewList(whatsNew = whats_new_list_struct)
 
     return ret_val   # WhatsNewList
-
-#-----------------------------------------------------------------------------
-def source_type_normalize(source_type):
-    """
-    Make it easier to ignore small inconsistencies in these key word arguments.
-
-    >>> source_type_normalize("journals")
-    'journal'
-    >>> source_type_normalize("Journal")
-    'journal'
-
-    """
-    ret_val = None
-    normal = {"journals": "journal",
-              "videostreams": "videostream",
-              "video": "videostream",
-              "videos": "videostream",
-              "books": "book"
-              }
-    if source_type is not None:
-        source_type = source_type.lower()
-        ret_val = normal.get(source_type, source_type)
-
-    return ret_val
 
 def metadata_get_volumes(source_code=None,
                          source_type=None,
@@ -1045,82 +1022,60 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
     return total_count, source_info_dblist
 
 #-----------------------------------------------------------------------------
-def metadata_get_source_by_type(src_type=None,
-                                src_code=None,
-                                req_url: str=None, 
-                                limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS,
-                                offset=0):
+def metadata_get_source_info(src_type=None,
+                             src_code=None,
+                             src_name=None, 
+                             req_url: str=None, 
+                             limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS,
+                             offset=0):
     """
     Return a list of source metadata, by type (e.g., journal, video, etc.).
 
     No attempt here to map to the correct structure, just checking what field/data items we have in sourceInfoDB.
 
-    >>> results = metadata_get_source_by_type(src_type="journal", limit=3)
+    >>> results = metadata_get_source_info(src_type="journal", limit=3)
     >>> results.sourceInfo.responseInfo.count >= 3
     True
-    >>> results = metadata_get_source_by_type(src_type="book", limit=10)
+    >>> results = metadata_get_source_info(src_type="book", limit=10)
     >>> results.sourceInfo.responseInfo.count >= 5
     True
-    >>> results = metadata_get_source_by_type(src_type="journals", limit=10, offset=0)
+    >>> results = metadata_get_source_info(src_type="journals", limit=10, offset=0)
     >>> results.sourceInfo.responseInfo.count >= 5
     True
-    >>> results = metadata_get_source_by_type(src_type="journals", limit=10, offset=6)
+    >>> results = metadata_get_source_info(src_type="journals", limit=10, offset=6)
     >>> results.sourceInfo.responseInfo.count >= 5
     True
+
+    >>> results = metadata_get_source_info(src_code="APA")
+    >>> results.sourceInfo.responseInfo.count == 1
+    True
+
+    >>> results = metadata_get_source_info()
+    >>> results.sourceInfo.responseInfo.fullCount >= 235
+    True
+    
     """
     ret_val = []
     source_info_dblist = []
     ocd = opasCentralDBLib.opasCentralDB()
     # standardize Source type, allow plural, different cases, but code below this part accepts only those three.
-    if src_type is None:
-        src_type = "*"
-    elif src_type == "*":
-        src_type = "*"
-    else:
-        src_type = src_type.lower()
-        if src_type not in ["journal", "book"]:
-            if re.match("videos.*", src_type, re.IGNORECASE):
-                src_type = "videos"
-            elif re.match("video", src_type, re.IGNORECASE):
-                src_type = "videostream"
-            elif re.match("boo.*", src_type, re.IGNORECASE):
-                src_type = "book"
-            elif re.match("jour.*", src_type, re.IGNORECASE):
-                src_type = "journal"
-            else: # default
-                logger.warning(f"Unknown source type '{src_type}'. Using a wildcard (*) instead.")
-                src_type = "*"
+    if src_type is not None:
+        src_type = opasConfig.normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
 
-    # This is not part of the original API, it brings back individual videos rather than the videostreams
-    # but here in case we need it.  In that case, your source must be videos.*, like videostream, in order
-    # to load individual videos rather than the video journals
     if src_type == "videos":
+        # This is not part of the original API, it brings back individual videos rather than the videostreams
+        # but here in case we need it.  In that case, your source must be videos.*, like videostream, in order
+        # to load individual videos rather than the video journals
         #  gets count of videos and a list of them (from Solr database)
         total_count, source_info_dblist = metadata_get_videos(src_type, src_code, limit, offset)
         count = len(source_info_dblist)
     else: # get from mySQL
         try:
-            if src_code == "*" and src_type == "*":
-                total_count, sourceData = ocd.get_sources(limit=limit, offset=offset)
-            elif src_code == "*":
-                total_count, sourceData = ocd.get_sources(src_type = src_type, limit=limit, offset=offset)
-            else:
-                total_count, sourceData = ocd.get_sources(src_type = src_type, source_code=src_code, limit=limit, offset=offset)
-
-            if sourceData is not None:
-                for sourceInfoDict in sourceData:
-                    if src_type == "*":
-                        source_info_dblist.append(sourceInfoDict)
-                    elif sourceInfoDict["product_type"] == src_type:
-                        # match
-                        source_info_dblist.append(sourceInfoDict)
-                if limit < total_count:
-                    count = limit
-                else:
-                    count = len(source_info_dblist)
+            total_count, source_info_dblist = ocd.get_sources(src_type = src_type, src_code=src_code, src_name=src_name, limit=limit, offset=offset)
+            if source_info_dblist is not None:
+                count = len(source_info_dblist)
             else:
                 count = 0
-
             logger.debug("MetadataGetSourceByType: Number found: %s", count)
         except Exception as e:
             errMsg = "MetadataGetSourceByType: Error getting source information.  {}".format(e)
@@ -1141,84 +1096,84 @@ def metadata_get_source_by_type(src_type=None,
 
     source_info_listitems = []
     counter = 0
-    for source in source_info_dblist:
-        counter += 1
-        err = 0
-        if counter < offset:
-            continue
-        if counter > limit:
-            break
-        try:
-            title = source.get("title")
-            authors = source.get("author")
-            pub_year = source.get("pub_year")
-            publisher = source.get("publisher")
-            book_code = None
-            src_type = source.get("product_type")
-            start_year = source.get("yearFirst")
-            end_year = source.get("yearLast")
-            base_code = source.get("basecode")
-            if start_year is None:
-                start_year = pub_year
-            if end_year is None:
-                end_year = pub_year
-
-            if src_type == "book":
-                book_code = source.get("pepcode")
-                if book_code is None:
-                    logger.error(f"Book code information missing for requested basecode {base_code} in productbase")
-                else:
-                    m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", book_code, re.IGNORECASE)
-                    if m is not None:
-                        code = m.group("code")
-                        num = m.group("num")
-                        bookCode = code + "." + num
-
-                    art_citeas = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="publisher">%s</span>.""" \
-                        %                   (authors,
-                                             source.get("pub_year"),
-                                             title,
-                                             publisher
-                                             )
-            elif src_type == "video":
-                art_citeas = source.get("art_citeas")
-            else:
-                art_citeas = title # journals just should show display title
-
-
+    if count > 0:
+        for source in source_info_dblist:
+            counter += 1
+            err = 0
+            if counter < offset:
+                continue
+            if counter > limit:
+                break
             try:
-                item = models.SourceInfoListItem( sourceType = src_type,
-                                                  PEPCode = source.get("basecode"),
-                                                  authors = authors,
-                                                  pub_year = pub_year,
-                                                  documentID = source.get("articleID"),
-                                                  displayTitle = art_citeas,
-                                                  title = title,
-                                                  srcTitle = title,  # v1 Deprecated for future
-                                                  bookCode = book_code,
-                                                  abbrev = source.get("bibabbrev"),
-                                                  bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('basecode')}Logo.gif",
-                                                  language = source.get("language"),
-                                                  ISSN = source.get("ISSN"),
-                                                  ISBN10 = source.get("ISBN-10"),
-                                                  ISBN13 = source.get("ISBN-13"),
-                                                  yearFirst = start_year,
-                                                  yearLast = end_year,
-                                                  embargoYears = source.get("embargo")
-                                                  ) 
-                #logger.debug("metadataGetSourceByType SourceInfoListItem: %s", item)
-            except ValidationError as e:
-                logger.error("metadataGetSourceByType SourceInfoListItem Validation Error:")
-                logger.error(e.json())
+                title = source.get("title")
+                authors = source.get("author")
+                pub_year = source.get("pub_year")
+                publisher = source.get("publisher")
+                book_code = None
+                src_type = source.get("product_type")
+                start_year = source.get("yearFirst")
+                end_year = source.get("yearLast")
+                base_code = source.get("basecode")
+                if start_year is None:
+                    start_year = pub_year
+                if end_year is None:
+                    end_year = pub_year
+    
+                if src_type == "book":
+                    book_code = source.get("pepcode")
+                    if book_code is None:
+                        logger.error(f"Book code information missing for requested basecode {base_code} in productbase")
+                    else:
+                        m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", book_code, re.IGNORECASE)
+                        if m is not None:
+                            code = m.group("code")
+                            num = m.group("num")
+                            book_code = code + "." + num
+    
+                        art_citeas = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="publisher">%s</span>.""" \
+                            %                   (authors,
+                                                 pub_year,
+                                                 title,
+                                                 publisher
+                                                 )
+                elif src_type == "video":
+                    art_citeas = source.get("art_citeas")
+                else:
+                    art_citeas = title # journals just should show display title
+    
+    
+                try:
+                    item = models.SourceInfoListItem( sourceType = src_type,
+                                                      PEPCode = base_code,
+                                                      authors = authors,
+                                                      pub_year = pub_year,
+                                                      documentID = source.get("articleID"),
+                                                      displayTitle = art_citeas,
+                                                      title = title,
+                                                      srcTitle = title,  # v1 Deprecated for future
+                                                      bookCode = book_code,
+                                                      abbrev = source.get("bibabbrev"),
+                                                      bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('basecode')}Logo.gif",
+                                                      language = source.get("language"),
+                                                      ISSN = source.get("ISSN"),
+                                                      ISBN10 = source.get("ISBN-10"),
+                                                      ISBN13 = source.get("ISBN-13"),
+                                                      yearFirst = start_year,
+                                                      yearLast = end_year,
+                                                      embargoYears = source.get("embargo")
+                                                      ) 
+                except ValidationError as e:
+                    logger.error("metadataGetSourceByType SourceInfoListItem Validation Error:")
+                    logger.error(e.json())
+                    err = 1
+    
+            except Exception as e:
+                logger.error("metadataGetSourceByType: %s", e)
                 err = 1
-
-        except Exception as e:
-            logger.error("metadataGetSourceByType: %s", e)
-            err = 1
-
-        if err == 0:
-            source_info_listitems.append(item)
-
+    
+            if err == 0:
+                source_info_listitems.append(item)
+    
     try:
         source_info_struct = models.SourceInfoStruct( responseInfo = response_info, 
                                                       responseSet = source_info_listitems
@@ -1235,101 +1190,6 @@ def metadata_get_source_by_type(src_type=None,
 
     ret_val = source_info_list
 
-    return ret_val
-
-#-----------------------------------------------------------------------------
-def metadata_get_source_by_code(src_code=None,
-                                req_url:str=None, 
-                                limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
-                                offset=0):
-    """
-    Rather than get this from Solr, where there's no 1:1 records about this, we will get this from the sourceInfoDB instance.
-
-    No attempt here to map to the correct structure, just checking what field/data items we have in sourceInfoDB.
-
-    The sourceType is listed as part of the endpoint path, but I wonder if we should really do this 
-    since it isn't needed, the pepCodes are unique.
-
-    curl -X GET "http://stage.pep.gvpi.net/api/v1/Metadata/Journals/AJP/" -H "accept: application/json"
-
-    >>> results = metadata_get_source_by_code(src_code="APA")
-    >>> results.sourceInfo.responseInfo.count == 1
-    True
-    >>> results = metadata_get_source_by_code()
-    >>> results.sourceInfo.responseInfo.count >= 192
-    True
-
-    """
-    ret_val = []
-    ocd = opasCentralDBLib.opasCentralDB()
-
-    # would need to add URL for the banner
-    if src_code is not None:
-        total_count, source_info_dblist = ocd.get_sources(source_code=src_code)    #sourceDB.sourceData[pepCode]
-        #sourceType = sourceInfoDBList.get("src_type", None)
-    else:
-        total_count, source_info_dblist = ocd.get_sources(source_code=src_code)    #sourceDB.sourceData
-        #sourceType = "All"
-
-    logger.debug("metadataGetSourceByCode: Number found: %s", total_count)
-
-    response_info = models.ResponseInfo( count = total_count,
-                                         fullCount = total_count,
-                                         limit = limit,
-                                         offset = offset,
-                                         #listLabel = "{} List".format(sourceType),
-                                         listType = "sourceinfolist",
-                                         scopeQuery = [src_code],
-                                         fullCountComplete = True,
-                                         request=f"{req_url}",
-                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                         )
-
-    source_info_list_items = []
-    counter = 0
-    if total_count > 0:
-        for source in source_info_dblist:
-            counter += 1
-            if counter < offset:
-                continue
-            if counter > limit:
-                break
-            try:
-                # remove leading and trailing spaces from strings in response.
-                source = {k:v.strip() if isinstance(v, str) else v for k, v in source.items()}
-                item = models.SourceInfoListItem( ISSN = source.get("ISSN"),
-                                                  PEPCode = source.get("src_code"),
-                                                  abbrev = source.get("bib_abbrev"),
-                                                  bannerURL = f"http://{BASEURL}/{opasConfig.IMAGES}/banner{source.get('src_code')}Logo.gif",
-                                                  displayTitle = source.get("title"),
-                                                  language = source.get("language"),
-                                                  yearFirst = source.get("start_year"),
-                                                  yearLast = source.get("end_year"),
-                                                  sourceType = source.get("src_type"),
-                                                  title = source.get("title")
-                                                  ) 
-            except ValidationError as e:
-                logger.info("metadataGetSourceByCode: SourceInfoListItem Validation Error:")
-                logger.error(e.json())
-    
-            source_info_list_items.append(item)
-
-    try:
-        source_info_struct = models.SourceInfoStruct( responseInfo = response_info, 
-                                                      responseSet = source_info_list_items
-                                                      )
-    except ValidationError as e:
-        logger.info("metadataGetSourceByCode: SourceInfoStruct Validation Error:")
-        logger.error(e.json())
-
-    try:
-        source_info_list = models.SourceInfoList(sourceInfo = source_info_struct)
-
-    except ValidationError as e:
-        logger.info("metadataGetSourceByCode: SourceInfoList Validation Error:")
-        logger.error(e.json())
-
-    ret_val = source_info_list
     return ret_val
 
 #-----------------------------------------------------------------------------

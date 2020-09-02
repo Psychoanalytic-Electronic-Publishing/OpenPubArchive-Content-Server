@@ -42,23 +42,34 @@ def solr_field_check(core, field_name):
     """
     ret_val = False, None
     try:
-        endpoint = f"/{core}/schema/fields/{field_name}/?showDefaults=true"
+        endpoint = f"{core}/schema/fields/{field_name}/?showDefaults=true"
         
         apicall = direct_endpoint_call(endpoint, SOLRURL)
-        response = requests.get(apicall, auth=HTTPBasicAuth(SOLRUSER, SOLRPW))
-        r = response.json()
-        try:
-            if r["field"]["name"] == field_name:
-                isvalid = True
-                info = r["field"]
-            else:
+        if SOLRUSER is not None:
+            response = requests.get(apicall, auth=HTTPBasicAuth(SOLRUSER, SOLRPW))
+        else:
+            response = requests.get(apicall)
+
+        if response.status_code == 200:
+            r = response.json()
+            try:
+                if r["field"]["name"] == field_name:
+                    isvalid = True
+                    info = r["field"]
+                else:
+                    isvalid = False
+            except KeyError:
                 isvalid = False
-        except KeyError:
+                info = None
+        else:
             isvalid = False
-            info = None
-    
+            info = f"Error checking schema {response.status_code}"
+            logger.error(info)
+            
     except Exception as e:
+        isvalid = False
         info = f"Error checking schema {e}"
+        logger.error(info)
         
     ret_val = isvalid, info
 

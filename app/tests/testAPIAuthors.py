@@ -47,7 +47,7 @@ class TestAPIAuthors(unittest.TestCase):
         Get Author Index For Matching Author Names
         /v1/Authors/Index/{authorNamePartial}/
         """
-        response = client.get(base_api + '/v1/Authors/Index/Tuckett/')
+        response = client.get(base_api + '/v2/Authors/Index/Tuckett/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -59,7 +59,7 @@ class TestAPIAuthors(unittest.TestCase):
         #            'responseSet': [{'authorID': 'tuckett, david', 'publicationsURL': '/v1/Authors/Publications/tuckett, david/', 'publicationsCount': 63}]}}
         assert(r['authorIndex']['responseSet'][0]['publicationsURL'][0:33] == '/v1/Authors/Publications/tuckett,')
        
-        response = client.get(base_api + '/v1/Authors/Index/Maslo/')
+        response = client.get(base_api + '/v2/Authors/Index/Maslo/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()

@@ -66,7 +66,7 @@ class TestSearchAnalysis(unittest.TestCase):
         print (f"Term: {response_set[1]['term']} Count: {response_set[1]['termCount']}")
         term0 = r["termIndex"]["responseSet"][0]["term"]
         assert(term0 == '(AOP) (in source)')
-        assert(r["termIndex"]["responseSet"][0]["termCount"] == 631)
+        assert(r["termIndex"]["responseSet"][0]["termCount"] >= 630)
         term1 = r["termIndex"]["responseSet"][1]["term"]
         assert(term1 == '(art_authors_text:(tuckett) || art_authors_citation:(tuckett))')
         assert(r["termIndex"]["responseSet"][1]["termCount"] >= 59)

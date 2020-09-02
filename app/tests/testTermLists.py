@@ -39,7 +39,7 @@ class TestTermSearch(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         
     def test_0a_termcounts(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/TermCounts/?termlist=motherhood, fatherhood, child, art_sourcetitlefull:journal')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/TermCounts/?termlist=motherhood, fatherhood, child')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
@@ -51,7 +51,7 @@ class TestTermSearch(unittest.TestCase):
         #]
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
-        assert(response_set[0]["termCount"] >= 3000)
+        assert(response_set[0]["termCount"] >= 2600)
         print (response_set)
         # Confirm that the request-response cycle completed successfully.
         full_URL = base_plus_endpoint_encoded('/v2/Database/TermCounts/?termlist=mother')

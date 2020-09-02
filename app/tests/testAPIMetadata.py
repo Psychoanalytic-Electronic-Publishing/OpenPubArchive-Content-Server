@@ -156,7 +156,7 @@ class TestMetadata(unittest.TestCase):
         # test return
         r = response.json()
         print (f"GW Volume Count: {r['volumeList']['responseInfo']['fullCount']}")
-        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_GW + 1) # 18 vols of GW
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_GW) # 18 vols of GW
 
     def test_0_meta_volumes_api_SE(self): 
         # ---------------------------------------------------------------------------------------
@@ -238,7 +238,7 @@ class TestMetadata(unittest.TestCase):
         List of video sources (not individual videos, EXCEPT if specified by parameter)
         /v1/Metadata/Videos/
         """
-        response = client.get(base_api + '/v1/Metadata/Videos/')
+        response = client.get(base_api + '/v2/Metadata/Videos/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return
@@ -247,42 +247,19 @@ class TestMetadata(unittest.TestCase):
         assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.VIDEOSOURCECOUNT)
 
         # try with src code parameter
-        response = client.get(base_api + '/v1/Metadata/Videos/?SourceCode=AFCVS&limit=1')
+        response = client.get(base_api + '/v2/Metadata/Videos/?SourceCode=AFCVS&limit=1')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return
         r = response.json()
         assert(r['sourceInfo']['responseSet'][0]['title'] == 'Anna Freud Center Video Collection')
 
-    def test_4_meta_journal_sources(self):
-        """
-        List of journal sources (not individual journals)
-        /v1/Metadata/Journals/
-
-        """
-        response = client.get(base_api + '/v1/Metadata/Journals/')
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        # test return
-        r = response.json()
-        print (f"Journal Count: {r['sourceInfo']['responseInfo']['fullCount']}")
-        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.JOURNALCOUNT)
-
-        # try with src code parameter
-        response = client.get(base_api + '/v1/Metadata/Journals/?journal=BJP&limit=1')
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        # test return
-        r = response.json()
-        print (f"Journal title: {r['sourceInfo']['responseSet'][0]['title']}")
-        assert(r['sourceInfo']['responseSet'][0]['title'] == 'British Journal of Psychotherapy')
-
     def test_6_meta_book_names(self):
         """
         List of book names
-        /v1/Metadata/Books/
+        /v2/Metadata/Books/
         """
-        response = client.get(base_api + '/v1/Metadata/Books/')
+        response = client.get(base_api + '/v2/Metadata/Books/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return
@@ -290,34 +267,23 @@ class TestMetadata(unittest.TestCase):
         print (f"Book Count: {r['sourceInfo']['responseInfo']['fullCount']}")
         assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.BOOKCOUNT)
 
-    def test_7_meta_sourcenames(self):
+    def test_7_meta_get_sourcenames(self):
         """
         List of names for a specific source
-        /v1/Metadata/{SourceType}/{SourceCode}/
+        /v2/Metadata/{SourceType}/{SourceCode}/
         """
         response = client.get(base_api + '/v2/Metadata/Journals/IJPSP/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return
         r = response.json()
-        # Expect: {'sourceInfo': 
-        #           {'responseInfo': {'count': 1, 'limit': 200, 'offset': 0, 'fullCount': 1, 'fullCountComplete': True, 'listLabel': 'journal List', 
-        #                             'listType': 'sourceinfolist', 'scopeQuery': '*', 'request': 'http://127.0.0.1:9100/v1/Metadata/Journals/IJPSP/', 
-        #                             'timeStamp': '2019-10-28T12:56:12Z'}, 
-        #            'responseSet': [{'sourceType': 'journal', 'PEPCode': 'IJPSP', 'bookCode': None, 'documentID': None, 
-        #                                           'bannerURL': 'http://development.org/images/bannerIJPSP.logo.gif', 
-        #                                           'displayTitle': 'International Journal of Psychoanalytic Self Psychology', 
-        #                                           'srcTitle': 'International Journal of Psychoanalytic Self Psychology', 
-        #                                           'title': 'International Journal of Psychoanalytic Self Psychology', 
-        #                                           'authors': None, 'pub_year': None, 'abbrev': 'Int. J. Psychoanal. Self Psychol.', 'ISSN': '1555-1024', 'language': 'EN', 
-        #                                           'yearFirst': '2006', 'yearLast': '2016', 'embargoYears': '3'}]}}
         assert(r['sourceInfo']['responseInfo']['fullCount'] == 1)
         assert(r['sourceInfo']['responseSet'][0]['displayTitle'] == 'International Journal of Psychoanalytic Self Psychology')
         
     def test_8_meta_all_sources(self):
         """
         List of names for a specific source
-        /v1/Metadata/{SourceType}/{SourceCode}/
+        /v2/Metadata/{SourceType}/{SourceCode}/
         """
         response = client.get(base_api + '/v2/Metadata/*/*/')
         # Confirm that the request-response cycle completed successfully.
@@ -329,7 +295,7 @@ class TestMetadata(unittest.TestCase):
     def test_8b_meta_all_sources(self):
         """
         List of names for a specific source
-        /v1/Metadata/{SourceType}/{SourceCode}/
+        /v2/Metadata/{SourceType}/{SourceCode}/
         """
         response = client.get(base_api + '/v2/Metadata/*/IJP/')
         # Confirm that the request-response cycle completed successfully.
@@ -341,7 +307,7 @@ class TestMetadata(unittest.TestCase):
     def test_8b2_meta_all_sources(self):
         """
         List of names for a specific source, a book, but not spec'd as book
-        /v1/Metadata/{SourceType}/{SourceCode}/
+        /v2/Metadata/{SourceType}/{SourceCode}/
         """
         # get all the PEP Codes
         response = client.get(base_api + '/v2/Metadata/*/*/')
@@ -360,6 +326,25 @@ class TestMetadata(unittest.TestCase):
             # test return
             r = response.json()
             assert(r['sourceInfo']['responseInfo']['count'] == 1)
+
+    def test_8b3_meta_sourcename(self):
+        """
+        List of names for a specific source by name
+        /v2/Metadata/{SourceType}/{SourceCode}/
+        """
+        response = client.get(base_api + '/v2/Metadata/*/*/?sourcename=.*psychoanalytic.*')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseInfo']['count'] == 33)
+
+        response = client.get(base_api + '/v2/Metadata/*/*/?sourcename=.*international journal of psychoanalysis.*')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseInfo']['count'] == 4)
 
     def test_8c_meta_all_sources_nonsense(self):
         """
@@ -411,16 +396,6 @@ class TestMetadata(unittest.TestCase):
         r = response.json()
         print (f"Journal Count: {r['sourceInfo']['responseInfo']['fullCount']}")
         assert(r['sourceInfo']['responseInfo']['fullCount'] == 0)
-
-        #  TEST v1 for now
-        response = client.get(base_api + '/v1/Metadata/Journals/?limit=20&offset=0&journal=a')
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        # test return
-        r = response.json()
-        print (f"Journal Count: {r['sourceInfo']['responseInfo']['fullCount']}")
-        assert(r['sourceInfo']['responseInfo']['fullCount'] == 0)
-
         
 if __name__ == '__main__':
     unittest.main()

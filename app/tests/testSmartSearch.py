@@ -26,15 +26,14 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded
 
 class TestSmartSearch(unittest.TestCase):
     def test_1_smartsearch_regular(self):
-        # This produces 0 results on the GVPi server; this result is correct though
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=AOP&smarttext=physics%20science%20observations&abstract=True')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=OPUS&smarttext=physics%20science%20observations&abstract=True')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 3)
+        assert(response_info["count"] == 1)
         print (response_set)
 
     def test__2a_smartsearch_locator1(self):
@@ -190,7 +189,7 @@ class TestSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 628)
+        assert(response_info["fullCount"] >= 627)
         # print (response_set[0])
 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=AJP&smarttext=art_type:PRO')

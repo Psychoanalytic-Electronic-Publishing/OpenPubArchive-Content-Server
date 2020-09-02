@@ -51,12 +51,12 @@ Endpoint and model documentation automatically available when server is running 
 
 #Naming standards: 
   #- converted variables (still may be some camelCase) in snake_case
-  #- class names in camelCase per python standards
-  #- model attributes - camelCase
+  #- class names in upper camelCase per python standards
+  #- model attributes - lower camelCase
   #- database fields/attributes - snake_case
   #- solr attributes - snake_case
-  #- api path parameters - camelCase
-  #- api query parameters - lowercase
+  #- api path parameters - upper CamelCase
+  #- api query parameters - all lowercase (unseparated)
 
 #----------------------------------------------------------------------------------------------
 # Revisions (Changelog) 
@@ -78,7 +78,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0828.1.Alpha"
+__version__     = "2020.0901.1.Alpha"
 __status__      = "Development"
 
 import sys
@@ -94,6 +94,7 @@ import re
 import secrets
 import wget
 import shlex
+import io
 import json
 
 # import json
@@ -108,15 +109,16 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.security.api_key import APIKeyQuery, APIKeyCookie, APIKeyHeader, APIKey
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response, RedirectResponse, FileResponse
+from starlette.responses import JSONResponse, Response, RedirectResponse, FileResponse, StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 import starlette.status as httpCodes
 #from starlette.middleware.sessions import SessionMiddleware
-from typing import Optional
+#from typing import Optional
+import pandas as pd
 
 import requests
 from requests.auth import HTTPBasicAuth
-import aiofiles
+# import aiofiles
 # from typing import List
 
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
@@ -279,7 +281,7 @@ async def api_live_doc(api_key: APIKey = Depends(get_api_key)):
     return response
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Reports/{report}", response_model=models.Report, tags=["Reports"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENTATION)
+@app.get("/v2/Reports/{report}", response_model=models.Report, tags=["Reports"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
 async def reports(response: Response, 
                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                   report: models.ReportTypeEnum=Path(..., title="Report Requested", description="One of the predefined report names"),
@@ -1268,7 +1270,7 @@ def session_login_basic(response: Response,
 
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     if session_id is not None and access_token is not None and access_token != "":
-        logger.debug("...note, already logged in...")
+        #logger.debug("...note, already logged in...")
         pass # we are already logged in
     else: # 
         if user:
@@ -1327,7 +1329,7 @@ def get_token(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v1/Token/
+         /v2/Token/
 
     ## Notes
 
@@ -1499,7 +1501,6 @@ def session_login_user(response: Response,
        #TODO: Need to figure out the right way to do timeouts for this "easy" login.
 
     ## Sample Call
-       /v1/Login/             (Needed to support the original version of the PEP API.)
        /v2/Session/Login/    
 
     ## Notes
@@ -3173,7 +3174,7 @@ def database_searchanalysis_v2(response: Response,
 @app.post("/v2/Database/SearchAnalysis/", response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ANALYSIS)  #  remove validation response_model=models.DocumentList, 
 def database_searchanalysis_v3(response: Response, 
                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                            qtermlist: models.SolrQueryTermList=None, # allows full specification
+                            qtermlist: models.SolrQueryTermList=Body(None, embed=True, title=opasConfig.TITLE_QTERMLIST, decription=opasConfig.DESCRIPTION_QTERMLIST), # allows full specification
                             fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
                             paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
                             parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
@@ -3518,10 +3519,11 @@ def database_mostviewed(response: Response,
                               sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                               sourcetype: str=Query("journal", title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
                               morethan: int=Query(5, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),
-                              abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
-                              stat:bool=Query(False, title="Return minimal information", description="True to return minimal information for statistical tables"),
+                              abstract:bool=Query(False, title=opasConfig.TITLE_RETURN_ABSTRACTS, description=opasConfig.DESCRIPTION_RETURN_ABSTRACTS),
+                              stat:bool=Query(False, title=opasConfig.TITLE_STATONLY, description=opasConfig.DESCRIPTION_STATONLY),
                               limit: int=Query(5, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT), # by PEP-Web standards, we want 10, but 5 is better for PEP-Easy
-                              offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
+                              offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                              download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD)
                               ):
     """
     ## Function
@@ -3532,10 +3534,9 @@ def database_mostviewed(response: Response,
                          2: lastmonth
                          3: last6months
                          4: last12months                                
-
                          
     ## Return Type
-       models.DocumentList
+       models.DocumentList (or returns response if a download is requested )
 
     ## Status
        This endpoint is working.
@@ -3543,7 +3544,7 @@ def database_mostviewed(response: Response,
          adding the await makes it never return
 
     ## Sample Call
-         /v1/Database/MostDownloaded/
+         /v2/Database/MostViewed/
 
     ## Notes
 
@@ -3557,7 +3558,7 @@ def database_mostviewed(response: Response,
         query_arg_error = f"Most Viewed: viewperiod: {viewperiod}.  Range should be 0-4 (int)."
     
     if sourcetype is not None: # none is ok
-        sourcetype = opasConfig.norm_val(sourcetype, opasConfig.VALS_SOURCETYPE, None)
+        sourcetype = opasConfig.normalize_val(sourcetype, opasConfig.VALS_SOURCETYPE, None)
         if sourcetype is None: # trap error on None, default
             query_arg_error = opasConfig.norm_val_error(opasConfig.VALS_SOURCETYPE, "Most Viewed: sourcetype")
     
@@ -3602,18 +3603,34 @@ def database_mostviewed(response: Response,
         )        
     else:
         status_message = opasCentralDBLib.API_STATUS_SUCCESS
-        # status_code = 200
+        status_code = httpCodes.HTTP_200_OK
+        if download:
+            # Download CSV of selected set.  Returns only response with download, not usual documentList
+            #   response to client
+            csvdata = [(n.documentRef, \
+                        n.stat["art_views_lastweek"], 
+                        n.stat["art_views_last1mos"], 
+                        n.stat["art_views_last6mos"], 
+                        n.stat["art_views_last12mos"], 
+                        n.stat["art_views_lastcalyear"])  for n in ret_val.documentList.responseSet]
+            header = ["Document", "Last Week", "Last Month", "Last 6 Months", "Last 12 Months", "Last Calendar Year"]
+            df = pd.DataFrame(csvdata)
+            stream = io.StringIO()
+            df.to_csv(stream, header=header, index = False)
+            response = StreamingResponse(iter([stream.getvalue()]),
+                                               media_type="text/csv"
+                                        )
+            response.headers["Content-Disposition"] = "attachment; filename=pepviews.csv"
+            ret_val = response
+        
+            # Don't record endpoint use (not a user request, just a default) but do record download
+            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_MOSTVIEWED,
+                                        session_info=session_info, 
+                                        params=request.url._url,
+                                        return_status_code = status_code,
+                                        status_message=status_message
+                                        )
 
-    # Don't record endpoint use (not a user request, just a default)
-    #ocd, session_info = opasAPISupportLib.get_session_info(request, resp)
-    #ocd.recordSessionEndpoint(apiEndpointID=opasCentralDBLib.API_DATABASE_MOSTCITED,
-                                #session_info=session_info,
-                                #params=request.url._url,
-                                #returnStatusCode = statusCode,
-                                #statusMessage=status_message
-                                #)
-
-    # logger.debug("out most viewed")
     return ret_val  # document_list
 
 #---------------------------------------------------------------------------------------------------------
@@ -3622,17 +3639,18 @@ def database_mostviewed(response: Response,
 def database_mostcited(response: Response,
                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                        morethan: int=Query(15, title=opasConfig.TITLE_CITED_MORETHAN, description=opasConfig.DESCRIPTION_CITED_MORETHAN),
-                       period: str=Query('5', title="Period (5, 10, 20, or all)", description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
+                       period: str=Query('5', title=opasConfig.TITLE_MOST_CITED_PERIOD, description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
                        pubperiod: int=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
                        author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                        title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
                        sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                        sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                        sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
-                       abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
-                       stat:bool=Query(False, title="Return minimal information", description="True to return minimal information for statistical tables"),
+                       abstract:bool=Query(False, title=opasConfig.TITLE_RETURN_ABSTRACTS, description=opasConfig.DESCRIPTION_RETURN_ABSTRACTS),
+                       stat:bool=Query(False, title=opasConfig.TITLE_STATONLY, description=opasConfig.DESCRIPTION_STATONLY),
                        limit: int=Query(10, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
+                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                       download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD)
                        ):
     """
     ## Function
@@ -3652,7 +3670,7 @@ def database_mostcited(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v1/Database/MostCited/
+         /v2/Database/MostCited/
 
     ## Notes
 
@@ -3689,23 +3707,41 @@ def database_mostcited(response: Response,
         )
     else:
         status_message = opasCentralDBLib.API_STATUS_SUCCESS
+        status_code = httpCodes.HTTP_200_OK
+        if download:
+            # Download CSV of selected set.  Returns only response with download, not usual documentList
+            #   response to client
+            csvdata = [(n.documentRef, \
+                        n.stat["art_cited_5"], 
+                        n.stat["art_cited_10"], 
+                        n.stat["art_cited_20"], 
+                        n.stat["art_cited_all"]) for n in ret_val.documentList.responseSet]
+            header = ["Document", "Last 5 Years", "Last 10 years", "Last 20 years", "All years"]
+            df = pd.DataFrame(csvdata)
+            stream = io.StringIO()
+            df.to_csv(stream, header=header, index = False)
+            response = StreamingResponse(iter([stream.getvalue()]),
+                                               media_type="text/csv"
+                                        )
+            response.headers["Content-Disposition"] = "attachment; filename=pepcited.csv"
+            ret_val = response
+        
+            # Don't record endpoint use (not a user request, just a default) but do record download
+            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_MOSTCITED,
+                                        session_info=session_info, 
+                                        params=request.url._url,
+                                        return_status_code = status_code,
+                                        status_message=status_message
+                                        )
 
-        status_code = 200
 
     # Don't record in final build - (ok for now during testing)
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
-    ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_MOSTCITED,
-                                session_info=session_info, 
-                                params=request.url._url,
-                                return_status_code = status_code,
-                                status_message=status_message
-                                )
 
     #print ("out mostcited")
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_WHATS_NEW)
+#@app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_WHATS_NEW)
 @app.get("/v2/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WHATS_NEW)
 def database_whatsnew(response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -3725,7 +3761,7 @@ def database_whatsnew(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v1/Database/WhatsNew/
+         /v2/Database/WhatsNew/
 
     ## Notes
 
@@ -3779,7 +3815,7 @@ def metadata_contents_sourcecode(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v1/Metadata/Contents/IJP/
+         /v2/Metadata/Contents/IJP/
 
     ## Notes
 
@@ -3840,8 +3876,8 @@ def metadata_contents(SourceCode: str,
        This endpoint is working.
 
     ## Sample Call
-         /v1/Metadata/Contents/IJP/77/
-         http://development.org:9100/v1/Metadata/Contents/IJP/77/
+         /v2/Metadata/Contents/IJP/77/
+         http://development.org:9100/v2/Metadata/Contents/IJP/77/
 
     ## Notes
 
@@ -3882,11 +3918,12 @@ def metadata_contents(SourceCode: str,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Videos/", response_model=models.VideoInfoList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_VIDEOS)
+#@app.get("/v1/Metadata/Videos/", response_model=models.VideoInfoList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_VIDEOS)
 @app.get("/v2/Metadata/Videos/", response_model=models.VideoInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_VIDEOS)
 def metadata_videos(response: Response,
                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                    sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                    sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE),
+                    sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                     limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                     offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                     ):
@@ -3904,44 +3941,50 @@ def metadata_videos(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v1/Metadata/Videos/
+         /v2/Metadata/Videos/
 
     ## Notes
 
     ## Potential Errors
 
     """
-    ret_val = metadata_by_sourcetype_sourcecode(response, request, SourceType="Video", SourceCode=sourcecode, limit=limit, offset=offset)
+    ret_val = metadata_by_sourcetype_sourcecode(response,
+                                                request,
+                                                SourceType="Video",
+                                                SourceCode=sourcecode,
+                                                sourcename=sourcename, 
+                                                limit=limit,
+                                                offset=offset)
     return ret_val
 
-#-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Journals/", response_model=models.JournalInfoList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_JOURNALS)
-def metadata_journals_v1(response: Response,
-                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                         journal: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                         limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
-                         ):
-    """
-    ## Function
-    <b>Get a complete list of journal names</b>
+##-----------------------------------------------------------------------------
+#@app.get("/v1/Metadata/Journals/", response_model=models.JournalInfoList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_JOURNALS)
+#def metadata_journals_v1(response: Response,
+                         #request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                         #journal: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                         #limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                         #offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
+                         #):
+    #"""
+    ### Function
+    #<b>Get a complete list of journal names</b>
 
-    ## Return Type
-       models.JournalInfoList
+    ### Return Type
+       #models.JournalInfoList
 
-    ## Status
-       This endpoint is working.
+    ### Status
+       #This endpoint is working.
 
-    ## Sample Call
-       /v1/Metadata/Journals/
+    ### Sample Call
+       #/v1/Metadata/Journals/
 
-    ## Notes
+    ### Notes
 
-    ## Potential Errors
+    ### Potential Errors
 
-    """
-    ret_val = metadata_by_sourcetype_sourcecode(response, request, SourceType="Journal", SourceCode=journal, limit=limit, offset=offset)
-    return ret_val
+    #"""
+    #ret_val = metadata_by_sourcetype_sourcecode(response, request, SourceType="Journal", SourceCode=journal, limit=limit, offset=offset)
+    #return ret_val
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Metadata/Journals/", response_model=models.JournalInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_JOURNALS)
@@ -3949,6 +3992,7 @@ def metadata_journals(response: Response,
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 #this param changed to sourcecode in v2 from journal in v1 (sourcecode is more accurately descriptive since this includes book series and video series)
                                 sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                                sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                                 limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                 offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                 ):
@@ -3974,6 +4018,7 @@ def metadata_journals(response: Response,
                                                 request,
                                                 SourceType="Journal",
                                                 SourceCode=sourcecode,
+                                                sourcename=sourcename, 
                                                 limit=limit,
                                                 offset=offset)
     return ret_val
@@ -4044,7 +4089,7 @@ def metadata_volumes(response: Response,
     except:
         source_code = None
 
-    src_exists = ocd.get_sources(source_code=source_code)
+    src_exists = ocd.get_sources(src_code=source_code)
     if not src_exists[0] and source_code != "*" and source_code != "ZBK" and source_code is not None: # ZBK not in productbase table without booknum
         response.status_code = httpCodes.HTTP_400_BAD_REQUEST
         status_message = f"Failure: Bad SourceCode {source_code}"
@@ -4092,11 +4137,12 @@ def metadata_volumes(response: Response,
     return ret_val # returns volumeList
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
+#@app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
 @app.get("/v2/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
 def metadata_books(response: Response,
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                              sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                             sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                              limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                              offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                              ):
@@ -4123,7 +4169,13 @@ def metadata_books(response: Response,
 
     """
 
-    ret_val = metadata_by_sourcetype_sourcecode(response, request, SourceType="Book", SourceCode=sourcecode, limit=limit, offset=offset)
+    ret_val = metadata_by_sourcetype_sourcecode(response,
+                                                request,
+                                                SourceType="Book",
+                                                SourceCode=sourcecode,
+                                                sourcename=sourcename, 
+                                                limit=limit,
+                                                offset=offset)
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -4133,6 +4185,7 @@ def metadata_by_sourcetype_sourcecode(response: Response,
                                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                       SourceType: str=Path(..., title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PATH_SOURCETYPE), 
                                       SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                                      sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                                       limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                       ):
@@ -4152,7 +4205,7 @@ def metadata_by_sourcetype_sourcecode(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         http://localhost:9100/v1/Metadata/Books/IPL
+         http://localhost:9100/v2/Metadata/Books/IPL
 
     ## Notes
        Depends on:
@@ -4166,16 +4219,11 @@ def metadata_by_sourcetype_sourcecode(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     source_code = SourceCode.upper()
     try:    
-        if source_code == "*" or SourceType != "Journal":
-            ret_val = source_info_list = opasAPISupportLib.metadata_get_source_by_type(src_type=SourceType,
-                                                                                       src_code=source_code,
-                                                                                       limit=limit,
-                                                                                       offset=offset)
-        else:
-            ret_val = source_info_list = opasAPISupportLib.metadata_get_source_by_code(src_code=SourceCode,
-                                                                                       limit=limit,
-                                                                                       offset=offset)            
-
+        ret_val = source_info_list = opasAPISupportLib.metadata_get_source_info(src_type=SourceType,
+                                                                                src_code=source_code,
+                                                                                src_name=sourcename, 
+                                                                                limit=limit,
+                                                                                offset=offset)
     except Exception as e:
         status_message = "Error: {}".format(e)
         response.status_code = httpCodes.HTTP_400_BAD_REQUEST
@@ -4210,7 +4258,7 @@ def metadata_by_sourcetype_sourcecode(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_AUTHOR_INDEX)
+#@app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_AUTHOR_INDEX)
 @app.get("/v2/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_exclude_unset=True, tags=["Authors"], summary=opasConfig.ENDPOINT_SUMMARY_AUTHOR_INDEX)
 def authors_index(response: Response,
                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -4229,7 +4277,7 @@ def authors_index(response: Response,
        This endpoint is working.
 
     ## Sample Call
-       http://localhost:9100/v1/Authors/Index/Tuck/
+       http://localhost:9100/v2/Authors/Index/Tuck/
 
     ## Notes
 
@@ -4295,8 +4343,8 @@ def authors_publications(response: Response,
        This endpoint is working.
 
     ## Sample Call
-       http://localhost:8000/v1/Authors/Publications/Tuck/
-       http://localhost:8000/v1/Authors/Publications/maslow, a.*/
+       http://localhost:8000/v2/Authors/Publications/Tuck/
+       http://localhost:8000/v2/Authors/Publications/maslow, a.*/
 
     ## Notes
 
@@ -4354,8 +4402,8 @@ def documents_abstracts(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v1/Documents/Abstracts/IJP.001.0203A/
-         http://localhost:9100/v1/Documents/Abstracts/IJP.001.0203A/
+         /v2/Documents/Abstracts/IJP.001.0203A/
+         http://localhost:9100/v2/Documents/Abstracts/IJP.001.0203A/
 
     ## Notes
         PEP Easy 1.03Beta expects HTML abstract return (it doesn't specify a format)
@@ -4725,7 +4773,7 @@ def documents_document_fetch(response: Response, request: Request=Query(None,
        This endpoint is working.
 
     ## Sample Call
-         http://localhost:9100/v1/Documents/IJP.077.0217A/
+         http://localhost:9100/v2/Documents/Document/IJP.077.0217A/
 
     ## Notes
 
@@ -4868,7 +4916,7 @@ def documents_document_fetch(response: Response, request: Request=Query(None,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Documents/Downloads/Images/{imageID}/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_IMAGE_DOWNLOAD)
+#@app.get("/v1/Documents/Downloads/Images/{imageID}/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_IMAGE_DOWNLOAD)
 @app.get("/v2/Documents/Image/{imageID}/", response_model_exclude_unset=True, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_IMAGE_DOWNLOAD)
 async def documents_image_fetch(response: Response,
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -4890,8 +4938,8 @@ async def documents_image_fetch(response: Response,
 
 
     ## Sample Call
-         http://localhost:9100/v1/Documents/Images/AIM.036.0275A.FIG001/
-         http://development.org:9100/v1/Documents/Downloads/Images/AIM.036.0275A.FIG001
+         http://localhost:9100/v1/Documents/Image/AIM.036.0275A.FIG001/
+         http://development.org:9100/v/Documents/Image/AIM.036.0275A.FIG001
 
     ## Notes
 
@@ -5009,7 +5057,7 @@ async def documents_image_fetch(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_DOWNLOAD)
+#@app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_DOWNLOAD)
 @app.get("/v2/Documents/Downloads/{retFormat}/{documentID}/", response_model_exclude_unset=True, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_DOWNLOAD)
 def documents_downloads(response: Response,
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -5030,9 +5078,9 @@ def documents_downloads(response: Response,
           PDF conversion (formatting is not great)
 
     ## Sample Call
-         http://localhost:9100/v1/Documents/Downloads/EPUB/IJP.077.0217A/
-         http://localhost:9100/v1/Documents/Downloads/PDF/IJP.077.0217A/
-         http://localhost:9100/v1/Documents/Downloads/PDFORIG/IJP.077.0217A/
+         http://localhost:9100/v2/Documents/Downloads/EPUB/IJP.077.0217A/
+         http://localhost:9100/v2/Documents/Downloads/PDF/IJP.077.0217A/
+         http://localhost:9100/v2/Documents/Downloads/PDFORIG/IJP.077.0217A/
 
     ## Notes
 

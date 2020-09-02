@@ -26,15 +26,14 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded
 
 class TestSearch(unittest.TestCase):
     def test_search_long_para(self):
-        # This produces 0 results on the GVPi server; this result is correct though
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=AOP&paratext=physics%20science%20observations&abstract=True')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=OPUS&paratext=physics%20science%20observations&abstract=True')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 3)
+        assert(response_info["count"] == 1)
         print (response_set)
 
     def test_search_long_para_alt_seems_to_show_solr_misses_one(self):
@@ -187,7 +186,7 @@ class TestSearch(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] == 611)
+        assert(response_info["fullCount"] >= 610)
         print (response_set[0])
 
     def test_search_year_range1(self):
@@ -220,7 +219,7 @@ class TestSearch(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] == 589)
+        assert(response_info["fullCount"] >= 588)
         print (response_set[0])
 
     def test_search_title(self):

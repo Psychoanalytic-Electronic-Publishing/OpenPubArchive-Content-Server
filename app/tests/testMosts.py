@@ -185,7 +185,7 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v1/Database/WhatsNew/?days_back=90')
+        response = client.get(base_api + '/v2/Database/WhatsNew/?days_back=90')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()

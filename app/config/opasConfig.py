@@ -105,8 +105,8 @@ DEFAULT_LIMIT_FOR_SOLR_RETURNS = 10
 DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS = 1
 DEFAULT_LIMIT_FOR_WHATS_NEW = 5
 DEFAULT_LIMIT_FOR_VOLUME_LISTS = 10000 # 2020-04-06 raised from 100, so all volumes can be brought back at once
-DEFAULT_LIMIT_FOR_CONTENTS_LISTS = 100
-DEFAULT_LIMIT_FOR_METADATA_LISTS = 100
+DEFAULT_LIMIT_FOR_CONTENTS_LISTS = 200
+DEFAULT_LIMIT_FOR_METADATA_LISTS = 200
 DEFAULT_SOLR_SORT_FIELD = "art_cited_5" 
 DEFAULT_SOLR_SORT_DIRECTION = "asc" # desc or asc
 DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 4000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
@@ -135,8 +135,10 @@ def norm_val_error(val_dict, val_name=""):
     return f"{val_name} Error. Allowed values {list_values(val_dict)} (only {val_dict[DICTLEN_KEY]} char required)."
         
 # define enums to make it clear what the values of parameters should be
-def norm_val(val, val_dict, default=None):
-    # Best way I could think of to quickly normalize an input value
+def normalize_val(val, val_dict, default=None):
+    """
+    Allow quick lookup and normalization of input values
+    """
     ret_val = default
     if isinstance(val, int):
         val = str(val)
@@ -152,7 +154,8 @@ def norm_val(val, val_dict, default=None):
             logging.warning(f"Value check returned error {e}")
     
     return ret_val
-    
+
+VALS_PRODUCT_TYPES = {DICTLEN_KEY: 4, "jour": "journal", "vide": "videostream", "book": "book"}    
 VALS_SOURCETYPE = {DICTLEN_KEY: 1, 'j': 'journal', 'b': 'book', 'v': 'videostream'} # standard values, can abbrev to 1st char or more
 VALS_ARTTYPE = {DICTLEN_KEY: 3, 'article': 'ART', 'abstract': 'ABS', 'announcement': 'ANN', 'commentary': 'COM', 'errata': 'ERR', 'profile': 'PRO', 'report': 'REP', 'review': 'REV'}
 VALS_DOWNLOADFORMAT = {DICTLEN_KEY: 4, 'html': 'HTML', 'pdf': 'PDF', 'pdfo': 'PDFORIG', 'epub': 'EPUB'}
@@ -171,6 +174,7 @@ DESCRIPTION_CITECOUNT = "Find documents cited more than 'X' times (or X TO Y tim
 DESCRIPTION_CITED_MORETHAN = f"Limit to articles cited more than this many times (default={DEFAULT_CITED_MORE_THAN})"
 DESCRIPTION_CLIENT_ID = "Numeric ID assigned to a client app by Opas Administrator"
 DESCRIPTION_CORE = "The preset name for the specif core to use (e.g., docs, authors, etc.)"
+DESCRIPTION_DOWNLOAD = "Download a CSV with the current return set of the statistical table" 
 DESCRIPTION_DAYSBACK = "Number of days to look back to assess what's new"
 DESCRIPTION_DOCDOWNLOADFORMAT = f"The format of the downloaded document data.  One of: {list_values(VALS_DOWNLOADFORMAT)}"
 DESCRIPTION_DOCIDORPARTIAL = "The document ID (e.g., IJP.077.0217A) or a partial ID (e.g., IJP.077,  no wildcard) for which to return data"
@@ -184,7 +188,7 @@ DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_ISSUE = "The issue number if the source has one"
 DESCRIPTION_LIMIT = "Number of items to return."
 DESCRIPTION_MOST_CITED_PERIOD = f"Most cited articles from this time period (years: {list_values(VALS_YEAROPTIONS)})"
-DESCRIPTION_MOST_VIEWED_PERIOD = "Most viewed articles in this period (0=Last Cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months)"
+DESCRIPTION_MOST_VIEWED_PERIOD = f"Most viewed articles in this period (periods: {list_values(VALS_VIEWPERIODDICT)})"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)."
 DESCRIPTION_PAGELIMIT = "Number of pages of a document to return"
 DESCRIPTION_PAGEOFFSET = "Starting page to return for this document as an offset from the first page.)"
@@ -193,18 +197,20 @@ DESCRIPTION_PAGEREQUEST = "The page or page range (from the document's numbering
 DESCRIPTION_PARAM_SOURCETYPE = f"Source type (One of: {list_values(VALS_SOURCETYPE)})"
 DESCRIPTION_PARASCOPE = "scope: doc, dreams, dialogs, biblios, per the schema (all the p_ prefixed scopes are also recognized without the p_ here)"
 DESCRIPTION_PARATEXT = "Words or phrases (in quotes) in a paragraph in the document"
-DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that."
 DESCRIPTION_PARAZONE_V1 = "scope: doc, dreams, dialogs, biblios, per the schema (all the p_ prefixed scopes are also recognized without the p_ here)"
 DESCRIPTION_PATH_SOURCETYPE = f"Source type.  One of: {list_values(VALS_SOURCETYPE)})"
-DESCRIPTION_PUBLICATION_PERIOD = "Number of publication years to include (counting back from current year, 0 means current year)" 
+DESCRIPTION_PUBLICATION_PERIOD = "Number of publication years to include (counting back from current year, 0 means current year)"
 DESCRIPTION_REQUEST = "The request object, passed in automatically by FastAPI"
 DESCRIPTION_RETURNFORMATS = "The format of the returned abstract and document data.  One of: 'HTML', 'XML', 'TEXTONLY'.  The default is HTML."
+DESCRIPTION_RETURN_ABSTRACTS = "Return abstracts in the documentList"
 DESCRIPTION_SEARCHPARAM = "This is a document request, including search parameters, to show hits"
+DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that."
 DESCRIPTION_SORT ="Comma separated list of field names to sort by."
 DESCRIPTION_SOURCECODE = "Assigned short code for Source (e.g., APA, CPS, IJP, PAQ)"
 DESCRIPTION_SOURCECODE = "The FULL 2-8 character PEP Code for source (of various types, e.g., journals: APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE; books: GW, SE, ZBK; videos: PEPGRANTVS, PEPTOPAUTHVS)."
 DESCRIPTION_SOURCELANGCODE = "Source language code or comma separated list of codes (e.g., EN, ES, DE, ...)"
 DESCRIPTION_SOURCENAME = "Name of Journal, Book, or Video name (e.g., 'international')"
+DESCRIPTION_STATONLY = "Return minimal documentListItem for statistics."
 DESCRIPTION_STARTDATE = "Find records on or after this date (input date as 2020-08-10 or 20200810)"
 DESCRIPTION_STARTYEAR = "Find documents published on or after this year, or in this range of years (e.g, 1999, Between range: 1999-2010. After: >1999 Before: <1999" 
 DESCRIPTION_SYNONYMS = "Expand search to include specially declared synonyms (True/False)"
@@ -231,6 +237,7 @@ TITLE_CITED_MORETHAN = "Cited more than this many times"
 TITLE_CLIENT_ID = "Client App Numeric ID"
 TITLE_CORE = "Core to use"
 TITLE_DAYSBACK = "Days Back"
+TITLE_DOWNLOAD = "Download response as CSV"
 TITLE_DOCUMENT_ID = "Document ID or Partial ID"
 TITLE_ENDDATE = "End date"
 TITLE_ENDYEAR = "End year"
@@ -240,8 +247,8 @@ TITLE_FULLTEXT1_V1 = "Paragraph based search"
 TITLE_IMAGEID = "Image ID (unique)"
 TITLE_ISSUE = "Issue Number"
 TITLE_LIMIT = "Document return limit"
-TITLE_MOST_CITED_PERIOD = "Most cited articles"
-TITLE_MOST_VIEWED_PERIOD = "Most viewed articles"
+TITLE_MOST_CITED_PERIOD = "Most cited article periods"
+TITLE_MOST_VIEWED_PERIOD = "Most viewed article periods"
 TITLE_OFFSET = "Document return offset"
 TITLE_PAGELIMIT = "Number pages to return"
 TITLE_PAGEOFFSET = "Relative page number (1 is the first) to return"
@@ -252,6 +259,7 @@ TITLE_SMARTSEARCH = "Search input parser"
 TITLE_PARAZONE1_V1 = "Zone for paragraph search"
 TITLE_PUBLICATION_PERIOD = "Number of Years to include" 
 TITLE_REQUEST = "HTTP Request" 
+TITLE_RETURN_ABSTRACTS = "Return an abstract with each match"
 TITLE_RETURNFORMATS = "Document return format"
 TITLE_SEARCHPARAM = "Document request from search results"
 TITLE_SORT = "Field names to sort by"
@@ -259,6 +267,7 @@ TITLE_SOURCECODE = "Series code"
 TITLE_SOURCELANGCODE = "Source language code"
 TITLE_SOURCENAME = "Series name"
 TITLE_SOURCETYPE = "Source type"
+TITLE_STATONLY = "Minimal return items"
 TITLE_STARTYEAR = "Start year or range"
 TITLE_STARTDATE = "Start date"
 TITLE_SYNONYMS = "Synonym expansion switch (True/False)"
@@ -303,6 +312,7 @@ ENDPOINT_SUMMARY_LOGOUT = "Logout the user who is logged in"
 ENDPOINT_SUMMARY_MOST_CITED = "Return the most cited journal articles published in this time period (5, 10, 20, or ALL years)"
 ENDPOINT_SUMMARY_MOST_VIEWED = "Return the most viewed journal articles published in this time period  (5, 10, 20, or ALL years)"
 ENDPOINT_SUMMARY_OPEN_API = "Return the OpenAPI specification for this API"
+ENDPOINT_SUMMARY_REPORTS = "Administrative predefined reports, e.g., from the server logs, e.g., Session-Log, User-Searches"
 ENDPOINT_SUMMARY_SEARCH_ADVANCED = "Advanced document search directly using OPAS schemas with OPAS return structures"
 ENDPOINT_SUMMARY_SEARCH_ANALYSIS = "Analyze search and return term/clause counts"
 ENDPOINT_SUMMARY_SEARCH_MORE_LIKE_THESE = "Full Search implementation, but expand the results to include 'More like these'"

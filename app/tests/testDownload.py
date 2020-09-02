@@ -86,5 +86,17 @@ class TestDownload(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
+    def test_5_Download(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Database/MostCited/?download=true')
+        response = client.get(full_URL)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+    def test_6_Download(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Database/MostViewed/?download=true')
+        response = client.get(full_URL)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
 if __name__ == '__main__':
     unittest.main()    
