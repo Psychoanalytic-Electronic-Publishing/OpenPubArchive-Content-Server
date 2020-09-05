@@ -433,6 +433,28 @@ class opasCentralDB(object):
         # return session model object
         return ret_val # None or Session Object
 
+    def get_select_as_list(self, sqlSelect: str):
+        """
+        Generic retrieval from database, into dict
+        
+        >>> ocd = opasCentralDB()
+        >>> records = ocd.get_select_as_list(sqlSelect="SELECT * from vw_reports_session_activity WHERE global_uid = 'nrs';")
+        >>> len(records) > 1
+        True
+
+        """
+        self.open_connection(caller_name="get_selection_as_list") # make sure connection is open
+        ret_val = None
+        if self.db is not None:
+            curs = self.db.cursor(pymysql.cursors.Cursor)
+            curs.execute(sqlSelect)
+            ret_val = curs.fetchall()
+            
+        self.close_connection(caller_name="get_selection_as_list") # make sure connection is closed
+
+        # return session model object
+        return ret_val # None or Session Object
+
     def get_session_from_db(self, session_id):
         """
         Get the session record info for session sessionID
@@ -893,6 +915,8 @@ class opasCentralDB(object):
     def authenticate_user_product_request(self, user_id, basecode, year):
         """
         see if the user has access to this product and year
+        
+        DEPRECATE 2020-09-01
         
         >>> ocd = opasCentralDB()
         >>> ocd.authenticate_user_product_request(10, "IJP", 2016) # but not logged in

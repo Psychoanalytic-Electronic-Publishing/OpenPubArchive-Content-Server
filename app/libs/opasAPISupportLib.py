@@ -2504,7 +2504,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                    req_url: str=None,
                    facet_limit=None,
                    facet_offset=None, 
-                   limit=15,
+                   limit=None,
                    offset=None,
                    sort=None, 
                    #authenticated=False,
@@ -2706,13 +2706,14 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                 for result in results.results:
                     # reset anchor counts for full-text markup re.sub
                     count_anchors = 0
+                    record_count = len(results.results)
                     # authorIDs = result.get("art_authors", None)
                     documentListItem = models.DocumentListItem()
                     documentListItem = get_base_article_info_from_search_result(result, documentListItem)
                     # sometimes, we don't need to check permissions
                     # Always check if fullReturn is selected
                     # Don't check when it's not and a large number of records are requested.
-                    if solr_query_spec.fullReturn or limit < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN:
+                    if record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN:
                         opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
                                                             classification=documentListItem.accessClassification, 
                                                             year=documentListItem.year,

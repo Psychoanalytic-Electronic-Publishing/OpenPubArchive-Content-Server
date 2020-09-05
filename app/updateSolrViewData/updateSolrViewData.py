@@ -23,6 +23,7 @@ import time
 import pymysql
 import pysolr
 import localsecrets
+from pydantic import BaseModel
 
 from datetime import datetime
 programNameShort = "updateSolrviewData"  # used for log file
@@ -31,6 +32,21 @@ logger = logging.getLogger(programNameShort)
 start_notice = f"Started at {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}. Logfile {logFilename}"
 print (start_notice)
 logger.info(start_notice)
+
+class MostCitedArticles(BaseModel):
+    """
+    __Table vw_stat_cited_crosstab__
+
+    A view with rxCode counts derived from the fullbiblioxml table and the articles table
+      for citing sources in one of the date ranges.
+      
+    Definition copied to keep this independent, from GitHub\openpubarchive\app\libs\modelsOpasCentralPydantic.py   
+    """
+    cited_document_id: str = None
+    countAll: int = 0
+    count5: int = 0
+    count10: int = 0
+    count20: int = 0
 
 class opasCentralDBMini(object):
     """
@@ -147,7 +163,38 @@ class opasCentralDBMini(object):
 
     #----------------------------------------------------------------------------------------
 
-def update_views_data(solrcon):
+def collect_citation_counts() -> dict:
+    ocd =  opasCentralDBMini()
+    citation_table = []
+    print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
+    try:
+        ocd.open_connection()
+        # Get citation lookup table
+        try:
+            cursor = ocd.db.cursor(pymysql.cursors.DictCursor)
+            sql = """
+                  SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
+                  """
+            success = cursor.execute(sql)
+            if success:
+                citation_table = cursor.fetchall()
+                cursor.close()
+            else:
+                logger.error("Cursor execution failed.  Can't fetch.")
+                
+        except MemoryError as e:
+            print(("Memory error loading table: {}".format(e)))
+        except Exception as e:
+            print(("Table Query Error: {}".format(e)))
+        
+        ocd.close_connection()
+    except Exception as e:
+        print(("Database Connect Error: {}".format(e)))
+        citation_table["dummy"] = MostCitedArticles()
+    
+    return citation_table
+
+def update_views_solr_data(solrcon):
     """
     Use in-place updates to update the views data
     """
@@ -189,6 +236,50 @@ def update_views_data(solrcon):
     logger.info(f"Finished updating Solr database with {update_count} article records updated.")
     return update_count
 
+def update_citation_solr_data(solrcon):
+    """
+    Use in-place updates to update the views data
+    """
+    citation_table = collect_citation_counts()
+    print (f"Loading {len(citation_table)} records into citation cross-tab table.")
+    update_count = 0
+    
+    for n in citation_table:
+        # set only includes those with the desired update value > 0 
+        #   (see RDS vw_stat_to_update_solr_docviews to change criteria)
+        doc_id = n.get("cited_document_id", None)
+        count_5 = n.get("count5", None) 
+        count_10 = n.get("count10", None) 
+        count_20 = n.get("count20", None) 
+        count_All = n.get("countAll", None)
+        if doc_id is not None:
+            update_count += 1
+            upd_rec = {
+                        "id":doc_id,
+                        "art_cited_5": count_5, 
+                        "art_cited_10": count_10, 
+                        "art_cited_20": count_20, 
+                        "art_cited_all": count_All
+            }                    
+            try:
+                solrcon.add([upd_rec], fieldUpdates={
+                                                     "art_cited_5": 'set',
+                                                     "art_cited_10": 'set',
+                                                     "art_cited_20": 'set',
+                                                     "art_cited_all": 'set',
+                                                     })
+
+                if update_count % 1500 == 0:
+                    solr_docs2.commit()
+                    print (f"updated {update_count} records with citation data")
+                
+            except Exception as err:
+                errStr = "Solr call exception for citation update on %s: %s" % (doc_id, err)
+                logger.error(errStr)
+                    
+    logger.info(f"Finished updating Solr citation counts with {update_count} article records updated.")
+    return update_count
+
 if __name__ == "__main__":
     from optparse import OptionParser
     parser = OptionParser(usage="%prog [options] - PEP Solr Views Update Loader", version=f"Ver. {__version__}")
@@ -206,7 +297,8 @@ if __name__ == "__main__":
     else: #  no user and password needed
         solr_docs2 = pysolr.Solr(solrurl_docs)
     start_time = time.time()
-    updates = update_views_data(solr_docs2)
+    updates = update_views_solr_data(solr_docs2)
+    updates = update_citation_solr_data(solr_docs2)
     total_time = time.time() - start_time
     final_stat = f"{time.ctime()} Updated {updates} Solr records in {total_time} secs)."
     logging.getLogger().setLevel(logging.INFO)

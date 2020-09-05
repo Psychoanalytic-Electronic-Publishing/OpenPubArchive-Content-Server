@@ -193,7 +193,7 @@ def read_stopwords():
     return ret_val
 
 # Module Globals
-gCitedTable = dict() # large table of citation counts, too slow to run one at a time.
+#gCitedTable = dict() # large table of citation counts, too slow to run one at a time.
 bib_total_reference_count = 0
 rc_stopword_match = read_stopwords() # returns compile re for matching stopwords 
 
@@ -922,7 +922,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
     excerpt_xml = opasxmllib.xml_elem_or_str_to_xmlstring(excerpt_xml, None)
     
     #art_authors_unlisted = pepxml.xpath(r'//artinfo/artauth/aut[@listed="false"]/@authindexid') 
-    cited_counts = gCitedTable.get(artInfo.art_id, modelsOpasCentralPydantic.MostCitedArticles())
+    # cited_counts = gCitedTable.get(artInfo.art_id, modelsOpasCentralPydantic.MostCitedArticles())
     # anywhere in the doc.
     children = doc_children() # new instance, reset child counter suffix
     children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//body//p|//body//p2", attr_to_find="lang"),
@@ -1035,10 +1035,10 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "file_name" : artInfo.filename,
                 "art_subtitle_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//artsubtitle", default_return = None),
                 "art_citeas_xml" : artInfo.art_citeas_xml,
-                "art_cited_all" : cited_counts.countAll,
-                "art_cited_5" : cited_counts.count5,
-                "art_cited_10" : cited_counts.count10,
-                "art_cited_20" : cited_counts.count20,
+                #"art_cited_all" : cited_counts.countAll,
+                #"art_cited_5" : cited_counts.count5,
+                #"art_cited_10" : cited_counts.count10,
+                #"art_cited_20" : cited_counts.count20,
                 "body_xml" : body_xml[0],
                 "authors" :  artInfo.author_list, # artInfo.art_all_authors,
                 "art_authors" : artInfo.author_list,
@@ -1870,7 +1870,7 @@ def get_file_dates_solr(solrcore, filename=None):
 def main():
     
     global options  # so the information can be used in support functions
-    global gCitedTable
+    # global gCitedTable
     
     cumulative_file_time_start = time.time()
     
@@ -2101,7 +2101,7 @@ def main():
         skipped_files = 0
         cumulative_file_time_start = time.time()
         if new_files > 0:
-            gCitedTable = collect_citation_counts(ocd)
+            # gCitedTable = collect_citation_counts(ocd)
                
             if options.run_in_reverse:
                 print ("-r option selected.  Running the files found in reverse order.")

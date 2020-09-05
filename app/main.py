@@ -78,7 +78,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0901.1.Alpha"
+__version__     = "2020.0904.1.Alpha"
 __status__      = "Development"
 
 import sys
@@ -289,8 +289,9 @@ async def reports(response: Response,
                   userid:str=Query(None, title="Global User ID", description="Filter by this common (global) system userid"), 
                   startdate: str=Query(None, title=opasConfig.TITLE_STARTDATE, description=opasConfig.DESCRIPTION_STARTDATE), 
                   enddate: str=Query(None, title=opasConfig.TITLE_ENDDATE, description=opasConfig.DESCRIPTION_ENDDATE),
-                  limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                  limit: int=Query(None, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                  download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
                   client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID), 
                   api_key: APIKey = Depends(get_api_key)
                   ):
@@ -325,6 +326,7 @@ async def reports(response: Response,
     #username_condition = ""
     standard_filter = "1"
     limited_count = 0
+    ret_val = None
 
     if sessionid is not None:
         sessionid_condition = f" AND session_id={sessionid}"
@@ -363,57 +365,100 @@ async def reports(response: Response,
         limit_clause = f"LIMIT {limit}"
         if offset != 0:
             limit_clause += f" OFFSET {offset}"
-
+    else:
+        limit = 0 # (None) for ResponseInfo since it has to be an integer
+        
     report_view = None
+    header = None
+    standard_filter = "endpoint rlike '.*Search' " #AND params not like 'http://development.org:9100/v%' "
     if report == models.ReportTypeEnum.sessionLog:
         report_view = "vw_reports_session_activity"
+        header = ["session id", "user id", "connection", "referrer", "session_start", "session end", "item of interest", "endpoint", "params", "status code", "status message", "last update"]
     elif report == models.ReportTypeEnum.userSearches:
         report_view = "vw_reports_user_searches"
+        header = ["user id", "session id", "session_start", "item of interest", "endpoint", "params", "status code", "status message", "last update"]
         # filter out my local test machine
-        standard_filter = "endpoint rlike '.*Search' AND params not like 'http://development.org:9100/v%' "
-
+    elif report == models.ReportTypeEnum.documentViews:
+        report_view = "vw_reports_document_views"
+        header = ["document id", "view type", "view count"]
+        # filter out my local test machine
+    elif report == models.ReportTypeEnum.opasLogs:
+        report_view = "opas_error_logs"
+        # Download CSV of selected set.  Returns only response with download, not usual documentList
+        #   response to client
+        if download:
+            return FileResponse(logging.root.handlers[0].baseFilename, media_type='application/octet-stream',filename=os.path.basename(logging.root.handlers[0].baseFilename))
+            #file_like = open(logging.root.handlers[0].baseFilename, mode="r")
+            #response.headers["Content-Disposition"] = f"attachment; filename={os.path.basename(logging.root.handlers[0].baseFilename)}"
+            #return StreamingResponse(file_like, media_type="text/plain")            
+        else:
+            name = logging.root.handlers[0].baseFilename
+            ret_val = FileResponse(name)
+        
     if report_view is None:
         raise HTTPException(
             status_code=httpCodes.HTTP_404_NOT_FOUND, 
             detail=f"Report not found."
         )        
+    
+    if report_view == "opas_error_logs":
+        # opas eror logs
+        pass
+    else:
+        select = f"""SELECT * from {report_view}
+                     WHERE {standard_filter}
+                     {date_condition}
+                     {userid_condition}
+                     {sessionid_condition}
+                     ORDER BY last_update DESC
+                     {limit_clause};
+                  """
+    
+        count = ocd.get_select_count(select)
+        if count == 0:
+            raise HTTPException(
+                status_code=httpCodes.HTTP_404_NOT_FOUND, 
+                detail=f"No data to report."
+        )               
+        else:
+            if download:
+                # Download CSV of selected set.  Returns only response with download, not usual documentList
+                #   response to client
+                results = ocd.get_select_as_list(select)
+                df = pd.DataFrame(results)
+                stream = io.StringIO()
+                df.to_csv(stream, header=header, index = False)
+                response = StreamingResponse(iter([stream.getvalue()]),
+                                                   media_type="text/csv"
+                                            )
+                response.headers["Content-Disposition"] = f"attachment; filename={report_view}.csv"
+                ret_val = response
+            else:
+                results = ocd.get_select_as_list_of_dicts(select)
+                limited_count = len(results)
         
-    select = f"""SELECT * from {report_view}
-                 WHERE {standard_filter}
-                 {date_condition}
-                 {userid_condition}
-                 {sessionid_condition}
-                 ORDER BY last_update DESC
-                 {limit_clause};
-              """
-
-    count = ocd.get_select_count(select)
-    if count > 0:
-        results = ocd.get_select_as_list_of_dicts(select)
-        limited_count = len(results)
-    
-    response_info = models.ResponseInfo(count = limited_count,
-                                        fullCount = count,
-                                        totalMatchCount = count,
-                                        limit = limit,
-                                        offset = offset,
-                                        listType="reportlist",
-                                        fullCountComplete = limited_count >= count,
-                                        request=f"{request.url._url}",
-                                        timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-    )   
-
-    if count == 0:
-        raise HTTPException(
-            status_code=httpCodes.HTTP_404_NOT_FOUND, 
-            detail=f"No Records Found"
-        )       
-    
-    report_struct = models.ReportStruct( responseInfo = response_info, 
-                                         responseSet = results
-                                        )
-
-    ret_val = models.Report(report = report_struct)
+                response_info = models.ResponseInfo(count = limited_count,
+                                                    fullCount = count,
+                                                    totalMatchCount = count,
+                                                    limit = limit,
+                                                    offset = offset,
+                                                    listType="reportlist",
+                                                    fullCountComplete = limited_count >= count,
+                                                    request=f"{request.url._url}",
+                                                    timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                )   
+            
+                if count == 0:
+                    raise HTTPException(
+                        status_code=httpCodes.HTTP_404_NOT_FOUND, 
+                        detail=f"No Records Found"
+                    )       
+                
+                report_struct = models.ReportStruct( responseInfo = response_info, 
+                                                     responseSet = results
+                                                    )
+            
+                ret_val = models.Report(report = report_struct)
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_REPORTS,
                                 api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_GET, 
@@ -1808,7 +1853,7 @@ async def database_advanced_search(response: Response,
                                    def_type: str=Query("lucene", title="edisMax, disMax, lucene (standard) or None (lucene)", description="Query analyzer"),
                                    facet_fields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                    sort: str=Query("score desc", title="Field names to sort by", description="Comma separated list of field names, optionally each with direction (desc or asc)"),
-                                   limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                   limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                    offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                    ):
     """
@@ -2031,7 +2076,7 @@ async def database_advanced_search_v3(response: Response,
                                       def_type: str=Query("lucene", title="edisMax, disMax, lucene (standard) or None (lucene)", description="Query analyzer"),
                                       facet_fields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                       sort: str=Query("score desc", title="Field names to sort by", description="Comma separated list of field names, optionally each with direction (desc or asc)"),
-                                      limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                       ):
     """
@@ -2461,7 +2506,7 @@ async def database_search_v1(response: Response,
                              startyear: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
                              endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
                              sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                             limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                             limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                              offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                             ):
     """
@@ -2533,7 +2578,6 @@ async def database_search_paragraphs(response: Response,
                                      paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
                                      parascope: str=Query("doc", title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
                                      synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS, description=opasConfig.DESCRIPTION_SYNONYMS),
-                                     similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                                      # query parameters that get mapped to filters (Solr query filter)
                                      sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                                      sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
@@ -2551,12 +2595,13 @@ async def database_search_paragraphs(response: Response,
                                      # return set control
                                      #returnfields: str=Query(None, title="Fields to return (see limitations)", description="Comma separated list of field names"),
                                      abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
+                                     similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                                      facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                      facetmincount: int=Query(1, title="Minimum count to return a facet"),
                                      facetlimit: int=Query(10, title="Maximum number of facet values to return"),
                                      facetoffset: int=Query(0, title="Offset that can be used for paging through a facet"),
                                      sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                                     limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                     limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                      ):
     """
@@ -2669,11 +2714,10 @@ async def database_search_v3(
     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
     qtermlist: models.SolrQueryTermList=Body(None, embed=True, title=opasConfig.TITLE_QTERMLIST, decription=opasConfig.DESCRIPTION_QTERMLIST), # allows full specification
     fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
+    smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
     paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
     parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
-    smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
     synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS, description=opasConfig.DESCRIPTION_SYNONYMS),
-    similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
     # filters (Solr query filter)
     sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
     sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2), 
@@ -2693,12 +2737,13 @@ async def database_search_v3(
     returnfields: str=Query(None, title="Fields to return (see limitations)", description="Comma separated list of field names"),
     abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
     formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+    similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
     facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
     facetmincount: int=Query(1, title="Minimum count to return a facet"),
     facetlimit: int=Query(15, title="Maximum number of facet values to return"),
     facetoffset: int=Query(0, title="Offset that can be used for paging through a facet"),
     sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-    limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+    limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
     offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
     ):
     """
@@ -2853,11 +2898,10 @@ async def database_search_v2(
     response: Response, 
     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
     fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
-    paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
     smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
+    paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
     parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
     synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS, description=opasConfig.DESCRIPTION_SYNONYMS),
-    similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
     # filters (Solr query filter)
     sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
     sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2), 
@@ -2877,12 +2921,13 @@ async def database_search_v2(
     returnfields: str=Query(None, title="Fields to return (see limitations)", description="Comma separated list of field names"),
     abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
     formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+    similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
     facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
     facetmincount: int=Query(1, title="Minimum count to return a facet"),
     facetlimit: int=Query(15, title="Maximum number of facet values to return"),
     facetoffset: int=Query(0, title="Offset that can be used for paging through a facet"),
     sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-    limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+    limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
     offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
   ):
     """
@@ -3030,7 +3075,7 @@ async def database_searchanalysis_v1(response: Response,
                                      endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
                                      # return set control
                                      sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                                     limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                     limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                     ):
     """
@@ -3117,7 +3162,7 @@ def database_searchanalysis_v2(response: Response,
                             # return set control
                             facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                             sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                            limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                            limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                             offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                          ):
 
@@ -3196,7 +3241,7 @@ def database_searchanalysis_v3(response: Response,
                             # return set control
                             facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                             sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                            limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                            limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                             offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                          ):
 
@@ -3251,7 +3296,7 @@ def database_searchanalysis_v3(response: Response,
 
 #---------------------------------------------------------------------------------------------------------
 @app.post("/v2/Database/SearchTermList/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"])
-async def database_searchtermlist_v3(response: Response, 
+async def database_searchtermlist_v2(response: Response, 
                                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                      qtermlist: models.SolrQueryTermList=Body(None, embed=True, title=opasConfig.TITLE_QTERMLIST, decription=opasConfig.DESCRIPTION_QTERMLIST), # allows full specification
                                      # filters (Solr query filter)
@@ -3270,7 +3315,7 @@ async def database_searchtermlist_v3(response: Response,
                                      facetlimit: int=Query(15, title="Maximum number of facet values to return"),
                                      facetoffset: int=Query(0, title="Offset that can be used for paging through a facet"),
                                      sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                                     limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                     limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                                      api_key: APIKey = Depends(get_api_key)                                     
                                     ):
@@ -3397,9 +3442,10 @@ async def database_smartsearch(response: Response,
                                # filters, v1 naming
                                sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
+                               similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                                formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                                facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
-                               limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                               limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                               ):
     """
@@ -3477,7 +3523,7 @@ async def database_smartsearch(response: Response,
                                        parascope=None,
                                        smarttext=smarttext, 
                                        synonyms=False,
-                                       similarcount=0, 
+                                       similarcount=similarcount, 
                                        sourcecode=None,
                                        sourcename=None, 
                                        sourcetype=None, 
@@ -3521,7 +3567,7 @@ def database_mostviewed(response: Response,
                               morethan: int=Query(5, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),
                               abstract:bool=Query(False, title=opasConfig.TITLE_RETURN_ABSTRACTS, description=opasConfig.DESCRIPTION_RETURN_ABSTRACTS),
                               stat:bool=Query(False, title=opasConfig.TITLE_STATONLY, description=opasConfig.DESCRIPTION_STATONLY),
-                              limit: int=Query(5, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT), # by PEP-Web standards, we want 10, but 5 is better for PEP-Easy
+                              limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT), # by PEP-Web standards, we want 10, but 5 is better for PEP-Easy
                               offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                               download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD)
                               ):
@@ -3572,24 +3618,27 @@ def database_mostviewed(response: Response,
             detail=status_message
         )        
 
+    if download == True and limit == opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS:
+        limit = None
+        
     # else go ahead!
     try:
         # we want the last year (default, per PEP-Web) of views, for all articles (journal articles)
         ret_val = opasAPISupportLib.database_get_most_viewed( view_period=viewperiod, # limiting to 5, you'd get the 5 biggest values for this view period
-                                                                    publication_period=pubperiod,
-                                                                    more_than=morethan, 
-                                                                    author=author,
-                                                                    title=title,
-                                                                    source_name=sourcename, 
-                                                                    source_code=sourcecode,
-                                                                    source_type=sourcetype, # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
-                                                                    abstract_requested=abstract, 
-                                                                    req_url=request.url._url,
-                                                                    stat=stat, 
-                                                                    limit=limit, 
-                                                                    offset=offset,
-                                                                    session_info=session_info
-                                                                  )
+                                                              publication_period=pubperiod,
+                                                              more_than=morethan, 
+                                                              author=author,
+                                                              title=title,
+                                                              source_name=sourcename, 
+                                                              source_code=sourcecode,
+                                                              source_type=sourcetype, # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                                              abstract_requested=abstract, 
+                                                              req_url=request.url._url,
+                                                              stat=stat, 
+                                                              limit=limit, 
+                                                              offset=offset,
+                                                              session_info=session_info
+                                                            )
         # fill in additional return structure status info
         # client_host = request.client.host
         # ret_val.documentList.responseInfo.request = request.url._url
@@ -3648,7 +3697,7 @@ def database_mostcited(response: Response,
                        sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
                        abstract:bool=Query(False, title=opasConfig.TITLE_RETURN_ABSTRACTS, description=opasConfig.DESCRIPTION_RETURN_ABSTRACTS),
                        stat:bool=Query(False, title=opasConfig.TITLE_STATONLY, description=opasConfig.DESCRIPTION_STATONLY),
-                       limit: int=Query(10, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                        download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD)
                        ):
@@ -3678,12 +3727,15 @@ def database_mostcited(response: Response,
 
     """
 
-    time.sleep(.25)
+    #time.sleep(.25)
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     # session_id = session_info.session_id 
 
     #print ("in most cited")
 
+    if download == True and limit == opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS:
+        limit = None
+        
     # return documentList
     ret_val, ret_status = opasAPISupportLib.database_get_most_cited( period=period,
                                                                      more_than=morethan,
@@ -3746,7 +3798,7 @@ def database_mostcited(response: Response,
 def database_whatsnew(response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                       days_back: int=Query(14, title=opasConfig.TITLE_DAYSBACK, description=opasConfig.DESCRIPTION_DAYSBACK),
-                      limit: int=Query(5, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                       ):  
     """
@@ -3799,7 +3851,7 @@ def metadata_contents_sourcecode(response: Response,
                                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                  SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                                  year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
-                                 limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                 limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                  offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                  ):
     """
@@ -3860,7 +3912,7 @@ def metadata_contents(SourceCode: str,
                       response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                       year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
-                      limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                       ):
     """
@@ -3924,7 +3976,7 @@ def metadata_videos(response: Response,
                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                     sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE),
                     sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
-                    limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                    limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                     offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                     ):
     """
@@ -3957,35 +4009,6 @@ def metadata_videos(response: Response,
                                                 offset=offset)
     return ret_val
 
-##-----------------------------------------------------------------------------
-#@app.get("/v1/Metadata/Journals/", response_model=models.JournalInfoList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_JOURNALS)
-#def metadata_journals_v1(response: Response,
-                         #request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                         #journal: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                         #limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                         #offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
-                         #):
-    #"""
-    ### Function
-    #<b>Get a complete list of journal names</b>
-
-    ### Return Type
-       #models.JournalInfoList
-
-    ### Status
-       #This endpoint is working.
-
-    ### Sample Call
-       #/v1/Metadata/Journals/
-
-    ### Notes
-
-    ### Potential Errors
-
-    #"""
-    #ret_val = metadata_by_sourcetype_sourcecode(response, request, SourceType="Journal", SourceCode=journal, limit=limit, offset=offset)
-    #return ret_val
-
 #-----------------------------------------------------------------------------
 @app.get("/v2/Metadata/Journals/", response_model=models.JournalInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_JOURNALS)
 def metadata_journals(response: Response,
@@ -3993,7 +4016,7 @@ def metadata_journals(response: Response,
                                 #this param changed to sourcecode in v2 from journal in v1 (sourcecode is more accurately descriptive since this includes book series and video series)
                                 sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                                 sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
-                                limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                 offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                 ):
     """
@@ -4027,8 +4050,8 @@ def metadata_journals(response: Response,
 @app.get("/v1/Metadata/Volumes/{SourceCode}", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_VOLUMES)
 def metadata_volumes_v1(response: Response,
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                        limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                         sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
+                        limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                         # v1 arg
                         SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
@@ -4060,7 +4083,7 @@ def metadata_volumes(response: Response,
                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                      sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
                      sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                     limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                     limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                      ):
     """
@@ -4143,7 +4166,7 @@ def metadata_books(response: Response,
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                              sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                              sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
-                             limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                             limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                              offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                              ):
     """
@@ -4186,7 +4209,7 @@ def metadata_by_sourcetype_sourcecode(response: Response,
                                       SourceType: str=Path(..., title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PATH_SOURCETYPE), 
                                       SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                                       sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
-                                      limit: int=Query(200, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                       ):
     """
@@ -4263,7 +4286,7 @@ def metadata_by_sourcetype_sourcecode(response: Response,
 def authors_index(response: Response,
                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                   authorNamePartial: str=Path(..., title=opasConfig.TITLE_AUTHORNAMEORPARTIAL, description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
-                  limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                  limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                   ):
     """
@@ -4328,7 +4351,7 @@ def authors_index(response: Response,
 def authors_publications(response: Response,
                          request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                          authorNamePartial: str=Path(..., title=opasConfig.TITLE_AUTHORNAMEORPARTIAL, description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
-                         limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                          offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                          ):
     """
@@ -4387,7 +4410,7 @@ def documents_abstracts(response: Response,
                         return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                         similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                         sort: str=Query("authors desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                        limit: int=Query(5, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                        limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                         ):
     """
@@ -4476,7 +4499,7 @@ async def database_glossary_search_v2(response: Response,
                                       sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                       facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                       formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                                      limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                       ):
     """
@@ -4554,7 +4577,7 @@ async def database_glossary_search_v2(response: Response,
 #-----------------------------------------------------------------------------
 # MIRROR VERSION WITH POST
 #-----------------------------------------------------------------------------
-@app.post("/v3/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH)
+@app.post("/v2/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH)
 async def database_glossary_search_v3(response: Response, 
                                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                       qtermlist: models.SolrQueryTermList=None, # allows full specification
@@ -4566,7 +4589,7 @@ async def database_glossary_search_v3(response: Response,
                                       sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                       facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                       formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                                      limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                                       ):
     """
@@ -4752,6 +4775,7 @@ def documents_document_fetch(response: Response, request: Request=Query(None,
                              documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), # return controls 
                              page:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
                              return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                             similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                              search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
                              limit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
                              offset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET)
@@ -4845,6 +4869,7 @@ def documents_document_fetch(response: Response, request: Request=Query(None,
                                                                     solr_query_params,
                                                                     ret_format=return_format, 
                                                                     #authenticated = session_info.authenticated,
+                                                                    similar_count=similarcount, 
                                                                     #file_classification=file_classification, 
                                                                     page_offset=offset, # starting page
                                                                     page_limit=limit, # number of pages
@@ -5200,7 +5225,7 @@ def database_word_wheel(response: Response,
                         word: str=Query(None, title=opasConfig.TITLE_WORD, description=opasConfig.DESCRIPTION_WORD),
                         field: str=Query("text", title=opasConfig.TITLE_WORDFIELD, description=opasConfig.DESCRIPTION_WORDFIELD),
                         core: str=Query("docs", title=opasConfig.TITLE_CORE, description=opasConfig.DESCRIPTION_CORE),
-                        limit: int=Query(15, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                        limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET)
                         ):
     """

@@ -77,6 +77,8 @@ COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
 COOKIE_MAX_KEEP_TIME = 86400 # 24 hours in seconds
 SESSION_INACTIVE_LIMIT = 30  # minutes
 
+
+
 # cookies
 OPASSESSIONID = "opasSessionID"
 OPASACCESSTOKEN = "opasSessionInfo"
@@ -98,10 +100,9 @@ MAX_EXCERPT_CHARS = 2000
 MAX_EXCERPT_PARAS = 10
 MAX_PARAS_FOR_SUMMARY = 10
 
-
 DEFAULT_KWIC_CONTENT_LENGTH = 200  # On each side of match (so use 1/2 of the total you want)
 DEFAULT_MAX_KWIC_RETURNS = 5
-DEFAULT_LIMIT_FOR_SOLR_RETURNS = 10
+DEFAULT_LIMIT_FOR_SOLR_RETURNS = 15
 DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS = 1
 DEFAULT_LIMIT_FOR_WHATS_NEW = 5
 DEFAULT_LIMIT_FOR_VOLUME_LISTS = 10000 # 2020-04-06 raised from 100, so all volumes can be brought back at once
@@ -170,7 +171,7 @@ DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(a
 DESCRIPTION_AUTHOR = "Author name, use wildcard * for partial entries (e.g., Johan*)"
 DESCRIPTION_AUTHORNAMEORPARTIAL = "The author name or a partial name (regex type wildcards [.*] permitted EXCEPT at the end of the string--the system will try that automatically)"
 DESCRIPTION_AUTHORNAMEORPARTIALNOWILD = "The author name or a author partial name (prefix)"
-DESCRIPTION_CITECOUNT = "Find documents cited more than 'X' times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL"  
+DESCRIPTION_CITECOUNT = "Find documents cited more than 'X' times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL. Default period is 5 years."  
 DESCRIPTION_CITED_MORETHAN = f"Limit to articles cited more than this many times (default={DEFAULT_CITED_MORE_THAN})"
 DESCRIPTION_CLIENT_ID = "Numeric ID assigned to a client app by Opas Administrator"
 DESCRIPTION_CORE = "The preset name for the specif core to use (e.g., docs, authors, etc.)"

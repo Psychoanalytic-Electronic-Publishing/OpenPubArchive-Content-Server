@@ -53,11 +53,10 @@ class ListTypeEnum(Enum):
     reportList = "reportlist"
     
 class ReportTypeEnum(str, Enum):
-    #mostViewed = "mostViewed"
-    #mostCited = "mostCited"
     sessionLog = "Session-Log"
     userSearches = "User-Searches"
-    #sessionEndpointLog = "sessionEndpointLog"
+    documentViews = "Document-Views"
+    opasLogs = "Opas-Error-Logs"
     
 class QueryParserTypeEnum(Enum):
     edismax = "edismax"
