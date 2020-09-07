@@ -315,14 +315,14 @@ class TestSmartSearch(unittest.TestCase):
     def test_12b_title_search(self):
         """
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Psychoanalysis of Developmental Arrests Theory and Treatment')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Manualized Psychodynamic Psychotherapies"')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (response_info["count"])
-        assert(response_info["count"] == 3)  # two reviews and the original paper.
+        assert(response_info["count"] == 4)  
         print (response_set[0]) 
 
     def test_12c_word_search(self):
@@ -361,6 +361,20 @@ class TestSmartSearch(unittest.TestCase):
         print (response_info["count"])
         assert(response_info["count"] == 1)
         print (response_set[0])
+
+    def test_13a_dts_example_searches(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Evenly Suspended Attention')
+        response = requests.get(full_URL)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (response_info["fullCount"])
+        assert(response_info["count"] >= 1)
+        print (response_set[0])
+
 
 if __name__ == '__main__':
     unittest.main()

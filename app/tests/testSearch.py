@@ -164,7 +164,7 @@ class TestSearch(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 1)
+        assert(response_info["count"] == 2)
         print (response_set[0])
 
     def test_search_startyear(self):

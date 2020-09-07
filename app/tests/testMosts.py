@@ -51,7 +51,7 @@ class TestMost(unittest.TestCase):
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
         if r['documentList']['responseInfo']['count'] > 0:
             print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['art_views_last12mos']}")
-            assert(r['documentList']['responseInfo']['count'] == r['documentList']['responseInfo']['limit'])
+            assert(r['documentList']['responseInfo']['count'] <= r['documentList']['responseInfo']['limit'])
             assert(r['documentList']['responseSet'][0]['stat']['art_views_last12mos'] >= 0)
         else:
             print("Test skipped...no view data currently available.")

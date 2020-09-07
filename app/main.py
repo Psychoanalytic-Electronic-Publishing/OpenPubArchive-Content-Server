@@ -78,7 +78,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0904.1.Alpha"
+__version__     = "2020.0906.1.Alpha"
 __status__      = "Development"
 
 import sys
@@ -3656,12 +3656,14 @@ def database_mostviewed(response: Response,
         if download:
             # Download CSV of selected set.  Returns only response with download, not usual documentList
             #   response to client
-            csvdata = [(n.documentRef, \
-                        n.stat["art_views_lastweek"], 
-                        n.stat["art_views_last1mos"], 
-                        n.stat["art_views_last6mos"], 
-                        n.stat["art_views_last12mos"], 
-                        n.stat["art_views_lastcalyear"])  for n in ret_val.documentList.responseSet]
+            csvdata = []
+            for n in ret_val.documentList.responseSet:
+                csvdata.append((n.documentRef, \
+                                n.stat["art_views_lastweek"], 
+                                n.stat["art_views_last1mos"], 
+                                n.stat["art_views_last6mos"], 
+                                n.stat["art_views_last12mos"], 
+                                n.stat["art_views_lastcalyear"]))
             header = ["Document", "Last Week", "Last Month", "Last 6 Months", "Last 12 Months", "Last Calendar Year"]
             df = pd.DataFrame(csvdata)
             stream = io.StringIO()
@@ -3763,11 +3765,16 @@ def database_mostcited(response: Response,
         if download:
             # Download CSV of selected set.  Returns only response with download, not usual documentList
             #   response to client
-            csvdata = [(n.documentRef, \
-                        n.stat["art_cited_5"], 
-                        n.stat["art_cited_10"], 
-                        n.stat["art_cited_20"], 
-                        n.stat["art_cited_all"]) for n in ret_val.documentList.responseSet]
+            # was list comprehension, but getting weird errors
+            #  apparently, list comprehensions have their own local scope (and thus locals() dict) in Python 3.
+            # so converted to loop
+            csvdata = []
+            for n in ret_val.documentList.responseSet:
+                csvdata.append((n.documentRef, \
+                                n.stat["art_cited_5"], 
+                                n.stat["art_cited_10"], 
+                                n.stat["art_cited_20"], 
+                                n.stat["art_cited_all"]))
             header = ["Document", "Last 5 Years", "Last 10 years", "Last 20 years", "All years"]
             df = pd.DataFrame(csvdata)
             stream = io.StringIO()
