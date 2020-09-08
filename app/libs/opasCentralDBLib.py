@@ -1301,6 +1301,7 @@ class opasCentralDB(object):
         >>> ocd.get_user("demo")
         
         """
+        sql = None
         try:
             db_opened = not self.db.open
         except:
