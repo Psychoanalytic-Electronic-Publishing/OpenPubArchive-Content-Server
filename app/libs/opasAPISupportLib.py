@@ -228,6 +228,9 @@ def get_session_info(request: Request,
     """
     session_id = get_session_id(request)
     client_session_id = request.headers.get("client-session", None)
+    if client_session_id == 'null':
+        client_session_id = None
+        
     client_id = int(request.headers.get("client-id", '0'))
     try:
         client_dict = CLIENT_DB[client_id]

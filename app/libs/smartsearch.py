@@ -111,7 +111,7 @@ def is_value_in_field(value,
     try:
         solr_core = cores[core]
     except Exception as e:
-        logger.warning(f"Core selection: {core}. 'docs' is default {e}")
+        logger.debug(f"Core selection: {core}. 'docs' is default {e}")
         solr_core  = solr_docs    
 
     if match_type == "exact":
@@ -178,7 +178,7 @@ def presearch_field(value,
     try:
         solr_core = cores[core]
     except Exception as e:
-        logger.warning(f"Core selection: {core}. 'docs' is default {e}")
+        logger.debug(f"Core selection: {core}. 'docs' is default {e}")
         solr_core  = solr_docs    
 
     if match_type == "exact":

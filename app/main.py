@@ -78,7 +78,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0908.1.Alpha"
+__version__     = "2020.0908.2.Alpha"
 __status__      = "Development"
 
 import sys
