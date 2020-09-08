@@ -11,7 +11,7 @@ base = "https://padstest.zedra.net/PEPSecure/api"
 
 def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW):
     full_URL = base + f"/v1/Authenticate?UserName={username}&Password={password}"
-    response = requests.get(full_URL)
+    response = requests.get(full_URL, headers={"Content-Type":"application/json"})
     ret_val = response.json()
     return ret_val
     

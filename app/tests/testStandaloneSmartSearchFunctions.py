@@ -184,11 +184,12 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         
     def test_2b_title_search(self):
         """
-        
         """
         result =  smartsearch.smart_search("Psychoanalysis of Developmental Arrests: Theory and Treatment.")
         print (result)
-        assert (result == {'title': 'Psychoanalysis of Developmental Arrests: Theory && Treatment.'})
+        #Title Search in Smart Search is currently "neutered" per David's request.
+        # assert (result == {'title': 'Psychoanalysis of Developmental Arrests\\: Theory and Treatment.'})
+        assert (result == {'wordsearch': 'Psychoanalysis of Developmental Arrests\\: Theory and Treatment.'})
         
     def test_2c_word_search(self):
         """

@@ -242,6 +242,8 @@ def get_session_info(request: Request,
     if client_session_id is not None:
         ocd = opasCentralDBLib.opasCentralDB(client_session_id, access_token=None)
         session_info = ocd.get_session_from_db(client_session_id)
+        #TODO Later: change this to debug
+        logger.info(f"Session info recorded for client-id: {client_id} session-id: {client_session_id}")
         if session_info is None:
             # right now this is going to be PEP-Web and PaDS.  
             ret_val, session_info = ocd.save_session(client_session_id,

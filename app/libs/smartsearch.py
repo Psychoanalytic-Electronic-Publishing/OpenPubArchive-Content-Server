@@ -73,7 +73,7 @@ def is_value_in_field(value,
                       match_type="exact", # exact, ordered, proximate, or bool
                       limit=10):
     """
-    Returns True if the value is found in the field specified in the docs core.
+    Returns the NumFound if the value is found in the field specified in the docs core.
     
     Args:
         value (str): String prefix of term to check.
@@ -424,7 +424,7 @@ def smart_search(smart_search_text):
                 # could still be an author name
                 if is_value_in_field(words, core="authors", field="authors"):
                     ret_val["schema_field"] = "art_authors_citation" 
-                    ret_val["schema_value"] = f"{words}"            elif word_count > 3 and is_value_in_field(words, "title", match_type="ordered") == 1: # unique match only
+                    ret_val["schema_value"] = f"{words}"            elif word_count > 4 and is_value_in_field(words, "title", match_type="ordered") == 1: # unique match only
                 ret_val["title"] = words
             elif is_value_in_field(words, core="doc", field="art_authors_citation"):
                 # see if it's a list of names

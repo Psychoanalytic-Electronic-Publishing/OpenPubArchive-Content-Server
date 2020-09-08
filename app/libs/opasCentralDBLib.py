@@ -59,6 +59,7 @@ import localsecrets
 
 import logging
 logger = logging.getLogger(__name__)
+import starlette.status as httpCodes
 
 from datetime import datetime # , timedelta
 import time
@@ -858,8 +859,9 @@ class opasCentralDB(object):
                                                  )
                                                  VALUES 
                                                  (%s, %s, %s, %s, %s, %s, %s)"""
-                                                 
-        
+
+                #TODO: Later - Should be debug
+                logger.info(f"Session ID: {session_id} acccessed Session Endpoint {api_endpoint_id}")
                 ret_val = cursor.execute(sql, (
                                                   session_id, 
                                                   api_endpoint_id, 
@@ -1088,7 +1090,7 @@ class opasCentralDB(object):
         # return session model object
         return total_count, ret_val # None or Session Object
 
-    def save_client_config(self, client_id, client_configuration: models.ClientConfig, session_id, replace=False):
+    def save_client_config(self, client_id:str, client_configuration: models.ClientConfig, session_id, replace=False):
         """
         Save a client configuration.  Data format is up to the client.
         
@@ -1100,61 +1102,69 @@ class opasCentralDB(object):
         (200, 'OK')
         """
         msg = "OK"
-        if replace:
-            sql_action = "REPLACE"
-            ret_val = 200
-        else:
-            sql_action = "INSERT"
-            ret_val = 201
+        # convert client id to int
         try:
-            session_id = session_id
+            client_id_int = int(client_id)
         except Exception as e:
-            # no session open!
-            logger.debug("No session is open / Not authorized")
-            ret_val = 401 # not authorized
+            msg = f"Client ID should be a string containing an int {e}"
+            logging.error(msg)
+            ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
-            self.open_connection(caller_name="record_client_config") # make sure connection is open
+            if replace:
+                sql_action = "REPLACE"
+                ret_val = httpCodes.HTTP_200_OK
+            else:
+                sql_action = "INSERT"
+                ret_val = httpCodes.HTTP_201_CREATED
             try:
-                try:
-                    config_json = json.dumps(client_configuration.configSettings)
-                except Exception as e:
-                    logger.warning(f"Error converting configuration to json {e}.")
-                    return ret_val
-    
-                with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
-                    sql = f"""{sql_action} INTO 
-                                api_client_configs(client_id,
-                                                   config_name, 
-                                                   config_settings, 
-                                                   session_id
-                                                  )
-                                                  VALUES 
-                                                   (%s, %s, %s, %s)"""
-                    
-                    eval = curs.execute(sql,
-                                        (client_id,
-                                         client_configuration.configName,
-                                         config_json, 
-                                         session_id
-                                        )
-                                       )
-                    self.db.commit()
-    
+                session_id = session_id
             except Exception as e:
-                if sql_action == "REPLACE":
-                    msg = f"Error updating (replacing) client config: {e}"
-                    logger.error(msg)
-                    ret_val = 400
-                else: # insert
-                    msg = f"Error saving client config: {e}"
-                    logger.error(msg)
-                    ret_val = 409
+                # no session open!
+                logger.debug("No session is open / Not authorized")
+                ret_val = 401 # not authorized
+            else:
+                self.open_connection(caller_name="record_client_config") # make sure connection is open
+                try:
+                    try:
+                        config_json = json.dumps(client_configuration.configSettings)
+                    except Exception as e:
+                        logger.warning(f"Error converting configuration to json {e}.")
+                        return ret_val
+        
+                    with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                        sql = f"""{sql_action} INTO 
+                                    api_client_configs(client_id,
+                                                       config_name, 
+                                                       config_settings, 
+                                                       session_id
+                                                      )
+                                                      VALUES 
+                                                       (%s, %s, %s, %s)"""
+                        
+                        succ = curs.execute(sql,
+                                            (client_id_int,
+                                             client_configuration.configName,
+                                             config_json, 
+                                             session_id
+                                            )
+                                           )
+                        self.db.commit()
+        
+                except Exception as e:
+                    if sql_action == "REPLACE":
+                        msg = f"Error updating (replacing) client config: {e}"
+                        logger.error(msg)
+                        ret_val = 400
+                    else: # insert
+                        msg = f"Error saving client config: {e}"
+                        logger.error(msg)
+                        ret_val = 409
+        
+                self.close_connection(caller_name="record_client_config") # make sure connection is closed
     
-            self.close_connection(caller_name="record_client_config") # make sure connection is closed
-
         return (ret_val, msg)
 
-    def get_client_config(self, client_id, client_config_name):
+    def get_client_config(self, client_id: str, client_config_name: str):
         """
         
         >>> ocd = opasCentralDB()
@@ -1163,30 +1173,36 @@ class opasCentralDB(object):
         """
         ret_val = None
         self.open_connection(caller_name="get_client_config") # make sure connection is open
+        try:
+            client_id_int = int(client_id)
+        except Exception as e:
+            msg = f"Client ID should be a string containing an int {e}"
+            logging.error(msg)
+            ret_val = httpCodes.HTTP_400_BAD_REQUEST
+        else:
+            with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                sql = f"""SELECT *
+                          FROM api_client_configs
+                          WHERE client_id = {client_id_int}
+                          AND config_name = '{client_config_name}'"""
     
-        with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
-            sql = f"""SELECT *
-                      FROM api_client_configs
-                      WHERE client_id = '{client_id}'
-                      AND config_name = '{client_config_name}'"""
-
-            res = curs.execute(sql)
-            if res >= 1:
-                clientConfig = curs.fetchone()
-                ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
-            else:
-                ret_val = None
-
-        self.close_connection(caller_name="get_client_config") # make sure connection is closed
-        if ret_val is not None:
-            # convert to return model
-            ret_val = models.ClientConfig(clientID = ret_val.client_id,
-                                          configName = ret_val.config_name,
-                                          configSettings=json.loads(ret_val.config_settings))
+                res = curs.execute(sql)
+                if res >= 1:
+                    clientConfig = curs.fetchone()
+                    ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
+                else:
+                    ret_val = None
+    
+            self.close_connection(caller_name="get_client_config") # make sure connection is closed
+            if ret_val is not None:
+                # convert to return model
+                ret_val = models.ClientConfig(clientID = ret_val.client_id,
+                                              configName = ret_val.config_name,
+                                              configSettings=json.loads(ret_val.config_settings))
     
         return ret_val
 
-    def del_client_config(self, client_id, client_config_name):
+    def del_client_config(self, client_id: int, client_config_name: str):
         """
         
         >>> ocd = opasCentralDB()
@@ -1197,21 +1213,27 @@ class opasCentralDB(object):
         saved = self.get_client_config(client_id, client_config_name)
         # open after fetching, since db is closed by call.
         self.open_connection(caller_name="del_client_config") # make sure connection is open
-    
-        if saved is not None:
-            sql = f"""DELETE FROM api_client_configs
-                      WHERE client_id = '{client_id}'
-                      AND config_name = '{client_config_name}'"""
-    
-            with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
-                res = curs.execute(sql)
-                if res >= 1:
-                    ret_val = saved
-                    self.db.commit()
-                else:
-                    ret_val = None
-            
-        self.close_connection(caller_name="del_client_config") # make sure connection is closed
+        try:
+            client_id_int = int(client_id)
+        except Exception as e:
+            msg = f"Client ID should be a string containing an int {e}"
+            logging.error(msg)
+            ret_val = httpCodes.HTTP_400_BAD_REQUEST
+        else:
+            if saved is not None:
+                sql = f"""DELETE FROM api_client_configs
+                          WHERE client_id = {client_id_int}
+                          AND config_name = '{client_config_name}'"""
+        
+                with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                    res = curs.execute(sql)
+                    if res >= 1:
+                        ret_val = saved
+                        self.db.commit()
+                    else:
+                        ret_val = None
+                
+            self.close_connection(caller_name="del_client_config") # make sure connection is closed
 
         return ret_val
 

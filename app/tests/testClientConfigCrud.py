@@ -56,10 +56,11 @@ class TestClientConfig(unittest.TestCase):
 
         ocd = opasCentralDBLib.opasCentralDB()
         # make sure it's not there:
-        ocd.del_client_config(2, test_config_name)
+        client_id = "2"
+        ocd.del_client_config(client_id, test_config_name)
     
         response = client.post(base_api + '/v2/Client/Configuration/',
-                               headers={"client-id": "2", API_KEY_NAME: API_KEY},
+                               headers={"client-id": client_id, API_KEY_NAME: API_KEY},
                                json=testbody)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -68,7 +69,7 @@ class TestClientConfig(unittest.TestCase):
 
         #  try to update -- Fail
         response = client.post(base_api + '/v2/Client/Configuration/',
-                               headers={"client-id": "2", API_KEY_NAME: API_KEY},
+                               headers={"client-id": client_id, API_KEY_NAME: API_KEY},
                                json=testbody2)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == False)
@@ -84,32 +85,40 @@ class TestClientConfig(unittest.TestCase):
 
     def test_2_put_and_get(self):
         # save the settings
+        client_id = "2"
+        session_id = "abc"
         response = client.put(base_api + '/v2/Client/Configuration/',
-                               headers={"client-id": "2", API_KEY_NAME: API_KEY},
+                               headers={"client-id":client_id, "session-id":session_id, API_KEY_NAME: API_KEY},
                                json=testbody)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
+        print ("Put OK")
         r = response.json()
         assert (r == testbody)
+        print ("Put Echo Testbody OK")
 
         # Update the settings - Succeed
         response = client.put(base_api + '/v2/Client/Configuration/',
-                               headers={"client-id": "2", API_KEY_NAME: API_KEY},
+                               headers={"client-id":client_id, "session-id":session_id, API_KEY_NAME: API_KEY},
                                json=testbody2)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
+        print ("Update Put OK")
+
         # delete the settings
         response = client.get(base_api + '/v2/Client/Configuration/',
-                                 headers={"client-id": "2", API_KEY_NAME: API_KEY}, 
-                                 params={'configname': test_config_name})
+                                 headers={"client-id":client_id, "session-id":session_id, API_KEY_NAME: API_KEY}, 
+                                 params={'configname': "test_client_test_0"})
         assert(response.ok == True)
+        print ("Get OK")
         r = response.json()
 
         response = client.delete(base_api + '/v2/Client/Configuration/',
-                                 headers={"client-id": "2", API_KEY_NAME: API_KEY}, 
+                                 headers={"client-id":client_id, "session-id":session_id, API_KEY_NAME: API_KEY}, 
                                  params={'configname': test_config_name})
         assert(response.ok == True)
         r = response.json()
+        print ("Delete OK")
         
 
 

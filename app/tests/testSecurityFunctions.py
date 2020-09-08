@@ -46,7 +46,7 @@ class TestSecurityFunctions(unittest.TestCase):
             assert(False)
         else:
             full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')
-            response = requests.get(full_URL, headers={"client-session":sessID, "client-id": "2"})
+            response = requests.get(full_URL, headers={"client-session":sessID, "client-id": "2", "Content-Type":"application/json"})
             # Confirm that the request-response cycle completed successfully.
             r = response.json()
             print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
@@ -84,11 +84,11 @@ class TestSecurityFunctions(unittest.TestCase):
             setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')"
             timing = timeit.timeit(test, setup, number=1)
             print (f"timing return 99 documents: {timing}")
-            assert(timing < 7)
+            assert(timing < 7.5)
             setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=101')"
             timing = timeit.timeit(test, setup, number=1)
             print (f"timing return 101 documents (no pads): {timing}")
-            assert(timing < 7)            
+            assert(timing < 7.5)            
             
     def test_1b_get_term_index_timing_noPads(self):
             test = 'response = requests.get(full_URL)'
