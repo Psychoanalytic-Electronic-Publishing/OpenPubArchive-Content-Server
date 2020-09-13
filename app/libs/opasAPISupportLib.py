@@ -45,6 +45,7 @@ import os
 import os.path
 import sys
 # import shlex
+import copy
 
 sys.path.append('./solrpy')
 sys.path.append('./libs/configLib')
@@ -120,11 +121,6 @@ count_anchors = 0
 
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 
-def authorized(session_info, art_id):
-    if session_info.authenticated == True:
-        ret_val = True
-    else:
-        pads
 #-----------------------------------------------------------------------------
 def get_basecode(document_id):
     """
@@ -1579,6 +1575,7 @@ def get_fulltext_from_search_results(result,
                                      page_limit,
                                      documentListItem: models.DocumentListItem, format_requested="HTML"):
 
+    child_xml = None
     if documentListItem.sourceTitle is None:
         documentListItem = get_base_article_info_from_search_result(result, documentListItem)
         
@@ -1632,12 +1629,16 @@ def get_fulltext_from_search_results(result,
                 logger.error(f"Page extraction from document failed. Error: {e}.  Keeping entire document.")
             else: # ok
                 text_xml = temp_xml
-
     try:
         format_requested_ci = format_requested.lower() # just in case someone passes in a wrong type
     except:
         format_requested_ci = "html"
 
+    if documentListItem.docChild != {} and documentListItem.docChild is not None:
+        child_xml = documentListItem.docChild["para"]
+    else:
+        child_xml = None
+        
     if format_requested_ci == "html":
         # Convert to HTML
         heading = opasxmllib.get_running_head( source_title=documentListItem.sourceTitle,
@@ -1650,13 +1651,22 @@ def get_fulltext_from_search_results(result,
         text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
         text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
         text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
+        if child_xml is not None:
+            child_xml = opasxmllib.xml_str_to_html(child_xml)
     elif format_requested_ci == "textonly":
         # strip tags
         text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
+        if child_xml is not None:
+            child_xml = opasxmllib.xml_elem_or_str_to_text(child_xml, default_return=text_xml)
     elif format_requested_ci == "xml":
         text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+        # child_xml = child_xml
 
     documentListItem.document = text_xml
+    if child_xml is not None:
+        # return child para in requested format
+        documentListItem.docChild['para'] = child_xml
+
     return documentListItem
 
 
@@ -1733,6 +1743,8 @@ def documents_get_document(document_id,
                                                     #return_field_set=return_field_set, 
                                                     #summary_fields = summary_fields,  # deprecate?
                                                     highlight_fields = "text_xml",
+                                                    facet_fields=opasConfig.DOCUMENT_VIEW_FACET_LIST,
+                                                    facet_mincount=1,
                                                     extra_context_len=opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
                                                     limit = 1,
                                                     page_offset = page_offset,
@@ -1782,10 +1794,82 @@ def documents_get_document(document_id,
     return ret_val
 
 #-----------------------------------------------------------------------------
+def documents_get_concordance_paras(para_lang_id,
+                                    para_lang_rx=None, 
+                                    solr_query_spec=None,
+                                    ret_format="XML",
+                                    req_url:str=None, 
+                                    session_info=None
+                                    ):
+    """
+    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
+    For authenticated users, it returns with the document itself
+
+    >> resp = documents_get_concordance_paras("SEXixa5", ret_format="html") 
+
+    >> resp = documents_get_concordance_paras("SEXixa5") 
+
+
+    """
+    ret_val = {}
+    document_list = None
+    if para_lang_rx is not None:
+        paraLangFilterQ = f'({re.sub(",[]*", " || ", para_lang_rx)})'
+    else:
+        paraLangFilterQ = f"{para_lang_id}"
+        
+    query = f"*:*"
+    filterQ = f"para_lgrid:{paraLangFilterQ}"
+    try:
+        solr_query_spec = \
+                opasQueryHelper.parse_to_query_spec(solr_query_spec=solr_query_spec, 
+                                                    query = query,
+                                                    filter_query = filterQ,
+                                                    full_text_requested=True,
+                                                    format_requested=ret_format,
+                                                    highlight_fields = "para",
+                                                    extra_context_len=opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
+                                                    limit = 1,
+                                                    req_url = req_url
+                                                    )
+
+        document_list, ret_status = search_text_qs(solr_query_spec,
+                                                   session_info=session_info
+                                                   )
+
+        matches = document_list.documentList.responseInfo.count
+        if matches == 1:
+            # get the first document item only
+            document_list_item = document_list.documentList.responseSet[0]
+            # is user authorized?
+            if document_list.documentList.responseSet[0].accessLimited and 0:
+                # Should we require it's authorized?
+                document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
+            #else:
+                ## All set
+        else:
+            logger.info(f"get_para_trans: No matches: {filterQ}")
+    except Exception as e:
+        logger.info(f"get_para_trans: No matches or error: {e}")
+    else:
+        if matches == 1:       
+            document_list_struct = models.DocumentListStruct( responseInfo = document_list.documentList.responseInfo, 
+                                                              responseSet = [document_list_item]
+                                                              )
+
+            documents = models.Documents(documents = document_list_struct)
+
+            ret_val = documents
+
+    return ret_val
+
+#-----------------------------------------------------------------------------
 def documents_get_glossary_entry(term_id,
+                                 term_id_type=None, 
                                  retFormat="XML",
-                                 authenticated=True,
+                                 #authenticated=True,
                                  req_url: str=None,
+                                 session_info=None,
                                  limit=opasConfig.DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS,
                                  offset=0):
     """
@@ -1796,73 +1880,109 @@ def documents_get_glossary_entry(term_id,
     IMPORTANT NOTE: At least the way the database is currently populated, for a group, the textual part (text) is the complete group, 
       and thus the same for all entries.  This is best for PEP-Easy now, otherwise, it would need to concatenate all the result entries.
 
-    >> resp = documentsGetGlossaryEntry("ZBK.069.0001o.YN0019667860580", retFormat="html") 
+    >> resp = documents_get_glossary_entry("ZBK.069.0001o.YN0019667860580", retFormat="html") 
 
-    >> resp = documentsGetGlossaryEntry("ZBK.069.0001o.YN0004676559070") 
+    >> resp = documents_get_glossary_entry("ZBK.069.0001o.YN0004676559070") 
 
-    >> resp = documentsGetGlossaryEntry("ZBK.069.0001e.YN0005656557260")
+    >> resp = documents_get_glossary_entry("ZBK.069.0001e.YN0005656557260")
 
 
     """
     ret_val = {}
-    term_id = term_id.upper()
 
-    if not authenticated:
-        #if user is not authenticated, effectively do endpoint for getDocumentAbstracts
-        documents_get_abstracts(term_id, limit=1)
-    else:
-        results = solr_gloss.query(q = f"term_id:{term_id} || group_id:{term_id}",  
-                                   fields = "term_id, group_id, term_type, term_source, group_term_count, art_id, text"
-                                   )
-        document_item_list = []
-        count = 0
-        try:
-            for result in results:
+
+    if term_id_type == "Name":
+        qstr = f'term:"{term_id}"'
+    elif term_id_type == "Group":
+        qstr = f'group_name:"{term_id}"'
+    else: # default
+        term_id = term_id.upper()
+        qstr = f"term_id:{term_id} || group_id:{term_id}"
+
+    solr_query_spec = \
+            opasQueryHelper.parse_to_query_spec(query = f"art_id:{opasConfig.GLOSSARY_TOC_INSTANCE}",
+                                                full_text_requested=False,
+                                                abstract_requested=False,
+                                                format_requested="XML",
+                                                limit = 1,
+                                                req_url = req_url
+                                                )
+
+
+    gloss_info, ret_status = search_text_qs(solr_query_spec, 
+                                            extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                            limit=1,
+                                            session_info=session_info
+                                            )
+        
+    gloss_template = gloss_info.documentList.responseSet[0]
+    
+    results = solr_gloss.query(q = qstr,  
+                               fields = "term, term_id, group_id, term_type, term_source, group_term_count, art_id, text"
+                               )
+    document_item_list = []
+    count = 0
+    try:
+        for result in results:
+            document = result.get("text", None)
+            documentListItem = copy.copy(gloss_template)
+            if not documentListItem.accessLimited:
                 try:
-                    document = result.get("text", None)
                     if retFormat == "HTML":
                         document = opasxmllib.xml_str_to_html(document)
                     elif retFormat == "TEXTONLY":
                         document = opasxmllib.xml_elem_or_str_to_text(document)
                     else: # XML
                         document = document
-                    item = models.DocumentListItem( PEPCode = "ZBK", 
-                                                    documentID = result.get("art_id", None), 
-                                                    title = result.get("term_source", None),
-                                                    abstract = None,
-                                                    document = document,
-                                                    score = result.get("score", None)
-                                                    )
+                except Exception as e:
+                    logger.warning(f"Error converting glossary content: {term_id} ({e})")
+            else:
+                try:
+                    document = opasxmllib.xml_str_to_html(document, transformer_name=opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
                 except ValidationError as e:
                     logger.error(e.json())  
-                else:
-                    document_item_list.append(item)
-                    count = len(document_item_list)
+                except Exception as e:
+                    warning = f"Error getting contents of Glossary entry {term_id}"
+                    logger.warning(warning)
+                    document = warning
+                
+            documentListItem.term = result.get("term", None)
+            documentListItem.document = document 
+            documentListItem.groupName = result.get("group_name", None)
+            documentListItem.groupTermCount = result.get("group_term_count", None)
+            documentListItem.groupID = result.get("group_id", None)
+            documentListItem.termSource = result.get("term_source", None)
+            documentListItem.termType = result.get("term_type", None)
+            # note, the rest of the document info is from the TOC instance, but we're changing the name here
+            documentListItem.documentID = result.get("art_id", None)
+            documentListItem.score = result.get("score", None)
+            document_item_list.append(documentListItem)
+            count = len(document_item_list)
 
-        except IndexError as e:
-            logger.warning("No matching glossary entry for %s.  Error: %s", (term_id, e))
-        except KeyError as e:
-            logger.warning("No content or abstract found for %s.  Error: %s", (term_id, e))
-        else:
-            response_info = models.ResponseInfo( count = count,
-                                                 fullCount = count,
-                                                 limit = limit,
-                                                 offset = offset,
-                                                 listType = "documentlist",
-                                                 fullCountComplete = True,
-                                                 request=f"{req_url}",
-                                                 timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                                 )
+    except IndexError as e:
+        logger.warning("No matching glossary entry for %s.  Error: %s", (term_id, e))
+    except KeyError as e:
+        logger.warning("No content or abstract found for %s.  Error: %s", (term_id, e))
+    else:
+        response_info = models.ResponseInfo( count = count,
+                                             fullCount = count,
+                                             limit = limit,
+                                             offset = offset,
+                                             listType = "documentlist",
+                                             fullCountComplete = True,
+                                             request=f"{req_url}",
+                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                             )
 
-            document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
-                                                              responseSet = document_item_list
-                                                              )
+        document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
+                                                          responseSet = document_item_list
+                                                          )
 
-            documents = models.Documents(documents = document_list_struct)
+        documents = models.Documents(documents = document_list_struct)
 
-            ret_val = documents
+        ret_val = documents
 
-        return ret_val
+    return ret_val
 
 #-----------------------------------------------------------------------------
 def prep_document_download(document_id,
@@ -2447,7 +2567,8 @@ def search_text(query,
                 page_offset = None,
                 page_limit = None,
                 page = None,
-                req_url:str = None, 
+                req_url:str = None,
+                core = None, 
                 #authenticated = None,
                 session_info = None 
                 ):
@@ -2489,6 +2610,7 @@ def search_text(query,
                                                 page_offset = page_offset,
                                                 page_limit = page_limit,
                                                 page = page,
+                                                core=core, 
                                                 req_url = req_url
                                                 )
 
@@ -2514,6 +2636,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                    sort=None, 
                    #authenticated=False,
                    session_info=None,
+                   solr_core="pepwebdocs"
                    ):
     """
     Full-text search, via the Solr server api.
@@ -2646,9 +2769,25 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             solr_param_dict[key] = value
 
     #allow core parameter here
-    if solr_query_spec.core is not None:
+    if solr_core is None:
+        if solr_query_spec.core is not None:
+            try:
+                solr_core = EXTENDED_CORES.get(solr_query_spec.core, None)
+            except Exception as e:
+                detail=f"Bad Extended Request. Core Specification Error. {e}"
+                logger.error(detail)
+                ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
+            else:
+                if solr_core is None:
+                    detail=f"Bad Extended Request. Unknown core specified."
+                    logger.warning(detail)
+                    ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
+        else:
+            solr_query_spec.core = "pepwebdocs"
+            solr_core = solr_docs
+    else:
         try:
-            solr_core = EXTENDED_CORES.get(solr_query_spec.core, None)
+            solr_core = EXTENDED_CORES.get(solr_core, None)
         except Exception as e:
             detail=f"Bad Extended Request. Core Specification Error. {e}"
             logger.error(detail)
@@ -2658,9 +2797,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                 detail=f"Bad Extended Request. Unknown core specified."
                 logger.warning(detail)
                 ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
-    else:
-        solr_query_spec.core = "pepwebdocs"
-        solr_core = solr_docs
 
     try:
         results = solr_core.query(**solr_param_dict)

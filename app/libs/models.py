@@ -18,9 +18,15 @@ import time
 import datetime
 from datetime import datetime
 from typing import List, Generic, TypeVar, Optional
-from enum import Enum
 import opasConfig
 
+from enum import Enum
+
+class ExtendedEnum(Enum):
+    @classmethod
+    def list(cls):
+        return list(map(lambda c: c.value, cls))
+    
 from pydantic import BaseModel, Schema, Field
 # from pydantic.types import EmailStr
 from modelsOpasCentralPydantic import User
@@ -57,6 +63,11 @@ class ReportTypeEnum(str, Enum):
     userSearches = "User-Searches"
     documentViews = "Document-Views"
     opasLogs = "Opas-Error-Logs"
+    
+class TermTypeIDEnum(str, ExtendedEnum):
+    termid = "ID"
+    termname = "Name"
+    termgroup = "Group"
     
 class QueryParserTypeEnum(Enum):
     edismax = "edismax"
@@ -248,6 +259,7 @@ class DocumentListItem(BaseModel):
     termID: str = Schema(None, title="Term ID", description="")
     groupID: str = Schema(None, title="Group ID", description="")
     groupName: str = Schema(None, title="Group Name", description="")
+    groupAlso: str = Schema(None, title="Group Also", description="")
     groupTermCount: str = Schema(None, title="Group Term Count", description="")
     termType: str = Schema(None, title="", description="")
     termSource: str = Schema(None, title="", description="")
@@ -271,7 +283,7 @@ class DocumentList(BaseModel):
 #-------------------------------------------------------
 class DocumentStruct(BaseModel):
     responseInfo: ResponseInfo
-    responseSet: DocumentListItem
+    responseSet: List[DocumentListItem] = []
 
 # modified PEPEasy2020 works with multiple 
 class Documents(BaseModel):

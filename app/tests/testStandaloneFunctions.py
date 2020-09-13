@@ -9,6 +9,8 @@
 import sys
 import os.path
 
+import opasDocPermissions as opasDocPerm
+
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
     sys.path.append('../libs')
@@ -173,6 +175,38 @@ class TestStandaloneFunctions(unittest.TestCase):
         data = opasAPISupportLib.metadata_get_source_info(src_type="journal")
         dataList = [d.PEPCode for d in data.sourceInfo.responseSet]
         assert ('PAQ' in dataList)
+        
+    def test_3_get_para_translation(self):
+        """
+        """
+        data = opasAPISupportLib.documents_get_concordance_paras("SEXixa5")
+        # Confirm that the request-response cycle completed successfully.
+        para_info = data.documents.responseSet[0].docChild
+        para = para_info['para']
+        print (para)
+        assert (len(para) > 0)
+        # check to make sure a known value is among the data returned
+        
+    def test_3b_get_para_translation(self):
+        """
+        """
+        response = opasDocPerm.pads_login()
+        ## Confirm that the request-response cycle completed successfully.
+        try:
+            sessID = response["SessionId"]
+        except:
+            err = f"PaDS response error: {response}"
+            logger.error(err)
+            print (err)
+            assert(False)
+        else:
+            data = opasAPISupportLib.documents_get_concordance_paras("SEXixa5", ret_format="html")
+            # Confirm that the request-response cycle completed successfully.
+            para_info = data.documents.responseSet[0].docChild
+            para = para_info['para']
+            print (para)
+            assert (len(para) > 0)
+            # check to make sure a known value is among the data returned
         
 if __name__ == '__main__':
     unittest.main()

@@ -21,12 +21,11 @@ else: # python running from should be within folder app
 from starlette.testclient import TestClient
 
 import unittest
-#from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-#import jwt
-#from datetime import datetime
+from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
+import opasAPISupportLib
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded
-from main import app #  this causes wingware not to finish running the test.  Perhaps it's running the server?
+from main import app 
 
 client = TestClient(app)
 
@@ -54,6 +53,9 @@ class TestGlossary(unittest.TestCase):
         assert(r['documentList']['responseInfo']['fullCount'] == 1)
         assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
        
-
+    def test_00_get_glossary(self):
+        ret = opasAPISupportLib.documents_get_glossary_entry("YN0019667860580", term_id_type="ID", retFormat="html") 
+        print (ret)
+        
 if __name__ == '__main__':
     unittest.main()

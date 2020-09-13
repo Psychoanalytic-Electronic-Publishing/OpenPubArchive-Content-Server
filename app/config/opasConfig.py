@@ -38,15 +38,18 @@ STYLE_PATH = r"./libs/styles;../libs/styles"
 XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
 XSLT_XMLTOTEXT_EXCERPT = r"pepkbd3-abstract-text.xslt"
 XSLT_XMLTOHTML_EXCERPT = r"pepkbd3-abstract-html.xslt"
+XSLT_XMLTOHTML_GLOSSARY_EXCERPT = r"pepkbd3-glossary-excerpt-html.xslt" 
 TRANSFORMER_XMLTOHTML = "XML_TO_HTML" 
 TRANSFORMER_XMLTOHTML_EXCERPT = "EXCERPT_HTML"
 TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"
+TRANSFORMER_XMLTOHTML_GLOSSARY_EXCERPT = "EXCERPT_GLOSSARY"
 
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
 MAX_RECORDS_FOR_ACCESS_INFO_RETURN = 100
 
 # Special xpaths and attributes for data handling in solrXMLPEPWebLoad
 ARTINFO_ARTTYPE_TOC_INSTANCE = "TOC" # the whole instance is a TOC ()
+GLOSSARY_TOC_INSTANCE = "ZBK.069.0000A" # Main TOC entry
 XML_XPATH_SUMMARIES = "//summaries"
 XML_XPATH_ABSTRACT = "//abs"
 
@@ -76,8 +79,6 @@ USER_NOT_LOGGED_IN_ID = 0
 COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
 COOKIE_MAX_KEEP_TIME = 86400 # 24 hours in seconds
 SESSION_INACTIVE_LIMIT = 30  # minutes
-
-
 
 # cookies
 OPASSESSIONID = "opasSessionID"
@@ -180,7 +181,9 @@ DESCRIPTION_CORE = "The preset name for the specif core to use (e.g., docs, auth
 DESCRIPTION_DOWNLOAD = "Download a CSV with the current return set of the statistical table" 
 DESCRIPTION_DAYSBACK = "Number of days to look back to assess what's new"
 DESCRIPTION_DOCDOWNLOADFORMAT = f"The format of the downloaded document data.  One of: {list_values(VALS_DOWNLOADFORMAT)}"
-DESCRIPTION_DOCIDORPARTIAL = "The document ID (e.g., IJP.077.0217A) or a partial ID (e.g., IJP.077,  no wildcard) for which to return data"
+DESCRIPTION_DOCIDORPARTIAL = "The document ID (e.g., IJP.077.0217A) or a partial ID (e.g., IJP.077,  no wildcard) for which to return data (only one ID for full-text documents)"
+DESCRIPTION_DOCUMENT_CONCORDANCE_ID = "Paragraph language ID to return for a concordance link"
+DESCRIPTION_DOCUMENT_CONCORDANCE_RX = "String with single or list of Paragraph language IDs to return for a concordance link"
 DESCRIPTION_ENDDATE = "Find records on or before this date (input date as 2020-08-10 or 20200810)"
 DESCRIPTION_ENDYEAR = "Find documents published on or before this year (e.g, 2001)" 
 DESCRIPTION_FACETFIELDS = "List of fields for which to return facet info. Field art_sourcetype, for example, will give results counts by type (journal, book, videostream)."
@@ -229,6 +232,7 @@ DESCRIPTION_VOLUMENUMBER = "The volume number if the source has one"
 DESCRIPTION_WORD = "A word prefix to return a limited word index (word-wheel)."
 DESCRIPTION_WORDFIELD = "The field for which to look up the prefix for matching index entries.  It must be a full-text indexed field (text field or derivative)"
 DESCRIPTION_YEAR = "The year for which to return data"
+DESCRIPTION_TERMIDTYPE = f"Source type (One of: ID, Name, Group)"
 
 TITLE_ADMINCONFIG = "Administrative global settings"
 TITLE_ADMINCONFIGNAME = "Configuration Name"
@@ -242,6 +246,8 @@ TITLE_CLIENT_SESSION = "GUID/UUID for client session"
 TITLE_CORE = "Core to use"
 TITLE_DAYSBACK = "Days Back"
 TITLE_DOWNLOAD = "Download response as CSV"
+TITLE_DOCUMENT_CONCORDANCE_ID = "Paragraph language ID"
+TITLE_DOCUMENT_CONCORDANCE_RX = "Paragraph language IDs"
 TITLE_DOCUMENT_ID = "Document ID or Partial ID"
 TITLE_ENDDATE = "End date"
 TITLE_ENDYEAR = "End year"
@@ -367,7 +373,7 @@ VIEW_DBNAME_LASTCALYEAR = "vw_stat_docviews_lastcalyear"
 #Schema Field Name Suffix for Synonym Searching
 SYNONYM_SUFFIX = "_syn"
 
-DOCUMENT_VIEW_FACET_LIST = ["glossary_terms", "glossary_group_terms", "terms_highlighted", "art_kwds_str"]
+DOCUMENT_VIEW_FACET_LIST = "glossary_group_terms,terms_highlighted,art_kwds_str"
 
 # Standard Document List Summary fields (potential data return in document list)
 DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, \

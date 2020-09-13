@@ -8,6 +8,9 @@
 
 import sys
 import os.path
+import logging
+import opasAPISupportLib
+logger = logging.getLogger(__name__)
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
@@ -17,7 +20,6 @@ if folder == "tests": # testing from within WingIDE, default folder is tests
 else: # python running from should be within folder app
     sys.path.append('./libs')
     sys.path.append('./config')
-
 
 from starlette.testclient import TestClient
 
@@ -105,6 +107,21 @@ class TestGetDocuments(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         print (response_set)
+
+    def test_1_fetch_article(self):
+        """
+        Retrieve an article; make sure it's there and the abstract len is not 0
+        """
+        # This old function wasn't used by the code otherwise so removed this call
+        #  it retrieves an article but doesn't include search highlighting.
+        # data = opasAPISupportLib.get_article_data("ANIJP-DE.009.0189A", fields=None)
+        # this newer function includes the search parameters if there were some
+        data = opasAPISupportLib.documents_get_document("LU-AM.029B.0202A")
+        # Confirm that the request-response cycle completed successfully.
+        assert (data.documents.responseInfo.fullCount == 1)
+        assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')
+        assert (len(data.documents.responseSet[0].abstract)) > 0
+
 
 
 if __name__ == '__main__':

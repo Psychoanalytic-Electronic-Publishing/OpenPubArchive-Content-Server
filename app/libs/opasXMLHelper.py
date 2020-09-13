@@ -299,6 +299,7 @@ g_transformer = XSLT_Transformer()
 g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML, opasConfig.XSLT_XMLTOHTML)
 g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOTEXT_EXCERPT, opasConfig.XSLT_XMLTOTEXT_EXCERPT)
 g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML_EXCERPT, opasConfig.XSLT_XMLTOHTML_EXCERPT)
+g_transformer.set_transformer(opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT, opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
 
 ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n")  # TODO - Move to module globals to optimize
 
@@ -1143,7 +1144,7 @@ def xml_elem_or_str_to_excerpt(elem_or_xmlstr, transformer_name=opasConfig.TRANS
             # make sure it's not HTML already
             if re.match("<!DOCTYPE html .*", elem_or_xmlstr, re.IGNORECASE):
                 logger.error("Warning - Data is HTML already:", e)
-            xmlstr = remove_encoding_string(xmlstr)
+            xmlstr = remove_encoding_string(elem_or_xmlstr)
             source_data = etree.fromstring(xmlstr)
         except Exception as e:
             # return this error, so it will be displayed (for now) instead of the document

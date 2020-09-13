@@ -8,6 +8,9 @@
 
 import sys
 import os.path
+import logging
+
+logger = logging.getLogger(__name__)
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests

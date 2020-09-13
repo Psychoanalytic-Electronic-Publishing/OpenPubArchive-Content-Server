@@ -21,6 +21,9 @@ SOLR_DOCS = "pepwebdocs"
 SOLR_AUTHORS = "pepwebauthors"
 SOLR_GLOSSARY = "pepwebglossary"
 
+# constants
+COMMITLIMIT = 1000  # commit the load to Solr every X articles
+
 if SOLRUSER is not None:
     solr_docs = solr.SolrConnection(SOLRURL + SOLR_DOCS, http_user=SOLRUSER, http_pass=SOLRPW)
     solr_docs_term_search = solr.SearchHandler(solr_docs, "/terms")

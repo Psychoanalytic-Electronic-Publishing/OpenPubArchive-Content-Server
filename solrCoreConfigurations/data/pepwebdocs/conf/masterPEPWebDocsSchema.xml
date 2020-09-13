@@ -111,7 +111,7 @@
   <!-- Copy of article title (see copy below) -->
   <field name="format" type="string" indexed="true" stored="true"/>
   <!-- Version is required for atomic updates -->
-  <field name="_version_" type="plong" indexed="false" stored="false"/>
+  <field name="_version_" type="plong" indexed="false" stored="false" docValues="true"/>
 
   <!-- ************************************************************************************************* -->
   <!-- Key display fields and their index surrogates (not displayed) -->
@@ -157,17 +157,17 @@
   <field name="art_origrx" type="string" indexed="true" stored="true" multiValued="false"/>
   <!--Added art_views_lastcalyear 2020-05 to meet search requirements-->
   <!--These have to be false for all but docValues to allow in place updates-->
-  <field name="art_cited_all" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_cited_5" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_cited_10" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_cited_20" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/> 
+  <field name="art_cited_all" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_cited_5" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_cited_10" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_cited_20" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
   <!--Added art_views_lastcalyear 2020-05 to meet search requirements-->
   <!--These have to be false for all but docValues to allow in place updates-->
-  <field name="art_views_lastcalyear" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/> 
-  <field name="art_views_last1mos" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/> 
-  <field name="art_views_last6mos" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/> 
-  <field name="art_views_last12mos" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/> 
-  <field name="art_views_lastweek" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/> 
+  <field name="art_views_lastcalyear" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_last1mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_last6mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_last12mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_views_lastweek" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
    
   <field name="art_sourcecode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_sourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>

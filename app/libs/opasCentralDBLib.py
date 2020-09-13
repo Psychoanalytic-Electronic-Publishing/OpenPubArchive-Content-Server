@@ -115,6 +115,7 @@ API_AUTHORS_INDEX = 20	#/Authors/Index/{authNamePartial}/
 API_AUTHORS_PUBLICATIONS = 21	#/Authors/Publications/{authNamePartial}/
 API_DOCUMENTS_ABSTRACTS = 30	#/Documents/Abstracts/{documentID}/
 API_DOCUMENTS = 31	#/Documents/{documentID}/
+API_DOCUMENTS_CONCORDANCE = 38	    #/Documents/Paragraph/Concordance/
 API_DOCUMENTS_PDF = 32	#/Documents/Downloads/PDF/{documentID}/
 API_DOCUMENTS_PDFORIG = 33	#/Documents/Downloads/PDFORIG/{documentID}/
 API_DOCUMENTS_EPUB = 35	#/Documents/Downloads/PDF/{documentID}/
@@ -1352,7 +1353,7 @@ class opasCentralDB(object):
                 ret_val = logged_in_user.get("admin", False)
             except Exception as e:
                 err_msg = f"Not logged in or error getting admin status ({e})"
-                logger.error(err_msg)
+                logger.debug(err_msg)
             
         return ret_val   
        
