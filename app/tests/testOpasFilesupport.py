@@ -1,0 +1,196 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# Third-party imports...
+#from nose.tools import assert_true
+
+#  This test module is in development...
+
+import sys
+import os.path
+
+folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+if folder == "tests": # testing from within WingIDE, default folder is tests
+    sys.path.append('../libs')
+    sys.path.append('../config')
+    sys.path.append('../../app')
+else: # python running from should be within folder app
+    sys.path.append('./libs')
+    sys.path.append('./config')
+
+from starlette.testclient import TestClient
+
+import unittest
+import localsecrets
+# from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
+# import jwt
+# from datetime import datetime
+# import opasAPISupportLib
+# import opasConfig
+# import opasQueryHelper
+import opasCentralDBLib
+# import models
+
+from unitTestConfig import base_api, base_plus_endpoint_encoded
+import opasFileSupport
+
+# from main import app
+
+# client = TestClient(app)
+
+ocd = opasCentralDBLib.opasCentralDB()
+
+class TestFileSystemFunctions(unittest.TestCase):
+    """
+    Tests
+    
+    Note: tests are performed in alphabetical order, hence the function naming
+          with forced order in the names.
+    
+    """
+
+    def test_0_Find(self):
+        # This should work whether on local or S3
+        if localsecrets.S3_KEY is not None: #  test AWS
+            print ("S3 FS tests")
+        fs = opasFileSupport.FlexFileSystem(root=localsecrets.XML_ORIGINALS_PATH)
+        filename = "ADPSA.001.0007A(bEXP_ARCH1).XML"
+        ret_val = fs.find(filename)
+        print (ret_val)
+        try:
+            assert (filename in ret_val)
+        except Exception as e:
+            print (f"Except: {e}")
+            assert (False)
+        
+    def test_0_exists(self):
+        # This should work whether on local or S3
+        if localsecrets.S3_KEY is not None: #  test AWS
+            print ("S3 FS tests")
+        fs = opasFileSupport.FlexFileSystem(root=localsecrets.XML_ORIGINALS_PATH)
+        filename = "ADPSA.001.0007A(bEXP_ARCH1).XML"
+        ret_val = fs.find(filename)
+        print (ret_val)
+        try:
+            assert (filename in ret_val)
+        except Exception as e:
+            print (f"Except: {e}")
+            assert (False)
+        
+    def test_1_fetch_file_info(self):
+        # get from s3 if localsecrets set to use it
+        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                            secret=localsecrets.S3_SECRET,
+                                            root=localsecrets.XML_ORIGINALS_PATH)
+
+        filename="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).XML"
+        filespec = fs.find(filename)
+        ret = fs.fileinfo(filespec=filespec)
+        assert (ret.filesize >= 16719)
+
+    def test_0_get_filespec(self):
+        # get from s3 if localsecrets set to use it
+        if localsecrets.S3_KEY is not None: #  test AWS
+            print ("S3 FS tests")
+            fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                                secret=localsecrets.S3_SECRET,
+                                                root=localsecrets.IMAGE_SOURCE_PATH)
+            ret = fs.fullfilespec(filespec="IJAPS.016.0181A.FIG002.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
+            assert(ret =='pep-web-files/doc/g/IJAPS.016.0181A.FIG002.jpg')
+        else:
+            print ("Local FS tests")
+            fs = opasFileSupport.FlexFileSystem(root=localsecrets.FILESYSTEM_ROOT)
+            # >>> fs.fullfilespec(filespec="pep.css", path="embedded-graphics")
+            'pep-graphics/embedded-graphics/pep.css'
+            ret = fs.fullfilespec(filespec="IJAPS.016.0181A.FIG002.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
+            assert(ret =='X:\\_PEPA1\\g\\IJAPS.016.0181A.FIG002.jpg')
+   
+    def test_2_exists(self):
+        fs = opasFileSupport.FlexFileSystem(root=localsecrets.IMAGE_SOURCE_PATH)
+        ret = fs.exists(filespec="IJAPS.016.0181A.FIG002.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
+        assert(ret == True)
+        ret = fs.exists(filespec="IJAPS.016.0181A.FIG002B.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
+        assert(ret == False)
+   
+    def test_3_get_download_filename(self):
+        """
+        """
+        fs = opasFileSupport.FlexFileSystem(root=localsecrets.PDF_ORIGINALS_PATH)
+        filespec = "AIM.026.0021A.pdf"
+        ret = fs.get_download_filename(filespec=filespec, path=localsecrets.PDF_ORIGINALS_PATH)
+        print (ret)
+        assert(filespec in ret)
+   
+    def test_4_get_image_filename(self):
+        """
+        """
+        fs = opasFileSupport.FlexFileSystem(root=localsecrets.IMAGE_SOURCE_PATH) # must be for the image if not the root
+        filespec = "AIM.036.0275A.FIG001"
+        ret = fs.get_image_filename(filespec=filespec, path=localsecrets.IMAGE_SOURCE_PATH)
+        print (ret)
+        assert(filespec in ret)
+        ret = fs.get_image_filename(filespec=filespec)
+        print (ret)
+        assert(filespec in ret)
+   
+    def test_5_get_image_len(self):
+        """
+        >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
+        >>> binimg = fs.get_image_binary(filespec="AIM.036.0275A.FIG001", path=localsecrets.IMAGE_SOURCE_PATH)
+        >>> len(binimg)
+        26038
+        
+        """
+        fs = opasFileSupport.FlexFileSystem(root=localsecrets.IMAGE_SOURCE_PATH) # must be for the image if not the root
+        filespec = "AIM.036.0275A.FIG001"
+        img_bin = fs.get_image_binary(filespec=filespec, path=localsecrets.IMAGE_SOURCE_PATH)
+        image_len = len(img_bin)
+        print (image_len)
+        assert(image_len >= 26038)
+   
+    def test_6_get_file_contents(self):
+        """
+        # left in for an example, see file system independent test in testS3fileSystemFunctions
+        >> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
+        >> file_content = fs.get_file_contents(filespec='pep-web-xml/_PEPArchive/ADPSA/001.1926/ADPSA.001.0007A(bEXP_ARCH1).XML', path=None)
+        >> a = len(file_content)
+        >> print (a)
+        692
+        
+        """
+        fs = opasFileSupport.FlexFileSystem(root=localsecrets.XML_ORIGINALS_PATH) # must be for the image if not the root
+        filespec = "ADPSA.001.0007A(bEXP_ARCH1).XML"
+        content = fs.get_file_contents(filespec=filespec, path=localsecrets.XML_ORIGINALS_PATH)
+        content_len = len(content)
+        print (content_len)
+        assert(content_len >= 691)
+    
+    def test_7_get_matching_filenames(self):
+        
+        pat = r"(.*?)\((bEXP_ARCH1|bSeriesTOC)\)\.(xml|XML)$"
+        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                            secret=localsecrets.S3_SECRET,
+                                            root=localsecrets.XML_ORIGINALS_PATH)
+
+        matchlist = fs.get_matching_filelist(path="_PEPCurrent",
+                                             filespec_regex='(AIM\.076\.0309A.*\\((bEXP_ARCH1|bSeriesTOC)\\)\\.(xml|XML))$')
+        assert (matchlist[0].basename == 'AIM.076.0309A(bEXP_ARCH1).XML')
+
+        matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, revised_after_date="2020-09-04")
+        assert (len(matchlist) == 0)
+
+        matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat)
+        assert (len(matchlist) >= 100)
+
+        matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+        assert (len(matchlist) == 20)
+        
+        matchlist = fs.get_matching_filelist(path="_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+        assert (len(matchlist) == 20)
+
+        #res = opasFileSupport.get_s3_matching_files(subpath_tomatch="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
+        #res = opasFileSupport.get_s3_matching_files(subpath_tomatch="_PEPCurrent/.*\.xml")
+        
+if __name__ == '__main__':
+    unittest.main()
+    print ("Tests Complete.")

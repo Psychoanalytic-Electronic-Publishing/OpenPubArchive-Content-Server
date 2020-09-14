@@ -19,8 +19,38 @@ import boto3
 import logging
 import datetime
 import time
+import pathlib
 
 logger = logging.getLogger(__name__)
+
+class FileInfo(object):
+    def __init__(self): 
+        self.build_date = time.time()
+        self.filespec:str = None
+        self.basename:str = None
+        self.filesize:int = None
+        self.filetype = None
+        self.etag:str = None
+        self.timestamp_str:str = None
+        self.timestamp:datetime.datetime = None # datetime.datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.date_modified:datetime.datetime = None # self.timestamp.date()
+        # self.date_modified_str:str = None # str(self.date)
+        self.fileinfo:dict = {}       
+        
+    def mapS3(self, fileinfo: dict):
+        self.fileinfo = fileinfo
+        self.filespec = fileinfo["Key"]
+        self.basename = os.path.basename(self.filespec)
+        self.filesize = fileinfo["Size"]
+        self.filetype = fileinfo["type"]
+        self.build_date = time.time() # current time
+        # modified date
+        self.timestamp_str = datetime.datetime.strftime(fileinfo["LastModified"], localsecrets.TIME_FORMAT_STR)
+        self.timestamp = datetime.datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.date_modified = self.timestamp.date()
+        # self.date_modified_str = str(self.date_modified)
+        self.etag = fileinfo.get("Etag", None)
+    
 
 class FlexFileSystem(object):
     """
@@ -48,7 +78,7 @@ class FlexFileSystem(object):
             self.secret = secret
         
         if root is None:
-            self.root = localsecrets.FILESYSTEM_ROOT
+            self.root = localsecrets.XML_ORIGINALS_PATH
         else:
             self.root = root
 
@@ -64,6 +94,9 @@ class FlexFileSystem(object):
             logger.error(f"FlexFileSystem initiation error ({e})")
 
     def find(self, name, path_root=None):
+        """
+        Search for file; return None if not found, filename/path if found.
+        """
         if path_root is None:
             path_root = self.root
            
@@ -73,7 +106,7 @@ class FlexFileSystem(object):
                     ret_val = os.path.join(root, name)
                     break
         else:
-            found_info = find_s3_file(bucket=self.root, filename=name)
+            found_info = find_s3_file(bucket=path_root, filename=name)
             try:
                 ret_val = found_info[0].get("Key", None)
             except:
@@ -133,41 +166,45 @@ class FlexFileSystem(object):
          {'base_filename': 'IJAPS.016.0181A.FIG002.jpg', 'timestamp_str': '2019-12-12T18:59:31Z', 'timestamp_obj': datetime.datetime(2019, 12, 12, 18, 59, 31), 'fileSize': 21064, 'date_obj': datetime.date(2019, 12, 12), 'date_str': '2019-12-12', 'buildDate': ...}
          
         """
-        ret_val = {}
+        fileinfo_dict = {}
+        ret_obj = FileInfo()
         try:
             if self.key is not None:
                 filespec = self.fullfilespec(filespec=filespec, path=path) # "pep-graphics/embedded-graphics"
-                ret_val["filename"] = filespec
+                ret_obj.filespec = fileinfo_dict["filename"] = filespec
                 try:
-                    fileinfo = self.fs.info(filespec)
-                    ret_val["base_filename"] = os.path.basename(filespec)
-                    # get rid of times, we only want dates
-                    ret_val["timestamp_str"] = datetime.datetime.strftime(fileinfo["LastModified"], localsecrets.TIME_FORMAT_STR)
-                    ret_val["timestamp_obj"] = datetime.datetime.strptime(ret_val["timestamp_str"], localsecrets.TIME_FORMAT_STR)
-                    ret_val["date_obj"] = ret_val["timestamp_obj"].date()
-                    ret_val["date_str"] = str(ret_val["date_obj"])
-                    ret_val["fileSize"] = fileinfo["Size"]
-                    ret_val["type"] = fileinfo["type"]
-                    ret_val["etag"] = fileinfo.get("Etag", None)
-                    ret_val["buildDate"] = time.time()
+                    fileinfo_dict = self.fs.info(filespec)
+                    ret_obj.mapS3(fileinfo_dict)
+                    #ret_obj.basename = fileinfo_dict["base_filename"] = os.path.basename(filespec)
+                    #ret_obj.filesize = fileinfo_dict["fileSize"] = fileinfo["Size"]
+                    #ret_obj.filetype = fileinfo_dict["type"] = fileinfo["type"]
+                    ## get rid of times, we only want dates
+                    #ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.strftime(fileinfo["LastModified"], localsecrets.TIME_FORMAT_STR)
+                    #ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], localsecrets.TIME_FORMAT_STR)
+                    #ret_obj.date = fileinfo_dict["date_obj"] = fileinfo_dict["timestamp"].date()
+                    #ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
+                    #ret_obj.etag = fileinfo_dict["etag"] = fileinfo.get("Etag", None)
+                    #ret_obj.build_date = fileinfo_dict["buildDate"] = time.time()
                     #ret_val = self.fs.info(filespec)
                 except Exception as e:
                     logger.error(f"File access error: {e}")
             else: # local FS
                 #stat = os.stat(filespec)
-                ret_val["base_filename"] = os.path.basename(filespec)
-                ret_val["timestamp_str"] = datetime.datetime.utcfromtimestamp(os.path.getmtime(filespec)).strftime(localsecrets.TIME_FORMAT_STR)
-                ret_val["timestamp_obj"] = datetime.datetime.strptime(ret_val["timestamp_str"], localsecrets.TIME_FORMAT_STR)
-                ret_val["fileSize"]  = os.path.getsize(filespec)
-                ret_val["date_obj"] = ret_val["timestamp_obj"].date()
-                ret_val["date_str"] = str(ret_val["date_obj"])
+                ret_obj.basename = fileinfo_dict["base_filename"] = os.path.basename(filespec)
+                ret_obj.filesize = fileinfo_dict["fileSize"]  = os.path.getsize(filespec)
+                ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.utcfromtimestamp(os.path.getmtime(filespec)).strftime(localsecrets.TIME_FORMAT_STR)
+                ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], localsecrets.TIME_FORMAT_STR)
+                ret_obj.date = fileinfo_dict["date"] = fileinfo_dict["timestamp"].date()
+                ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
                 #ret_val["type"] = fileinfo["type"]
-                ret_val["buildDate"] = time.time()
+                ret_obj.build_date = fileinfo_dict["buildDate"] = time.time()
                 
+            ret_obj.fileinfo = fileinfo_dict
+
         except Exception as e:
             logger.error(f"File access error: ({e})")
         
-        return ret_val     
+        return ret_obj
     #-----------------------------------------------------------------------------
     def exists(self, filespec, path=None):
         """
@@ -317,30 +354,134 @@ class FlexFileSystem(object):
             logger.error("File %s not found", filespec)
       
         return ret_val
+    def deprecated_get_matching_filelist_info(self, bucket=None, filespec_regex=None, revised_after_date=None, max_items=None, look_past_match_count=0):
+        """
+        Return a list of matching files, as s3 fileinfo dicts.
+        
+        fs convenience function for get_s3_matching_files
 
+        Args:
+         - filespec_regex - regexp pattern with folder name and file name pattern, not including the root.
+         - Examples:
+            get_matching_filelist_info(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
+            get_matching_filelist_info(match_path="_PEPCurrent/.*\.xml")
+
+      - is_folder - set to true to find folders
+
+      - revised_after_date - files will only match if their revise date is after this
+
+      - max_items - maximum number of matched files
+
+      - look_past_match_count - a number used to stop searching when we "guess" it should be past the last hit.
+           This can limit how many items past a match are searched, e.g., if all the matches are in on folder, then
+           if this number is greater than the possible number of items in the folder, it will stop at some point in the next folder or so.
+           At least this should be useful for testing...in practice, on AWS, it shouldn't be needed, since hopefully, file search is much
+           faster.
+    """
+        if bucket is None:
+            bucket = self.root
+            
+        ret_val = get_s3_matching_files(bucket=bucket,
+                                        subpath_tomatch=filespec_regex,
+                                        after_revised_date=revised_after_date,
+                                        max_items=max_items,
+                                        look_past_match_count=look_past_match_count)
+        
+        return ret_val
+
+    def get_matching_filelist(self, path=None, filespec_regex=None, revised_after_date=None, max_items=None):
+        """
+        Return a list of matching files, as FileInfo objects
+
+        Args:
+         - path - full path o
+         - filespec_regex - regexp pattern with folder name and file name pattern, not including the root.
+         - Examples:
+            get_matching_filelist_info(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
+            get_matching_filelist_info(match_path="_PEPCurrent/.*\.xml")
+        
+        """
+        ret_val = []
+        count = 0
+        rc_match = re.compile(filespec_regex, flags=re.IGNORECASE)
+        
+        if path is None:
+            data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH) # "pep-web-xml"
+        else:
+            data_folder = pathlib.Path("/") / pathlib.Path(localsecrets.XML_ORIGINALS_PATH) / path
+            
+        if self.key is not None:
+            data_folder = data_folder.as_posix()
+            
+        kwargs = {"detail": True,}
+        if revised_after_date is not None:
+            revised_after_date = datetime.datetime.date(datetime.datetime.strptime(revised_after_date, '%Y-%m-%d'))
+            
+        for folder, subfolder, files in self.fs.walk(path=data_folder, **kwargs):
+            if len(files) > 1:
+                # yes, we have files.
+                for key, val_dict in files.items():
+                    # print (key)
+                    if rc_match.match(key):
+                        fileinfo = FileInfo()
+                        fileinfo.mapS3(val_dict)
+                        if revised_after_date is not None:
+                            if fileinfo.date_modified > revised_after_date:
+                                ret_val.append(fileinfo)
+                                count += 1
+                            else:
+                                continue
+                        else:
+                            ret_val.append(fileinfo)
+                            count += 1
+                        
+                        if max_items is not None:
+                            if count >= max_items:
+                                break
+
+            if max_items is not None:
+                if count >= max_items:
+                    break
+
+        return ret_val            
+    
+    
 def get_s3_matching_files(bucket=None,
                           subpath_tomatch=".*",
                           is_folder=False,
                           after_revised_date=None,
-                          max_items=None):
+                          max_items=None,
+                          look_past_match_count: int=0):
     """
-    >> get_s3_matching_files(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
+    Find matching files where:
+      - subpath_tomatch - regexp pattern with folder name and file name pattern, not including the root.
+         - Examples:
+            get_s3_matching_files(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
+            get_s3_matching_files(match_path="_PEPCurrent/.*\.xml")
 
-    >> ret =get_s3_matching_files(match_path="_PEPCurrent/.*\.xml")
-    >> len(ret)
+      - is_folder - set to true to find folders
 
-    >> ret =get_s3_matching_files(match_path="_PEPArchive/.*\.xml")
-    >> len(ret)
-    
+      - after_revised_date - files will only match if their revise date is after this
+
+      - max_items - maximum number of matched files
+
+      - look_past_match_count - a number used to stop searching when we "guess" it should be past the last hit.
+           This can limit how many items past a match are searched, e.g., if all the matches are in on folder, then
+           if this number is greater than the possible number of items in the folder, it will stop at some point in the next folder or so.
+           At least this should be useful for testing...in practice, on AWS, it shouldn't be needed, since hopefully, file search is much
+           faster.
     """
     
     ret_val = []
     if bucket == None:
-        bucket = localsecrets.FILESYSTEM_ROOT
+        bucket = localsecrets.XML_ORIGINALS_PATH
         
     count = 0
+    tried = 0
     rc_match = re.compile(subpath_tomatch, flags=re.IGNORECASE)
+    after_match_count = 0
     for item in iterate_bucket_items(bucket=bucket):
+        tried += 1
         m = rc_match.match(item["Key"])
         if m:
             if is_folder == True:
@@ -353,10 +494,21 @@ def get_s3_matching_files(bucket=None,
                     continue
 
             count = count + 1
+            print (f"Matched: {item['Key']}")
+            # reset after match count
+            after_match_count = 0
+                
             ret_val.append(item)
             if max_items is not None:
                 if count >= max_items:
                     break
+        else:
+            # no match
+            if count > 0: # won't increment unless there's been at least one match
+                after_match_count += 1
+                if look_past_match_count > 0:
+                    if after_match_count > look_past_match_count:
+                        break # guess we're past all the hits
 
     return ret_val            
 
