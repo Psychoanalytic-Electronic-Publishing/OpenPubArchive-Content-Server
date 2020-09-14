@@ -5,18 +5,25 @@
 
 print(
     """
-    UpdateSolrViewData - Program to update the view stat child records in the pepwebdocs Solr instance
+    UpdateSolrViewData - Program to update the view and citation stat fields in the pepwebdocs
+      database.
+      
+      By default, it only updates records which have views data.
+      If you use command line option --all, it will add all citation and views data to the
+        pepwebdocs data.  (This takes significantly longer.)
       The records added are controlled by the database view: vw_stat_to_update_solr_docviews
     """
 )
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0827.1"
+__version__     = "2020.0905.1"
 __status__      = "Testing"
 
 import sys
 sys.path.append('../config')
+
+UPDATE_AFTER = 2500
 
 import logging
 import time
@@ -28,10 +35,27 @@ from pydantic import BaseModel
 from datetime import datetime
 programNameShort = "updateSolrviewData"  # used for log file
 logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
+FORMAT = '%(asctime)s %(name)s %(funcName)s %(lineno)d - %(levelname)s %(message)s'
+logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.ERROR, datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(programNameShort)
 start_notice = f"Started at {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}. Logfile {logFilename}"
 print (start_notice)
 logger.info(start_notice)
+
+unified_article_stat = {}
+
+class ArticleStat(BaseModel):
+    document_id: str = None
+    art_views_update: bool = False
+    art_views_lastcalyear: int = 0
+    art_views_last12mos: int = 0
+    art_views_last6mos: int = 0
+    art_views_last1mos: int = 0
+    art_views_lastweek: int = 0
+    art_cited_5: int = 0
+    art_cited_10: int = 0
+    art_cited_20: int = 0
+    art_cited_all: int = 0
 
 class MostCitedArticles(BaseModel):
     """
@@ -42,7 +66,7 @@ class MostCitedArticles(BaseModel):
       
     Definition copied to keep this independent, from GitHub\openpubarchive\app\libs\modelsOpasCentralPydantic.py   
     """
-    cited_document_id: str = None
+    document_id: str = None
     countAll: int = 0
     count5: int = 0
     count10: int = 0
@@ -58,11 +82,11 @@ class opasCentralDBMini(object):
     def __init__(self, session_id=None, access_token=None, token_expires_time=None, username="NotLoggedIn", user=None):
         self.db = None
         self.connected = False
-        self.authenticated = False
-        self.session_id = session_id
-        self.access_token = access_token
-        self.user = None
-        self.sessionInfo = None
+        #self.authenticated = False
+        #self.session_id = session_id
+        #self.access_token = access_token
+        #self.user = None
+        #self.sessionInfo = None
         
     def open_connection(self, caller_name=""):
         """
@@ -77,39 +101,19 @@ class opasCentralDBMini(object):
         try:
             status = self.db.open
             self.connected = True
-            # this is normal, why log it?
-            # logger.debug(f"Database connection was already opened ({caller_name})")
         except:
             # not open reopen it.
             status = False
         
         if status == False:
+            #  not tunneled
             try:
-                tunneling = None
-                if localsecrets.SSH_HOST is not None:
-                    from sshtunnel import SSHTunnelForwarder
-                    self.tunnel = SSHTunnelForwarder(
-                                                      (localsecrets.SSH_HOST,
-                                                       localsecrets.SSH_PORT),
-                                                       ssh_username=localsecrets.SSH_USER,
-                                                       ssh_pkey=localsecrets.SSH_MYPKEY,
-                                                       remote_bind_address=(localsecrets.DBHOST,
-                                                                            localsecrets.DBPORT))
-                    self.tunnel.start()
-                    self.db = pymysql.connect(host='127.0.0.1',
-                                           user=localsecrets.DBUSER,
-                                           passwd=localsecrets.DBPW,
-                                           db=localsecrets.DBNAME,
-                                           port=self.tunnel.local_bind_port)
-                    tunneling = self.tunnel.local_bind_port
-                else:
-                    #  not tunneled
-                    self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
-
-                logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} tunnel {tunneling}")
+                self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
+                logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT}")
                 self.connected = True
             except Exception as e:
                 err_str = f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})"
+                print(err_str)
                 logger.error(err_str)
                 self.connected = False
                 self.db = None
@@ -123,9 +127,6 @@ class opasCentralDBMini(object):
                     self.db.close()
                     self.db = None
                     logger.debug(f"Database closed by ({caller_name})")
-                    if localsecrets.CONFIG == "AWSTestAccountTunnel":
-                        self.tunnel.stop()
-                        logger.debug(f"Database tunnel stopped.")
                 else:
                     logger.debug(f"Database close request, but not open ({caller_name})")
                     
@@ -140,8 +141,6 @@ class opasCentralDBMini(object):
          Using the opascentral api_docviews table data, as dynamically statistically aggregated into
            the view vw_stat_most_viewed return the most downloaded (viewed) documents
            
-         Supports the updates to Solr via solrXMLPEPWebload, used for view count queries.
-            
         """
         ret_val = None
         row_count = 0
@@ -161,133 +160,178 @@ class opasCentralDBMini(object):
         self.close_connection(caller_name="get_most_downloaded_crosstab") # make sure connection is closed
         return row_count, ret_val
 
-    #----------------------------------------------------------------------------------------
-
-def collect_citation_counts() -> dict:
-    ocd =  opasCentralDBMini()
-    citation_table = []
-    print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
-    try:
-        ocd.open_connection()
-        # Get citation lookup table
+    def get_citation_counts(self) -> dict:
+        """
+         Using the opascentral vw_stat_cited_crosstab view, based on the api_biblioxml which is used to detect citations,
+           return the cited counts for each art_id
+           
+        """
+        citation_table = []
+        print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
         try:
-            cursor = ocd.db.cursor(pymysql.cursors.DictCursor)
-            sql = """
-                  SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
-                  """
-            success = cursor.execute(sql)
-            if success:
-                citation_table = cursor.fetchall()
-                cursor.close()
-            else:
-                logger.error("Cursor execution failed.  Can't fetch.")
-                
-        except MemoryError as e:
-            print(("Memory error loading table: {}".format(e)))
-        except Exception as e:
-            print(("Table Query Error: {}".format(e)))
-        
-        ocd.close_connection()
-    except Exception as e:
-        print(("Database Connect Error: {}".format(e)))
-        citation_table["dummy"] = MostCitedArticles()
-    
-    return citation_table
-
-def update_views_solr_data(solrcon):
-    """
-    Use in-place updates to update the views data
-    """
-    ocd =  opasCentralDBMini()
-    
-    # set only includes those with the desired update value > 0 
-    #   (see RDS vw_stat_to_update_solr_docviews to change criteria)
-    count, most_viewed = ocd.get_most_viewed_crosstab()
-    update_count = 0
-    if most_viewed is not None:
-        for n in most_viewed:
-            doc_id = n.get("document_id", None)
-            count_lastcalyear = n.get("lastcalyear", None) 
-            count_last12mos = n.get("last12months", None) 
-            count_last6mos = n.get("last6months", None) 
-            count_last1mos = n.get("lastmonth", None)
-            count_lastweek = n.get("lastweek", None)
-            if doc_id is not None:
-                update_count += 1
-                upd_rec = {
-                            "id":doc_id,
-                            "art_views_lastcalyear": count_lastcalyear, 
-                            "art_views_last12mos": count_last12mos, 
-                            "art_views_last6mos": count_last6mos, 
-                            "art_views_last1mos": count_last1mos, 
-                            "art_views_lastweek": count_lastweek
-                }                    
-                try:
-                    solrcon.add([upd_rec], fieldUpdates={"art_views_lastcalyear": 'set',
-                                                         "art_views_last12mos": 'set',
-                                                         "art_views_last6mos": 'set',
-                                                         "art_views_last1mos": 'set',
-                                                         "art_views_lastweek": 'set',
-                                                         }, commit=True)
-                except Exception as err:
-                    errStr = "Solr call exception for views update on %s: %s" % (doc_id, err)
-                    logger.error(errStr)
+            self.open_connection("collect_citation_counts")
+            # Get citation lookup table
+            try:
+                cursor = self.db.cursor(pymysql.cursors.DictCursor)
+                sql = """
+                      SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
+                      """
+                success = cursor.execute(sql)
+                if success:
+                    citation_table = cursor.fetchall()
+                    cursor.close()
+                else:
+                    logger.error("Cursor execution failed.  Can't fetch.")
                     
-    logger.info(f"Finished updating Solr database with {update_count} article records updated.")
-    return update_count
+            except MemoryError as e:
+                print(("Memory error loading table: {}".format(e)))
+            except Exception as e:
+                print(("Table Query Error: {}".format(e)))
+            
+            self.close_connection("collect_citation_counts")
+            
+        except Exception as e:
+            print(("Database Connect Error: {}".format(e)))
+            citation_table["dummy"] = MostCitedArticles()
+        
+        return citation_table
 
-def update_citation_solr_data(solrcon):
+
+#----------------------------------------------------------------------------------------
+#  End OpasCentralDBMini
+#----------------------------------------------------------------------------------------
+def load_unified_article_stat():
+    ocd =  opasCentralDBMini()
+    # load most viewed data
+    count, most_viewed = ocd.get_most_viewed_crosstab()
+    # load citation data
+    citation_table = ocd.get_citation_counts()
+
+    # integrate data into article_stat
+    for n in citation_table:
+        try:
+            doc_id = n.get("cited_document_id", None)
+        except Exception as e:
+            logger.error("no document id")
+        else:
+            unified_article_stat[doc_id] = ArticleStat(
+                art_cited_5 = n.get("count5", 0), 
+                art_cited_10 = n.get("count10", 0), 
+                art_cited_20 = n.get("count20", 0), 
+                art_cited_all = n.get("countAll", 0)
+            ) 
+
+    for n in most_viewed:
+        doc_id = n.get("document_id", None)
+        if doc_id is not None:
+            try:
+                unified_article_stat[doc_id].art_views_update = True
+                unified_article_stat[doc_id].art_views_lastcalyear = n.get("lastcalyear", None)
+                unified_article_stat[doc_id].art_views_last12mos = n.get("last12months", None) 
+                unified_article_stat[doc_id].art_views_last6mos = n.get("last6months", None) 
+                unified_article_stat[doc_id].art_views_last1mos = n.get("lastmonth", None)
+                unified_article_stat[doc_id].art_views_lastweek = n.get("lastweek", None)
+            except KeyError:
+                unified_article_stat[doc_id] = ArticleStat()
+                unified_article_stat[doc_id].art_views_update = True
+                unified_article_stat[doc_id].art_views_lastcalyear = n.get("lastcalyear", None)
+                unified_article_stat[doc_id].art_views_last12mos = n.get("last12months", None) 
+                unified_article_stat[doc_id].art_views_last6mos = n.get("last6months", None) 
+                unified_article_stat[doc_id].art_views_last1mos = n.get("lastmonth", None)
+                unified_article_stat[doc_id].art_views_lastweek = n.get("lastweek", None)
+                
+def update_solr_stat_data(solrcon, all_records:bool=False):
     """
     Use in-place updates to update the views data
     """
-    citation_table = collect_citation_counts()
-    print (f"Loading {len(citation_table)} records into citation cross-tab table.")
+    print (f"Loading records into Solr table.")
     update_count = 0
+    skipped_as_update_error = 0
+    skipped_as_missing = 0
     
-    for n in citation_table:
+    for key, art_stat in unified_article_stat.items():
+        if all_records==False:
+            if not art_stat.art_views_update:
+                continue
+
         # set only includes those with the desired update value > 0 
         #   (see RDS vw_stat_to_update_solr_docviews to change criteria)
-        doc_id = n.get("cited_document_id", None)
-        count_5 = n.get("count5", None) 
-        count_10 = n.get("count10", None) 
-        count_20 = n.get("count20", None) 
-        count_All = n.get("countAll", None)
-        if doc_id is not None:
-            update_count += 1
-            upd_rec = {
-                        "id":doc_id,
-                        "art_cited_5": count_5, 
-                        "art_cited_10": count_10, 
-                        "art_cited_20": count_20, 
-                        "art_cited_all": count_All
-            }                    
-            try:
-                solrcon.add([upd_rec], fieldUpdates={
-                                                     "art_cited_5": 'set',
-                                                     "art_cited_10": 'set',
-                                                     "art_cited_20": 'set',
-                                                     "art_cited_all": 'set',
-                                                     })
+        doc_id = key
+        found = False
+        try:
+            results = solrcon.search(q = f"art_id:{doc_id}")
+            if results.raw_response["response"]["numFound"] > 0:
+                found = True
+        except Exception as e:
+            logger.debug(f"Document {doc_id} not in Solr...skipping")
+            skipped_as_missing += 1
+        else:
+            if found:
+                #logger.info("Document in Solr...trying to update")
+                if doc_id is not None:
+                    upd_rec = {
+                                "id":doc_id,
+                                "art_cited_5": art_stat.art_cited_5, 
+                                "art_cited_10": art_stat.art_cited_10, 
+                                "art_cited_20": art_stat.art_cited_20, 
+                                "art_cited_all": art_stat.art_cited_all, 
+                                "art_views_lastcalyear": art_stat.art_views_lastcalyear, 
+                                "art_views_last12mos": art_stat.art_views_last12mos, 
+                                "art_views_last6mos": art_stat.art_views_last6mos, 
+                                "art_views_last1mos": art_stat.art_views_last1mos, 
+                                "art_views_lastweek": art_stat.art_views_lastweek
+                    }                    
+        
+                    try:
+                        solrcon.add([upd_rec], fieldUpdates={
+                                                             "art_cited_5": 'set',
+                                                             "art_cited_10": 'set',
+                                                             "art_cited_20": 'set',
+                                                             "art_cited_all": 'set',
+                                                             "art_views_lastcalyear": 'set',
+                                                             "art_views_last12mos": 'set',
+                                                             "art_views_last6mos": 'set',
+                                                             "art_views_last1mos": 'set',
+                                                             "art_views_lastweek": 'set'
+                                                             })
+        
+                        if update_count > 0 and update_count % UPDATE_AFTER == 0:
+                            solr_docs2.commit()
+                            errStr = f"updated {update_count} records with citation data"
+                            print (errStr)
+                            logger.warning(errStr)
+                        
+                    except Exception as err:
+                        errStr = f"Solr call exception for update on {doc_id}: {err}"
+                        print (errStr)
+                        skipped_as_update_error += 1
+                        logger.error(errStr)
+                    else:
+                        update_count += 1
 
-                if update_count % 1500 == 0:
-                    solr_docs2.commit()
-                    print (f"updated {update_count} records with citation data")
-                
-            except Exception as err:
-                errStr = "Solr call exception for citation update on %s: %s" % (doc_id, err)
-                logger.error(errStr)
-                    
-    logger.info(f"Finished updating Solr citation counts with {update_count} article records updated.")
+    #  final commit
+    try:
+        solr_docs2.commit()
+    except Exception as e:
+        msg = f"Final commit error {e}"
+        print(msg)
+        logger.error(msg)
+
+    logger.warning(f"Finished updating Solr stat with {update_count} article records updated; records skippted: {skipped_as_update_error }.")
     return update_count
 
 if __name__ == "__main__":
-    from optparse import OptionParser
-    parser = OptionParser(usage="%prog [options] - PEP Solr Views Update Loader", version=f"Ver. {__version__}")
-    parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.WARNING,
-                      help="Level at which events should be logged")
-    (options, args) = parser.parse_args()
-
-    logging.basicConfig(filename=logFilename, level=options.logLevel)
+    import argparse
+    parser = argparse.ArgumentParser() 
+    parser.add_argument('--version', action='version',
+                        version='%(prog)s {version}'.format(version=__version__))    
+    parser.add_argument('--verbose', '-v', action='count', default=1, help="Multiple v's for more verbosity, e.g., -vvv")
+    parser.add_argument("-a", "--all", dest="all_records", default=False, action="store_true",
+                        help="Update records with views and any citation data (takes significantly longer)")
+    
+    args = parser.parse_args()
+    args.verbose = 40 - (10*args.verbose) if args.verbose > 0 else 0
+    logging.basicConfig(filename=logFilename, level=args.verbose)
 
     updates = 0
     SOLR_DOCS = "pepwebdocs"
@@ -297,8 +341,8 @@ if __name__ == "__main__":
     else: #  no user and password needed
         solr_docs2 = pysolr.Solr(solrurl_docs)
     start_time = time.time()
-    updates = update_views_solr_data(solr_docs2)
-    updates = update_citation_solr_data(solr_docs2)
+    load_unified_article_stat()
+    updates = update_solr_stat_data(solr_docs2, args.all_records)
     total_time = time.time() - start_time
     final_stat = f"{time.ctime()} Updated {updates} Solr records in {total_time} secs)."
     logging.getLogger().setLevel(logging.INFO)
