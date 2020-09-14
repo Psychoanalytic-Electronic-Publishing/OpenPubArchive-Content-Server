@@ -94,6 +94,8 @@ stop_on_exceptions = True
 # at least for testing
 def read_file(filename):
     """
+    NOT CURRENTLY USED in OPAS (2020-09-14)
+
     >> html = read_file(r"X:\\_PEPA1\\_PEPa1v\\_PEPArchive\\IJP\\043\\IJP.043.0306A(bEXP_ARCH1).XML")
     >> html = read_file(r"X:\\_PEPA1\\_PEPa1v\\_PEPArchive\\SE\\004-005\\SE.004.R0009A(bEXP_ARCH1).XML")
     """
@@ -166,11 +168,15 @@ class FirstPageCollector:
                     self.para_count += 1
 
                 if self.para_count > self.para_limit:
-                    if show_dbg_messages: print (f"   ...Paragraph limit {self.para_limit} for excerpt reached. Para Count: {self.para_count}, Char Count: {self.char_count}")
+                    msg = f"   ...Paragraph limit {self.para_limit} for excerpt reached. Para Count: {self.para_count}, Char Count: {self.char_count}"
+                    logger.debug(msg)
+                    if show_dbg_messages: print (msg)
                     self.close_up = True
     
                 if self.char_count > self.char_limit:
-                    if show_dbg_messages: print (f"   ...Character limit {self.char_limit} for excerpt reached or exceeded, at end of para. Para Count: {self.para_count}, Char Count: {self.char_count}.")
+                    msg = f"   ...Character limit {self.char_limit} for excerpt reached or exceeded, at end of para. Para Count: {self.para_count}, Char Count: {self.char_count}."
+                    logger.debug(msg)
+                    if show_dbg_messages: print (msg)
                     self.close_up = True
                 
                 if tag == "pb" and self.char_count > self.char_min:
@@ -201,13 +207,11 @@ class FirstPageCollector:
                                 google_safe2_list[-2] = google_safe2_list[-2][:-1]
                             google_safe2 = '</p>'.join(google_safe2_list)
                             self.doc = google_safe2 + "<pb>" + pb_tag
-                            #print (self.doc[-80:])
                         else:
                             # not sure why this would be, don't do anything
-                            # print (google_safe2_list[-1])
-                            # logger.warning("Why am I here?")
-                            logger.warning(f"Unaccounted for text when excerpting...first 50 chars of discarded text: {google_safe2_list[-1][:50]}")
-                            # self.doc + google_safe2_list[-1] # there's sometimes extra \n and an outler tag like li
+                            msg = f"Unaccounted for text when excerpting...first 50 chars of discarded text: {google_safe2_list[-1][:50]}"
+                            logger.debug(msg)
+                            if show_dbg_messages: print (msg)
                     
             self.doc += f"</{tag}>"
             if len(self.tag_stack) > 0:
@@ -217,11 +221,9 @@ class FirstPageCollector:
             if not self.fini:
                 if self.close_up:
                     self.in_body = False # skip the rest.
-                    # print ("Closing Document!", self.tag_stack)
                     while len(self.tag_stack) > 0:
                         tag_to_close = self.tag_stack.pop()
                         self.doc += f"</{tag_to_close}>"
-                        # print(f"Closed tag: {tag_to_close}")
                     self.doc += "</abs>"
                     self.fini = True
             
@@ -453,6 +455,9 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
     return ret_val
 
 def get_html_citeas(authors_bib_style, art_year, art_title, art_pep_sourcetitle_full, art_vol, art_pgrg):
+    """
+    NOT CURRENTLY USED in OPAS (2020-09-14)
+    """
     ret_val = f"""<p class="citeas"><span class="authors">{authors_bib_style}</span> (<span class="year">{art_year}</span>) <span class="title">{art_title}</span>. <span class="sourcetitle">{art_pep_sourcetitle_full}</span> <span class="pgrg">{art_vol}</span>:<span class="pgrg">{art_pgrg}</span></p>"""
     return ret_val
 
@@ -513,6 +518,8 @@ def xml_get_pagebreak_dict(xmlstr, inside="body", pagebrk="pb", pagenbr="n", rem
     
 def xml_get_pages_starting_with(xmlstr, start_with, limit=1, inside="body", env="body", pagebrk="pb", pagenbr="n", remove_tags=[]):
     """
+    NOT CURRENTLY USED in OPAS (2020-09-14)
+
     Return the xml between the given page breaks (default <pb>).
 
     >>> xml = xml_file_to_xmlstr(r"tstfiles/DoNotRedistribute/SE.006.R0007A(bKBD3).xml")
@@ -726,6 +733,8 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
 
 def xml_get_pages_html(xmlorhtmlstr, offset=0, limit=1, inside="div[@id='body']", env="body", pagebrk="div[@class='pagebreak']", pagenbr="p[@class='pagenumber']", remove_tags=[]):
     """
+    NOT CURRENTLY USED in OPAS (2020-09-14)
+    
     First converts XML to HTML (if not passed in html) then returns the
     html between the given page break numbers (default <p[@class=pagebreak]>).
     However, the page breaks must be at the same level in the HTML, e.g.,
@@ -796,7 +805,9 @@ def xml_get_pages_html(xmlorhtmlstr, offset=0, limit=1, inside="div[@id='body']"
     try:
         root = lxml.html.fromstring(htmlstr)
     except Exception as e:
-        print (f"Error {e}: Could not parse HTML")
+        msg = f"Error {e}: Could not parse HTML"
+        logger.warning(msg)
+        if show_dbg_messages: print (msg)
         root = None
         raise "Error"
     
@@ -978,6 +989,8 @@ def xml_get_subelement_xmlsingleton(element_node, subelement_name, default_retur
 
 def xml_fragment_text_only(xmlstr, default_return=""):
     """
+    NOT CURRENTLY USED in OPAS (2020-09-14)
+
     Return inner text of XML string element with sub tags stripped out
     
     >>> xml_fragment_text_only("<myxml>this <b>is <i>really</i></b> xml.</myxml>", None)
@@ -1016,6 +1029,8 @@ def xml_get_element_attr(element_node, attr_name, default_return=""):
 
 def xml_get_elements(element_node, xpath_def, default_return=list()):
     """
+    NOT CURRENTLY USED in OPAS (2020-09-14)
+
     Return a list of XML ELEMENTS from the specified xPath
 
     Example:
@@ -1123,13 +1138,10 @@ def get_first_page_excerpt_from_doc_root(elem_or_xmlstr, ret_format="HTML"):
     return ret_val
 
 #-----------------------------------------------------------------------------
-def xml_iterate_tree(elemtree):
-    for n in elemtree.iter():
-        pass
-
-#-----------------------------------------------------------------------------
 def xml_elem_or_str_to_excerpt(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLTOTEXT_EXCERPT):
     """
+    NOT CURRENTLY USED in OPAS (2020-09-14)
+
     Use xslt to extract a formatted excerpt
     """
     ret_val = None

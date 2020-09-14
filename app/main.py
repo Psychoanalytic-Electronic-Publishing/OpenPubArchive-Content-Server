@@ -97,7 +97,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0912.1.Alpha"
+__version__     = "2020.0913.1.Alpha"
 __status__      = "Development"
 
 import sys
@@ -116,19 +116,16 @@ import shlex
 import io
 import json
 
-# import json
 from urllib import parse
-# from http import cookies
 
-# from enum import Enum
 import uvicorn
-from fastapi import FastAPI, Query, Body, Path, Cookie, Header, Security, Depends, HTTPException, File, Form, UploadFile
+from fastapi import FastAPI, Query, Body, Path, Header, Security, Depends, HTTPException, File, Form #, UploadFile, Cookie
 from fastapi.openapi.utils import get_openapi
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.security.api_key import APIKeyQuery, APIKeyCookie, APIKeyHeader, APIKey
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response, RedirectResponse, FileResponse, StreamingResponse
+from starlette.responses import JSONResponse, Response, FileResponse, StreamingResponse # RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 import starlette.status as httpCodes
 #from starlette.middleware.sessions import SessionMiddleware
@@ -145,17 +142,13 @@ TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 # to protect documentation, use: app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 app = FastAPI()
 
-# from pydantic import BaseModel
-# from pydantic.types import EmailStr
 from pydantic import ValidationError
 import solrpy as solr # needed for extended search
-# import json
 from config.opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES
 import config.opasConfig as opasConfig
 import logging
 logger = logging.getLogger(__name__)
 
-# from config.localsecrets import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 import jwt
 import localsecrets
 import libs.opasAPISupportLib as opasAPISupportLib
@@ -163,13 +156,10 @@ from configLib.opasCoreConfig import EXTENDED_CORES, SOLR_DOCS
 
 from errorMessages import *
 import models
-# import modelsOpasCentralPydantic
 import opasCentralDBLib
 import opasFileSupport
 import opasQueryHelper
 import opasSchemaHelper
-
-# from sourceInfoDB import SourceInfoDB
 
 # Check text server version
 # doesn't work for some reason.  Works for localhost, but not cross-domain.
@@ -191,8 +181,6 @@ if r.status_code == 200:
         text_server_ver = ver_json["lucene"]["lucene-spec-version"]
     except KeyError:
         text_server_ver = ver_json["lucene"]["solr-spec-version"]
-
-CURRENT_DEVELOPMENT_STATUS = "Developing"
 
 app = FastAPI(
     debug=True,
@@ -229,7 +217,7 @@ def get_current_username(response: Response,
     if not user:
         raise HTTPException(
             status_code=httpCodes.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail=ERR_MSG_PASSWORD, 
             headers={"WWW-Authenticate": "Basic"},
         )
     return user
@@ -253,7 +241,8 @@ async def get_api_key(api_key_query: str = Security(api_key_query),
         return api_key_cookie
     else:
         raise HTTPException(
-            status_code=httpCodes.HTTP_403_FORBIDDEN, detail="Could not validate credentials"
+            status_code=httpCodes.HTTP_403_FORBIDDEN,
+            detail=ERR_CREDENTIALS
         )
 
 #-----------------------------------------------------------------------------
@@ -421,7 +410,7 @@ async def reports(response: Response,
     if report_view is None:
         raise HTTPException(
             status_code=httpCodes.HTTP_404_NOT_FOUND, 
-            detail=f"Report not found."
+            detail=ERR_MSG_REPORT_NOT_FOUND
         )        
     
     if report_view == "opas_error_logs":
@@ -441,7 +430,7 @@ async def reports(response: Response,
         if count == 0:
             raise HTTPException(
                 status_code=httpCodes.HTTP_404_NOT_FOUND, 
-                detail=f"No data to report."
+                detail=ERR_MSG_NO_DATA_FOR_REPORT
         )               
         else:
             if download:
@@ -474,7 +463,7 @@ async def reports(response: Response,
                 if count == 0:
                     raise HTTPException(
                         status_code=httpCodes.HTTP_404_NOT_FOUND, 
-                        detail=f"No Records Found"
+                        detail=ERR_MSG_NO_DATA_FOR_REPORT
                     )       
                 
                 report_struct = models.ReportStruct( responseInfo = response_info, 
@@ -524,7 +513,7 @@ async def client_save_configuration(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Admin/Client/Configuration/
+         /v2/Client/Configuration/
          
     ## Notes
          NA
@@ -554,11 +543,6 @@ async def client_save_configuration(response: Response,
         )
     else:
         ret_val = configuration
-    #else:
-        #raise HTTPException(
-            #status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
-            #detail="Not authorized"
-        #)        
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_CLIENT_CONFIGURATION,
                                 api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_POST, 
@@ -600,7 +584,7 @@ async def client_update_configuration(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Admin/Client/Configuration/
+         /v2/Client/Configuration/
          
     ## Notes
          NA
@@ -631,12 +615,6 @@ async def client_update_configuration(response: Response,
         )
     else:
         ret_val = configuration
-    
-    #else:
-        #raise HTTPException(
-            #status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
-            #detail="Not authorized"
-        #)        
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_CLIENT_CONFIGURATION,
                                 api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_PUT, 
@@ -676,7 +654,7 @@ async def client_get_configuration(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Admin/Client/Configuration/?configname="pepweb2021"
+         /v2/Client/Configuration/?configname="pepweb2021"
         
     ## Notes
          NA
@@ -686,20 +664,15 @@ async def client_get_configuration(response: Response,
 
     """
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
-    # ensure user is admin -- for now, just use API_KEY as the requirement.  Later admin?  
-    # if ocd.verify_admin(session_info): 
+    # for now, just use API_KEY as the requirement.  Later admin?  
     ret_val = ocd.get_client_config(client_id=client_id,
                                     client_config_name=configname)
-    #else:
-        #raise HTTPException(
-            #status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
-            #detail="Not authorized"
-        #)        
+  
 
     if ret_val is None:
         raise HTTPException(
             status_code=httpCodes.HTTP_404_NOT_FOUND, 
-            detail=f"Configname {configname} Not found"
+            detail=ERR_MSG_CONFIG_NOT_FOUND
         )        
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_CLIENT_CONFIGURATION,
@@ -736,7 +709,7 @@ async def client_del_configuration(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Admin/Client/Configuration/?configname="pepweb2021"
+         /v2/Client/Configuration/?configname="pepweb2021"
         
     ## Notes
          NA
@@ -746,15 +719,10 @@ async def client_del_configuration(response: Response,
 
     """
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
-    # ensure user is admin
-    #if 1: # for now, just use API_KEY as the requirement.  Later admin?  if ocd.verify_admin(session_info):
+
+    #for now, just use API_KEY as the requirement.  Later admin?
     ret_val = ocd.del_client_config(client_id=client_id,
                                     client_config_name=configname)
-    #else:
-        #raise HTTPException(
-            #status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
-            #detail="Not authorized"
-        #)        
 
     if ret_val is None:
         raise HTTPException(
@@ -832,7 +800,7 @@ async def client_create_user(response: Response,
     else:
         raise HTTPException(
             status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
-            detail="Not authorized"
+            detail=ERR_MSG_NOT_AUTHORIZED
         )        
     return ret_val
 
@@ -879,8 +847,8 @@ async def submit_file(response: Response,
         )
     else:
         raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED, 
-            detail="Not authorized"
+            status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
+            detail=ERR_MSG_NOT_AUTHORIZED
         )        
     return ret_val
 
@@ -929,7 +897,7 @@ async def admin_change_user_password(response: Response,
     else:
         raise HTTPException(
             status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
-            detail="Not authorized"
+            detail=ERR_MSG_NOT_AUTHORIZED
         )        
     return ret_val
 #-----------------------------------------------------------------------------
@@ -985,13 +953,13 @@ async def admin_subscribe_user(response: Response,
         if ret_val is None:
             raise HTTPException(
                 status_code=httpCodes.HTTP_404_NOT_FOUND, 
-                detail="User not found or database add error"
+                detail=ERR_MSG_USER_NOT_FOUND
             )
             
     else:
         raise HTTPException(
             status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
-            detail="Not authorized"
+            detail=ERR_MSG_NOT_AUTHORIZED
         )        
     return ret_val
 
@@ -1096,7 +1064,7 @@ async def session_status(response: Response,
             logger.warning("ValidationError", e.json())
             raise HTTPException(
                 status_code=httpCodes.HTTP_400_BAD_REQUEST,
-                detail="Status data issue"
+                detail=ERR_MSG_STATUS_DATA_ISSUE
             )
     else:
         try:
@@ -1112,7 +1080,7 @@ async def session_status(response: Response,
             logger.warning("ValidationError", e.json())
             raise HTTPException(
                 status_code=httpCodes.HTTP_400_BAD_REQUEST,
-                detail="Status data issue"
+                detail=ERR_MSG_STATUS_DATA_ISSUE
             )
     
     ocd.close_connection()
@@ -1231,8 +1199,6 @@ def get_token(response: Response,
             status_code=httpCodes.HTTP_400_BAD_REQUEST, 
             detail=ERR_CREDENTIALS
         )
-        #err_code = response.status_code = HTTP_400_BAD_REQUEST
-        #err_return = models.ErrorReturn(error = ERR_CREDENTIALS, error_message = ERR_MSG_INSUFFICIENT_INFO)
 
 #-----------------------------------------------------------------------------
 @app.get("/v1/License/Status/Login/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_LICENSE_STATUS)
@@ -2008,7 +1974,7 @@ async def database_extendedsearch(response: Response,
                     from configLib.opasCoreConfig import EXTENDED_CORES
                     solr_core = EXTENDED_CORES.get(solrQuerySpec.core, None)
                 except Exception as e:
-                    detail=f"Bad Extended Request. Core Specification Error. {e}"
+                    detail=ERR_MSG_CORE_SPEC_ERROR + f" {e}"
                     logger.error(detail)
                     raise HTTPException(
                         status_code=httpCodes.HTTP_400_BAD_REQUEST, 
