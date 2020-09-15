@@ -66,38 +66,19 @@ Endpoint and model documentation automatically available when server is running 
 # --------------------------------------------------------------------------------------------
 # IMPORTANT TODOs (List)
 # --------------------------------------------------------------------------------------------
-# - Fix abstract return - Lead in needs to be inside HTML tagging (though works fine for display right now)
+# - Fix abstract return - Leadin needs to be inside HTML tagging (though works fine for display right now)
 # - Think about what to do when a Solr query is in error, and solr dumps back.
 # --------------------------------------------------------------------------------------------
 # Not necessarily in the server code, but General TODOs
 # --------------------------------------------------------------------------------------------
 # - Add in detail for putciteashere gen from pepkbd3-abstract-html.xslt
 #
-# 
-# --------------------------------------------------------------------------------------------
-# Future enhancement scrap heap
-# --------------------------------------------------------------------------------------------
-# IJPOpen Stub (parameters to collect if implemented later.)
-#   journalcode: str = Form(default=None, description="The 3-8 digit PEP Code for this journal"),
-#   title: str = Form(..., description="The title of the article"),
-#   keywords: str = Form(default=None, description="A comma separated list of keywords"),
-#   region: str = Form(default=None, description="The region it's from"),
-#   editor: str = Form(default=None, description="The editor assigned to this article"),
-#   country: str = Form(default=None, description="The country of origin"),
-#   language: str = Form(default="English", description="The language in which the article is written"),
-#   anonymous: bool = Form(default=None, description="If the author is to be anonymous"),
-#   authorlist: models.authorList = Form(default=None, description="This must be a structure of the form shown."),
-#   abstract: str = Form(...),
-#   reviewernotes: str = Form(default=None, description="Notes for the revieweer"),
-#   file: UploadFile = File(..., description="PDF or EPUB version of article"),
-#   token: str = Form(..., description="Authorization code")                             
-
 #----------------------------------------------------------------------------------------------
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0913.1.Alpha"
+__version__     = "2020.0915.1.Alpha"
 __status__      = "Development"
 
 import sys
@@ -3428,22 +3409,28 @@ def database_mostcited(response: Response,
             #  apparently, list comprehensions have their own local scope (and thus locals() dict) in Python 3.
             # so converted to loop
             csvdata = []
-            for n in ret_val.documentList.responseSet:
-                csvdata.append((n.documentRef, \
-                                n.stat["art_cited_5"], 
-                                n.stat["art_cited_10"], 
-                                n.stat["art_cited_20"], 
-                                n.stat["art_cited_all"]))
-            header = ["Document", "Last 5 Years", "Last 10 years", "Last 20 years", "All years"]
-            df = pd.DataFrame(csvdata)
-            stream = io.StringIO()
-            df.to_csv(stream, header=header, index = False)
-            response = StreamingResponse(iter([stream.getvalue()]),
-                                               media_type="text/csv"
-                                        )
-            response.headers["Content-Disposition"] = "attachment; filename=pepcited.csv"
-            ret_val = response
-        
+            if len(ret_val.documentList.responseSet) > 0:
+                for n in ret_val.documentList.responseSet:
+                    csvdata.append((n.documentRef, \
+                                    n.stat["art_cited_5"], 
+                                    n.stat["art_cited_10"], 
+                                    n.stat["art_cited_20"], 
+                                    n.stat["art_cited_all"]))
+                header = ["Document", "Last 5 Years", "Last 10 years", "Last 20 years", "All years"]
+                df = pd.DataFrame(csvdata)
+                stream = io.StringIO()
+                df.to_csv(stream, header=header, index = False)
+                response = StreamingResponse(iter([stream.getvalue()]),
+                                                   media_type="text/csv"
+                                            )
+                response.headers["Content-Disposition"] = "attachment; filename=pepcited.csv"
+                ret_val = response
+            else:
+                raise HTTPException(
+                    status_code=httpCodes.HTTP_204_NO_CONTENT, 
+                    detail ="No Data to download."
+                )
+                
             # Don't record endpoint use (not a user request, just a default) but do record download
             ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_MOSTCITED,
                                         session_info=session_info, 
@@ -4358,13 +4345,13 @@ async def database_glossary_search_v3(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Documents/Glossary/{term_id}/", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_VIEW, response_model_exclude_unset=True)  # the current PEP API
+@app.get("/v2/Documents/Glossary/{termIdentifier}/", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_VIEW, response_model_exclude_unset=True)  # the current PEP API
 def documents_glossary_term(response: Response,
                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                            term_id: str=Path(..., title="Glossary Term ID or Partial ID", description=opasConfig.DESCRIPTION_GLOSSARYID),
+                            termIdentifier: str=Path(..., title="Glossary Term ID or Partial ID", description=opasConfig.DESCRIPTION_GLOSSARYID),
                             termidtype: models.TermTypeIDEnum=Query(models.TermTypeIDEnum.termid, title="Type of term descriptor supplied", description=opasConfig.DESCRIPTION_TERMIDTYPE),
-                            termname: str=Query(None, title="Glossary Term (string)", description=opasConfig.DESCRIPTION_GLOSSARYID),
-                            termgroup: str=Query(None, title="Glossary Term (string)", description=opasConfig.DESCRIPTION_GLOSSARYID),
+                            #termname: str=Query(None, title="Glossary Term (string)", description=opasConfig.DESCRIPTION_GLOSSARYID),
+                            #termgroup: str=Query(None, title="Glossary Term (string)", description=opasConfig.DESCRIPTION_GLOSSARYID),
                             #search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
                             return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                             client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
@@ -4372,7 +4359,7 @@ def documents_glossary_term(response: Response,
                             ): # Note this is called by the Document endpoint if it detects a term_id in the DocumentID
     """
     ## Function
-       <b>Return a glossary entry for the specified {termID} if authenticated with permission.  If not, returns error.</b>
+       <b>Return a glossary entry for the specified {termIdentifier} if authenticated with permission.  If not, returns error.</b>
 
     ## Return Type
        models.Documents
@@ -4381,7 +4368,7 @@ def documents_glossary_term(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Documents/Glossary/{term_id}
+         /v2/Documents/Glossary/{termIdentifier}
 
     ## Notes
          In V1 (and PEP-Easy 1.0), glossary entries are fetched via the /v1/Documents endpoint rather than here.
@@ -4418,14 +4405,14 @@ def documents_glossary_term(response: Response,
         #  ok now look at the value
         if termidtype == "ID":
             try:
-                term_parts = term_id.split(".")
+                term_parts = termIdentifier.split(".")
                 if len(term_parts) == 4:
-                    term_id = term_parts[-2]
+                    termIdentifier = term_parts[-2]
                 elif len(term_parts) == 3:
-                    term_id = term_parts[-1]
+                    termIdentifier = term_parts[-1]
                 else:
                     pass
-                logger.debug("Glossary View Request (term_id/return_format): %s/%s", term_id, return_format)
+                logger.debug("Glossary View Request (termIdentifier/return_format): %s/%s", termIdentifier, return_format)
             except Exception as e:
                 status_message = f"View Glossary Error: Error splitting term: {e}"
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST
@@ -4435,7 +4422,7 @@ def documents_glossary_term(response: Response,
                     detail=status_message
                 )
     
-        ret_val = opasAPISupportLib.documents_get_glossary_entry(term_id=term_id,
+        ret_val = opasAPISupportLib.documents_get_glossary_entry(term_id=termIdentifier,
                                                                  term_id_type=termidtype,
                                                                  retFormat=return_format,
                                                                  session_info=session_info
@@ -4450,7 +4437,7 @@ def documents_glossary_term(response: Response,
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
                                     session_info=session_info, 
                                     params=request.url._url,
-                                    item_of_interest=term_id, 
+                                    item_of_interest=termIdentifier, 
                                     return_status_code = response.status_code,
                                     status_message=status_message
                                     )
@@ -4466,7 +4453,7 @@ def documents_glossary_term(response: Response,
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
                                     session_info=session_info, 
                                     params=request.url._url,
-                                    item_of_interest=term_id, 
+                                    item_of_interest=termIdentifier, 
                                     return_status_code = response.status_code,
                                     status_message=status_message
                                     )
@@ -4536,7 +4523,7 @@ def documents_document_fetch(response: Response, request: Request=Query(None,
         # this is a glossary request, submit only the termID
         term_id = m.group("termid")
         #ret_val = view_a_glossary_entry(response, request, term_id=term_id, search=search, return_format=return_format)
-        ret_val = documents_glossary_term(response, request, term_id=term_id, return_format=return_format)
+        ret_val = documents_glossary_term(response, request, termIdentifier=term_id, return_format=return_format)
     else:
         m = re.match("(?P<docid>[A-Z]{2,12}\.[0-9]{3,3}[A-F]?\.(?P<pagestart>[0-9]{4,4})[A-Z]?)(\.P(?P<pagenbr>[0-9]{4,4}))?", documentID)
         if m is not None:

@@ -1890,11 +1890,11 @@ def documents_get_glossary_entry(term_id,
     """
     ret_val = {}
 
-
+    # Name and Group are strings, and case sensitive, so search, as submitted, and uppercase as well
     if term_id_type == "Name":
-        qstr = f'term:"{term_id}"'
+        qstr = f'term:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
     elif term_id_type == "Group":
-        qstr = f'group_name:"{term_id}"'
+        qstr = f'group_name:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
     else: # default
         term_id = term_id.upper()
         qstr = f"term_id:{term_id} || group_id:{term_id}"
@@ -2716,9 +2716,11 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
     else:
         pass # else, it's ok
-    
+
+    # let this be None, if no limit is set.
     if limit is not None:
         solr_query_spec.limit = limit
+
 
     if offset is not None:
         solr_query_spec.offset = offset
