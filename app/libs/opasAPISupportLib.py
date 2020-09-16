@@ -58,6 +58,8 @@ import socket, struct
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 from starlette.responses import Response
+import starlette.status as httpCodes
+
 #from starlette.status import HTTP_200_OK, \
                                 #HTTP_400_BAD_REQUEST, \
                                 #HTTP_401_UNAUTHORIZED, \
@@ -722,6 +724,8 @@ def database_get_whats_new(days_back=7,
         
         updated = result.get("file_last_modified", None)
         updated = updated.strftime('%Y-%m-%d')
+        if abbrev is None:
+            abbrev = src_title
         display_title = abbrev + " v%s.%s (%s) " % (volume, issue, year)
         if display_title in already_seen:
             continue
@@ -2804,7 +2808,11 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         results = solr_core.query(**solr_param_dict)
 
     except solr.SolrException as e:
-        if e.reason is not None:
+        if e is None:
+            ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
+            logger.error(f"Solr Runtime Search Error: {e.reason}")
+            logger.error(e.body)
+        elif e.reason is not None:
             ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
             logger.error(f"Solr Runtime Search Error: {e.reason}")
             logger.error(e.body)

@@ -9,9 +9,25 @@ print(
       database.
       
       By default, it only updates records which have views data.
+
       If you use command line option --all, it will add all citation and views data to the
         pepwebdocs data.  (This takes significantly longer.)
-      The records added are controlled by the database view: vw_stat_to_update_solr_docviews
+        
+      Caution: Solr can be finicky and reject these updates presumably because the records
+         being updated have child records.
+         
+         Two prerequisites for best chances of success:
+            1) Initial clean install of Solr
+            2) Solr 8.6 or newer
+      
+         - To be safe, the first update should be with option --all
+         - Then views should be updated daily
+         - Citations only need be updated bi-weekly (views will be done automatically
+            at the same time)
+
+      The records added are controlled by the database views:
+         vw_stat_to_update_solr_docviews
+         vw_stat_cited_crosstab
     """
 )
 __author__      = "Neil R. Shapiro"

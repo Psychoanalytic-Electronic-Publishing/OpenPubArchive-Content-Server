@@ -99,7 +99,7 @@ class TestFileSystemFunctions(unittest.TestCase):
             assert(ret =='pep-web-files/doc/g/IJAPS.016.0181A.FIG002.jpg')
         else:
             print ("Local FS tests")
-            fs = opasFileSupport.FlexFileSystem(root=localsecrets.FILESYSTEM_ROOT)
+            fs = opasFileSupport.FlexFileSystem(root=localsecrets.XML_ORIGINALS_PATH)
             # >>> fs.fullfilespec(filespec="pep.css", path="embedded-graphics")
             'pep-graphics/embedded-graphics/pep.css'
             ret = fs.fullfilespec(filespec="IJAPS.016.0181A.FIG002.jpg", path=localsecrets.IMAGE_SOURCE_PATH)
@@ -150,7 +150,7 @@ class TestFileSystemFunctions(unittest.TestCase):
    
     def test_6_get_file_contents(self):
         """
-        # left in for an example, see file system independent test in testS3fileSystemFunctions
+        # left in for an example
         >> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
         >> file_content = fs.get_file_contents(filespec='pep-web-xml/_PEPArchive/ADPSA/001.1926/ADPSA.001.0007A(bEXP_ARCH1).XML', path=None)
         >> a = len(file_content)
@@ -177,15 +177,19 @@ class TestFileSystemFunctions(unittest.TestCase):
         assert (matchlist[0].basename == 'AIM.076.0309A(bEXP_ARCH1).XML')
 
         matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, revised_after_date="2020-09-04")
+        print (len(matchlist))
         assert (len(matchlist) == 0)
 
         matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat)
+        print (len(matchlist))
         assert (len(matchlist) >= 100)
 
         matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+        print (len(matchlist))
         assert (len(matchlist) == 20)
         
         matchlist = fs.get_matching_filelist(path="_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+        print (len(matchlist))
         assert (len(matchlist) == 20)
 
         #res = opasFileSupport.get_s3_matching_files(subpath_tomatch="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")

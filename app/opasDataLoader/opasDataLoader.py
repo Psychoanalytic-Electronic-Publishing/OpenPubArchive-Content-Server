@@ -9,56 +9,39 @@ print(
     
         Load articles into the Docs, Authors, and Glossary Solr cores and
         load article information and bibliography entries into a MySQL database
-        (RDS or MySQL) as configured in localsecrets).
+        (RDS or MySQL) as configured in localsecrets). This data loader is specific to the
+        PEP Data and Bibliography schemas but can serve as a model or framework for other schemas.
         
-        This data loader is specific to PEP Data and Bibliography schemas but can 
-        serve as a model or framework for other schemas
+        See documentation at:
+          https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server/wiki/Loading-Data-into-OpenPubArchive
         
         Example Invocation:
-        
                 $ python opasDataLoader.py
-        
-                Use -h for help on arguments.
-                
-                (Requires Python 3.7)
                 
         Important option choices:
-         -a = Force update of matching files (otherwise, only updated when the
-              data is newer)
-         --sub = start with this subfolder of the root
-         --key = Do just one file--with this PEP locator (e.g., --key AIM.076.0309A)
-         --nocheck = don't prompt to proceed after showing option choices
+         -h, --help  List all help options
+         -a          Force update of files (otherwise, only updated when the data is newer)
+         --sub       Start with this subfolder of the root (can add sublevels to that)
+         --key:      Do just one file with the specified PEP locator (e.g., --key AIM.076.0309A)
+         --nocheck   Don't prompt whether to proceed after showing setting/option choices
 
         Example:
+          Update all files from the root (default, pep-web-xml) down.  Starting two runs, one running the file list forward, the other backward.
+          As long as you don't specify -a, they will skip the ones the other did when they eventually
+          cross
 
-          Update one file:
-
-             ```
-             python opasDataLoader.py -a --key AIM.076.0309A --sub _PEPCurrent
-             ```
+             python opasDataLoader.py 
+             python opasDataLoader.py --reverse
 
           Update all of PEPCurrent
-          
-             ```
-             python opasDataLoader.py -a --sub _PEPCurrent
-             ```
-          
-          Update all files that are newer in S3 than what's in Solr
-          
-             ```
-             python solrAws3Loader.py
-             ```
 
-          Update all files
-          
-             ```
-             python solrAws3Loader.py -a
-             ```
+             python opasDataLoader.py -a --sub _PEPCurrent
 
         Note:
           S3 is set up with subfolders _PEPArchive, _PEPCurrent, _PEPFree, _PEPOffsite
-            under pep-web-xml to allow easy processing of one archive type using
-            the --sub option
+            under pep-web-xml to allow easy processing of one archive type at a time using
+            the --sub option (or four concurrently for faster processing).
+
 
     """
 )
@@ -66,7 +49,7 @@ print(
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.09.14"
+__version__     = "2020.09.15" # documentation update
 __status__      = "Development"
 
 import sys
@@ -86,6 +69,10 @@ import pathlib
 # import ntpath # note: if dealing with Windows path names on Linux, use ntpath instead)
 import time
 from datetime import datetime
+import logging
+import watchtower
+
+logger = logging.getLogger(__name__)
 
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.
@@ -104,20 +91,11 @@ import configLib.opasCoreConfig
 from configLib.opasCoreConfig import solr_authors, solr_gloss
 import opasSolrLoadSupport
 
-# from OPASFileTrackerMySQL import FileTracker, FileTrackingInfo
 import opasXMLHelper as opasxmllib
 import opasCentralDBLib
 # import opasGenSupportLib as opasgenlib
 import localsecrets
 import opasFileSupport
-
-import logging
-import watchtower
-
-logging.basicConfig(level=logging.INFO)
-rootlogger = logging.getLogger()
-rootlogger.addHandler(watchtower.CloudWatchLogHandler())
-logger = logging.getLogger(__name__)
 
 #detect data is on *nix or windows system
 if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH) is not None:
@@ -220,7 +198,12 @@ def main():
     ocd =  opasCentralDBLib.opasCentralDB()
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root="pep-web-xml")
 
+    rootlogger = logging.getLogger()
+    rootlogger.addHandler(watchtower.CloudWatchLogHandler())
+    rootlogger.setLevel(options.logLevel)
+
     logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
+    logging.basicConfig(filename=logFilename, level=options.logLevel)
 
     solrurl_docs = None
     #solrurl_refs = None
@@ -363,6 +346,9 @@ def main():
         for n in filenames:
             fileTimeStart = time.time()
             if not options.forceRebuildAllFiles:                    
+                if not options.display_verbose and processed_files_count % 100 == 0:
+                    print (f"Processed Files ...loaded {processed_files_count} out of {files_found} possible.")
+
                 if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0:
                     print (f"Skipped {skipped_files} so far...loaded {processed_files_count} out of {files_found} possible." )
                 
@@ -440,7 +426,7 @@ def main():
             if 1: # options.biblio_update:
                 if artInfo.ref_count > 0:
                     bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-                    if 1: # options.display_verbose:
+                    if options.display_verbose:
                         print(("   ...Processing %s references for the references database." % (artInfo.ref_count)))
 
                     #processedFilesCount += 1
@@ -533,7 +519,7 @@ if __name__ == "__main__":
     parser.add_option("--key", dest="file_key", default=None,
                       help="Key for a single file to process, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.INFO,
-                      help="Level at which events should be logged")
+                      help="Level at which events should be logged (DEBUG, INFO, ")
     parser.add_option("--logfile", dest="logfile", default=logFilename,
                       help="Logfile name with full path where events should be logged")
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
@@ -551,12 +537,8 @@ if __name__ == "__main__":
                       help="Run Doctests")
     parser.add_option("--userid", dest="httpUserID", default=None,
                       help="UserID for the server")
-    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=True,
+    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
                       help="Display status and operational timing info as load progresses.")
-    #parser.add_option("--reloadbefore", dest="reload_before_date", default=None,
-                      #help="Reload files added to Solr before this datetime (use YYYY-MM-DD format)")
-    #parser.add_option("--reloadafter", dest="reload_after_date", default=None,
-                      #help="Reload files added to Solr after this datetime (use YYYY-MM-DD format)")
 
     (options, args) = parser.parse_args()
 

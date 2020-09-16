@@ -61,6 +61,7 @@ class TestSolrAPIStandaloneFunctions(unittest.TestCase):
         # this newer function includes the search parameters if there were some
         data = opasAPISupportLib.metadata_get_volumes(source_code="ZBK", source_type="book")
         count = data.volumeList.responseInfo.fullCount
+        print (count, " vs ")
         assert(count == unitTestConfig.VOL_COUNT_ZBK)
 
     def test_1_get_source_list_SE(self):

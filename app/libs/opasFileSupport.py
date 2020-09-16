@@ -4,11 +4,15 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.05.30"
+__version__     = "2020.09.13"
 __status__      = "Development"
 
-#Revision Notes:
-    #20200530 Added front matter.  Fixed doctest reference (should have been doc rather than docs)
+# #TODO
+    # Ensure full PC Local/S3 file system interchangeability/transparency.
+
+# Revision Notes:
+    # 20200913 Reworked for better S3 functionality and speed
+    # 20200530 Added front matter.  Fixed doctest reference (should have been doc rather than docs)
 
 import sys
 import localsecrets
@@ -51,6 +55,21 @@ class FileInfo(object):
         # self.date_modified_str = str(self.date_modified)
         self.etag = fileinfo.get("Etag", None)
     
+    def mapLocalFS(self, filespec):
+        self.fileinfo = {}
+        self.filespec = filespec
+        self.basename = self.fileinfo["base_filename"] = os.path.basename(self.filespec)
+        self.filesize = self.fileinfo["Size"] = os.path.getsize(filespec)
+        self.filetype = self.fileinfo["type"] = "xml" # fileinfo["type"]
+        self.build_date = self.fileinfo["build_date"] = time.time() # current time
+        # modified date
+        mod_date = self.fileinfo["fileSize"] = os.path.getmtime(filespec)
+        self.timestamp_str = self.fileinfo["LastModified"] = datetime.datetime.utcfromtimestamp(mod_date).strftime(localsecrets.TIME_FORMAT_STR)
+        self.timestamp = self.fileinfo["timestamp"] = datetime.datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.date_modified = self.fileinfo["date"] = self.timestamp.date()
+        # self.date_modified_str = str(self.date_modified)
+        self.etag = self.fileinfo["Etag"] = None
+        
 
 class FlexFileSystem(object):
     """
@@ -339,7 +358,7 @@ class FlexFileSystem(object):
                 if self.fs is not None:
                     f = self.fs.open(filespec, "r", encoding="utf-8")
                 else:
-                    f = open(filespec, "r")
+                    f = open(filespec, "r", encoding="utf-8")
             except Exception as e:
                 logger.error("Open Error: %s", e)
                 
@@ -417,14 +436,40 @@ class FlexFileSystem(object):
         if revised_after_date is not None:
             revised_after_date = datetime.datetime.date(datetime.datetime.strptime(revised_after_date, '%Y-%m-%d'))
             
-        for folder, subfolder, files in self.fs.walk(path=data_folder, **kwargs):
-            if len(files) > 1:
-                # yes, we have files.
-                for key, val_dict in files.items():
+        if self.key is not None:
+            for folder, subfolder, files in self.fs.walk(path=data_folder, **kwargs):
+                if len(files) > 1:
+                    # yes, we have files.
+                    for key, val_dict in files.items():
+                        # print (key)
+                        if rc_match.match(key):
+                            fileinfo = FileInfo()
+                            fileinfo.mapS3(val_dict)
+                            if revised_after_date is not None:
+                                if fileinfo.date_modified > revised_after_date:
+                                    ret_val.append(fileinfo)
+                                    count += 1
+                                else:
+                                    continue
+                            else:
+                                ret_val.append(fileinfo)
+                                count += 1
+                            
+                            if max_items is not None:
+                                if count >= max_items:
+                                    break
+    
+                if max_items is not None:
+                    if count >= max_items:
+                        break
+        else:
+            for folder, subfolder, files in os.walk(data_folder):
+                for file in files:
                     # print (key)
-                    if rc_match.match(key):
+                    if rc_match.match(file):
                         fileinfo = FileInfo()
-                        fileinfo.mapS3(val_dict)
+                        filespec = pathlib.Path(folder) / file
+                        fileinfo.mapLocalFS(filespec)
                         if revised_after_date is not None:
                             if fileinfo.date_modified > revised_after_date:
                                 ret_val.append(fileinfo)
@@ -438,11 +483,11 @@ class FlexFileSystem(object):
                         if max_items is not None:
                             if count >= max_items:
                                 break
-
-            if max_items is not None:
-                if count >= max_items:
-                    break
-
+    
+                if max_items is not None:
+                    if count >= max_items:
+                        break
+            
         return ret_val            
     
     

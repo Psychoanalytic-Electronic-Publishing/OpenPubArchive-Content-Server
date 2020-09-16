@@ -189,12 +189,13 @@ class ArticleInfo(object):
        client searches.
 
     """
-    def __init__(self, sourceinfodb_data, pepxml, art_id, logger):
+    def __init__(self, sourceinfodb_data, pepxml, art_id, logger, verbose=None):
         # let's just double check artid!
         self.art_id = None
         self.art_id_from_filename = art_id # file name will always already be uppercase (from caller)
         self.bk_subdoc = None
         self.bk_seriestoc = None
+        self.verbose = verbose
 
         # Just init these.  Creator will set based on filename
         self.file_classification = None
@@ -320,10 +321,10 @@ class ArticleInfo(object):
         else:
             self.art_vol_suffix = None
             
-        if self.art_vol_title is not None:
+        if self.verbose and self.art_vol_title is not None:
             print (f"   ...Volume title: {self.art_vol_title}")
     
-        if self.art_issue_title is not None:
+        if self.verbose and self.art_issue_title is not None:
             print (f"   ...Issue title: {self.art_issue_title}")
             
         self.art_doi = opasxmllib.xml_get_element_attr(artInfoNode, "doi", default_return=None) 
@@ -506,9 +507,10 @@ def get_file_dates_solr(solrcore, filename=None):
     try:
         results = solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp", rows=max_rows)
     except Exception as e:
-        logger.error(f"Solr Query Error {e}")
+        msg = f"Solr Query Error {e}"
+        logger.error(msg)
         # let me know whatever the logging is!
-        print (f"Warning: Solr Query Error: {e}")
+        print (msg)
     else:
         if results.hits > 0:
             ret_val = results.docs
