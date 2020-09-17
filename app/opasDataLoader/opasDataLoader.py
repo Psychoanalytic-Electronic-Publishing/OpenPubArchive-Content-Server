@@ -3,7 +3,15 @@
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
+
+__author__      = "Neil R. Shapiro"
+__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
+__license__     = "Apache 2.0"
+__version__     = "2020.09.17" 
+__status__      = "Development"
+
 programNameShort = "opasDataLoader"
+
 print(
     f""" 
     {programNameShort} - Open Publications-Archive Server (OPAS) - Document, Authors, and References Core Loader
@@ -47,12 +55,6 @@ print(
     """
 )
 
-__author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
-__license__     = "Apache 2.0"
-__version__     = "2020.09.15" # documentation update
-__status__      = "Development"
-
 import sys
 sys.path.append('../libs')
 sys.path.append('../config')
@@ -67,7 +69,6 @@ import os
 import os.path
 import pathlib
 
-# import ntpath # note: if dealing with Windows path names on Linux, use ntpath instead)
 import time
 from datetime import datetime
 import logging
@@ -198,9 +199,8 @@ def main():
     ocd =  opasCentralDBLib.opasCentralDB()
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root="pep-web-xml")
 
-    rootlogger = logging.getLogger()
-    rootlogger.setLevel(options.logLevel)
     logger = logging.getLogger(programNameShort)
+    logger.setLevel(options.logLevel)
 
     logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
     # logging.basicConfig(filename=logFilename, level=options.logLevel)

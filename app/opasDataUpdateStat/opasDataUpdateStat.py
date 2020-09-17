@@ -278,7 +278,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             skipped_as_missing += 1
         else:
             if found:
-                #logger.info("Document in Solr...trying to update")
+                logger.info(f"...Found document {doc_id} in Solr...updating stat.")
                 if doc_id is not None:
                     upd_rec = {
                                 "id":doc_id,
@@ -308,7 +308,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
         
                         if update_count > 0 and update_count % UPDATE_AFTER == 0:
                             solr_docs2.commit()
-                            errStr = f"updated {update_count} records with citation data"
+                            errStr = f"Updated {update_count} records with citation data"
                             print (errStr)
                             logger.warning(errStr)
                         
@@ -328,7 +328,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
         print(msg)
         logger.error(msg)
 
-    print (f"Finished updating Solr stat with {update_count} article records updated; records skippted: {skipped_as_update_error }.")
+    print (f"Finished updating Solr stat with {update_count} article records updated; records skipped: {skipped_as_update_error }.")
     return update_count
 
 if __name__ == "__main__":
@@ -336,15 +336,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser() 
     parser.add_argument('--version', action='version',
                         version='%(prog)s {version}'.format(version=__version__))    
-    #parser.add_argument('--verbose', '-v', action='count', default=1, help="Multiple v's for more verbosity, e.g., -vvv")
     parser.add_argument("--loglevel", "-l", dest="logLevel", default=logging.ERROR,
                         help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
     parser.add_argument("-a", "--all", dest="all_records", default=False, action="store_true",
                         help="Update records with views and any citation data (takes significantly longer)")
     
     args = parser.parse_args()
-    #args.verbose = 40 - (10*args.verbose) if args.verbose > 0 else 0
-    logging.basicConfig(level=args.logLevel)
+    logger = logging.getLogger(programNameShort)
+    logger.setLevel(args.logLevel)
 
     updates = 0
     SOLR_DOCS = "pepwebdocs"
