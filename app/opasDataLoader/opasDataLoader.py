@@ -3,9 +3,10 @@
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
 # Disable many annoying pylint messages, warning me about variable naming for example.
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
+programNameShort = "opasDataLoader"
 print(
-    """ 
-    OPAS - Open Publications-Archive Software - Document, Authors, and References Core Loader
+    f""" 
+    {programNameShort} - Open Publications-Archive Server (OPAS) - Document, Authors, and References Core Loader
     
         Load articles into the Docs, Authors, and Glossary Solr cores and
         load article information and bibliography entries into a MySQL database
@@ -70,7 +71,6 @@ import pathlib
 import time
 from datetime import datetime
 import logging
-import watchtower
 
 logger = logging.getLogger(__name__)
 
@@ -199,11 +199,11 @@ def main():
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root="pep-web-xml")
 
     rootlogger = logging.getLogger()
-    rootlogger.addHandler(watchtower.CloudWatchLogHandler())
     rootlogger.setLevel(options.logLevel)
+    logger = logging.getLogger(programNameShort)
 
     logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
-    logging.basicConfig(filename=logFilename, level=options.logLevel)
+    # logging.basicConfig(filename=logFilename, level=options.logLevel)
 
     solrurl_docs = None
     #solrurl_refs = None
@@ -215,7 +215,7 @@ def main():
             solrurl_docs = localsecrets.SOLRURL + configLib.opasCoreConfig.SOLR_DOCS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
             solrurl_authors = localsecrets.SOLRURL + configLib.opasCoreConfig.SOLR_AUTHORS
             solrurl_glossary = localsecrets.SOLRURL + configLib.opasCoreConfig.SOLR_GLOSSARY
-            print("Logfile: ", logFilename)
+            # print("Logfile: ", logFilename)
             print("Messaging verbose: ", options.display_verbose)
             print("Input data Root: ", options.rootFolder)
             print("Input data Subfolder: ", options.subFolder)
@@ -389,9 +389,10 @@ def main():
             artInfo.filename = base
             artInfo.file_size = n.filesize
             try:
-                artInfo.file_classification = re.search("(current|archive|future|free|offsite)", n.filespec, re.IGNORECASE).group(1)
+                artInfo.file_classification = re.search("(?P<class>current|archive|future|free|offsite)", str(n.filespec), re.IGNORECASE).group("class")
                 # set it to lowercase for ease of matching later
-                artInfo.file_classification = artInfo.file_classification.lower()
+                if artInfo.file_classification is not None:
+                    artInfo.file_classification = artInfo.file_classification.lower()
             except Exception as e:
                 logger.warning("Could not determine file classification for %s (%s)" % (n.filespec, e))
     
@@ -486,7 +487,7 @@ def main():
             msg = f"...Files loaded per Min: {processed_files_count/elapsed_minutes:.4f}"
             logger.info(msg)
             print (msg)
-            msg = f"...Files evaluated per Min: {len(filenames)/elapsed_minutes:.4f}"
+            msg = f"...Files evaluated per Min (includes skipped files): {len(filenames)/elapsed_minutes:.4f}"
             logger.info(msg)
             print (msg)
 
@@ -506,8 +507,7 @@ def main():
 if __name__ == "__main__":
     global options  # so the information can be used in support functions
     options = None
-    programNameShort = "opasDataLoader"  # used for log file
-    logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
+    # logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
 
     parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.14")
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
@@ -518,10 +518,10 @@ if __name__ == "__main__":
                       help="Root folder path where input data is located")
     parser.add_option("--key", dest="file_key", default=None,
                       help="Key for a single file to process, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")
-    parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.INFO,
-                      help="Level at which events should be logged (DEBUG, INFO, ")
-    parser.add_option("--logfile", dest="logfile", default=logFilename,
-                      help="Logfile name with full path where events should be logged")
+    parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
+                      help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
+    #parser.add_option("--logfile", dest="logfile", default=logFilename,
+                      #help="Logfile name with full path where events should be logged")
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
                       help="Don't check whether to proceed.")
     parser.add_option("--pw", dest="httpPassword", default=None,

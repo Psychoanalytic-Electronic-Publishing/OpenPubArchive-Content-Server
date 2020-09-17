@@ -184,7 +184,7 @@ import opasSolrLoadSupport
 import localsecrets
 
 def read_stopwords(): 
-    with open(opasConfig.HIGHLIGHT_STOP_WORDS_FILE) as f:
+    with open(localsecrets.HIGHLIGHT_STOP_WORDS_FILE) as f:
         stopWordList = f.read().splitlines()
     
     stopPattern = "<[ib]>[A-Z]</[ib]>"

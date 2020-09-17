@@ -16,10 +16,10 @@ import starlette.status as httpCodes # HTTP_ codes, e.g.
                                      # HTTP_500_INTERNAL_SERVER_ERROR, \
                                      # HTTP_503_SERVICE_UNAVAILABLE
  
-BASELOGFILENAME = "opasAPI"
-logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
+# BASELOGFILENAME = "opasAPI"
+# logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s %(funcName)s %(lineno)d - %(levelname)s %(message)s'
-logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
@@ -56,7 +56,6 @@ HTML_XPATH_ABSTRACT = "//div[@id='abs']"  # used, for example, to extract the ab
 # API URLs used for linking
 API_URL_DOCUMENTURL = "/v2/Documents/"
 
-
 #logger = logging.getLogger(programNameShort)
 
 IMAGES = "images"
@@ -89,7 +88,7 @@ MIN_EXCERPT_CHARS = 480
 MAX_EXCERPT_CHARS = 2000
 MAX_EXCERPT_PARAS = 10
 MAX_PARAS_FOR_SUMMARY = 10
-MAX_DOCUMENT_RECORDS_TO_RETURN_EVER = 32000 # need this high for citeas, reports, etc.
+MAX_DOCUMENT_RECORDS_TO_AT_ONCE = 500 # needs to be practical too, for time out
 
 DEFAULT_KWIC_CONTENT_LENGTH = 200  # On each side of match (so use 1/2 of the total you want)
 DEFAULT_MAX_KWIC_RETURNS = 5

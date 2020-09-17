@@ -70,3 +70,4 @@ app/requirements.new
 updated libs.txt
 app/libs/styles/xxxpepkbd3-abstract-html.xslt
 *.7z
+app/updateSolrViewData.zip

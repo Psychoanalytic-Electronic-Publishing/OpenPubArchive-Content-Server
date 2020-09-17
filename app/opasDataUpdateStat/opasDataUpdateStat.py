@@ -2,10 +2,17 @@
 # -*- coding: utf-8 -*-
 # To run:
 #     python3 updateSolrviewData
+__author__      = "Neil R. Shapiro"
+__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
+__license__     = "Apache 2.0"
+__version__     = "2020.0917.1"
+__status__      = "Testing"
+
+programNameShort = "opasDataUpdateStat"
 
 print(
-    """
-    UpdateSolrViewData - Program to update the view and citation stat fields in the pepwebdocs
+    f"""
+    {programNameShort} - Program to update the view and citation stat fields in the pepwebdocs
       database.
       
       By default, it only updates records which have views data.
@@ -13,28 +20,18 @@ print(
       If you use command line option --all, it will add all citation and views data to the
         pepwebdocs data.  (This takes significantly longer.)
         
-      Caution: Solr can be finicky and reject these updates presumably because the records
-         being updated have child records.
+         - The first update after a load should be with option --all
+         - Then, omit --all to update views daily
+         - Citations (include --all) only need be updated after data updates
          
-         Two prerequisites for best chances of success:
-            1) Initial clean install of Solr
-            2) Solr 8.6 or newer
-      
-         - To be safe, the first update should be with option --all
-         - Then views should be updated daily
-         - Citations only need be updated bi-weekly (views will be done automatically
-            at the same time)
+         For complete details, see:
+          https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server/wiki/Loading-Data-into-OpenPubArchive
 
       The records added are controlled by the database views:
          vw_stat_to_update_solr_docviews
          vw_stat_cited_crosstab
     """
 )
-__author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
-__license__     = "Apache 2.0"
-__version__     = "2020.0905.1"
-__status__      = "Testing"
 
 import sys
 sys.path.append('../config')
@@ -49,14 +46,12 @@ import localsecrets
 from pydantic import BaseModel
 
 from datetime import datetime
-programNameShort = "updateSolrviewData"  # used for log file
-logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
+# logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s %(funcName)s %(lineno)d - %(levelname)s %(message)s'
-logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.ERROR, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(programNameShort)
-start_notice = f"Started at {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}. Logfile {logFilename}"
+start_notice = f"{programNameShort} version {__version__} started at {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}."
 print (start_notice)
-logger.info(start_notice)
 
 unified_article_stat = {}
 
@@ -333,7 +328,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
         print(msg)
         logger.error(msg)
 
-    logger.warning(f"Finished updating Solr stat with {update_count} article records updated; records skippted: {skipped_as_update_error }.")
+    print (f"Finished updating Solr stat with {update_count} article records updated; records skippted: {skipped_as_update_error }.")
     return update_count
 
 if __name__ == "__main__":
@@ -341,13 +336,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser() 
     parser.add_argument('--version', action='version',
                         version='%(prog)s {version}'.format(version=__version__))    
-    parser.add_argument('--verbose', '-v', action='count', default=1, help="Multiple v's for more verbosity, e.g., -vvv")
+    #parser.add_argument('--verbose', '-v', action='count', default=1, help="Multiple v's for more verbosity, e.g., -vvv")
+    parser.add_argument("--loglevel", "-l", dest="logLevel", default=logging.ERROR,
+                        help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
     parser.add_argument("-a", "--all", dest="all_records", default=False, action="store_true",
                         help="Update records with views and any citation data (takes significantly longer)")
     
     args = parser.parse_args()
-    args.verbose = 40 - (10*args.verbose) if args.verbose > 0 else 0
-    logging.basicConfig(filename=logFilename, level=args.verbose)
+    #args.verbose = 40 - (10*args.verbose) if args.verbose > 0 else 0
+    logging.basicConfig(level=args.logLevel)
 
     updates = 0
     SOLR_DOCS = "pepwebdocs"
@@ -361,8 +358,6 @@ if __name__ == "__main__":
     updates = update_solr_stat_data(solr_docs2, args.all_records)
     total_time = time.time() - start_time
     final_stat = f"{time.ctime()} Updated {updates} Solr records in {total_time} secs)."
-    logging.getLogger().setLevel(logging.INFO)
-    logger.info(final_stat)
     print (final_stat)
         
 
