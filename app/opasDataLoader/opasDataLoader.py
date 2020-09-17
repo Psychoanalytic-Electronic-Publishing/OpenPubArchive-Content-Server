@@ -72,8 +72,7 @@ import pathlib
 import time
 from datetime import datetime
 import logging
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(programNameShort)
 
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.

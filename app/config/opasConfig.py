@@ -88,7 +88,7 @@ MIN_EXCERPT_CHARS = 480
 MAX_EXCERPT_CHARS = 2000
 MAX_EXCERPT_PARAS = 10
 MAX_PARAS_FOR_SUMMARY = 10
-MAX_DOCUMENT_RECORDS_TO_AT_ONCE = 500 # needs to be practical too, for time out
+MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE = 500 # needs to be practical too, for time out
 
 DEFAULT_KWIC_CONTENT_LENGTH = 200  # On each side of match (so use 1/2 of the total you want)
 DEFAULT_MAX_KWIC_RETURNS = 5

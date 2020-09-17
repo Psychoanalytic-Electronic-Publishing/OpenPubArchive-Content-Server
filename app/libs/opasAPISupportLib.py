@@ -2759,7 +2759,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     # let this be None, if no limit is set.
     if limit is not None:
         if limit < 0: # unlimited return, to bypass default
-            solr_query_spec.limit = opasConfig.MAX_DOCUMENT_RECORDS_TO_AT_ONCE
+            solr_query_spec.limit = opasConfig.MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE
         else:
             solr_query_spec.limit = limit
 
@@ -3140,9 +3140,9 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
         solr_query_spec.offset = offset
 
     if limit is not None:
-        solr_query_spec.limit = min(limit, opasConfig.MAX_DOCUMENT_RECORDS_TO_AT_ONCE) 
+        solr_query_spec.limit = min(limit, opasConfig.MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE) 
     else:
-        solr_query_spec.limit = opasConfig.MAX_DOCUMENT_RECORDS_TO_AT_ONCE
+        solr_query_spec.limit = opasConfig.MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE
 
     if sort is not None:
         solr_query_spec.solrQuery.sort = sort
