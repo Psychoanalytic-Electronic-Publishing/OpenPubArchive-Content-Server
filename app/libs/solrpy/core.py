@@ -1035,7 +1035,7 @@ class ResponseContentHandler(ContentHandler):
             node.final = value.strip().lower().startswith('t')
 
         elif name == 'date':
-             node.final = utc_from_string(value.strip())
+            node.final = utc_from_string(value.strip())
 
         elif name in ('float','double', 'status','QTime'):
             node.final = float(value.strip())
