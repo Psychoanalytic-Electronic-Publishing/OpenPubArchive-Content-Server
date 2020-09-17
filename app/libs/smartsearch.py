@@ -206,17 +206,6 @@ def presearch_field(value,
 
     return ret_val
 
-def read_stopwords(): 
-    with open(opasConfig.HIGHLIGHT_STOP_WORDS_FILE) as f:
-        stopWordList = f.read().splitlines()
-    
-    stopPattern = "([A-Z])"
-    for n in stopWordList:
-        stopPattern += f"|{n}"
-
-    ret_val = re.compile(stopPattern, re.IGNORECASE)
-    return ret_val
-
 def is_term_in_index(term_partial,
                      term_field="art_authors",
                      core="docs",

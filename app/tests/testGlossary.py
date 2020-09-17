@@ -110,7 +110,7 @@ class TestGlossary(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Glossary/wheelright, JOSEPH BALCH (1906-99)/?termidtype=Name')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Glossary/wheelwright, JOSEPH BALCH (1906-99)/?termidtype=Name')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.

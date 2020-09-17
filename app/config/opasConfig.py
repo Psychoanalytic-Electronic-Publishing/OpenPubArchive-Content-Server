@@ -21,17 +21,10 @@ logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d')
 FORMAT = '%(asctime)s %(name)s %(funcName)s %(lineno)d - %(levelname)s %(message)s'
 logging.basicConfig(filename=logFilename, format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 
-# required for catalog lookup by lxml
-xml_catalog_name = "x:/_PEPA1/catalog.xml" 
-os.environ['XML_CATALOG_FILES'] = r"file:" + urllib.request.pathname2url(xml_catalog_name)
-
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
 BOOK_CODES_ALL = ("GW", "SE", "ZBK", "NLP", "IPL")
 
-# folders, configure per install
-# uploads
-UPLOAD_DIR = r"z:\\back\\"
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.
 STYLE_PATH = r"./libs/styles;../libs/styles"
@@ -72,8 +65,6 @@ HITMARKEREND = "@@@#"
 HITMARKERSTART_OUTPUTHTML = "<span class='searchhit'>"  # to convert the non-markup HIT markers to HTML, supply values here.  These match the current PEPEasy stylesheet.
 HITMARKEREND_OUTPUTHTML = "</span>"
       
-HIGHLIGHT_STOP_WORDS_FILE = r"E:\usr3\GitHub\openpubarchive\app\config\highlight_stop_words.txt"
-
 USER_NOT_LOGGED_IN_ID = 0
     
 COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
@@ -94,13 +85,11 @@ DOCUMENT_ACCESS_ARCHIVE = "archive"
 DOCUMENT_ACCESS_UNDEFINED = "undefined"
 DOCUMENT_ACCESS_OFFSITE = "offsite"
 
-# configure for location where to find the PDF originals
-PDFORIGDIR = r"X:\PEP Dropbox\PEPWeb\Inventory\PEPDownloads\PDF"
-
 MIN_EXCERPT_CHARS = 480
 MAX_EXCERPT_CHARS = 2000
 MAX_EXCERPT_PARAS = 10
 MAX_PARAS_FOR_SUMMARY = 10
+MAX_DOCUMENT_RECORDS_TO_RETURN_EVER = 32000 # need this high for citeas, reports, etc.
 
 DEFAULT_KWIC_CONTENT_LENGTH = 200  # On each side of match (so use 1/2 of the total you want)
 DEFAULT_MAX_KWIC_RETURNS = 5
@@ -372,126 +361,140 @@ VIEW_DBNAME_LASTCALYEAR = "vw_stat_docviews_lastcalyear"
 
 #Schema Field Name Suffix for Synonym Searching
 SYNONYM_SUFFIX = "_syn"
-
+# Must not have spaces
 DOCUMENT_VIEW_FACET_LIST = "glossary_group_terms,terms_highlighted,art_kwds_str"
+GLOSSARY_VIEW_FACET_LIST = "glossary_group_terms,terms_highlighted,art_kwds_str"
+DEFAULT_MORE_LIKE_THIS_FIELDS = "art_kwds, title, text_xml"
+DEFAULT_MORE_LIKE_THIS_COUNT = 0
 
-# Standard Document List Summary fields (potential data return in document list)
-DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, \
-                               art_title, \
-                               art_title_xml, \
-                               art_subtitle_xml, \
-                               art_author_id, \
-                               art_authors, \
-                               art_citeas_xml, \
-                               art_info_xml, \
-                               art_sourcecode, \
-                               art_sourcetitleabbr, \
-                               art_sourcetitlefull, \
-                               art_sourcetype, \
-                               art_level, \
-                               parent_tag, \
-                               para, \
-                               art_vol, \
-                               art_type, \
-                               art_vol_title, \
-                               art_year, \
-                               art_iss, \
-                               art_iss_title, \
-                               art_newsecnm, \
-                               art_pgrg, \
-                               art_lang, \
-                               art_doi, \
-                               art_issn, \
-                               art_origrx, \
-                               art_qual, \
-                               art_kwds, \
-                               art_cited_all, \
-                               art_cited_5, \
-                               art_cited_10, \
-                               art_cited_20, \
-                               art_views_lastcalyear, \
-                               art_views_last1mos, \
-                               art_views_last6mos, \
-                               art_views_last12mos, \
-                               art_views_lastweek, \
-                               reference_count, \
-                               file_last_modified, \
-                               timestamp, \
-                               score"
+# Standard Document List Summary fields 
+# (potential data return in document list)
+# Indent moved to left so when in query, only a few spaces sent to Solr
+DOCUMENT_ITEM_SUMMARY_FIELDS ="""
+ art_id, 
+ art_title, 
+ art_title_xml, 
+ art_subtitle_xml, 
+ art_author_id, 
+ art_authors, 
+ art_citeas_xml, 
+ art_info_xml, 
+ art_sourcecode, 
+ art_sourcetitleabbr, 
+ art_sourcetitlefull, 
+ art_sourcetype, 
+ art_level, 
+ parent_tag, 
+ para, 
+ art_vol, 
+ art_type, 
+ art_vol_title, 
+ art_year, 
+ art_iss, 
+ art_iss_title, 
+ art_newsecnm, 
+ art_pgrg, 
+ art_lang, 
+ art_doi, 
+ art_issn, 
+ art_origrx, 
+ art_qual, 
+ art_kwds, 
+ art_cited_all, 
+ art_cited_5, 
+ art_cited_10, 
+ art_cited_20, 
+ art_views_lastcalyear, 
+ art_views_last1mos, 
+ art_views_last6mos, 
+ art_views_last12mos, 
+ art_views_lastweek, 
+ reference_count, 
+ file_last_modified, 
+ timestamp, 
+ score
+"""
 
-DOCUMENT_ITEM_TOC_FIELDS = "art_id, \
-                            art_info_xml, \
-                            art_title_xml, \
-                            art_subtitle_xml, \
-                            art_authors_xml, \
-                            art_citeas_xml, \
-                            art_sourcecode, \
-                            art_sourcetitleabbr, \
-                            art_sourcetitlefull, \
-                            art_level, \
-                            art_vol, \
-                            art_type, \
-                            art_vol_title, \
-                            art_year, \
-                            art_iss, \
-                            art_iss_title, \
-                            art_newsecnm, \
-                            art_pgrg, \
-                            art_lang, \
-                            art_doi, \
-                            art_issn, \
-                            art_origrx, \
-                            art_qual, \
-                            art_kwds, \
-                            score"
+DOCUMENT_ITEM_TOC_FIELDS = """
+ art_id, 
+ art_info_xml, 
+ art_title_xml, 
+ art_subtitle_xml, 
+ art_authors_xml, 
+ art_citeas_xml, 
+ art_sourcecode, 
+ art_sourcetitleabbr, 
+ art_sourcetitlefull, 
+ art_level, 
+ art_vol, 
+ art_type, 
+ art_vol_title, 
+ art_year, 
+ art_iss, 
+ art_iss_title, 
+ art_newsecnm, 
+ art_pgrg, 
+ art_lang, 
+ art_doi, 
+ art_issn, 
+ art_origrx, 
+ art_qual, 
+ art_kwds, 
+ score
+"""
 
-DOCUMENT_ITEM_META_FIELDS ="art_id, \
-                            meta_xml, \
-                            art_citeas_xml, \
-                            art_title_xml, \
-                            art_subtitle_xml, \
-                            art_authors_xml, \
-                            art_sourcecode, \
-                            art_sourcetitleabbr, \
-                            art_sourcetitlefull, \
-                            art_vol, \
-                            art_year, \
-                            art_pgrg, \
-                            score"
+DOCUMENT_ITEM_META_FIELDS ="""
+ art_id, 
+ meta_xml, 
+ art_citeas_xml, 
+ art_title_xml, 
+ art_subtitle_xml, 
+ art_authors_xml, 
+ art_sourcecode, 
+ art_sourcetitleabbr, 
+ art_sourcetitlefull,
+ art_vol,
+ art_year, 
+ art_pgrg,
+ score
+"""
 
-DOCUMENT_ITEM_STAT_FIELDS = "art_id, \
-                             art_citeas_xml, \
-                             art_title, \
-                             art_authors, \
-                             art_sourcecode, \
-                             art_sourcetitleabbr, \
-                             art_sourcetitlefull, \
-                             art_vol, \
-                             art_year, \
-                             art_cited_all, \
-                             art_cited_5, \
-                             art_cited_10, \
-                             art_cited_20, \
-                             art_views_lastcalyear, \
-                             art_views_last1mos, \
-                             art_views_last6mos, \
-                             art_views_last12mos, \
-                             art_views_lastweek, \
-                             reference_count, \
-                             score"
+DOCUMENT_ITEM_STAT_FIELDS = """
+ art_id, 
+ art_citeas_xml, 
+ art_title, 
+ art_authors, 
+ art_sourcecode, 
+ art_sourcetitleabbr, 
+ art_sourcetitlefull, 
+ art_vol, 
+ art_year, 
+ art_cited_all, 
+ art_cited_5, 
+ art_cited_10, 
+ art_cited_20, 
+ art_views_lastcalyear, 
+ art_views_last1mos, 
+ art_views_last6mos, 
+ art_views_last12mos, 
+ art_views_lastweek, 
+ reference_count, 
+ score
+"""
 
 # for Glossary Core
 GLOSSARY_ITEM_DEFAULT_FIELDS = """
-                                art_id,
-                                term_id,
-                                group_id,
-                                term,
-                                term_type,
-                                term_source,
-                                term_def_xml,
-                                term_def_rest_xml,
-                                group_name,
-                                group_term_count
+ art_id,
+ term_id,
+ group_id,
+ term,
+ term_type,
+ term_source,
+ term_def_xml,
+ term_def_rest_xml,
+ group_name,
+ group_term_count,
+ text
 """
 
 running_head_fmts = {

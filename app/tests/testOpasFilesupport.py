@@ -180,15 +180,26 @@ class TestFileSystemFunctions(unittest.TestCase):
         print (len(matchlist))
         assert (len(matchlist) == 0)
 
-        matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat)
+        if localsecrets.use_server == 1:
+            matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat)
+        else:
+            matchlist = fs.get_matching_filelist(path="_PEPCurrent/IJP/098.2017", filespec_regex=pat)
+            
         print (len(matchlist))
         assert (len(matchlist) >= 100)
 
-        matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+        if localsecrets.use_server == 1:
+            matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+        else:
+            matchlist = fs.get_matching_filelist(path="_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
         print (len(matchlist))
         assert (len(matchlist) == 20)
         
-        matchlist = fs.get_matching_filelist(path="_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+        if localsecrets.use_server == 1:
+            matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+        else:
+            matchlist = fs.get_matching_filelist(path="_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+            
         print (len(matchlist))
         assert (len(matchlist) == 20)
 

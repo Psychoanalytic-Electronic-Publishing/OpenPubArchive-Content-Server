@@ -51,7 +51,6 @@ def read_stopwords():
 
 # Module Globals
 rc_stopword_match = read_stopwords() # returns compile re for matching stopwords 
-rc_stopword_match = read_stopwords() # returns compile re for matching stopwords 
 
 #------------------------------------------------------------------------------------------------------------
 #  Support functions

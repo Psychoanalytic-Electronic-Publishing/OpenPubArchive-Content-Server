@@ -140,18 +140,45 @@ class TestMost(unittest.TestCase):
     def test_0_most_cited(self):
         """
         """
-        # request login to the API server
-        response = client.get(base_api + '/v2/Database/MostCited/?limit=5')
+        response = client.get(base_api + '/v2/Database/MostCited/')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
+        print (r)
         print (f"Count: {r['documentList']['responseInfo']['count']}")
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
         print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")
         assert(r['documentList']['responseSet'][0]['stat']['art_cited_5'] >= 15)
-        #assert(r["text_server_ok"] == True)
-        #assert(r["db_server_ok"] == True)
+        
+    def test_0_most_cited_with_similardocs(self):
+        # see if it can correctly return moreLikeThese
+        response = client.get(base_api + '/v2/Database/MostCited/?similarcount=3')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
         print (r)
+        try:
+            similar_count = int(r['documentList']['responseSet'][0]['similarityMatch']['similarNumFound'])
+        except:
+            similar_count = 0
+            
+        assert(similar_count >= 1)
+
+    def test_0_most_cited_download(self):
+        # see if it can correctly return moreLikeThese
+        response = client.get(base_api + '/v2/Database/MostCited/?download=True')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        #r = response.json()
+        #print (r)
+
+    def test_0_most_viewed_download(self):
+        # see if it can correctly return moreLikeThese
+        response = client.get(base_api + '/v2/Database/MostViewed/?download=True')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        #r = response.json()
+        #print (r)
 
     def test_0_most_cited_for_source(self):
         """

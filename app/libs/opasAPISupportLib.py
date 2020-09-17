@@ -510,6 +510,8 @@ def database_get_most_viewed( publication_period: int=5,
                               stat:bool=False, 
                               limit: int=5,           # Get top 10 from the period
                               offset=0,
+                              mlt_count:int=None,
+                              sort:str=None,
                               download=False, 
                               session_info=None
                             ):
@@ -547,7 +549,9 @@ def database_get_most_viewed( publication_period: int=5,
 
     """
     period_suffix = opasConfig.VALS_VIEWPERIODDICT.get(view_period, "last12mos")
-    sort = f"art_views_{period_suffix} desc"
+    
+    if sort is None:
+        sort = f"art_views_{period_suffix} desc"
 
     start_year = dtime.date.today().year
     if publication_period is None:
@@ -575,17 +579,21 @@ def database_get_most_viewed( publication_period: int=5,
                                                       sort = sort,
                                                       req_url = req_url
         )
-
-    try:
-        ret_val, ret_status = search_text_qs(solr_query_spec, 
-                                             limit=limit,
-                                             offset=offset,
-                                             #authenticated=session_info.authenticated
-                                             req_url = req_url, 
-                                             session_info=session_info
-                                            )
-    except Exception as e:
-        logger.warning(f"Search error {e}")
+    if download: # much more limited document list if download==True
+        ret_val, ret_status = search_stats_for_download(solr_query_spec, 
+                                                        session_info=session_info
+                                )
+    else:
+        try:
+            ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                                 limit=limit,
+                                                 offset=offset,
+                                                 #mlt_count=mlt_count, 
+                                                 req_url = req_url, 
+                                                 session_info=session_info
+                                                )
+        except Exception as e:
+            logger.warning(f"Search error {e}")
 
     return ret_val   
 
@@ -601,9 +609,11 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                              abstract_requested: bool=True, 
                              req_url: str=None, 
                              stat:bool=False, 
-                             limit: int=10,
-                             offset: int=0, 
+                             limit: int=None,
+                             offset: int=0,
+                             mlt_count:int=None, 
                              sort:str=None,
+                             download:bool=None, 
                              session_info=None
                              ):
     """
@@ -650,18 +660,27 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                                                       title=title,
                                                       startyear=start_year,
                                                       return_field_set=field_set, 
-                                                      abstract_requested=abstract_requested, 
+                                                      abstract_requested=abstract_requested,
+                                                      similar_count=mlt_count, 
                                                       sort = sort,
                                                       req_url = req_url
                                                     )
 
-    ret_val, ret_status = search_text_qs(solr_query_spec, 
-                                         limit=limit,
-                                         offset=offset,
-                                         #authenticated=session_info.authenticated
-                                         session_info=session_info, 
-                                         req_url = req_url
-                                        )
+    if download: # much more limited document list if download==True
+        ret_val, ret_status = search_stats_for_download(solr_query_spec, 
+                                                        session_info=session_info
+                                                       )
+    else:
+        try:
+            ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                                 limit=limit,
+                                                 offset=offset,
+                                                 #mlt_count=mlt_count, 
+                                                 session_info=session_info, 
+                                                 req_url = req_url
+                                                )
+        except Exception as e:
+            logger.warning(f"Search error {e}")
         
     return ret_val, ret_status   
 
@@ -1871,7 +1890,6 @@ def documents_get_concordance_paras(para_lang_id,
 def documents_get_glossary_entry(term_id,
                                  term_id_type=None, 
                                  retFormat="XML",
-                                 #authenticated=True,
                                  req_url: str=None,
                                  session_info=None,
                                  limit=opasConfig.DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS,
@@ -1921,8 +1939,10 @@ def documents_get_glossary_entry(term_id,
         
     gloss_template = gloss_info.documentList.responseSet[0]
     
-    results = solr_gloss.query(q = qstr,  
-                               fields = "term, term_id, group_id, term_type, term_source, group_term_count, art_id, text"
+    results = solr_gloss.query(q = qstr,
+                               fields = opasConfig.GLOSSARY_ITEM_DEFAULT_FIELDS, 
+                               facet_field=opasConfig.DOCUMENT_VIEW_FACET_LIST,
+                               facet_mincount=1
                                )
     document_item_list = []
     count = 0
@@ -2637,8 +2657,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                    facet_offset=None, 
                    limit=None,
                    offset=None,
+                   mlt_count=None, # 0 turns off defaults for mlt, number overrides defaults, setting solr_query_spec is top priority
                    sort=None, 
-                   #authenticated=False,
                    session_info=None,
                    solr_core="pepwebdocs"
                    ):
@@ -2690,12 +2710,27 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     #else: # for debug only
         #print (f"Fragment Size: {solr_query_spec.solrQueryOpts.hlFragsize}")
 
-    if solr_query_spec.solrQueryOpts.moreLikeThisCount > 0:
-        mlt_fl = "art_kwds, title, text_xml" # Later: solr_query_spec.solrQueryOpts.moreLikeThisFields
+    if solr_query_spec.solrQueryOpts.moreLikeThisCount > 0: # this (arg based) is the priority value
         mlt = "true"
-        mlt_minwl = 4
         mlt_count = solr_query_spec.solrQueryOpts.moreLikeThisCount
-    else:
+        if solr_query_spec.solrQueryOpts.moreLikeThisFields is None:
+            mlt_fl = opasConfig.DEFAULT_MORE_LIKE_THIS_FIELDS # Later: solr_query_spec.solrQueryOpts.moreLikeThisFields
+        mlt_minwl = 4
+    elif mlt_count is not None and mlt_count > 0:
+        # mlt_count None means "don't care, use default", mlt_count > 0: override default
+        mlt = "true"
+        #  use default fields though
+        mlt_fl = opasConfig.DEFAULT_MORE_LIKE_THIS_FIELDS # Later: solr_query_spec.solrQueryOpts.moreLikeThisFields
+        mlt_minwl = 4
+    elif (opasConfig.DEFAULT_MORE_LIKE_THIS_COUNT > 0 and mlt_count is None): # if caller doesn't care (None) and default is on
+        # mlt_count None means "don't care, use default", mlt_count > 0: override default
+        mlt = "true"
+        if mlt_count is None: # otherwise it's more than 0 so overrides the default
+            mlt_count = opasConfig.DEFAULT_MORE_LIKE_THIS_COUNT
+        #  use default fields though
+        mlt_fl = opasConfig.DEFAULT_MORE_LIKE_THIS_FIELDS # Later: solr_query_spec.solrQueryOpts.moreLikeThisFields
+        mlt_minwl = 4
+    else: # otherwise no MLT, mlt_count may be intentionally set to 0, or default is off and caller didn't say
         mlt_fl = None
         mlt = "false"
         mlt_minwl = None
@@ -2723,8 +2758,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
 
     # let this be None, if no limit is set.
     if limit is not None:
-        solr_query_spec.limit = limit
-
+        if limit < 0: # unlimited return, to bypass default
+            solr_query_spec.limit = opasConfig.MAX_DOCUMENT_RECORDS_TO_RETURN_EVER
+        else:
+            solr_query_spec.limit = limit
 
     if offset is not None:
         solr_query_spec.offset = offset
@@ -2766,7 +2803,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         }
     except Exception as e:
         logger.error(f"Solr Param Assignment Error {e}")
-        
+
+    # Add this only if it's not None, or else Solr returns an SAX Parse error!
+    #if solr_query_spec.limit is not None:
+        #solr_param_dict["rows"] = solr_query_spec.limit
+    #else:
+        #solr_param_dict["rows"] = 999
+
     # add additional facet parameters from faceSpec
     for key, value in solr_query_spec.facetSpec.items():
         if key[0:1] != "f":
@@ -3014,8 +3057,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     rowCount += 1
                     # add it to the set!
                     documentItemList.append(documentListItem)
-                    if rowCount > solr_query_spec.limit:
-                        break
+                    #TODO - we probably don't need this.
+                    if solr_query_spec.limit is not None:
+                        if rowCount > solr_query_spec.limit:
+                            break
     
                 try:
                     facet_counts = results.facet_counts
@@ -3060,6 +3105,217 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             logger.error(f"problem with query {e}")
             
 
+    return ret_val, ret_status
+
+#================================================================================================================
+def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
+                              limit=None,
+                              offset=None,
+                              sort=None, 
+                              session_info=None,
+                              solr_core="pepwebdocs"
+                              ):
+    """
+    SPECIAL - do the search for the purpose of downloading stat...could be many records.
+    
+    """
+    ret_val = {}
+    ret_status = (200, "OK") # default is like HTTP_200_OK
+    global count_anchors
+    
+    if solr_query_spec.solrQueryOpts is None: # initialize a new model
+        solr_query_spec.solrQueryOpts = models.SolrQueryOpts()
+
+    if solr_query_spec.solrQuery is None: # initialize a new model
+        solr_query_spec.solrQuery = models.SolrQuery()
+
+    #if extra_context_len is not None:
+        #solr_query_spec.solrQueryOpts.hlFragsize = extra_context_len
+    #elif solr_query_spec.solrQueryOpts.hlFragsize is None or solr_query_spec.solrQueryOpts.hlFragsize < opasConfig.DEFAULT_KWIC_CONTENT_LENGTH:
+        #solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
+
+    solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = 200
+    # let this be None, if no limit is set.
+    if limit is not None:
+        solr_query_spec.limit = limit
+        if offset is not None:
+            solr_query_spec.offset = offset
+    else:
+        solr_query_spec.limit = opasConfig.MAX_DOCUMENT_RECORDS_TO_RETURN_EVER
+
+    if sort is not None:
+        solr_query_spec.solrQuery.sort = sort
+
+    try:
+        solr_param_dict = { 
+                            "q": solr_query_spec.solrQuery.searchQ,
+                            "fq": solr_query_spec.solrQuery.filterQ,
+                            "q_op": solr_query_spec.solrQueryOpts.qOper, 
+                            "debugQuery": solr_query_spec.solrQueryOpts.queryDebug or localsecrets.SOLR_DEBUG,
+                            # "defType" : solr_query_spec.solrQueryOpts.defType,
+                            "fl" : solr_query_spec.returnFields,         
+                            "rows" : solr_query_spec.limit,
+                            "start" : solr_query_spec.offset,
+                            "sort" : solr_query_spec.solrQuery.sort,
+        }
+    except Exception as e:
+        logger.error(f"Solr Param Assignment Error {e}")
+
+    #allow core parameter here
+    if solr_core is None:
+        if solr_query_spec.core is not None:
+            try:
+                solr_core = EXTENDED_CORES.get(solr_query_spec.core, None)
+            except Exception as e:
+                detail=f"Bad Extended Request. Core Specification Error. {e}"
+                logger.error(detail)
+                ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
+            else:
+                if solr_core is None:
+                    detail=f"Bad Extended Request. Unknown core specified."
+                    logger.warning(detail)
+                    ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
+        else:
+            solr_query_spec.core = "pepwebdocs"
+            solr_core = solr_docs
+    else:
+        try:
+            solr_core = EXTENDED_CORES.get(solr_core, None)
+        except Exception as e:
+            detail=f"Bad Extended Request. Core Specification Error. {e}"
+            logger.error(detail)
+            ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
+        else:
+            if solr_core is None:
+                detail=f"Bad Extended Request. Unknown core specified."
+                logger.warning(detail)
+                ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
+
+    # ############################################################################
+    # SOLR Download Query
+    # ############################################################################
+    try:
+        results = solr_core.query(**solr_param_dict)
+    except solr.SolrException as e:
+        if e is None:
+            ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
+            logger.error(f"Solr Runtime Search Error: {e.reason}")
+            logger.error(e.body)
+        elif e.reason is not None:
+            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
+            logger.error(f"Solr Runtime Search Error: {e.reason}")
+            logger.error(e.body)
+        else:
+            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
+            logger.error(f"Solr Runtime Search Error: {e.httpcode}")
+            logger.error(e.body)
+        
+        ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+
+    else: #  search was ok
+        try:
+            logger.debug("Download Search Performed: %s", solr_query_spec.solrQuery.searchQ)
+            logger.debug("The Filtering: %s", solr_query_spec.solrQuery.filterQ)
+            logger.debug("Result  Set Size: %s", results._numFound)
+            logger.debug("Return set limit: %s", solr_query_spec.limit)
+            scopeofquery = [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ]
+    
+            if ret_status[0] == 200: 
+                documentItemList = []
+                rowCount = 0
+                for result in results.results:
+                    # reset anchor counts for full-text markup re.sub
+                    count_anchors = 0
+                    documentListItem = models.DocumentListItem()
+                    documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+                    documentListItem.score = result.get("score", None)               
+                    # see if this article is an offsite article
+                    result["text_xml"] = None                   
+                    stat = {}
+                    count_all = result.get("art_cited_all", None)
+                    if count_all is not None:
+                        stat["art_cited_5"] = result.get("art_cited_5", None)
+                        stat["art_cited_10"] = result.get("art_cited_10", None)
+                        stat["art_cited_20"] = result.get("art_cited_20", None)
+                        stat["art_cited_all"] = count_all
+    
+                    count0 = result.get("art_views_lastcalyear", 0)
+                    count1 = result.get("art_views_lastweek", 0)
+                    count2 = result.get("art_views_last1mos", 0)
+                    count3 = result.get("art_views_last6mos", 0)
+                    count4 = result.get("art_views_last12mos", 0)
+    
+                    if count0 + count1 + count2 + count3+ count4 > 0:
+                        stat["art_views_lastcalyear"] = count0
+                        stat["art_views_lastweek"] = count1
+                        stat["art_views_last1mos"] = count2
+                        stat["art_views_last6mos"] = count3
+                        stat["art_views_last12mos"] = count4
+    
+                    if stat == {}:
+                        stat = None
+    
+                    documentListItem.stat = stat
+                    documentListItem.docLevel = result.get("art_level", None)
+                    parent_tag = result.get("parent_tag", None)
+                    if parent_tag is not None:
+                        documentListItem.docChild = {}
+                        documentListItem.docChild["parent_tag"] = parent_tag
+                        documentListItem.docChild["para"] = result.get("para", None)
+    
+                    sort_field = None
+                    if solr_query_spec.solrQuery.sort is not None:
+                        try:
+                            sortby = re.search("(?P<field>[a-z_]+[1-9][0-9]?)[ ]*?", solr_query_spec.solrQuery.sort)
+                        except Exception as e:
+                            sort_field = None
+                        else:
+                            if sortby is not None:
+                                sort_field = sortby.group("field")
+    
+                    documentListItem.score = result.get("score", None)
+                    documentListItem.rank = rowCount + 1
+                    if sort_field is not None:
+                        if sort_field == "art_cited_all":
+                            documentListItem.rank = result.get("art_cited_all", None) 
+                        elif sort_field == "score":
+                            documentListItem.rank = result.get("score", None)
+                        else:
+                            documentListItem.rank = result.get(sort_field, None)
+                            
+                    rowCount += 1
+                    # add it to the set!
+                    documentItemList.append(documentListItem)
+
+            # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
+            #  was a full-text request with a page offset and limit
+            # Solr search was ok
+            responseInfo = models.ResponseInfo(
+                                               count = len(results.results),
+                                               fullCount = results._numFound,
+                                               totalMatchCount = results._numFound,
+                                               limit = solr_query_spec.limit,
+                                               offset = solr_query_spec.offset,
+                                               listType="documentlist",
+                                               scopeQuery=[scopeofquery], 
+                                               fullCountComplete = solr_query_spec.limit >= results._numFound,
+                                               solrParams = results._params,
+                                               request=f"{solr_query_spec.urlRequest}",
+                                               core=solr_query_spec.core, 
+                                               timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+            )
+    
+            documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
+                                                            responseSet = documentItemList
+                                                            )
+    
+            documentList = models.DocumentList(documentList = documentListStruct)
+    
+            ret_val = documentList
+            
+        except Exception as e:
+            logger.error(f"problem with query {e}")
+            
     return ret_val, ret_status
 
 ##================================================================================================================

@@ -78,7 +78,7 @@ Endpoint and model documentation automatically available when server is running 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0915.1.Alpha"
+__version__     = "2020.0916.1.Alpha"
 __status__      = "Development"
 
 import sys
@@ -2445,7 +2445,6 @@ async def database_search_v3(
                                                            extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                                            limit=limit,
                                                            offset=offset,
-                                                           #authenticated=session_info.authenticated
                                                            session_info=session_info
                                                            )
         
@@ -2611,7 +2610,6 @@ async def database_search_v2(response: Response,
                                                            extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                                            limit=limit,
                                                            offset=offset,
-                                                           #authenticated=session_info.authenticated
                                                            session_info=session_info
                                                            )
         
@@ -3038,7 +3036,6 @@ async def database_searchtermlist_v2(response: Response,
                                                            limit=limit,
                                                            offset=offset,
                                                            sort=sort,
-                                                           #authenticated=session_info.authenticated
                                                            session_info=session_info
                                                            )
     
@@ -3202,6 +3199,7 @@ def database_mostviewed(response: Response,
                         sourcetype: str=Query("journal", title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
                         morethan: int=Query(5, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),
                         abstract:bool=Query(False, title=opasConfig.TITLE_RETURN_ABSTRACTS, description=opasConfig.DESCRIPTION_RETURN_ABSTRACTS),
+                        similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                         stat:bool=Query(False, title=opasConfig.TITLE_STATONLY, description=opasConfig.DESCRIPTION_STATONLY),
                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT), # by PEP-Web standards, we want 10, but 5 is better for PEP-Easy
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
@@ -3275,6 +3273,8 @@ def database_mostviewed(response: Response,
                                                               stat=stat, 
                                                               limit=limit, 
                                                               offset=offset,
+                                                              download=download, 
+                                                              mlt_count=similarcount, 
                                                               session_info=session_info
                                                             )
         # fill in additional return structure status info
@@ -3336,6 +3336,7 @@ def database_mostcited(response: Response,
                        sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                        sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
                        abstract:bool=Query(False, title=opasConfig.TITLE_RETURN_ABSTRACTS, description=opasConfig.DESCRIPTION_RETURN_ABSTRACTS),
+                       similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                        stat:bool=Query(False, title=opasConfig.TITLE_STATONLY, description=opasConfig.DESCRIPTION_STATONLY),
                        limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
@@ -3350,6 +3351,8 @@ def database_mostcited(response: Response,
        If you don't request abstracts returned, document permissions will not be checked or returned.
        This is intended to speed up retrieval, especially for returning large numbers of
        articles (e.g., for downloads.)
+       
+       MoreLikeThese, controlled by similarcount, is set to be off by default (0)
 
        Note: The GVPi implementation does not appear to support the limit and offset parameter
 
@@ -3375,10 +3378,13 @@ def database_mostcited(response: Response,
 
     #print ("in most cited")
 
-    if download == True and limit == opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS:
-        limit = None
-        
-    # return documentList
+    if download == True:
+        # turn off similarity, waste of time
+        similarcount = 0
+        if limit == opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS:
+            limit = -1 # force no limit!
+
+    # return documentList, much more limited document list if download==True
     ret_val, ret_status = opasAPISupportLib.database_get_most_cited( period=period,
                                                                      more_than=morethan,
                                                                      publication_period=pubperiod,
@@ -3391,6 +3397,8 @@ def database_mostcited(response: Response,
                                                                      req_url=request.url, 
                                                                      limit=limit,
                                                                      offset=offset,
+                                                                     download=download, 
+                                                                     mlt_count=similarcount, 
                                                                      session_info=session_info
                                                                      )
 
@@ -4353,6 +4361,7 @@ def documents_glossary_term(response: Response,
                             #termname: str=Query(None, title="Glossary Term (string)", description=opasConfig.DESCRIPTION_GLOSSARYID),
                             #termgroup: str=Query(None, title="Glossary Term (string)", description=opasConfig.DESCRIPTION_GLOSSARYID),
                             #search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
+                            similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                             return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                             client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
                             client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
@@ -4380,24 +4389,6 @@ def documents_glossary_term(response: Response,
     """
     ret_val = None
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
-    # is the user authenticated? 
-    # is this document embargoed?
-    # the App should not call here if not authenticated.
-    #if not session_info.authenticated:
-        #response.status_code = httpCodes.HTTP_400_BAD_REQUEST
-        #status_message = f"Must be logged in to view a glossary entry."
-        #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
-                                    #session_info=session_info, 
-                                    #params=request.url._url,
-                                    #item_of_interest=term_id, 
-                                    #return_status_code = response.status_code,
-                                    #status_message=status_message
-                                    #)
-        #raise HTTPException(
-            #status_code = response.status_code,
-            #detail = status_message
-        #)
-
     try:
         # handle default passthrough, when the value becomes query.
         if not isinstance(termidtype, models.TermTypeIDEnum):
@@ -4425,6 +4416,7 @@ def documents_glossary_term(response: Response,
         ret_val = opasAPISupportLib.documents_get_glossary_entry(term_id=termIdentifier,
                                                                  term_id_type=termidtype,
                                                                  retFormat=return_format,
+                                                                 
                                                                  session_info=session_info
                                                                  )
 
@@ -4562,9 +4554,7 @@ def documents_document_fetch(response: Response, request: Request=Query(None,
                 ret_val = opasAPISupportLib.documents_get_document( documentID, 
                                                                     solr_query_params,
                                                                     ret_format=return_format, 
-                                                                    #authenticated = session_info.authenticated,
                                                                     similar_count=similarcount, 
-                                                                    #file_classification=file_classification, 
                                                                     page_offset=offset, # starting page
                                                                     page_limit=limit, # number of pages
                                                                     page=page, # specific page number request (rather than offset),
