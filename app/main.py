@@ -185,8 +185,9 @@ app.add_middleware(
 
 opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 
-logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
-logger.error("Test Error for informational purposes only")
+msg = 'Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"')
+print(msg)
+logger.info(msg)
 
 security = HTTPBasic()
 def get_current_username(response: Response, 

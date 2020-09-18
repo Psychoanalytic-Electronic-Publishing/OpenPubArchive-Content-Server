@@ -672,6 +672,15 @@ class WhatsNewListStruct(BaseModel):
 class WhatsNewList(BaseModel):
     whatsNew: WhatsNewListStruct
 
+class PadsSessionInfo(BaseModel):
+    HasSubscription: bool = Schema(False, title="")
+    IsValidLogon: bool = Schema(False, title="")
+    IsValidUserName: bool = Schema(False, title="")
+    ReasonId: int = Schema(0, title="")
+    ReasonStr: str = Schema("", title="")
+    SessionExpires: int = Schema(0, title="")
+    SessionId: str = Schema(None, title="")
+
 #-------------------------------------------------------
 # Perhaps use termindex instead
 #class WordIndexItem(BaseModel):

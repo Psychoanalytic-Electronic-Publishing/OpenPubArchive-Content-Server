@@ -90,16 +90,24 @@ class TestSecurityFunctions(unittest.TestCase):
             print (f"timing return 101 documents (no pads): {timing}")
             assert(timing < 7.5)            
             
-    def test_1b_get_term_index_timing_noPads(self):
-            test = 'response = requests.get(full_URL)'
-            setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')"
+    def test_1b_get_search(self):
+        response = opasDocPerm.pads_login()
+        ## Confirm that the request-response cycle completed successfully.
+        sessID = response.get("SessionId", None)
+        if sessID is None:
+            logger.error(f"PaDS Login error in test: {response}")
+            assert(False)
+        else:
+            headers = '"client-session":"%s", "client-id": "2"' % sessID
+            test = 'response = requests.get(full_URL, headers={%s})' % headers
+            setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=99')"
             timing = timeit.timeit(test, setup, number=1)
             print (f"timing return 99 documents: {timing}")
-            assert(timing < 7)
-            setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=101')"
+            assert(timing < 15)
+            setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=101')"
             timing = timeit.timeit(test, setup, number=1)
             print (f"timing return 101 documents (no pads): {timing}")
-            assert(timing < 7)            
+            assert(timing < 15)            
 
         ##full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
         ##response = requests.get(full_URL)

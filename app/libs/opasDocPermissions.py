@@ -10,12 +10,13 @@ from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
 base = "https://padstest.zedra.net/PEPSecure/api"
 
 def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW):
-    full_URL = base + f"/v1/Authenticate?UserName={username}&Password={password}"
-    response = requests.get(full_URL, headers={"Content-Type":"application/json"})
+    full_URL = base + f"/v1/Authenticate"
+    response = requests.post(full_URL, headers={"Content-Type":"application/json"}, json={"UserName":f"{username}", "Password":f"{password}"})
     ret_val = response.json()
+
     return ret_val
     
-def pads_session_check(session_id, doc_id, doc_year):
+def pads_permission_check(session_id, doc_id, doc_year):
     ret_val = False
     ret_resp = None
     full_URL = base + f"/v1/Permits?SessionId={session_id}&DocId={doc_id}&DocYear={doc_year}"
@@ -95,9 +96,9 @@ def get_access_limitations(doc_id, classification, session_info, year=None, doi=
     try:
         if ret_val.accessLimited == True and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
 
-            authorized, resp = pads_session_check(session_id=session_info.session_id,
-                                                  doc_id=doc_id,
-                                                  doc_year=year)
+            authorized, resp = pads_permission_check(session_id=session_info.session_id,
+                                                     doc_id=doc_id,
+                                                     doc_year=year)
 
             # if this is True, then as long as session_info is valid, it won't need to check again
             # if accessLimited is ever True again, e.g., now a different type of document, it will check again.
@@ -107,9 +108,9 @@ def get_access_limitations(doc_id, classification, session_info, year=None, doi=
             
             if resp.get("HasCurrentAccess", True):
                 session_info.authorized_pepcurrent = True
+                ret_val.accessLimitedCurrentContent = False
 
             if authorized:
-                ret_val.accessLimitedCurrentContent = False
                 # "This content is available for you to access"
                 ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
 

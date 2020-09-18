@@ -548,6 +548,7 @@ def database_get_most_viewed( publication_period: int=5,
     '...'
 
     """
+    ret_val = None
     period_suffix = opasConfig.VALS_VIEWPERIODDICT.get(view_period, "last12mos")
     
     if sort is None:
@@ -574,6 +575,7 @@ def database_get_most_viewed( publication_period: int=5,
                                                       author=author,
                                                       title=title,
                                                       startyear=start_year,
+                                                      highlighting=False, 
                                                       abstract_requested=abstract_requested,
                                                       return_field_set=field_set, 
                                                       sort = sort,
@@ -659,6 +661,7 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                                                       author=author,
                                                       title=title,
                                                       startyear=start_year,
+                                                      highlighting=False, 
                                                       return_field_set=field_set, 
                                                       abstract_requested=abstract_requested,
                                                       similar_count=mlt_count, 
@@ -1470,6 +1473,13 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
     
     if result is not None:
         documentListItem.documentID = result.get("art_id", None)
+        para_art_id = result.get("para_art_id", None)
+        if documentListItem.documentID is None and para_art_id is not None:
+            # this is part of a document, we should retrieve the parent info
+            top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
+            if top_level_doc is not None:
+                merge_documentListItems(documentListItem, top_level_doc)
+
         documentListItem.PEPCode = result.get("art_sourcecode", None)
 
         # don't set the value, if it's None, so it's not included at all in the pydantic return
@@ -1886,6 +1896,58 @@ def documents_get_concordance_paras(para_lang_id,
 
     return ret_val
 
+def replace_if_none(oldval, newval):
+    if oldval is None:
+        ret_val = newval
+    else:
+        ret_val = oldval
+    
+    return ret_val
+
+def get_base_article_info_by_id(art_id):
+    
+    documentList, ret_status = search_text(query=f"art_id:{art_id}", 
+                                               limit=1,
+                                               abstract_requested=False,
+                                               full_text_requested=False
+                                               )
+
+    try:
+        ret_val = documentListItem = documentList.documentList.responseSet[0]
+    except Exception as e:
+        logger.warning(f"Error getting article {art_id} by id: {e}")
+        ret_val = None
+        
+    return ret_val
+
+def merge_documentListItems(old, new):     
+    if old.documentID is None: old.documentID = new.documentID
+    if old.PEPCode is None: old.PEPCode = new.PEPCode
+    if old.documentMetaXML is None: old.documentMetaXML = new.documentMetaXML
+    if old.documentInfoXML is None: old.documentInfoXML = new.documentInfoXML
+    if old.pgRg is None: old.pgRg = new.pgRg
+    if old.lang  is None: old.lang  = new.lang
+    if old.origrx is None: old.origrx = new.origrx   
+    if old.relatedrx is None: old.relatedrx = new.relatedrx 
+    if old.sourceTitle is None: old.sourceTitle = new.sourceTitle 
+    if old.sourceType is None: old.sourceType = new.sourceType 
+    if old.year is None: old.year = new.year  
+    if old.vol is None: old.vol = new.vol  
+    if old.docType is None: old.docType = new.docType 
+    if old.doi is None: old.doi = new.doi
+    if old.issue is None: old.issue = new.issue 
+    if old.issn is None: old.issn = new.issn 
+    if old.title is None: old.title = new.title 
+    if old.pgRg is None: old.pgRg = new.pgRg 
+    if old.authorMast is None: old.authorMast = new.authorMast 
+    if old.newSectionName is None: old.newSectionName = new.newSectionName 
+    if old.documentRef is None: old.documentRef = new.documentRef  
+    if old.documentRefHTML is None: old.documentRefHTML = new.documentRefHTML  
+    if old.updated is None: old.updated = new.updated 
+    if old.accessClassification is None: old.accessClassification = new.accessClassification 
+
+    return old.accessClassification
+    
 #-----------------------------------------------------------------------------
 def documents_get_glossary_entry(term_id,
                                  term_id_type=None, 
@@ -2669,26 +2731,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
        ret_val = a DocumentList model object
        ret_status = a status tuple, consisting of a HTTP status code and a status mesage. Default (HTTP_200_OK, "OK")
 
-        Original Parameters in API
-        Original API return model example, needs to be supported:
-
-                "authormast": "Ringstrom, P.A.",
-                "documentID": "IJPSP.005.0257A",
-                "documentRef": "Ringstrom, P.A. (2010). Commentary on Donna Orange's, &#8220;Recognition as: Intersubjective Vulnerability in the Psychoanalytic Dialogue&#8221;. Int. J. Psychoanal. Self Psychol., 5(3):257-273.",
-                "issue": "3",
-                "PEPCode": "IJPSP",
-                "pgStart": "257",
-                "pgEnd": "273",
-                "title": "Commentary on Donna Orange's, &#8220;Recognition as: Intersubjective Vulnerability in the Psychoanalytic Dialogue&#8221;",
-                "vol": "5",
-                "year": "2010",
-                "rank": "100",
-                "citeCount5": "1",
-                "citeCount10": "3",
-                "citeCount20": "3",
-                "citeCountAll": "3",
-                "kwic": ". . . \r\n        
-
     """
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
@@ -3129,11 +3171,6 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
     if solr_query_spec.solrQuery is None: # initialize a new model
         solr_query_spec.solrQuery = models.SolrQuery()
 
-    #if extra_context_len is not None:
-        #solr_query_spec.solrQueryOpts.hlFragsize = extra_context_len
-    #elif solr_query_spec.solrQueryOpts.hlFragsize is None or solr_query_spec.solrQueryOpts.hlFragsize < opasConfig.DEFAULT_KWIC_CONTENT_LENGTH:
-        #solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
-
     solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = 200
     # let this be None, if no limit is set.
     if offset is not None:
@@ -3154,10 +3191,10 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
                             "q_op": solr_query_spec.solrQueryOpts.qOper, 
                             "debugQuery": solr_query_spec.solrQueryOpts.queryDebug or localsecrets.SOLR_DEBUG,
                             # "defType" : solr_query_spec.solrQueryOpts.defType,
-                            "fl" : solr_query_spec.returnFields,         
+                            "fl" : opasConfig.DOCUMENT_ITEM_STAT_FIELDS, 
                             "rows" : solr_query_spec.limit,
                             "start" : solr_query_spec.offset,
-                            "sort" : solr_query_spec.solrQuery.sort,
+                            "sort" : solr_query_spec.solrQuery.sort
         }
     except Exception as e:
         logger.error(f"Solr Param Assignment Error {e}")
@@ -3258,12 +3295,6 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
     
                     documentListItem.stat = stat
                     documentListItem.docLevel = result.get("art_level", None)
-                    parent_tag = result.get("parent_tag", None)
-                    if parent_tag is not None:
-                        documentListItem.docChild = {}
-                        documentListItem.docChild["parent_tag"] = parent_tag
-                        documentListItem.docChild["para"] = result.get("para", None)
-    
                     sort_field = None
                     if solr_query_spec.solrQuery.sort is not None:
                         try:
@@ -3273,16 +3304,6 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
                         else:
                             if sortby is not None:
                                 sort_field = sortby.group("field")
-    
-                    documentListItem.score = result.get("score", None)
-                    documentListItem.rank = rowCount + 1
-                    if sort_field is not None:
-                        if sort_field == "art_cited_all":
-                            documentListItem.rank = result.get("art_cited_all", None) 
-                        elif sort_field == "score":
-                            documentListItem.rank = result.get("score", None)
-                        else:
-                            documentListItem.rank = result.get(sort_field, None)
                             
                     rowCount += 1
                     # add it to the set!

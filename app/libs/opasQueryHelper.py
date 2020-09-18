@@ -360,6 +360,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   format_requested:str="HTML",
                                   return_field_set=None, 
                                   sort=None,
+                                  highlighting=None, 
                                   extra_context_len=None,
                                   limit=None,
                                   offset=None, 
@@ -1065,6 +1066,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if search_q == "*:*" and filter_q == "*:*":
         filter_q = "art_level:1"
 
+    # Turn off highlighting if it's not needed, e.g, when there's no text search, e.g., a filter only, like mostcited and mostviewed calls
+    if highlighting is not None:
+        if not highlighting: # solr wants a string boolean here (JSON style)
+            solr_query_spec.solrQueryOpts.hl = "false"
+        else:
+            solr_query_spec.solrQueryOpts.hl = "true"
+            
     solr_query_spec.abstractReturn = abstract_requested
     solr_query_spec.returnFormat = format_requested # HTML, TEXT_ONLY, XML
     solr_query_spec.solrQuery.searchQ = search_q
