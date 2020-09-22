@@ -505,7 +505,7 @@ def database_get_most_viewed( publication_period: int=5,
                               source_type: str="journal",
                               abstract_requested: bool=False, 
                               view_period: int=4,      # 4=last12months default
-                              more_than: int=1,        # up this later
+                              view_count: int=1,        # up this later
                               req_url: str=None,
                               stat:bool=False, 
                               limit: int=5,           # Get top 10 from the period
@@ -549,7 +549,7 @@ def database_get_most_viewed( publication_period: int=5,
 
     """
     ret_val = None
-    period_suffix = opasConfig.VALS_VIEWPERIODDICT.get(view_period, "last12mos")
+    period_suffix = opasConfig.VALS_VIEWPERIODDICT_SQLFIELDS.get(view_period, "last12mos")
     
     if sort is None:
         sort = f"art_views_{period_suffix} desc"
@@ -567,20 +567,20 @@ def database_get_most_viewed( publication_period: int=5,
         field_set = None
         
     solr_query_spec = \
-        opasQueryHelper.parse_search_query_parameters(viewcount=more_than, 
-                                                      viewperiod=view_period, 
-                                                      source_name=source_name,
-                                                      source_code=source_code,
-                                                      source_type=source_type,
-                                                      author=author,
-                                                      title=title,
-                                                      startyear=start_year,
-                                                      highlighting=False, 
-                                                      abstract_requested=abstract_requested,
-                                                      return_field_set=field_set, 
-                                                      sort = sort,
-                                                      req_url = req_url
-        )
+        opasQueryHelper.parse_search_query_parameters( viewperiod=view_period,
+                                                       viewcount=view_count, 
+                                                       source_name=source_name,
+                                                       source_code=source_code,
+                                                       source_type=source_type,
+                                                       author=author,
+                                                       title=title,
+                                                       startyear=start_year,
+                                                       highlighting=False, 
+                                                       abstract_requested=abstract_requested,
+                                                       return_field_set=field_set, 
+                                                       sort = sort,
+                                                       req_url = req_url
+                                                       )
     if download: # much more limited document list if download==True
         ret_val, ret_status = search_stats_for_download(solr_query_spec, 
                                                         session_info=session_info
@@ -601,7 +601,7 @@ def database_get_most_viewed( publication_period: int=5,
 
 #-----------------------------------------------------------------------------
 def database_get_most_cited( publication_period: int=None,   # Limit the considered pubs to only those published in these years
-                             period: str='5',  # 
+                             cited_in_period: str='5',  # 
                              more_than: int=25,              # Has to be cited more than this number of times, a large nbr speeds the query
                              author: str=None,
                              title: str=None,
@@ -633,12 +633,12 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
     True
 
     """
-    period = opasConfig.normalize_val(period, opasConfig.VALS_YEAROPTIONS, default='5')
+    cited_in_period = opasConfig.normalize_val(cited_in_period, opasConfig.VALS_YEAROPTIONS, default='5')
     #if str(period).lower() not in models.TimePeriod._value2member_map_:
         #period = '5'
 
     if sort is None:
-        sort = f"art_cited_{period} desc"
+        sort = f"art_cited_{cited_in_period} desc"
 
     start_year = dtime.date.today().year
     if publication_period is None:
@@ -647,7 +647,7 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
         start_year -= publication_period
         start_year = f">{start_year}"
 
-    cite_count = f"{more_than} in {period}"
+    cite_count = f"{more_than} in {cited_in_period}"
     if stat:
         field_set = "STAT"
     else:
@@ -684,6 +684,78 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                                                 )
         except Exception as e:
             logger.warning(f"Search error {e}")
+        
+    return ret_val, ret_status   
+
+#-----------------------------------------------------------------------------
+def database_who_cited( publication_period: int=None,   # Limit the considered pubs to only those published in these years
+                        cited_in_period: str='5',  # 
+                        cited_art_id: str=None, # search rx for this
+                        author: str=None,
+                        title: str=None,
+                        source_name: str=None,  
+                        source_code: str=None,
+                        source_type: str=None,
+                        abstract_requested: bool=True, 
+                        req_url: str=None, 
+                        stat:bool=False, 
+                        limit: int=None,
+                        offset: int=0,
+                        mlt_count:int=None, 
+                        sort:str=None,
+                        download:bool=None, 
+                        session_info=None
+                        ):
+    """
+    Return the list of documents that cited this journal article.
+
+    period must be either '5', 10, '20', or 'all'
+
+    args:
+      limit: the number of records you want to return
+
+    >>> result, status = database_who_cited()
+    >>> len(result.documentList.responseSet)>=10
+    True
+
+    """
+    cited_in_period = opasConfig.normalize_val(cited_in_period, opasConfig.VALS_YEAROPTIONS, default='5')
+
+    if sort is None:
+        sort = f"art_cited_{period} desc"
+
+    start_year = dtime.date.today().year
+    if publication_period is None:
+        start_year = None
+    else:
+        start_year -= publication_period
+        start_year = f">{start_year}"
+
+    try:
+        solr_query_spec = \
+            opasQueryHelper.parse_search_query_parameters(cited_art_id=cited_art_id, 
+                                                          source_name=source_name,
+                                                          source_code=source_code,
+                                                          source_type=source_type, 
+                                                          author=author,
+                                                          title=title,
+                                                          startyear=start_year,
+                                                          highlighting=False, 
+                                                          abstract_requested=abstract_requested,
+                                                          similar_count=mlt_count, 
+                                                          sort = sort,
+                                                          req_url = req_url
+                                                        )
+
+        ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                             limit=limit,
+                                             offset=offset,
+                                             #mlt_count=mlt_count, 
+                                             session_info=session_info, 
+                                             req_url = req_url
+                                            )
+    except Exception as e:
+        logger.warning(f"Who Cited Search error {e}")
         
     return ret_val, ret_status   
 
@@ -2922,10 +2994,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
 
     else: #  search was ok
         try:
-            logger.debug("Search Performed: %s", solr_query_spec.solrQuery.searchQ)
-            logger.debug("The Filtering: %s", solr_query_spec.solrQuery.filterQ)
-            logger.debug("Result  Set Size: %s", results._numFound)
-            logger.debug("Return set limit: %s", solr_query_spec.limit)
+            logger.info("Search Performed: %s", solr_query_spec.solrQuery.searchQ)
+            logger.info("...The Filtering: %s", solr_query_spec.solrQuery.filterQ)
+            logger.info("...Result  Set Size: %s", results._numFound)
+            logger.info("...Return set limit: %s", solr_query_spec.limit)
             scopeofquery = [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ]
     
             if ret_status[0] == 200: 
@@ -2983,7 +3055,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     documentListItem.kwic = "" # need this, so it doesn't default to Nonw
                     documentListItem.kwicList = []
                     # no kwic list when full-text is requested.
-                    if text_xml is not None and not solr_query_spec.fullReturn:
+                    if text_xml is not None and not solr_query_spec.fullReturn and solr_query_spec.solrQueryOpts.hl == 'true':
                         #kwicList = getKwicList(textXml, extraContextLen=extraContextLen)  # returning context matches as a list, making it easier for clients to work with
                         kwic_list = []
                         for n in text_xml:
@@ -3163,7 +3235,6 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
     """
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
-    global count_anchors
     
     if solr_query_spec.solrQueryOpts is None: # initialize a new model
         solr_query_spec.solrQueryOpts = models.SolrQueryOpts()
@@ -3179,7 +3250,7 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
     if limit is not None:
         solr_query_spec.limit = min(limit, opasConfig.MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE) 
     else:
-        solr_query_spec.limit = opasConfig.MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE
+        solr_query_spec.limit = 99000 # opasConfig.MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE
 
     if sort is not None:
         solr_query_spec.solrQuery.sort = sort
@@ -3200,40 +3271,16 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
         logger.error(f"Solr Param Assignment Error {e}")
 
     #allow core parameter here
-    if solr_core is None:
-        if solr_query_spec.core is not None:
-            try:
-                solr_core = EXTENDED_CORES.get(solr_query_spec.core, None)
-            except Exception as e:
-                detail=f"Bad Extended Request. Core Specification Error. {e}"
-                logger.error(detail)
-                ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
-            else:
-                if solr_core is None:
-                    detail=f"Bad Extended Request. Unknown core specified."
-                    logger.warning(detail)
-                    ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
-        else:
-            solr_query_spec.core = "pepwebdocs"
-            solr_core = solr_docs
-    else:
-        try:
-            solr_core = EXTENDED_CORES.get(solr_core, None)
-        except Exception as e:
-            detail=f"Bad Extended Request. Core Specification Error. {e}"
-            logger.error(detail)
-            ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
-        else:
-            if solr_core is None:
-                detail=f"Bad Extended Request. Unknown core specified."
-                logger.warning(detail)
-                ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
+    solr_query_spec.core = "pepwebdocs"
+    solr_core = solr_docs
 
     # ############################################################################
     # SOLR Download Query
     # ############################################################################
     try:
+        start_time = time.time()
         results = solr_core.query(**solr_param_dict)
+        total_time = time.time() - start_time
     except solr.SolrException as e:
         if e is None:
             ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
@@ -3252,20 +3299,22 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
 
     else: #  search was ok
         try:
-            logger.debug("Download Search Performed: %s", solr_query_spec.solrQuery.searchQ)
-            logger.debug("The Filtering: %s", solr_query_spec.solrQuery.filterQ)
-            logger.debug("Result  Set Size: %s", results._numFound)
-            logger.debug("Return set limit: %s", solr_query_spec.limit)
+            logger.info("Download Search Performed: %s", solr_query_spec.solrQuery.searchQ)
+            logger.info("The Filtering: %s", solr_query_spec.solrQuery.filterQ)
+            logger.info("Result  Set Size: %s", results._numFound)
+            logger.info("Return set limit: %s", solr_query_spec.limit)
+            logger.info(f"Download Stats Solr Search Time: {total_time}")
             scopeofquery = [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ]
     
             if ret_status[0] == 200: 
                 documentItemList = []
                 rowCount = 0
                 for result in results.results:
-                    # reset anchor counts for full-text markup re.sub
-                    count_anchors = 0
                     documentListItem = models.DocumentListItem()
-                    documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+                    #documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+                    citeas = result.get("art_citeas_xml", None)
+                    citeas = force_string_return_from_various_return_types(citeas)
+                    
                     documentListItem.score = result.get("score", None)               
                     # see if this article is an offsite article
                     result["text_xml"] = None                   
@@ -3295,23 +3344,10 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
     
                     documentListItem.stat = stat
                     documentListItem.docLevel = result.get("art_level", None)
-                    sort_field = None
-                    if solr_query_spec.solrQuery.sort is not None:
-                        try:
-                            sortby = re.search("(?P<field>[a-z_]+[1-9][0-9]?)[ ]*?", solr_query_spec.solrQuery.sort)
-                        except Exception as e:
-                            sort_field = None
-                        else:
-                            if sortby is not None:
-                                sort_field = sortby.group("field")
-                            
                     rowCount += 1
                     # add it to the set!
                     documentItemList.append(documentListItem)
 
-            # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
-            #  was a full-text request with a page offset and limit
-            # Solr search was ok
             responseInfo = models.ResponseInfo(
                                                count = len(results.results),
                                                fullCount = results._numFound,
@@ -3338,6 +3374,7 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
         except Exception as e:
             logger.error(f"problem with query {e}")
             
+    logger.info(f"Download Stats Document Return Time: {time.time() - start_time}")
     return ret_val, ret_status
 
 ##================================================================================================================

@@ -48,7 +48,7 @@ class TestSQLStructure(unittest.TestCase):
         dbok = ocd.open_connection(caller_name="test_views") # make sure connection is open
         assert (dbok == True)
         tables = ["vw_products_flattened",
-                  "vw_active_sessions",
+                  #"vw_active_sessions",
                   #"vw_api_product_list_with_basecodes",
                   #"vw_api_session_endpoints_with_descriptor ",
                   "vw_api_sourceinfodb",

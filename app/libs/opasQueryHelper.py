@@ -329,6 +329,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   para_textsearch=None,    # search paragraphs as child of scope
                                   para_scope="doc",        # parent_tag of the para, i.e., scope of the para ()
                                   like_this_id=None,       # for morelikethis
+                                  cited_art_id=None,       # for who cited this
                                   similar_count:int=0, # Turn on morelikethis for the set
                                   fulltext1=None,          # term, phrases, and boolean connectors with optional fields for full-text search
                                   smarttext=None,          # experimental detection of search parameters
@@ -347,7 +348,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   datetype=None,           # not implemented
                                   startyear=None,          # can contain complete range syntax
                                   endyear=None,            # year only.
-                                  citecount=None, 
+                                  citecount: str=None,     # can include both the count and the count period, e.g., 25 in 10 or 25 in ALL
                                   viewcount=None,          # minimum view count
                                   viewperiod=None,         # period to evaluate view count 0-4
                                   facetfields=None,        # facetfields to return
@@ -736,10 +737,6 @@ def parse_search_query_parameters(search=None,             # url based parameter
             
             if query_sub_clause != "":
                 analyze_this = f"{search_q_prefix} && ({query_sub_clause})"
-                #if search_q_prefix == "":
-                #else:
-                    #analyze_this = f"&& {search_q_prefix} {query_sub_clause}"
-    
                 search_q += analyze_this
                 search_analysis_term_list.append(analyze_this)
     
@@ -747,33 +744,6 @@ def parse_search_query_parameters(search=None,             # url based parameter
             filter_sub_clause = ""
             qfilterTerm = ""
             filter_sub_clause = get_term_list_spec(solrQueryTermList.qf)
-            #for qfilter in solrQueryTermList.qf:
-                #boolean_connector = qfilter.connector
-                #qfilterTerm += f"({boolean_connector} {get_term_list_spec(qfilter)})"
-    
-                #if qfilter.subField != []:
-                    #for qfilterSub in qfilter.subField:
-                    
-                #if qfilter.field is None:
-                    #use_field = "text"
-                #else:
-                    #use_field = qfilter.field
-        
-                #if qfilter.synonyms:
-                    #use_field = use_field + qfilter.synonyms_suffix
-                
-                #if use_field is not None and qfilter.words is not None:
-                    #sub_clause = f"{use_field}:({qfilter.words})"
-                #else:
-                    #if query.words is not None:
-                        #sub_clause = f"({qfilter.words})"
-                    #else:
-                        #sub_clause = ""
-                #if qfilterTerm == "":
-                    #qfilterTerm += f"{sub_clause}"
-                #else:
-                    #qfilterTerm += f" {boolean_connector} {sub_clause}"
-        
             if filter_sub_clause != "":
                 analyze_this = f"&& ({filter_sub_clause})"
                 filter_q += analyze_this
@@ -790,34 +760,6 @@ def parse_search_query_parameters(search=None,             # url based parameter
             solr_query_spec.facetSpec["facet_limit"] = facetlimit
         if facetoffset is not None:
             solr_query_spec.facetSpec["facet_offset"] = facetoffset
-            
-        #solr_query_spec.facetLimit=facetmincount,
-        #solr_query_spec.facetOffset=facetoffset,                                                        
-
-    # note these are specific to pepwebdocs core.  #TODO Perhaps conditional on core later, or change to a class and do it better.
-    #if para_textsearch is not None:
-        #artLevel = 2 # definitely child level
-        #search_q_prefix = "{!parent which='art_level:1'} art_level:2 &&"
-
-        #use_field = "para"
-        #if synonyms:
-            #use_field = use_field + "_syn"
-    
-        #solrParent = schemaMap.user2solr(para_scope) # e.g., doc -> (body OR summaries OR appxs)
-            
-        ## clean up query / connetors
-        #qs = QueryTextToSolr()
-        #para_textsearch = qs.boolConnectorsToSymbols(para_textsearch)
-        ## note: cannot use F strings here due to quoting requirements for 'which'
-        #if para_scope is not None:
-            #query = " (parent_tag:%s AND (%s:(%s)))" % (solrParent, use_field, para_textsearch)
-        #else:
-            #query = " (%s:(%s))" % (use_field, para_textsearch)
-
-        #analyze_this = f"{search_q_prefix}{query} "
-        #search_q += analyze_this
-        #search_analysis_term_list.append(analyze_this)
-        #query_term_list.append(f"{use_field}:{para_textsearch}")
     
     if fulltext1 is not None:
         #  if there are no field specs in the fulltext spec
@@ -920,6 +862,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # or it could be an abbreviation #TODO
         # or it counld be a complete name #TODO
 
+    if cited_art_id is not None:
+        cited_art_id = cited_art_id.upper()
+        cited = qparse.markup(cited_art_id, "bib_rx") # convert AND/OR/NOT, set up field query
+        analyze_this = f"&& {cited} "
+        filter_q += analyze_this
+        search_analysis_term_list.append(analyze_this)  # Not collecting this!
+    
     if vol is not None:
         vol = qparse.markup(vol, "art_vol") # convert AND/OR/NOT, set up field query
         analyze_this = f"&& {vol} "
@@ -1006,14 +955,14 @@ def parse_search_query_parameters(search=None,             # url based parameter
             val_end = m.group("endnbr")
             if val_end is None:
                 val_end = "*"
-            period = m.group("period")
+            cited_in_period = m.group("period")
 
         if val is None:
             val = 1
-        if period is None:
-            period = '5'
+        if cited_in_period is None:
+            cited_in_period = '5'
 
-        analyze_this = f"&& art_cited_{period.lower()}:[{val} TO {val_end}] "
+        analyze_this = f"&& art_cited_{cited_in_period.lower()}:[{val} TO {val_end}] "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
         
@@ -1026,15 +975,6 @@ def parse_search_query_parameters(search=None,             # url based parameter
     
     if viewcount_int != 0:
         # bring back top documents viewed viewcount times
-
-        view_periods = {
-            0: "art_views_lastcalyear",
-            1: "art_views_lastweek",
-            2: "art_views_last1mos",
-            3: "art_views_last6mos",
-            4: "art_views_last12mos",
-        }
-         
         try:
             viewedwithin = int(viewedwithin) # note default is 4
         except:
@@ -1044,7 +984,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
             if viewedwithin < 0 or viewedwithin > 4:
                 viewedwithin = 4
 
-        view_count_field = view_periods[viewedwithin]
+        #VALS_VIEWPERIODDICT_SOLRFIELD = {1: "art_views_lastweek", 2: "art_views_last1mos", 3: "art_views_last6mos", 4: "art_views_last12mos", 5: "art_views_lastcalyear", 0: "art_views_lastcalyear" }
+        view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[viewedwithin]
         
         analyze_this = f"&& {view_count_field}:[{viewcount_int} TO *] "
         filter_q += analyze_this

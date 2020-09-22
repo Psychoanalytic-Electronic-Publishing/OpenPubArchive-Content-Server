@@ -20,19 +20,24 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
                                          vw_stat_docviews_last12months
                                          )
 
-    vw_stat_cited (depends on fullbiblioxml - table copied from PEP XML Processing db pepa1db
-                              vw_stat_cited_in_last_5_years,
-                              vw_stat_cited_in_last_10_years,
-                              vw_stat_cited_in_last_20_years,
-                              vw_stat_cited_in_all_years
-                  )                                        
+   vw_stat_cited_crosstab (depends on fullbiblioxml - table copied from PEP XML Processing db pepa1db
+                           vw_stat_cited_in_last_5_years,
+                           vw_stat_cited_in_last_10_years,
+                           vw_stat_cited_in_last_20_years,
+                           vw_stat_cited_in_all_years
+                           )                                        
     
     vw_api_productbase (this is the ISSN table from pepa1vdb used during processing)
     
     vw_latest_session_activity (list of sessions with date from table api_session_endpoints)
+    
+    Used in generators:
+    
+      vw_stat_cited_crosstab_with_details (depeds on vw_stat_cited_crosstab + articles)
+      vw_stat_most_viewed
 
 """
-#2019.0708.1 - Python 3.7 compatible.  Work in progress.
+#2019.0708.1 - Python 3.7 compatible. 
 #2019.1110.1 - Updates for database view/table naming cleanup
 #2020.0426.1 - Updates to ensure doc tests working, a couple of parameters changed names
 #2020.0530.1 - Fixed doc tests for termindex, they were looking at number of terms rather than term counts
@@ -45,6 +50,8 @@ __status__      = "Development"
 
 import sys
 import re
+import fnmatch
+
 # import os.path
 from contextlib import closing
 
@@ -61,6 +68,7 @@ import logging
 logger = logging.getLogger(__name__)
 import starlette.status as httpCodes
 
+import datetime as dtime
 from datetime import datetime # , timedelta
 import time
 
@@ -115,12 +123,12 @@ API_AUTHORS_INDEX = 20	#/Authors/Index/{authNamePartial}/
 API_AUTHORS_PUBLICATIONS = 21	#/Authors/Publications/{authNamePartial}/
 API_DOCUMENTS_ABSTRACTS = 30	#/Documents/Abstracts/{documentID}/
 API_DOCUMENTS = 31	#/Documents/{documentID}/
-API_DOCUMENTS_CONCORDANCE = 38	    #/Documents/Paragraph/Concordance/
 API_DOCUMENTS_PDF = 32	#/Documents/Downloads/PDF/{documentID}/
 API_DOCUMENTS_PDFORIG = 33	#/Documents/Downloads/PDFORIG/{documentID}/
 API_DOCUMENTS_EPUB = 35	#/Documents/Downloads/PDF/{documentID}/
 API_DOCUMENTS_HTML = 36	#/Documents/Downloads/HTML/{documentID}/
 API_DOCUMENTS_IMAGE = 37	#/Documents/Downloads/Images/{imageID}/
+API_DOCUMENTS_CONCORDANCE = 38	    #/Documents/Paragraph/Concordance/
 API_DATABASE_SEARCHANALYSIS_FOR_TERMS = 40	#/Database/SearchAnalysis/{searchTerms}/
 API_DATABASE_SEARCH = 41	#/Database/Search/
 API_DATABASE_WHATSNEW = 42	#/Database/WhatsNew/
@@ -357,6 +365,325 @@ class opasCentralDB(object):
         self.close_connection(caller_name="get_productbase_data") # make sure connection is closed
         return ret_val
         
+    def most_viewed_generator( self,
+                               publication_period: int=5,
+                               view_in_period: int=4,
+                               viewcount: int=None, 
+                               author: str=None,
+                               title: str=None,
+                               source_name: str=None,
+                               source_code: str=None, 
+                               source_type: str="journals",
+                               select_clause: str=opasConfig.VIEW_MOSTVIEWED_DOWNLOAD_COLUMNS, 
+                               limit: int=None,
+                               offset=0,
+                               sort=None, #  can be None (default sort), False (no sort) or a column name + ASC || DESC
+                               session_info=None
+                               ):
+        """
+        Return records which are the most viewed for the view_in_period
+           restricted to documents published in the publication_period (prev years)
+           
+        Reinstated because equivalent from Solr is too slow when fetching the
+          whole set.
+
+           ---------------------
+           view_stat_most_viewed
+           ---------------------
+            SELECT
+                `vw_stat_docviews_crosstab`.`document_id` AS `document_id`,
+                `vw_stat_docviews_crosstab`.`last_viewed` AS `last_viewed`,
+                COALESCE ( `vw_stat_docviews_crosstab`.`lastweek`, 0 ) AS `lastweek`,
+                COALESCE ( `vw_stat_docviews_crosstab`.`lastmonth`, 0 ) AS `lastmonth`,
+                COALESCE ( `vw_stat_docviews_crosstab`.`last6months`, 0 ) AS `last6months`,
+                COALESCE ( `vw_stat_docviews_crosstab`.`last12months`, 0 ) AS `last12months`,
+                COALESCE ( `vw_stat_docviews_crosstab`.`lastcalyear`, 0 ) AS `lastcalyear`,
+                `api_articles`.`art_auth_citation` AS `hdgauthor`,
+                `api_articles`.`art_title` AS `hdgtitle`,
+                `api_articles`.`src_title_abbr` AS `srctitleseries`,
+                `api_articles`.`bk_publisher` AS `publisher`,
+                `api_articles`.`src_code` AS `jrnlcode`,
+                `api_articles`.`art_year` AS `pubyear`,
+                `api_articles`.`art_vol` AS `vol`,
+                `api_articles`.`art_pgrg` AS `pgrg`,
+                `api_productbase`.`pep_class` AS `source_type`,
+                `api_articles`.`preserve` AS `preserve`,
+                `api_articles`.`filename` AS `filename`,
+                `api_articles`.`bk_title` AS `bktitle`,
+                `api_articles`.`bk_info_xml` AS `bk_info_xml`,
+                `api_articles`.`art_citeas_xml` AS `xmlref`,
+                `api_articles`.`art_citeas_text` AS `textref`,
+                `api_articles`.`art_auth_mast` AS `authorMast`,
+                `api_articles`.`art_issue` AS `issue`,
+                `api_articles`.`last_update` AS `last_update` 
+            FROM
+            (  (
+                `vw_stat_docviews_crosstab`
+                   JOIN `api_articles` ON ((
+                           `api_articles`.`art_id` = `vw_stat_docviews_crosstab`.`document_id` ))
+                )
+               LEFT JOIN `api_productbase` ON ((
+                   `api_articles`.`src_code` = `api_productbase`.`pepcode` 
+                ))
+            )
+
+            viewperiod = 0: lastcalendaryear
+                         1: lastweek
+                         2: lastmonth
+                         3: last6months
+                         4: last12months                                
+                         
+         
+         Using the opascentral api_docviews table data, as dynamically statistically aggregated into
+           the view vw_stat_most_viewed return the most downloaded (viewed) Documents
+           
+         1) Using documents published in the last 5, 10, 20, or all years.
+            Viewperiod takes an int and covers these or any other period (now - viewPeriod years).
+         2) Filtering videos, journals, books, or all content.  source_type filters this.
+            Can be: "journals", "books", "videos", or "all" (default)
+         3) Optionally filter for author, title, or specific journal.
+            Per whatever the caller specifies in parameters.
+         4) show views in last 7 days, last month, last 6 months, last calendar year.
+            This function returns them all.
+         
+        """
+        self.open_connection(caller_name="get_most_viewed_table") # make sure connection is open
+        view_col_name = opasConfig.VALS_VIEWPERIODDICT_SQLFIELDS.get(view_in_period, "last12months")
+
+        if limit is not None:
+            limit_clause = f"LIMIT {offset}, {limit}"
+        else:
+            limit_clause = ""
+            
+        if self.db != None:
+            if sort is None or sort == True:
+                sort_by_clause = f" ORDER BY {view_col_name} DESC"
+            elif sort == False:
+                sort_by_clause = ""
+            else:
+                sort_by_clause = f"ORDER BY {sort}"
+            
+            if publication_period is not None:
+                if publication_period == 0 or str(publication_period).upper() == "ALL" or str(publication_period).upper()=="ALLTIME":
+                    publication_period = 500 # 500 years should cover all time!
+                pub_year_clause = f" AND `pubyear` > YEAR(NOW()) - {view_in_period}"  # consider only the past viewPeriod years
+            else:
+                pub_year_clause = ""
+
+            if source_code is not None:
+                source_code_clause = f" AND source_code = '{source_code}'" 
+            else:
+                source_code_clause = ""
+
+            if source_name is not None:
+                source_name = re.sub("[^\.]\*", ".*", source_name, flags=re.IGNORECASE)
+                journal_clause = f" AND srctitleseries rlike '{source_name}'" 
+            else:
+                journal_clause = ""
+            
+            if source_type == "journals":
+                doc_type_clause = f" AND source_code NOT IN {opasConfig.ALL_EXCEPT_JOURNAL_CODES}" 
+            elif source_type == "books":
+                doc_type_clause = f" AND source_code IN {opasConfig.BOOK_CODES_ALL}"
+            elif source_type == "videos":
+                doc_type_clause = f" AND source_code IN {opasConfig.VIDOSTREAM_CODES_ALL}"
+            else:
+                doc_type_clause = ""  # everything
+
+            if author is not None:
+                author = re.sub("[^\.]\*", ".*", author, flags=re.IGNORECASE)
+                author_clause = f" AND hdgauthor rlike {author}"
+            else:
+                author_clause = ""
+                
+            if title is not None:
+                # glob to re pattern
+                # title = re.sub("[^\.]\*", ".*", title, flags=re.IGNORECASE)
+                title = re.sub("[^\.]\*", ".*", title, flags=re.IGNORECASE)
+                title_clause = f" AND hdgtitle rlike '{title}'"
+            else:
+                title_clause = ""
+
+            if viewcount is not None:
+                more_than_clause = f" AND {view_col_name} > {viewcount}"
+            
+            # select_clause = "textref, lastweek, lastmonth, last6months, last12months, lastcalyear"
+            # Note that WHERE 1 = 1 is used since clauses all start with AND
+            sql = f"""SELECT {select_clause} 
+                      FROM vw_stat_most_viewed
+                      WHERE 1 = 1
+                      {doc_type_clause}
+                      {author_clause}
+                      {more_than_clause}
+                      {title_clause}
+                      {journal_clause}
+                      {pub_year_clause}
+                      {sort_by_clause}
+                      {limit_clause}
+                    """
+            cursor = self.db.cursor(pymysql.cursors.DictCursor)
+            row_count = cursor.execute(sql)
+            for row in cursor:
+                yield row
+                
+        self.close_connection(caller_name="get_most_viewed_table") # make sure connection is closed
+
+    def SQLSelectGenerator(self, sql):
+        #execute a select query and return results as a generator
+        #error handling code removed
+        self.open_connection(caller_name="SQLSelectGenerator") # make sure connection is open
+        cursor = self.db.cursor(pymysql.cursors.DictCursor)
+        cursor.execute(sql)
+   
+        for row in cursor:
+            yield row    
+
+        self.close_connection(caller_name="SQLSelectGenerator") # make sure connection is open
+    
+    def most_cited_generator( self,
+                              # Limit the considered pubs to only those published in these years
+                              publication_period = None,
+                              # Has to be cited more than this number of times, a large nbr speeds the query
+                              cited_in_period:str=None,   
+                              citecount: int=None,              
+                              author: str=None,
+                              title: str=None,
+                              source_name: str=None,  
+                              source_code: str=None,
+                              source_type: str=None,
+                              select_clause: str=opasConfig.VIEW_MOSTCITED_DOWNLOAD_COLUMNS, 
+                              limit: int=None,
+                              offset: int=0,
+                              sort=None, #  can be None (default sort), False (no sort) or a column name + ASC || DESC
+                              session_info=None
+                              ):
+        """
+        Return records which are the most viewed for the view_in_period
+           restricted to documents published in the publication_period (prev years)
+
+        Reinstated because downloading from Solr is too slow!
+         
+        ------------------------------------
+         vw_stat_cited_crosstab_with_details
+        ------------------------------------
+         
+         SELECT
+            `vw_stat_cited_crosstab`.`cited_document_id` AS `cited_document_id`,
+            `vw_stat_cited_crosstab`.`count5` AS `count5`,
+            `vw_stat_cited_crosstab`.`count10` AS `count10`,
+            `vw_stat_cited_crosstab`.`count20` AS `count20`,
+            `vw_stat_cited_crosstab`.`countAll` AS `countAll`,
+            `api_articles`.`art_auth_citation` AS `hdgauthor`,
+            `api_articles`.`art_title` AS `hdgtitle`,
+            `api_articles`.`src_title_abbr` AS `srctitleseries`,
+            `api_articles`.`src_code` AS `source_code`,
+            `api_articles`.`art_year` AS `year`,
+            `api_articles`.`art_vol` AS `vol`,
+            `api_articles`.`art_pgrg` AS `pgrg`,
+            `api_articles`.`art_id` AS `art_id`,
+            `api_articles`.`art_citeas_text` AS `art_citeas_text` 
+         FROM
+            (
+                `vw_stat_cited_crosstab`
+                JOIN `api_articles` ON ((
+                        `vw_stat_cited_crosstab`.`cited_document_id` = `api_articles`.`art_id` 
+                    ))) 
+         ORDER BY
+            `vw_stat_cited_crosstab`.`countAll` DESC
+         
+        """
+        self.open_connection(caller_name="most_cited_generator") # make sure connection is open
+        cited_in_period = opasConfig.normalize_val(cited_in_period, opasConfig.VALS_YEAROPTIONS, default='ALL')
+        
+        if limit is not None:
+            limit_clause = f"LIMIT {offset}, {limit}"
+        else:
+            limit_clause = ""
+            
+        if self.db != None:
+            if sort is None or sort == True:
+                sort_by_clause = f"ORDER BY count{cited_in_period} DESC"
+            elif sort == False:
+                sort_by_clause = ""
+            else:
+                sort_by_clause = f"ORDER BY {sort}"
+        
+            
+            start_year = dtime.date.today().year
+            if publication_period == "All":
+                publication_period = dtime.date.today().year
+
+            if publication_period is None:
+                start_year = None
+            else:
+                start_year -= publication_period
+                start_year = f">{start_year}"
+                
+            #TODO which one, before code, or after code?
+            if publication_period is not None:
+                pub_year_clause = f" AND `year` > YEAR(NOW()) - {publication_period}"  # consider only the past viewPeriod years
+            else:
+                pub_year_clause = ""
+            
+            if source_name is not None:
+                source_name = re.sub("[^\.]\*", ".*", source_name, flags=re.IGNORECASE)
+                journal_clause = f" AND srctitleseries rlike '{source_name}'" 
+            else:
+                journal_clause = ""
+
+            if source_code is not None:
+                source_code_clause = f" AND source_code = '{source_code}'" 
+            else:
+                source_code_clause = ""
+
+            if source_type == "journals":
+                doc_type_clause = f" AND source_code NOT IN {opasConfig.ALL_EXCEPT_JOURNAL_CODES}" 
+            elif source_type == "books":
+                doc_type_clause = f" AND source_code IN {opasConfig.BOOK_CODES_ALL}"
+            elif source_type == "videos":
+                doc_type_clause = f" AND source_code IN {opasConfig.VIDOSTREAM_CODES_ALL}"
+            else:
+                doc_type_clause = ""  # everything
+
+            if author is not None:
+                # author = fnmatch.translate(author)
+                author = re.sub("[^\.]\*", ".*", author, flags=re.IGNORECASE)
+                author_clause = f" AND hdgauthor rlike '{author}'"
+            else:
+                author_clause = ""
+                
+            if title is not None:
+                # glob to re pattern
+                title = re.sub("[^\.]\*", ".*", title, flags=re.IGNORECASE)
+                # title = fnmatch.translate(title)
+                title_clause = f" AND hdgtitle rlike '{title}'"
+            else:
+                title_clause = ""
+
+            if citecount is not None:
+                more_than_clause = f" AND count{cited_in_period} > {citecount}"
+            
+            # Note that WHERE 1 = 1 is used since clauses all start with AND
+            sql = f"""SELECT {select_clause} 
+                      FROM vw_stat_cited_crosstab_with_details
+                      WHERE 1 = 1
+                      {doc_type_clause}
+                      {author_clause}
+                      {more_than_clause}
+                      {title_clause}
+                      {journal_clause}
+                      {pub_year_clause}
+                      {sort_by_clause}
+                      {limit_clause}
+                    """
+
+            cursor = self.db.cursor(pymysql.cursors.DictCursor)
+            row_count = cursor.execute(sql)
+            for row in cursor:
+                yield row
+        
+        self.close_connection(caller_name="most_cited_generator") # make sure connection is closed
+
     def get_most_viewed_crosstab(self):
         """
          Using the opascentral api_docviews table data, as dynamically statistically aggregated into
@@ -877,106 +1204,6 @@ class opasCentralDB(object):
             
             self.close_connection(caller_name="record_session_endpoint") # make sure connection is closed
 
-        return ret_val
-
-    def get_subscription_access(self, basecode, product_id):
-        """
-        given a user's subscription product_ids, look up basecode to see if
-          that subscription includes access.
-        """
-        ret_val = 0
-        self.open_connection(caller_name="get_subscription_access") # make sure connection is open
-        if self.db is not None:
-            try:
-                curs = self.db.cursor(pymysql.cursors.DictCursor)
-
-                sqlCount = "SELECT count(*) as productvalidity FROM vw_api_products WHERE basecode = %s and product_id = %s"
-                data = (basecode, product_id) 
-                result = curs.execute(sqlCount, data)
-                try:
-                    if result:
-                        datarow = curs.fetchone()
-                        ret_val = datarow['productvalidity']
-                    else:
-                        ret_val = 0
-                except Exception as e:
-                    logger.debug(f"{e}")
-                    ret_val = 0
-                    
-            except Exception as e:
-                msg = f"Error querying vw_api_products: {e}"
-                logger.error(msg)
-            else:
-                curs.close()
-            
-        self.close_connection(caller_name="get_subscription_access") # make sure connection is closed
-
-        # return session model object
-        logger.debug(f"productCheck for {basecode}/{product_id} results in {ret_val}")
-        return ret_val
-
-    def authenticate_user_product_request(self, user_id, basecode, year):
-        """
-        see if the user has access to this product and year
-        
-        DEPRECATE 2020-09-01
-        
-        >>> ocd = opasCentralDB()
-        >>> ocd.authenticate_user_product_request(10, "IJP", 2016) # but not logged in
-        False
-        """
-        ret_val = False
-        user_products = []
-        self.open_connection(caller_name="authenticate_user_product_request") # make sure connection is open
-            
-        if self.db is not None:
-            #  is the product free?
-            #    -- need to do a query against the product database directly to answer
-            # 
-            try:
-                curs = self.db.cursor(pymysql.cursors.DictCursor)
-
-                sqlProducts = """SELECT *, YEAR(NOW())-embargo_length as first_year_embargoed FROM vw_api_user_subscriptions_with_basecodes
-                                    WHERE user_id = %s and basecode = %s"""
-                             
-                success = curs.execute(sqlProducts, (user_id, basecode))
-                if success:
-                    user_products = curs.fetchall()
-                
-                    
-            except Exception as e:
-                logger.error(f"Error querying vw_api_products: {e}")
-            else:
-                curs.close()
-                
-            for n in user_products:
-                # First Priority: If it's free, grant access
-                if n["free_access"]:
-                    # catch special free document years for logged in users, without being in free
-                    ret_val = True # it's ok
-                    break
-
-                # Second Priority: If it's in the product year range, grant access
-                if n["range_limited"]:
-                    if n["range_start_year"] <= year and n["range_end_year"] >= year: # it's in the range
-                        ret_val = True # grant product acccess
-                        break                    
-                else: # This is only if it's NOT range limited, because if it's range limited, 
-                      # you don't want to do any other checks, since one of the below would pass
-
-                    # Third Priority: If it's either in the embargo, but product is for embargos, or 
-                    if n["embargo_inverted"]: # we want the embargo period
-                        if n["first_year_embargoed"] <= year: # it's in the embargo
-                            ret_val = True # grant product acccess
-                            break
-                    # Third Priority: It's not in the embargo, so the product is applicable
-                    else: # we don't allow embargoed years
-                        if n["first_year_embargoed"] > year: # it's not in the embargo
-                            ret_val = True # grant product acccess
-                            break
-                
-        self.close_connection(caller_name="authenticate_user_product_request") # make sure connection is closed
-        # returns True if user is granted access
         return ret_val
 
     def get_sources(self, src_code=None, src_type=None, src_name=None, limit=None, offset=0):
@@ -1810,9 +2037,6 @@ if __name__ == "__main__":
     sourceDB = SourceInfoDB()
     code = sourceDB.lookupSourceCode("ANIJP-EL")
     # check this user permissions 
-    basecodes = ocd.authenticate_user_product_request(30065, "IJP", 2016)
-    basecodes = ocd.authenticate_user_product_request(116848, "IJP", 2016)
-    basecodes = ocd.authenticate_user_product_request(10, "IJP", 2016)
     #ocd.get_dict_of_products()
     #ocd.get_subscription_access("IJP", 421)
     #ocd.get_subscription_access("BIPPI", 421)

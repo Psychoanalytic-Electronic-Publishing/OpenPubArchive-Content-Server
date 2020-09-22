@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+__author__      = "Neil R. Shapiro"
+__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
+__license__     = "Apache 2.0"
+__version__     = "2020.0921.1.Alpha"
+__status__      = "Development"
+
 """
 Main entry module for PEP version of OPAS API
 
@@ -74,12 +81,6 @@ Endpoint and model documentation automatically available when server is running 
 # - Add in detail for putciteashere gen from pepkbd3-abstract-html.xslt
 #
 #----------------------------------------------------------------------------------------------
-
-__author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
-__license__     = "Apache 2.0"
-__version__     = "2020.0917.1.Alpha"
-__status__      = "Development"
 
 import sys
 sys.path.append('./config')
@@ -185,7 +186,7 @@ app.add_middleware(
 
 opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 
-msg = 'Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"')
+msg = 'Started at %s' % datetime.today().strftime('%Y-%m-%d %H:%M:%S"')
 print(msg)
 logger.info(msg)
 
@@ -3193,12 +3194,14 @@ def database_mostviewed(response: Response,
                         pubperiod: int=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
                         # viewperiod=4 for last 12 months
                         viewperiod: int=Query(4, title=opasConfig.TITLE_MOST_VIEWED_PERIOD, description=opasConfig.DESCRIPTION_MOST_VIEWED_PERIOD), # 4=Prior year, per PEP-Web design
+                        viewcount: int=Query(0, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),
+                        # deprecate morethan next push
+                        morethan: int=Query(5, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),
                         author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                         title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
                         sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                         sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                         sourcetype: str=Query("journal", title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
-                        morethan: int=Query(5, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),
                         abstract:bool=Query(False, title=opasConfig.TITLE_RETURN_ABSTRACTS, description=opasConfig.DESCRIPTION_RETURN_ABSTRACTS),
                         similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                         stat:bool=Query(False, title=opasConfig.TITLE_STATONLY, description=opasConfig.DESCRIPTION_STATONLY),
@@ -3239,6 +3242,10 @@ def database_mostviewed(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     if viewperiod < 0 or viewperiod > 4:
         query_arg_error = f"Most Viewed: viewperiod: {viewperiod}.  Range should be 0-4 (int)."
+
+    #TODO deprecate morethan next push
+    if morethan is not None and viewcount is None:
+        viewcount = morethan
     
     if sourcetype is not None: # none is ok
         sourcetype = opasConfig.normalize_val(sourcetype, opasConfig.VALS_SOURCETYPE, None)
@@ -3255,71 +3262,73 @@ def database_mostviewed(response: Response,
             detail=status_message
         )        
 
-    if download == True and limit == opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS:
-        limit = None
-        
-    # else go ahead!
-    try:
-        # we want the last year (default, per PEP-Web) of views, for all articles (journal articles)
-        ret_val = opasAPISupportLib.database_get_most_viewed( view_period=viewperiod, # limiting to 5, you'd get the 5 biggest values for this view period
-                                                              publication_period=pubperiod,
-                                                              more_than=morethan, 
-                                                              author=author,
-                                                              title=title,
-                                                              source_name=sourcename, 
-                                                              source_code=sourcecode,
-                                                              source_type=sourcetype, # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
-                                                              abstract_requested=abstract, 
-                                                              req_url=request.url._url,
-                                                              stat=stat, 
-                                                              limit=limit, 
-                                                              offset=offset,
-                                                              download=download, 
-                                                              mlt_count=similarcount, 
-                                                              session_info=session_info
-                                                            )
-        # fill in additional return structure status info
-        # client_host = request.client.host
-        # ret_val.documentList.responseInfo.request = request.url._url
-    except Exception as e:
-        ret_val = None
-        status_message = f"Error: {e}"
-        logger.error(status_message)
-        raise HTTPException(
-            status_code=httpCodes.HTTP_400_BAD_REQUEST, 
-            detail=status_message
-        )        
-    else:
-        status_message = opasCentralDBLib.API_STATUS_SUCCESS
+    if download == True:
+        # Download CSV of selected set.  Returns only response with download, not usual documentList
+        #   response to client
+        if limit == opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS:
+            limit = None
+            
+        views = ocd.most_viewed_generator( publication_period=pubperiod,
+                                           view_in_period=viewperiod,
+                                           viewcount=viewcount, 
+                                           author=author,
+                                           title=title,
+                                           source_name=sourcename, 
+                                           source_code=sourcecode,
+                                           source_type=sourcetype,  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                           select_clause=opasConfig.VIEW_MOSTVIEWED_DOWNLOAD_COLUMNS, 
+                                           limit=limit,
+                                           offset=offset,
+                                           session_info=session_info
+                                          )            
+        header = ["Document", "Last Week", "Last Month", "Last 6 Months", "Last 12 Months", "Last Calendar Year"]
+        df = pd.DataFrame(views)
+        stream = io.StringIO()
+        df.to_csv(stream, header=header, index = False)
+        response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+        response.headers["Content-Disposition"] = "attachment; filename=pepviews.csv"
+        # Don't record endpoint use (not a user request, just a default) but do record download
+        status_message = "Success"
         status_code = httpCodes.HTTP_200_OK
-        if download:
-            # Download CSV of selected set.  Returns only response with download, not usual documentList
-            #   response to client
-            csvdata = []
-            for n in ret_val.documentList.responseSet:
-                csvdata.append((n.documentRef, \
-                                n.stat["art_views_lastweek"], 
-                                n.stat["art_views_last1mos"], 
-                                n.stat["art_views_last6mos"], 
-                                n.stat["art_views_last12mos"], 
-                                n.stat["art_views_lastcalyear"]))
-            header = ["Document", "Last Week", "Last Month", "Last 6 Months", "Last 12 Months", "Last Calendar Year"]
-            df = pd.DataFrame(csvdata)
-            stream = io.StringIO()
-            df.to_csv(stream, header=header, index = False)
-            response = StreamingResponse(iter([stream.getvalue()]),
-                                               media_type="text/csv"
-                                        )
-            response.headers["Content-Disposition"] = "attachment; filename=pepviews.csv"
-            ret_val = response
-        
-            # Don't record endpoint use (not a user request, just a default) but do record download
-            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_MOSTVIEWED,
-                                        session_info=session_info, 
-                                        params=request.url._url,
-                                        return_status_code = status_code,
-                                        status_message=status_message
-                                        )
+        ocd.record_session_endpoint( api_endpoint_id=opasCentralDBLib.API_DATABASE_MOSTVIEWED,
+                                     session_info=session_info, 
+                                     params=request.url._url,
+                                     return_status_code = status_code,
+                                     status_message=status_message
+                                   )
+        ret_val = response
+
+    else: # go ahead! Search Solr
+        try:
+            # we want the last year (default, per PEP-Web) of views, for all articles (journal articles)
+            ret_val = opasAPISupportLib.database_get_most_viewed( publication_period=pubperiod,
+                                                                  view_period=viewperiod, # limiting to 5, you'd get the 5 biggest values for this view period
+                                                                  view_count=viewcount, 
+                                                                  author=author,
+                                                                  title=title,
+                                                                  source_name=sourcename, 
+                                                                  source_code=sourcecode,
+                                                                  source_type=sourcetype, # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                                                  abstract_requested=abstract, 
+                                                                  req_url=request.url._url,
+                                                                  stat=stat, 
+                                                                  limit=limit, 
+                                                                  offset=offset,
+                                                                  download=download, 
+                                                                  mlt_count=similarcount, 
+                                                                  session_info=session_info
+                                                                )
+        except Exception as e:
+            ret_val = None
+            status_message = f"Error: {e}"
+            logger.error(status_message)
+            raise HTTPException(
+                status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                detail=status_message
+            )        
+        else:
+            status_message = opasCentralDBLib.API_STATUS_SUCCESS
+            status_code = httpCodes.HTTP_200_OK
 
     return ret_val  # document_list
 
@@ -3328,8 +3337,10 @@ def database_mostviewed(response: Response,
 @app.get("/v2/Database/MostCited/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_MOST_CITED)
 def database_mostcited(response: Response,
                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                       citeperiod: str=Query('5', title=opasConfig.TITLE_MOST_CITED_PERIOD, description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
+                       citecount: str=Query(None, title=opasConfig.TITLE_CITECOUNT, description=opasConfig.DESCRIPTION_CITECOUNT),   
+                       # deprecate morethan next push
                        morethan: int=Query(15, title=opasConfig.TITLE_CITED_MORETHAN, description=opasConfig.DESCRIPTION_CITED_MORETHAN),
-                       period: str=Query('5', title=opasConfig.TITLE_MOST_CITED_PERIOD, description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
                        pubperiod: int=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
                        author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                        title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
@@ -3373,35 +3384,151 @@ def database_mostcited(response: Response,
 
     """
 
+    ret_val = True
+
     #time.sleep(.25)
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     # session_id = session_info.session_id 
 
-    #print ("in most cited")
-
+    #TODO deprecate morethan next push
+    if morethan is not None and citecount is None:
+        citecount = morethan
+    
     if download == True:
         # turn off similarity, waste of time
         similarcount = 0
         if limit == opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS:
-            limit = -1 # force no limit!
+            limit = 299999 # force no limit!
+
+        # Download CSV of selected set.  Returns only response with download, not usual documentList
+        #   response to client
+        views = ocd.most_cited_generator( cited_in_period=citeperiod,
+                                          citecount=citecount,
+                                          publication_period=pubperiod,
+                                          author=author,
+                                          title=title,
+                                          source_name=sourcename, 
+                                          source_code=sourcecode,
+                                          source_type=sourcetype,  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                          select_clause=opasConfig.VIEW_MOSTCITED_DOWNLOAD_COLUMNS, 
+                                          limit=limit,
+                                          offset=offset,
+                                          session_info=session_info
+                                        )
+
+        header = ["Document", "Last 5 Years", "Last 10 years", "Last 20 years", "All years"]
+        df = pd.DataFrame(views)
+        stream = io.StringIO()
+        df.to_csv(stream, header=header, index = False)
+        response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+        response.headers["Content-Disposition"] = "attachment; filename=pepcited.csv"
+        ret_val = response
+        # Don't record endpoint use (not a user request, just a default) but do record download
+        status_message = "Success"
+        status_code = httpCodes.HTTP_200_OK
+        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_MOSTCITED,
+                                    session_info=session_info, 
+                                    params=request.url._url,
+                                    return_status_code = status_code,
+                                    status_message=status_message
+                                    )
+
+    else:
+        # return documentList, much more limited document list if download==True
+        ret_val, ret_status = opasAPISupportLib.database_get_most_cited( cited_in_period=citeperiod,
+                                                                         more_than=citecount,
+                                                                         publication_period=pubperiod,
+                                                                         author=author,
+                                                                         title=title,
+                                                                         source_name=sourcename, 
+                                                                         source_code=sourcecode,
+                                                                         source_type=sourcetype,  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                                                         abstract_requested=abstract, 
+                                                                         req_url=request.url, 
+                                                                         limit=limit,
+                                                                         offset=offset,
+                                                                         download=False, 
+                                                                         mlt_count=similarcount, 
+                                                                         session_info=session_info
+                                                                         )
+    
+        if isinstance(ret_val, models.ErrorReturn): 
+            raise HTTPException(
+                status_code=ret_val.httpcode, 
+                detail = ret_val.error + " - " + ret_val.error_description
+            )
+        else:
+            status_message = opasCentralDBLib.API_STATUS_SUCCESS
+            status_code = httpCodes.HTTP_200_OK
+
+        # Don't record in final build - (ok for now during testing)
+
+    #print ("out mostcited")
+    return ret_val
+
+#---------------------------------------------------------------------------------------------------------
+@app.get("/v2/Database/WhoCitedThis/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_CITED)
+def database_who_cited_this(response: Response,
+                            request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                            citedid: str=Query(None, title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_CITEDID), 
+                            pubperiod: int=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
+                            sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME + " of citing document"),  
+                            sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE + " of citing document"), 
+                            sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE + " of citing document"),
+                            abstract:bool=Query(False, title=opasConfig.TITLE_RETURN_ABSTRACTS, description=opasConfig.DESCRIPTION_RETURN_ABSTRACTS),
+                            similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                            sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                            limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                            offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                            client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
+                            client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                            ):
+    """
+    ## Function
+       <b>Return a list of documents citing the document specified by citedid.</b>
+       
+       If you don't request abstracts returned, document permissions will not be checked or returned.
+       This is intended to speed up retrieval, especially for returning large numbers of
+       articles (e.g., for downloads.)
+       
+       MoreLikeThese, controlled by similarcount, is set to be off by default (0)
+
+    ## Return Type
+       models.DocumentList
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+         /v2/Database/WhoCitedThis/?citedid=IJP.077.0217A
+
+    ## Notes
+
+    ## Potential Errors
+
+    """
+
+    ret_val = True
+
+    #time.sleep(.25)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    # session_id = session_info.session_id 
 
     # return documentList, much more limited document list if download==True
-    ret_val, ret_status = opasAPISupportLib.database_get_most_cited( period=period,
-                                                                     more_than=morethan,
-                                                                     publication_period=pubperiod,
-                                                                     author=author,
-                                                                     title=title,
-                                                                     source_name=sourcename, 
-                                                                     source_code=sourcecode,
-                                                                     source_type=sourcetype,  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
-                                                                     abstract_requested=abstract, 
-                                                                     req_url=request.url, 
-                                                                     limit=limit,
-                                                                     offset=offset,
-                                                                     download=download, 
-                                                                     mlt_count=similarcount, 
-                                                                     session_info=session_info
-                                                                     )
+    ret_val, ret_status = opasAPISupportLib.database_who_cited( cited_art_id=citedid,
+                                                                publication_period=pubperiod,
+                                                                source_name=sourcename, 
+                                                                source_code=sourcecode,
+                                                                source_type=sourcetype,  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                                                abstract_requested=abstract, 
+                                                                req_url=request.url,
+                                                                sort=sort, 
+                                                                limit=limit,
+                                                                offset=offset,
+                                                                download=False, 
+                                                                mlt_count=similarcount, 
+                                                                session_info=session_info
+                                                                )
 
     if isinstance(ret_val, models.ErrorReturn): 
         raise HTTPException(
@@ -3411,47 +3538,7 @@ def database_mostcited(response: Response,
     else:
         status_message = opasCentralDBLib.API_STATUS_SUCCESS
         status_code = httpCodes.HTTP_200_OK
-        if download:
-            # Download CSV of selected set.  Returns only response with download, not usual documentList
-            #   response to client
-            # was list comprehension, but getting weird errors
-            #  apparently, list comprehensions have their own local scope (and thus locals() dict) in Python 3.
-            # so converted to loop
-            csvdata = []
-            if len(ret_val.documentList.responseSet) > 0:
-                for n in ret_val.documentList.responseSet:
-                    csvdata.append((n.documentRef, \
-                                    n.stat["art_cited_5"], 
-                                    n.stat["art_cited_10"], 
-                                    n.stat["art_cited_20"], 
-                                    n.stat["art_cited_all"]))
-                header = ["Document", "Last 5 Years", "Last 10 years", "Last 20 years", "All years"]
-                df = pd.DataFrame(csvdata)
-                stream = io.StringIO()
-                df.to_csv(stream, header=header, index = False)
-                response = StreamingResponse(iter([stream.getvalue()]),
-                                                   media_type="text/csv"
-                                            )
-                response.headers["Content-Disposition"] = "attachment; filename=pepcited.csv"
-                ret_val = response
-            else:
-                raise HTTPException(
-                    status_code=httpCodes.HTTP_204_NO_CONTENT, 
-                    detail ="No Data to download."
-                )
-                
-            # Don't record endpoint use (not a user request, just a default) but do record download
-            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_MOSTCITED,
-                                        session_info=session_info, 
-                                        params=request.url._url,
-                                        return_status_code = status_code,
-                                        status_message=status_message
-                                        )
 
-
-    # Don't record in final build - (ok for now during testing)
-
-    #print ("out mostcited")
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
@@ -4626,7 +4713,7 @@ def documents_document_fetch(response: Response, request: Request=Query(None,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Documents/Concordance", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_VIEW, response_model_exclude_unset=True)  # the current PEP API
+@app.get("/v2/Documents/Concordance", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_CONCORDANCE, response_model_exclude_unset=True)  # the current PEP API
 def documents_concordance(response: Response,
                           request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                           paralangid: str=Query(None, title=opasConfig.TITLE_DOCUMENT_CONCORDANCE_ID, description=opasConfig.DESCRIPTION_DOCUMENT_CONCORDANCE_ID), # return controls 
@@ -4661,11 +4748,11 @@ def documents_concordance(response: Response,
     item_of_interest = f"{paralangid}/{paralangrx}"
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     try:
+        #  this may not be useful...if so, remove and remove parameter.
         if search is not None:
             argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
         else:
             argdict = {}
-
         solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
         logger.debug("Concordance View Request: %s/%s/%s", solr_query_params, f"{paralangid} / {paralangrx}", return_format)
     

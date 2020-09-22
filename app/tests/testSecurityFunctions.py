@@ -103,11 +103,11 @@ class TestSecurityFunctions(unittest.TestCase):
             setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=99')"
             timing = timeit.timeit(test, setup, number=1)
             print (f"timing return 99 documents: {timing}")
-            assert(timing < 15)
+            assert(timing < 19)
             setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=101')"
             timing = timeit.timeit(test, setup, number=1)
             print (f"timing return 101 documents (no pads): {timing}")
-            assert(timing < 15)            
+            assert(timing < 19)            
 
         ##full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
         ##response = requests.get(full_URL)

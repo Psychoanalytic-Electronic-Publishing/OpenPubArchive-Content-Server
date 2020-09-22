@@ -4,8 +4,7 @@ import datetime
 import tempfile
 import os
 import urllib.request
-from enum import Enum
-
+from enum import Enum, EnumMeta, IntEnum
 # Share httpCodes definition with all OPAS modules that need it.  Starlette provides the symbolic declarations for us.
 import starlette.status as httpCodes # HTTP_ codes, e.g.
                                      # HTTP_200_OK, \
@@ -24,6 +23,8 @@ logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
 BOOK_CODES_ALL = ("GW", "SE", "ZBK", "NLP", "IPL")
+VIDEOSTREAM_CODES_ALL = ("AFCVS", "BPSIVS", "IJPVS", "IPSAVS", "NYPSIVS", "PCVS", "PEPGRANTVS", "PEPTOPAUTHVS", "PEPVS", "SFCPVS", "SPIVS", "UCLVS")
+ALL_EXCEPT_JOURNAL_CODES = BOOK_CODES_ALL + VIDEOSTREAM_CODES_ALL
 
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.
@@ -103,6 +104,7 @@ DEFAULT_SOLR_SORT_DIRECTION = "asc" # desc or asc
 DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 4000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
 DEFAULT_CITED_MORE_THAN = 25
 DEFAULT_PAGE_LIMIT = 999
+DEFAULT_PUBLICATION_PERIOD = "ALL"
 
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 2520000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
 SOLR_HIGHLIGHT_RETURN_MIN_FRAGMENT_SIZE = 2000 # Abstract size
@@ -125,7 +127,6 @@ def norm_val_list(val_dict):
 def norm_val_error(val_dict, val_name=""):
     return f"{val_name} Error. Allowed values {list_values(val_dict)} (only {val_dict[DICTLEN_KEY]} char required)."
         
-# define enums to make it clear what the values of parameters should be
 def normalize_val(val, val_dict, default=None):
     """
     Allow quick lookup and normalization of input values
@@ -146,15 +147,25 @@ def normalize_val(val, val_dict, default=None):
     
     return ret_val
 
+# Standard view categories for View functions, mapping to RDS/MySQL and SOLR
+VALS_VIEWPERIODDICT_SQLFIELDS = {1: "lastweek", 2: "lastmonth", 3: "last6months", 4: "last12months", 5: "lastcalyear", 0: "lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
+VALS_VIEWPERIODDICT_SOLRFIELDS = {1: "art_views_lastweek", 2: "art_views_last1mos", 3: "art_views_last6mos", 4: "art_views_last12mos", 5: "art_views_lastcalyear", 0: "art_views_lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
+
+# Normalized sets: the first key is the minimum abbreviated length for input
+# Example:
+#  > cited_in_period = opasConfig.normalize_val("al", opasConfig.VALS_YEAROPTIONS, default='ALL')
+#  ALL
+#  
+# 
 VALS_PRODUCT_TYPES = {DICTLEN_KEY: 4, "jour": "journal", "vide": "videostream", "book": "book"}    
 VALS_SOURCETYPE = {DICTLEN_KEY: 1, 'j': 'journal', 'b': 'book', 'v': 'videostream'} # standard values, can abbrev to 1st char or more
 VALS_ARTTYPE = {DICTLEN_KEY: 3, 'article': 'ART', 'abstract': 'ABS', 'announcement': 'ANN', 'commentary': 'COM', 'errata': 'ERR', 'profile': 'PRO', 'report': 'REP', 'review': 'REV'}
 VALS_DOWNLOADFORMAT = {DICTLEN_KEY: 4, 'html': 'HTML', 'pdf': 'PDF', 'pdfo': 'PDFORIG', 'epub': 'EPUB'}
+# cited_in_period values (used for sort selection, and comparison to minimums for search)
 VALS_YEAROPTIONS = {DICTLEN_KEY: 2, '5': '5', '10': '10', '20': '20', 'al': 'all'}
-# Standard view categories for View functions
-VALS_VIEWPERIODDICT = {1: "lastweek", 2: "last1mos", 3: "last6mos", 4: "last12mos", 5: "lastcalyear", 0: "lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
 
-# parameter descriptions for documentation
+
+# parameter descriptions for documentation; depends on definitions above in help text
 DESCRIPTION_ADMINCONFIG = "Global settings by an administrator for the specific client app"
 DESCRIPTION_ADMINCONFIGNAME = "Name for the global settings (configuration) for the specific client app"
 DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review."
@@ -162,7 +173,7 @@ DESCRIPTION_AUTHOR = "Author name, use wildcard * for partial entries (e.g., Joh
 DESCRIPTION_AUTHORNAMEORPARTIAL = "The author name or a partial name (regex type wildcards [.*] permitted EXCEPT at the end of the string--the system will try that automatically)"
 DESCRIPTION_AUTHORNAMEORPARTIALNOWILD = "The author name or a author partial name (prefix)"
 DESCRIPTION_CITECOUNT = "Find documents cited more than 'X' times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL. Default period is 5 years."  
-DESCRIPTION_CITED_MORETHAN = f"Limit to articles cited more than this many times (default={DEFAULT_CITED_MORE_THAN})"
+DESCRIPTION_CITED_MORETHAN = f"Lower limit for counts - articles must be cited more than this many times (default={DEFAULT_CITED_MORE_THAN})"
 DESCRIPTION_CLIENT_ID = "Numeric ID assigned to a client app by Opas Administrator"
 DESCRIPTION_CLIENT_SESSION = "Client session GUID"
 DESCRIPTION_CORE = "The preset name for the specif core to use (e.g., docs, authors, etc.)"
@@ -170,6 +181,7 @@ DESCRIPTION_DOWNLOAD = "Download a CSV with the current return set of the statis
 DESCRIPTION_DAYSBACK = "Number of days to look back to assess what's new"
 DESCRIPTION_DOCDOWNLOADFORMAT = f"The format of the downloaded document data.  One of: {list_values(VALS_DOWNLOADFORMAT)}"
 DESCRIPTION_DOCIDORPARTIAL = "The document ID (e.g., IJP.077.0217A) or a partial ID (e.g., IJP.077,  no wildcard) for which to return data (only one ID for full-text documents)"
+DESCRIPTION_CITEDID = "The cited document ID (e.g., IJP.077.0217A) for which to return a list of cited documents (booleans permitted)"
 DESCRIPTION_DOCUMENT_CONCORDANCE_ID = "Paragraph language ID to return for a concordance link"
 DESCRIPTION_DOCUMENT_CONCORDANCE_RX = "String with single or list of Paragraph language IDs to return for a concordance link"
 DESCRIPTION_ENDDATE = "Find records on or before this date (input date as 2020-08-10 or 20200810)"
@@ -181,8 +193,8 @@ DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to r
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_ISSUE = "The issue number if the source has one"
 DESCRIPTION_LIMIT = "Number of items to return."
-DESCRIPTION_MOST_CITED_PERIOD = f"Most cited articles from this time period (years: {list_values(VALS_YEAROPTIONS)})"
-DESCRIPTION_MOST_VIEWED_PERIOD = f"Most viewed articles in this period (periods: {list_values(VALS_VIEWPERIODDICT)})"
+DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (years: {list_values(VALS_YEAROPTIONS)})"
+DESCRIPTION_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (periods: {list_values(VALS_VIEWPERIODDICT_SOLRFIELDS)})"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)."
 DESCRIPTION_PAGELIMIT = "Number of pages of a document to return"
 DESCRIPTION_PAGEOFFSET = "Starting page to return for this document as an offset from the first page.)"
@@ -195,20 +207,19 @@ DESCRIPTION_PARAZONE_V1 = "scope: doc, dreams, dialogs, biblios, per the schema 
 DESCRIPTION_PATH_SOURCETYPE = f"Source type.  One of: {list_values(VALS_SOURCETYPE)})"
 DESCRIPTION_PUBLICATION_PERIOD = "Number of publication years to include (counting back from current year, 0 means current year)"
 DESCRIPTION_REQUEST = "The request object, passed in automatically by FastAPI"
-DESCRIPTION_RETURNFORMATS = "The format of the returned abstract and document data.  One of: 'HTML', 'XML', 'TEXTONLY'.  The default is HTML."
+DESCRIPTION_RETURNFORMATS = "The format of the returned full-text (e.g., abstract or document data).  One of: 'HTML', 'XML', 'TEXTONLY'.  The default is HTML."
 DESCRIPTION_RETURN_ABSTRACTS = "Return abstracts in the documentList"
 DESCRIPTION_SEARCHPARAM = "This is a document request, including search parameters, to show hits"
 DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that."
 DESCRIPTION_SORT ="Comma separated list of field names to sort by."
-DESCRIPTION_SOURCECODE = "Assigned short code for Source (e.g., APA, CPS, IJP, PAQ)"
-DESCRIPTION_SOURCECODE = "The FULL 2-8 character PEP Code for source (of various types, e.g., journals: APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE; books: GW, SE, ZBK; videos: PEPGRANTVS, PEPTOPAUTHVS)."
-DESCRIPTION_SOURCELANGCODE = "Source language code or comma separated list of codes (e.g., EN, ES, DE, ...)"
-DESCRIPTION_SOURCENAME = "Name of Journal, Book, or Video name (e.g., 'international')"
-DESCRIPTION_STATONLY = "Return minimal documentListItem for statistics."
+DESCRIPTION_SOURCECODE = "The FULL 2-8 character PEP Code of the source for matching documents (e.g., journals: APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE; books: GW, SE, ZBK; videostreams: PEPGRANTVS, PEPTOPAUTHVS)"
+DESCRIPTION_SOURCELANGCODE = "Language code or comma separated list of codes for matching documents (e.g., EN, ES, DE, ...)"
+DESCRIPTION_SOURCENAME = "Name or partial name of the source journal, book, or videostream  (e.g., 'international')"
+DESCRIPTION_STATONLY = "Return minimal documentListItems for statistics."
 DESCRIPTION_STARTDATE = "Find records on or after this date (input date as 2020-08-10 or 20200810)"
 DESCRIPTION_STARTYEAR = "Find documents published on or after this year, or in this range of years (e.g, 1999, Between range: 1999-2010. After: >1999 Before: <1999" 
 DESCRIPTION_SYNONYMS = "Expand search to include specially declared synonyms (True/False)"
-DESCRIPTION_SIMILARCOUNT = "Return this count of similar documents for each document in the return set (0 is None)" 
+DESCRIPTION_SIMILARCOUNT = "Return this many similar documents for each document in the return set (0 = none)" 
 DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)."
 DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."
 DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification"
@@ -228,7 +239,7 @@ TITLE_ARTICLETYPE = "Filter by the type of article"
 TITLE_AUTHOR = "Author name"
 TITLE_AUTHORNAMEORPARTIAL = "Author name or partial/regex"
 TITLE_CITECOUNT = "Find Documents cited this many times"
-TITLE_CITED_MORETHAN = "Cited more than this many times"
+TITLE_CITED_MORETHAN = "Cited more than this many times for the specified cited period"
 TITLE_CLIENT_ID = "Client App Numeric ID"
 TITLE_CLIENT_SESSION = "GUID/UUID for client session"
 TITLE_CORE = "Core to use"
@@ -245,8 +256,8 @@ TITLE_FULLTEXT1_V1 = "Paragraph based search"
 TITLE_IMAGEID = "Image ID (unique)"
 TITLE_ISSUE = "Issue Number"
 TITLE_LIMIT = "Document return limit"
-TITLE_MOST_CITED_PERIOD = "Most cited article periods"
-TITLE_MOST_VIEWED_PERIOD = "Most viewed article periods"
+TITLE_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (years: {list_values(VALS_YEAROPTIONS)})"
+TITLE_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (periods: {list_values(VALS_VIEWPERIODDICT_SOLRFIELDS)})"
 TITLE_OFFSET = "Document return offset"
 TITLE_PAGELIMIT = "Number pages to return"
 TITLE_PAGEOFFSET = "Relative page number (1 is the first) to return"
@@ -288,6 +299,7 @@ ENDPOINT_SUMMARY_AUTHOR_PUBLICATIONS = "Return a bibliographic format list of pu
 ENDPOINT_SUMMARY_BOOK_NAMES = "Return a list of available books in bibliographic format (with additional info)"
 ENDPOINT_SUMMARY_CHANGE_PASSWORD = "Change the user's password"
 ENDPOINT_SUMMARY_CONTENTS_SOURCE = "Return the contents of the specified source in bibliographic format"
+ENDPOINT_SUMMARY_CONCORDANCE = "Return the corresponding language translated paragraph for the language-paragraph-ID (para_lgrid) specified."
 ENDPOINT_SUMMARY_CONTENTS_SOURCE_VOLUME = "Return the contents of the specified volume in bibliographic format"
 ENDPOINT_SUMMARY_CREATE_USER = "Create a new user for the system"
 ENDPOINT_SUMMARY_DELETE_CONFIGURATION = "Delete the specified named configuration by the client app"
@@ -308,6 +320,7 @@ ENDPOINT_SUMMARY_LOGIN = "Login a user (less secure method)"
 ENDPOINT_SUMMARY_LOGIN_BASIC = "Login a user more securely"
 ENDPOINT_SUMMARY_LOGOUT = "Logout the user who is logged in"
 ENDPOINT_SUMMARY_MOST_CITED = "Return the most cited journal articles published in this time period (5, 10, 20, or ALL years)"
+ENDPOINT_SUMMARY_WHO_CITED = "Return the documents which cited the document specified during this time period (5, 10, 20, or ALL years)"
 ENDPOINT_SUMMARY_MOST_VIEWED = "Return the most viewed journal articles published in this time period  (5, 10, 20, or ALL years)"
 ENDPOINT_SUMMARY_OPEN_API = "Return the OpenAPI specification for this API"
 ENDPOINT_SUMMARY_REPORTS = "Administrative predefined reports, e.g., from the server logs, e.g., Session-Log, User-Searches"
@@ -345,6 +358,9 @@ ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is a
 
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()
+
+VIEW_MOSTVIEWED_DOWNLOAD_COLUMNS = "textref, lastweek, lastmonth, last6months, last12months, lastcalyear"
+VIEW_MOSTCITED_DOWNLOAD_COLUMNS = "art_citeas_text, count5, count10, count20, countAll"
 
 VIEW_PERIOD_LASTWEEK = "lastweek"
 VIEW_PERIOD_LASTMONTH = "lastmonth"

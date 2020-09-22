@@ -176,6 +176,55 @@ class opasCentralDBMini(object):
          Using the opascentral vw_stat_cited_crosstab view, based on the api_biblioxml which is used to detect citations,
            return the cited counts for each art_id
            
+           Primary view definition copied here for safe keeping.
+           ----------------------
+           vw_stat_cited_crosstab
+           ----------------------
+           
+           SELECT
+           `r0`.`cited_document_id` AS `cited_document_id`,
+           any_value (
+           COALESCE ( `r1`.`count5`, 0 )) AS `count5`,
+           any_value (
+           COALESCE ( `r2`.`count10`, 0 )) AS `count10`,
+           any_value (
+           COALESCE ( `r3`.`count20`, 0 )) AS `count20`,
+           any_value (
+           COALESCE ( `r4`.`countAll`, 0 )) AS `countAll` 
+           FROM
+               (((((
+                               SELECT DISTINCT
+                                   `api_biblioxml`.`art_id` AS `articleID`,
+                                   `api_biblioxml`.`bib_local_id` AS `internalID`,
+                                   `api_biblioxml`.`full_ref_xml` AS `fullReference`,
+                                   `api_biblioxml`.`bib_rx` AS `cited_document_id` 
+                               FROM
+                                   `api_biblioxml` 
+                                   ) `r0`
+                               LEFT JOIN `vw_stat_cited_in_last_5_years` `r1` ON ((
+                                       `r1`.`cited_document_id` = `r0`.`cited_document_id` 
+                                   )))
+                           LEFT JOIN `vw_stat_cited_in_last_10_years` `r2` ON ((
+                                   `r2`.`cited_document_id` = `r0`.`cited_document_id` 
+                               )))
+                       LEFT JOIN `vw_stat_cited_in_last_20_years` `r3` ON ((
+                               `r3`.`cited_document_id` = `r0`.`cited_document_id` 
+                           )))
+                   LEFT JOIN `vw_stat_cited_in_all_years` `r4` ON ((
+                           `r4`.`cited_document_id` = `r0`.`cited_document_id` 
+                       ))) 
+           WHERE
+               ((
+                       `r0`.`cited_document_id` IS NOT NULL 
+                       ) 
+                   AND ( `r0`.`cited_document_id` <> 'None' ) 
+                   AND (
+                   substr( `r0`.`cited_document_id`, 1, 3 ) NOT IN ( 'ZBK', 'IPL', 'SE.', 'GW.' ))) 
+           GROUP BY
+               `r0`.`cited_document_id` 
+           ORDER BY
+               `countAll` DESC
+           
         """
         citation_table = []
         print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
