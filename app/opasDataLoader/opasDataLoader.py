@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.09.17" 
+__version__     = "2020.09.24" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -47,10 +47,11 @@ print(
              python opasDataLoader.py -a --sub _PEPCurrent
 
         Note:
-          S3 is set up with subfolders _PEPArchive, _PEPCurrent, _PEPFree, _PEPOffsite
-            under pep-web-xml to allow easy processing of one archive type at a time using
+          S3 is set up with root pep-web-xml (default).  The root must be the bucket name.
+          
+          S3 has subfolders _PEPArchive, _PEPCurrent, _PEPFree, _PEPOffsite
+            to allow easy processing of one archive type at a time simply using
             the --sub option (or four concurrently for faster processing).
-
 
     """
 )
@@ -89,6 +90,7 @@ import pymysql
 # import opasCoreConfig
 import configLib.opasCoreConfig
 from configLib.opasCoreConfig import solr_authors, solr_gloss
+import loaderConfig
 import opasSolrLoadSupport
 
 import opasXMLHelper as opasxmllib
@@ -208,6 +210,10 @@ def main():
     #solrurl_refs = None
     solrurl_authors = None
     solrurl_glossary = None
+    if options.rootFolder == localsecrets.XML_ORIGINALS_PATH or options.rootFolder == None:
+        start_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
+    else:
+        start_folder = pathlib.Path(options.rootFolder)   
     
     if 1: # (options.biblio_update or options.fulltext_core_update or options.glossary_core_update) == True:
         try:
@@ -216,7 +222,7 @@ def main():
             solrurl_glossary = localsecrets.SOLRURL + configLib.opasCoreConfig.SOLR_GLOSSARY
             # print("Logfile: ", logFilename)
             print("Messaging verbose: ", options.display_verbose)
-            print("Input data Root: ", options.rootFolder)
+            print("Input data Root: ", start_folder)
             print("Input data Subfolder: ", options.subFolder)
             print("Reset Core Data: ", options.resetCoreData)
             if options.forceRebuildAllFiles == True:
@@ -244,11 +250,7 @@ def main():
             print (msg)
             print((len(msg)*"-"))
             sys.exit(0)
-        
-    start_folder = options.rootFolder
-    if options.subFolder is not None:
-        start_folder = options.subFolder
-        
+
     # import data about the PEP codes for journals and books.
     #  Codes are like APA, PAH, ... and special codes like ZBK000 for a particular book
     sourceDB = opasCentralDBLib.SourceInfoDB()
@@ -290,22 +292,20 @@ def main():
     total_files = 0
     
     if options.subFolder is not None:
-        path = pathlib.Path(options.subFolder)
-    else:
-        path = None
+        start_folder = start_folder / pathlib.Path(options.subFolder)
     
-    print (f"Locating files for processing. Started at ({time.ctime()}).")
+    print (f"Locating files for processing at {start_folder} with pattern {loaderConfig.file_match_pattern}. Started at ({time.ctime()}).")
     if options.file_key is not None:  
         print (f"File Key Specified: {options.file_key}")
-        pat = fr"({options.file_key}.*)\((bEXP_ARCH1|bSeriesTOC)\)\.(xml|XML)$"
-        filenames = fs.get_matching_filelist(filespec_regex=pat, path=path, max_items=1)
+        pat = fr"({options.file_key}.*){loaderConfig.file_match_pattern}"
+        filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1)
         if len(filenames) is None:
             msg = f"File {pat} not found.  Exiting."
             logger.warning(msg)
             print (msg)
             exit(0)
     else:
-        pat = r"(.*?)\((bEXP_ARCH1|bSeriesTOC)\)\.(xml|XML)$"
+        pat = fr"(.*?){loaderConfig.file_match_pattern}"
         filenames = []
     
     if filenames != []:
@@ -506,15 +506,13 @@ def main():
 if __name__ == "__main__":
     global options  # so the information can be used in support functions
     options = None
-    # logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
-
-    parser = OptionParser(usage="%prog [options] - PEP Solr Reference Text Data Loader", version="%prog ver. 0.1.14")
+    parser = OptionParser(usage="%prog [options] - PEP Solr Data Loader", version=f"%prog ver. {__version__}")
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
                       help="Option to force all files to be updated on the specified cores.")
     parser.add_option("--after", dest="created_after", default=None,
                       help="Load files created or modifed after this datetime (use YYYY-MM-DD format). (May not work on S3)")
     parser.add_option("-d", "--dataroot", dest="rootFolder", default=localsecrets.XML_ORIGINALS_PATH,
-                      help="Root folder path where input data is located")
+                      help="Bucket (Required S3) or Root folder path where input data is located")
     parser.add_option("--key", dest="file_key", default=None,
                       help="Key for a single file to process, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
