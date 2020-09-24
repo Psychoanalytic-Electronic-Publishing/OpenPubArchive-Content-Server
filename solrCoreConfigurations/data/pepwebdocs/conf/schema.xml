@@ -3,6 +3,8 @@
     PEP Web Database Schema
     for core PEPWebDocs
 
+    2020-09-22  Added figure_count, table_count and art_graphic_list (callouts)
+
     2020-09-04  Moving art_cited_x updates to post-load updates.  to do that, like the art_views, no
                 data should be indexed during the original load, or you get a Solr error that says 
                 you can't update data records that have child records.  Solr makes it hard to change
@@ -146,14 +148,14 @@
   <field name="art_subtitle_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!--......................................................................................................-->
   <!--DOCUMENT METADATA-->
-  <field name="art_vol" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_vol_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_vol_suffix" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_vol" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_vol_int" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_vol_suffix" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_vol_title" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_iss"  type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_iss" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_iss_title" type="string_ci" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_year" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_year_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_year" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_year_int" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_origrx" type="string" indexed="true" stored="true" multiValued="false"/>
   <!--Added art_views_lastcalyear 2020-05 to meet search requirements-->
   <!--These have to be false for all but docValues to allow in place updates-->
@@ -169,8 +171,8 @@
   <field name="art_views_last12mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
   <field name="art_views_lastweek" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
    
-  <field name="art_sourcecode" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_sourcetitleabbr" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_sourcecode" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_sourcetitleabbr" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_sourcetitlefull" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!--<field name="art_sourcetitle_fulltext" type="text_simple" indexed="true" stored="true" multiValued="false"/>-->
   <!--<copyField source="art_sourcetitlefull" dest="art_sourcetitle_fulltext"/>-->
@@ -182,15 +184,15 @@
   <field name="bk_alsoknownas_xml"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_editors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <field name="bk_seriestitle_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="bk_pubyear" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="bk_pubyear" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--Added 7/6 for SE/GW and to cover general book info (e.g., next/prev id)details which do not come back in the html-->
-  <field name="bk_subdoc" type="boolean" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="bk_subdoc" type="boolean" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--New fields for book management 2020-08-11 -->
   <!--Books with a TOC (main book in series or single book) point to themselves; others point to where the TOC is.-->
-  <field name="bk_main_toc_id" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="bk_series_toc_id" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="bk_main_toc_id" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="bk_series_toc_id" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--This is in the schema because it can be used to sort a multiple instance book by sequence-->
-  <field name="bk_next_id" type="string" indexed="true" stored="false" multiValued="false" docValues="true" sortMissingFirst="true"/>
+  <field name="bk_next_id" type="string" indexed="false" stored="false" multiValued="false" docValues="true" sortMissingFirst="true"/>
   
   <!-- ************************************************************************************************* -->
   <!-- End Key display fields! -->
@@ -226,7 +228,7 @@
   <!--Added 7/21 to facilitate smartsearch-->
   <field name="art_authors_lastnames" type="string_ci" indexed="true" stored="false" multiValued="true"/>
   <!--Added 7/24 to facilitate smartsearch-->
-  <field name="art_authors_count" type="pint" indexed="true" stored="true" docValues="true" multiValued="false"/>
+  <field name="art_authors_count" type="pint" indexed="false" stored="false" docValues="true" multiValued="false"/>
   
   <copyField source="art_authors" dest="art_authors_text"/>
   <copyField source="art_authors" dest="art_authors_ngrm"/>
@@ -249,18 +251,17 @@
 
   <!-- Added this 6/25 to allow any part of a journal name to be searched.-->
   <!-- journal, book, or video -->
-  <field name="art_sourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_type" type="string" indexed="true" stored="true" multiValued="false" docValues="true" />
-
-  <field name="art_pgrg" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_sourcetype" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_type" type="string" indexed="false" stored="false" multiValued="false" docValues="true" />
+  <field name="art_pgrg" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--Added 2020-05-06-->
-  <field name="art_pgcount" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
-  <field name="art_lang" type="string_ci" indexed="true" stored="true" multiValued="false"/> <!--changed to multivalued=false, 2020-06-17 (it's an attribute of artinfo)-->
-  <field name="art_issn" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_pgcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_lang" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/> <!--changed to multivalued=false, 2020-06-17 (it's an attribute of artinfo)-->
+  <field name="art_issn" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--Added 2020-05-06-->
-  <field name="art_isbn" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_isbn" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_kwds"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_qual" type="string" indexed="true" stored="true" docValues="true" multiValued="false"/>
+  <field name="art_qual" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--Added for faceting use, 2020-04-25-->
   <!--For faceting multi word keywords, may want to eventually just replace art_kwds with this -->
   <field name="art_kwds_str"  type="string_ci" indexed="true" stored="false" multiValued="true"/>
@@ -277,19 +278,34 @@
   <field name="bib_rx" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="bib_title" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="bib_journaltitle" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
-  <field name="reference_count" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/> 
+  <field name="reference_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
   <field name="references_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
-  <!-- This is a special structured entry (a JSON field) -->
-  <!--<field name="bib_entries_json" type="text_general" indexed="true" stored="true" multiValued="true"/>-->
-
-  <!-- Main Body fields -->
-  <!-- <field name="body_paras" type="text_general" indexed="true" stored="true" multiValued="true"/> -->
 
   <field name="caption_text_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="caption_title_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
 
-  <field name="headings_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
+  <!--Added 2020-09-22-->
+  <field name="art_figcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_tblcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_graphic_list" type="string" indexed="false" stored="true" multiValued="true" docValues="false"/>
 
+  <!-- 2020-09-23
+       added art_product_key, a non-unique code that Opas can send to the auth server to verify access 
+       at a product (grouped) level. If product grouping changes, for example, if SE were being 
+       authorized by book/volume the loader program would need to change to reflect that.  
+       Alternatively, this could be done by the AuthServer if the rules, now in the loader, were put there.
+       Not sure whether we'll use this but for now, it's in the Schema for testing.
+       
+       Side note: As tested/confirmed with this element in Solr 8.6,
+          - Solr Schema elements (at least strings and integers) that are docvalues don't need to be indexed 
+            or saved to be returnable in results and be searchable
+          - added this to existing database via interactive schema and it still allowed stat updates on 
+            my localhost
+  -->
+  <field name="art_product_key" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  
+
+  <field name="headings_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
   <!-- Revision info for document -->
   <field name="meta_xml" type="text_simple" indexed="true" stored="true"/>
   <!--cgrp_era2 are pep corrections.  Added 2020-08-30 -->
