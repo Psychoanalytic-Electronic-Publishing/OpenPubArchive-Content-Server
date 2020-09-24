@@ -263,11 +263,11 @@ class ArticleInfo(object):
                 self.art_vol_str = vol_actual
         
         try: #  lookup source in db
-            if self.src_code in ["ZBK"]:
-                pepsrccode = f"{self.src_code}%03d" % self.art_vol_int
+            if self.src_code in ["ZBK", "IPL", "NLP"]:
+                self.src_prodkey = pepsrccode = f"{self.src_code}%03d" % self.art_vol_int
                 self.src_type = "book"
             else:
-                pepsrccode = f"{self.src_code}"
+                self.src_prodkey = pepsrccode = f"{self.src_code}"
 
             self.src_title_abbr = sourceinfodb_data[pepsrccode].get("sourcetitleabbr", None)
             self.src_title_full = sourceinfodb_data[pepsrccode].get("sourcetitlefull", None)
@@ -276,12 +276,13 @@ class ArticleInfo(object):
                 self.src_type = "book"
             else:
                 self.src_type = sourceinfodb_data[pepsrccode].get("product_type", None)  # journal, book, video...
+                
         except KeyError as err:
             self.src_title_abbr = None
             self.src_title_full = None
-            self.src_type = None
+            self.src_type = "book"
             self.src_embargo = None
-            logger.warning("Error: PEP Source %s not found in source info db.  Use the 'PEPSourceInfo export' after fixing the issn table in MySQL DB", self.src_code)
+            logger.warning("Error: Source %s not found in source info db.  Assumed to be an offsite book.  Or you can add to the api_productbase table in the RDS/MySQL DB", self.src_code)
         except Exception as err:
             logger.error("Error: Problem with this files source info. File skipped. (%s)", err)
             #processingErrorCount += 1
@@ -342,6 +343,18 @@ class ArticleInfo(object):
         except Exception as e:
             self.art_pgcount = 0
             
+        try:
+            self.art_figcount = int(pepxml.xpath("count(//figure)")) # 20200922
+        except Exception as e:
+            self.art_figcount = 0
+
+        self.art_graphic_list = pepxml.xpath('//graphic//@source')
+        
+        try:
+            self.art_tblcount = int(pepxml.xpath("count(//tbl)")) # 20200922
+        except Exception as e:
+            self.art_tblcount = 0
+
         if self.art_pgstart is not None:
             self.art_pgstart_prefix, self.art_pgstart, self.pgstart_suffix = opasgenlib.pgnum_splitter(self.art_pgstart)
         else:
@@ -761,6 +774,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
                 "art_sourcetitleabbr" : artInfo.src_title_abbr,
                 "art_sourcetitlefull" : artInfo.src_title_full,
                 "art_sourcetype" : artInfo.src_type,
+                "art_product_key" : artInfo.src_prodkey,
                 # abstract_xml and summaries_xml should not be searched, but useful for display without extracting
                 "abstract_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//abs", default_return = None),
                 "summaries_xml" : summaries_xml,
@@ -811,6 +825,9 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
                 "art_vol_title" : non_empty_string(artInfo.art_vol_title),
                 "art_pgrg" : non_empty_string(artInfo.art_pgrg),
                 "art_pgcount" : artInfo.art_pgcount,
+                "art_tblcount" : artInfo.art_tblcount,
+                "art_figcount" : artInfo.art_figcount,
+                "art_graphic_list" : artInfo.art_graphic_list,
                 "art_iss" : artInfo.art_issue,
                 "art_iss_title" : artInfo.art_issue_title,
                 "art_doi" : artInfo.art_doi,
