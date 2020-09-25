@@ -427,7 +427,10 @@ class FlexFileSystem(object):
         if path is None:
             data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH) # "pep-web-xml"
         else:
-            data_folder = pathlib.Path("/") / pathlib.Path(localsecrets.XML_ORIGINALS_PATH) / path
+            if path == pathlib.Path(localsecrets.XML_ORIGINALS_PATH):
+                data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
+            else:
+                data_folder = path
             
         if self.key is not None:
             data_folder = data_folder.as_posix()

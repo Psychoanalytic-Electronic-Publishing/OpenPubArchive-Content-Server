@@ -381,6 +381,22 @@ class SessionInfo(BaseModel):
     api_client_session: bool = Schema(False, title="True if the session_id is from the header via the client rather than a cookie")
 
 #-------------------------------------------------------
+class ServerStatusContent(BaseModel):
+    article_count: int = Schema(0, title="")
+    journal_count: int = Schema(0, title="")
+    video_count: int = Schema(0, title="")
+    book_count: int = Schema(0, title="")
+    figure_count: int = Schema(0, title="")
+    year_count: int = Schema(0, title="")
+    year_first: int = Schema(0, title="")
+    year_last: int = Schema(0, title="")
+    vol_count: int = Schema(0, title="")   
+    page_count: int = Schema(0, title="")
+    page_height_feet: float = Schema(0, title="")
+    page_weight_tons: float = Schema(0, title="")
+    source_count: dict = Schema(None, title="")
+    description_html: str = Schema(None, title="")
+    source_count_html: str = Schema(None, title="")
     
 class ServerStatusItem(BaseModel):
     db_server_ok: bool = Schema(None, title="Database server is online")
@@ -390,13 +406,14 @@ class ServerStatusItem(BaseModel):
     opas_version: str = Schema(None, title="Version of OPAS")
     dataSource: str = Schema(None, title="Version of the API server software")
     timeStamp: str = Schema(None, title="Current time")
+    serverContent: ServerStatusContent = Schema(None, title="Database Content (Counts)")
     # admin only
     user_count:  int = Schema(0, title="Number of users online")
     user_ip: str = Schema(None, title="Requestor's ip")
-    config_name: str= Schema(None, title="Current Configuration Name")
-    text_server_url: str= Schema(None, title="Current SOLR URL")
-    cors_regex: str= Schema(None, title="Current CORS Regex")
-    db_server_url: str= Schema(None, title="Current DB URL")
+    config_name: str = Schema(None, title="Current Configuration Name")
+    text_server_url: str = Schema(None, title="Current SOLR URL")
+    cors_regex: str = Schema(None, title="Current CORS Regex")
+    db_server_url: str = Schema(None, title="Current DB URL")
 
 #-------------------------------------------------------
 

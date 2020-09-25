@@ -55,6 +55,8 @@ import http.cookies
 import re
 import secrets
 import socket, struct
+from collections import OrderedDict
+
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 from starlette.responses import Response
@@ -882,6 +884,9 @@ def metadata_get_volumes(source_code=None,
     limit = 6
     count = 0
     ret_val = None
+    # normalize source type
+    if source_type is not None: # none is ok
+        source_type = opasConfig.normalize_val(source_type, opasConfig.VALS_SOURCE_TYPE, None)
     
     q_str = "bk_subdoc:false"
     if source_code is not None:
@@ -1058,6 +1063,100 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
 
     ret_val = document_list
 
+    return ret_val
+
+#-----------------------------------------------------------------------------
+def metadata_get_database_statistics():
+    """
+    Return counts for the annual summary (or load checks)
+
+    >>> results = metadata_get_counts()
+    >>> results.documentList.responseInfo.count == 5
+    True
+    """
+    content = models.ServerStatusContent()
+    
+    # data = metadata_get_volumes(source_code="IJPSP")
+    documentList, ret_status = search_text(query=f"art_id:*", 
+                                               limit=1,
+                                               facet_fields="art_year,art_pgcount,art_figcount,art_sourcetitleabbr", 
+                                               abstract_requested=False,
+                                               full_text_requested=False
+                                               )
+    
+    bookList, ret_status = search_text(query=f"art_sourcecode:(ZBK || IPL || NLP)", 
+                                               limit=1,
+                                               facet_fields="art_product_key", 
+                                               abstract_requested=False,
+                                               full_text_requested=False
+                                               )
+    
+    videoList, ret_status = search_text(query=f"art_sourcecode:*VS", 
+                                               limit=1,
+                                               facet_fields=None, 
+                                               abstract_requested=False,
+                                               full_text_requested=False
+                                               )
+
+    content.article_count = documentList.documentList.responseInfo.fullCount
+    facet_counts = documentList.documentList.responseInfo.facetCounts
+    facet_fields = facet_counts["facet_fields"]
+    src_counts = facet_fields["art_sourcetitleabbr"]
+    fig_counts = facet_fields["art_figcount"]
+    content.figure_count = sum([int(y) for x,y in fig_counts.items() if x != '0'])
+    journals_plus_videos = [x for x,y in src_counts.items() if x not in ("ZBK", "IPL", "NLP", "SE", "GW")]
+    journals = [x for x in journals_plus_videos if re.match(".*VS", x) is None]
+    content.journal_count = len(journals)
+    content.video_count = videoList.documentList.responseInfo.fullCount
+    book_facet_counts = bookList.documentList.responseInfo.facetCounts
+    book_facet_fields = book_facet_counts["facet_fields"]
+    book_facet_product_keys = book_facet_fields["art_product_key"]
+    content.book_count = len(book_facet_product_keys)
+    article_counts = dict(OrderedDict(sorted(src_counts.items(), key=lambda t: t[0])))
+    vols = metadata_get_volumes(source_type="journal")    
+    content.vol_count = vols.volumeList.responseInfo.fullCount
+    year_counts = facet_fields["art_year"]
+    years = [int(x) for x,y in year_counts.items()]
+    content.year_first = min(years)
+    content.year_last = max(years)
+    content.year_count = content.year_last - content.year_first
+    page_counts = facet_fields["art_pgcount"]
+    pages = [int(x) *int(y) for x,y in page_counts.items()]
+    content.page_count = sum(pages)
+    content.page_height_feet = int(((content.page_count * .1) / 25.4) / 12) # page thickness in mm, 25.4 mm per inch, 12 inches per foot
+    content.page_weight_tons = int(content.page_count * 4.5 * 0.000001)
+    source_count_html = "<ul>"
+    for code, cnt in article_counts.items():
+        source_count_html += f"<li>{code} - {cnt}</li>"
+    source_count_html += "</ul>"
+   
+    content.description_html = f"""
+<p>This release of PEP-Web contains the complete text and illustrations of
+{content.journal_count} premier journals in psychoanalysis,
+{content.book_count} classic psychoanalytic books, and the full text and Editorial notes of the
+24 volumes of the Standard Edition of the Complete Psychological Works of Sigmund Freud as well as the
+19 volume German Freud Standard Edition Gesammelte Werke.  It spans over
+{content.year_count} publication years and contains the full text of articles whose source ranges from
+{content.year_first} through {content.year_last}.</p>
+<p>
+There are over
+{content.article_count} articles and almost
+{content.figure_count} figures and illustrations that originally resided on
+{content.vol_count} volumes with over
+{content.page_count/100000:.2f} million printed pages. In hard copy, the PEP Archive represents a stack of paper more than
+{content.page_height_feet} feet high and weighing over
+{content.page_weight_tons} tons!
+</p>
+"""
+    
+    content.source_count_html = f"""
+<p>
+\nCount of Articles by Source:
+\n{source_count_html}
+</p>
+"""
+        
+    ret_val = content
     return ret_val
 
 #-----------------------------------------------------------------------------

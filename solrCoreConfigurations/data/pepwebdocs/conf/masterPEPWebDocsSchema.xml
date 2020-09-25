@@ -6,7 +6,7 @@
                As tested/confirmed with this element in Solr 8.6, Solr Schema elements (at least strings and integers) 
                that are docvalues don't need to be indexed or saved to be returnable in results and be searchable
 
-                Side Note: tested adding a field (api_product_key) this to an existing core via interactive schema and 
+                Side Note: tested adding a field (art_product_key) this to an existing core via interactive schema and 
                  it still allowed stat updates on my localhost
 
     2020-09-22  Added figure_count, table_count and art_graphic_list (callouts)

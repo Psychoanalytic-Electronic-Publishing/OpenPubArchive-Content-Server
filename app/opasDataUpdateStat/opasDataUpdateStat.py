@@ -323,7 +323,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
         except Exception as e:
-            logger.debug(f"Document {doc_id} not in Solr...skipping")
+            logger.info(f"Document {doc_id} not in Solr...skipping")
             skipped_as_missing += 1
         else:
             if found:
