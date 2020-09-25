@@ -33,7 +33,6 @@ class TestLoader(unittest.TestCase):
           with forced order in the names.
     
     """
-
     def test_process_sub(self):
         result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '--sub=_PEPFree', '--nocheck'], capture_output=True)
         out = result.stdout.decode("UTF-8")

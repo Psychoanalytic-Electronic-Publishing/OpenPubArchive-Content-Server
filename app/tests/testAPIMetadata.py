@@ -178,6 +178,17 @@ class TestMetadata(unittest.TestCase):
         print (f"IPL Volume Count: {r['volumeList']['responseInfo']['fullCount']}")
         assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_IPL) # 22 vols of IPL
 
+    def test_0_meta_volumes_api_NLP(self): 
+        # ---------------------------------------------------------------------------------------
+        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=NLP')
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print (f"IPL Volume Count: {r['volumeList']['responseInfo']['fullCount']}")
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_NLP) # 22 vols of IPL
+
+
     def test_0_meta_volumes_api_error(self): 
         # ---------------------------------------------------------------------------------------
         # try an error
@@ -290,7 +301,9 @@ class TestMetadata(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['count'] >= 200)
+        count = r['sourceInfo']['responseInfo']['count']
+        print (f"Count {count}")
+        assert(count >= 200)
 
     def test_8b_meta_all_sources(self):
         """

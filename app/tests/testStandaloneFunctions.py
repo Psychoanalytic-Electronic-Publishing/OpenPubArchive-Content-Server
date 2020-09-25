@@ -168,13 +168,15 @@ class TestStandaloneFunctions(unittest.TestCase):
         """
         data = opasAPISupportLib.metadata_get_videos(src_type="Videos", pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0)
         # Confirm that the request-response cycle completed successfully.
-        assert (data[0] >= 90)
         # check to make sure a known value is among the data returned
         dataList = [d['documentID'] for d in data[1] if 'documentID' in d]
         assert ('IPSAVS.001A.0001A' in dataList)
         data = opasAPISupportLib.metadata_get_source_info(src_type="journal")
         dataList = [d.PEPCode for d in data.sourceInfo.responseSet]
         assert ('PAQ' in dataList)
+        data = opasAPISupportLib.metadata_get_source_info(src_type="book")
+        dataList = [d.PEPCode for d in data.sourceInfo.responseSet]
+        assert ('ZBK075' in dataList)
         
     def test_3_get_para_translation(self):
         """

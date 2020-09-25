@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
-    PEP Web Database Schema
-    for core PEPWebDocs
+    PEP Web Database Schema for core PEPWebDocs
+
+    2020-09-24 Many simple fields changed to non-stored, non-indexed, but docvalues       
+               As tested/confirmed with this element in Solr 8.6, Solr Schema elements (at least strings and integers) 
+               that are docvalues don't need to be indexed or saved to be returnable in results and be searchable
+
+                Side Note: tested adding a field (api_product_key) this to an existing core via interactive schema and 
+                 it still allowed stat updates on my localhost
 
     2020-09-22  Added figure_count, table_count and art_graphic_list (callouts)
 
@@ -206,7 +212,7 @@
 
   <!-- Metadata fields -->
   <!-- Store whether its PEPArchive, PEPCurrent, etc. -->
-  <field name="file_classification" type="string" indexed="true" stored="true"/>
+  <field name="file_classification" type="string" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
 
   <!-- Article authors -->
   <!-- So how can we do queries for partial last names...can't bunch authors in printable form.  
@@ -295,18 +301,12 @@
        authorized by book/volume the loader program would need to change to reflect that.  
        Alternatively, this could be done by the AuthServer if the rules, now in the loader, were put there.
        Not sure whether we'll use this but for now, it's in the Schema for testing.
-       
-       Side note: As tested/confirmed with this element in Solr 8.6,
-          - Solr Schema elements (at least strings and integers) that are docvalues don't need to be indexed 
-            or saved to be returnable in results and be searchable
-          - added this to existing database via interactive schema and it still allowed stat updates on 
-            my localhost
   -->
   <field name="art_product_key" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   
 
   <field name="headings_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
-  <!-- Revision info for document -->
+  <!-- Revision info for document; #TODO change to string perhaps and remove indexing -->
   <field name="meta_xml" type="text_simple" indexed="true" stored="true"/>
   <!--cgrp_era2 are pep corrections.  Added 2020-08-30 -->
   <field name="meta_marked_corrections"  type="text_general" indexed="true" stored="true" multiValued="true"/>

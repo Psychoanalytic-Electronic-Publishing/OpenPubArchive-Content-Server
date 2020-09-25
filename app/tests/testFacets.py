@@ -32,7 +32,7 @@ class TestFacets(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         print(response_info["facetCounts"]["facet_fields"]["art_sourcecode"])
-        assert(response_info["fullCount"] >= 135000)
+        assert(response_info["fullCount"] >= 130000)
         assert(response_info["facetCounts"]["facet_fields"]["art_sourcecode"]["PAQ"] >= 16989)
         assert(response_info["facetCounts"]["facet_fields"]["art_sourcecode"]["IJP"] >= 11721)
         assert(response_info["facetCounts"]["facet_fields"]["art_sourcecode"]["RFP"] >= 8775)

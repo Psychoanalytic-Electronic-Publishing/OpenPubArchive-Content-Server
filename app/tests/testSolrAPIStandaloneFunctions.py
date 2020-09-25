@@ -45,6 +45,10 @@ class TestSolrAPIStandaloneFunctions(unittest.TestCase):
     
     
     """
+    def test_0_get_database_statistics(self):
+        data = opasAPISupportLib.metadata_get_database_statistics()
+        count = data.volumeList.responseInfo.count
+        assert(count == unitTestConfig.VOL_COUNT_IJPSP)
     
     def test_1_get_source_list_IJPSP(self):
         data = opasAPISupportLib.metadata_get_volumes(source_code="IJPSP")

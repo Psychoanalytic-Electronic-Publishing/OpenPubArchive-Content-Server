@@ -53,9 +53,9 @@ class TestSQLStructure(unittest.TestCase):
                   #"vw_api_session_endpoints_with_descriptor ",
                   "vw_api_sourceinfodb",
                   "vw_api_user",
-                  "vw_api_user_subscriptions_with_basecodes",
+                  # "vw_api_user_subscriptions_with_basecodes",
                   "vw_latest_session_activity",
-                  "vw_products_with_productbase",
+                  # "vw_products_with_productbase",
                   "vw_stat_cited_crosstab",
                   "vw_stat_cited_in_all_years",
                   "vw_stat_cited_in_last_5_years",
@@ -67,13 +67,13 @@ class TestSQLStructure(unittest.TestCase):
                   "vw_stat_docviews_lastsixmonths",
                   "vw_stat_docviews_lastweek",
                   "vw_stat_most_viewed",
-                  "vw_subscriptions",
+                  # "vw_subscriptions",
                   "vw_user_active_subscriptions",
                   "vw_stat_docviews_lastcalyear", # for now, nothing from last year
                   "vw_user_referred",
-                  "vw_user_referrer_account_management",
-                  "vw_user_session_activity",
-                  "vw_user_subscriptions_products"
+                  # "vw_user_referrer_account_management",
+                  # "vw_user_session_activity",
+                  # "vw_user_subscriptions_products"
                   ]
 
         for table in tables:              
