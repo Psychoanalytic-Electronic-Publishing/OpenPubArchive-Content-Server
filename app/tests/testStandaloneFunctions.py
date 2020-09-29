@@ -48,6 +48,10 @@ class TestStandaloneFunctions(unittest.TestCase):
           with forced order in the names.
     
     """
+
+    def test_year_arg_parser_(self):
+        resp = opasQueryHelper.year_arg_parser("1980-1989 OR 2000-2010")
+        print (resp)
     
     def test_cleanup_query_(self):
         resp = opasQueryHelper.cleanup_solr_query("freud, sigmund OR grotstein, james s")

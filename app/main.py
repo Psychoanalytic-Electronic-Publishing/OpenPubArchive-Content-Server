@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0928.1.Alpha"
+__version__     = "2020.0929.1.Alpha"
 __status__      = "Development"
 
 """
@@ -201,8 +201,8 @@ def get_client_id(response: Response,
            if not there, gets it from a cookie
     """
  
-    client_id_qparam = request.query_params.get("client_id", None)
-    client_id_cookie = request.cookies.get("client_id", None)
+    client_id_qparam = request.query_params.get("client-id", None)
+    client_id_cookie = request.cookies.get("client-id", None)
     if client_id is not None:
         ret_val = client_id
     elif client_id_qparam is not None:
@@ -225,8 +225,8 @@ def get_client_session(response: Response,
            if not there, gets it from a cookie
     """
  
-    client_session_qparam = request.query_params.get("client_session", None)
-    client_session_cookie = request.cookies.get("client_session", None)
+    client_session_qparam = request.query_params.get("client-session", None)
+    client_session_cookie = request.cookies.get("client-session", None)
     if client_session is not None:
         ret_val = client_session
     elif client_session_qparam is not None:
@@ -2214,6 +2214,7 @@ async def database_search_v1(response: Response,
                                                citecount=None,   # not used in V1 
                                                viewcount=None,   # not used in V1
                                                viewperiod=None, # not used in V1 
+                                               highlightlimit=opasConfig.DEFAULT_MAX_KWIC_RETURNS, 
                                                facetfields=None,
                                                abstract=True, 
                                                sort=sort,
@@ -2507,6 +2508,7 @@ async def database_search_v3(
                                                       citecount=citecount,
                                                       viewcount=viewcount,
                                                       viewperiod=viewperiod,
+                                                      highlighting_max_snips=highlightlimit, 
                                                       facetfields=facetfields,
                                                       facetmincount=facetmincount,
                                                       facetlimit=facetlimit,
@@ -2570,6 +2572,7 @@ async def database_testsearch_v2(response: Response,
                              synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
                              facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                              sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                             highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
                              client_id:int=Depends(get_client_id), 
                              client_session:str= Depends(get_client_session)
                              ):
@@ -2610,6 +2613,7 @@ async def database_testsearch_v2(response: Response,
                                                       citecount=None,
                                                       viewcount=None,
                                                       viewperiod=None,
+                                                      highlighting_max_snips=highlightlimit, 
                                                       facetfields=facetfields,
                                                       facetmincount=1,
                                                       facetlimit=None,
@@ -2757,6 +2761,7 @@ async def database_search_v2(response: Response,
                                                       endyear=endyear,
                                                       citecount=citecount,
                                                       viewcount=viewcount,
+                                                      highlighting_max_snips=highlightlimit, 
                                                       viewperiod=viewperiod,
                                                       facetfields=facetfields,
                                                       facetmincount=facetmincount,
@@ -3244,6 +3249,7 @@ async def database_smartsearch(response: Response,
                                abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
                                similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                                formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                               highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
                                facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
@@ -3339,7 +3345,8 @@ async def database_smartsearch(response: Response,
                                        endyear=None, 
                                        citecount=None,   
                                        viewcount=None,   
-                                       viewperiod=None, 
+                                       viewperiod=None,
+                                       highlightlimit=highlightlimit, 
                                        facetfields=facetfields,
                                        facetmincount=1,
                                        facetlimit=15,
@@ -4440,6 +4447,7 @@ async def database_glossary_search_v2(response: Response,
                                       facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                       formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                      highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                                       client_id:int=Depends(get_client_id), 
                                       client_session:str= Depends(get_client_session)
@@ -4495,6 +4503,7 @@ async def database_glossary_search_v2(response: Response,
                                         viewcount=None,
                                         viewperiod=None,
                                         formatrequested=formatrequested, 
+                                        highlightlimit=highlightlimit, 
                                         facetfields=facetfields, 
                                         sort=sort,
                                         limit=limit,
@@ -4531,6 +4540,7 @@ async def database_glossary_search_v3(response: Response,
                                       sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                       facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                       formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                                      highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
                                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                                       client_id:int=Depends(get_client_id), 
@@ -4584,6 +4594,7 @@ async def database_glossary_search_v3(response: Response,
                                         citecount=None,
                                         viewcount=None,
                                         viewperiod=None,
+                                        highlightlimit=highlightlimit, 
                                         formatrequested=formatrequested, 
                                         facetfields=facetfields, 
                                         sort=sort,
@@ -5028,7 +5039,7 @@ async def documents_image_fetch(response: Response,
             detail=status_message
         )    
 
-    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, path=localsecrets.IMAGE_SOURCE_PATH)
+    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
     filename = fs.get_image_filename(filespec=imageID) # IMAGE_SOURCE_PATH set as root above, all that we need
     media_type='image/jpeg'
     if download == 0:

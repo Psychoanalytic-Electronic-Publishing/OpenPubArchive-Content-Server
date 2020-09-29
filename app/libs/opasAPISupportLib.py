@@ -1778,7 +1778,8 @@ def get_fulltext_from_search_results(result,
                                      page,
                                      page_offset,
                                      page_limit,
-                                     documentListItem: models.DocumentListItem, format_requested="HTML"):
+                                     documentListItem: models.DocumentListItem,
+                                     format_requested="HTML"):
 
     child_xml = None
     if documentListItem.sourceTitle is None:
@@ -1944,7 +1945,7 @@ def documents_get_document(document_id,
                                                     similar_count=similar_count, 
                                                     full_text_requested=True,
                                                     abstract_requested=True,
-                                                    format_requested="HTML",
+                                                    format_requested=ret_format,
                                                     #return_field_set=return_field_set, 
                                                     #summary_fields = summary_fields,  # deprecate?
                                                     highlight_fields = "text_xml",
@@ -3219,12 +3220,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # This is the room where where full-text return HAPPENS
                     # ########################################################################
                     if solr_query_spec.fullReturn and not documentListItem.accessLimited and not offsite:
-                        documentListItem = get_fulltext_from_search_results(result,
-                                                                            text_xml,
-                                                                            solr_query_spec.page,
-                                                                            solr_query_spec.page_offset,
-                                                                            solr_query_spec.page_limit,
-                                                                            documentListItem)
+                        documentListItem = get_fulltext_from_search_results(result=result,
+                                                                            text_xml=text_xml,
+                                                                            format_requested=solr_query_spec.returnFormat, 
+                                                                            page=solr_query_spec.page,
+                                                                            page_offset=solr_query_spec.page_offset,
+                                                                            page_limit=solr_query_spec.page_limit,
+                                                                            documentListItem=documentListItem)
                     else: # by virtue of not calling that...
                         # no full-text if accessLimited or offsite article
                         # free up some memory, since it may be large

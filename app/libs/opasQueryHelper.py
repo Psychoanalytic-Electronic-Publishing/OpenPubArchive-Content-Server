@@ -268,6 +268,46 @@ class QueryTextToSolr():
             
         return ret_val
 #-----------------------------------------------------------------------------
+def year_parser_support(year_arg):
+
+    year_query = re.match("[ ]*(?P<option>[\>\^\<\=])?[ ]*(?P<start>[12][0-9]{3,3})?[ ]*(?P<separator>([-]|TO))*[ ]*(?P<end>[12][0-9]{3,3})?[ ]*", year_arg, re.IGNORECASE)            
+    if year_query is None:
+        logger.warning("Search - StartYear bad argument {}".format(year_arg))
+    else:
+        option = year_query.group("option")
+        start = year_query.group("start")
+        end = year_query.group("end")
+        separator = year_query.group("separator")
+        if start is None and end is None:
+            logger.warning("Search - StartYear bad argument {}".format(year_arg))
+        else:
+            if option is None and separator is None:
+                search_clause = f" art_year_int:{year_arg} "
+            elif option == "=" and separator is None:
+                search_clause = f" art_year_int:{year_arg} "
+            elif separator == "-":
+                # between
+                # find endyear by parsing
+                if start is None:
+                    start = "*"
+                if end is None:
+                    end = "*"
+                search_clause = f" art_year_int:[{start} TO {end}] "
+            elif option == ">":
+                # greater
+                if start is None and end is not None:
+                    start = end # they put > in start rather than end.
+                search_clause = f" art_year_int:[{start} TO *] "
+            elif option == "<":
+                # less than
+                if end is None and start is not None:
+                    end = start  
+                search_clause = f" art_year_int:[* TO {end}] "
+
+            ret_val = search_clause
+        
+        return ret_val    
+
 def year_arg_parser(year_arg):
     """
     Look for full start/end year ranges submitted in a single field.
@@ -297,41 +337,17 @@ def year_arg_parser(year_arg):
     '&& art_year_int:[1980 TO 1990] '
     """
     ret_val = None
-    year_query = re.match("[ ]*(?P<option>[\>\^\<\=])?[ ]*(?P<start>[12][0-9]{3,3})?[ ]*(?P<separator>([-]|TO))*[ ]*(?P<end>[12][0-9]{3,3})?[ ]*", year_arg, re.IGNORECASE)            
-    if year_query is None:
-        logger.warning("Search - StartYear bad argument {}".format(year_arg))
-    else:
-        option = year_query.group("option")
-        start = year_query.group("start")
-        end = year_query.group("end")
-        separator = year_query.group("separator")
-        if start is None and end is None:
-            logger.warning("Search - StartYear bad argument {}".format(year_arg))
-        else:
-            if option is None and separator is None:
-                search_clause = f"&& art_year_int:{year_arg} "
-            elif option == "=" and separator is None:
-                search_clause = f"&& art_year_int:{year_arg} "
-            elif separator == "-":
-                # between
-                # find endyear by parsing
-                if start is None:
-                    start = "*"
-                if end is None:
-                    end = "*"
-                search_clause = f"&& art_year_int:[{start} TO {end}] "
-            elif option == ">":
-                # greater
-                if start is None and end is not None:
-                    start = end # they put > in start rather than end.
-                search_clause = f"&& art_year_int:[{start} TO *] "
-            elif option == "<":
-                # less than
-                if end is None and start is not None:
-                    end = start  
-                search_clause = f"&& art_year_int:[* TO {end}] "
-
-            ret_val = search_clause
+    #  see if it's bool claused
+    bools = re.split(" OR ", year_arg, flags=re.IGNORECASE)
+    clause = ""
+    for n in bools:
+        if n != "":
+            if clause != "":
+                clause += f"|| {year_parser_support(n)}"
+            else:
+                clause += f"{year_parser_support(n)}"
+        
+    ret_val = f"&& {clause}"
 
     return ret_val
                    
