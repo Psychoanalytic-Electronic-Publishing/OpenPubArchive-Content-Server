@@ -26,6 +26,9 @@ BOOK_CODES_ALL = ("GW", "SE", "ZBK", "NLP", "IPL")
 VIDEOSTREAM_CODES_ALL = ("AFCVS", "BPSIVS", "IJPVS", "IPSAVS", "NYPSIVS", "PCVS", "PEPGRANTVS", "PEPTOPAUTHVS", "PEPVS", "SFCPVS", "SPIVS", "UCLVS")
 ALL_EXCEPT_JOURNAL_CODES = BOOK_CODES_ALL + VIDEOSTREAM_CODES_ALL
 
+# Note: language symbols to be lower case (will be converted to lowercase if not)
+DEFAULT_DATA_LANGUAGE_ENCODING = "en"
+
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.
 STYLE_PATH = r"./libs/styles;../libs/styles"
@@ -194,7 +197,8 @@ DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to r
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_ISSUE = "The issue number if the source has one"
 DESCRIPTION_LIMIT = "Number of items to return."
-DESCRIPTION_MOREINFO = "Return a wealth of additional information (may slow down response)"
+DESCRIPTION_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
+DESCRIPTION_MOREINFO = "Return statistics on the Archive holdings"
 DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (years: {list_values(VALS_YEAROPTIONS)})"
 DESCRIPTION_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (periods: {list_values(VALS_VIEWPERIODDICT_SOLRFIELDS)})"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)."
@@ -259,6 +263,7 @@ TITLE_FULLTEXT1_V1 = "Paragraph based search"
 TITLE_IMAGEID = "Image ID (unique)"
 TITLE_ISSUE = "Issue Number"
 TITLE_LIMIT = "Document return limit"
+TITLE_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 TITLE_MOREINFO = "Return extended information"
 TITLE_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (years: {list_values(VALS_YEAROPTIONS)})"
 TITLE_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (periods: {list_values(VALS_VIEWPERIODDICT_SOLRFIELDS)})"
@@ -522,4 +527,31 @@ running_head_fmts = {
     'html': "<span class='pub_year'>({pub_year})</span>. <span class='source_title'>{source_title}</span><span class='vol'>{vol}</span><span class='issue'>{issue}</span><span class='pgrg'>{pgrg}</span>",
     'textonly': "({pub_year}). {source_title}{vol}{issue}{pgrg}"
 }
+
+# specify fields for sort, the variable allows ASC and DESC to be varied during calls.
+SORT_BIBLIOGRAPHIC = "art_authors_mast {0}, art_year {0}, art_title {0}"
+SORT_YEAR = "art_year {0}"
+SORT_AUTHOR = "art_authors_mast {0}"
+SORT_TITLE = "art_title {0}"
+SORT_SOURCE = "art_sourcetitlefull {0}"
+SORT_CITATIONS = "art_cited_5 {0}"
+SORT_VIEWS = "art_views_last6mos {0}"
+SORT_TOC = "art_sourcetitleabbr {0}, art_year {0}, art_iss {0}, art_pgrg {0}"
+SORT_SCORE = "score {0}"
+
+# Dict = sort key to use, fields, default direction if one is not specified.
+PREDEFINED_SORTS = {
+    "bibliographic": (SORT_BIBLIOGRAPHIC, "asc"),
+    "year":(SORT_YEAR, "desc"),
+    "author":(SORT_AUTHOR, "asc"),
+    "title":(SORT_TITLE, "asc"),
+    "source":(SORT_SOURCE, "asc"),
+    "citations":(SORT_CITATIONS, "desc"),
+    "views":(SORT_VIEWS, "desc"),
+    "toc":(SORT_TOC, "asc"),
+    "score":(SORT_SCORE, "desc"),
+    # legacy/historical naming for sorts
+    "citecount":(SORT_CITATIONS, "desc"), 
+    "rank":(SORT_SCORE, "desc"), 
+    }
 

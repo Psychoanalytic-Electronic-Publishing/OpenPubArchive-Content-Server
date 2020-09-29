@@ -49,6 +49,34 @@ class TestStandaloneFunctions(unittest.TestCase):
     
     """
     
+    def test_cleanup_query_(self):
+        resp = opasQueryHelper.cleanup_solr_query("freud, sigmund OR grotstein, james s")
+        print (resp)
+        resp = opasQueryHelper.cleanup_solr_query("author: freud, sigmund OR grotstein, james s")
+        print (resp)
+        resp = opasQueryHelper.cleanup_solr_query("(freud, sigmund OR grotstein, james s)")
+        print (resp)
+        
+    def test_query_equivalence(self):
+        r1, status = opasAPISupportLib.search_text(query="mother and milk or father and child")
+        r1_count = r1.documentList.responseInfo.fullCount
+        r2, status = opasAPISupportLib.search_text(query="mother milk or father and child")
+        r2_count = r2.documentList.responseInfo.fullCount
+        assert(r1_count == r2_count)
+        r3, status = opasAPISupportLib.search_text(query="mother milk or (father and child)")
+        r3_count = r3.documentList.responseInfo.fullCount
+        assert(r1_count == r3_count)
+        
+    def test_query_equivalence2(self):
+        r1, status = opasAPISupportLib.search_text(query="'mother milk' or father and child")
+        r1_count = r1.documentList.responseInfo.fullCount
+        r2, status = opasAPISupportLib.search_text(query="'mother milk' or (father and child)")
+        r2_count = r2.documentList.responseInfo.fullCount
+        assert(r1_count == r2_count)
+        r3, status = opasAPISupportLib.search_text(query="father child or 'mother milk'")
+        r3_count = r3.documentList.responseInfo.fullCount
+        assert(r1_count == r3_count)
+    
     def test_0_parseToSolrQuery(self):
         """
         Test query formation via parse_search_query_parameters

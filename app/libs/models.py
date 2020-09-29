@@ -545,7 +545,7 @@ class SolrQuerySpec(BaseModel):
 #    which then processes it into a SolrQuery and sends to Solr.
 class SolrQueryTermSub(BaseModel):
     connector: str = Schema(" && ", title="Boolean connector to prev term.  Must be && (default) or ||")
-    field: str = Schema("para", title="Field to query")
+    field: str = Schema(None, title="Field to query")
     words: str = Schema(None, title="if string field: string or pattern to match; if text field: words, phrase with or without proximity qualifier, boolean connectors")
     parent: str = Schema(None, title="default parent to query or None")
     synonyms: bool = Schema(False, title="Request thesaurus expansion") # to turn on thesaurus match (appends syn) Default = False
@@ -554,7 +554,7 @@ class SolrQueryTermSub(BaseModel):
 class SolrQueryTerm(BaseModel):
     connector: str = Schema(" && ", title="Boolean connector to prev term.  Must be && (default) or ||")
     subClause: List[SolrQueryTermSub] = Schema([], title="A sublist of query terms, to aggregate within parentheses; only connector is used with a SolrQueryTerm subclause")
-    field: str = Schema("para", title="Field to query")
+    field: str = Schema(None, title="Field to query")
     words: str = Schema(None, title="if string field: string or pattern to match; if text field: words, phrase with or without proximity qualifier, boolean connectors")
     parent: str = Schema(None, title="default parent to query or None")
     synonyms: bool = Schema(False, title="Request thesaurus expansion") # to turn on thesaurus match (appends syn) Default = False

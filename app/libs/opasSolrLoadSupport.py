@@ -386,7 +386,13 @@ class ArticleInfo(object):
         self.art_lang = pepxml.xpath('//pepkbd3/@lang')
         
         if self.art_lang == []:
-            self.art_lang = ['EN']
+            self.art_lang = [opasConfig.DEFAULT_DATA_LANGUAGE_ENCODING]
+
+        try:
+            self.art_lang = self.art_lang[0].lower()
+        except:
+            logger.warning(f"art_lang value error: {self.art_lang}")
+            self.art_lang = opasConfig.DEFAULT_DATA_LANGUAGE_ENCODING
         
         self.author_xml_list = pepxml.xpath('//artinfo/artauth/aut')
         self.author_xml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, '//artinfo/artauth')

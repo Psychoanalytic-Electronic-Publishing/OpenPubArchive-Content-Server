@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0924.1.Alpha"
+__version__     = "2020.0928.1.Alpha"
 __status__      = "Development"
 
 """
@@ -184,11 +184,59 @@ app.add_middleware(
     allow_headers = ["*"],
 )
 
-opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
+# opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 
 msg = 'Started at %s' % datetime.today().strftime('%Y-%m-%d %H:%M:%S"')
 print(msg)
 logger.info(msg)
+
+def get_client_id(response: Response,
+                  request: Request,
+                  client_id: int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID)
+                  ):
+    """
+    Dependency for client id:
+           gets it from header;
+           if not there, gets it from query param;
+           if not there, gets it from a cookie
+    """
+ 
+    client_id_qparam = request.query_params.get("client_id", None)
+    client_id_cookie = request.cookies.get("client_id", None)
+    if client_id is not None:
+        ret_val = client_id
+    elif client_id_qparam is not None:
+        ret_val = client_id_qparam
+    elif client_id_cookie is not None:
+        ret_val = client_id_cookie
+    else:
+        ret_val = None
+
+    return ret_val
+
+def get_client_session(response: Response,
+                       request: Request,
+                       client_session: str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                       ):
+    """
+    Dependency for client_session id:
+           gets it from header;
+           if not there, gets it from query param;
+           if not there, gets it from a cookie
+    """
+ 
+    client_session_qparam = request.query_params.get("client_session", None)
+    client_session_cookie = request.cookies.get("client_session", None)
+    if client_session is not None:
+        ret_val = client_session
+    elif client_session_qparam is not None:
+        ret_val = client_session_qparam
+    elif client_session_cookie is not None:
+        ret_val = client_session_cookie
+    else:
+        ret_val = None
+
+    return ret_val
 
 security = HTTPBasic()
 def get_current_username(response: Response, 
@@ -286,8 +334,8 @@ async def reports(response: Response,
                   limit: int=Query(None, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                   download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
-                  client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                  client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
+                  client_id:int=Depends(get_client_id), 
+                  client_session:str= Depends(get_client_session), 
                   api_key: APIKey = Depends(get_api_key)
                   ):
     """
@@ -470,8 +518,8 @@ async def reports(response: Response,
 async def client_save_configuration(response: Response, 
                                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                     configuration:models.ClientConfig=Body(None, embed=False, title=opasConfig.TITLE_ADMINCONFIG, decription=opasConfig.DESCRIPTION_ADMINCONFIG), # allows full specification
-                                    client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                    client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
+                                    client_id:int=Depends(get_client_id), 
+                                    client_session:str= Depends(get_client_session), 
                                     api_key: APIKey = Depends(get_api_key)
                                     ):
 
@@ -540,8 +588,8 @@ async def client_save_configuration(response: Response,
 async def client_update_configuration(response: Response, 
                                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                       configuration:models.ClientConfig=Body(None, embed=False, title=opasConfig.TITLE_ADMINCONFIG, decription=opasConfig.DESCRIPTION_ADMINCONFIG), # allows full specification
-                                      client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                      client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
+                                      client_id:int=Depends(get_client_id), 
+                                      client_session:str= Depends(get_client_session), 
                                       api_key: APIKey = Depends(get_api_key)
                                       ):
 
@@ -613,8 +661,8 @@ async def client_get_configuration(response: Response,
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                    configname:str=Query(..., title=opasConfig.TITLE_ADMINCONFIGNAME, description=opasConfig.DESCRIPTION_ADMINCONFIGNAME, min_length=4),
                                    api_key: APIKey = Depends(get_api_key), 
-                                   client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                   client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                                   client_id:int=Depends(get_client_id), 
+                                   client_session:str= Depends(get_client_session)
                                    ): 
 
     """
@@ -673,8 +721,8 @@ async def client_get_configuration(response: Response,
 async def client_del_configuration(response: Response, 
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                    configname:str=Query(..., title=opasConfig.TITLE_ADMINCONFIGNAME, description=opasConfig.DESCRIPTION_ADMINCONFIGNAME, min_length=4),
-                                   client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                   client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
+                                   client_id:int=Depends(get_client_id), 
+                                   client_session:str= Depends(get_client_session), 
                                    api_key: APIKey = Depends(get_api_key)
                                    ): 
 
@@ -736,7 +784,8 @@ async def client_create_user(response: Response,
                             reports: bool = Form(default=0, description="View Parent Reports"),
                             optin: bool = Form(default=1, description="User agrees to email communications"),
                             hide: bool = Form(default=1, description="User agrees to site cookies"),
-                            client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
+                            client_id:int=Depends(get_client_id), 
+                            client_session:str= Depends(get_client_session)
                             ):
     """
     ## Function
@@ -794,7 +843,8 @@ async def submit_file(response: Response,
                       submit_token: bytes= File(...), 
                       xml_data: bytes = File(..., description="Article data (complete) or just metadata and abstract in xml"),
                       pdf_data: bytes = File(..., description="Article data (complete) in original PDF file"),
-                      client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
+                      client_id:int=Depends(get_client_id), 
+                      client_session:str= Depends(get_client_session)
                       ):
     """
     ## Function
@@ -842,7 +892,8 @@ async def admin_change_user_password(response: Response,
                                      username: str = Form(..., description="Username"),
                                      #oldpassword: str = Form(..., description="Previous Password"),
                                      newpassword: str = Form(..., description="New Password"),
-                                     client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
+                                     client_id:int=Depends(get_client_id), 
+                                     client_session:str= Depends(get_client_session)
                                      ):
     """
     ## Function
@@ -892,7 +943,8 @@ async def admin_subscribe_user(response: Response,
                                enddate: str = Form(..., description="Subscription ends"),
                                productcode: str = Form(..., description="e.g., PEPArchive, ClassicBooks, PEPVideostream, GW, SE, IJP, ..."),
                                productparentcode: str = Form(..., description="e.g., PEPWeb, PEPArchive, PEPCurrent, PEPVideostream, ClassicBooks, JournalArchive, ..."),
-                               client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
+                               client_id:int=Depends(get_client_id), 
+                               client_session:str= Depends(get_client_session)
                                ):
     """
     ## Function
@@ -950,8 +1002,8 @@ async def admin_subscribe_user(response: Response,
 @app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_AM_I)
 async def session_whoami(response: Response,
                          request: Request,
-                         client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                         client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                         client_id:int=Depends(get_client_id), 
+                         client_session:str= Depends(get_client_session)
                          ):
     """
     ## Function
@@ -987,8 +1039,8 @@ async def session_whoami(response: Response,
 async def session_status(response: Response, 
                          request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                          moreinfo: bool=Query(False, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO),
-                         client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                         client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                         client_id:int=Depends(get_client_id), 
+                         client_session:str= Depends(get_client_session)
                          ):
     """
     ## Function
@@ -1090,7 +1142,8 @@ def session_login_basic(response: Response,
                         request: Request,
                         user: str = Depends(get_current_username), 
                         ka=False,
-                        client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
+                        client_id:int=Depends(get_client_id), 
+                        client_session:str= Depends(get_client_session)
                         ):
     """
     ## Function
@@ -1165,7 +1218,8 @@ def get_token(response: Response,
               password=None, 
               grant_type=None, 
               ka=False,
-              client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
+              client_id:int=Depends(get_client_id), 
+              client_session:str= Depends(get_client_session)
               ):
     """
     ## Function
@@ -1202,8 +1256,8 @@ def get_token(response: Response,
 @app.get("/v1/License/Status/Login/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_LICENSE_STATUS)
 def get_license_status(response: Response, 
                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                       client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                       client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                       client_id:int=Depends(get_client_id), 
+                       client_session:str= Depends(get_client_session)
                        ):
     """
     ## Function
@@ -1330,8 +1384,8 @@ def session_login_user(response: Response,
                        username=None, 
                        password=None, 
                        ka=False,
-                       client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                       client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                       client_id:int=Depends(get_client_id), 
+                       client_session:str= Depends(get_client_session)
                        #user: bool = Depends(get_current_user)
                        ):
     """
@@ -1430,8 +1484,8 @@ def session_login_user(response: Response,
 @app.get("/v2/Session/Logout/", response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_LOGOUT) # I like it under Users so I did them both.
 def session_logout_user(response: Response, 
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST), 
-                        client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                        client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                        client_id:int=Depends(get_client_id), 
+                        client_session:str= Depends(get_client_session)
                         ):  
     """
     ## Function
@@ -1517,8 +1571,8 @@ async def database_term_counts(response: Response,
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                termlist: str=Query(None, title=opasConfig.TITLE_TERMLIST, description=opasConfig.DESCRIPTION_TERMLIST),
                                termfield: str=Query("text", title=opasConfig.TITLE_TERMFIELD, description=opasConfig.DESCRIPTION_TERMFIELD),
-                               client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                               client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                               client_id:int=Depends(get_client_id), 
+                               client_session:str= Depends(get_client_session)
                                ):
     """
     ## Function
@@ -1671,8 +1725,8 @@ async def database_advanced_search(response: Response,
                                    sort: str=Query("score desc", title="Field names to sort by", description="Comma separated list of field names, optionally each with direction (desc or asc)"),
                                    limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                    offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                                   client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                   client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                                   client_id:int=Depends(get_client_id), 
+                                   client_session:str= Depends(get_client_session)
                                    ):
     """
     ## Function
@@ -1881,8 +1935,8 @@ async def database_extendedsearch(response: Response,
                                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                   solrQuerySpec: models.SolrQuerySpec=None, # allows full specification of parameters in the body
                                   api_key: APIKey = Depends(get_api_key),
-                                  client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                  client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                                  client_id:int=Depends(get_client_id), 
+                                  client_session:str= Depends(get_client_session)
                                   ):
     """
     ## Function
@@ -2105,8 +2159,8 @@ async def database_search_v1(response: Response,
                              sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                              limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                              offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                             client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                             client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                             client_id:int=Depends(get_client_id), 
+                             client_session:str= Depends(get_client_session)
                              ):
     """
     ## Function
@@ -2195,6 +2249,7 @@ async def database_search_paragraphs(response: Response,
                                      #returnfields: str=Query(None, title="Fields to return (see limitations)", description="Comma separated list of field names"),
                                      abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
                                      similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                                     highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
                                      facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                      facetmincount: int=Query(1, title="Minimum count to return a facet"),
                                      facetlimit: int=Query(10, title="Maximum number of facet values to return"),
@@ -2202,8 +2257,8 @@ async def database_search_paragraphs(response: Response,
                                      sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                                     client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                     client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                                     client_id:int=Depends(get_client_id), 
+                                     client_session:str= Depends(get_client_session)
                                      ):
     """
     ## Function
@@ -2261,6 +2316,7 @@ async def database_search_paragraphs(response: Response,
                                                       citecount=citecount,
                                                       viewcount=viewcount,
                                                       viewperiod=viewperiod,
+                                                      highlighting_max_snips=highlightlimit, 
                                                       facetfields=facetfields, 
                                                       facetmincount=facetmincount,
                                                       facetlimit=facetlimit,
@@ -2285,11 +2341,15 @@ async def database_search_paragraphs(response: Response,
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
     if ret_status[0] != httpCodes.HTTP_200_OK:
         #  throw an exception rather than return an object (which will fail)
-        return models.ErrorReturn(error="Search syntax error", error_description=f"The search engine returned an error ({ret_status[1].reason}:{ret_status[1].body}) from your search input (FQ:{solr_query_params.filterQ} Q:{solr_query_params.searchQ}).")
-        #raise HTTPException(
-            #status_code=ret_status[0], 
-            #detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
-        #)
+        try:
+            detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+        except:
+            detail = "Bad Solr Search Request"
+            
+        raise HTTPException(
+            status_code=ret_status[0],
+            detail=detail
+        )
 
     if ret_val != {}:
         matches = len(ret_val.documentList.responseSet)
@@ -2339,6 +2399,7 @@ async def database_search_v3(
     abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
     formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
     similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+    highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
     facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
     facetmincount: int=Query(1, title="Minimum count to return a facet"),
     facetlimit: int=Query(15, title="Maximum number of facet values to return"),
@@ -2346,8 +2407,8 @@ async def database_search_v3(
     sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
     limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
     offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-    client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-    client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+    client_id:int=Depends(get_client_id), 
+    client_session:str= Depends(get_client_session)
     ):
     """
     ## Function
@@ -2469,9 +2530,14 @@ async def database_search_v3(
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
     if ret_status[0] != httpCodes.HTTP_200_OK:
         #  throw an exception rather than return an object (which will fail)
-        raise HTTPException(
-            status_code=ret_status[0], 
+        try:
             detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+        except:
+            detail = "Bad Solr Search Request"
+            
+        raise HTTPException(
+            status_code=ret_status[0],
+            detail=detail
         )
 
     if ret_val != {}:
@@ -2493,6 +2559,86 @@ async def database_search_v3(
                                 params=request.url._url,
                                 status_message=statusMsg
                                 )
+
+    return ret_val
+
+#---------------------------------------------------------------------------------------------------------
+@app.get("/v2/Database/TrySearch/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_V2)
+async def database_testsearch_v2(response: Response, 
+                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                             fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
+                             synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
+                             facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
+                             sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                             client_id:int=Depends(get_client_id), 
+                             client_session:str= Depends(get_client_session)
+                             ):
+    """
+    ## Function
+       Temporary, for testing search patterns
+    """
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response)
+    # session_id = session_info.session_id 
+
+    if re.search(r"/Search/", request.url._url):
+        logger.debug("Search Request: %s", request.url._url)
+
+    analysis_mode = False
+
+    # current_year = datetime.utcfromtimestamp(time.time()).strftime('%Y')
+    # this does intelligent processing of the query parameters and returns a smaller set of solr oriented         
+    # params (per pydantic model SolrQuery), ready to use
+    solr_query_spec = \
+        opasQueryHelper.parse_search_query_parameters(solrQueryTermList=None,
+                                                      source_name=None,
+                                                      source_code=None,
+                                                      source_type=None,
+                                                      source_lang_code=None,
+                                                      para_textsearch=None, # search within paragraphs
+                                                      para_scope=None, # scope for par_search
+                                                      similar_count=None, # Turn on morelikethis for the search, return this many similar docs for each
+                                                      fulltext1=fulltext1,  # more flexible search, including fields, anywhere in the doc, across paras
+                                                      smarttext=None, # experimental detection of what user wants to query
+                                                      synonyms=synonyms, 
+                                                      vol=None,
+                                                      issue=None,
+                                                      author=None,
+                                                      title=None,
+                                                      articletype=None, 
+                                                      startyear=None,
+                                                      endyear=None,
+                                                      citecount=None,
+                                                      viewcount=None,
+                                                      viewperiod=None,
+                                                      facetfields=facetfields,
+                                                      facetmincount=1,
+                                                      facetlimit=None,
+                                                      facetoffset=None,                                                        
+                                                      abstract_requested=None,
+                                                      format_requested=None, 
+                                                      sort="score desc",
+                                                      req_url = request.url._url
+                                                      )
+
+    ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec, 
+                                                           extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                                           limit=15,
+                                                           offset=0,
+                                                           session_info=session_info
+                                                           )
+
+    #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
+    if ret_status[0] != httpCodes.HTTP_200_OK:
+        #  throw an exception rather than return an object (which will fail)
+        try:
+            detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+        except:
+            detail = "Bad Solr Search Request"
+            
+        raise HTTPException(
+            status_code=ret_status[0],
+            detail=detail
+        )
 
     return ret_val
 
@@ -2525,6 +2671,7 @@ async def database_search_v2(response: Response,
                              abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
                              formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                              similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                             highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
                              facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                              facetmincount: int=Query(1, title="Minimum count to return a facet"),
                              facetlimit: int=Query(15, title="Maximum number of facet values to return"),
@@ -2532,8 +2679,8 @@ async def database_search_v2(response: Response,
                              sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                              limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                              offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                             client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                             client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                             client_id:int=Depends(get_client_id), 
+                             client_session:str= Depends(get_client_session)
                              ):
     """
     ## Function
@@ -2633,9 +2780,14 @@ async def database_search_v2(response: Response,
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
     if ret_status[0] != httpCodes.HTTP_200_OK:
         #  throw an exception rather than return an object (which will fail)
-        raise HTTPException(
-            status_code=ret_status[0], 
+        try:
             detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+        except:
+            detail = "Bad Solr Search Request"
+            
+        raise HTTPException(
+            status_code=ret_status[0],
+            detail=detail
         )
 
     if ret_val != {}:
@@ -2678,8 +2830,8 @@ async def database_searchanalysis_v1(response: Response,
                                      sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                                     client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                     client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                                     client_id:int=Depends(get_client_id), 
+                                     client_session:str= Depends(get_client_session)
                                      ):
     """
     ## Function
@@ -2767,8 +2919,8 @@ def database_searchanalysis_v2(response: Response,
                             sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                             limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                             offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                            client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                            client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                            client_id:int=Depends(get_client_id), 
+                            client_session:str= Depends(get_client_session)
                             ):
     """
     ## Function
@@ -2868,8 +3020,8 @@ def database_searchanalysis_v3(response: Response,
                                sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                               client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                               client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                               client_id:int=Depends(get_client_id), 
+                               client_session:str= Depends(get_client_session)
                                ):
     """
     ## Function
@@ -3095,8 +3247,8 @@ async def database_smartsearch(response: Response,
                                facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                               client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                               client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                               client_id:int=Depends(get_client_id), 
+                               client_session:str= Depends(get_client_session)
                                ):
     """
     ## Function
@@ -3223,8 +3375,8 @@ def database_mostviewed(response: Response,
                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT), # by PEP-Web standards, we want 10, but 5 is better for PEP-Easy
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                         download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
-                        client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                        client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                        client_id:int=Depends(get_client_id), 
+                        client_session:str= Depends(get_client_session)
                         ):
     """
     ## Function
@@ -3368,8 +3520,8 @@ def database_mostcited(response: Response,
                        limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                        download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
-                       client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                       client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                       client_id:int=Depends(get_client_id), 
+                       client_session:str= Depends(get_client_session)
                        ):
     """
     ## Function
@@ -3495,8 +3647,8 @@ def database_who_cited_this(response: Response,
                             sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                             limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                             offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                            client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                            client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                            client_id:int=Depends(get_client_id), 
+                            client_session:str= Depends(get_client_session)
                             ):
     """
     ## Function
@@ -3564,8 +3716,8 @@ def database_whatsnew(response: Response,
                       days_back: int=Query(14, title=opasConfig.TITLE_DAYSBACK, description=opasConfig.DESCRIPTION_DAYSBACK),
                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                      client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                      client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                      client_id:int=Depends(get_client_id), 
+                      client_session:str= Depends(get_client_session)
                       ):  
     """
     ## Function
@@ -3619,8 +3771,8 @@ def metadata_contents_sourcecode(response: Response,
                                  year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
                                  limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                  offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                                 client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                 client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                                 client_id:int=Depends(get_client_id), 
+                                 client_session:str= Depends(get_client_session)
                                  ):
     """
     ## Function
@@ -3682,8 +3834,8 @@ def metadata_contents(SourceCode: str,
                       year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                      client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                      client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                      client_id:int=Depends(get_client_id), 
+                      client_session:str= Depends(get_client_session)
                       ):
     """
     ## Function
@@ -3748,8 +3900,8 @@ def metadata_videos(response: Response,
                     sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                     limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                     offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                    client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                    client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                    client_id:int=Depends(get_client_id), 
+                    client_session:str= Depends(get_client_session)
                     ):
     """
     ## Function
@@ -3790,8 +3942,8 @@ def metadata_journals(response: Response,
                                 sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                                 limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                 offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                                client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                                client_id:int=Depends(get_client_id), 
+                                client_session:str= Depends(get_client_session)
                                 ):
     """
     ## Function
@@ -3829,8 +3981,8 @@ def metadata_volumes_v1(response: Response,
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                         # v1 arg
                         SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                        client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                        client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                        client_id:int=Depends(get_client_id), 
+                        client_session:str= Depends(get_client_session)
                         ):
     """
     ## Function
@@ -3861,8 +4013,8 @@ def metadata_volumes(response: Response,
                      sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                     client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                     client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                     client_id:int=Depends(get_client_id), 
+                     client_session:str= Depends(get_client_session)
                      ):
     """
     ## Function
@@ -3946,8 +4098,8 @@ def metadata_books(response: Response,
                              sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                              limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                              offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                             client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                             client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                             client_id:int=Depends(get_client_id), 
+                             client_session:str= Depends(get_client_session)
                              ):
     """
     ## Function
@@ -3991,8 +4143,8 @@ def metadata_by_sourcetype_sourcecode(response: Response,
                                       sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                                      client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                      client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                                      client_id:int=Depends(get_client_id), 
+                                      client_session:str= Depends(get_client_session)
                                       ):
     """
 
@@ -4070,8 +4222,8 @@ def authors_index(response: Response,
                   authorNamePartial: str=Path(..., title=opasConfig.TITLE_AUTHORNAMEORPARTIAL, description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
                   limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                  client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                  client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                  client_id:int=Depends(get_client_id), 
+                  client_session:str= Depends(get_client_session)
                   ):
     """
     ## Function
@@ -4137,8 +4289,8 @@ def authors_publications(response: Response,
                          authorNamePartial: str=Path(..., title=opasConfig.TITLE_AUTHORNAMEORPARTIAL, description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
                          limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                          offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                         client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                         client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                         client_id:int=Depends(get_client_id), 
+                         client_session:str= Depends(get_client_session)
                          ):
     """
     ## Function
@@ -4198,8 +4350,8 @@ def documents_abstracts(response: Response,
                         sort: str=Query("authors desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                        client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                        client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                        client_id:int=Depends(get_client_id), 
+                        client_session:str= Depends(get_client_session)
                         ):
     """
     ## Function
@@ -4289,8 +4441,8 @@ async def database_glossary_search_v2(response: Response,
                                       formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                                      client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                      client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                                      client_id:int=Depends(get_client_id), 
+                                      client_session:str= Depends(get_client_session)
                                       ):
     """
     ## Function
@@ -4381,8 +4533,8 @@ async def database_glossary_search_v3(response: Response,
                                       formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                                      client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                                      client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                                      client_id:int=Depends(get_client_id), 
+                                      client_session:str= Depends(get_client_session)
                                       ):
     """
     ## Function
@@ -4466,8 +4618,8 @@ def documents_glossary_term(response: Response,
                             #search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
                             similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                             return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                            client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                            client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                            client_id:int=Depends(get_client_id), 
+                            client_session:str= Depends(get_client_session)
                             ): # Note this is called by the Document endpoint if it detects a term_id in the DocumentID
     """
     ## Function
@@ -4566,8 +4718,8 @@ def documents_document_fetch(response: Response, request: Request=Query(None,
                              search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
                              limit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
                              offset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),
-                             client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                             client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                             client_id:int=Depends(get_client_id), 
+                             client_session:str= Depends(get_client_session)
                              ):
     """
     ## Function
@@ -4733,8 +4885,8 @@ def documents_concordance(response: Response,
                           paralangrx: str=Query(None, title=opasConfig.TITLE_DOCUMENT_CONCORDANCE_RX, description=opasConfig.DESCRIPTION_DOCUMENT_CONCORDANCE_RX), # return controls 
                           return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                           search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
-                          client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                          client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                          client_id:int=Depends(get_client_id), 
+                          client_session:str= Depends(get_client_session)
                           ):
     """
     ## Function
@@ -4826,8 +4978,8 @@ async def documents_image_fetch(response: Response,
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                imageID: str=Path(..., title=opasConfig.TITLE_IMAGEID, description=opasConfig.DESCRIPTION_IMAGEID),
                                download: int=Query(0, title="Return or download", description="0 to return the image to the browser, 1 to download"),
-                               client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                               client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_SESSION, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                               client_id:int=Depends(get_client_id), 
+                               client_session:str= Depends(get_client_session)
                                ):
     """
     ## Function
@@ -4876,7 +5028,8 @@ async def documents_image_fetch(response: Response,
             detail=status_message
         )    
 
-    filename = opas_fs.get_image_filename(filespec=imageID, path=localsecrets.IMAGE_SOURCE_PATH)    
+    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, path=localsecrets.IMAGE_SOURCE_PATH)
+    filename = fs.get_image_filename(filespec=imageID) # IMAGE_SOURCE_PATH set as root above, all that we need
     media_type='image/jpeg'
     if download == 0:
         if filename is None:
@@ -4894,7 +5047,7 @@ async def documents_image_fetch(response: Response,
             raise HTTPException(status_code=response.status_code,
                                 detail=status_message)
         else:
-            file_content = opas_fs.get_image_binary(filename)
+            file_content = fs.get_image_binary(filename)
             try:
                 ret_val = response = Response(file_content, media_type=media_type)
 
@@ -4923,9 +5076,9 @@ async def documents_image_fetch(response: Response,
     else: # download == 1
         try:
             response.status_code = httpCodes.HTTP_200_OK
-            filename = opas_fs.get_image_filename(filename)
-            if opas_fs.key is not None:
-                fileurl = opas_fs.fs.url(filename)
+            filename = fs.get_image_filename(filename)
+            if fs.key is not None:
+                fileurl = fs.fs.url(filename)
                 fname = wget.download(fileurl)
                 ret_val = FileResponse(path=fname,
                                        status_code=response.status_code,
@@ -4969,8 +5122,8 @@ def documents_downloads(response: Response,
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                         documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
                         retFormat=Path(..., title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_DOCDOWNLOADFORMAT),
-                        client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                        client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                        client_id:int=Depends(get_client_id), 
+                        client_session:str= Depends(get_client_session)
                         ):
     """
     ## Function
@@ -5017,27 +5170,30 @@ def documents_downloads(response: Response,
 
     #prep_document_download will check permissions for this user, and return abstract based file
     #if there's no permission
+    flex_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                             secret=localsecrets.S3_SECRET,
+                                             root=localsecrets.PDF_ORIGINALS_PATH) # important to use this path, not the XML one!
 
-    filename = opasAPISupportLib.prep_document_download(documentID,
-                                                        ret_format=file_format,
-                                                        base_filename="opasDoc",
-                                                        session_info=session_info)    
+    filename, status = opasAPISupportLib.prep_document_download( documentID,
+                                                                 ret_format=file_format,
+                                                                 base_filename="opasDoc",
+                                                                 session_info=session_info, 
+                                                                 flex_fs=flex_fs,
+                                                                )    
 
     error_status_message = f" The requested document {filename} could not be returned."
 
     if filename is None:
-        response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-        logger.error(error_status_message)
+        response.status_code = status.httpcode
+        status_message = status.error_description + error_status_message
+        logger.error(status_message)
         raise HTTPException(status_code=response.status_code,
                             detail=status_message)
     else:
-        #with open(filename, mode='rb') as file: # b is important -> binary
-            #file_content = file.read()    
-        #response = Response(file_content, media_type='application/epub+zip')
         if file_format == 'PDFORIG':
             try:
-                if opas_fs.key is not None:
-                    fileurl = opas_fs.fs.url(filename)
+                if flex_fs.key is not None:
+                    fileurl = flex_fs.fs.url(filename)
                     fname = wget.download(fileurl)
                     response.status_code = httpCodes.HTTP_200_OK
                     ret_val = FileResponse(path=fname,
@@ -5110,8 +5266,8 @@ def database_word_wheel(response: Response,
                         core: str=Query("docs", title=opasConfig.TITLE_CORE, description=opasConfig.DESCRIPTION_CORE),
                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                        client_id:int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID), 
-                        client_session:str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                        client_id:int=Depends(get_client_id), 
+                        client_session:str= Depends(get_client_session)
                         ):
     """
     ## Function

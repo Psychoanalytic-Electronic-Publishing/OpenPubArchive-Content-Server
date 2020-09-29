@@ -260,7 +260,7 @@ class TestMost(unittest.TestCase):
                                                           author=None,
                                                           title=None,
                                                           startyear=None,
-                                                          highlighting=False, 
+                                                          highlighting_max_snips=0, 
                                                           abstract_requested=False,
                                                           similar_count=0
                                                           )
@@ -281,7 +281,7 @@ class TestMost(unittest.TestCase):
                                                           author=None,
                                                           title=None,
                                                           startyear=None,
-                                                          highlighting=False, 
+                                                          highlighting_max_snips=0, 
                                                           abstract_requested=False,
                                                           similar_count=0
                                                           )

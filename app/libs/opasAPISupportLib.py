@@ -43,6 +43,7 @@ __status__      = "Development"
 
 import os
 import os.path
+from xml.sax import SAXParseException
 import sys
 # import shlex
 import copy
@@ -85,7 +86,7 @@ import localsecrets
 from localsecrets import CLIENT_DB
 
 import opasFileSupport
-opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
+# opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 
 from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 # from opasConfig import OPASSESSIONID
@@ -551,10 +552,10 @@ def database_get_most_viewed( publication_period: int=5,
 
     """
     ret_val = None
-    period_suffix = opasConfig.VALS_VIEWPERIODDICT_SQLFIELDS.get(view_period, "last12mos")
+    period = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS.get(view_period, "last12mos")
     
     if sort is None:
-        sort = f"art_views_{period_suffix} desc"
+        sort = f"{period} desc"
 
     start_year = dtime.date.today().year
     if publication_period is None:
@@ -577,7 +578,7 @@ def database_get_most_viewed( publication_period: int=5,
                                                        author=author,
                                                        title=title,
                                                        startyear=start_year,
-                                                       highlighting=False, 
+                                                       highlighting_max_snips=0, 
                                                        abstract_requested=abstract_requested,
                                                        return_field_set=field_set, 
                                                        sort = sort,
@@ -663,7 +664,7 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                                                       author=author,
                                                       title=title,
                                                       startyear=start_year,
-                                                      highlighting=False, 
+                                                      highlighting_max_snips=0, 
                                                       return_field_set=field_set, 
                                                       abstract_requested=abstract_requested,
                                                       similar_count=mlt_count, 
@@ -742,7 +743,7 @@ def database_who_cited( publication_period: int=None,   # Limit the considered p
                                                           author=author,
                                                           title=title,
                                                           startyear=start_year,
-                                                          highlighting=False, 
+                                                          highlighting_max_snips=0, 
                                                           abstract_requested=abstract_requested,
                                                           similar_count=mlt_count, 
                                                           sort = sort,
@@ -1112,7 +1113,7 @@ def metadata_get_database_statistics():
     book_facet_fields = book_facet_counts["facet_fields"]
     book_facet_product_keys = book_facet_fields["art_product_key"]
     content.book_count = len(book_facet_product_keys)
-    article_counts = dict(OrderedDict(sorted(src_counts.items(), key=lambda t: t[0])))
+    content.source_count = dict(OrderedDict(sorted(src_counts.items(), key=lambda t: t[0])))
     vols = metadata_get_volumes(source_type="journal")    
     content.vol_count = vols.volumeList.responseInfo.fullCount
     year_counts = facet_fields["art_year"]
@@ -1126,7 +1127,7 @@ def metadata_get_database_statistics():
     content.page_height_feet = int(((content.page_count * .1) / 25.4) / 12) # page thickness in mm, 25.4 mm per inch, 12 inches per foot
     content.page_weight_tons = int(content.page_count * 4.5 * 0.000001)
     source_count_html = "<ul>"
-    for code, cnt in article_counts.items():
+    for code, cnt in content.source_count.items():
         source_count_html += f"<li>{code} - {cnt}</li>"
     source_count_html += "</ul>"
    
@@ -2245,7 +2246,8 @@ def documents_get_glossary_entry(term_id,
 def prep_document_download(document_id,
                            session_info=None, 
                            ret_format="HTML",
-                           base_filename="opasDoc"):
+                           base_filename="opasDoc",
+                           flex_fs=None):
     """
     For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
     For authenticated users, it returns with the document itself
@@ -2261,6 +2263,7 @@ def prep_document_download(document_id,
         return str
 
     ret_val = None
+    status = httpCodes.HTTP_200_OK
 
     results = solr_docs.query( q = "art_id:%s" % (document_id),  
                                fields = """art_id, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
@@ -2269,15 +2272,17 @@ def prep_document_download(document_id,
                                )
     try:
         art_info = results.results[0]
-        ret_val = art_info.get("text_xml", art_info.get("art_excerpt", None))
+        docs = art_info.get("text_xml", art_info.get("art_excerpt", None))
     except IndexError as e:
         logger.warning("No matching document for %s.  Error: %s", document_id, e)
     except KeyError as e:
         logger.warning("No full-text content found for %s.  Error: %s", document_id, e)
     else:
         try:    
-            if isinstance(ret_val, list):
-                ret_val = ret_val[0]
+            if isinstance(docs, list):
+                doc = docs[0]
+            else:
+                doc = docs
         except Exception as e:
             logger.warning("Empty return: %s", e)
         else:
@@ -2301,18 +2306,25 @@ def prep_document_download(document_id,
                                                            )
     
                     if ret_format.upper() == "HTML":
-                        html = opasxmllib.remove_encoding_string(ret_val)
+                        html = opasxmllib.remove_encoding_string(doc)
                         filename = convert_xml_to_html_file(html, output_filename=document_id + ".html")  # returns filename
                         ret_val = filename
                     elif ret_format.upper() == "PDFORIG":
                         # setup so can include year in path (folder names) in AWS, helpful.
-                        pub_year = art_info.get("art_year", None)
-                        filename = opas_fs.get_download_filename(filespec=document_id, path=localsecrets.PDF_ORIGINALS_PATH, year=pub_year, ext=".pdf")    
-                        ret_val = filename
+                        if flex_fs is not None:
+                            pub_year = art_info.get("art_year", None)
+                            filename = flex_fs.get_download_filename(filespec=document_id, path=localsecrets.PDF_ORIGINALS_PATH, year=pub_year, ext=".pdf")    
+                            ret_val = filename
+                        else:
+                            err_msg = "File path error."
+                            status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
+                                                         error_description=err_msg
+                                                       )
+                            ret_val = None
                     elif ret_format.upper() == "PDF":
                         pisa.showLogging() # debug only
-                        ret_val = opasxmllib.remove_encoding_string(ret_val)
-                        html_string = opasxmllib.xml_str_to_html(ret_val)
+                        doc = opasxmllib.remove_encoding_string(doc)
+                        html_string = opasxmllib.xml_str_to_html(doc)
                         html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                         html_string = re.sub("</html>", f"{COPYRIGHT_PAGE_HTML}</html>", html_string, count=1)                        
                         # open output file for writing (truncated binary)
@@ -2326,19 +2338,33 @@ def prep_document_download(document_id,
                         # return True on success and False on errors
                         ret_val = filename
                     elif ret_format.upper() == "EPUB":
-                        ret_val = opasxmllib.remove_encoding_string(ret_val)
-                        html_string = opasxmllib.xml_str_to_html(ret_val)
+                        doc = opasxmllib.remove_encoding_string(doc)
+                        html_string = opasxmllib.xml_str_to_html(doc)
                         html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                         html_string = add_epub_elements(html_string)
                         filename = opasxmllib.html_to_epub(html_string, document_id, document_id)
                         ret_val = filename
                     else:
-                        logger.warning(f"Format {ret_format} not supported")
+                        err_msg = f"Format {ret_format} not supported"
+                        logger.warning(err_msg)
+                        ret_val = None
+                        status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
+                                                     error_description=err_msg
+                                                   )
     
                 except Exception as e:
                     logger.warning("Can't convert data: %s", e)
+                    ret_val = None
+                    status = models.ErrorReturn( httpcode=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
+                                                 error_description="Can't convert document data"
+                                               )
+            else:
+                status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
+                                             error_description="No permission for document"
+                                           )
+                ret_val = None
 
-    return ret_val
+    return ret_val, status
 
 #-----------------------------------------------------------------------------
 #def find(name, path): # Not used? 
@@ -2817,7 +2843,7 @@ def search_text(query,
                 facet_fields = None,
                 facet_mincount = 1, 
                 extra_context_len = None,
-                maxKWICReturns = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
+                highlighting_max_snips = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
                 sort="score desc",
                 limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
                 offset = 0,
@@ -2860,7 +2886,7 @@ def search_text(query,
                                                 facet_fields = facet_fields,
                                                 facet_mincount=facet_mincount,
                                                 extra_context_len=extra_context_len, 
-                                                maxKWICReturns=maxKWICReturns,
+                                                highlighting_max_snips=highlighting_max_snips,
                                                 sort = sort,
                                                 limit = limit,
                                                 offset = offset,
@@ -3090,7 +3116,17 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                 #          <str name="debugQuery">off</str>\n  </lst>\n</lst>\n<lst name="error">\n  <lst name="metadata">\n    <str name="error-class">org.apache.solr.common.SolrException</str>\n
                                 #          <str name="root-error-class">org.apache.solr.common.SolrException</str>\n  </lst>\n  <str name="msg">sort param field can\'t be found: rank</str>\n
                                 #          <int name="code">400</int>\n</lst>\n</response>\n'
-
+    except SAXParseException as e:
+        ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Search syntax error", error_description=f"{e.getMessage()}")
+        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+        logger.error(f"Solr Runtime Search Error: {ret_val}")
+                                
+    except Exception as e:
+        ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
+        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+        logger.error(f"Solr Runtime Search Error: {e.httpcode}")
+        logger.error(e.body)
+                                
     else: #  search was ok
         try:
             logger.info("Search Performed: %s", solr_query_spec.solrQuery.searchQ)

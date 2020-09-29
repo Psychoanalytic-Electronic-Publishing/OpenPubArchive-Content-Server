@@ -52,8 +52,20 @@ def cleanup_solr_query(solrquery):
 
     ret_val = re.sub("\s+(AND)\s+", " && ", ret_val, flags=re.IGNORECASE)
     ret_val = re.sub("\s+(OR)\s+", " || ", ret_val, flags=re.IGNORECASE)
- 
+    
     return ret_val
+
+def wrap_clauses(solrquery):
+    # split by OR clauses
+    ret_val = solrquery.strip()
+    ret_val = ret_val.split(" || ")
+    ret_val = ["(" + x + ")" for x in ret_val]
+    ret_val = " || ".join(ret_val)
+
+    ret_val = ret_val.split(" && ")
+    ret_val = ["(" + x + ")" for x in ret_val]
+    ret_val = " && ".join(ret_val)
+    return ret_val    
 
 def strip_outer_matching_chars(s, outer_char):
     """
@@ -157,6 +169,41 @@ def termlist_to_doubleamp_query(termlist_str, field=None):
         
     ret_val = " && ".join(name_list)
     return ret_val
+
+def parse_to_query_term_list(str_query):
+    """
+    Take a string and parse the field names and field data clauses to q list of
+      SolrQueryTerms
+      
+    """
+    field_splitter = "([a-z\_]+\:)"
+    ends_in_connector = "\s(AND|OR)\s?$"
+    split_query = re.split(field_splitter, str_query, flags=re.IGNORECASE)
+    split_query = list(filter(None, split_query)) # get rid of empty strings
+    term_list = []
+    count = 0
+    temp = models.SolrQueryTerm()
+    for n in split_query:
+        if n[-1] == ":":
+            # this is a field
+            temp.field = n[0:-1]
+        else: # data
+            data_split = re.split(ends_in_connector, n, flags=re.IGNORECASE)
+            data_split = list(filter(None, data_split))
+            temp.words = data_split[0]
+            # ok, we have the data, append the node
+            temp.words = cleanup_solr_query(temp.words)
+            term_list.append(temp)
+            # make a new node
+            temp = models.SolrQueryTerm()
+            # add the connector if there is one
+            if len(data_split) > 1:
+                temp.connector = data_split[-1].upper()
+            count += 1
+            
+    print (term_list)
+    return term_list
+    
 #-----------------------------------------------------------------------------
 class QueryTextToSolr(): 
     """
@@ -200,17 +247,30 @@ class QueryTextToSolr():
     def markup(self, str_input, field_label, field_thesaurus=None, quoted=False):
 
         if quoted == False:
-            ret_val = self.boolConnectorsToSymbols(f"{field_label}:({str_input})")
+            wrapped_str_input = wrap_clauses(str_input)
+            ret_val = self.boolConnectorsToSymbols(f"{field_label}:({wrapped_str_input})")
         else:
             ret_val = self.boolConnectorsToSymbols(f'{field_label}:("{str_input}")')
         
         ret_val = re.sub("([A-Z]\.)([A-Z])", "\g<1> \g<2>", ret_val)
-        return ret_val    
+        # ret_val = self.handle_solr_not(ret_val)
 
+        return ret_val
+
+    def handle_solr_not(self, searchstr):
+        
+        ret_val = re.split("[&|]{2,2}", searchstr)
+        for n in ret_val:
+            n
+        m = re.match(r"([a-z]+:)([\(\s])(\-)([a-z]+[\)\s])", ret_val, flags=re.IGNORECASE)
+        if m:
+            ret_val = f"-{m.group(1)}{m.group(2)}{m.group(4)}"
+            
+        return ret_val
 #-----------------------------------------------------------------------------
 def year_arg_parser(year_arg):
     """
-    Look for fulll start/end year ranges submitted in a single field.
+    Look for full start/end year ranges submitted in a single field.
     Returns with Solr field name and proper syntax
     
     For example:
@@ -327,11 +387,12 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   solrQueryTermList=None,
                                   # parameter based options
                                   para_textsearch=None,    # search paragraphs as child of scope
-                                  para_scope="doc",        # parent_tag of the para, i.e., scope of the para ()
+                                  para_scope=None,        # parent_tag of the para, i.e., scope of the para ()
                                   like_this_id=None,       # for morelikethis
                                   cited_art_id=None,       # for who cited this
                                   similar_count:int=0, # Turn on morelikethis for the set
                                   fulltext1=None,          # term, phrases, and boolean connectors with optional fields for full-text search
+                                  art_level: int=None,              # Level of record (top or child, as artlevel)
                                   smarttext=None,          # experimental detection of search parameters
                                   #solrSearchQ=None,       # the standard solr (advanced) query, overrides other query specs
                                   synonyms=False,          # global field synonyn flag (for all applicable fields)
@@ -353,15 +414,15 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   viewperiod=None,         # period to evaluate view count 0-4
                                   facetfields=None,        # facetfields to return
                                   # sort field and direction
-                                  facetmincount=1,
+                                  facetmincount=None,
                                   facetlimit=None,
                                   facetoffset=0,
-                                  facetspec: dict={}, 
-                                  abstract_requested: bool=False,
-                                  format_requested:str="HTML",
+                                  facetspec: dict=None, 
+                                  abstract_requested: bool=None,
+                                  format_requested:str=None,
                                   return_field_set=None, 
                                   sort=None,
-                                  highlighting=None, 
+                                  highlighting_max_snips:int=None, 
                                   extra_context_len=None,
                                   limit=None,
                                   offset=None, 
@@ -414,6 +475,28 @@ def parse_search_query_parameters(search=None,             # url based parameter
     artLevel = 1 # Doc query, sets to 2 if clauses indicate child query
     search_q_prefix = ""
     
+    # watch for some explicit None parameters which override defaults
+    if similar_count is None:
+        similar_count = 0
+    
+    if facetoffset is None:
+        facetoffset = 0
+
+    if facetmincount is None:
+        facetmincount = 1
+
+    if facetspec is None:
+        facetspec = {}
+
+    if format_requested is None:
+        format_requested = "HTML"
+
+    if abstract_requested is None:
+        abstract_requested = False
+
+    if para_scope is None:
+        para_scope = "doc"
+        
     if isinstance(synonyms, str):
         logger.warning("Synonyms parameter should be bool, not str")
         if synonyms.lower() == "true":
@@ -510,69 +593,30 @@ def parse_search_query_parameters(search=None,             # url based parameter
     # can do more but mainly using markup function for now.
     qparse = QueryTextToSolr()
     
-    if sort is not None:  # not sure why this seems to have a slash, but remove it
-        sort = re.sub("\/", "", sort)
-        sort = re.split("\s|,", sort)
-        try:
-            psort, porder = sort
-            plength = 2
-        except:
-            porder = None # set to default below
-            plength = len(sort)
-            if plength == 1:
-                psort = sort[0]
-                porder = opasConfig.DEFAULT_SOLR_SORT_DIRECTION
-            else:
-                psort = None 
-                porder = opasConfig.DEFAULT_SOLR_SORT_DIRECTION
-
-        if psort is not None:
-            psort = psort.lower()
-        if porder is not None:
-            porder = porder.lower()
-            
-        if porder == "a" or porder == "asc":
-            porder = " asc"
-        elif porder == "d" or porder == "desc":
-            porder = " desc"
+    if sort is not None:
+        s = sort
+        mat = "(" + "|".join(opasConfig.PREDEFINED_SORTS.keys()) + ")"
+        m = re.match(f"{mat}(\s(asc|desc))?", s, flags=re.IGNORECASE)
+        if m: #  one of the predefined sorts was used.
+            try:
+                sort_key = m.group(1).lower()
+                direction = m.group(2)
+                if direction is None:
+                    try:
+                        direction = opasConfig.PREDEFINED_SORTS[sort_key][1]
+                    except KeyError:
+                        direction = "DESC" # default
+                    except Exception as e:
+                        logger.error(f"PREDEFINED_SORTS lookup error {e}")
+                        direction = "DESC" # default
+                
+                sort = opasConfig.PREDEFINED_SORTS[sort_key][0].format(direction)
+            except Exception as e:
+                logger.warning(f"Predefined sort key {s} not found. Trying it directly against the database.")
         else:
-            if psort != "rank":
-                porder = opasConfig.DEFAULT_SOLR_SORT_DIRECTION
-            else:
-                porder = " desc" # asc gives a memory error in solr
-
-        if psort == "author":
-            sort = f"art_authors_citation {porder}" #  new field 20200410 for sorting (author names citation format)!
-        elif psort == "rank":
-            sort = f"score {porder}"
-        elif psort == "year":
-            sort = f"art_year {porder}"
-        elif psort == "source":
-            sort = f"art_sourcetitleabbr {porder}"
-        elif psort == "title":
-            sort = f"title {porder}" 
-        elif psort in ["citecount5", "art_cited_5", "citecount"]:
-            if plength == 1: # default to desc, it makes the most sense
-                sort = f"art_cited_5 desc"
-            else: # sort was explicit, obey
-                sort = f"art_cited_5 {porder}" # need the space here
-        elif psort in ["citecount10", "art_cited_10"]:
-            if plength == 1: # default to desc, it makes the most sense
-                sort = f"art_cited_10 desc"
-            else: # sort was explicit, obey
-                sort = f"art_cited_10 {porder}" # need the space here
-        elif psort in ["citecount20", "art_cited_20"]:
-            if plength == 1: # default to desc, it makes the most sense
-                sort = f"art_cited_20 desc"
-            else: # sort was explicit, obey
-                sort = f"art_cited_20 {porder}" # need the space here
-        elif psort in ["citecountall", "art_cited_all"]:
-            if plength == 1: # default to desc, it makes the most sense
-                sort = f"art_cited_all desc"
-            else: # sort was explicit, obey
-                sort = f"art_cited_all {porder}" # need the space here
-        else:
-            sort = f"{opasConfig.DEFAULT_SOLR_SORT_FIELD} {opasConfig.DEFAULT_SOLR_SORT_DIRECTION}"
+            logger.info(f"No match with predefined sort key; Passing sort through: {s}")
+    #else:
+        #sort = f"{opasConfig.DEFAULT_SOLR_SORT_FIELD} {opasConfig.DEFAULT_SOLR_SORT_DIRECTION}"
 
     if smarttext is not None:
         search_dict = smartsearch.smart_search(smarttext)
@@ -645,6 +689,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
                         para_textsearch = word_search
             
 
+    if art_level is not None:
+        filter_q = f"&& art_level:{art_level} "  # for solr filter fq
+        
     if para_textsearch is not None:
         # set up parameters as a solrQueryTermList to share that processing
         try:
@@ -1008,11 +1055,14 @@ def parse_search_query_parameters(search=None,             # url based parameter
         filter_q = "art_level:1"
 
     # Turn off highlighting if it's not needed, e.g, when there's no text search, e.g., a filter only, like mostcited and mostviewed calls
-    if highlighting is not None:
-        if not highlighting: # solr wants a string boolean here (JSON style)
+    # As of 2020-09-28, allow limit to be set here (via params)
+    if highlighting_max_snips is not None: # otherwise defaults to opasConfig.DEFAULT_MAX_KWIC_RETURNS (see SolrQueryOpts)
+        if highlighting_max_snips == 0:
+            # solr wants a string boolean here (JSON style)
             solr_query_spec.solrQueryOpts.hl = "false"
         else:
             solr_query_spec.solrQueryOpts.hl = "true"
+            solr_query_spec.solrQueryOpts.hlMaxKWICReturns = highlighting_max_snips
             
     solr_query_spec.abstractReturn = abstract_requested
     solr_query_spec.returnFormat = format_requested # HTML, TEXT_ONLY, XML
@@ -1075,7 +1125,7 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
                         facet_fields = None,
                         facet_mincount = None, 
                         extra_context_len = None,
-                        maxKWICReturns = None,
+                        highlighting_max_snips = None,
                         sort= None,
                         limit = None, 
                         offset = None,
@@ -1230,8 +1280,8 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is 0 or solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is None:
         solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = solr_query_spec.solrQueryOpts.hlFragsize  
         
-    if maxKWICReturns is not None:
-        solr_query_spec.solrQueryOpts.hlSnippets = maxKWICReturns 
+    if highlighting_max_snips is not None:
+        solr_query_spec.solrQueryOpts.hlSnippets = highlighting_max_snips 
        
     ret_val = solr_query_spec
     

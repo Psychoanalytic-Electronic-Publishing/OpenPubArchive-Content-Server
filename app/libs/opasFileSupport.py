@@ -96,8 +96,9 @@ class FlexFileSystem(object):
         else:
             self.secret = secret
         
+        # We have potentially many roots (buckets, so don't set by default!)
         if root is None:
-            self.root = localsecrets.XML_ORIGINALS_PATH
+            self.root = None # localsecrets.XML_ORIGINALS_PATH
         else:
             self.root = root
 
@@ -413,7 +414,7 @@ class FlexFileSystem(object):
         Return a list of matching files, as FileInfo objects
 
         Args:
-         - path - full path o
+         - path - full path to search
          - filespec_regex - regexp pattern with folder name and file name pattern, not including the root.
          - Examples:
             get_matching_filelist_info(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")

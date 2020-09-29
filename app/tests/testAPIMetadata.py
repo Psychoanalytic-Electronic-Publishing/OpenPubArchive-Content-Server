@@ -303,7 +303,7 @@ class TestMetadata(unittest.TestCase):
         r = response.json()
         count = r['sourceInfo']['responseInfo']['count']
         print (f"Count {count}")
-        assert(count >= 200)
+        assert(count >= unitTestConfig.ALL_SOURCES_COUNT)
 
     def test_8b_meta_all_sources(self):
         """

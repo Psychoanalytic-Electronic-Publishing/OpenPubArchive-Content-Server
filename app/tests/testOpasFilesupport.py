@@ -22,6 +22,8 @@ from starlette.testclient import TestClient
 
 import unittest
 import localsecrets
+import pathlib
+
 # from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
 # import jwt
 # from datetime import datetime
@@ -172,36 +174,48 @@ class TestFileSystemFunctions(unittest.TestCase):
                                             secret=localsecrets.S3_SECRET,
                                             root=localsecrets.XML_ORIGINALS_PATH)
 
-        matchlist = fs.get_matching_filelist(path="_PEPCurrent",
-                                             filespec_regex='(AIM\.076\.0309A.*\\((bEXP_ARCH1|bSeriesTOC)\\)\\.(xml|XML))$')
-        assert (matchlist[0].basename == 'AIM.076.0309A(bEXP_ARCH1).XML')
+        root = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
+        testsubpath = "_PEPCurrent/IJP/098.2017"
+        testfullpath = root / testsubpath
 
-        matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, revised_after_date="2020-09-04")
+        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, revised_after_date="2020-09-04")
         print (len(matchlist))
         assert (len(matchlist) == 0)
 
-        if localsecrets.use_server == 1:
-            matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat)
-        else:
-            matchlist = fs.get_matching_filelist(path="_PEPCurrent/IJP/098.2017", filespec_regex=pat)
-            
+        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat)
         print (len(matchlist))
         assert (len(matchlist) >= 100)
 
-        if localsecrets.use_server == 1:
-            matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
-        else:
-            matchlist = fs.get_matching_filelist(path="_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, max_items=20)
         print (len(matchlist))
         assert (len(matchlist) == 20)
-        
-        if localsecrets.use_server == 1:
-            matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
-        else:
-            matchlist = fs.get_matching_filelist(path="_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+
+        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, max_items=20)
+        print (len(matchlist))
+        assert (len(matchlist) == 20)
+
+        #if localsecrets.use_server == 1:
+            #matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat)
+        #else:
+            #matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat)
             
-        print (len(matchlist))
-        assert (len(matchlist) == 20)
+        #print (len(matchlist))
+        #assert (len(matchlist) >= 100)
+
+        #if localsecrets.use_server == 1:
+            #matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+        #else:
+            #matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, max_items=20)
+        #print (len(matchlist))
+        #assert (len(matchlist) == 20)
+        
+        #if localsecrets.use_server == 1:
+            #matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
+        #else:
+            #matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, max_items=20)
+            
+        #print (len(matchlist))
+        #assert (len(matchlist) == 20)
 
         #res = opasFileSupport.get_s3_matching_files(subpath_tomatch="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
         #res = opasFileSupport.get_s3_matching_files(subpath_tomatch="_PEPCurrent/.*\.xml")

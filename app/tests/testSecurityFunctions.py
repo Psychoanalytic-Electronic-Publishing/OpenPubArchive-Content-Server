@@ -53,25 +53,7 @@ class TestSecurityFunctions(unittest.TestCase):
             # PaDS ID provided has peparchive!
             assert(r['documentList']['responseSet'][0].get("accessLimited", None) == False)
 
-    def test_0b_no_pads_tests(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
-        response = requests.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=25')
-        response = requests.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        r = response.json()
-        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseSet'][0].get("accessLimited", None) == True)
-        
-
     def test_1a_timing_Pads(self):
-        #full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
-        #response = requests.get(full_URL)
-        ## Confirm that the request-response cycle completed successfully.
-        #assert(response.ok == True)
         response = opasDocPerm.pads_login()
         ## Confirm that the request-response cycle completed successfully.
         sessID = response.get("SessionId", None)
