@@ -308,6 +308,18 @@ def year_parser_support(year_arg):
         
         return ret_val    
 
+def orclause_paren_wrapper(search_clause):
+    subclauses = re.split(" OR ", search_clause, flags=re.IGNORECASE)
+    ret_val = ""
+    for n in subclauses:
+        if n != "":
+            if ret_val != "":
+                ret_val += f" || ({n})"
+            else:
+                ret_val += f"({n})"    
+
+    return ret_val
+
 def year_arg_parser(year_arg):
     """
     Look for full start/end year ranges submitted in a single field.
@@ -343,11 +355,12 @@ def year_arg_parser(year_arg):
     for n in bools:
         if n != "":
             if clause != "":
-                clause += f"|| {year_parser_support(n)}"
+                clause += f" || {year_parser_support(n)}"
             else:
                 clause += f"{year_parser_support(n)}"
-        
-    ret_val = f"&& {clause}"
+
+    # if there's an || in here, you need parens to give it precedence on the &&    
+    ret_val = f"&& ({clause})"
 
     return ret_val
                    
@@ -949,8 +962,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # if there's or and or not in lowercase, need to uppercase them
         # author = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", author)])
         # art_authors_citation:("tuckett, D.") OR art_authors_text:("tuckett, David")
-        author_text = qparse.markup(author, "art_authors_text", quoted=False) # convert AND/OR/NOT, set up field query
-        author_cited = qparse.markup(author, "art_authors_citation", quoted=False)
+        author_or_corrected = orclause_paren_wrapper(author)
+            
+        author_text = qparse.markup(author_or_corrected, "art_authors_text", quoted=False) # convert AND/OR/NOT, set up field query
+        author_cited = qparse.markup(author_or_corrected, "art_authors_citation", quoted=False)
         analyze_this = f' && ({author_text} || {author_cited}) ' # search analysis
         filter_q += analyze_this        # query filter qf
         search_analysis_term_list.append(analyze_this)  
