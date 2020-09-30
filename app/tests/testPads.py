@@ -31,6 +31,7 @@ import timeit
 import opasDocPermissions as opasDocPerm
 import json
 from models import PadsSessionInfo
+from opasConfig import AUTH_ABSTRACT_VIEW_REQUEST
 global session_id
 
 class TestPadsEndpoints(unittest.TestCase):
@@ -57,7 +58,8 @@ class TestPadsEndpoints(unittest.TestCase):
         else:
             authorized, resp = opasDocPerm.pads_permission_check(session_id=session_id,
                                                                  doc_id="AJRPP.002.0349A",
-                                                                 doc_year="2008")
+                                                                 doc_year="2008",
+                                                                 reason_for_check=AUTH_ABSTRACT_VIEW_REQUEST)
 
             # if this is True, then as long as session_info is valid, it won't need to check again
             # if accessLimited is ever True again, e.g., now a different type of document, it will check again.

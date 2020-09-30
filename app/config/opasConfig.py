@@ -81,6 +81,9 @@ OPASEXPIRES= "OpasExpiresTime"
 CLIENTID = "client-id"
 CLIENTSESSIONID = "client-session"
 
+AUTH_DOCUMENT_VIEW_REQUEST = "DocumentView"
+AUTH_ABSTRACT_VIEW_REQUEST = "AbstractView"
+
 # file classifications (from documents in the Solr database)
 DOCUMENT_ACCESS_FREE = "free"
 DOCUMENT_ACCESS_EMBARGOED = "current"

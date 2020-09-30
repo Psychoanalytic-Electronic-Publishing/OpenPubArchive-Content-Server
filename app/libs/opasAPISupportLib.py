@@ -1903,12 +1903,7 @@ def documents_get_document(document_id,
     """
     ret_val = {}
     document_list = None
-    # let search text handle the authentication verification
-    #if not authenticated and file_classification != opasConfig.DOCUMENT_ACCESS_FREE:
-        ##if user is not authenticated, effectively do endpoint for getDocumentAbstracts
-        #logger.info("documentsGetDocument: User not authenticated...fetching abstracts instead")
-        #ret_val = document_list_struct = documents_get_abstracts(document_id, authenticated=authenticated, ret_format=ret_format, limit=1)
-        #return ret_val
+    # search_text_qs handles the authentication verification
 
     try: # Solr match against art_id is case sensitive
         document_id = document_id.upper()
@@ -1931,12 +1926,12 @@ def documents_get_document(document_id,
             if query == "":
                 query = "*:*"
             filterQ = f"art_id:{document_id} && {solr_query_params.filterQ}"
-            solrParams = solr_query_params.dict() 
+            # solrParams = solr_query_params.dict() 
         else:
             query = f"art_id:{document_id}"
             filterQ = None
             #solrMax = None
-            solrParams = None
+            # solrParams = None
 
         solr_query_spec = \
                 opasQueryHelper.parse_to_query_spec(
@@ -2250,10 +2245,13 @@ def prep_document_download(document_id,
                            base_filename="opasDoc",
                            flex_fs=None):
     """
-    For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
-    For authenticated users, it returns with the document itself
+    Preps a file in the right format for download.  Returns the filename of the prepared file and the status.
+    Note:
+       Checks access with the auth server via opasDocPerm.get_access_limitations
+           - If access not permitted, this returns an error (and None for the filename)
+           - If access allowed, it returns with the document itself
 
-    >>> a = prep_document_download("IJP.051.0175A", ret_format="html") 
+    >> a = prep_document_download("IJP.051.0175A", ret_format="html") 
 
     >> a = prep_document_download("IJP.051.0175A", ret_format="epub") 
 
@@ -2295,7 +2293,9 @@ def prep_document_download(document_id,
                                                          classification=file_classification,
                                                          session_info=session_info,
                                                          year=pub_year,
-                                                         doi=doi)
+                                                         doi=doi,
+                                                         fulltext_request=True
+                                                        )
             if access.accessLimited != True:
                 try:
                     heading = opasxmllib.get_running_head( source_title=art_info.get("art_sourcetitleabbr", ""),
@@ -3156,14 +3156,16 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     documentListItem = get_base_article_info_from_search_result(result, documentListItem)
                     # sometimes, we don't need to check permissions
                     # Always check if fullReturn is selected
-                    # Don't check when it's not and a large number of records are requested.
-                    if record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN:
+                    # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)
+                    if record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
                         opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
                                                             classification=documentListItem.accessClassification, 
                                                             year=documentListItem.year,
                                                             doi=documentListItem.doi, 
                                                             session_info=session_info, 
-                                                            documentListItem=documentListItem) # will updated accessLimited fields in documentListItem
+                                                            documentListItem=documentListItem,
+                                                            fulltext_request=solr_query_spec.fullReturn
+                                                           ) # will updated accessLimited fields in documentListItem
     
                     documentListItem.score = result.get("score", None)               
                     documentID = documentListItem.documentID

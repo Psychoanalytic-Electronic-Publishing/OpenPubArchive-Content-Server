@@ -4,6 +4,8 @@
 import requests
 import opasConfig
 import models
+import logging
+logger = logging.getLogger(__name__)
 
 # import localsecrets
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
@@ -16,10 +18,13 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW):
 
     return ret_val
     
-def pads_permission_check(session_id, doc_id, doc_year):
+def pads_permission_check(session_id, doc_id, doc_year, reason_for_check=None):
     ret_val = False
     ret_resp = None
-    full_URL = base + f"/v1/Permits?SessionId={session_id}&DocId={doc_id}&DocYear={doc_year}"
+    if reason_for_check is None:
+        logger.warning("fulltext_request info not supplied")
+        
+    full_URL = base + f"/v1/Permits?SessionId={session_id}&DocId={doc_id}&DocYear={doc_year}&ReasonForCheck={reason_for_check}"
     response = requests.get(full_URL)
     if response.ok == True:
         ret_resp = response.json()
@@ -27,7 +32,13 @@ def pads_permission_check(session_id, doc_id, doc_year):
 
     return ret_val, ret_resp      
         
-def get_access_limitations(doc_id, classification, session_info, year=None, doi=None, documentListItem: models.DocumentListItem=None):
+def get_access_limitations(doc_id,
+                           classification,
+                           session_info,
+                           year=None,
+                           doi=None,
+                           documentListItem: models.DocumentListItem=None,
+                           fulltext_request:bool=None):
     """
     Based on the classification of the document (archive, current), and the users permissions
       in session_info, determine whether this user has access to the full-text of the document,
@@ -94,11 +105,18 @@ def get_access_limitations(doc_id, classification, session_info, year=None, doi=
     #  would it be slow?  Certainly for more than a dozen records, might...this is just for one instance though.
     # print (f"SessionID {session_info.session_id}, classificaton: {ret_val.accessLimited} and client_session: {session_info.api_client_session}")
     try:
-        if ret_val.accessLimited == True and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
+        # always check for a full-text request so PaDS can track them.
+        if (ret_val.accessLimited == True or fulltext_request == True) and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
+
+            if fulltext_request:
+                reason_for_check = opasConfig.AUTH_DOCUMENT_VIEW_REQUEST
+            else:
+                reason_for_check = opasConfig.AUTH_ABSTRACT_VIEW_REQUEST
 
             authorized, resp = pads_permission_check(session_id=session_info.session_id,
                                                      doc_id=doc_id,
-                                                     doc_year=year)
+                                                     doc_year=year,
+                                                     reason_for_check=reason_for_check)
 
             # if this is True, then as long as session_info is valid, it won't need to check again
             # if accessLimited is ever True again, e.g., now a different type of document, it will check again.
@@ -121,7 +139,8 @@ def get_access_limitations(doc_id, classification, session_info, year=None, doi=
                 ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
             else:
                 ret_val.accessLimitedReason = resp.ReasonStr # limited...get it elsewhere
-    except:
+    except Exception as e:
+        logger.error(f"Issue checking document permission {e}")
         pass # can't be checked, will be unauthorized.
     
     return ret_val

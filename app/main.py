@@ -4720,8 +4720,8 @@ def documents_glossary_term(response: Response,
 #-----------------------------------------------------------------------------
 @app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_VIEW, response_model_exclude_unset=True)  # the current PEP API
 @app.get("/v2/Documents/Document/{documentID}/", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_VIEW, response_model_exclude_unset=True) # more consistent with the model grouping
-def documents_document_fetch(response: Response, request: Request=Query(None,
-                                                                        title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+def documents_document_fetch(response: Response,
+                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                              documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDSINGLE), # return controls 
                              page:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
                              return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
@@ -4766,13 +4766,6 @@ def documents_document_fetch(response: Response, request: Request=Query(None,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response)
     #session_id = session_info.session_id
 
-    #if session_info.api_client_session and session_info.authenticated == False:
-        ## call PaDS
-        #year = ocd.get_article_year(documentID)
-        #authorized, authorization_dict = padscheck.pads_session_check(session_id, documentID, year)
-
-    #session_id = session_info.session_id
-    # is this document embargoed?
     # check if this is a Glossary request, this is per API.v1.
     m = re.match("(ZBK\.069\..*?)?(?P<termid>(Y.0.*))", documentID)
     if m is not None:    
@@ -4799,43 +4792,31 @@ def documents_document_fetch(response: Response, request: Request=Query(None,
                                                         #fields="art_id, art_sourcetype, art_year, file_classification, art_sourcecode")
         # file_classification = doc_info.get("file_classification", opasConfig.DOCUMENT_ACCESS_UNDEFINED)
         try:
-            # is the user authenticated? if so, loggedIn is true
-            if 1: # session_info.authenticated or file_classification == opasConfig.DOCUMENT_ACCESS_FREE:
-                if search is not None:
-                    argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
-                    if documentID is not None:
-                        # make sure this is part of the last search set.
-                        j = argdict.get("journal")
-                        if j is not None:
-                            if j not in documentID:
-                                argdict["journal"] = None
-                else:
-                    argdict = {}
-
-                solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
-                logger.debug("Document View Request: %s/%s/%s", solr_query_params, documentID, return_format)
-
-                ret_val = opasAPISupportLib.documents_get_document( documentID, 
-                                                                    solr_query_params,
-                                                                    ret_format=return_format, 
-                                                                    similar_count=similarcount, 
-                                                                    page_offset=offset, # starting page
-                                                                    page_limit=limit, # number of pages
-                                                                    page=page, # specific page number request (rather than offset),
-                                                                    req_url=request.url._url, 
-                                                                    session_info=session_info
-                                                                    )
+            # documents_get_document handles the view authorization and returns abstract if not authenticated.
+            if search is not None:
+                argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
+                if documentID is not None:
+                    # make sure this is part of the last search set.
+                    j = argdict.get("journal")
+                    if j is not None:
+                        if j not in documentID:
+                            argdict["journal"] = None
             else:
-                logger.debug("user is not authenticated.  Returning abstract only)")
+                argdict = {}
 
-                ret_val = opasAPISupportLib.documents_get_abstracts( documentID,
-                                                                     ret_format=return_format,
-                                                                     #authenticated=session_info.authenticated,
-                                                                     limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
-                                                                     offset=0,
-                                                                     req_url=request.url._url,
-                                                                     session_info=session_info
-                                                                     )
+            solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
+            logger.debug("Document View Request: %s/%s/%s", solr_query_params, documentID, return_format)
+
+            ret_val = opasAPISupportLib.documents_get_document( documentID, 
+                                                                solr_query_params,
+                                                                ret_format=return_format, 
+                                                                similar_count=similarcount, 
+                                                                page_offset=offset, # starting page
+                                                                page_limit=limit, # number of pages
+                                                                page=page, # specific page number request (rather than offset),
+                                                                req_url=request.url._url, 
+                                                                session_info=session_info
+                                                                )
 
         except Exception as e:
             response.status_code=httpCodes.HTTP_400_BAD_REQUEST
