@@ -38,7 +38,7 @@ class TestSecurityFunctions(unittest.TestCase):
         response = opasDocPerm.pads_login()
         ## Confirm that the request-response cycle completed successfully.
         try:
-            sessID = response["SessionId"]
+            sessID = response.SessionId
         except:
             err = f"PaDS response error: {response}"
             logger.error(err)
@@ -56,7 +56,7 @@ class TestSecurityFunctions(unittest.TestCase):
     def test_1a_timing_Pads(self):
         response = opasDocPerm.pads_login()
         ## Confirm that the request-response cycle completed successfully.
-        sessID = response.get("SessionId", None)
+        sessID = response.SessionId
         if sessID is None:
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)
@@ -75,7 +75,7 @@ class TestSecurityFunctions(unittest.TestCase):
     def test_1b_get_search(self):
         response = opasDocPerm.pads_login()
         ## Confirm that the request-response cycle completed successfully.
-        sessID = response.get("SessionId", None)
+        sessID = response.SessionId
         if sessID is None:
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)

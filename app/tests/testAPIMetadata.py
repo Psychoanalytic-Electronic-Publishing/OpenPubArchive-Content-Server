@@ -79,24 +79,6 @@ class TestMetadata(unittest.TestCase):
         #print (f"DB {source_type} {source_code} Vol Count {count}")
         #assert(count >= unitTestConfig.VOL_COUNT_VIDEOS_PEPVS)
         
-    def test_0_meta_volumes_api(self):
-        """
-        Journal Volumes Lists for a source
-        ​/v2​/Metadata​/Volumes​/
-        Arguments: sourcetype and sourcecode used.
-        
-        """
-        # ---------------------------------------------------------------------------------------
-        # Version 1 style, for backwards compat. only. sourcecode REQUIRED.  
-        # ---------------------------------------------------------------------------------------
-        response = client.get(base_api + '/v1/Metadata/Volumes/IJPSP') 
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        # test return
-        r = response.json()
-        print (f"IJPSP Vol Count: {r['volumeList']['responseInfo']['fullCount']}")
-        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_IJPSP)
-        
     def test_0_meta_volumes_api_book(self): 
         # ---------------------------------------------------------------------------------------
         # Version 2 style, better, including sourcetype support

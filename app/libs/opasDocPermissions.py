@@ -7,17 +7,50 @@ import models
 import logging
 logger = logging.getLogger(__name__)
 
+from starlette.responses import JSONResponse, Response
+from starlette.requests import Request
+
 # import localsecrets
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
 base = "https://padstest.zedra.net/PEPSecure/api"
 
-def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW):
-    full_URL = base + f"/v1/Authenticate"
+def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None):
+    if session_id is not None:
+        full_URL = base + f"/v1/Authenticate" + f"?SessionID={session_id}"
+    else:
+        full_URL = base + f"/v1/Authenticate"
+        
     response = requests.post(full_URL, headers={"Content-Type":"application/json"}, json={"UserName":f"{username}", "Password":f"{password}"})
-    ret_val = response.json()
+    response = response.json()
+    try:
+        if response["ReasonStr"] is None:
+            response["ReasonStr"] = ""
+    except Exception as e:
+        print (e)
+        
+    ret_val = models.PadsSessionInfo(**response)
 
     return ret_val
-    
+
+def pads_logout(session_id):
+    ret_val = False
+    if session_id is not None:
+        full_URL = base + f"/v1/Users/Logout/" + f"?SessionID={session_id}"
+        response = requests.post(full_URL, headers={"Content-Type":"application/json"}, json={"UserName":f"{username}", "Password":f"{password}"})
+        ret_val = True
+
+    return ret_val
+
+def pads_get_userinfo(session_id):
+    ret_val = None
+    if session_id is not None:
+        full_URL = base + f"/v1/Users" + f"?SessionID={session_id}"
+        response = requests.get(full_URL, headers={"Content-Type":"application/json"})
+        padsinfo = response.json()
+        ret_val = models.PadsUserInfo(**padsinfo)
+
+    return ret_val
+
 def pads_permission_check(session_id, doc_id, doc_year, reason_for_check=None):
     ret_val = False
     ret_resp = None

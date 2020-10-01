@@ -240,43 +240,16 @@ class opasCentralDB(object):
             status = self.db.open
             self.connected = True
             # this is normal, why log it?
-            # logger.debug(f"Database connection was already opened ({caller_name})")
         except:
             # not open reopen it.
-            status = False
-        
-        if status == False:
             try:
-                tunneling = None
-                if localsecrets.SSH_HOST is not None:
-                    from sshtunnel import SSHTunnelForwarder
-                    self.tunnel = SSHTunnelForwarder(
-                                                      (localsecrets.SSH_HOST,
-                                                       localsecrets.SSH_PORT),
-                                                       ssh_username=localsecrets.SSH_USER,
-                                                       ssh_pkey=localsecrets.SSH_MYPKEY,
-                                                       remote_bind_address=(localsecrets.DBHOST,
-                                                                            localsecrets.DBPORT))
-                    self.tunnel.start()
-                    self.db = pymysql.connect(host='127.0.0.1',
-                                           user=localsecrets.DBUSER,
-                                           passwd=localsecrets.DBPW,
-                                           db=localsecrets.DBNAME,
-                                           port=self.tunnel.local_bind_port)
-                    tunneling = self.tunnel.local_bind_port
-                else:
-                    #  not tunneled
-                    self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
-
-                logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} tunnel {tunneling}")
+                self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
+                logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT}")
                 self.connected = True
             except Exception as e:
-                err_str = f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})"
-                print(err_str)
-                logger.error(err_str)
-                self.connected = False
-                self.db = None
-
+                logger.debug(f"Database connection not opened ({caller_name}) ({e})")
+                # status = False
+        
         return self.connected
 
     def close_connection(self, caller_name=""):
@@ -286,9 +259,6 @@ class opasCentralDB(object):
                     self.db.close()
                     self.db = None
                     logger.debug(f"Database closed by ({caller_name})")
-                    if localsecrets.CONFIG == "AWSTestAccountTunnel":
-                        self.tunnel.stop()
-                        logger.debug(f"Database tunnel stopped.")
                 else:
                     logger.debug(f"Database close request, but not open ({caller_name})")
                     
@@ -929,20 +899,21 @@ class opasCentralDB(object):
 
         return ret_val # return true or false, success or failure
         
-    def save_session(self, session_id, 
-                         expiresTime=None, 
-                         username="NotLoggedIn", 
-                         userID=0,  # can save us a lookup ... #TODO
-                         userIP=None,
-                         connected_via=None,
-                         referrer=None,
-                         apiClientID=0,
-                         apiClientSession=False, 
-                         accessToken=None,
-                         keepActive=False,
-                         authorized_peparchive=False,
-                         authorized_pepcurrent=False,
-                         ):
+    def save_session(self,
+                     session_id, 
+                     expiresTime=None, 
+                     username="NotLoggedIn", 
+                     userID=0,  # can save us a lookup ... #TODO
+                     userIP=None,
+                     connected_via=None,
+                     referrer=None,
+                     apiClientID=0,
+                     apiClientSession=False, 
+                     accessToken=None,
+                     keepActive=False,
+                     authorized_peparchive=False,
+                     authorized_pepcurrent=False,
+                     ):
         """
         Save the session info to the database
         
@@ -1168,7 +1139,7 @@ class opasCentralDB(object):
             except:
                 if self.session_id is None:
                     # no session open!
-                    logger.debug("No session is open")
+                    logger.debug("OCD: No session is open")
                     return ret_val
                 else:
                     session_id = self.session_id

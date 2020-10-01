@@ -694,10 +694,20 @@ class PadsSessionInfo(BaseModel):
     IsValidLogon: bool = Schema(False, title="")
     IsValidUserName: bool = Schema(False, title="")
     ReasonId: int = Schema(0, title="")
-    ReasonStr: str = Schema("", title="")
+    ReasonStr = Schema("", title="")
     SessionExpires: int = Schema(0, title="")
     SessionId: str = Schema(None, title="")
 
+class PadsUserInfo(BaseModel):
+    UserId:int = Schema(None, title="")
+    UserName:str = Schema(None, title="")
+    UserType:str = Schema(None, title="")
+    SubscriptionEndDate:str = Schema(None, title="")
+    Branding:bool = Schema(None, title="")
+    ClientSettings:dict=Schema({}, title="")
+    ReasonId:int = Schema(None, title="")
+    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
+    
 #-------------------------------------------------------
 # Perhaps use termindex instead
 #class WordIndexItem(BaseModel):

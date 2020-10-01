@@ -214,9 +214,39 @@ def get_max_age(keep_active=False):
 
     #return ret_val
 
+def find_client_session_id(request: Request,
+                           response: Response,
+                           client_session: str=None
+                           ):
+    """
+    Dependency for client_session id:
+           gets it from header;
+           if not there, gets it from query param;
+           if not there, gets it from a cookie
+    """
+    #client_id = int(request.headers.get("client-id", '0'))
+    if client_session is None:
+        client_session_id = request.headers.get("client-session", None)
+    client_session_qparam = request.query_params.get("client-session", None)
+    client_session_cookie = request.cookies.get("client-session", None)
+    opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
+    if client_session is not None:
+        ret_val = client_session
+    elif client_session_qparam is not None:
+        ret_val = client_session_qparam
+    elif client_session_cookie is not None:
+        ret_val = client_session_cookie
+    elif opas_session_cookie is not None:
+        ret_val = opas_session_cookie
+    else:
+        ret_val = None
+
+    return ret_val
+
 #-----------------------------------------------------------------------------
 def get_session_info(request: Request,
-                     response: Response, 
+                     response: Response,
+                     session_id:str=None, 
                      access_token=None,
                      expires_time=None, 
                      keep_active=False,
@@ -227,92 +257,13 @@ def get_session_info(request: Request,
     Return a sessionInfo object with all of that info, and a database handle
 
     """
-    session_id = get_session_id(request)
-    client_session_id = request.headers.get("client-session", None)
-    if client_session_id == 'null':
-        client_session_id = None
+    if session_id is None:
+        session_id = find_client_session_id(request, response)
         
-    client_id = int(request.headers.get("client-id", '0'))
-    try:
-        client_dict = CLIENT_DB[client_id]
-        client_name = client_dict.get("api-client-name", None)
-    except:
-        client_dict = {}
-        client_name = "Unknown"
-    
-    logger.debug("Get Session Info, Session ID via GetSessionID: %s", session_id)
-    expiration_time = get_expiration_time(request)
-
-    if client_session_id is not None:
-        ocd = opasCentralDBLib.opasCentralDB(client_session_id, access_token=None)
-        session_info = ocd.get_session_from_db(client_session_id)
-        #TODO Later: change this to debug
-        logger.info(f"Session info recorded for client-id: {client_id} session-id: {client_session_id}")
-        if session_info is None:
-            # right now this is going to be PEP-Web and PaDS.  
-            ret_val, session_info = ocd.save_session(client_session_id,
-                                                     userID=0,
-                                                     userIP=request.client.host,
-                                                     connected_via=request.headers.get("user-agent", "Not Specified"),
-                                                     apiClientID=client_id,
-                                                     apiClientSession=True, 
-                                                     username=client_name) # returns save status and a session
-                                                                            # object (matching what was sent to the db)
-            
-        
-    else:
-        if session_id is None or session_id=='' or force_new_session:  # we need to set it
-            # get new sessionID...even if they already had one, this call forces a new one
-            logger.debug("session_id is none (or forcedNewSession).  We need to start a new session.")
-            ocd, session_info = start_new_session(response, request, access_token, keep_active=keep_active, user=user)
-    
-        else: # we already have a session_id, no need to recreate it.
-            # see if an access_token is already in cookies
-            access_token = get_access_token(request)
-            logger.debug(f"session_id {session_id} is already set.")
-            try:
-                ocd = opasCentralDBLib.opasCentralDB(session_id, access_token, expiration_time)
-                session_info = ocd.get_session_from_db(session_id)
-                if session_info is None:
-                    # this is an error, and means there's no recorded session info.  Should we create a s
-                    #  session record, return an error, or ignore? #TODO
-                    # try creating a record
-                    ocd, session_info = start_new_session(response, request, access_token=access_token, keep_active=keep_active, user=user) 
-                    username="NotLoggedIn"
-                    ret_val, session_info = ocd.save_session(session_id,
-                                                             userID=0,
-                                                             userIP=request.client.host,
-                                                             connected_via=request.headers.get("user-agent", "Not Specified"),
-                                                             username=username ) # returns save status and a session
-                                                                                    # object (matching what was sent to the db)
-    
-            except ValidationError as e:
-                logger.error("Validation Error: %s", e.json())             
-    
+    ocd = opasCentralDBLib.opasCentralDB(session_id)
+    session_info = models.SessionInfo(session_id=session_id)
     logger.debug("getSessionInfo: %s", session_info)
     return ocd, session_info
-
-def is_session_authenticated(request: Request, resp: Response):
-    """
-    Look to see if the session has been marked authenticated in the database
-    """
-    ocd, sessionInfo = get_session_info(request, resp)
-    # sessionID = sessionInfo.session_id
-    # is the user authenticated? if so, loggedIn is true
-    ret_val = sessionInfo.authenticated
-    return ret_val
-
-def ip2long(ip):
-    """
-    Convert an IP string to long
-
-    >>> ip2long("127.0.0.1")
-    2130706433
-    >>> socket.inet_ntoa(struct.pack('!L', 2130706433))
-    '127.0.0.1'
-    """
-    packedIP = socket.inet_aton(ip)
-    return struct.unpack("!L", packedIP)[0]    
 
 #-----------------------------------------------------------------------------
 def extract_abstract_from_html(html_str, xpath_to_extract=opasConfig.HTML_XPATH_ABSTRACT): # xpath example: "//div[@id='abs']"
@@ -328,62 +279,6 @@ def extract_abstract_from_html(html_str, xpath_to_extract=opasConfig.HTML_XPATH_
     ret_val = force_string_return_from_various_return_types(ret_val)
 
     return ret_val
-
-#-----------------------------------------------------------------------------
-def start_new_session(resp: Response, request: Request, session_id=None, access_token=None, keep_active=None, user=None):
-    """
-    Create a new session record and set cookies with the session
-
-    Returns database object, and the sessionInfo object
-
-    If user is supplied, that means they've been authenticated.
-
-    This should be the only place to generate and start a new session.
-    """
-    logger.debug("************** Starting a new SESSION!!!! *************")
-    # session_start=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-    max_age = get_max_age(keep_active)
-    token_expiration_time=datetime.utcfromtimestamp(time.time() + max_age) # .strftime('%Y-%m-%d %H:%M:%S')
-    if session_id is None:
-        session_id = secrets.token_urlsafe(16)
-        logger.info("startNewSession assigning New Session ID: {}".format(session_id))
-
-    # Try 
-    # set_cookies(resp, session_id, access_token, token_expires_time=token_expiration_time)
-    # get the database Object
-    ocd = opasCentralDBLib.opasCentralDB()
-    # save the session info
-    if user:
-        username=user.username
-        ret_val, sessionInfo = ocd.save_session(session_id=session_id, 
-                                                username=user.username,
-                                                userID=user.user_id,
-                                                authorized_peparchive=user.authorized_peparchive,
-                                                authorized_pepcurrent=user.authorized_pepcurrent,
-                                                expiresTime=token_expiration_time,
-                                                userIP=request.client.host, 
-                                                connected_via=request.headers.get("user-agent", "Not Specified"),
-                                                accessToken = access_token
-                                                )
-    else:
-        username="NotLoggedIn"
-        ret_val, sessionInfo = ocd.save_session(session_id, 
-                                                userID=0,
-                                                expiresTime=token_expiration_time,
-                                                userIP=request.client.host, 
-                                                connected_via=request.headers.get("user-agent", "Not Specified"),
-                                                username=username)  # returns save status and a session object 
-                                                                    # (matching what was sent to the db)
-
-    resp.set_cookie(key=opasConfig.OPASSESSIONID,
-                    value=session_id,
-                    max_age=max_age, expires=None, 
-                    path="/",
-                    secure=False, 
-                    httponly=False)
-
-    # return the object so the caller can get the details of the session
-    return ocd, sessionInfo
 
 #-----------------------------------------------------------------------------
 def get_session_id(request):
@@ -1641,6 +1536,7 @@ def documents_get_abstracts(document_id,
 
     return ret_val
 
+#-----------------------------------------------------------------------------
 def get_base_article_info_from_search_result(result, documentListItem: models.DocumentListItem):
     
     if result is not None:
@@ -1696,6 +1592,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
 
     return documentListItem # return a partially filled document list item
 
+#-----------------------------------------------------------------------------
 def get_excerpt_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="HTML"):
     """
     pass in the result from a solr query and this retrieves the abstract/excerpt from the excerpt field
@@ -1773,6 +1670,7 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
 
     return documentListItem
 
+#-----------------------------------------------------------------------------
 def get_fulltext_from_search_results(result,
                                      text_xml,
                                      page,
@@ -1874,7 +1772,6 @@ def get_fulltext_from_search_results(result,
         documentListItem.docChild['para'] = child_xml
 
     return documentListItem
-
 
 #-----------------------------------------------------------------------------
 def documents_get_document(document_id,
@@ -2064,14 +1961,7 @@ def documents_get_concordance_paras(para_lang_id,
 
     return ret_val
 
-def replace_if_none(oldval, newval):
-    if oldval is None:
-        ret_val = newval
-    else:
-        ret_val = oldval
-    
-    return ret_val
-
+#-----------------------------------------------------------------------------
 def get_base_article_info_by_id(art_id):
     
     documentList, ret_status = search_text(query=f"art_id:{art_id}", 
@@ -2088,6 +1978,7 @@ def get_base_article_info_by_id(art_id):
         
     return ret_val
 
+#-----------------------------------------------------------------------------
 def merge_documentListItems(old, new):     
     if old.documentID is None: old.documentID = new.documentID
     if old.PEPCode is None: old.PEPCode = new.PEPCode
@@ -2366,15 +2257,6 @@ def prep_document_download(document_id,
                 ret_val = None
 
     return ret_val, status
-
-#-----------------------------------------------------------------------------
-#def find(name, path): # Not used? 
-    #"""
-    #Find the file name in the selected path
-    #"""
-    #for root, dirs, files in os.walk(path):
-        #if name.lower() in [x.lower() for x in files]:
-            #return os.path.join(root, name)
 
 #-----------------------------------------------------------------------------
 def convert_xml_to_html_file(xmltext_str, output_filename=None):
@@ -2725,7 +2607,6 @@ def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LI
     return ret_val
 
 #-----------------------------------------------------------------------------
-#-----------------------------------------------------------------------------
 def get_term_index(term_partial,
                    term_field="text",
                    core="docs",
@@ -2907,7 +2788,6 @@ def search_text(query,
                                          )
 
     return ret_val, ret_status
-
 
 #================================================================================================================
 def search_text_qs(solr_query_spec: models.SolrQuerySpec,
