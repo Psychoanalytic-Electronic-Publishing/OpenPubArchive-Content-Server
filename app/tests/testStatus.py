@@ -8,7 +8,7 @@
 
 import sys
 import os.path
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
@@ -22,12 +22,10 @@ else: # python running from should be within folder app
 from starlette.testclient import TestClient
 
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-import jwt
-from datetime import datetime
-
+from localsecrets import TESTUSER, TESTPW
 from unitTestConfig import base_api, base_plus_endpoint_encoded
 from main import app
+import opasConfig
 
 client = TestClient(app)
 
@@ -57,30 +55,18 @@ class TestStatus(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         assert(r["user_id"] == 0)
-        assert(r["username"] == "NotLoggedIn")
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
+        assert(r["username"] == opasConfig.USER_NOT_LOGGED_IN_NAME)
+        # logout
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Logout')
         response = client.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
+        # login 
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}')
+        response = client.get(full_URL)
+        # now check who I am
         response = client.get(base_api + '/v2/Session/WhoAmI/')
         # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
         r = response.json()
-        assert(r["user_id"] == 2000)
-        assert(r["username"] == "testAccount001")
-        print (r)
-
-    def test_v1_license_status_login(self):
-        # Send a request to the API server and store the response.
-        response = client.get(base_api + '/v1/License/Status/Login/')
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        r = response.json()
-        response_info = r["licenseInfo"]["responseInfo"]
-        response_set = r["licenseInfo"]["responseSet"]
-        assert (response_info["loggedIn"] == False)
-        print (response_info)
-        assert (response_set is None)
+        assert(r["username"] == PADS_TEST_ID)
        
 if __name__ == '__main__':
     unittest.main()    

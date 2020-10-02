@@ -26,15 +26,15 @@ from starlette.testclient import TestClient
 
 import unittest
 from unitTestConfig import base_api, base_plus_endpoint_encoded
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
+
 import requests
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-#import jwt
 from datetime import datetime
 import opasAPISupportLib
 #import opasConfig
 #import opasQueryHelper
 import opasCentralDBLib
-import opasDocPermissions as opasDocPerm
+import opasDocPermissions
 
 #import models
 # from main import app
@@ -42,6 +42,12 @@ import opasDocPermissions as opasDocPerm
 # client = TestClient(app)
 
 ocd = opasCentralDBLib.opasCentralDB()
+
+# Login!
+resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+# Confirm that the request-response cycle completed successfully.
+sessID = resp.SessionId
+headers = {"client-session":sessID, "client-id": "0", "Content-Type":"application/json"}
 
 class TestConcordance(unittest.TestCase):
     """
@@ -65,26 +71,16 @@ class TestConcordance(unittest.TestCase):
     def test2_concordance_endpoint(self):
         """
         """
-        response = opasDocPerm.pads_login()
-        ## Confirm that the request-response cycle completed successfully.
-        try:
-            sessID = response["SessionId"]
-        except:
-            err = f"PaDS response error: {response}"
-            logger.error(err)
-            print (err)
-            assert(False)
-        else:
-            full_URL = base_plus_endpoint_encoded('/v2/Documents/Concordance/?paralangid=SEXixa5')
-            response = requests.get(full_URL, headers={"client-session":sessID, "client-id": "2", "Content-Type":"application/json"})
-            # Confirm that the request-response cycle completed successfully.
-            r = response.json()
-            para_cordance = r['documents']['responseSet'][0]['docChild']
-            # Confirm that the request-response cycle completed successfully.
-            para = para_cordance['para']
-            print (para)
-            assert (len(para) > 0)
-            # check to make sure a known value is among the data returned
+        full_URL = base_plus_endpoint_encoded('/v2/Documents/Concordance/?paralangid=SEXixa5')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        r = response.json()
+        para_cordance = r['documents']['responseSet'][0]['docChild']
+        # Confirm that the request-response cycle completed successfully.
+        para = para_cordance['para']
+        print (para)
+        assert (len(para) > 0)
+        # check to make sure a known value is among the data returned
         
 if __name__ == '__main__':
     unittest.main()

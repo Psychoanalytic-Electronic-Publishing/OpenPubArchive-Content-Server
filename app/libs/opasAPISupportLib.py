@@ -219,14 +219,17 @@ def find_client_session_id(request: Request,
                            client_session: str=None
                            ):
     """
+    ALWAYS returns a session ID.
+    
     Dependency for client_session id:
            gets it from header;
            if not there, gets it from query param;
            if not there, gets it from a cookie
+           Otherwise, gets a new one from the auth server
     """
     #client_id = int(request.headers.get("client-id", '0'))
     if client_session is None:
-        client_session_id = request.headers.get("client-session", None)
+        client_session = request.headers.get("client-session", None)
     client_session_qparam = request.query_params.get("client-session", None)
     client_session_cookie = request.cookies.get("client-session", None)
     opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
@@ -236,10 +239,12 @@ def find_client_session_id(request: Request,
         ret_val = client_session_qparam
     elif client_session_cookie is not None:
         ret_val = client_session_cookie
-    elif opas_session_cookie is not None:
+    elif opas_session_cookie is not None and opas_session_cookie != '':
         ret_val = opas_session_cookie
     else:
-        ret_val = None
+        # start a new one!
+        session = opasDocPerm.pads_get_session()
+        ret_val = session.SessionId
 
     return ret_val
 
@@ -258,10 +263,12 @@ def get_session_info(request: Request,
 
     """
     if session_id is None:
+        logger.warning("SessionID is None, but shouldn't be in this call")
+        # try to find it
         session_id = find_client_session_id(request, response)
-        
+    
     ocd = opasCentralDBLib.opasCentralDB(session_id)
-    session_info = models.SessionInfo(session_id=session_id)
+    session_info = ocd.get_session_from_db(session_id)
     logger.debug("getSessionInfo: %s", session_info)
     return ocd, session_info
 

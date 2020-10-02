@@ -24,8 +24,7 @@ else: # python running from should be within folder app
 from starlette.testclient import TestClient
 
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-import jwt
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 from datetime import datetime
 import opasAPISupportLib
 import opasConfig
@@ -39,6 +38,14 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded
 # client = TestClient(app)
 
 ocd = opasCentralDBLib.opasCentralDB()
+
+## Login!
+#resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+## Confirm that the request-response cycle completed successfully.
+#sessID = resp.SessionId
+#headers = {f"client-session":f"{sessID}",
+           #"client-id": "0"
+           #}
 
 class TestStandaloneFunctions(unittest.TestCase):
     """
@@ -210,23 +217,13 @@ class TestStandaloneFunctions(unittest.TestCase):
     def test_3b_get_para_translation(self):
         """
         """
-        response = opasDocPerm.pads_login()
-        ## Confirm that the request-response cycle completed successfully.
-        try:
-            sessID = response["SessionId"]
-        except:
-            err = f"PaDS response error: {response}"
-            logger.error(err)
-            print (err)
-            assert(False)
-        else:
-            data = opasAPISupportLib.documents_get_concordance_paras("SEXixa5", ret_format="html")
-            # Confirm that the request-response cycle completed successfully.
-            para_info = data.documents.responseSet[0].docChild
-            para = para_info['para']
-            print (para)
-            assert (len(para) > 0)
-            # check to make sure a known value is among the data returned
+        data = opasAPISupportLib.documents_get_concordance_paras("SEXixa5", ret_format="html")
+        # Confirm that the request-response cycle completed successfully.
+        para_info = data.documents.responseSet[0].docChild
+        para = para_info['para']
+        print (para)
+        assert (len(para) > 0)
+        # check to make sure a known value is among the data returned
         
 if __name__ == '__main__':
     unittest.main()

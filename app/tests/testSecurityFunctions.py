@@ -22,27 +22,26 @@ import unittest
 import requests
 # from requests.utils import requote_uri
 # import urllib
-
-from unitTestConfig import base_api, base_plus_endpoint_encoded
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
-
 import timeit
-import opasDocPermissions as opasDocPerm
-import json
+
+import opasDocPermissions
+from unitTestConfig import base_api, base_plus_endpoint_encoded
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW
+
+# Login!
+resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+# Confirm that the request-response cycle completed successfully.
+sessID = resp.SessionId
+headers = {f"client-session":f"{sessID}",
+           "client-id": "0"
+           }
 
 class TestSecurityFunctions(unittest.TestCase):
 
     def test_0a_pads_tests(self):
         # Login to PaDS with test account and then check responses to mostCited for access.
-        response = opasDocPerm.pads_login()
-        ## Confirm that the request-response cycle completed successfully.
-        try:
-            sessID = response.SessionId
-        except:
-            err = f"PaDS response error: {response}"
-            logger.error(err)
-            print (err)
+        if sessID is None:
+            logger.error(f"PaDS Login error in test: {response}")
             assert(False)
         else:
             full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')
@@ -54,9 +53,6 @@ class TestSecurityFunctions(unittest.TestCase):
             assert(r['documentList']['responseSet'][0].get("accessLimited", None) == False)
 
     def test_1a_timing_Pads(self):
-        response = opasDocPerm.pads_login()
-        ## Confirm that the request-response cycle completed successfully.
-        sessID = response.SessionId
         if sessID is None:
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)
@@ -73,9 +69,6 @@ class TestSecurityFunctions(unittest.TestCase):
             assert(timing < 7.5)            
             
     def test_1b_get_search(self):
-        response = opasDocPerm.pads_login()
-        ## Confirm that the request-response cycle completed successfully.
-        sessID = response.SessionId
         if sessID is None:
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)
@@ -90,23 +83,6 @@ class TestSecurityFunctions(unittest.TestCase):
             timing = timeit.timeit(test, setup, number=1)
             print (f"timing return 101 documents (no pads): {timing}")
             assert(timing < 19)            
-
-        ##full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
-        ##response = requests.get(full_URL)
-        ### Confirm that the request-response cycle completed successfully.
-        ##assert(response.ok == True)
-        #test = 'response = requests.get(full_URL)'
-        #setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')"
-        #timing = timeit.timeit(test, setup, number=1)
-        #print (f"timing return 99 documents: {timing}")
-        #assert(timing < 7)
-        #test = 'response = requests.get(full_URL)'
-        #setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=101')"
-        #timing = timeit.timeit(test, setup, number=1)
-        #print (f"timing return 101 documents (no pads): {timing}")
-        #assert(timing < 7)
-
-
 
 if __name__ == '__main__':
     unittest.main()

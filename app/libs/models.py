@@ -705,7 +705,17 @@ class PadsUserInfo(BaseModel):
     SubscriptionEndDate:str = Schema(None, title="")
     Branding:bool = Schema(None, title="")
     ClientSettings:dict=Schema({}, title="")
-    ReasonId:int = Schema(None, title="")
+    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
+    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
+
+class PadsPermitInfo(BaseModel):
+    # see https://app.swaggerhub.com/apis/nrshapiro/PEPSecure/1.03#/PermitResponse
+    SessionId:str = Schema(None, title="session GUID")
+    DocId:str = Schema(None, title="PEP Document Locator (Document ID: e.g., IJP.082.0215A)")
+    HasArchiveAccess:bool = Schema(False, title="User has subscription to PEP Archive")
+    HasCurrentAccess:bool = Schema(False, title="User has subscription to PEP Current (rare)")
+    Permit:bool = Schema(False, title="True if the user has permission to view fulltext of DocId")
+    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
     ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
     
 #-------------------------------------------------------

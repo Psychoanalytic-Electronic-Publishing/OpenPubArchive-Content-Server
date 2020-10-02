@@ -50,7 +50,7 @@ __status__      = "Development"
 
 import sys
 import re
-import fnmatch
+# import fnmatch
 
 # import os.path
 from contextlib import closing
@@ -217,7 +217,7 @@ class opasCentralDB(object):
     > ocd.delete_session(session_id=random_session_id)
     True
     """
-    def __init__(self, session_id=None, access_token=None, token_expires_time=None, username="NotLoggedIn", user=None):
+    def __init__(self, session_id=None, access_token=None, token_expires_time=None, username=opasConfig.USER_NOT_LOGGED_IN_NAME, user=None):
         self.db = None
         self.connected = False
         self.authenticated = False
@@ -902,7 +902,7 @@ class opasCentralDB(object):
     def save_session(self,
                      session_id, 
                      expiresTime=None, 
-                     username="NotLoggedIn", 
+                     username=opasConfig.USER_NOT_LOGGED_IN_NAME, 
                      userID=0,  # can save us a lookup ... #TODO
                      userIP=None,
                      connected_via=None,
@@ -931,15 +931,8 @@ class opasCentralDB(object):
                 session_admin = False
                 if self.db is not None:  # don't need this check, but leave it.
                     cursor = self.db.cursor()
-                    if username != "NotLoggedIn":
-                        user = self.get_user(username=username)
-                        if user:
-                            userID = user.user_id
-                            authenticated = True
-                            session_admin = user.admin
-                        else:
-                            userID = opasConfig.USER_NOT_LOGGED_IN_ID
-                            authenticated = False
+                    if username != opasConfig.USER_NOT_LOGGED_IN_NAME:
+                        authenticated = True
                     else:
                         userID = opasConfig.USER_NOT_LOGGED_IN_ID
                         authenticated = False
@@ -982,6 +975,10 @@ class opasCentralDB(object):
                                                   authorized_pepcurrent
                                                   )
                                                  )
+                    except pymysql.IntegrityError:
+                        success = False
+                        logger.error(f"Save: Integrity Error")
+                        
                     except Exception as e:
                         success = False
                         logger.error(f"Save: {e}")
@@ -1161,17 +1158,24 @@ class opasCentralDB(object):
 
                 #TODO: Later - Should be debug
                 logger.info(f"Session ID: {session_id} acccessed Session Endpoint {api_endpoint_id}")
-                ret_val = cursor.execute(sql, (
-                                                  session_id, 
-                                                  api_endpoint_id, 
-                                                  params,
-                                                  item_of_interest,
-                                                  return_status_code,
-                                                  api_endpoint_method, 
-                                                  status_message
-                                                 ))
-                self.db.commit()
-                cursor.close()
+                try:
+                    ret_val = cursor.execute(sql, (session_id, 
+                                                   api_endpoint_id, 
+                                                   params,
+                                                   item_of_interest,
+                                                   return_status_code,
+                                                   api_endpoint_method, 
+                                                   status_message
+                                                  ))
+                    self.db.commit()
+                    cursor.close()
+                except pymysql.IntegrityError:
+                    logger.error(f"Integrity Error logging endpoint {api_endpoint_id} for session {session_id}.")
+                    session_info = self.get_session_from_db(session_id)
+                    if session_info is None:
+                        self.save_session(session_id) # recover for next time.
+                except Exception as e:
+                    logger.error(f"Error logging endpoint {api_endpoint_id} for session {session_id}. Error: {e}")
             
             self.close_connection(caller_name="record_session_endpoint") # make sure connection is closed
 

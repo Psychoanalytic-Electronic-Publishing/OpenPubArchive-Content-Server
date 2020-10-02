@@ -69,6 +69,7 @@ HITMARKERSTART_OUTPUTHTML = "<span class='searchhit'>"  # to convert the non-mar
 HITMARKEREND_OUTPUTHTML = "</span>"
       
 USER_NOT_LOGGED_IN_ID = 0
+USER_NOT_LOGGED_IN_NAME = "NotLoggedIn"
     
 COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
 COOKIE_MAX_KEEP_TIME = 86400 # 24 hours in seconds

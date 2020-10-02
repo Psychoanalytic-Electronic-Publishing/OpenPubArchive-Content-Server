@@ -24,14 +24,16 @@ else: # python running from should be within folder app
 from starlette.testclient import TestClient
 
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-import jwt
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 from datetime import datetime
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded
 from main import app
 
 client = TestClient(app)
+# login
+full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}')
+response = client.get(full_URL)
 
 class TestGetDocuments(unittest.TestCase):
     """
@@ -41,29 +43,7 @@ class TestGetDocuments(unittest.TestCase):
           with forced order in the names.
     
     """
-    
-    def test_0_login(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
-        response = client.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        r = response.json()
-        access_token = r["access_token"]
-        session_id =  r["session_id"]
-        decoded_access_token = jwt.decode(access_token,
-                                          key=SECRET_KEY,
-                                          algorithms=ALGORITHM
-                                         )
-        expires_time = datetime.fromtimestamp(decoded_access_token['exp'])
-        orig_session_id = decoded_access_token['orig_session_id']
-        assert(r["authenticated"] == True)
-        assert(session_id == orig_session_id)
-        print (decoded_access_token )
-
     def test_1_get_document(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
-        response = client.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/IJP.077.0217A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = client.get(full_URL)
@@ -77,9 +57,6 @@ class TestGetDocuments(unittest.TestCase):
         print (response_set)
 
     def test_2_get_document_with_search_context(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
-        response = client.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A/?search=?journal=&fulltext1=mother love&sort=citeCount')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = client.get(full_URL)
@@ -93,9 +70,6 @@ class TestGetDocuments(unittest.TestCase):
         print (response_set)
 
     def test_2_get_document_with_similarcount(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
-        response = client.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A/?search=?journal=&fulltext1=mother love&sort=citeCount&similarcount=2')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = client.get(full_URL)
@@ -122,6 +96,18 @@ class TestGetDocuments(unittest.TestCase):
         assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')
         assert (len(data.documents.responseSet[0].abstract)) > 0
 
+    def test_3_get_document_logged_out_verify_only_abstract_return(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Logout')
+        response = client.get(full_URL)
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A')
+        response = client.get(full_URL)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"]
+        assert(response_info["count"] == 1)
+        assert(response_set[0]["accessLimited"] == True)
+        assert(len(response_set[0]["abstract"]) == len(response_set[0]["document"])) 
 
 
 if __name__ == '__main__':

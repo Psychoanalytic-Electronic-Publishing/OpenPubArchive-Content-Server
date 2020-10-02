@@ -19,18 +19,18 @@ else: # python running from should be within folder app
     sys.path.append('./config')
 
 
-from starlette.testclient import TestClient
+# from starlette.testclient import TestClient
 
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-import jwt
+# from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
+# import jwt
 from datetime import datetime
-import opasAPISupportLib
-import opasConfig
-import opasQueryHelper
-import models
+# import opasAPISupportLib
+# import opasConfig
+# import opasQueryHelper
+# import models
 import opasCentralDBLib
-import opasFileSupport
+# import opasFileSupport
 import pymysql
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0930.1.Alpha"
+__version__     = "2020.1001.1.Alpha"
 __status__      = "Development"
 
 """
@@ -228,13 +228,11 @@ def get_client_session(response: Response,
     Call routine in library so other routines can get resolve from there as well       
     """
     session_id = opasAPISupportLib.find_client_session_id(request, response, client_session)
-    client_id = get_client_id(response, request, 0)
+    # client_id = get_client_id(response, request, 0)
     # if there's no client session, get a session_id from PaDS without logging in
     if session_id is None:
         # get one from PaDS, without login info
-        dummy_username = "NotLoggedIn"
-        dummy_password = "NoPassword"
-        resp = opasDocPermissions.pads_login(username=dummy_username, password=dummy_password)
+        resp = opasDocPermissions.pads_get_session()
         try:
             session_id = resp.SessionId
         except Exception as e:
@@ -248,25 +246,6 @@ def get_client_session(response: Response,
                 OPASSESSIONID,
                 value=f"{session_id}",
             )
-            ocd = opasCentralDBLib.opasCentralDB(session_id)
-            logger.info(f"Session info recorded for client-id: {client_id} session-id: {session_id}")
-            # right now this is going to be PEP-Web and PaDS.  
-            ret_val, session_info = ocd.save_session(session_id,
-                                                     userID=0,
-                                                     userIP=request.client.host,
-                                                     connected_via=request.headers.get("user-agent", "Not Specified"),
-                                                     apiClientID=client_id,
-                                                     apiClientSession=True, 
-                                                     username=dummy_username)
-                
-            #access_token = jwt.encode({'exp': expiration_time.timestamp(),
-                                       #'user': user.user_id, # .dict(),
-                                       #'admin': user.admin,
-                                       #'orig_session_id': session_id,
-                                       #},
-                                      #key=localsecrets.SECRET_KEY,
-                                      #algorithm=localsecrets.ALGORITHM)
-
     return session_id       
     
 security = HTTPBasic()
@@ -274,9 +253,17 @@ def login_via_pads(response: Response,
                      request: Request,
                      credentials: HTTPBasicCredentials = Depends(security)):
 
+    # client_id = get_client_id(response, request, 0)
     session_id = request.cookies.get(OPASSESSIONID)
-    client_id = get_client_id(response, request, 0)
+    ocd = opasCentralDBLib.opasCentralDB()
+    if session_id is not None:
+        session_info = ocd.get_session_from_db(session_id)
+        if session_info.username != opasConfig.USER_NOT_LOGGED_IN_ID:
+            # we need a new session_id for this one
+            session_id = None
+            
     resp = opasDocPermissions.pads_login(username=credentials.username, password=credentials.password, session_id=session_id)
+        
     #valid_login = False
     if resp is not None:
         if resp.ReasonId == 200:
@@ -285,19 +272,6 @@ def login_via_pads(response: Response,
                 OPASSESSIONID,
                 value=f"{session_id}",
             )
-            ocd = opasCentralDBLib.opasCentralDB(session_id, access_token=None)
-            logger.info(f"Session info recorded for client-id: {client_id} session-id: {client_session_id}")
-            # right now this is going to be PEP-Web and PaDS.  
-            ret_val, session_info = ocd.save_session(session_id,
-                                                     userID=0,
-                                                     userIP=request.client.host,
-                                                     connected_via=request.headers.get("user-agent", "Not Specified"),
-                                                     apiClientID=client_id,
-                                                     apiClientSession=True, 
-                                                     username=client_name) # returns save status and a session
-                                                                            # object (matching what was sent to the db)
-            
-            
             #return response
         else:     
             raise HTTPException(
@@ -306,9 +280,6 @@ def login_via_pads(response: Response,
                 headers={"WWW-Authenticate": "Basic"},
             )
     
-    if valid_login == False:
-        raise HTTPException(status_code=httpCodes.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
-
     return session_id
 
 #-----------------------------------------------------------------------------
@@ -617,13 +588,13 @@ async def client_save_configuration(response: Response,
     #  return current config (old if it fails).
 
     session_id = client_session
-    ocd = opasCentralDBLib.opasCentralDB(session_id, access_token=None)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session)
 
     # ensure user is admin
     ret_val = None
 
     #if 1: # for now, just use API_KEY as the requirement.  Later admin?  if ocd.verify_admin(session_info):
-    ret_val, msg = ocd.save_client_config(session_id=session_info.session_id,
+    ret_val, msg = ocd.save_client_config(session_id=session_id,
                                           client_id=client_id, 
                                           client_configuration=configuration,
                                           replace=False)
@@ -1200,6 +1171,70 @@ async def session_status(response: Response,
 @app.get("/v1/Token/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_TOKEN, description="Used by PEP-Easy to login; will be need to be changed in V2 for oauth")  
 @app.get("/v1/License/Status/Login/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_LICENSE_STATUS)
 @app.get("/v2/Session/Login/", response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_LOGIN) # I like it under Users so I did them both.
+def session_login(response: Response, 
+                  request: Request,
+                  username=None, 
+                  password=None, 
+                  grant_type=None, 
+                  ka=False,
+                  client_id:int=Depends(get_client_id), 
+                  client_session:str= Depends(get_client_session)
+                  ):
+    """
+    ## Function
+       <b>Insecure login Authentication.</b>
+    
+       Supply username and password.
+    
+    ## Return Type
+       models.LoginReturnItem
+    
+    ## Status
+       This endpoint is working.
+    
+    ## Sample Call
+         /v2/Session/BasicLogin/
+    
+    ## Notes
+    
+    ## Potential Errors
+    
+    """
+    session_id = client_session
+    pads_session_info = opasDocPermissions.pads_login(username=username, password=password, session_id=None) # don't pass session
+    
+    if pads_session_info.IsValidLogon != True:
+        detail = "Bad login credentials"
+        raise HTTPException(
+            status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
+            detail=detail 
+        )
+
+    # New session id
+    session_id = pads_session_info.SessionId
+    # Save it for eating later; most importantly, overwrite any existing cookie!
+    response.set_cookie(
+        OPASSESSIONID,
+        value=f"{session_id}",
+    )
+
+    try:
+        login_return_item = models.LoginReturnItem(token_type = "bearer", 
+                                                   session_id = session_id,
+                                                   authenticated=pads_session_info.IsValidLogon,
+                                                   error_message = None,
+                                                   scope = None
+                                                   )
+    except ValidationError as e:
+        logger.error(e.json())             
+        detail = f"Validation Error {e}"
+        # Solr Error
+        raise HTTPException(
+            status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+            detail=detail 
+        )    
+    return login_return_item
+
 @app.get("/v2/Session/BasicLogin/", response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_LOGIN_BASIC)
 def session_login_basic(response: Response, 
                         request: Request,
@@ -1231,7 +1266,7 @@ def session_login_basic(response: Response,
     err_code = None
 
     session_id = client_session
-    ocd = opasCentralDBLib.opasCentralDB()
+
     padsuserinfo = opasDocPermissions.pads_get_userinfo(session_id)
     if padsuserinfo is not None:
         authenticated = True
@@ -1239,6 +1274,13 @@ def session_login_basic(response: Response,
         #success = ocd.update_session(session_id=session_id, 
                                      #session_start_time=session_end_time
                                      #)            
+                                     # New session id
+
+    # Save it for eating later; most importantly, overwrite any existing cookie!
+    response.set_cookie(
+        OPASSESSIONID,
+        value=f"{session_id}",
+    )
     try:
         login_return_item = models.LoginReturnItem(token_type = "bearer", 
                                                    session_id = session_id,
@@ -1278,7 +1320,7 @@ def session_logout_user(response: Response,
 
     """
 
-    session_id = opasAPISupportLib.get_session_id(request)
+    session_id = client_session
     # ocd = opasCentralDBLib.opasCentralDB()
     license_info = None
     if session_id is not None:
@@ -1289,12 +1331,8 @@ def session_logout_user(response: Response,
                                                        timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ')
                                                        )
         response_info.loggedIn = False
-        response.set_cookie(key=OPASSESSIONID,
-                            value='',
-                            expires=None, 
-                            path="/",
-                            secure=False, 
-                            httponly=False)
+        # We are logged out, but we still ALWAYS need a session id, so don't clear it.  
+        response.delete_cookie(key=OPASSESSIONID,path="/")
 
         license_info_struct = models.LicenseInfoStruct( responseInfo = response_info, 
                                                         responseSet = []
