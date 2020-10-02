@@ -172,17 +172,19 @@ import pymysql
 
 import config
 import opasConfig
-import opasCoreConfig
-from opasCoreConfig import solr_authors, solr_gloss
+# import opasCoreConfig
+import configLib.opasCoreConfig
+from configLib.opasCoreConfig import solr_authors, solr_gloss, solr_docs2
 
 # from OPASFileTrackerMySQL import FileTracker, FileTrackingInfo
 import opasXMLHelper as opasxmllib
 import opasCentralDBLib
 import opasGenSupportLib as opasgenlib
+import opasSolrLoadSupport
 import localsecrets
 
 def read_stopwords(): 
-    with open(opasConfig.HIGHLIGHT_STOP_WORDS_FILE) as f:
+    with open(localsecrets.HIGHLIGHT_STOP_WORDS_FILE) as f:
         stopWordList = f.read().splitlines()
     
     stopPattern = "<[ib]>[A-Z]</[ib]>"
@@ -193,7 +195,7 @@ def read_stopwords():
     return ret_val
 
 # Module Globals
-gCitedTable = dict() # large table of citation counts, too slow to run one at a time.
+#gCitedTable = dict() # large table of citation counts, too slow to run one at a time.
 bib_total_reference_count = 0
 rc_stopword_match = read_stopwords() # returns compile re for matching stopwords 
 
@@ -240,8 +242,7 @@ def non_empty_string(strval):
     try:
         return strval if strval != "" else None
     except Exception as e:
-        return None
-        
+        return None        
 
 class NewFileTracker(object):
     """
@@ -406,141 +407,6 @@ class ExitOnExceptionHandler(logging.StreamHandler):
         if record.levelno in (logging.ERROR, logging.CRITICAL):
             raise SystemExit(-1)
 
-
-class BiblioEntry(object):
-    """
-    An entry from a documents bibliography.
-    
-    Used to populate the MySQL table api_biblioxml for statistical gathering
-       and the Solr core pepwebrefs for searching in special cases.
-    
-    """
-    def __init__(self, artInfo, ref):
-        self.ref_entry_xml = etree.tostring(ref, with_tail=False)
-        if self.ref_entry_xml is not None:
-            self.ref_entry_xml = self.ref_entry_xml.decode("utf8") # convert from bytes
-        self.ref_entry_text = opasxmllib.xml_elem_or_str_to_text(ref)
-        self.art_id = artInfo.art_id
-        self.art_year_int = artInfo.art_year_int
-        self.ref_local_id= opasxmllib.xml_get_element_attr(ref, "id")
-        self.ref_id = artInfo.art_id + "." + self.ref_local_id
-        self.ref_title = opasxmllib.xml_get_subelement_textsingleton(ref, "t")
-        self.ref_title = self.ref_title[:1023]
-        self.pgrg = opasxmllib.xml_get_subelement_textsingleton(ref, "pp")
-        self.pgrg = opasgenlib.first_item_grabber(self.pgrg, re_separator_ptn=";|,", def_return=self.pgrg)
-        self.pgrg = self.pgrg[:23]
-        self.rx = opasxmllib.xml_get_element_attr(ref, "rx", default_return=None)
-        self.rxcf = opasxmllib.xml_get_element_attr(ref, "rxcf", default_return=None) # related rx
-        if self.rx is not None:
-            self.rx_sourcecode = re.search("(.*?)\.", self.rx, re.IGNORECASE).group(1)
-        else:
-            self.rx_sourcecode = None
-        self.volume = opasxmllib.xml_get_subelement_textsingleton(ref, "v")
-        self.volume = self.volume[:23]
-        self.source_title = opasxmllib.xml_get_subelement_textsingleton(ref, "j")
-        self.publishers = opasxmllib.xml_get_subelement_textsingleton(ref, "bp")
-        self.publishers = self.publishers[:254]
-        if self.publishers != "":
-            self.source_type = "book"
-        else:
-            self.source_type = "journal"
-
-        if self.source_type == "book":
-            self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "bpd")
-            if self.year_of_publication == "":
-                self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
-            if self.source_title is None or self.source_title == "":
-                # sometimes has markup
-                self.source_title = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
-        else:
-            self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
-         
-        if self.year_of_publication != "":
-            # make sure it's not a range or list of some sort.  Grab first year
-            self.year_of_publication = opasgenlib.year_grabber(self.year_of_publication)
-        else:
-            # try to match
-            try:
-                self.year_of_publication = re.search(r"\(([A-z]*\s*,?\s*)?([12][0-9]{3,3}[abc]?)\)", self.ref_entry_xml).group(2)
-            except Exception as e:
-                logger.warning("no match %s/%s/%s" % (self.year_of_publication, ref, e))
-            
-        self.year_of_publication_int = 0
-        if self.year_of_publication != "" and self.year_of_publication is not None:
-            self.year_of_publication = re.sub("[^0-9]", "", self.year_of_publication)
-            if self.year_of_publication != "" and self.year_of_publication is not None:
-                try:
-                    self.year_of_publication_int = int(self.year_of_publication[0:4])
-                except ValueError as e:
-                    logger.warning("Error converting year_of_publication to int: %s / %s.  (%s)" % (self.year_of_publication, self.ref_entry_xml, e))
-                except Exception as e:
-                    logger.warning("Error trying to find untagged bib year in %s (%s)" % (self.ref_entry_xml, e))
-            else:
-                logger.warning("Non-numeric year of pub: %s" % (self.ref_entry_xml))
-
-        self.year = self.year_of_publication
-
-        if self.year != "" and self.year is not None:
-            self.year_int = int(self.year)
-        else:
-            self.year_int = "Null"
-            
-        self.author_name_list = [etree.tostring(x, with_tail=False).decode("utf8") for x in ref.findall("a") if x is not None]
-        self.authors_xml = '; '.join(self.author_name_list)
-        self.authors_xml = self.authors_xml[:2040]
-        self.author_list = [opasxmllib.xml_elem_or_str_to_text(x) for x in ref.findall("a") if opasxmllib.xml_elem_or_str_to_text(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
-        self.author_list_str = '; '.join(self.author_list)
-        self.author_list_str = self.author_list_str[:2040]
-
-        #if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE: # "pepoffsite":
-            ## certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
-            #self.ref_offsite_entry = self.bibRefEntry
-            #self.bibRefEntry = None
-        #else:
-            #self.ref_offsite_entry = None
-        
-        # setup for Solr load
-        #self.thisRef = {
-                        #"id" : self.ref_id,
-                        #"art_id" : artInfo.art_id,
-                        #"file_last_modified" : artInfo.filedatetime,
-                        #"file_classification" : artInfo.file_classification,
-                        #"file_size" : artInfo.file_size,
-                        #"file_name" : artInfo.filename,
-                        #"timestamp" : artInfo.processed_datetime,  # When batch was entered into core
-                        #"art_title" : artInfo.art_title,
-                        #"art_sourcecode" : artInfo.src_code,
-                        #"art_sourcetitleabbr" : artInfo.src_title_abbr,
-                        #"art_sourcetitlefull" : artInfo.src_title_full,
-                        #"art_sourcetype" : artInfo.src_type,
-                        #"art_authors" : artInfo.art_all_authors,
-                        #"reference_count" :artInfo.ref_count,  # would be the same for each reference in article, but could still be useful
-                        #"art_year" : artInfo.art_year,
-                        #"art_year_int" : artInfo.art_year_int,
-                        #"art_vol" : artInfo.art_vol,
-                        #"art_pgrg" : artInfo.art_pgrg,
-                        #"art_lang" : artInfo.art_lang,
-                        #"art_citeas_xml" : artInfo.art_citeas_xml,
-                        #"text_ref" : self.ref_entry_xml,                        
-                        #"text_offsite_ref": self.ref_offsite_entry,
-                        #"authors" : self.author_list_str,
-                        #"title" : self.ref_title,
-                        #"bib_articletitle" : self.ref_title, 
-                        #"bib_sourcetitle" : self.source_title,
-                        #"bib_authors_xml" : self.authors_xml,
-                        #"bib_ref_id" : self.ref_id,
-                        #"bib_ref_rx" : self.rx,
-                        #"bib_ref_rxcf" : self.rxcf, # the not 
-                        #"bib_ref_rx_sourcecode" : self.rx_sourcecode,
-                        #"bib_sourcetype" : self.source_type,
-                        #"bib_pgrg" : self.pgrg,
-                        #"bib_year" : self.year_of_publication,
-                        #"bib_year_int" : self.year_int,
-                        #"bib_volume" : self.volume,
-                        #"bib_publisher" : self.publishers
-                      #}
-
-
 class ArticleInfo(object):
     """
     An entry from a documents metadata.
@@ -592,8 +458,11 @@ class ArticleInfo(object):
             self.src_code = self.src_code.upper()  # 20191115 - To make sure this is always uppercase
             self.src_title_abbr = sourceinfodb_data[self.src_code].get("sourcetitleabbr", None)
             self.src_title_full = sourceinfodb_data[self.src_code].get("sourcetitlefull", None)
-            self.src_type = sourceinfodb_data[self.src_code].get("product_type", None)  # journal, book, video...
             self.src_embargo = sourceinfodb_data[self.src_code].get("wall", None)
+            if self.src_code in ["GW", "SE"]:
+                self.src_type = "book"
+            else:
+                self.src_type = sourceinfodb_data[self.src_code].get("product_type", None)  # journal, book, video...
         except KeyError as err:
             self.src_title_abbr = None
             self.src_title_full = None
@@ -856,14 +725,13 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
 
     """
     #------------------------------------------------------------------------------------------------------
-    # global gCitedTable
-    
-    print("   ...Processing main file content for the %s core." % opasCoreConfig.SOLR_DOCS)
+    print("   ...Processing main file content for the %s core." % configLib.opasCoreConfig.SOLR_DOCS)
 
     art_lang = pepxml.xpath('//@lang')
     if art_lang == []:
         art_lang = ['EN']
-        
+    
+    body_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body", default_return=None)
 
     # see if this is an offsite article
     if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE:
@@ -916,10 +784,8 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
             excerpt = opasxmllib.xml_str_to_html(excerpt_xml)
                 
     excerpt_xml = opasxmllib.xml_elem_or_str_to_xmlstring(excerpt_xml, None)
-    
     #art_authors_unlisted = pepxml.xpath(r'//artinfo/artauth/aut[@listed="false"]/@authindexid') 
-    cited_counts = gCitedTable.get(artInfo.art_id, modelsOpasCentralPydantic.MostCitedArticles())
-    # anywhere in the doc.
+
     children = doc_children() # new instance, reset child counter suffix
     children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//body//p|//body//p2", attr_to_find="lang"),
                           parent_id=artInfo.art_id,
@@ -1031,11 +897,11 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "file_name" : artInfo.filename,
                 "art_subtitle_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//artsubtitle", default_return = None),
                 "art_citeas_xml" : artInfo.art_citeas_xml,
-                "art_cited_all" : cited_counts.countAll,
-                "art_cited_5" : cited_counts.count5,
-                "art_cited_10" : cited_counts.count10,
-                "art_cited_20" : cited_counts.count20,
-                #"art_body_xml" : bodyXml,
+                #"art_cited_all" : cited_counts.countAll,
+                #"art_cited_5" : cited_counts.count5,
+                #"art_cited_10" : cited_counts.count10,
+                #"art_cited_20" : cited_counts.count20,
+                "body_xml" : body_xml[0],
                 "authors" :  artInfo.author_list, # artInfo.art_all_authors,
                 "art_authors" : artInfo.author_list,
                 "art_authors_count" : artInfo.art_authors_count,
@@ -1085,6 +951,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents):
                 "bib_journaltitle" : artInfo.bib_journaltitle,
                 "bib_rx" : artInfo.bib_rx,
                 "art_level" : 1,
+                "meta_marked_corrections" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//cgrp[@type='ERA2']", default_return=None), # multi,
                 #"art_para" : parasxml, 
                 "_doc" : children.child_list
               }
@@ -1137,6 +1004,7 @@ class doc_children(object):
                 para_lgrx = [item.strip() for item in para_lgrx.split(',')]
                 
             self.child_list.append({"id": parent_id + f".{self.count}",
+                                    "para_art_id": parent_id,
                                     "art_level": level,
                                     "parent_tag": parent_tag,
                                     "lang": lang,
@@ -1220,214 +1088,6 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor):
         config.logger.error(errStr)
 
 #------------------------------------------------------------------------------------------------------
-#def processBibForReferencesCore(pepxml, artInfo, solrbib):
-    #"""
-    #Adds the bibliography data from a single document to the core per the pepwebrefs solr schema
-    
-    #"""
-    #print(("   ...Processing %s references for the references database." % (artInfo.ref_count)))
-    ##------------------------------------------------------------------------------------------------------
-    ##<!-- biblio section fields -->
-    ##Note: currently, this does not include footnotes or biblio include tagged data in document (binc)
-    #bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-    #retVal = artInfo.ref_count
-    ##processedFilesCount += 1
-    #bib_total_reference_count = 0
-    #allRefs = []
-    #for ref in bibReferences:
-        ## bib_entry = BiblioEntry(artInfo, ref)
-        #bib_total_reference_count += 1
-        #bibRefEntry = etree.tostring(ref, with_tail=False)
-        #bibRefID = opasxmllib.xml_get_element_attr(ref, "id")
-        #refID = artInfo.art_id + "." + bibRefID
-        #bibSourceTitle = opasxmllib.xml_get_subelement_textsingleton(ref, "j")
-        #bibPublishers = opasxmllib.xml_get_subelement_textsingleton(ref, "bp")
-        #if bibPublishers != "":
-            #bibSourceType = "book"
-        #else:
-            #bibSourceType = "journal"
-        #if bibSourceType == "book":
-            #bibYearofPublication = opasxmllib.xml_get_subelement_textsingleton(ref, "bpd")
-            #if bibYearofPublication == "":
-                #bibYearofPublication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
-            #if bibSourceTitle is None or bibSourceTitle == "":
-                ## sometimes has markup
-                #bibSourceTitle = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
-        #else:
-            #bibYearofPublication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
-           
-        #if bibYearofPublication == "":
-            ## try to match
-            #try:
-                #bibYearofPublication = re.search(r"\(([A-z]*\s*,?\s*)?([12][0-9]{3,3}[abc]?)\)", bibRefEntry).group(2)
-            #except Exception as e:
-                #logger.warning("no match %s/%s/%s" % (bibYearofPublication, ref, e))
-            
-        #try:
-            #bibYearofPublication = re.sub("[^0-9]", "", bibYearofPublication)
-            #bibYearofPublicationInt = int(bibYearofPublication[0:4])
-        #except ValueError as e:
-            #logger.warning("Error converting bibYearofPublication to int: %s / %s.  (%s)" % (bibYearofPublication, bibRefEntry, e))
-            #bibYearofPublicationInt = 0
-        #except Exception as e:
-            #logger.warning("Error trying to find untagged bib year in %s (%s)" % (bibRefEntry, e))
-            #bibYearofPublicationInt = 0
-            
-
-        #bibAuthorNameList = [etree.tostring(x, with_tail=False).decode("utf8") for x in ref.findall("a") if x is not None]
-        #bibAuthorsXml = '; '.join(bibAuthorNameList)
-        ##Note: Changed to is not None since if x gets warning - FutureWarning: The behavior of this method will change in future versions. Use specific 'len(elem)' or 'elem is not None' test instead
-        #authorList = [opasxmllib.xml_elem_or_str_to_text(x) for x in ref.findall("a") if opasxmllib.xml_elem_or_str_to_text(x) is not None]  # final if x gets rid of any None entries which can rarely occur.
-        #authorList = '; '.join(authorList)
-        #bibRefRxCf = opasxmllib.xml_get_element_attr(ref, "rxcf", default_return=None)
-        #bibRefRx = opasxmllib.xml_get_element_attr(ref, "rx", default_return=None)
-        #if bibRefRx is not None:
-            #bibRefRxSourceCode = re.search("(.*?)\.", bibRefRx, re.IGNORECASE).group(1)
-        #else:
-            #bibRefRxSourceCode = None
-            
-        ## see if this is an offsite article
-        #if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE: # "pepoffsite":
-            ## certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
-            #bibRefOffsiteEntry = bibRefEntry
-            ##bibEntryXMLContents = """<html>
-                                 ##<p>This reference is in an article or book where text is not is available on PEP. 
-                                    ##Click <a href="//www.doi.org/%s" target="_blank">here</a> to show the article on another website 
-                                    ##in another window or tab.
-                                 ##</p>
-                                 ##</html>
-                              ##""" % urllib.quote(artInfo.artDOI)
-            ## should we trust clients, or remove this data?  For now, remove.  Need to probably do this in biblio core too
-            #bibRefEntry = None
-        #else:
-            #bibRefOffsiteEntry = None
-    
-        #thisRef = {
-                    #"id" : refID,
-                    #"art_id" : artInfo.art_id,
-                    #"file_last_modified" : artInfo.filedatetime,
-                    #"file_classification" : artInfo.file_classification,
-                    #"file_size" : artInfo.file_size,
-                    #"file_name" : artInfo.filename,
-                    #"timestamp" : artInfo.processed_datetime,  # When batch was entered into core
-                    #"art_title" : artInfo.art_title,
-                    #"art_sourcecode" : artInfo.src_code,
-                    #"art_sourcetitleabbr" : artInfo.art_source_title_abbr,
-                    #"art_sourcetitlefull" : artInfo.art_source_title_full,
-                    #"art_sourcetype" : artInfo.art_source_type,
-                    #"art_authors" : artInfo.artAllAuthors,
-                    #"reference_count" :artInfo.ref_count,  # would be the same for each reference in article, but could still be useful
-                    #"art_year" : artInfo.art_year,
-                    #"art_year_int" : artInfo.art_year_int,
-                    #"art_vol" : artInfo.art_vol,
-                    #"art_pgrg" : artInfo.art_pgrg,
-                    #"art_lang" : artInfo.art_lang,
-                    #"art_citeas_xml" : artInfo.art_citeas_xml,
-                    #"text_ref" : bibRefEntry,                        
-                    #"text_offsite_ref": bibRefOffsiteEntry,
-                    #"authors" : authorList,
-                    #"title" : opasxmllib.xml_get_subelement_textsingleton(ref, "t"),
-                    #"bib_authors_xml" : bibAuthorsXml,
-                    #"bib_ref_id" : bibRefID,
-                    #"bib_ref_rx" : bibRefRx,
-                    #"bib_ref_rxcf" : bibRefRxCf, # the not 
-                    #"bib_ref_rx_sourcecode" : bibRefRxSourceCode,
-                    #"bib_articletitle" : opasxmllib.xml_get_subelement_textsingleton(ref, "t"),
-                    #"bib_sourcetype" : bibSourceType,
-                    #"bib_sourcetitle" : bibSourceTitle,
-                    #"bib_pgrg" : opasxmllib.xml_get_subelement_textsingleton(ref, "pp"),
-                    #"bib_year" : bibYearofPublication,
-                    #"bib_year_int" : bibYearofPublicationInt,
-                    #"bib_volume" : opasxmllib.xml_get_subelement_textsingleton(ref, "v"),
-                    #"bib_publisher" : bibPublishers
-                  #}
-        #allRefs.append(thisRef)
-        
-    ## We collected all the references.  Now lets save the whole shebang
-    #try:
-        #response_update = solrbib.add_many(allRefs)  # lets hold off on the , _commit=True)
-
-        #if not re.search('"status">0</int>', response_update):
-            #print (response_update)
-    #except Exception as err:
-        ##processingErrorCount += 1
-        #config.logger.error("Solr call exception %s", err)
-
-    #return retVal  # return the bibRefCount
-
-#------------------------------------------------------------------------------------------------------
-def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry):
-    """
-    Adds the bibliography data from a single document to the biblioxml table in mysql database opascentral.
-    
-    This database table is used as the basis for the cited_crosstab views, which show most cited articles
-      by period.  It replaces fullbiblioxml which was being imported from the non-OPAS document database
-      pepa1db, which is generated during document conversion from KBD3 to EXP_ARCH1.  That was being used
-      as an easy bridge to start up OPAS.
-      
-    Note: This data is in addition to the Solr pepwebrefs (biblio) core which is added elsewhere.  The SQL table is
-          primarily used for the cross-tabs, since the Solr core is more easily joined with
-          other Solr cores in queries.  (TODO: Could later experiment with bridging Solr/SQL.)
-          
-    Note: More info than needed for crosstabs is captured to this table, but that's as a bridge
-          to potential future uses.
-          
-          TODO: Finish redefining crosstab queries to use this base table.
-      
-    """
-    ret_val = False
-    insert_if_not_exists = r"""REPLACE
-                               INTO api_biblioxml (
-                                    art_id,
-                                    bib_local_id,
-                                    art_year,
-                                    bib_rx,
-                                    bib_sourcecode, 
-                                    bib_rxcf, 
-                                    bib_authors, 
-                                    bib_authors_xml, 
-                                    bib_articletitle, 
-                                    bib_sourcetype, 
-                                    bib_sourcetitle, 
-                                    bib_pgrg, 
-                                    bib_year, 
-                                    bib_year_int, 
-                                    bib_volume, 
-                                    bib_publisher, 
-                                    full_ref_xml,
-                                    full_ref_text
-                                    )
-                                values (%(art_id)s,
-                                        %(ref_local_id)s,
-                                        %(art_year_int)s,
-                                        %(rx)s,
-                                        %(rx_sourcecode)s,
-                                        %(rxcf)s,
-                                        %(author_list_str)s,
-                                        %(authors_xml)s,
-                                        %(ref_title)s,
-                                        %(source_type)s,
-                                        %(source_title)s,
-                                        %(pgrg)s,
-                                        %(year_of_publication)s,
-                                        %(year_of_publication_int)s,
-                                        %(volume)s,
-                                        %(publishers)s,
-                                        %(ref_entry_xml)s,
-                                        %(ref_entry_text)s
-                                        );
-                            """
-    query_param_dict = bib_entry.__dict__
-    
-    try:
-        res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_param_dict)
-    except Exception as e:
-        print (f"Error {e}")
-    else:
-        ret_val = True
-        
-    return ret_val  # return True for success
-#------------------------------------------------------------------------------------------------------
 def add_article_to_api_articles_table(ocd, art_info):
     """
     Adds the article data from a single document to the api_articles table in mysql database opascentral.
@@ -1440,7 +1100,7 @@ def add_article_to_api_articles_table(ocd, art_info):
       
     """
     ret_val = False
-    ocdconn = ocd.open_connection(caller_name="processArticles")
+    ocd.open_connection(caller_name="processArticles")
   
     insert_if_not_exists = r"""REPLACE
                                INTO api_articles (
@@ -1520,12 +1180,11 @@ def add_article_to_api_articles_table(ocd, art_info):
         
     try:
         ocd.db.commit()
-        ocdconn = ocd.close_connection(caller_name="processArticles")
+        ocd.close_connection(caller_name="processArticles")
     except pymysql.Error as e:
         print("SQL Database -- Commit failed!", e)
     
     return ret_val  # return True for success
-
 #------------------------------------------------------------------------------------------------------
 def update_views_data(solrcon, view_period=0):
     """
@@ -1862,10 +1521,7 @@ def get_file_dates_solr(solrcore, filename=None):
 
 #------------------------------------------------------------------------------------------------------
 def main():
-    
     global options  # so the information can be used in support functions
-    global gCitedTable
-    
     cumulative_file_time_start = time.time()
     
     # scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
@@ -1886,10 +1542,10 @@ def main():
     
     if (options.biblio_update or options.fulltext_core_update or options.glossary_core_update) == True:
         try:
-            solrurl_docs = localsecrets.SOLRURL + opasCoreConfig.SOLR_DOCS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
+            solrurl_docs = localsecrets.SOLRURL + configLib.opasCoreConfig.SOLR_DOCS  # e.g., http://localhost:8983/solr/    + pepwebdocs'
             #solrurl_refs = localsecrets.SOLRURL + opasConfig.SOLR_REFS  # e.g., http://localhost:8983/solr/  + pepwebrefs'
-            solrurl_authors = localsecrets.SOLRURL + opasCoreConfig.SOLR_AUTHORS
-            solrurl_glossary = localsecrets.SOLRURL + opasCoreConfig.SOLR_GLOSSARY
+            solrurl_authors = localsecrets.SOLRURL + configLib.opasCoreConfig.SOLR_AUTHORS
+            solrurl_glossary = localsecrets.SOLRURL + configLib.opasCoreConfig.SOLR_GLOSSARY
             print("Logfile: ", logFilename)
             if options.singleFilePath is not None:
                 print (f"Single file only mode: {options.singleFilePath} will be processed.")
@@ -1946,30 +1602,13 @@ def main():
     # import data about the PEP codes for journals and books.
     #  Codes are like APA, PAH, ... and special codes like ZBK000 for a particular book
     sourceDB = opasCentralDBLib.SourceInfoDB()
-    solr_docs2 = None
-    #TODO: Try without the None test, the library should not try to use None as user name or password, so only the first case may be needed
-    # The connection call is to solrpy (import was just solr)
-    #if options.httpUserID is not None and options.httpPassword is not None:
-    if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:
-        if options.fulltext_core_update:
-            solr_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
-            # fulltext update always includes authors
-            # solr_docs = None
-            # this is now done in opasCoreConfig
-            #solr_authors = solr.SolrConnection(solrurl_authors, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
-        #if options.glossary_core_update:
-            # this is now done in opasCoreConfig
-            #solr_gloss = solr.SolrConnection(solrurl_glossary, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
-    else: #  no user and password needed
-        solr_docs2 = pysolr.Solr(solrurl_docs)
-        # fulltext update always includes authors
-        # disconnect the other
-        # solr_docs = None
-        # this is now done in opasCoreConfig
-        #solr_authors = solr.SolrConnection(solrurl_authors)
-        #if options.glossary_core_update:
-            # this is now done in opasCoreConfig
-            #solr_gloss = solr.SolrConnection(solrurl_glossary)
+    #TODO isn't this already done in coreconfig?
+    #solr_docs2 = None
+    #if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:
+        #if options.fulltext_core_update:
+            #solr_docs2 = pysolr.Solr(solrurl_docs, auth=(localsecrets.SOLRUSER, localsecrets.SOLRPW))
+    #else: #  no user and password needed
+        #solr_docs2 = pysolr.Solr(solrurl_docs)
 
     # Reset core's data if requested (mainly for early development)
     if options.resetCoreData:
@@ -1978,7 +1617,6 @@ def main():
             #solrcore_docs.delete_query("*:*")
             solr_docs2.delete(q='*:*')
             solr_docs2.commit()
-            #solrcore_docs.commit()
             solr_authors.delete_query("*:*")
             solr_authors.commit()
         if options.glossary_core_update:
@@ -1989,9 +1627,6 @@ def main():
         # check for missing files and delete them from the core, since we didn't empty the core above
         pass
 
-    if options.views_update:
-        print(("Update 'View Counts' in Solr selected.  Counts to be updated for all files viewed in the last month."))
-        
     # Glossary Processing only
     if options.glossary_core_update:
         # this option will process all files in the glossary core.
@@ -2013,11 +1648,11 @@ def main():
             #selQry = "select distinct filename from articles where articleID
             #New for 2021 - built TOCs as "Series TOC rather than hard coding them."
             print (f"File Key Specified: {options.file_key}")
-            pat = fr"({options.file_key}.*)\(bEXP_ARCH1|bSeriesTOC\)\.(xml|XML)$"
+            pat = fr"({options.file_key}.*)\((bEXP_ARCH1|bSeriesTOC)\)\.(xml|XML)$"
             file_pattern_match = re.compile(pat)
             filenames = find_all(pat, folderStart)
         else:
-            pat = r"(.*)\(bEXP_ARCH1|bSeriesTOC\)\.(xml|XML)$"
+            pat = r"(.*?)\((bEXP_ARCH1|bSeriesTOC)\)\.(xml|XML)$"
             file_pattern_match = re.compile(pat)
             filenames = []
         
@@ -2095,8 +1730,6 @@ def main():
         skipped_files = 0
         cumulative_file_time_start = time.time()
         if new_files > 0:
-            gCitedTable = collect_citation_counts(ocd)
-               
             if options.run_in_reverse:
                 print ("-r option selected.  Running the files found in reverse order.")
                 filenames.reverse()
@@ -2174,8 +1807,8 @@ def main():
                 # walk through bib section and add to refs core database
         
                 precommit_file_count += 1
-                if precommit_file_count > config.COMMITLIMIT:
-                    print(("Committing info for %s documents/articles" % config.COMMITLIMIT))
+                if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
+                    print(("Committing info for %s documents/articles" % configLib.opasCoreConfig.COMMITLIMIT))
 
                 # input to the full-text code
                 if options.fulltext_core_update:
@@ -2185,7 +1818,7 @@ def main():
                                                  solr_authors)
                     add_article_to_api_articles_table(ocd, artInfo)
                     
-                    if precommit_file_count > config.COMMITLIMIT:
+                    if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
                         precommit_file_count = 0
                         solr_docs2.commit()
                         solr_authors.commit()
@@ -2203,8 +1836,8 @@ def main():
                         ocd.open_connection(caller_name="processBibliographies")
                         for ref in bibReferences:
                             bib_total_reference_count += 1
-                            bib_entry = BiblioEntry(artInfo, ref)
-                            add_reference_to_biblioxml_table(ocd, artInfo, bib_entry)
+                            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
+                            opasSolrLoadSupport.add_reference_to_biblioxml_table(ocd, artInfo, bib_entry)
 
                         try:
                             ocd.db.commit()
@@ -2212,14 +1845,6 @@ def main():
                             print("SQL Database -- Biblio Commit failed!", e)
                             
                         ocd.close_connection(caller_name="processBibliographies")
-                        # process_bibliographies(pepxml, artInfo, solrcore_references)
-
-                        #if preCommitFileCount > config.COMMITLIMIT:
-                            #preCommitFileCount = 0
-                            #solrcore_references.commit()
-                            #fileTracker.commit()
-        
-                        #preCommitFileCount += 1
 
                 # close the file, and do the next
                 f.close()
@@ -2236,9 +1861,9 @@ def main():
             
             # if called for with the -v option, do an update on all the views data, 
             # it takes about 5 minutes to remote update 400 records on AWS
-            if options.views_update:
-                print (f"Updating Views Data Starting ({time.ctime()}).")
-                update_views_data(solr_docs2)
+            #if options.views_update:
+                #print (f"Updating Views Data Starting ({time.ctime()}).")
+                #update_views_data(solr_docs2)
             
             print (f"Load process complete ({time.ctime()}).")
             if processed_files_count > 0:
@@ -2324,14 +1949,12 @@ if __name__ == "__main__":
                       help="Load the full-set of database file records for a full solr db reload")
     parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
                       help="Whether to run the files selected in reverse")
-    #parser.add_option("-t", "--trackerdb", dest="fileTrackerDBPath", default=None,
-                      #help="Full path and database name where the File Tracking Database is located (sqlite3 db)")
     parser.add_option("--sub", dest="subFolder", default=None,
                       help="Sub folder of root folder specified via -d to process")
     parser.add_option("--test", dest="testmode", action="store_true", default=False,
                       help="Run Doctests")
-    parser.add_option("-v", "--viewsupdate", dest="views_update", action="store_true", default=False,
-                      help="Whether to update the view count data in Solr when updating documents (adds about 5 minutes)")
+    #parser.add_option("-v", "--viewsupdate", dest="views_update", action="store_true", default=False,
+                      #help="Whether to update the view count data in Solr when updating documents (adds about 5 minutes)")
     #parser.add_option("-u", "--url",
                       #dest="solrURL", default=config.DEFAULTSOLRHOME,
                       #help="Base URL of Solr api (without core), e.g., http://localhost:8983/solr/", metavar="URL")

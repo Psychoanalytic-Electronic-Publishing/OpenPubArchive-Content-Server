@@ -82,11 +82,6 @@ class TestSearchParagraphs(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f"Count: {response_info['count']}")
         assert(response_info["count"] == 2)
-        print (response_set[0])
-        print (response_set[0]["similarityMatch"]["similarDocs"]["AOP.016.0171A"][0])
-        print (response_set[0]["similarityMatch"]["similarDocs"]["AOP.016.0171A"][1])
-        print (response_set[0]["similarityMatch"]["similarDocs"]["AOP.016.0171A"][2])
-        print (response_set[0]["similarityMatch"]["similarDocs"]["AOP.016.0171A"][3])
 
 
 if __name__ == '__main__':

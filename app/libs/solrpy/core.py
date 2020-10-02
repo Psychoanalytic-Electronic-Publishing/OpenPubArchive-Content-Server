@@ -837,6 +837,9 @@ class SearchHandler(object):
             data = rsp.read()
             if conn.debug:
                 logging.info("solrpy got response: %s" % data)
+        except Exception as e:
+            data = None # nrs added since it can error out with no data defined
+            logging.error(f"Solrpy conn.post exception: {e}.  Request: {request}")
         finally:
             if not conn.persistent:
                 conn.close()
@@ -1032,7 +1035,7 @@ class ResponseContentHandler(ContentHandler):
             node.final = value.strip().lower().startswith('t')
 
         elif name == 'date':
-             node.final = utc_from_string(value.strip())
+            node.final = utc_from_string(value.strip())
 
         elif name in ('float','double', 'status','QTime'):
             node.final = float(value.strip())

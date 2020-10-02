@@ -9,6 +9,8 @@
 import sys
 import os.path
 
+import opasDocPermissions as opasDocPerm
+
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
     sys.path.append('../libs')
@@ -22,8 +24,7 @@ else: # python running from should be within folder app
 from starlette.testclient import TestClient
 
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-import jwt
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 from datetime import datetime
 import opasAPISupportLib
 import opasConfig
@@ -38,6 +39,14 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded
 
 ocd = opasCentralDBLib.opasCentralDB()
 
+## Login!
+#resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+## Confirm that the request-response cycle completed successfully.
+#sessID = resp.SessionId
+#headers = {f"client-session":f"{sessID}",
+           #"client-id": "0"
+           #}
+
 class TestStandaloneFunctions(unittest.TestCase):
     """
     Tests
@@ -46,6 +55,38 @@ class TestStandaloneFunctions(unittest.TestCase):
           with forced order in the names.
     
     """
+
+    def test_year_arg_parser_(self):
+        resp = opasQueryHelper.year_arg_parser("1980-1989 OR 2000-2010")
+        print (resp)
+    
+    def test_cleanup_query_(self):
+        resp = opasQueryHelper.cleanup_solr_query("freud, sigmund OR grotstein, james s")
+        print (resp)
+        resp = opasQueryHelper.cleanup_solr_query("author: freud, sigmund OR grotstein, james s")
+        print (resp)
+        resp = opasQueryHelper.cleanup_solr_query("(freud, sigmund OR grotstein, james s)")
+        print (resp)
+        
+    def test_query_equivalence(self):
+        r1, status = opasAPISupportLib.search_text(query="mother and milk or father and child")
+        r1_count = r1.documentList.responseInfo.fullCount
+        r2, status = opasAPISupportLib.search_text(query="mother milk or father and child")
+        r2_count = r2.documentList.responseInfo.fullCount
+        assert(r1_count == r2_count)
+        r3, status = opasAPISupportLib.search_text(query="mother milk or (father and child)")
+        r3_count = r3.documentList.responseInfo.fullCount
+        assert(r1_count == r3_count)
+        
+    def test_query_equivalence2(self):
+        r1, status = opasAPISupportLib.search_text(query="'mother milk' or father and child")
+        r1_count = r1.documentList.responseInfo.fullCount
+        r2, status = opasAPISupportLib.search_text(query="'mother milk' or (father and child)")
+        r2_count = r2.documentList.responseInfo.fullCount
+        assert(r1_count == r2_count)
+        r3, status = opasAPISupportLib.search_text(query="father child or 'mother milk'")
+        r3_count = r3.documentList.responseInfo.fullCount
+        assert(r1_count == r3_count)
     
     def test_0_parseToSolrQuery(self):
         """
@@ -143,20 +184,6 @@ class TestStandaloneFunctions(unittest.TestCase):
         assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')
         assert (len(data.documents.responseSet[0].abstract)) > 0
 
-    def test_1b_get_article_data(self):
-        """
-        Retrieve an article; make sure it's there and the abstract len is not 0
-        """
-        # This old function wasn't used by the code otherwise so removed this call
-        #  it retrieves an article but doesn't include search highlighting.
-        # data = opasAPISupportLib.get_article_data("ANIJP-DE.009.0189A", fields=None)
-        # this newer function includes the search parameters if there were some
-        data = opasAPISupportLib.documents_get_document("LU-AM.029B.0202A")
-        # Confirm that the request-response cycle completed successfully.
-        assert (data.documents.responseInfo.fullCount == 1)
-        assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')
-        assert (len(data.documents.responseSet[0].abstract)) > 0
-
     def test_2_metadata_get_sources(self):
         """
         Test
@@ -166,13 +193,37 @@ class TestStandaloneFunctions(unittest.TestCase):
         """
         data = opasAPISupportLib.metadata_get_videos(src_type="Videos", pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0)
         # Confirm that the request-response cycle completed successfully.
-        assert (data[0] >= 90)
         # check to make sure a known value is among the data returned
         dataList = [d['documentID'] for d in data[1] if 'documentID' in d]
         assert ('IPSAVS.001A.0001A' in dataList)
-        data = opasAPISupportLib.metadata_get_source_by_type(src_type="journal")
+        data = opasAPISupportLib.metadata_get_source_info(src_type="journal")
         dataList = [d.PEPCode for d in data.sourceInfo.responseSet]
         assert ('PAQ' in dataList)
+        data = opasAPISupportLib.metadata_get_source_info(src_type="book")
+        dataList = [d.PEPCode for d in data.sourceInfo.responseSet]
+        assert ('ZBK075' in dataList)
+        
+    def test_3_get_para_translation(self):
+        """
+        """
+        data = opasAPISupportLib.documents_get_concordance_paras("SEXixa5")
+        # Confirm that the request-response cycle completed successfully.
+        para_info = data.documents.responseSet[0].docChild
+        para = para_info['para']
+        print (para)
+        assert (len(para) > 0)
+        # check to make sure a known value is among the data returned
+        
+    def test_3b_get_para_translation(self):
+        """
+        """
+        data = opasAPISupportLib.documents_get_concordance_paras("SEXixa5", ret_format="html")
+        # Confirm that the request-response cycle completed successfully.
+        para_info = data.documents.responseSet[0].docChild
+        para = para_info['para']
+        print (para)
+        assert (len(para) > 0)
+        # check to make sure a known value is among the data returned
         
 if __name__ == '__main__':
     unittest.main()

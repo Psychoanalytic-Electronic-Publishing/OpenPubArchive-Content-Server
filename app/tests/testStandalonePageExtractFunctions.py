@@ -75,24 +75,10 @@ class TestStandalonePageExtractFunctions(unittest.TestCase):
         xmlpages = opasXMLHelper.xml_get_pages(xmlstr, 1, 1, inside="body", env="pepkbd3", remove_tags=["meta"])
         extract_size = len(xmlpages)
         orig_size = len(xmlstr)
-        print (extract_size < orig_size, extract_size, orig_size)
+        print ("Extract size smaller: {extract_size < orig_size}, extract size: {extract_size}, {orig_size}")
         print ("warning: test development incomplete. TODO")
         # assert (xmlpages == "")
         
-    def test_1b_get_article_data(self):
-        """
-        Retrieve an article; make sure it's there and the abstract len is not 0
-        """
-        # This old function wasn't used by the code otherwise so removed this call
-        #  it retrieves an article but doesn't include search highlighting.
-        # data = opasAPISupportLib.get_article_data("ANIJP-DE.009.0189A", fields=None)
-        # this newer function includes the search parameters if there were some
-        data = opasAPISupportLib.documents_get_document("LU-AM.029B.0202A")
-        # Confirm that the request-response cycle completed successfully.
-        assert (data.documents.responseInfo.fullCount == 1)
-        assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')
-        assert (len(data.documents.responseSet[0].abstract)) > 0
-
         
 if __name__ == '__main__':
     unittest.main()

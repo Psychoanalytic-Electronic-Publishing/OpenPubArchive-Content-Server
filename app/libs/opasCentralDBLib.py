@@ -20,19 +20,24 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
                                          vw_stat_docviews_last12months
                                          )
 
-    vw_stat_cited (depends on fullbiblioxml - table copied from PEP XML Processing db pepa1db
-                              vw_stat_cited_in_last_5_years,
-                              vw_stat_cited_in_last_10_years,
-                              vw_stat_cited_in_last_20_years,
-                              vw_stat_cited_in_all_years
-                  )                                        
+   vw_stat_cited_crosstab (depends on fullbiblioxml - table copied from PEP XML Processing db pepa1db
+                           vw_stat_cited_in_last_5_years,
+                           vw_stat_cited_in_last_10_years,
+                           vw_stat_cited_in_last_20_years,
+                           vw_stat_cited_in_all_years
+                           )                                        
     
     vw_api_productbase (this is the ISSN table from pepa1vdb used during processing)
     
     vw_latest_session_activity (list of sessions with date from table api_session_endpoints)
+    
+    Used in generators:
+    
+      vw_stat_cited_crosstab_with_details (depeds on vw_stat_cited_crosstab + articles)
+      vw_stat_most_viewed
 
 """
-#2019.0708.1 - Python 3.7 compatible.  Work in progress.
+#2019.0708.1 - Python 3.7 compatible. 
 #2019.1110.1 - Updates for database view/table naming cleanup
 #2020.0426.1 - Updates to ensure doc tests working, a couple of parameters changed names
 #2020.0530.1 - Fixed doc tests for termindex, they were looking at number of terms rather than term counts
@@ -45,6 +50,8 @@ __status__      = "Development"
 
 import sys
 import re
+# import fnmatch
+
 # import os.path
 from contextlib import closing
 
@@ -52,14 +59,16 @@ sys.path.append('../libs')
 sys.path.append('../config')
 
 import opasConfig
-from opasConfig import norm_val # use short form everywhere
+from opasConfig import normalize_val # use short form everywhere
 
 import localsecrets
 # from localsecrets import DBHOST, DBUSER, DBPW, DBNAME
 
 import logging
 logger = logging.getLogger(__name__)
+import starlette.status as httpCodes
 
+import datetime as dtime
 from datetime import datetime # , timedelta
 import time
 
@@ -73,7 +82,6 @@ import jwt
 import json
 
 #import opasAuthBasic
-from localsecrets import url_pads, SECRET_KEY
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 import requests
@@ -120,11 +128,12 @@ API_DOCUMENTS_PDFORIG = 33	#/Documents/Downloads/PDFORIG/{documentID}/
 API_DOCUMENTS_EPUB = 35	#/Documents/Downloads/PDF/{documentID}/
 API_DOCUMENTS_HTML = 36	#/Documents/Downloads/HTML/{documentID}/
 API_DOCUMENTS_IMAGE = 37	#/Documents/Downloads/Images/{imageID}/
+API_DOCUMENTS_CONCORDANCE = 38	    #/Documents/Paragraph/Concordance/
 API_DATABASE_SEARCHANALYSIS_FOR_TERMS = 40	#/Database/SearchAnalysis/{searchTerms}/
 API_DATABASE_SEARCH = 41	#/Database/Search/
 API_DATABASE_WHATSNEW = 42	#/Database/WhatsNew/
 API_DATABASE_MOSTCITED = 43	#/Database/MostCited/
-API_DATABASE_MOSTDOWNLOADED = 44	#/Database/MostDownloaded/
+API_DATABASE_MOSTVIEWED = 44	#/Database/MostViewed/ (Logged only CSV downloads)
 API_DATABASE_SEARCHANALYSIS = 45	#/Database/SearchAnalysis/
 API_DATABASE_ADVANCEDSEARCH = 46	
 API_DATABASE_TERMCOUNTS = 47
@@ -208,7 +217,7 @@ class opasCentralDB(object):
     > ocd.delete_session(session_id=random_session_id)
     True
     """
-    def __init__(self, session_id=None, access_token=None, token_expires_time=None, username="NotLoggedIn", user=None):
+    def __init__(self, session_id=None, access_token=None, token_expires_time=None, username=opasConfig.USER_NOT_LOGGED_IN_NAME, user=None):
         self.db = None
         self.connected = False
         self.authenticated = False
@@ -231,43 +240,16 @@ class opasCentralDB(object):
             status = self.db.open
             self.connected = True
             # this is normal, why log it?
-            # logger.debug(f"Database connection was already opened ({caller_name})")
         except:
             # not open reopen it.
-            status = False
-        
-        if status == False:
             try:
-                tunneling = None
-                if localsecrets.SSH_HOST is not None:
-                    from sshtunnel import SSHTunnelForwarder
-                    self.tunnel = SSHTunnelForwarder(
-                                                      (localsecrets.SSH_HOST,
-                                                       localsecrets.SSH_PORT),
-                                                       ssh_username=localsecrets.SSH_USER,
-                                                       ssh_pkey=localsecrets.SSH_MYPKEY,
-                                                       remote_bind_address=(localsecrets.DBHOST,
-                                                                            localsecrets.DBPORT))
-                    self.tunnel.start()
-                    self.db = pymysql.connect(host='127.0.0.1',
-                                           user=localsecrets.DBUSER,
-                                           passwd=localsecrets.DBPW,
-                                           db=localsecrets.DBNAME,
-                                           port=self.tunnel.local_bind_port)
-                    tunneling = self.tunnel.local_bind_port
-                else:
-                    #  not tunneled
-                    self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
-
-                logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} tunnel {tunneling}")
+                self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
+                logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT}")
                 self.connected = True
             except Exception as e:
-                err_str = f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})"
-                print(err_str)
-                logger.error(err_str)
-                self.connected = False
-                self.db = None
-
+                logger.debug(f"Database connection not opened ({caller_name}) ({e})")
+                # status = False
+        
         return self.connected
 
     def close_connection(self, caller_name=""):
@@ -277,9 +259,6 @@ class opasCentralDB(object):
                     self.db.close()
                     self.db = None
                     logger.debug(f"Database closed by ({caller_name})")
-                    if localsecrets.CONFIG == "AWSTestAccountTunnel":
-                        self.tunnel.stop()
-                        logger.debug(f"Database tunnel stopped.")
                 else:
                     logger.debug(f"Database close request, but not open ({caller_name})")
                     
@@ -356,6 +335,325 @@ class opasCentralDB(object):
         self.close_connection(caller_name="get_productbase_data") # make sure connection is closed
         return ret_val
         
+    def most_viewed_generator( self,
+                               publication_period: int=5,
+                               view_in_period: int=4,
+                               viewcount: int=None, 
+                               author: str=None,
+                               title: str=None,
+                               source_name: str=None,
+                               source_code: str=None, 
+                               source_type: str="journals",
+                               select_clause: str=opasConfig.VIEW_MOSTVIEWED_DOWNLOAD_COLUMNS, 
+                               limit: int=None,
+                               offset=0,
+                               sort=None, #  can be None (default sort), False (no sort) or a column name + ASC || DESC
+                               session_info=None
+                               ):
+        """
+        Return records which are the most viewed for the view_in_period
+           restricted to documents published in the publication_period (prev years)
+           
+        Reinstated because equivalent from Solr is too slow when fetching the
+          whole set.
+
+           ---------------------
+           view_stat_most_viewed
+           ---------------------
+            SELECT
+                `vw_stat_docviews_crosstab`.`document_id` AS `document_id`,
+                `vw_stat_docviews_crosstab`.`last_viewed` AS `last_viewed`,
+                COALESCE ( `vw_stat_docviews_crosstab`.`lastweek`, 0 ) AS `lastweek`,
+                COALESCE ( `vw_stat_docviews_crosstab`.`lastmonth`, 0 ) AS `lastmonth`,
+                COALESCE ( `vw_stat_docviews_crosstab`.`last6months`, 0 ) AS `last6months`,
+                COALESCE ( `vw_stat_docviews_crosstab`.`last12months`, 0 ) AS `last12months`,
+                COALESCE ( `vw_stat_docviews_crosstab`.`lastcalyear`, 0 ) AS `lastcalyear`,
+                `api_articles`.`art_auth_citation` AS `hdgauthor`,
+                `api_articles`.`art_title` AS `hdgtitle`,
+                `api_articles`.`src_title_abbr` AS `srctitleseries`,
+                `api_articles`.`bk_publisher` AS `publisher`,
+                `api_articles`.`src_code` AS `jrnlcode`,
+                `api_articles`.`art_year` AS `pubyear`,
+                `api_articles`.`art_vol` AS `vol`,
+                `api_articles`.`art_pgrg` AS `pgrg`,
+                `api_productbase`.`pep_class` AS `source_type`,
+                `api_articles`.`preserve` AS `preserve`,
+                `api_articles`.`filename` AS `filename`,
+                `api_articles`.`bk_title` AS `bktitle`,
+                `api_articles`.`bk_info_xml` AS `bk_info_xml`,
+                `api_articles`.`art_citeas_xml` AS `xmlref`,
+                `api_articles`.`art_citeas_text` AS `textref`,
+                `api_articles`.`art_auth_mast` AS `authorMast`,
+                `api_articles`.`art_issue` AS `issue`,
+                `api_articles`.`last_update` AS `last_update` 
+            FROM
+            (  (
+                `vw_stat_docviews_crosstab`
+                   JOIN `api_articles` ON ((
+                           `api_articles`.`art_id` = `vw_stat_docviews_crosstab`.`document_id` ))
+                )
+               LEFT JOIN `api_productbase` ON ((
+                   `api_articles`.`src_code` = `api_productbase`.`pepcode` 
+                ))
+            )
+
+            viewperiod = 0: lastcalendaryear
+                         1: lastweek
+                         2: lastmonth
+                         3: last6months
+                         4: last12months                                
+                         
+         
+         Using the opascentral api_docviews table data, as dynamically statistically aggregated into
+           the view vw_stat_most_viewed return the most downloaded (viewed) Documents
+           
+         1) Using documents published in the last 5, 10, 20, or all years.
+            Viewperiod takes an int and covers these or any other period (now - viewPeriod years).
+         2) Filtering videos, journals, books, or all content.  source_type filters this.
+            Can be: "journals", "books", "videos", or "all" (default)
+         3) Optionally filter for author, title, or specific journal.
+            Per whatever the caller specifies in parameters.
+         4) show views in last 7 days, last month, last 6 months, last calendar year.
+            This function returns them all.
+         
+        """
+        self.open_connection(caller_name="get_most_viewed_table") # make sure connection is open
+        view_col_name = opasConfig.VALS_VIEWPERIODDICT_SQLFIELDS.get(view_in_period, "last12months")
+
+        if limit is not None:
+            limit_clause = f"LIMIT {offset}, {limit}"
+        else:
+            limit_clause = ""
+            
+        if self.db != None:
+            if sort is None or sort == True:
+                sort_by_clause = f" ORDER BY {view_col_name} DESC"
+            elif sort == False:
+                sort_by_clause = ""
+            else:
+                sort_by_clause = f"ORDER BY {sort}"
+            
+            if publication_period is not None:
+                if publication_period == 0 or str(publication_period).upper() == "ALL" or str(publication_period).upper()=="ALLTIME":
+                    publication_period = 500 # 500 years should cover all time!
+                pub_year_clause = f" AND `pubyear` > YEAR(NOW()) - {view_in_period}"  # consider only the past viewPeriod years
+            else:
+                pub_year_clause = ""
+
+            if source_code is not None:
+                source_code_clause = f" AND source_code = '{source_code}'" 
+            else:
+                source_code_clause = ""
+
+            if source_name is not None:
+                source_name = re.sub("[^\.]\*", ".*", source_name, flags=re.IGNORECASE)
+                journal_clause = f" AND srctitleseries rlike '{source_name}'" 
+            else:
+                journal_clause = ""
+            
+            if source_type == "journals":
+                doc_type_clause = f" AND source_code NOT IN {opasConfig.ALL_EXCEPT_JOURNAL_CODES}" 
+            elif source_type == "books":
+                doc_type_clause = f" AND source_code IN {opasConfig.BOOK_CODES_ALL}"
+            elif source_type == "videos":
+                doc_type_clause = f" AND source_code IN {opasConfig.VIDOSTREAM_CODES_ALL}"
+            else:
+                doc_type_clause = ""  # everything
+
+            if author is not None:
+                author = re.sub("[^\.]\*", ".*", author, flags=re.IGNORECASE)
+                author_clause = f" AND hdgauthor rlike {author}"
+            else:
+                author_clause = ""
+                
+            if title is not None:
+                # glob to re pattern
+                # title = re.sub("[^\.]\*", ".*", title, flags=re.IGNORECASE)
+                title = re.sub("[^\.]\*", ".*", title, flags=re.IGNORECASE)
+                title_clause = f" AND hdgtitle rlike '{title}'"
+            else:
+                title_clause = ""
+
+            if viewcount is not None:
+                more_than_clause = f" AND {view_col_name} > {viewcount}"
+            
+            # select_clause = "textref, lastweek, lastmonth, last6months, last12months, lastcalyear"
+            # Note that WHERE 1 = 1 is used since clauses all start with AND
+            sql = f"""SELECT {select_clause} 
+                      FROM vw_stat_most_viewed
+                      WHERE 1 = 1
+                      {doc_type_clause}
+                      {author_clause}
+                      {more_than_clause}
+                      {title_clause}
+                      {journal_clause}
+                      {pub_year_clause}
+                      {sort_by_clause}
+                      {limit_clause}
+                    """
+            cursor = self.db.cursor(pymysql.cursors.DictCursor)
+            row_count = cursor.execute(sql)
+            for row in cursor:
+                yield row
+                
+        self.close_connection(caller_name="get_most_viewed_table") # make sure connection is closed
+
+    def SQLSelectGenerator(self, sql):
+        #execute a select query and return results as a generator
+        #error handling code removed
+        self.open_connection(caller_name="SQLSelectGenerator") # make sure connection is open
+        cursor = self.db.cursor(pymysql.cursors.DictCursor)
+        cursor.execute(sql)
+   
+        for row in cursor:
+            yield row    
+
+        self.close_connection(caller_name="SQLSelectGenerator") # make sure connection is open
+    
+    def most_cited_generator( self,
+                              # Limit the considered pubs to only those published in these years
+                              publication_period = None,
+                              # Has to be cited more than this number of times, a large nbr speeds the query
+                              cited_in_period:str=None,   
+                              citecount: int=None,              
+                              author: str=None,
+                              title: str=None,
+                              source_name: str=None,  
+                              source_code: str=None,
+                              source_type: str=None,
+                              select_clause: str=opasConfig.VIEW_MOSTCITED_DOWNLOAD_COLUMNS, 
+                              limit: int=None,
+                              offset: int=0,
+                              sort=None, #  can be None (default sort), False (no sort) or a column name + ASC || DESC
+                              session_info=None
+                              ):
+        """
+        Return records which are the most viewed for the view_in_period
+           restricted to documents published in the publication_period (prev years)
+
+        Reinstated because downloading from Solr is too slow!
+         
+        ------------------------------------
+         vw_stat_cited_crosstab_with_details
+        ------------------------------------
+         
+         SELECT
+            `vw_stat_cited_crosstab`.`cited_document_id` AS `cited_document_id`,
+            `vw_stat_cited_crosstab`.`count5` AS `count5`,
+            `vw_stat_cited_crosstab`.`count10` AS `count10`,
+            `vw_stat_cited_crosstab`.`count20` AS `count20`,
+            `vw_stat_cited_crosstab`.`countAll` AS `countAll`,
+            `api_articles`.`art_auth_citation` AS `hdgauthor`,
+            `api_articles`.`art_title` AS `hdgtitle`,
+            `api_articles`.`src_title_abbr` AS `srctitleseries`,
+            `api_articles`.`src_code` AS `source_code`,
+            `api_articles`.`art_year` AS `year`,
+            `api_articles`.`art_vol` AS `vol`,
+            `api_articles`.`art_pgrg` AS `pgrg`,
+            `api_articles`.`art_id` AS `art_id`,
+            `api_articles`.`art_citeas_text` AS `art_citeas_text` 
+         FROM
+            (
+                `vw_stat_cited_crosstab`
+                JOIN `api_articles` ON ((
+                        `vw_stat_cited_crosstab`.`cited_document_id` = `api_articles`.`art_id` 
+                    ))) 
+         ORDER BY
+            `vw_stat_cited_crosstab`.`countAll` DESC
+         
+        """
+        self.open_connection(caller_name="most_cited_generator") # make sure connection is open
+        cited_in_period = opasConfig.normalize_val(cited_in_period, opasConfig.VALS_YEAROPTIONS, default='ALL')
+        
+        if limit is not None:
+            limit_clause = f"LIMIT {offset}, {limit}"
+        else:
+            limit_clause = ""
+            
+        if self.db != None:
+            if sort is None or sort == True:
+                sort_by_clause = f"ORDER BY count{cited_in_period} DESC"
+            elif sort == False:
+                sort_by_clause = ""
+            else:
+                sort_by_clause = f"ORDER BY {sort}"
+        
+            
+            start_year = dtime.date.today().year
+            if publication_period == "All":
+                publication_period = dtime.date.today().year
+
+            if publication_period is None:
+                start_year = None
+            else:
+                start_year -= publication_period
+                start_year = f">{start_year}"
+                
+            #TODO which one, before code, or after code?
+            if publication_period is not None:
+                pub_year_clause = f" AND `year` > YEAR(NOW()) - {publication_period}"  # consider only the past viewPeriod years
+            else:
+                pub_year_clause = ""
+            
+            if source_name is not None:
+                source_name = re.sub("[^\.]\*", ".*", source_name, flags=re.IGNORECASE)
+                journal_clause = f" AND srctitleseries rlike '{source_name}'" 
+            else:
+                journal_clause = ""
+
+            if source_code is not None:
+                source_code_clause = f" AND source_code = '{source_code}'" 
+            else:
+                source_code_clause = ""
+
+            if source_type == "journals":
+                doc_type_clause = f" AND source_code NOT IN {opasConfig.ALL_EXCEPT_JOURNAL_CODES}" 
+            elif source_type == "books":
+                doc_type_clause = f" AND source_code IN {opasConfig.BOOK_CODES_ALL}"
+            elif source_type == "videos":
+                doc_type_clause = f" AND source_code IN {opasConfig.VIDOSTREAM_CODES_ALL}"
+            else:
+                doc_type_clause = ""  # everything
+
+            if author is not None:
+                # author = fnmatch.translate(author)
+                author = re.sub("[^\.]\*", ".*", author, flags=re.IGNORECASE)
+                author_clause = f" AND hdgauthor rlike '{author}'"
+            else:
+                author_clause = ""
+                
+            if title is not None:
+                # glob to re pattern
+                title = re.sub("[^\.]\*", ".*", title, flags=re.IGNORECASE)
+                # title = fnmatch.translate(title)
+                title_clause = f" AND hdgtitle rlike '{title}'"
+            else:
+                title_clause = ""
+
+            if citecount is not None:
+                more_than_clause = f" AND count{cited_in_period} > {citecount}"
+            
+            # Note that WHERE 1 = 1 is used since clauses all start with AND
+            sql = f"""SELECT {select_clause} 
+                      FROM vw_stat_cited_crosstab_with_details
+                      WHERE 1 = 1
+                      {doc_type_clause}
+                      {author_clause}
+                      {more_than_clause}
+                      {title_clause}
+                      {journal_clause}
+                      {pub_year_clause}
+                      {sort_by_clause}
+                      {limit_clause}
+                    """
+
+            cursor = self.db.cursor(pymysql.cursors.DictCursor)
+            row_count = cursor.execute(sql)
+            for row in cursor:
+                yield row
+        
+        self.close_connection(caller_name="most_cited_generator") # make sure connection is closed
+
     def get_most_viewed_crosstab(self):
         """
          Using the opascentral api_docviews table data, as dynamically statistically aggregated into
@@ -387,7 +685,7 @@ class opasCentralDB(object):
         Generic retrieval from database, just the count
         
         >>> ocd = opasCentralDB()
-        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches WHERE user_id = 12;")
+        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches WHERE global_uid = 'nrs';")
         >>> count > 1000
         True
         
@@ -417,7 +715,7 @@ class opasCentralDB(object):
         Generic retrieval from database, into dict
         
         >>> ocd = opasCentralDB()
-        >>> records = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity WHERE user_id = 10;")
+        >>> records = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity WHERE global_uid = 'nrs';")
         >>> len(records) > 1
         True
 
@@ -430,6 +728,28 @@ class opasCentralDB(object):
             ret_val = [models.ReportListItem(row=row) for row in curs.fetchall()]
             
         self.close_connection(caller_name="get_selection_as_list_of_dicts") # make sure connection is closed
+
+        # return session model object
+        return ret_val # None or Session Object
+
+    def get_select_as_list(self, sqlSelect: str):
+        """
+        Generic retrieval from database, into dict
+        
+        >>> ocd = opasCentralDB()
+        >>> records = ocd.get_select_as_list(sqlSelect="SELECT * from vw_reports_session_activity WHERE global_uid = 'nrs';")
+        >>> len(records) > 1
+        True
+
+        """
+        self.open_connection(caller_name="get_selection_as_list") # make sure connection is open
+        ret_val = None
+        if self.db is not None:
+            curs = self.db.cursor(pymysql.cursors.Cursor)
+            curs.execute(sqlSelect)
+            ret_val = curs.fetchall()
+            
+        self.close_connection(caller_name="get_selection_as_list") # make sure connection is closed
 
         # return session model object
         return ret_val # None or Session Object
@@ -579,20 +899,21 @@ class opasCentralDB(object):
 
         return ret_val # return true or false, success or failure
         
-    def save_session(self, session_id, 
-                         expiresTime=None, 
-                         username="NotLoggedIn", 
-                         userID=0,  # can save us a lookup ... #TODO
-                         userIP=None,
-                         connected_via=None,
-                         referrer=None,
-                         apiClientID=0,
-                         apiClientSession=False, 
-                         accessToken=None,
-                         keepActive=False,
-                         authorized_peparchive=False,
-                         authorized_pepcurrent=False,
-                         ):
+    def save_session(self,
+                     session_id, 
+                     expiresTime=None, 
+                     username=opasConfig.USER_NOT_LOGGED_IN_NAME, 
+                     userID=0,  # can save us a lookup ... #TODO
+                     userIP=None,
+                     connected_via=None,
+                     referrer=None,
+                     apiClientID=0,
+                     apiClientSession=False, 
+                     accessToken=None,
+                     keepActive=False,
+                     authorized_peparchive=False,
+                     authorized_pepcurrent=False,
+                     ):
         """
         Save the session info to the database
         
@@ -610,15 +931,8 @@ class opasCentralDB(object):
                 session_admin = False
                 if self.db is not None:  # don't need this check, but leave it.
                     cursor = self.db.cursor()
-                    if username != "NotLoggedIn":
-                        user = self.get_user(username=username)
-                        if user:
-                            userID = user.user_id
-                            authenticated = True
-                            session_admin = user.admin
-                        else:
-                            userID = opasConfig.USER_NOT_LOGGED_IN_ID
-                            authenticated = False
+                    if username != opasConfig.USER_NOT_LOGGED_IN_NAME:
+                        authenticated = True
                     else:
                         userID = opasConfig.USER_NOT_LOGGED_IN_ID
                         authenticated = False
@@ -661,6 +975,10 @@ class opasCentralDB(object):
                                                   authorized_pepcurrent
                                                   )
                                                  )
+                    except pymysql.IntegrityError:
+                        success = False
+                        logger.error(f"Save: Integrity Error")
+                        
                     except Exception as e:
                         success = False
                         logger.error(f"Save: {e}")
@@ -818,7 +1136,7 @@ class opasCentralDB(object):
             except:
                 if self.session_id is None:
                     # no session open!
-                    logger.debug("No session is open")
+                    logger.debug("OCD: No session is open")
                     return ret_val
                 else:
                     session_id = self.session_id
@@ -837,132 +1155,79 @@ class opasCentralDB(object):
                                                  )
                                                  VALUES 
                                                  (%s, %s, %s, %s, %s, %s, %s)"""
-                                                 
-        
-                ret_val = cursor.execute(sql, (
-                                                  session_id, 
-                                                  api_endpoint_id, 
-                                                  params,
-                                                  item_of_interest,
-                                                  return_status_code,
-                                                  api_endpoint_method, 
-                                                  status_message
-                                                 ))
-                self.db.commit()
-                cursor.close()
+
+                #TODO: Later - Should be debug
+                logger.info(f"Session ID: {session_id} acccessed Session Endpoint {api_endpoint_id}")
+                try:
+                    ret_val = cursor.execute(sql, (session_id, 
+                                                   api_endpoint_id, 
+                                                   params,
+                                                   item_of_interest,
+                                                   return_status_code,
+                                                   api_endpoint_method, 
+                                                   status_message
+                                                  ))
+                    self.db.commit()
+                    cursor.close()
+                except pymysql.IntegrityError:
+                    logger.error(f"Integrity Error logging endpoint {api_endpoint_id} for session {session_id}.")
+                    session_info = self.get_session_from_db(session_id)
+                    if session_info is None:
+                        self.save_session(session_id) # recover for next time.
+                except Exception as e:
+                    logger.error(f"Error logging endpoint {api_endpoint_id} for session {session_id}. Error: {e}")
             
             self.close_connection(caller_name="record_session_endpoint") # make sure connection is closed
 
         return ret_val
 
-    def get_subscription_access(self, basecode, product_id):
-        """
-        given a user's subscription product_ids, look up basecode to see if
-          that subscription includes access.
-        """
-        ret_val = 0
-        self.open_connection(caller_name="get_subscription_access") # make sure connection is open
-        if self.db is not None:
-            try:
-                curs = self.db.cursor(pymysql.cursors.DictCursor)
-
-                sqlCount = "SELECT count(*) as productvalidity FROM vw_api_products WHERE basecode = %s and product_id = %s"
-                data = (basecode, product_id) 
-                result = curs.execute(sqlCount, data)
-                try:
-                    if result:
-                        datarow = curs.fetchone()
-                        ret_val = datarow['productvalidity']
-                    else:
-                        ret_val = 0
-                except Exception as e:
-                    logger.debug(f"{e}")
-                    ret_val = 0
-                    
-            except Exception as e:
-                msg = f"Error querying vw_api_products: {e}"
-                logger.error(msg)
-            else:
-                curs.close()
-            
-        self.close_connection(caller_name="get_subscription_access") # make sure connection is closed
-
-        # return session model object
-        logger.debug(f"productCheck for {basecode}/{product_id} results in {ret_val}")
-        return ret_val
-
-    def authenticate_user_product_request(self, user_id, basecode, year):
-        """
-        see if the user has access to this product and year
-        
-        >>> ocd = opasCentralDB()
-        >>> ocd.authenticate_user_product_request(10, "IJP", 2016) # but not logged in
-        False
-        """
-        ret_val = False
-        user_products = []
-        self.open_connection(caller_name="authenticate_user_product_request") # make sure connection is open
-            
-        if self.db is not None:
-            #  is the product free?
-            #    -- need to do a query against the product database directly to answer
-            # 
-            try:
-                curs = self.db.cursor(pymysql.cursors.DictCursor)
-
-                sqlProducts = """SELECT *, YEAR(NOW())-embargo_length as first_year_embargoed FROM vw_api_user_subscriptions_with_basecodes
-                                    WHERE user_id = %s and basecode = %s"""
-                             
-                success = curs.execute(sqlProducts, (user_id, basecode))
-                if success:
-                    user_products = curs.fetchall()
-                
-                    
-            except Exception as e:
-                logger.error(f"Error querying vw_api_products: {e}")
-            else:
-                curs.close()
-                
-            for n in user_products:
-                # First Priority: If it's free, grant access
-                if n["free_access"]:
-                    # catch special free document years for logged in users, without being in free
-                    ret_val = True # it's ok
-                    break
-
-                # Second Priority: If it's in the product year range, grant access
-                if n["range_limited"]:
-                    if n["range_start_year"] <= year and n["range_end_year"] >= year: # it's in the range
-                        ret_val = True # grant product acccess
-                        break                    
-                else: # This is only if it's NOT range limited, because if it's range limited, 
-                      # you don't want to do any other checks, since one of the below would pass
-
-                    # Third Priority: If it's either in the embargo, but product is for embargos, or 
-                    if n["embargo_inverted"]: # we want the embargo period
-                        if n["first_year_embargoed"] <= year: # it's in the embargo
-                            ret_val = True # grant product acccess
-                            break
-                    # Third Priority: It's not in the embargo, so the product is applicable
-                    else: # we don't allow embargoed years
-                        if n["first_year_embargoed"] > year: # it's not in the embargo
-                            ret_val = True # grant product acccess
-                            break
-                
-        self.close_connection(caller_name="authenticate_user_product_request") # make sure connection is closed
-        # returns True if user is granted access
-        return ret_val
-
-    def get_sources(self, source_code=None, src_type=None, limit=None, offset=0):
+    def get_sources(self, src_code=None, src_type=None, src_name=None, limit=None, offset=0):
         """
         Return a list of sources
           - for a specific source_code
           - OR for a specific source type (e.g. journal, book)
           - OR if source and src_type are not specified, bring back them all
+          - OR rlike a src_name (any word(s) within src_name, or can be regex.  Always matches the start and end words")
           
         >>> ocd = opasCentralDB()
-        >>> sources = ocd.get_sources(source_code='IJP')
+        >>> count, resp = ocd.get_sources(src_code='IJP')
+        >>> resp[0]["basecode"]
+        'IJP'
+        >>> count
+        1
 
+        >>> ocd = opasCentralDB()
+        >>> count, resp = ocd.get_sources(src_type='book')
+        >>> count
+        140
+
+        # test normalize src_type (req len of input=4, expands to full, standard value)
+        >>> ocd = opasCentralDB()
+        >>> count, resp = ocd.get_sources(src_type='vide') 
+        >>> count
+        12
+
+        >>> count, resp = ocd.get_sources(src_name='Psychoanalysis')
+        >>> count > 34
+        True
+        >>> resp[0]["basecode"]
+        'AJP'
+
+        >>> count, resp = ocd.get_sources(src_name='Psychoan.*')
+        >>> count > 34
+        True
+        >>> resp[0]["basecode"]
+        'ADPSA'
+
+        >>> count, resp = ocd.get_sources(src_code='IJP', src_name='Psychoanalysis', limit=5)
+        >>> resp[0]["basecode"]
+        'IJP'
+        >>> count
+        1
+
+        >>> count, resp = ocd.get_sources()
+        >>> count
+        235
         """
         self.open_connection(caller_name="get_sources") # make sure connection is open
         total_count = 0
@@ -974,16 +1239,29 @@ class opasCentralDB(object):
                 limit_clause += f" OFFSET {offset}"
 
         if self.db is not None:
+            src_code_clause = ""
+            prod_type_clause = ""
+            src_title_clause = ""
+            
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
-                if source_code is not None:
-                    sqlAll = "FROM vw_api_productbase WHERE active = 1 and basecode = '%s'" % source_code
-                elif src_type is not None:
-                    sqlAll = "FROM vw_api_productbase WHERE active = 1 and product_type = '%s'" % src_type
-                else:  # bring them all back
-                    sqlAll = "FROM vw_api_productbase WHERE active = 1 and product_type <> 'bookseriessub'"
+                if src_code is not None and src_code != "*":
+                    src_code_clause = f"AND basecode = '{src_code}'"
+                if src_type is not None and src_type != "*":
+                    src_type = normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
+                    prod_type_clause = f"AND product_type = '{src_type}'"
+                if src_name is not None:
+                    src_title_clause = f"AND title rlike '(.*\s)?{src_name}(\s.*)?'"
 
-                sql = f"SELECT * {sqlAll} ORDER BY title {limit_clause}"
+                sqlAll = f"""FROM vw_api_productbase
+                             WHERE active = 1
+                                AND product_type <> 'bookseriessub'
+                                {src_code_clause}
+                                {prod_type_clause}
+                                {src_title_clause}
+                             ORDER BY title {limit_clause}"""
+                
+                sql = "SELECT * " + sqlAll
                 res = curs.execute(sql)
                     
             except Exception as e:
@@ -993,6 +1271,8 @@ class opasCentralDB(object):
             else:
                 if res:
                     ret_val = curs.fetchall()
+                    curs.close()
+
                     if limit_clause is not None:
                         # do another query to count possil
                         curs2 = self.db.cursor()
@@ -1003,7 +1283,6 @@ class opasCentralDB(object):
                         except:
                             total_count  = 0
                         curs2.close()
-                        curs.close()
                     else:
                         total_count = len(ret_val)
                 else:
@@ -1014,7 +1293,7 @@ class opasCentralDB(object):
         # return session model object
         return total_count, ret_val # None or Session Object
 
-    def save_client_config(self, client_id, client_configuration: models.ClientConfig, session_id, replace=False):
+    def save_client_config(self, client_id:str, client_configuration: models.ClientConfig, session_id, replace=False):
         """
         Save a client configuration.  Data format is up to the client.
         
@@ -1026,61 +1305,69 @@ class opasCentralDB(object):
         (200, 'OK')
         """
         msg = "OK"
-        if replace:
-            sql_action = "REPLACE"
-            ret_val = 200
-        else:
-            sql_action = "INSERT"
-            ret_val = 201
+        # convert client id to int
         try:
-            session_id = session_id
+            client_id_int = int(client_id)
         except Exception as e:
-            # no session open!
-            logger.debug("No session is open / Not authorized")
-            ret_val = 401 # not authorized
+            msg = f"Client ID should be a string containing an int {e}"
+            logging.error(msg)
+            ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
-            self.open_connection(caller_name="record_client_config") # make sure connection is open
+            if replace:
+                sql_action = "REPLACE"
+                ret_val = httpCodes.HTTP_200_OK
+            else:
+                sql_action = "INSERT"
+                ret_val = httpCodes.HTTP_201_CREATED
             try:
-                try:
-                    config_json = json.dumps(client_configuration.configSettings)
-                except Exception as e:
-                    logger.warning(f"Error converting configuration to json {e}.")
-                    return ret_val
-    
-                with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
-                    sql = f"""{sql_action} INTO 
-                                api_client_configs(client_id,
-                                                   config_name, 
-                                                   config_settings, 
-                                                   session_id
-                                                  )
-                                                  VALUES 
-                                                   (%s, %s, %s, %s)"""
-                    
-                    eval = curs.execute(sql,
-                                        (client_id,
-                                         client_configuration.configName,
-                                         config_json, 
-                                         session_id
-                                        )
-                                       )
-                    self.db.commit()
-    
+                session_id = session_id
             except Exception as e:
-                if sql_action == "REPLACE":
-                    msg = f"Error updating (replacing) client config: {e}"
-                    logger.error(msg)
-                    ret_val = 400
-                else: # insert
-                    msg = f"Error saving client config: {e}"
-                    logger.error(msg)
-                    ret_val = 409
+                # no session open!
+                logger.debug("No session is open / Not authorized")
+                ret_val = 401 # not authorized
+            else:
+                self.open_connection(caller_name="record_client_config") # make sure connection is open
+                try:
+                    try:
+                        config_json = json.dumps(client_configuration.configSettings)
+                    except Exception as e:
+                        logger.warning(f"Error converting configuration to json {e}.")
+                        return ret_val
+        
+                    with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                        sql = f"""{sql_action} INTO 
+                                    api_client_configs(client_id,
+                                                       config_name, 
+                                                       config_settings, 
+                                                       session_id
+                                                      )
+                                                      VALUES 
+                                                       (%s, %s, %s, %s)"""
+                        
+                        succ = curs.execute(sql,
+                                            (client_id_int,
+                                             client_configuration.configName,
+                                             config_json, 
+                                             session_id
+                                            )
+                                           )
+                        self.db.commit()
+        
+                except Exception as e:
+                    if sql_action == "REPLACE":
+                        msg = f"Error updating (replacing) client config: {e}"
+                        logger.error(msg)
+                        ret_val = 400
+                    else: # insert
+                        msg = f"Error saving client config: {e}"
+                        logger.error(msg)
+                        ret_val = 409
+        
+                self.close_connection(caller_name="record_client_config") # make sure connection is closed
     
-            self.close_connection(caller_name="record_client_config") # make sure connection is closed
-
         return (ret_val, msg)
 
-    def get_client_config(self, client_id, client_config_name):
+    def get_client_config(self, client_id: str, client_config_name: str):
         """
         
         >>> ocd = opasCentralDB()
@@ -1089,30 +1376,36 @@ class opasCentralDB(object):
         """
         ret_val = None
         self.open_connection(caller_name="get_client_config") # make sure connection is open
+        try:
+            client_id_int = int(client_id)
+        except Exception as e:
+            msg = f"Client ID should be a string containing an int {e}"
+            logging.error(msg)
+            ret_val = httpCodes.HTTP_400_BAD_REQUEST
+        else:
+            with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                sql = f"""SELECT *
+                          FROM api_client_configs
+                          WHERE client_id = {client_id_int}
+                          AND config_name = '{client_config_name}'"""
     
-        with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
-            sql = f"""SELECT *
-                      FROM api_client_configs
-                      WHERE client_id = '{client_id}'
-                      AND config_name = '{client_config_name}'"""
-
-            res = curs.execute(sql)
-            if res >= 1:
-                clientConfig = curs.fetchone()
-                ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
-            else:
-                ret_val = None
-
-        self.close_connection(caller_name="get_client_config") # make sure connection is closed
-        if ret_val is not None:
-            # convert to return model
-            ret_val = models.ClientConfig(clientID = ret_val.client_id,
-                                          configName = ret_val.config_name,
-                                          configSettings=json.loads(ret_val.config_settings))
+                res = curs.execute(sql)
+                if res >= 1:
+                    clientConfig = curs.fetchone()
+                    ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
+                else:
+                    ret_val = None
+    
+            self.close_connection(caller_name="get_client_config") # make sure connection is closed
+            if ret_val is not None:
+                # convert to return model
+                ret_val = models.ClientConfig(clientID = ret_val.client_id,
+                                              configName = ret_val.config_name,
+                                              configSettings=json.loads(ret_val.config_settings))
     
         return ret_val
 
-    def del_client_config(self, client_id, client_config_name):
+    def del_client_config(self, client_id: int, client_config_name: str):
         """
         
         >>> ocd = opasCentralDB()
@@ -1123,21 +1416,27 @@ class opasCentralDB(object):
         saved = self.get_client_config(client_id, client_config_name)
         # open after fetching, since db is closed by call.
         self.open_connection(caller_name="del_client_config") # make sure connection is open
-    
-        if saved is not None:
-            sql = f"""DELETE FROM api_client_configs
-                      WHERE client_id = '{client_id}'
-                      AND config_name = '{client_config_name}'"""
-    
-            with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
-                res = curs.execute(sql)
-                if res >= 1:
-                    ret_val = saved
-                    self.db.commit()
-                else:
-                    ret_val = None
-            
-        self.close_connection(caller_name="del_client_config") # make sure connection is closed
+        try:
+            client_id_int = int(client_id)
+        except Exception as e:
+            msg = f"Client ID should be a string containing an int {e}"
+            logging.error(msg)
+            ret_val = httpCodes.HTTP_400_BAD_REQUEST
+        else:
+            if saved is not None:
+                sql = f"""DELETE FROM api_client_configs
+                          WHERE client_id = {client_id_int}
+                          AND config_name = '{client_config_name}'"""
+        
+                with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                    res = curs.execute(sql)
+                    if res >= 1:
+                        ret_val = saved
+                        self.db.commit()
+                    else:
+                        ret_val = None
+                
+            self.close_connection(caller_name="del_client_config") # make sure connection is closed
 
         return ret_val
 
@@ -1205,6 +1504,7 @@ class opasCentralDB(object):
         >>> ocd.get_user("demo")
         
         """
+        sql = None
         try:
             db_opened = not self.db.open
         except:
@@ -1249,12 +1549,13 @@ class opasCentralDB(object):
         False
         """
         ret_val = False
-        try:
-            logged_in_user = jwt.decode(session_info.access_token, localsecrets.SECRET_KEY)
-            ret_val = logged_in_user["admin"]
-        except:
-            err_msg = f"Not logged in or error getting admin status"
-            logger.error(err_msg)
+        if session_info is not None:
+            try:
+                logged_in_user = jwt.decode(session_info.access_token, localsecrets.SECRET_KEY)
+                ret_val = logged_in_user.get("admin", False)
+            except Exception as e:
+                err_msg = f"Not logged in or error getting admin status ({e})"
+                logger.debug(err_msg)
             
         return ret_val   
        
@@ -1322,7 +1623,7 @@ class opasCentralDB(object):
         Create a new user!
         
         >>> ocd = opasCentralDB()
-        >>> ocd.create_user("nobody2", "nothing", "TemporaryDeveloper", "temporaryLover", "USGS", "nobody@usgs.com")
+        >>> ocd.create_user(session_info=None, username="TemporaryDeveloper", password="temporaryLover", company="USGS", email="nobody@usgs.com")
           
         """
         ret_val = None
@@ -1633,6 +1934,8 @@ class opasCentralDB(object):
         """
         Check to see if username password is in PaDS
         
+        This is the old form of login to PaDS and should be DEPRECATED
+        
         """
         authenticate_more = f"""<?xml version="1.0" encoding="utf-8"?>
                                 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
@@ -1649,7 +1952,7 @@ class opasCentralDB(object):
         headers = {'content-type': 'text/xml'}
         ns = {"pepprod": "http://localhost/PEPProduct/PEPProduct"}
         soap_message = authenticate_more
-        response = requests.post(url_pads, data=soap_message, headers=headers)
+        response = requests.post(localsecrets.url_pads, data=soap_message, headers=headers)
         #print (response.content)
         root = ET.fromstring(response.content)
         # parse XML return
@@ -1709,9 +2012,6 @@ if __name__ == "__main__":
     sourceDB = SourceInfoDB()
     code = sourceDB.lookupSourceCode("ANIJP-EL")
     # check this user permissions 
-    basecodes = ocd.authenticate_user_product_request(30065, "IJP", 2016)
-    basecodes = ocd.authenticate_user_product_request(116848, "IJP", 2016)
-    basecodes = ocd.authenticate_user_product_request(10, "IJP", 2016)
     #ocd.get_dict_of_products()
     #ocd.get_subscription_access("IJP", 421)
     #ocd.get_subscription_access("BIPPI", 421)

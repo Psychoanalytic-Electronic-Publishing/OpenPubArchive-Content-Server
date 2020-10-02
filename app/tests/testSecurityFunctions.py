@@ -6,6 +6,8 @@
 
 import sys
 import os.path
+import logging
+logger = logging.getLogger(__name__)
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
@@ -20,64 +22,67 @@ import unittest
 import requests
 # from requests.utils import requote_uri
 # import urllib
-
-from unitTestConfig import base_api, base_plus_endpoint_encoded
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
 import timeit
-# import opasDocPermissions as opasDocPerm
+
+import opasDocPermissions
+from unitTestConfig import base_api, base_plus_endpoint_encoded
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW
+
+# Login!
+resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+# Confirm that the request-response cycle completed successfully.
+sessID = resp.SessionId
+headers = {f"client-session":f"{sessID}",
+           "client-id": "0"
+           }
 
 class TestSecurityFunctions(unittest.TestCase):
 
     def test_0a_pads_tests(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
-        response = requests.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=25')
-        response = requests.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        r = response.json()
-        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseSet'][0].get("accessLimited", None) == True)
+        # Login to PaDS with test account and then check responses to mostCited for access.
+        if sessID is None:
+            logger.error(f"PaDS Login error in test: {response}")
+            assert(False)
+        else:
+            full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')
+            response = requests.get(full_URL, headers={"client-session":sessID, "client-id": "2", "Content-Type":"application/json"})
+            # Confirm that the request-response cycle completed successfully.
+            r = response.json()
+            print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+            # PaDS ID provided has peparchive!
+            assert(r['documentList']['responseSet'][0].get("accessLimited", None) == False)
 
-    def test_0b_no_pads_tests(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
-        response = requests.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=25')
-        response = requests.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        r = response.json()
-        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
-        assert(r['documentList']['responseSet'][0].get("accessLimited", None) == True)
-        
-
-    def test_1a_get_term_index_timing_Pads(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
-        response = requests.get(full_URL)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-
-    def test_1b_get_term_index_timing_noPads(self):
-        #full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
-        #response = requests.get(full_URL)
-        ## Confirm that the request-response cycle completed successfully.
-        #assert(response.ok == True)
-        test = 'response = requests.get(full_URL)'
-        setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')"
-        timing = timeit.timeit(test, setup, number=1)
-        print (f"timing return 99 documents: {timing}")
-        assert(timing < 7)
-        test = 'response = requests.get(full_URL)'
-        setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=101')"
-        timing = timeit.timeit(test, setup, number=1)
-        print (f"timing return 101 documents (no pads): {timing}")
-        assert(timing < 7)
-
-
+    def test_1a_timing_Pads(self):
+        if sessID is None:
+            logger.error(f"PaDS Login error in test: {response}")
+            assert(False)
+        else:
+            headers = '"client-session":"%s", "client-id": "2"' % sessID
+            test = 'response = requests.get(full_URL, headers={%s})' % headers
+            setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')"
+            timing = timeit.timeit(test, setup, number=1)
+            print (f"timing return 99 documents: {timing}")
+            assert(timing < 7.5)
+            setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=101')"
+            timing = timeit.timeit(test, setup, number=1)
+            print (f"timing return 101 documents (no pads): {timing}")
+            assert(timing < 7.5)            
+            
+    def test_1b_get_search(self):
+        if sessID is None:
+            logger.error(f"PaDS Login error in test: {response}")
+            assert(False)
+        else:
+            headers = '"client-session":"%s", "client-id": "2"' % sessID
+            test = 'response = requests.get(full_URL, headers={%s})' % headers
+            setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=99')"
+            timing = timeit.timeit(test, setup, number=1)
+            print (f"timing return 99 documents: {timing}")
+            assert(timing < 19)
+            setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=101')"
+            timing = timeit.timeit(test, setup, number=1)
+            print (f"timing return 101 documents (no pads): {timing}")
+            assert(timing < 19)            
 
 if __name__ == '__main__':
     unittest.main()

@@ -4,18 +4,72 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.05.30"
+__version__     = "2020.09.13"
 __status__      = "Development"
 
-#Revision Notes:
-    #20200530 Added front matter.  Fixed doctest reference (should have been doc rather than docs)
+# #TODO
+    # Ensure full PC Local/S3 file system interchangeability/transparency.
+
+# Revision Notes:
+    # 20200913 Reworked for better S3 functionality and speed
+    # 20200530 Added front matter.  Fixed doctest reference (should have been doc rather than docs)
 
 import sys
 import localsecrets
 import s3fs # https://s3fs.readthedocs.io/en/latest/api.html#s3fs.core.S3FileSystem
 import os, os.path
+import re
+import boto3
 import logging
+import datetime
+import time
+import pathlib
+
 logger = logging.getLogger(__name__)
+
+class FileInfo(object):
+    def __init__(self): 
+        self.build_date = time.time()
+        self.filespec:str = None
+        self.basename:str = None
+        self.filesize:int = None
+        self.filetype = None
+        self.etag:str = None
+        self.timestamp_str:str = None
+        self.timestamp:datetime.datetime = None # datetime.datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.date_modified:datetime.datetime = None # self.timestamp.date()
+        # self.date_modified_str:str = None # str(self.date)
+        self.fileinfo:dict = {}       
+        
+    def mapS3(self, fileinfo: dict):
+        self.fileinfo = fileinfo
+        self.filespec = fileinfo["Key"]
+        self.basename = os.path.basename(self.filespec)
+        self.filesize = fileinfo["Size"]
+        self.filetype = fileinfo["type"]
+        self.build_date = time.time() # current time
+        # modified date
+        self.timestamp_str = datetime.datetime.strftime(fileinfo["LastModified"], localsecrets.TIME_FORMAT_STR)
+        self.timestamp = datetime.datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.date_modified = self.timestamp.date()
+        # self.date_modified_str = str(self.date_modified)
+        self.etag = fileinfo.get("Etag", None)
+    
+    def mapLocalFS(self, filespec):
+        self.fileinfo = {}
+        self.filespec = filespec
+        self.basename = self.fileinfo["base_filename"] = os.path.basename(self.filespec)
+        self.filesize = self.fileinfo["Size"] = os.path.getsize(filespec)
+        self.filetype = self.fileinfo["type"] = "xml" # fileinfo["type"]
+        self.build_date = self.fileinfo["build_date"] = time.time() # current time
+        # modified date
+        mod_date = self.fileinfo["fileSize"] = os.path.getmtime(filespec)
+        self.timestamp_str = self.fileinfo["LastModified"] = datetime.datetime.utcfromtimestamp(mod_date).strftime(localsecrets.TIME_FORMAT_STR)
+        self.timestamp = self.fileinfo["timestamp"] = datetime.datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.date_modified = self.fileinfo["date"] = self.timestamp.date()
+        # self.date_modified_str = str(self.date_modified)
+        self.etag = self.fileinfo["Etag"] = None
+        
 
 class FlexFileSystem(object):
     """
@@ -32,20 +86,54 @@ class FlexFileSystem(object):
     """
 
     def __init__(self, key=None, secret=None, anon=False, root=None):
-        self.key = key
-        self.secret = secret
-        self.root = root
+        if key is None:
+            self.key = localsecrets.S3_KEY
+        else:
+            self.key = key
+
+        if secret is None:
+            self.secret = localsecrets.S3_SECRET
+        else:
+            self.secret = secret
+        
+        # We have potentially many roots (buckets, so don't set by default!)
+        if root is None:
+            self.root = None # localsecrets.XML_ORIGINALS_PATH
+        else:
+            self.root = root
+
         # check if local storage or secure storage is enabled
         # self.source_path = path
         try:
-            if key is not None:
+            if self.key is not None:
                 self.fs = s3fs.S3FileSystem(anon=anon, key=key, secret=secret)
             else:
                 self.fs = None
+                
         except Exception as e:
             logger.error(f"FlexFileSystem initiation error ({e})")
 
-    #-----------------------------------------------------------------------------
+    def find(self, name, path_root=None):
+        """
+        Search for file; return None if not found, filename/path if found.
+        """
+        if path_root is None:
+            path_root = self.root
+           
+        if localsecrets.S3_KEY is None:
+            for root, dirs, files in os.walk(path_root):
+                if name in files:
+                    ret_val = os.path.join(root, name)
+                    break
+        else:
+            found_info = find_s3_file(bucket=path_root, filename=name)
+            try:
+                ret_val = found_info[0].get("Key", None)
+            except:
+                ret_val = None
+
+        return ret_val
+       
     def fullfilespec(self, filespec, path=None):
         """
          Get the full file spec 
@@ -54,17 +142,19 @@ class FlexFileSystem(object):
          >>> fs.fullfilespec(filespec="pep.css", path="embedded-graphics")
          'pep-graphics/embedded-graphics/pep.css'
 
-         >>> fs = FlexFileSystem(root=r"X:\\PEP Dropbox\\PEPWeb\\_PEPA1")
+         >>> fs = FlexFileSystem(root=r"X:\\_PEPA1")
          >>> fs.fullfilespec(filespec="IJAPS.016.0181A.FIG002.jpg", path=r"g\")
-         'X:\\\\PEP Dropbox\\\\PEPWeb\\\\_PEPA1\\\\g\\\\IJAPS.016.0181A.FIG002.jpg'
+         'X:\\\\_PEPA1\\\\g\\\\IJAPS.016.0181A.FIG002.jpg'
         """
         ret_val = filespec
         if self.key is not None:
             if path is not None:
-                ret_val = "/".join((path, ret_val)) 
+                ret_val = localsecrets.PATH_SEPARATOR.join((path, ret_val)) 
     
             if self.root is not None:
-                ret_val = "/".join((self.root, ret_val)) # "pep-graphics/embedded-graphics"
+                m = re.match(self.root+".*", ret_val, flags=re.IGNORECASE)
+                if m is None:
+                    ret_val = localsecrets.PATH_SEPARATOR.join((self.root, ret_val)) # "pep-graphics/embedded-graphics"
         else:
             if path is None:
                 path = ""
@@ -75,57 +165,71 @@ class FlexFileSystem(object):
 
             ret_val = os.path.join(root, path, filespec)
 
+        if localsecrets.PATH_SEPARATOR == "/":
+            ret_val = ret_val.replace("\\", localsecrets.PATH_SEPARATOR)
+        else: # change forward slash to backslash
+            ret_val = ret_val.replace("/", localsecrets.PATH_SEPARATOR)
+
         return ret_val     
-        
-            
     #-----------------------------------------------------------------------------
     def fileinfo(self, filespec, path=None):
         """
          Get the file info if it exists, otherwise return None
          if the instance variable key was set at init, checks s3 otherwise, local file system
          
-         >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root="pep-graphics")
-         >>> fs.fileinfo(filespec="pep.css", path="embedded-graphics")
-         {'Key': 'pep-graphics/embedded-graphics/pep.css', 'LastModified': datetime.datetime(2019, 12, 13, 4, 47, 7, tzinfo=tzutc()), 'ETag': '"1b99cd9ae755b36df6bf3bce9cc82603"', 'Size': 22746, 'StorageClass': 'STANDARD', 'type': 'file', 'size': 22746, 'name': 'pep-graphics/embedded-graphics/pep.css'}
+         >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root="pep-web-xml")
+         >>> fs.fileinfo(filespec="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).XML", path="_PEPFree/PEPTOPAUTHVS")
+         {'filename': 'pep-web-xml/_PEPFree/PEPTOPAUTHVS/PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).XML', 'base_filename': 'PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).XML', 'timestamp_str': '2020-09-02T23:15:18Z', 'timestamp_obj': datetime.datetime(2020, 9, 2, 23, 15, 18), 'date_obj': datetime.date(2020, 9, 2), 'date_str': '2020-09-02', 'fileSize': 16719, 'type': 'file', 'etag': None, 'buildDate': ...}
+         
+         >>> fs = FlexFileSystem()
+         >>> fs.fileinfo(filespec=r"x:\_PEPA1\g\IJAPS.016.0181A.FIG002.jpg")
+         {'base_filename': 'IJAPS.016.0181A.FIG002.jpg', 'timestamp_str': '2019-12-12T18:59:31Z', 'timestamp_obj': datetime.datetime(2019, 12, 12, 18, 59, 31), 'fileSize': 21064, 'date_obj': datetime.date(2019, 12, 12), 'date_str': '2019-12-12', 'buildDate': ...}
          
         """
-        ret_val = None
-        filespec = self.fullfilespec(filespec=filespec, path=path) # "pep-graphics/embedded-graphics"
-
+        fileinfo_dict = {}
+        ret_obj = FileInfo()
         try:
             if self.key is not None:
-                ret_val = self.fs.info(filespec)
-            else:
-                ret_val = os.stat(filespec)
+                filespec = self.fullfilespec(filespec=filespec, path=path) # "pep-graphics/embedded-graphics"
+                ret_obj.filespec = fileinfo_dict["filename"] = filespec
+                try:
+                    fileinfo_dict = self.fs.info(filespec)
+                    ret_obj.mapS3(fileinfo_dict)
+                    #ret_obj.basename = fileinfo_dict["base_filename"] = os.path.basename(filespec)
+                    #ret_obj.filesize = fileinfo_dict["fileSize"] = fileinfo["Size"]
+                    #ret_obj.filetype = fileinfo_dict["type"] = fileinfo["type"]
+                    ## get rid of times, we only want dates
+                    #ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.strftime(fileinfo["LastModified"], localsecrets.TIME_FORMAT_STR)
+                    #ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], localsecrets.TIME_FORMAT_STR)
+                    #ret_obj.date = fileinfo_dict["date_obj"] = fileinfo_dict["timestamp"].date()
+                    #ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
+                    #ret_obj.etag = fileinfo_dict["etag"] = fileinfo.get("Etag", None)
+                    #ret_obj.build_date = fileinfo_dict["buildDate"] = time.time()
+                    #ret_val = self.fs.info(filespec)
+                except Exception as e:
+                    logger.error(f"File access error: {e}")
+            else: # local FS
+                #stat = os.stat(filespec)
+                ret_obj.basename = fileinfo_dict["base_filename"] = os.path.basename(filespec)
+                ret_obj.filesize = fileinfo_dict["fileSize"]  = os.path.getsize(filespec)
+                ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.utcfromtimestamp(os.path.getmtime(filespec)).strftime(localsecrets.TIME_FORMAT_STR)
+                ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], localsecrets.TIME_FORMAT_STR)
+                ret_obj.date = fileinfo_dict["date"] = fileinfo_dict["timestamp"].date()
+                ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
+                #ret_val["type"] = fileinfo["type"]
+                ret_obj.build_date = fileinfo_dict["buildDate"] = time.time()
+                
+            ret_obj.fileinfo = fileinfo_dict
+
         except Exception as e:
             logger.error(f"File access error: ({e})")
         
-        return ret_val     
+        return ret_obj
     #-----------------------------------------------------------------------------
     def exists(self, filespec, path=None):
         """
         Find if the filespec exists, otherwise return None
         if the instance variable key was set at init, checks s3 otherwise, local file system
-        
-        >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root="pep-graphics")
-        >>> fs.exists("pep.css", path="embedded-graphics")
-        True
-        
-        >>> fs.exists("embedded-graphics/pep.css")
-        True
-        
-        #Try local system
-        >>> fs = FlexFileSystem()
-        >>> fs.exists(r"X:\PEP Dropbox\PEPWeb\_PEPA1\g\IJAPS.016.0181A.FIG002.jpg")
-        True
-        >>> fs.exists("IJAPS.016.0181A.FIG002.jpg", path=r"X:\PEP Dropbox\PEPWeb\_PEPA1\g\")
-        True
-        >>> fs = FlexFileSystem(root=r"X:\PEP Dropbox\PEPWeb\_PEPA1\")
-        >>> fs.exists(r"g\IJAPS.016.0181A.FIG002.jpg")
-        True
-        >>> fs.exists("IJAPS.016.0181A.FIG002.jpg", path=r"g")
-        True
-         
         """
         #  see if the file exists
         ret_val = None
@@ -138,19 +242,12 @@ class FlexFileSystem(object):
         except Exception as e:
             logger.error(f"File access error: ({e})")
         
-        return ret_val     
-    
+        return ret_val        
     #-----------------------------------------------------------------------------
     def get_download_filename(self, filespec, path="", year=None, ext=None):
         """
         Return the file name given the filespec, if it exists
-        
-        >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
-        >>> fs.get_download_filename("AIM.026.0021A.pdf", path=localsecrets.PDF_ORIGINALS_PATH)
-        'pep-web-files/pdforiginals/AIM/026/AIM.026.0021A.pdf'
-        >>> fs = FlexFileSystem()
-        >>> fs.get_download_filename(r"AIM.026.0021A.pdf")
-
+      
         """
         # split name to get folder subpath for downloads
         try:
@@ -172,20 +269,12 @@ class FlexFileSystem(object):
         if not self.exists(ret_val):
             logger.warning(f"Download file does not exist: {ret_val}")
             
-        return ret_val
-    
-
+        return ret_val   
     #-----------------------------------------------------------------------------
     def get_image_filename(self, filespec, path=None):
         """
         Return the file name given the image id, if it exists
         
-        >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
-        >>> fs.get_image_filename("AIM.036.0275A.FIG001", path=localsecrets.IMAGE_SOURCE_PATH)
-        'pep-web-files/doc/g/AIM.036.0275A.FIG001.jpg'        
-        >>> fs = FlexFileSystem()
-        >>> fs.get_image_filename(r"X:\PEP Dropbox\PEPWeb\_PEPA1\g\IJAPS.016.0181A.FIG002")
-        'X:\\\\PEP Dropbox\\\\PEPWeb\\\\_PEPA1\\\\g\\\\IJAPS.016.0181A.FIG002.jpg'
         """
         # check if local storage or secure storage is enabled
         ret_val = self.fullfilespec(path=path, filespec=filespec) # "pep-graphics/embedded-graphics"
@@ -206,8 +295,7 @@ class FlexFileSystem(object):
             else:
                 ret_val = None
     
-        return ret_val
-    
+        return ret_val   
     #-----------------------------------------------------------------------------
     def get_image_binary(self, filespec, path=None):
         """
@@ -220,21 +308,10 @@ class FlexFileSystem(object):
     
         The current API implements this:
         
-        curl -X GET "http://stage.pep.gvpi.net/api/v1/Documents/Downloads/Images/aim.036.0275a.fig001.jpg" -H "accept: image/jpeg" -H "Authorization: Basic cC5lLnAuYS5OZWlsUlNoYXBpcm86amFDayFsZWdhcmQhNQ=="
+        curl -X GET "http://stage.pep.gvpi.net/api/v1/Documents/Downloads/Images/aim.036.0275a.fig001.jpg" -H "accept: image/jpeg" 
         
         and returns a binary object.
        
-        >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
-        >>> binimg = fs.get_image_binary(filespec="AIM.036.0275A.FIG001", path=localsecrets.IMAGE_SOURCE_PATH)
-        >>> len(binimg)
-        26038
-        
-        >>> fs = FlexFileSystem()
-        >>> binimg = fs.get_image_binary(r"X:\PEP Dropbox\PEPWeb\_PEPA1\g\AIM.036.0275A.FIG001")
-        >>> len(binimg)
-        26038
-        
-            
         """
         ret_val = None
         image_filename = self.get_image_filename(filespec, path=path)
@@ -260,31 +337,276 @@ class FlexFileSystem(object):
             logger.error("Image File ID %s not found", filespec)
       
         return ret_val
+    #-----------------------------------------------------------------------------
+    def get_file_contents(self, filespec, path=None):
+        """
+        Return the contents of a non-binary file
+
+        The current API implements this:
+        
+        curl -X GET "http://stage.pep.gvpi.net/api/v1/Documents/Downloads/Images/aim.036.0275a.fig001.jpg" -H "accept: image/jpeg" -H "Authorization: Basic cC5lLnAuYS5OZWlsUlNoYXBpcm86amFDayFsZWdhcmQhNQ=="
+        
+        and returns a binary object.
+       
+        """
+        ret_val = None
+        if not self.exists(filespec, path):
+            filespec = self.find(filespec, path_root=path)
+            
+        filespec = self.fullfilespec(filespec)
+        if filespec is not None:
+            try:
+                if self.fs is not None:
+                    f = self.fs.open(filespec, "r", encoding="utf-8")
+                else:
+                    f = open(filespec, "r", encoding="utf-8")
+            except Exception as e:
+                logger.error("Open Error: %s", e)
+                
+            try:
+                ret_val = f.read()
+                f.close()    
+            except OSError as e:
+                logger.error("Read Error: %s", e)
+            except Exception as e:
+                logger.error("Error: %s", e)
+        else:
+            logger.error("File %s not found", filespec)
+      
+        return ret_val
+    def deprecated_get_matching_filelist_info(self, bucket=None, filespec_regex=None, revised_after_date=None, max_items=None, look_past_match_count=0):
+        """
+        Return a list of matching files, as s3 fileinfo dicts.
+        
+        fs convenience function for get_s3_matching_files
+
+        Args:
+         - filespec_regex - regexp pattern with folder name and file name pattern, not including the root.
+         - Examples:
+            get_matching_filelist_info(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
+            get_matching_filelist_info(match_path="_PEPCurrent/.*\.xml")
+
+      - is_folder - set to true to find folders
+
+      - revised_after_date - files will only match if their revise date is after this
+
+      - max_items - maximum number of matched files
+
+      - look_past_match_count - a number used to stop searching when we "guess" it should be past the last hit.
+           This can limit how many items past a match are searched, e.g., if all the matches are in on folder, then
+           if this number is greater than the possible number of items in the folder, it will stop at some point in the next folder or so.
+           At least this should be useful for testing...in practice, on AWS, it shouldn't be needed, since hopefully, file search is much
+           faster.
+    """
+        if bucket is None:
+            bucket = self.root
+            
+        ret_val = get_s3_matching_files(bucket=bucket,
+                                        subpath_tomatch=filespec_regex,
+                                        after_revised_date=revised_after_date,
+                                        max_items=max_items,
+                                        look_past_match_count=look_past_match_count)
+        
+        return ret_val
+
+    def get_matching_filelist(self, path=None, filespec_regex=None, revised_after_date=None, max_items=None):
+        """
+        Return a list of matching files, as FileInfo objects
+
+        Args:
+         - path - full path to search
+         - filespec_regex - regexp pattern with folder name and file name pattern, not including the root.
+         - Examples:
+            get_matching_filelist_info(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
+            get_matching_filelist_info(match_path="_PEPCurrent/.*\.xml")
+        
+        """
+        ret_val = []
+        count = 0
+        rc_match = re.compile(filespec_regex, flags=re.IGNORECASE)
+        
+        if path is None:
+            data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH) # "pep-web-xml"
+        else:
+            if path == pathlib.Path(localsecrets.XML_ORIGINALS_PATH):
+                data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
+            else:
+                data_folder = path
+            
+        if self.key is not None:
+            data_folder = data_folder.as_posix()
+            
+        kwargs = {"detail": True,}
+        if revised_after_date is not None:
+            revised_after_date = datetime.datetime.date(datetime.datetime.strptime(revised_after_date, '%Y-%m-%d'))
+            
+        if self.key is not None:
+            for folder, subfolder, files in self.fs.walk(path=data_folder, **kwargs):
+                if len(files) > 1:
+                    # yes, we have files.
+                    for key, val_dict in files.items():
+                        # print (key)
+                        if rc_match.match(key):
+                            fileinfo = FileInfo()
+                            fileinfo.mapS3(val_dict)
+                            if revised_after_date is not None:
+                                if fileinfo.date_modified > revised_after_date:
+                                    ret_val.append(fileinfo)
+                                    count += 1
+                                else:
+                                    continue
+                            else:
+                                ret_val.append(fileinfo)
+                                count += 1
+                            
+                            if max_items is not None:
+                                if count >= max_items:
+                                    break
+    
+                if max_items is not None:
+                    if count >= max_items:
+                        break
+        else:
+            for folder, subfolder, files in os.walk(data_folder):
+                for file in files:
+                    # print (key)
+                    if rc_match.match(file):
+                        fileinfo = FileInfo()
+                        filespec = pathlib.Path(folder) / file
+                        fileinfo.mapLocalFS(filespec)
+                        if revised_after_date is not None:
+                            if fileinfo.date_modified > revised_after_date:
+                                ret_val.append(fileinfo)
+                                count += 1
+                            else:
+                                continue
+                        else:
+                            ret_val.append(fileinfo)
+                            count += 1
+                        
+                        if max_items is not None:
+                            if count >= max_items:
+                                break
+    
+                if max_items is not None:
+                    if count >= max_items:
+                        break
+            
+        return ret_val            
     
     
-# Another way to do it...
-#from magic import libmagic
-#from cloudstorage.drivers.amazon import S3Driver
-#import io
+def get_s3_matching_files(bucket=None,
+                          subpath_tomatch=".*",
+                          is_folder=False,
+                          after_revised_date=None,
+                          max_items=None,
+                          look_past_match_count: int=0):
+    """
+    Find matching files where:
+      - subpath_tomatch - regexp pattern with folder name and file name pattern, not including the root.
+         - Examples:
+            get_s3_matching_files(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
+            get_s3_matching_files(match_path="_PEPCurrent/.*\.xml")
 
-# storage = S3Driver(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
-#container = storage.get_container('pep-graphics')
+      - is_folder - set to true to find folders
 
-#picture_blob = container.get_blob('embedded-graphics/BAP.02.0005.FIG001.jpg')
-#picture_blob.size
-## 50301
-#picture_blob.checksum
-## '2f907a59924ad96b7478074ed96b05f0'
-#picture_blob.content_type
-## 'image/png'
-#picture_blob.content_disposition
-## 'attachment; filename=picture-attachment.png
-##download_url = picture_blob.download_url(expires=3600)
+      - after_revised_date - files will only match if their revise date is after this
 
-#file_stream = io.StringIO()
-#picture_blob.download(file_stream)
-#with open(file_stream, mode='rb') as file: # b is important -> binary
-    #file_content = file.read()
+      - max_items - maximum number of matched files
+
+      - look_past_match_count - a number used to stop searching when we "guess" it should be past the last hit.
+           This can limit how many items past a match are searched, e.g., if all the matches are in on folder, then
+           if this number is greater than the possible number of items in the folder, it will stop at some point in the next folder or so.
+           At least this should be useful for testing...in practice, on AWS, it shouldn't be needed, since hopefully, file search is much
+           faster.
+    """
+    
+    ret_val = []
+    if bucket == None:
+        bucket = localsecrets.XML_ORIGINALS_PATH
+        
+    count = 0
+    tried = 0
+    rc_match = re.compile(subpath_tomatch, flags=re.IGNORECASE)
+    after_match_count = 0
+    for item in iterate_bucket_items(bucket=bucket):
+        tried += 1
+        m = rc_match.match(item["Key"])
+        if m:
+            if is_folder == True:
+                if item.Size !=  0:
+                    continue
+            elif after_revised_date is not None:
+                after_revised_date_obj = datetime.datetime.date(datetime.datetime.strptime(after_revised_date, '%Y-%m-%d'))
+                item_date = datetime.datetime.date(item["LastModified"])
+                if item_date <= after_revised_date_obj:
+                    continue
+
+            count = count + 1
+            print (f"Matched: {item['Key']}")
+            # reset after match count
+            after_match_count = 0
+                
+            ret_val.append(item)
+            if max_items is not None:
+                if count >= max_items:
+                    break
+        else:
+            # no match
+            if count > 0: # won't increment unless there's been at least one match
+                after_match_count += 1
+                if look_past_match_count > 0:
+                    if after_match_count > look_past_match_count:
+                        break # guess we're past all the hits
+
+    return ret_val            
+
+def find_s3_file(bucket=r'pep-web-xml',
+                 filename=None,
+                 is_folder=False,
+                 max_items=1):
+    """
+    Walk through an S3 bucket to find a file
+    """
+    ret_val = []
+    count = 0
+    for item in iterate_bucket_items(bucket=bucket):
+        if filename in item["Key"]:
+            if is_folder == True:
+                if item.Size !=  0:
+                    continue
+
+            count = count + 1
+            ret_val.append(item)
+            if max_items is not None:
+                if count >= max_items:
+                    break
+
+    return ret_val            
+        
+
+def iterate_bucket_items(bucket):
+    """
+    Generator that iterates over all objects in a given s3 bucket
+
+    See http://boto3.readthedocs.io/en/latest/reference/services/s3.html#S3.Client.list_objects_v2 
+    for return data format
+    :param bucket: name of s3 bucket
+    :return: dict of metadata for an object
+    
+    >> [i for i in iterate_bucket_items(bucket=r'pep-web-xml\\_PEPArchive\\ADPSA\\001.1926')]
+    >> print (i[0])
+    >> for i in iterate_bucket_items(bucket=r'pep-web-xml') : print(i)
+    
+    """
+
+    client = boto3.client('s3')
+    paginator = client.get_paginator('list_objects_v2')
+    page_iterator = paginator.paginate(Bucket=bucket)
+    for page in page_iterator:
+        if page['KeyCount'] > 0:
+            for item in page['Contents']:
+                yield item
 
 # -------------------------------------------------------------------------------------------------------
 # run it!
@@ -294,7 +616,7 @@ if __name__ == "__main__":
     print ("Running in Python %s" % sys.version_info[0])
 
     import doctest
-    doctest.testmod()    
+    doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
     print ("Fini. opasFileSupport Tests complete.")
     sys.exit()
 

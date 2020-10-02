@@ -18,9 +18,15 @@ import time
 import datetime
 from datetime import datetime
 from typing import List, Generic, TypeVar, Optional
-from enum import Enum
 import opasConfig
 
+from enum import Enum
+
+class ExtendedEnum(Enum):
+    @classmethod
+    def list(cls):
+        return list(map(lambda c: c.value, cls))
+    
 from pydantic import BaseModel, Schema, Field
 # from pydantic.types import EmailStr
 from modelsOpasCentralPydantic import User
@@ -53,11 +59,15 @@ class ListTypeEnum(Enum):
     reportList = "reportlist"
     
 class ReportTypeEnum(str, Enum):
-    #mostViewed = "mostViewed"
-    #mostCited = "mostCited"
     sessionLog = "Session-Log"
     userSearches = "User-Searches"
-    #sessionEndpointLog = "sessionEndpointLog"
+    documentViews = "Document-Views"
+    opasLogs = "Opas-Error-Logs"
+    
+class TermTypeIDEnum(str, ExtendedEnum):
+    termid = "ID"
+    termname = "Name"
+    termgroup = "Group"
     
 class QueryParserTypeEnum(Enum):
     edismax = "edismax"
@@ -249,6 +259,7 @@ class DocumentListItem(BaseModel):
     termID: str = Schema(None, title="Term ID", description="")
     groupID: str = Schema(None, title="Group ID", description="")
     groupName: str = Schema(None, title="Group Name", description="")
+    groupAlso: str = Schema(None, title="Group Also", description="")
     groupTermCount: str = Schema(None, title="Group Term Count", description="")
     termType: str = Schema(None, title="", description="")
     termSource: str = Schema(None, title="", description="")
@@ -272,7 +283,7 @@ class DocumentList(BaseModel):
 #-------------------------------------------------------
 class DocumentStruct(BaseModel):
     responseInfo: ResponseInfo
-    responseSet: DocumentListItem
+    responseSet: List[DocumentListItem] = []
 
 # modified PEPEasy2020 works with multiple 
 class Documents(BaseModel):
@@ -370,6 +381,22 @@ class SessionInfo(BaseModel):
     api_client_session: bool = Schema(False, title="True if the session_id is from the header via the client rather than a cookie")
 
 #-------------------------------------------------------
+class ServerStatusContent(BaseModel):
+    article_count: int = Schema(0, title="")
+    journal_count: int = Schema(0, title="")
+    video_count: int = Schema(0, title="")
+    book_count: int = Schema(0, title="")
+    figure_count: int = Schema(0, title="")
+    year_count: int = Schema(0, title="")
+    year_first: int = Schema(0, title="")
+    year_last: int = Schema(0, title="")
+    vol_count: int = Schema(0, title="")   
+    page_count: int = Schema(0, title="")
+    page_height_feet: float = Schema(0, title="")
+    page_weight_tons: float = Schema(0, title="")
+    source_count: dict = Schema(None, title="")
+    description_html: str = Schema(None, title="")
+    source_count_html: str = Schema(None, title="")
     
 class ServerStatusItem(BaseModel):
     db_server_ok: bool = Schema(None, title="Database server is online")
@@ -379,13 +406,14 @@ class ServerStatusItem(BaseModel):
     opas_version: str = Schema(None, title="Version of OPAS")
     dataSource: str = Schema(None, title="Version of the API server software")
     timeStamp: str = Schema(None, title="Current time")
+    serverContent: ServerStatusContent = Schema(None, title="Database Content (Counts)")
     # admin only
     user_count:  int = Schema(0, title="Number of users online")
     user_ip: str = Schema(None, title="Requestor's ip")
-    config_name: str= Schema(None, title="Current Configuration Name")
-    text_server_url: str= Schema(None, title="Current SOLR URL")
-    cors_regex: str= Schema(None, title="Current CORS Regex")
-    db_server_url: str= Schema(None, title="Current DB URL")
+    config_name: str = Schema(None, title="Current Configuration Name")
+    text_server_url: str = Schema(None, title="Current SOLR URL")
+    cors_regex: str = Schema(None, title="Current CORS Regex")
+    db_server_url: str = Schema(None, title="Current DB URL")
 
 #-------------------------------------------------------
 
@@ -517,7 +545,7 @@ class SolrQuerySpec(BaseModel):
 #    which then processes it into a SolrQuery and sends to Solr.
 class SolrQueryTermSub(BaseModel):
     connector: str = Schema(" && ", title="Boolean connector to prev term.  Must be && (default) or ||")
-    field: str = Schema("para", title="Field to query")
+    field: str = Schema(None, title="Field to query")
     words: str = Schema(None, title="if string field: string or pattern to match; if text field: words, phrase with or without proximity qualifier, boolean connectors")
     parent: str = Schema(None, title="default parent to query or None")
     synonyms: bool = Schema(False, title="Request thesaurus expansion") # to turn on thesaurus match (appends syn) Default = False
@@ -526,7 +554,7 @@ class SolrQueryTermSub(BaseModel):
 class SolrQueryTerm(BaseModel):
     connector: str = Schema(" && ", title="Boolean connector to prev term.  Must be && (default) or ||")
     subClause: List[SolrQueryTermSub] = Schema([], title="A sublist of query terms, to aggregate within parentheses; only connector is used with a SolrQueryTerm subclause")
-    field: str = Schema("para", title="Field to query")
+    field: str = Schema(None, title="Field to query")
     words: str = Schema(None, title="if string field: string or pattern to match; if text field: words, phrase with or without proximity qualifier, boolean connectors")
     parent: str = Schema(None, title="default parent to query or None")
     synonyms: bool = Schema(False, title="Request thesaurus expansion") # to turn on thesaurus match (appends syn) Default = False
@@ -661,6 +689,35 @@ class WhatsNewListStruct(BaseModel):
 class WhatsNewList(BaseModel):
     whatsNew: WhatsNewListStruct
 
+class PadsSessionInfo(BaseModel):
+    HasSubscription: bool = Schema(False, title="")
+    IsValidLogon: bool = Schema(False, title="")
+    IsValidUserName: bool = Schema(False, title="")
+    ReasonId: int = Schema(0, title="")
+    ReasonStr = Schema("", title="")
+    SessionExpires: int = Schema(0, title="")
+    SessionId: str = Schema(None, title="")
+
+class PadsUserInfo(BaseModel):
+    UserId:int = Schema(None, title="")
+    UserName:str = Schema(None, title="")
+    UserType:str = Schema(None, title="")
+    SubscriptionEndDate:str = Schema(None, title="")
+    Branding:bool = Schema(None, title="")
+    ClientSettings:dict=Schema({}, title="")
+    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
+    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
+
+class PadsPermitInfo(BaseModel):
+    # see https://app.swaggerhub.com/apis/nrshapiro/PEPSecure/1.03#/PermitResponse
+    SessionId:str = Schema(None, title="session GUID")
+    DocId:str = Schema(None, title="PEP Document Locator (Document ID: e.g., IJP.082.0215A)")
+    HasArchiveAccess:bool = Schema(False, title="User has subscription to PEP Archive")
+    HasCurrentAccess:bool = Schema(False, title="User has subscription to PEP Current (rare)")
+    Permit:bool = Schema(False, title="True if the user has permission to view fulltext of DocId")
+    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
+    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
+    
 #-------------------------------------------------------
 # Perhaps use termindex instead
 #class WordIndexItem(BaseModel):

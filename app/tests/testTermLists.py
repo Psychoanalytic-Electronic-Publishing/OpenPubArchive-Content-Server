@@ -24,7 +24,7 @@ import urllib
 from unitTestConfig import base_api, base_plus_endpoint_encoded
 import opasAPISupportLib
 
-class TestSearch(unittest.TestCase):
+class TestTermSearch(unittest.TestCase):
 
     def test_0a_searchanalysis(self):
         full_URL = base_plus_endpoint_encoded('/v1/Database/SearchAnalysis/?author=greenfield')
@@ -37,6 +37,32 @@ class TestSearch(unittest.TestCase):
         assert(response_set[0]["termCount"] >= 6)
         print (response_set)
         # Confirm that the request-response cycle completed successfully.
+        
+    def test_0a_termcounts(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/TermCounts/?termlist=motherhood, fatherhood, child')
+        response = requests.get(full_URL)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        #[   {'field': 'text', 'term': 'motherhood', 'termCount': 3510},
+        #    {'field': 'text', 'term': 'fatherhood', 'termCount': 946}, 
+        #    {'field': 'text', 'term': 'child', 'termCount': 69933}, 
+        #    {'field': 'art_sourcetitlefull', 'term': 'journal', 'termCount': 51701}
+        #]
+        response_info = r["termIndex"]["responseInfo"]
+        response_set = r["termIndex"]["responseSet"] 
+        assert(response_set[0]["termCount"] >= 2600)
+        print (response_set)
+        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Database/TermCounts/?termlist=mother')
+        response = requests.get(full_URL)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["termIndex"]["responseInfo"]
+        response_set = r["termIndex"]["responseSet"] 
+        assert(response_set[0]["termCount"] >= 3000)
+        print (response_set)
         
     
     def test_1a_termlist(self):

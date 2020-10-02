@@ -2,7 +2,7 @@
 <!-- ============================================================= -->
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
 <!--     BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML   -->
-<!--  DATE:      Apr 21, 2020                                       -->
+<!--  DATE:      Sep 7, 2020                                       -->
 <!--  Revisions:                                                   
         
         TBD:
@@ -31,7 +31,8 @@
                       html intact)
                     - removed some id prefixes (not sure why they were 
                       being used)
-                    
+        2020-09-07  - Added GW/SE language attributes so they are included
+                      in the HTML
 -->
 <!-- ============================================================= -->
 <!--
@@ -1034,6 +1035,21 @@
     <p class="para">
       <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="data-pagehelper"/>
+      <xsl:if test="@lgrid">
+        <xsl:attribute name="data-lgrid">
+          <xsl:value-of select="@lgrid"/>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:if test="@lgrx">
+        <xsl:attribute name="data-lgrx">
+          <xsl:value-of select="@lgrx"/>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:if test="@lgrtype">
+        <xsl:attribute name="data-lgrtype">
+          <xsl:value-of select="@lgrtype"/>
+        </xsl:attribute>
+      </xsl:if>
       <xsl:choose>
         <xsl:when test="ancestor::ftr and not(preceding-sibling::*)">
           <xsl:attribute name="class">ftr first</xsl:attribute>

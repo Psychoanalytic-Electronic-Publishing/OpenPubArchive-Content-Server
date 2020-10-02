@@ -21,7 +21,7 @@ else: # python running from should be within folder app
 from starlette.testclient import TestClient
 
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 import jwt
 from datetime import datetime
 
@@ -40,22 +40,10 @@ class TestLogin(unittest.TestCase):
     """
     
     def test_0_login(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password={TESTPW}')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
-        r = response.json()
-        access_token = r["access_token"]
-        session_id =  r["session_id"]
-        decoded_access_token = jwt.decode(access_token,
-                                          key=SECRET_KEY,
-                                          algorithms=ALGORITHM
-                                         )
-        expires_time = datetime.fromtimestamp(decoded_access_token['exp'])
-        orig_session_id = decoded_access_token['orig_session_id']
-        assert(r["authenticated"] == True)
-        assert(session_id == orig_session_id)
-        print (decoded_access_token )
 
         # now Check if we are logged in!
         full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
@@ -63,21 +51,13 @@ class TestLogin(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        access_token = r["access_token"]
-        session_id =  r["session_id"]
-        assert(session_id == orig_session_id)       
-        decoded_access_token = jwt.decode(access_token,
-                                          key=SECRET_KEY,
-                                          algorithms=ALGORITHM
-                                         )
-        assert(r["authenticated"] == True)
+        orig_session_id =  r["session_id"]
+
         full_URL = base_plus_endpoint_encoded('/v2/Session/Logout/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        response_info = r["licenseInfo"]["responseInfo"]
-        response_set = r["licenseInfo"]["responseSet"]
         assert(r["licenseInfo"]["responseInfo"]["loggedIn"] == False)
 
         full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
@@ -85,38 +65,21 @@ class TestLogin(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        access_token = r["access_token"]
-        session_id =  r["session_id"]
-        assert(access_token is None)
+        new_session_id =  r["session_id"]
+        assert(new_session_id != orig_session_id)
         
-        if access_token is not None:
-            decoded_access_token = jwt.decode(access_token,
-                                              key=SECRET_KEY,
-                                              algorithms=ALGORITHM
-                                             )
-            print (decoded_access_token )
 
     def test_2_bad_login(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={TESTUSER}&password="notthepassword"')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password="notthepassword"')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
-        assert(response.status_code == 401) # Unauthorized Error
-        r = response.json()
+        status_code = response.status_code
+        assert(status_code == 401) # Unauthorized Error
 
         full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
-        r = response.json()
-        access_token = r["access_token"]
-        #session_id =  r["session_id"]
-
-        if access_token is not None:
-            decoded_access_token = jwt.decode(access_token,
-                                              key=SECRET_KEY,
-                                              algorithms=ALGORITHM
-                                             )
-            print (decoded_access_token )
        
 if __name__ == '__main__':
     unittest.main()    

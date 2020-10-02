@@ -1,11 +1,48 @@
 ## Running Changelog of the OPAS server Code 
 (maintained at https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server/wiki/CHANGELOG.md)
 
-**2020.08.26** - Testing and resolving issues with new endpoints (and updates to counts where they can change with data  in tests).
+**2020.0901** - Added CSV download for /Database/MostCited and /Database/MostViewed endpoints 
+- requirements.txt update to include new library additions, pandas and its dependencies numpy and pytz
+- docker-compose file to load Solr set to increase JVM memory to 1GB
+- Misc clean up
+   - some inconsistencies in header variable dash vs underscore naming fixed.  All header variables now use - now, including x_api_authorize, which is now x-api-authorize (as of this build). [ETA: IMPORTANT NOTE: AWS Beanstalk removes header variables with _ so absolutely not for future use!]
+   - some literal strings in endpoints moved to opasConfig.
+   - Solr subdocuments present a problem for multifield paragraph-level search (as discussed in the issues).  Prepped schema for doing multifield search at artLevel1 rather than subdocuments artLevel2).  To use multifield paragraph level search currently, if the fields are to be ANDed (or works), the OPAS server code rather than Solr would need to do the intersection of the two search results. Added the parent doc_id art_doc_id to the schema so that this is indeed possible to do later on.
+     - subdocuments are still currently used when query parameter paratext is used; this is the most accurate way to search within paragraphs if you don't need to do ANDs between fields, which Solr syntax can't handle in the query.  Ands work within the same field of course.  For qtermlists, artlevel2 is still the way to do paralevel search, but again, don't AND different fields using the Connector.  If you need to search multiple fields at the paragraph level, use the artlevel1 simulated approach, using proximity search distance of 25.    
+     - Note that the subdocuments are also still useful for GW/SE concordance mapping since the paragraphs can be recalled by the language ID lgid.
+
+**2020.0831** - Fixed load of GW and SE type labels
+- Solr Schema changes
+  - Added _syn copyfields for art_level:1 zones thesaurus matching, e.g., dreams_xml
+  - Added (back) body_xml field for art_level:1 based simulated paragraph level search using proximity
+  - Added para_art_id to subdocuments, to allow the server to grab the parent document information manually, though it doesn't do that currently.
+
+**2020.0829** - Added sourcename (source title) parameter to metadata information endpoints for source information per client app dev request
+- Misc
+   - Removed most of the v1 deprecated endpoints, particularly when they were just decorators for the v2 endpoint equivalent
+     - Removed related v1 tests
+   - Cleaned up docstrings (fix some doctests which had missed name changes)
+   - Normalize input values for journal, book and videostream in get_sources to fix input as journals, books etc.
+   - Raise the default return limit for CONTENTS and METADATA lists to 200
+
+**2020.0828** - Clean up
+- Clean up docstrings (fix some examples and apply markdown where needed
+- Add a few tests for error input
+- Tweak tests for PaDS permissions
+- Change default return of pads_login to return what it returns, even in case of error (rather than False)
+
+**2020.0827** - PaDS optimization update + Address need to update view data in Solr daily
+ - Added independent program (updateSolrViewData) to update Solr view data so this data can be updated automatically every day via a CRON job.
+ - Added subscription rights check for Archive and Current in PaDS to speed up checking when a subscription is valid.
+ - Misc:
+    - Trapped parameter error when the sourcecode specification is not complete and updated parameter description to emphasize FULL.
+    - Adjusted case of query parameter sourcecode in endpoint /v2/metadata_books to lower case for consistency with other query parameters.
+
+**2020.0826** - Testing and resolving issues with new endpoints (and updates to counts where they can change with data  in tests).
  - Renamed id column with user id as global_uid in views to cover any sort of user id from the authentication system (still should be unique)
  - fixed problem where dates with dashes weren't accepted (system just removes dashes from input)
- 
-**2020.08.25** - Adding new endpoint for querying the activity log, which is  represented in the RDS table (view) vw_user_session_activity.
+
+**2020.0825** - Adding new endpoint for querying the activity log, which is  represented in the RDS table (view) vw_reports_session_activity.  The two reports available so far: 
 
 **2020.0824** - Added more error trapping to catch errors occurring in the interaction between PEP-Easy and OPAS.  Caught a few places where, under some input conditions, values needed were not being set.  Still have one problem, but it's in PEP-Easy, where the URL asking for a document produces a 404 error, having to do with the ?search= parameter which provides the information about the prior search so the highlights
 

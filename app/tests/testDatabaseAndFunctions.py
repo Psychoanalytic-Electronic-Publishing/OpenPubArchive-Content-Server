@@ -19,18 +19,18 @@ else: # python running from should be within folder app
     sys.path.append('./config')
 
 
-from starlette.testclient import TestClient
+# from starlette.testclient import TestClient
 
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-import jwt
+# from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
+# import jwt
 from datetime import datetime
-import opasAPISupportLib
-import opasConfig
-import opasQueryHelper
-import models
+# import opasAPISupportLib
+# import opasConfig
+# import opasQueryHelper
+# import models
 import opasCentralDBLib
-import opasFileSupport
+# import opasFileSupport
 import pymysql
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded
@@ -48,14 +48,14 @@ class TestSQLStructure(unittest.TestCase):
         dbok = ocd.open_connection(caller_name="test_views") # make sure connection is open
         assert (dbok == True)
         tables = ["vw_products_flattened",
-                  "vw_active_sessions",
+                  #"vw_active_sessions",
                   #"vw_api_product_list_with_basecodes",
                   #"vw_api_session_endpoints_with_descriptor ",
                   "vw_api_sourceinfodb",
                   "vw_api_user",
-                  "vw_api_user_subscriptions_with_basecodes",
+                  # "vw_api_user_subscriptions_with_basecodes",
                   "vw_latest_session_activity",
-                  "vw_products_with_productbase",
+                  # "vw_products_with_productbase",
                   "vw_stat_cited_crosstab",
                   "vw_stat_cited_in_all_years",
                   "vw_stat_cited_in_last_5_years",
@@ -67,13 +67,13 @@ class TestSQLStructure(unittest.TestCase):
                   "vw_stat_docviews_lastsixmonths",
                   "vw_stat_docviews_lastweek",
                   "vw_stat_most_viewed",
-                  "vw_subscriptions",
+                  # "vw_subscriptions",
                   "vw_user_active_subscriptions",
                   "vw_stat_docviews_lastcalyear", # for now, nothing from last year
                   "vw_user_referred",
-                  "vw_user_referrer_account_management",
-                  "vw_user_session_activity",
-                  "vw_user_subscriptions_products"
+                  # "vw_user_referrer_account_management",
+                  # "vw_user_session_activity",
+                  # "vw_user_subscriptions_products"
                   ]
 
         for table in tables:              
