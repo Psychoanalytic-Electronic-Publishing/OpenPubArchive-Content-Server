@@ -782,9 +782,9 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
     else:
         vol_title_str = None
         
-    bk_title_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bktitle", default_return = None)
+    bk_title_xml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//artbkinfo/bktitle", default_return = None)
     if bk_title_xml is not None:
-        bk_title = opasxmllib.xml_string_to_text(bk_title_xml[0])
+        bk_title = opasxmllib.xml_string_to_text(bk_title_xml)
         bk_title_str = bk_title.translate(str.maketrans('', '', string.punctuation)), # remove all punct for sorting
     else:
         bk_title_str = None
@@ -794,9 +794,9 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
     else:
         art_sourcetitlefull_str = None
         
-    bk_title_series_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bktitle", default_return = None)
+    bk_title_series_xml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//bktitle", default_return = None)
     if bk_title_series_xml is not None:
-        bk_title_series = opasxmllib.xml_string_to_text(bk_title_series_xml[0])
+        bk_title_series = opasxmllib.xml_string_to_text(bk_title_series_xml)
         bk_title_series_str = bk_title_series.translate(str.maketrans('', '', string.punctuation))
     else:
         bk_title_series_str = None
@@ -829,7 +829,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
                 "art_offsite" : offsite_contents, #  true if it's offsite
                 "author_bio_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//nbio", default_return = None),
                 "author_aff_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//autaff", default_return = None),
-                "bk_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bktitle", default_return = None),
+                "bk_title_xml" : bk_title_xml,
                 "bk_title_str" : bk_title_str, # remove all punct for sorting
                 "bk_subdoc" : artInfo.bk_subdoc,
                 "art_info_xml" : artInfo.artinfo_xml,
@@ -1231,7 +1231,7 @@ def add_article_to_api_articles_table(ocd, art_info, verbose=None):
     try:
         res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_param_dict)
     except Exception as e:
-        errStr = f"api_articles table insert (returned {res}) error {e}"
+        errStr = f"api_articles table insert error {e}"
         logger.error(errStr)
         print (errStr)
     else:
