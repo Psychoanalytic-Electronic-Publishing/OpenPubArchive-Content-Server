@@ -533,14 +533,14 @@ running_head_fmts = {
 }
 
 # specify fields for sort, the variable allows ASC and DESC to be varied during calls.
-SORT_BIBLIOGRAPHIC = "art_authors_mast {0}, art_year {0}, art_title {0}"
+SORT_BIBLIOGRAPHIC = "art_authors_citation_str {0}, art_year {0}, art_title_str {0}"
 SORT_YEAR = "art_year {0}"
-SORT_AUTHOR = "art_authors_mast {0}"
-SORT_TITLE = "art_title {0}"
-SORT_SOURCE = "art_sourcetitlefull {0}"
+SORT_AUTHOR = "art_authors_citation_str {0}"
+SORT_TITLE = "art_title_str {0}"
+SORT_SOURCE = "art_sourcetitlefull_str {0}"
 SORT_CITATIONS = "art_cited_5 {0}"
 SORT_VIEWS = "art_views_last6mos {0}"
-SORT_TOC = "art_sourcetitleabbr {0}, art_year {0}, art_iss {0}, art_pgrg {0}"
+SORT_TOC = "art_sourcetitlefull_str {0}, art_year {0}, art_iss {0}, art_pgrg {0}"
 SORT_SCORE = "score {0}"
 
 # Dict = sort key to use, fields, default direction if one is not specified.

@@ -2,6 +2,15 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2020-10-02 Added schema fields for sort issue with Solr.  Solr doesn't properly sort fields
+               that are tokenized for full-text search.  So added string_lc, which uses a solr.KeywordTokenizerFactory
+               tokenizer (as described on the internet), which actually works better than a plain string
+               field because it sorts mixed case properly (ignoring case).  But I populate these fields
+               with the data having punctuation removed, instead of using copy fields, because I also remove
+               all punctuation, which otherwise negatively affects the sort.
+               
+               (This mod note added in the 10-03 update, but the push before this on 10-02 had the schema changes.)
+
     2020-09-24 Many simple fields changed to non-stored, non-indexed, but docvalues       
                As tested/confirmed with this element in Solr 8.6, Solr Schema elements (at least strings and integers) 
                that are docvalues don't need to be indexed or saved to be returnable in results and be searchable
