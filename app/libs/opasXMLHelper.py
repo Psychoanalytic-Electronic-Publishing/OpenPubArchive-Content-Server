@@ -947,6 +947,11 @@ def xml_get_subelement_textsingleton(element_node, subelement_name, skip_tags=[]
                     
             # strip the tags
             ret_val = etree.tostring(elemcopy, method="text", with_tail=with_tail, encoding=encoding)
+            # strip leading and trailing spaces
+            try:
+                ret_val = ret_val.strip()
+            except Exception as e:
+                logger.warning(f"Whitepsace strip error: {ret_val} {e}")
 
     except Exception as err:
         logger.warning(err)
@@ -1109,10 +1114,13 @@ def xml_elem_or_str_to_xmlstring(elem_or_xmlstr, default_return=""):
         
     return ret_val
 
-def xml_string_to_text(xmlstr, default_return=""):
-    xmlstr = remove_encoding_string(xmlstr)
-    clearText = lhtml.fromstring(xmlstr)
-    ret_val = clearText.text_content()
+def xml_string_to_text(xmlstr, default_return=None):
+    if xmlstr is not None:
+        xmlstr = remove_encoding_string(xmlstr)
+        clearText = lhtml.fromstring(xmlstr)
+        ret_val = clearText.text_content()
+    else:
+        ret_val = default_return
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -1321,7 +1329,11 @@ def xml_xpath_return_xmlsingleton(element_node, xpath, default_return=""):
         else:
             if isinstance(ret_val, list) and len(ret_val) > 0:
                 ret_val = ret_val[0]
-            ret_val = etree.tostring(ret_val, with_tail=False, encoding="unicode") 
+            ret_val = etree.tostring(ret_val, with_tail=False, encoding="unicode")
+            try:
+                ret_val = ret_val.strip()
+            except Exception as e:
+                logger.warning(f"Whitepsace strip error: {ret_val} {e}")
                 
     except Exception as err:
         logger.error(err)

@@ -145,11 +145,15 @@
   <!-- Title includes subtitle -->
   <field name="title" type="text_simple" indexed="true" stored="true" multiValued="false"/> # changed to multivalued false (no reason its multivalued)
   <field name="title_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
+  <field name="title_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/> # for sorting
   <field name="art_title" type="text_simple" indexed="true" stored="true" multiValued="false"/> # added back in for naming consistency
   <field name="art_title_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/> # added back in for naming consistency
+  <field name="art_title_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
   <copyField source="title" dest="title_syn"/>
   <copyField source="title" dest="art_title"/>
   <copyField source="title" dest="art_title_syn"/>
+  <!--<copyField source="title" dest="art_title_str"/>-->
+  <!--<copyField source="title" dest="title_str"/> -->
   <field name="art_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_subtitle_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!--......................................................................................................-->
@@ -158,8 +162,12 @@
   <field name="art_vol_int" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_vol_suffix" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_vol_title" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_vol_title_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/> # for sorting
+  <!--<copyField source="art_vol_title" dest="art_vol_title_str"/> -->
   <field name="art_iss" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_iss_title" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_iss_title_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
+  <!--<copyField source="art_iss_title" dest="art_iss_title_str"/> -->
   <field name="art_year" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_year_int" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_origrx" type="string" indexed="true" stored="true" multiValued="false"/>
@@ -180,6 +188,9 @@
   <field name="art_sourcecode" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_sourcetitleabbr" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_sourcetitlefull" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_sourcetitlefull_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
+  <!--<copyField source="art_sourcetitlefull" dest="art_sourcetitlefull_str"/> -->
+  
   <!--<field name="art_sourcetitle_fulltext" type="text_simple" indexed="true" stored="true" multiValued="false"/>-->
   <!--<copyField source="art_sourcetitlefull" dest="art_sourcetitle_fulltext"/>-->
   <field name="art_doi" type="string" indexed="true" stored="true" multiValued="false"/>
@@ -187,10 +198,14 @@
   <field name="art_newsecnm" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!-- extra metadata for books -->
   <field name="bk_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="bk_title_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
+  <!--<copyField source="bk_title_xml" dest="bk_title_str"/>-->
   <field name="bk_alsoknownas_xml"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_editors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <field name="bk_seriestitle_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="bk_pubyear" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="bk_seriestitle_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
+  <copyField source="bk_seriestitle_xml" dest="bk_seriestitle_str"/>
+  <!--<field name="bk_pubyear" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>-->
   <!--Added 7/6 for SE/GW and to cover general book info (e.g., next/prev id)details which do not come back in the html-->
   <field name="bk_subdoc" type="boolean" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--New fields for book management 2020-08-11 -->
@@ -212,7 +227,7 @@
 
   <!-- Metadata fields -->
   <!-- Store whether its PEPArchive, PEPCurrent, etc. -->
-  <field name="file_classification" type="string" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="file_classification" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
 
   <!-- Article authors -->
   <!-- So how can we do queries for partial last names...can't bunch authors in printable form.  
@@ -223,6 +238,8 @@
   <field name="art_authors_mast" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--Added 20200410 to allow sort by authors-->
   <field name="art_authors_citation" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_authors_citation_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
+  <copyField source="art_authors_citation" dest="art_authors_citation_str"/> # for sorting
   <!--try to improve author search for single names and full names-->
   <!--Many of these are Temporary. fpr trying different search results.  #TODO-->
   <field name="art_authors_text" type="text_simple" indexed="true" stored="false" multiValued="true"/>
@@ -304,7 +321,6 @@
   -->
   <field name="art_product_key" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   
-
   <field name="headings_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
   <!-- Revision info for document; #TODO change to string perhaps and remove indexing -->
   <field name="meta_xml" type="text_simple" indexed="true" stored="true"/>
@@ -526,4 +542,14 @@
        <filter class="solr.LowerCaseFilterFactory"/>
      </analyzer>
    </fieldType>
+
+  <!--This sorts correctly.  Must be indexed though   -->
+  <fieldtype name="string_lc" class="solr.TextField" sortMissingLast="true" omitNorms="true">
+    <analyzer>
+      <charFilter class="solr.HTMLStripCharFilterFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <tokenizer class="solr.KeywordTokenizerFactory"/>
+    </analyzer>
+  </fieldtype>
+
 </schema>

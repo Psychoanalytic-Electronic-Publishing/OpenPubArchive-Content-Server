@@ -639,7 +639,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
 
     art_lang = pepxml.xpath('//@lang')
     if art_lang == []:
-        art_lang = ['EN']
+        art_lang = ['en']
     
     body_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body", default_return=None)
 
@@ -770,15 +770,53 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
     freuds_italics = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/fi", default_return=None)
     if freuds_italics is not None:
         freuds_italics = remove_values_from_terms_highlighted_list(freuds_italics)
+
+    if artInfo.art_title is not None:
+        title_str = artInfo.art_title.translate(str.maketrans('', '', string.punctuation)), # remove all punct for sorting
+    else:
+        title_str = None
+
+    vol_title = non_empty_string(artInfo.art_vol_title)
+    if vol_title is not None:
+        vol_title_str = vol_title.translate(str.maketrans('', '', string.punctuation))
+    else:
+        vol_title_str = None
+        
+    bk_title_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bktitle", default_return = None)
+    if bk_title_xml is not None:
+        bk_title = opasxmllib.xml_string_to_text(bk_title_xml)
+        bk_title_str = bk_title.translate(str.maketrans('', '', string.punctuation)), # remove all punct for sorting
+    else:
+        bk_title_str = None
+
+    if artInfo.src_title_full is not None:
+        art_sourcetitlefull_str = artInfo.src_title_full.translate(str.maketrans('', '', string.punctuation)), # remove all punct for sorting,
+    else:
+        art_sourcetitlefull_str = None
+        
+    bk_title_series_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bktitle", default_return = None)
+    if bk_title_series_xml is not None:
+        bk_title_series = opasxmllib.xml_string_to_text(bk_title_series_xml)
+        bk_title_series_str = bk_title_series.translate(str.maketrans('', '', string.punctuation))
+    else:
+        bk_title_series_str = None
+        
+    if artInfo.art_issue_title is not None:
+        art_issue_title_str = artInfo.art_issue_title.translate(str.maketrans('', '', string.punctuation))
+    else:
+        art_issue_title_str = None
     
     new_rec = {
                 "id": artInfo.art_id,                                         # important =  note this is unique id for every reference
                 "art_id" : artInfo.art_id,                                    # important                                     
-                "title" : artInfo.art_title,                                  # important                                      
+                "title" : artInfo.art_title,                                  # important
+                "title_str" : title_str, # remove all punct, this is only used for sorting
                 "art_title_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//arttitle", default_return = None),
+                "art_title_str" : title_str, # remove all punct, this is only used for sorting
                 "art_sourcecode" : artInfo.src_code,                 # important
                 "art_sourcetitleabbr" : artInfo.src_title_abbr,
                 "art_sourcetitlefull" : artInfo.src_title_full,
+                "art_sourcetitlefull_str" : art_sourcetitlefull_str, # remove all punct for sorting,
                 "art_sourcetype" : artInfo.src_type,
                 "art_product_key" : artInfo.src_prodkey,
                 # abstract_xml and summaries_xml should not be searched, but useful for display without extracting
@@ -792,11 +830,13 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
                 "author_bio_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//nbio", default_return = None),
                 "author_aff_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//autaff", default_return = None),
                 "bk_title_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bktitle", default_return = None),
+                "bk_title_str" : bk_title_str, # remove all punct for sorting
                 "bk_subdoc" : artInfo.bk_subdoc,
                 "art_info_xml" : artInfo.artinfo_xml,
                 "bk_alsoknownas_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bkalsoknownas", default_return = None),
                 "bk_editors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkeditors", default_return = None),
-                "bk_seriestitle_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bktitle", default_return = None),
+                "bk_seriestitle_xml" : bk_title_series_xml,
+                "bk_seriestitle_str" : bk_title_series_str, # remove all punct for sorting,,,
                 "bk_series_toc_id" : artInfo.bk_seriestoc,
                 "bk_main_toc_id" : artInfo.main_toc_id,
                 "bk_next_id" : artInfo.bk_next_id,
@@ -828,7 +868,8 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
                 "art_year_int" : artInfo.art_year_int,
                 "art_vol" : artInfo.art_vol_int,
                 "art_vol_suffix" : non_empty_string(artInfo.art_vol_suffix),
-                "art_vol_title" : non_empty_string(artInfo.art_vol_title),
+                "art_vol_title" : vol_title,
+                "art_vol_title_str" : vol_title_str, # remove all punct for sorting
                 "art_pgrg" : non_empty_string(artInfo.art_pgrg),
                 "art_pgcount" : artInfo.art_pgcount,
                 "art_tblcount" : artInfo.art_tblcount,
@@ -836,6 +877,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
                 "art_graphic_list" : artInfo.art_graphic_list,
                 "art_iss" : artInfo.art_issue,
                 "art_iss_title" : artInfo.art_issue_title,
+                "art_iss_title_str" : art_issue_title_str, # remove all punct for sorting
                 "art_doi" : artInfo.art_doi,
                 "art_lang" : artInfo.art_lang,
                 "art_issn" : artInfo.art_issn,
