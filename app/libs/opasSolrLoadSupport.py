@@ -784,7 +784,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
         
     bk_title_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//artbkinfo/bktitle", default_return = None)
     if bk_title_xml is not None:
-        bk_title = opasxmllib.xml_string_to_text(bk_title_xml)
+        bk_title = opasxmllib.xml_string_to_text(bk_title_xml[0])
         bk_title_str = bk_title.translate(str.maketrans('', '', string.punctuation)), # remove all punct for sorting
     else:
         bk_title_str = None
@@ -796,7 +796,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
         
     bk_title_series_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bktitle", default_return = None)
     if bk_title_series_xml is not None:
-        bk_title_series = opasxmllib.xml_string_to_text(bk_title_series_xml)
+        bk_title_series = opasxmllib.xml_string_to_text(bk_title_series_xml[0])
         bk_title_series_str = bk_title_series.translate(str.maketrans('', '', string.punctuation))
     else:
         bk_title_series_str = None
