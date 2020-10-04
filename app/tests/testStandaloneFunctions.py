@@ -69,22 +69,22 @@ class TestStandaloneFunctions(unittest.TestCase):
         print (resp)
         
     def test_query_equivalence(self):
-        r1, status = opasAPISupportLib.search_text(query="mother and milk or father and child")
+        r1, status = opasQueryHelper.search_text(query="mother and milk or father and child")
         r1_count = r1.documentList.responseInfo.fullCount
-        r2, status = opasAPISupportLib.search_text(query="mother milk or father and child")
+        r2, status = opasQueryHelper.search_text(query="mother milk or father and child")
         r2_count = r2.documentList.responseInfo.fullCount
         assert(r1_count == r2_count)
-        r3, status = opasAPISupportLib.search_text(query="mother milk or (father and child)")
+        r3, status = opasQueryHelper.search_text(query="mother milk or (father and child)")
         r3_count = r3.documentList.responseInfo.fullCount
         assert(r1_count == r3_count)
         
     def test_query_equivalence2(self):
-        r1, status = opasAPISupportLib.search_text(query="'mother milk' or father and child")
+        r1, status = opasQueryHelper.search_text(query="'mother milk' or father and child")
         r1_count = r1.documentList.responseInfo.fullCount
-        r2, status = opasAPISupportLib.search_text(query="'mother milk' or (father and child)")
+        r2, status = opasQueryHelper.search_text(query="'mother milk' or (father and child)")
         r2_count = r2.documentList.responseInfo.fullCount
         assert(r1_count == r2_count)
-        r3, status = opasAPISupportLib.search_text(query="father child or 'mother milk'")
+        r3, status = opasQueryHelper.search_text(query="father child or 'mother milk'")
         r3_count = r3.documentList.responseInfo.fullCount
         assert(r1_count == r3_count)
     

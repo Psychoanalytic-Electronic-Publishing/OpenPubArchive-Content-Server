@@ -33,7 +33,7 @@ class TestSmartSearch(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 1)
+        assert(response_info["count"] == 4)
         print (response_set)
 
     def test__2a_smartsearch_locator1(self):
@@ -322,7 +322,7 @@ class TestSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (response_info["count"])
-        assert(response_info["count"] == 4)  
+        assert(response_info["count"] == 14)  
         print (response_set[0]) 
 
     def test_12c_word_search(self):

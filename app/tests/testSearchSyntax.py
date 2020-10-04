@@ -90,7 +90,7 @@ class TestSearchSyntax(unittest.TestCase):
             solr_query_term_list = models.SolrQueryTermList(qt=term_list)
             solr_query_spec = opasQueryHelper.parse_search_query_parameters(solrQueryTermList=solr_query_term_list, art_level=1)
             print (solr_query_spec.solrQuery.searchQ)
-            ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec,
+            ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec,
                                                                    limit=1,
                                                                    offset=0
                                                                    )
@@ -107,7 +107,7 @@ class TestSearchSyntax(unittest.TestCase):
         for n, expected_count in fulltext1:
             solr_query_spec = opasQueryHelper.parse_search_query_parameters(fulltext1=n, art_level=1)
             print (solr_query_spec.solrQuery.searchQ)
-            ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec,
+            ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec,
                                                                    limit=1,
                                                                    offset=0
                                                                    )

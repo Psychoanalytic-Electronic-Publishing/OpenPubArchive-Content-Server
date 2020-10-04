@@ -110,6 +110,7 @@ class ResponseInfo(BaseModel):
     listLabel: str = Schema(None, title="Descriptive title of data return for SourceInfoList, e.g., Book List, Journal List, Video List. Should be used elsewhere too.")
     listType: ListTypeEnum = Schema(None, title="ListTypeEnum based identifier of the return structure, e.g., 'documentList'.")
     scopeQuery: list = Schema(None, title="The query strings applied: [query_string, filter_string]")
+    responseDescription: dict = Schema(None, title="A dict with standard parts describing/explaining the response")
     request: str = Schema(None, title="The URL request (endpoint) that resulted in this response.")
     core: str = Schema(None, title="The Solr Core classname used (e.g., docs, authors).")
     solrParams: dict = Schema(None, title="A dictionary based set of the parameters passed to the Solr search engine for this request.")

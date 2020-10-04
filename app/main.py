@@ -1670,7 +1670,7 @@ async def database_advanced_search(response: Response,
                                             req_url=request.url._url
                                             )
     # try the query
-    ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec,
+    ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec,
                                                            #authenticated=session_info.authenticated
                                                            session_info=session_info
                                                            )
@@ -2108,7 +2108,7 @@ async def database_search_paragraphs(response: Response,
     solr_query_params = solr_query_spec.solrQuery
     # solr_query_opts = solr_query_spec.solrQueryOpts
 
-    ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec,
+    ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec,
                                                            extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                                            limit=limit,
                                                            offset=offset,
@@ -2298,7 +2298,7 @@ async def database_search_v3(
                                                       req_url = request.url._url
                                                       )
 
-    ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec, 
+    ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec, 
                                                            extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                                            limit=limit,
                                                            offset=offset,
@@ -2470,7 +2470,7 @@ async def database_search_v2(response: Response,
                                                       req_url = request.url._url
                                                       )
 
-    ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec, 
+    ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec, 
                                                            extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                                            limit=limit,
                                                            offset=offset,
@@ -2898,7 +2898,7 @@ def database_searchanalysis_v3(response: Response,
                                                         #req_url = request.url._url
                                                         #)
 
-    #ret_val, ret_status = opasAPISupportLib.search_text_qs(solr_query_spec=solr_query_spec, 
+    #ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec=solr_query_spec, 
                                                             #extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                                             #facet_limit=facetlimit,
                                                             #facet_offset=facetoffset, 
