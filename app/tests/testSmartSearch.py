@@ -30,22 +30,20 @@ class TestSmartSearch(unittest.TestCase):
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
-        print (r)
         response_info = r["documentList"]["responseInfo"]
+        print (response_info)
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 4)
-        print (response_set)
 
     def test__2a_smartsearch_locator1(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=aop.033.0079a&abstract=True')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
-        print (r)
         response_info = r["documentList"]["responseInfo"]
+        print (response_info)
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 1) # should be .  I confirmed all three papers above in test_search_long_para...not sure why this fails.
-        print (response_set)
 
     def test_2b_smartsearch_locator2(self):
         # Partial locator, gets all articles in this volume.
@@ -53,8 +51,8 @@ class TestSmartSearch(unittest.TestCase):
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
-        print (r)
         response_info = r["documentList"]["responseInfo"]
+        print (response_info)
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 19) 
         print (response_set)
@@ -64,8 +62,8 @@ class TestSmartSearch(unittest.TestCase):
         response = requests.get(full_URL)
         assert(response.ok == True) # rank is accepted, same as score
         r = response.json()
-        # print (r)
         response_info = r["documentList"]["responseInfo"]
+        print (response_info)
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 1)
         #print (response_set)
@@ -78,8 +76,8 @@ class TestSmartSearch(unittest.TestCase):
         response = requests.get(full_URL)
         assert(response.ok == True) # rank is accepted, same as score
         r = response.json()
-        print (r)
         response_info = r["documentList"]["responseInfo"]
+        print (response_info)
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 1)
         #print (response_set)
@@ -92,8 +90,8 @@ class TestSmartSearch(unittest.TestCase):
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
-        # print (r)
         response_info = r["documentList"]["responseInfo"]
+        print (response_info)
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 3)
         print (response_set[0])
@@ -103,8 +101,8 @@ class TestSmartSearch(unittest.TestCase):
         response = requests.get(full_URL)
         r = response.json()
         assert(response.ok == True)
-        # print (r)
         response_info = r["documentList"]["responseInfo"]
+        print (response_info)
         response_set = r["documentList"]["responseSet"] 
         print (response_info["count"])
         assert(response_info["count"] == 12)
@@ -115,8 +113,8 @@ class TestSmartSearch(unittest.TestCase):
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
-        # print (r)
         response_info = r["documentList"]["responseInfo"]
+        print (response_info)
         response_set = r["documentList"]["responseSet"] 
         print (response_info["count"])
         assert(response_info["count"] == 2)
@@ -128,6 +126,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
+        print (response_info)
         response_set = r["documentList"]["responseSet"]
         print (response_info["count"])
         assert(response_info["count"] == 1)
@@ -322,7 +321,7 @@ class TestSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (response_info["count"])
-        assert(response_info["count"] == 14)  
+        assert(response_info["count"] >= 14)  
         print (response_set[0]) 
 
     def test_12c_word_search(self):

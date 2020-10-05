@@ -132,6 +132,7 @@ def pads_permission_check(session_id, doc_id, doc_year, reason_for_check=None):
 def get_access_limitations(doc_id,
                            classification,
                            session_info,
+                           authenticated=None, 
                            year=None,
                            doi=None,
                            documentListItem: models.DocumentListItem=None,
@@ -203,7 +204,7 @@ def get_access_limitations(doc_id,
     # print (f"SessionID {session_info.session_id}, classificaton: {ret_val.accessLimited} and client_session: {session_info.api_client_session}")
     try:
         # always check for a full-text request so PaDS can track them.
-        if (ret_val.accessLimited == True or fulltext_request == True): # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
+        if (((authenticated is None or authenticated == True) and ret_val.accessLimited == True) or fulltext_request == True): # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
 
             if fulltext_request:
                 reason_for_check = opasConfig.AUTH_DOCUMENT_VIEW_REQUEST
@@ -225,6 +226,17 @@ def get_access_limitations(doc_id,
                 session_info.authorized_pepcurrent = True
                 ret_val.accessLimitedCurrentContent = False
 
+            if resp.ReasonId in [401]:
+                # user is not authenticated; let session reflect that
+                authenticated = False
+            else:
+                authenticated = True
+
+            if session_info.authenticated != authenticated:
+                # session info changed...save it to db?
+                logger.info(f"Session status changed. Now authenticated: {authenticated} for sessionId: {session_info.session_id}")
+                session_info = pads_get_session(session_id=session_info.session_id)               
+                
             if authorized:
                 # "This content is available for you to access"
                 ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 

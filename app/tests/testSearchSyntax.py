@@ -43,7 +43,7 @@ ocd = opasCentralDBLib.opasCentralDB()
 fulltext1 = [
                ("dreams_xml:mother and father and authors:David Tuckett and Nadine Levinson", 0), 
                ('text:("mother love"~25) AND dreams_xml:("father love"~25)', 4), # (switching quote types for testing)
-               ('text:(love and hate)', 1138),
+               ('text:(love and hate)', 1135),
                ('text:(love and -hate)', 26675),
                ('text:("love hate"~25)', 6977),
                ('text:(love or hate and emotions)', 4763),

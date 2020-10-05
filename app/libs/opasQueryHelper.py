@@ -16,19 +16,39 @@ This library is meant to hold parsing and other functions which support query tr
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0530.1"
+__version__     = "2020.1004.1"
 __status__      = "Development"
 
 import re
-import models
-import opasCentralDBLib
-
 import logging
 logger = logging.getLogger(__name__)
+import time
+from datetime import datetime
 
-import schemaMap
+import sys
+sys.path.append('./solrpy')
+import solrpy as solr
+from xml.sax import SAXParseException
+import lxml
+
+import localsecrets
+from localsecrets import TIME_FORMAT_STR
+
+# from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
+import starlette.status as httpCodes
+from configLib.opasCoreConfig import solr_docs, solr_authors, solr_gloss, solr_docs_term_search, solr_authors_term_search
 import opasConfig 
+from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
+from configLib.opasCoreConfig import EXTENDED_CORES
+
+import models
+import opasCentralDBLib
+import schemaMap
 import opasGenSupportLib as opasgenlib
+import opasXMLHelper as opasxmllib
+import opasDocPermissions as opasDocPerm
+
+
 import smartsearch
 
 sourceDB = opasCentralDBLib.SourceInfoDB()
@@ -504,6 +524,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     """
     artLevel = 1 # Doc query, sets to 2 if clauses indicate child query
     search_q_prefix = ""
+    search_result_explanation = None
     
     # watch for some explicit None parameters which override defaults
     if similar_count is None:
@@ -654,6 +675,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # solr_query_spec.solrQueryOpts.qOper = "OR"
         schema_field = search_dict.get("schema_field")
         limit = 0
+        search_result_explanation = search_dict[KEY_SEARCH_SMARTSEARCH]
         if schema_field is not None:
             schema_value = search_dict.get("schema_value")
             if "'" in schema_value or '"' in schema_value:
@@ -911,6 +933,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if source_lang_code is not None:  # source_language code, e.g., "EN" (added 2020-03, was omitted)
         # accepts a source language code list (e.g., EN, DE, ...).  If a list of codes with boolean connectors, changes to simple OR list
+        source_lang_code = source_lang_code.lower()
         if "," in source_lang_code:
             source_lang_code = comma_sep_list_to_simple_bool(source_lang_code) #  in case it's comma separated list, in any case, convert to ||
 
@@ -1120,6 +1143,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     solr_query_spec.solrQuery.searchQ = search_q
     solr_query_spec.solrQuery.searchQPrefix = search_q_prefix
     solr_query_spec.solrQuery.filterQ = filter_q
+    solr_query_spec.solrQuery.semanticDescription = search_result_explanation
     solr_query_spec.solrQuery.analyzeThis = analyze_this
     solr_query_spec.solrQuery.searchAnalysisTermList = search_analysis_term_list
     solr_query_spec.solrQuery.queryTermList = query_term_list
@@ -1837,10 +1861,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
             #  was a full-text request with a page offset and limit
             # Solr search was ok
-            responseInfo = models.ResponseInfo(
-                                               count = len(results.results),
+            responseInfo = models.ResponseInfo(count = len(results.results),
                                                fullCount = results._numFound,
                                                totalMatchCount = results._numFound,
+                                               description=solr_query_spec.solrQuery.semanticDescription, 
                                                limit = solr_query_spec.limit,
                                                offset = solr_query_spec.offset,
                                                page = solr_query_spec.page, 
@@ -1853,8 +1877,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                request=f"{req_url}",
                                                core=solr_query_spec.core, 
                                                timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-            )
-    
+                                               )
+   
             # responseInfo.count = len(documentItemList)
     
             documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
@@ -1870,6 +1894,353 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             
 
     return ret_val, ret_status
+
+#-----------------------------------------------------------------------------
+def get_excerpt_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="HTML"):
+    """
+    pass in the result from a solr query and this retrieves the abstract/excerpt from the excerpt field
+     which is stored based on the abstract or summary or the first page of the document.
+
+     Substituted for dynamic generation of excerpt 2020-02-26
+    """
+    # make sure basic info has been retrieved
+    if documentListItem.sourceTitle is None:
+        documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+
+    try:
+        art_excerpt = result["art_excerpt"]
+    except KeyError as e:
+        art_excerpt  = "No abstract found for this title, or no abstract requested in search options."
+        logger.info("No excerpt for document ID: %s", documentListItem.documentID)
+
+    if art_excerpt == "[]" or art_excerpt is None:
+        abstract = None
+    else:
+        heading = opasxmllib.get_running_head(source_title=documentListItem.sourceTitle,
+                                              pub_year=documentListItem.year,
+                                              vol=documentListItem.vol,
+                                              issue=documentListItem.issue,
+                                              pgrg=documentListItem.pgRg,
+                                              ret_format=ret_format)
+        try:
+            ret_format = ret_format.upper()
+        except Exception as e:
+            logger.warning(f"Invalid return format: {ret_format}.  Using default. Error {e}.")
+            ret_format = "HTML"
+
+        if ret_format == "TEXTONLY":
+            art_excerpt = opasxmllib.xml_elem_or_str_to_text(art_excerpt)
+            abstract = f"""
+                        {heading}\n{documentListItem.title}\n{documentListItem.authorMast}\n\n
+                        {art_excerpt}
+                        """
+        elif ret_format == "XML":
+            # for now, this is only an xml fragment so it's not quite as DTD specific.
+            abstract = result.get("art_excerpt_xml", art_excerpt)
+            # to make a complete pepkbd3 document, this is the structure...
+            #abstract = f"""
+                        #<pepkbd3>
+                        #{documentListItem.documentInfoXML}
+                        #{abstract}
+                        #<body></body>
+                        #</pepkbd3>
+                        #"""
+        
+        else: # ret_format == "HTML":
+            abstract = f"""
+                    <p class="heading">{heading}</p>
+                    <p class="title">{documentListItem.title}</p>
+                    <p class="title_author">{documentListItem.authorMast}</p>
+                    <div class="abstract">{art_excerpt}</div>
+                    """
+            
+        
+    # elif ret_format == "HTML": #(Excerpt is in HTML already)
+
+    #abstract = opasxmllib.add_headings_to_abstract_html( abstract=art_excerpt, 
+                                                         #source_title=documentListItem.sourceTitle,
+                                                         #pub_year=documentListItem.year,
+                                                         #vol=documentListItem.vol, 
+                                                         #pgrg=documentListItem.pgRg, 
+                                                         #citeas=documentListItem.documentRefHTML, 
+                                                         #title=documentListItem.title,
+                                                         #author_mast=documentListItem.authorMast,
+                                                         #ret_format=ret_format
+                                                         #)
+
+    # return it in the abstract field for display
+    documentListItem.abstract = abstract
+
+    return documentListItem
+
+#-----------------------------------------------------------------------------
+def get_base_article_info_from_search_result(result, documentListItem: models.DocumentListItem):
+    
+    if result is not None:
+        documentListItem.documentID = result.get("art_id", None)
+        para_art_id = result.get("para_art_id", None)
+        if documentListItem.documentID is None and para_art_id is not None:
+            # this is part of a document, we should retrieve the parent info
+            top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
+            if top_level_doc is not None:
+                merge_documentListItems(documentListItem, top_level_doc)
+
+        documentListItem.PEPCode = result.get("art_sourcecode", None)
+
+        # don't set the value, if it's None, so it's not included at all in the pydantic return
+        if result.get("meta_xml", None): documentListItem.documentMetaXML = result.get("meta_xml", None)
+        if result.get("art_info_xml", None): documentListItem.documentInfoXML = result.get("art_info_xml", None)
+        if result.get("art_pgrg", None): documentListItem.pgRg = result.get("art_pgrg", None)
+        # temp workaround for art_lang change
+        art_lang = result.get("art_lang", None)
+        if isinstance(art_lang, list):
+            art_lang = art_lang[0]
+        documentListItem.lang=art_lang
+        if result.get("art_origrx", None): documentListItem.origrx = result.get("art_origrx", None)
+        if result.get("art_qual", None): documentListItem.relatedrx= result.get("art_qual", None)
+        documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
+        documentListItem.sourceType = result.get("art_sourcetype", None)
+        documentListItem.year = result.get("art_year", None)
+        documentListItem.vol = result.get("art_vol", None)
+        documentListItem.docType = result.get("art_type", None)
+        if result.get("art_doi", None): documentListItem.doi = result.get("art_doi", None)
+        documentListItem.issue = result.get("art_iss", None)
+        documentListItem.issn = result.get("art_issn", None)
+        # documentListItem.isbn = result.get("art_isbn", None) # no isbn in solr stored data, only in products table
+
+        documentListItem.title = result.get("art_title_xml", "")  
+        if documentListItem.pgRg is not None:
+            pg_start, pg_end = opasgenlib.pgrg_splitter(documentListItem.pgRg)
+            documentListItem.pgStart = pg_start
+            documentListItem.pgEnd = pg_end
+        author_ids = result.get("art_authors", None)
+        if author_ids is None:
+            # try this, instead of abberrant behavior in alpha of display None!
+            documentListItem.authorMast = result.get("art_authors_mast", "")
+        else:
+            documentListItem.authorMast = opasgenlib.derive_author_mast(author_ids)
+        if result.get("art_newsecnm", None): documentListItem.newSectionName=result.get("art_newsecnm", None)            
+        citeas = result.get("art_citeas_xml", None)
+        citeas = force_string_return_from_various_return_types(citeas)
+        documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
+        documentListItem.documentRefHTML = citeas
+        documentListItem.updated=result.get("file_last_modified", None)
+        documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_ARCHIVE)
+
+    return documentListItem # return a partially filled document list item
+
+#-----------------------------------------------------------------------------
+def get_fulltext_from_search_results(result,
+                                     text_xml,
+                                     page,
+                                     page_offset,
+                                     page_limit,
+                                     documentListItem: models.DocumentListItem,
+                                     format_requested="HTML"):
+
+    child_xml = None
+    if documentListItem.sourceTitle is None:
+        documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+        
+    #if page_limit is None:
+        #page_limit = opasConfig.DEFAULT_PAGE_LIMIT
+
+    documentListItem.docPagingInfo = {}    
+    documentListItem.docPagingInfo["page"] = page
+    documentListItem.docPagingInfo["page_limit"] = page_limit
+    documentListItem.docPagingInfo["page_offset"] = page_offset
+
+    fullText = result.get("text_xml", None)
+    text_xml = force_string_return_from_various_return_types(text_xml)
+    if text_xml is None:  # no highlights, so get it from the main area
+        try:
+            text_xml = fullText
+        except:
+            text_xml = None
+
+    elif len(fullText) > len(text_xml):
+        logger.warning("Warning: text with highlighting is smaller than full-text area.  Returning without hit highlighting.")
+        text_xml = fullText
+
+    if text_xml is not None:
+        reduce = False
+        # see if an excerpt was requested.
+        if page is not None and page <= int(documentListItem.pgEnd) and page > int(documentListItem.pgStart):
+            # use page to grab the starting page
+            # we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
+            offset = page - int(documentListItem.pgStart)
+            reduce = True
+        # Only use supplied offset if page parameter is out of range, or not supplied
+        if reduce == False and page_offset is not None: 
+            offset = page_offset
+            reduce = True
+
+        #if page_limit is not None:
+            #limit = page_limit
+
+        if reduce == True or page_limit is not None:
+            # extract the requested pages
+            try:
+                temp_xml = opasxmllib.xml_get_pages(xmlstr=text_xml,
+                                                    offset=offset,
+                                                    limit=page_limit,
+                                                    pagebrk="pb",
+                                                    inside="body",
+                                                    env="body")
+                temp_xml = temp_xml[0]
+            except Exception as e:
+                logger.error(f"Page extraction from document failed. Error: {e}.  Keeping entire document.")
+            else: # ok
+                text_xml = temp_xml
+    try:
+        format_requested_ci = format_requested.lower() # just in case someone passes in a wrong type
+    except:
+        format_requested_ci = "html"
+
+    if documentListItem.docChild != {} and documentListItem.docChild is not None:
+        child_xml = documentListItem.docChild["para"]
+    else:
+        child_xml = None
+        
+    if format_requested_ci == "html":
+        # Convert to HTML
+        heading = opasxmllib.get_running_head( source_title=documentListItem.sourceTitle,
+                                               pub_year=documentListItem.year,
+                                               vol=documentListItem.vol,
+                                               issue=documentListItem.issue,
+                                               pgrg=documentListItem.pgRg,
+                                               ret_format="HTML"
+                                               )
+        text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+        text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
+        if child_xml is not None:
+            child_xml = opasxmllib.xml_str_to_html(child_xml)
+    elif format_requested_ci == "textonly":
+        # strip tags
+        text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
+        if child_xml is not None:
+            child_xml = opasxmllib.xml_elem_or_str_to_text(child_xml, default_return=text_xml)
+    elif format_requested_ci == "xml":
+        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+        # child_xml = child_xml
+
+    documentListItem.document = text_xml
+    if child_xml is not None:
+        # return child para in requested format
+        documentListItem.docChild['para'] = child_xml
+
+    return documentListItem
+
+#-----------------------------------------------------------------------------
+def get_base_article_info_by_id(art_id):
+    
+    documentList, ret_status = search_text(query=f"art_id:{art_id}", 
+                                               limit=1,
+                                               abstract_requested=False,
+                                               full_text_requested=False
+                                               )
+
+    try:
+        ret_val = documentListItem = documentList.documentList.responseSet[0]
+    except Exception as e:
+        logger.warning(f"Error getting article {art_id} by id: {e}")
+        ret_val = None
+        
+    return ret_val
+
+#-----------------------------------------------------------------------------
+def merge_documentListItems(old, new):     
+    if old.documentID is None: old.documentID = new.documentID
+    if old.PEPCode is None: old.PEPCode = new.PEPCode
+    if old.documentMetaXML is None: old.documentMetaXML = new.documentMetaXML
+    if old.documentInfoXML is None: old.documentInfoXML = new.documentInfoXML
+    if old.pgRg is None: old.pgRg = new.pgRg
+    if old.lang  is None: old.lang  = new.lang
+    if old.origrx is None: old.origrx = new.origrx   
+    if old.relatedrx is None: old.relatedrx = new.relatedrx 
+    if old.sourceTitle is None: old.sourceTitle = new.sourceTitle 
+    if old.sourceType is None: old.sourceType = new.sourceType 
+    if old.year is None: old.year = new.year  
+    if old.vol is None: old.vol = new.vol  
+    if old.docType is None: old.docType = new.docType 
+    if old.doi is None: old.doi = new.doi
+    if old.issue is None: old.issue = new.issue 
+    if old.issn is None: old.issn = new.issn 
+    if old.title is None: old.title = new.title 
+    if old.pgRg is None: old.pgRg = new.pgRg 
+    if old.authorMast is None: old.authorMast = new.authorMast 
+    if old.newSectionName is None: old.newSectionName = new.newSectionName 
+    if old.documentRef is None: old.documentRef = new.documentRef  
+    if old.documentRefHTML is None: old.documentRefHTML = new.documentRefHTML  
+    if old.updated is None: old.updated = new.updated 
+    if old.accessClassification is None: old.accessClassification = new.accessClassification 
+
+    return old.accessClassification
+    
+#-----------------------------------------------------------------------------
+def force_string_return_from_various_return_types(text_str, min_length=5):
+    """
+    Sometimes the return isn't a string (it seems to often be "bytes") 
+      and depending on the schema, from Solr it can be a list.  And when it
+      involves lxml, it could even be an Element node or tree.
+
+    This checks the type and returns a string, converting as necessary.
+
+    >>> force_string_return_from_various_return_types(["this is really a list",], min_length=5)
+    'this is really a list'
+
+    """
+    ret_val = None
+    if text_str is not None:
+        if isinstance(text_str, str):
+            if len(text_str) > min_length:
+                # we have an abstract
+                ret_val = text_str
+        elif isinstance(text_str, list):
+            if text_str == []:
+                ret_val = None
+            else:
+                ret_val = text_str[0]
+                if ret_val == [] or ret_val == '[]':
+                    ret_val = None
+        else:
+            logger.error("Type mismatch on Solr Data. forceStringReturn ERROR: %s", type(ret_val))
+
+        try:
+            if isinstance(ret_val, lxml.etree._Element):
+                ret_val = etree.tostring(ret_val)
+
+            if isinstance(ret_val, bytes) or isinstance(ret_val, bytearray):
+                logger.error("Byte Data")
+                ret_val = ret_val.decode("utf8")
+        except Exception as e:
+            err = "forceStringReturn Error forcing conversion to string: %s / %s" % (type(ret_val), e)
+            logger.error(err)
+
+    return ret_val        
+
+#-----------------------------------------------------------------------------
+def numbered_anchors(matchobj):
+    """
+    Called by re.sub on replacing anchor placeholders for HTML output.  This allows them to be numbered as they are replaced.
+    """
+    global count_anchors
+    JUMPTOPREVHIT = f"""<a onclick='scrollToAnchor("hit{count_anchors}");event.preventDefault();'>🡄</a>"""
+    JUMPTONEXTHIT = f"""<a onclick='scrollToAnchor("hit{count_anchors+1}");event.preventDefault();'>🡆</a>"""
+
+    if matchobj.group(0) == opasConfig.HITMARKERSTART:
+        count_anchors += 1
+        if count_anchors > 1:
+            #return f"<a name='hit{count_anchors}'><a href='hit{count_anchors-1}'>🡄</a>{opasConfig.HITMARKERSTART_OUTPUTHTML}"
+            return f"<a name='hit{count_anchors}'>{JUMPTOPREVHIT}{opasConfig.HITMARKERSTART_OUTPUTHTML}"
+        elif count_anchors <= 1:
+            return f"<a name='hit{count_anchors}'> "
+    if matchobj.group(0) == opasConfig.HITMARKEREND:
+        return f"{opasConfig.HITMARKEREND_OUTPUTHTML}{JUMPTONEXTHIT}"
+
+    else:
+        return matchobj.group(0)
 
 # -------------------------------------------------------------------------------------------------------
 # run it!

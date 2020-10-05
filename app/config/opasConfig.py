@@ -543,6 +543,12 @@ SORT_VIEWS = "art_views_last6mos {0}"
 SORT_TOC = "art_sourcetitlefull_str {0}, art_year {0}, art_iss {0}, art_pgrg {0}"
 SORT_SCORE = "score {0}"
 
+# search description fields to communicate about the search
+KEY_SEARCH_SMARTSEARCH = "smart_search"
+KEY_SEARCH_FIELD = "schema_field"
+KEY_SEARCH_VALUE = "schema_value"
+KEY_SEARCH_WORDSEARCH = "wordsearch"
+
 # Dict = sort key to use, fields, default direction if one is not specified.
 PREDEFINED_SORTS = {
     "bibliographic": (SORT_BIBLIOGRAPHIC, "asc"),

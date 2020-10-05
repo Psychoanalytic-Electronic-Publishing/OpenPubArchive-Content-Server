@@ -36,10 +36,32 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["fullCount"] >= 15)
         print (response_set)
 
+    def test_1a_boolean_word_search2(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love and sex')
+        response = requests.get(full_URL)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        count1 = response_info["fullCount"]
+        reason = response_info["description"]
+        print (reason)
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love and not sex')
+        response = requests.get(full_URL)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        count2 = response_info["fullCount"]
+        reason = response_info["description"]
+        print (reason)
+        assert(count2 < count1)
+        print (response_set)
+
     def test_1b_3_word_search(self):
         """
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Psychoanalysis Treatment of headaches.')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Psychoanalysis Treatment of headaches')
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()

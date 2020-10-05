@@ -24,6 +24,7 @@ import unittest
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 
 import opasAPISupportLib
+import opasDocPermissions
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded
 from main import app 
@@ -31,9 +32,13 @@ from main import app
 client = TestClient(app)
 
 # login
-full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}')
-response = client.get(full_URL)
-
+client = TestClient(app)
+resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+# Confirm that the request-response cycle completed successfully.
+sessID = resp.SessionId
+headers = {f"client-session":f"{sessID}",
+           "client-id": "0"
+           }
 
 class TestGlossary(unittest.TestCase):
     """

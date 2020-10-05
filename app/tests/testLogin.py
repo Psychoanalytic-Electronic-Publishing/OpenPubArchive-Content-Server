@@ -40,7 +40,7 @@ class TestLogin(unittest.TestCase):
     """
     
     def test_0_login(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}&client-id=0')
         response = client.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
