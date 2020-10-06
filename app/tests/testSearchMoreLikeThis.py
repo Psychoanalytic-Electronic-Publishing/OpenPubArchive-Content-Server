@@ -21,12 +21,12 @@ import requests
 from requests.utils import requote_uri
 import urllib
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 
 class TestSearchMoreLikeThis(unittest.TestCase):
     def test_search_morelike_1a(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SearchParagraphs/?sourcecode=AOP&paratext=mind&parascope=dreams&similarcount=4')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         # print (r)

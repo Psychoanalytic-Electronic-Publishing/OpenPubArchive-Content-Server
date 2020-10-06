@@ -1506,7 +1506,7 @@ def documents_get_document(document_id,
 
 
     """
-    ret_val = {}
+    ret_val = None
     document_list = None
     # search_text_qs handles the authentication verification
 
@@ -1575,6 +1575,7 @@ def documents_get_document(document_id,
             
         except Exception as e:
             logger.info("get_document: No matches or error: %s", e)
+            # return None
         else:
             if page_limit is None:
                 page_limit = 100 # TODO - Check this (was 0 before)

@@ -32,13 +32,10 @@ import opasCentralDBLib
 import starlette.status as httpCodes
 import models
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
+import requests
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, session_info
 # from main import app
 
-# client = TestClient(app)
-# sample URL from client
-# https://stage-api.pep-web.rocks/v2/Database/Search/?abstract=true&facetfields=art_year_int,art_views_last12mos,art_cited_5,art_authors,art_lang,art_type,art_sourcetype,art_sourcetitleabbr,glossary_group_terms,art_kwds_str&facetlimit=15&facetmincount=1&fulltext1=text:("mother love"~25) AND dreams_xml:("father love"~25)&limit=20&offset=0&parascope=dreams&synonyms=false
-# https://stage-api.pep-web.rocks/v2/Database/Search/?fulltext1=text:("mother love"~25) AND dreams_xml:("father love"~25)
 ocd = opasCentralDBLib.opasCentralDB()
 fulltext1 = [
                ("dreams_xml:mother and father and authors:David Tuckett and Nadine Levinson", 0), 
@@ -83,24 +80,32 @@ class TestSearchSyntax(unittest.TestCase):
           with forced order in the names.
     
     """
-    
-    def test_000_qt_parsing(self):
+    def test_00_qt_parsing(self):
         for n, expected_count in fulltext1:
             term_list = opasQueryHelper.parse_to_query_term_list(n)
             solr_query_term_list = models.SolrQueryTermList(qt=term_list)
             solr_query_spec = opasQueryHelper.parse_search_query_parameters(solrQueryTermList=solr_query_term_list, art_level=1)
             print (solr_query_spec.solrQuery.searchQ)
-            ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec,
-                                                                   limit=1,
-                                                                   offset=0
-                                                                   )
+            full_URL = base_plus_endpoint_encoded('/v2/Database/Search/')
+            response = requests.post(full_URL, headers=headers, json={"qtermlist": solr_query_term_list.dict()})
+            assert(response.ok == True)
+            r = response.json()
+            response_info = r["documentList"]["responseInfo"]
+            response_set = r["documentList"]["responseSet"] 
+            assert(response_info["fullCount"] >= expected_count) # just make sure there's a count
+            
+            #ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec,
+                                                                 #limit=1,
+                                                                 #offset=0,
+                                                                 #session_info=session_info
+                                                                 #)
             #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
-            assert(ret_status[0] == httpCodes.HTTP_200_OK)
-            print (ret_val.documentList.responseInfo.fullCount)
-            assert(expected_count <= ret_val.documentList.responseInfo.fullCount)
+            #assert(ret_status[0] == httpCodes.HTTP_200_OK)
+            #print (ret_val.documentList.responseInfo.fullCount)
+            #assert(expected_count <= ret_val.documentList.responseInfo.fullCount)
             
         
-    def test_00_simple_syntax(self):
+    def test_01_simple_syntax(self):
         """
         Test query formation via parse_search_query_parameters
         """
@@ -108,9 +113,10 @@ class TestSearchSyntax(unittest.TestCase):
             solr_query_spec = opasQueryHelper.parse_search_query_parameters(fulltext1=n, art_level=1)
             print (solr_query_spec.solrQuery.searchQ)
             ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec,
-                                                                   limit=1,
-                                                                   offset=0
-                                                                   )
+                                                                 limit=1,
+                                                                 offset=0, 
+                                                                 session_info=session_info
+                                                                 )
             #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
             assert(ret_status[0] == httpCodes.HTTP_200_OK)
             print (ret_val.documentList.responseInfo.fullCount)

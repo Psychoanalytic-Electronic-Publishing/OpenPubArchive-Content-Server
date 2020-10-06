@@ -19,15 +19,15 @@ else: # python running from should be within folder app
 
 import unittest
 import requests
-from requests.utils import requote_uri
-import urllib
+#from requests.utils import requote_uri
+#import urllib
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 
 class TestSmartSearch(unittest.TestCase):
     def test_1a_boolean_word_search(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love or hate')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
@@ -38,7 +38,7 @@ class TestSmartSearch(unittest.TestCase):
 
     def test_1a_boolean_word_search2(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love and sex')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -47,7 +47,7 @@ class TestSmartSearch(unittest.TestCase):
         reason = response_info["description"]
         print (reason)
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love and not sex')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -62,7 +62,7 @@ class TestSmartSearch(unittest.TestCase):
         """
         """
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Psychoanalysis Treatment of headaches')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -75,7 +75,7 @@ class TestSmartSearch(unittest.TestCase):
         """
         """
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Evenly Suspended Attention')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]

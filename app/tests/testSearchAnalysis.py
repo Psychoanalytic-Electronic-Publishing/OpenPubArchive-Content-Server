@@ -21,7 +21,7 @@ import requests
 from requests.utils import requote_uri
 # import urllib
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 import opasAPISupportLib
 
 class TestSearchAnalysis(unittest.TestCase):
@@ -31,7 +31,7 @@ class TestSearchAnalysis(unittest.TestCase):
     """
     def test_v1_searchanalysis(self):
         full_URL = base_plus_endpoint_encoded('/v1/Database/SearchAnalysis/?author=greenfield')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
@@ -43,10 +43,10 @@ class TestSearchAnalysis(unittest.TestCase):
 
     def test_v2_searchanalysis(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?author=rangell&fulltext1=transference&soucecode=AOP')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         print (f"Term: {response_set[0]['term']} Count: {response_set[0]['termCount']}")
@@ -57,7 +57,7 @@ class TestSearchAnalysis(unittest.TestCase):
 
     def test_v2_searchanalysis_author_and_journalcode(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?author=tuckett&sourcecode=AOP')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["termIndex"]["responseInfo"]
@@ -72,7 +72,7 @@ class TestSearchAnalysis(unittest.TestCase):
 
     def test_v2_searchanalysis_author_and_journalcode_and_paratext(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?sourcecode=BAP&paratext=freud%20psychoanalysis')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         r = response.json()
         assert(response.ok == True)
         #print (r)
@@ -89,7 +89,7 @@ class TestSearchAnalysis(unittest.TestCase):
 
     def test_v2_searchanalysis_author_and_journalcode_and_text(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?sourcecode=PCT&citecount=3')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         #print (r)
@@ -106,7 +106,7 @@ class TestSearchAnalysis(unittest.TestCase):
 
     def test_v2_searchanalysis_author_and_journalcode_and_text_and_articletype(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?volume=2')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["termIndex"]["responseInfo"]

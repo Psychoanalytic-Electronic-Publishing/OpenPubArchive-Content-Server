@@ -6,6 +6,16 @@ This file has the data counts needed for the server tests.
 Version: 2020-08-24
 
 """
+import os.path
+import sys
+folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+if folder == "tests": # testing from within WingIDE, default folder is tests
+    sys.path.append('../libs')
+    sys.path.append('../config')
+    sys.path.append('../../app')
+else: # python running from should be within folder app
+    sys.path.append('./libs')
+    sys.path.append('./config')
 
 # use the configured server.
 from localsecrets import APIURL
@@ -46,4 +56,9 @@ def base_plus_endpoint_encoded(endpoint):
     ret_val = base_api + endpoint
     return ret_val
 
+from opasDocPermissions import pads_get_session
+session_info = pads_get_session()
+session_id = session_info.SessionId
+headers = {"client-session":session_id, "client-id": "0", "Content-Type":"application/json"}
+print (f"unitTestConfig harness fetched session-id {session_id} (not logging in)")
 

@@ -38,14 +38,26 @@ def pads_get_session(session_id=None):
     response = response.json()
     response = fix_pydantic_invalid_nones(response)
     ret_val = models.PadsSessionInfo(**response)
-    
-    # make sure the session is recorded.
     session_id = ret_val.SessionId
+    # now get userinfo
+    userinfo = pads_get_userinfo(session_id)
+    if userinfo is not None:
+        print(f"Session info and user fetched for sessionid {session_id}")
+        userid = userID=userinfo.UserId
+        username = userinfo.UserName
+    else:
+        print(f"Session info returned no user info...not logged in for sessionid {session_id}")
+        userid = 0
+        username = DUMMYUSERNAME
+        
+    # make sure the session is recorded.
     ocd = opasCentralDBLib.opasCentralDB(session_id=session_id)
-    session_info = ocd.get_session_from_db(session_id)
-    if session_info is None:
-        # save the session for referential integrity of logged endpoints
-        ocd.save_session(session_id, username=DUMMYUSERNAME, userID=0) 
+    # session_info = ocd.get_session_from_db(session_id)
+    if 1: # if session_info is None:
+        #print(f"Session info returned no user info...not logged in for sessionid {session_id}")
+        ## save the session for referential integrity of logged endpoints
+        ocd.save_session(session_id, username=username, userID=userid) 
+
     return ret_val
 
 def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None):
@@ -66,6 +78,7 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None):
         logger.error(msg)
     else:
         # make sure the session is recorded.
+        print (f"Logged into PaDS...sessionID: {session_id}")
         session_id = ret_val.SessionId
         ocd = opasCentralDBLib.opasCentralDB(session_id=session_id)
         userinfo = pads_get_userinfo(session_id)
@@ -94,14 +107,15 @@ def pads_logout(session_id):
 
 def pads_get_userinfo(session_id):
     ret_val = None
+    print (f"Getting user info for session {session_id}")
     if session_id is not None:
         full_URL = base + f"/v1/Users" + f"?SessionID={session_id}"
         response = requests.get(full_URL, headers={"Content-Type":"application/json"})
+        padsinfo = response.json()
         if response.ok:
-            padsinfo = response.json()
             ret_val = models.PadsUserInfo(**padsinfo)
         else:
-            logger.error(f"Error getting userinfo for sessionId: {session_id} from PaDS: {response.json()}")
+            print(f"User not logged in for sessionId: {session_id} from PaDS: {padsinfo}")
             
     return ret_val
 
@@ -203,8 +217,12 @@ def get_access_limitations(doc_id,
     #  would it be slow?  Certainly for more than a dozen records, might...this is just for one instance though.
     # print (f"SessionID {session_info.session_id}, classificaton: {ret_val.accessLimited} and client_session: {session_info.api_client_session}")
     try:
-        # always check for a full-text request so PaDS can track them.
-        if (((authenticated is None or authenticated == True) and ret_val.accessLimited == True) or fulltext_request == True): # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
+        # always check for a full-text request so PaDS can track them.  
+        # This is an optimization attempt.  
+        #     However, if it's not full-text if you're not logged in, save the test.
+        # and the user is not logged in, then no need to check special permissions.
+        # TODO - Need to double check this...is there ever special permissions for nonlogged in users?
+        if (((session_info.authenticated != False) and ret_val.accessLimited == True) or fulltext_request == True): # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
 
             if fulltext_request:
                 reason_for_check = opasConfig.AUTH_DOCUMENT_VIEW_REQUEST
@@ -226,17 +244,6 @@ def get_access_limitations(doc_id,
                 session_info.authorized_pepcurrent = True
                 ret_val.accessLimitedCurrentContent = False
 
-            if resp.ReasonId in [401]:
-                # user is not authenticated; let session reflect that
-                authenticated = False
-            else:
-                authenticated = True
-
-            if session_info.authenticated != authenticated:
-                # session info changed...save it to db?
-                logger.info(f"Session status changed. Now authenticated: {authenticated} for sessionId: {session_info.session_id}")
-                session_info = pads_get_session(session_id=session_info.session_id)               
-                
             if authorized:
                 # "This content is available for you to access"
                 ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 

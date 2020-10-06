@@ -47,12 +47,12 @@ class TestSQLStructure(unittest.TestCase):
         ocd = opasCentralDBLib.opasCentralDB()
         dbok = ocd.open_connection(caller_name="test_views") # make sure connection is open
         assert (dbok == True)
-        tables = ["vw_products_flattened",
+        tables = [# "vw_products_flattened",
                   #"vw_active_sessions",
                   #"vw_api_product_list_with_basecodes",
                   #"vw_api_session_endpoints_with_descriptor ",
                   "vw_api_sourceinfodb",
-                  "vw_api_user",
+                  # "vw_api_user",
                   # "vw_api_user_subscriptions_with_basecodes",
                   "vw_latest_session_activity",
                   # "vw_products_with_productbase",
@@ -67,10 +67,14 @@ class TestSQLStructure(unittest.TestCase):
                   "vw_stat_docviews_lastsixmonths",
                   "vw_stat_docviews_lastweek",
                   "vw_stat_most_viewed",
+                  "vw_stat_to_update_solr_docviews",
+                  "vw_reports_document_views",
+                  "vw_reports_session_activity",
+                  "vw_reports_user_searches,"
                   # "vw_subscriptions",
-                  "vw_user_active_subscriptions",
+                  #"vw_user_active_subscriptions",
                   "vw_stat_docviews_lastcalyear", # for now, nothing from last year
-                  "vw_user_referred",
+                  #"vw_user_referred",
                   # "vw_user_referrer_account_management",
                   # "vw_user_session_activity",
                   # "vw_user_subscriptions_products"

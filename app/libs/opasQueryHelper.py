@@ -1681,7 +1681,9 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         ## can't bring back full-text
                         #logger.warning("Fulltext requested--by API--but not authenticated.")
                         #solr_query_spec.fullReturn = False
-    
+                        
+                # try checking PaDS for authenticated; if false, no need to check permits
+                
                 for result in results.results:
                     # reset anchor counts for full-text markup re.sub
                     count_anchors = 0

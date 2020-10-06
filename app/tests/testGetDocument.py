@@ -6,34 +6,25 @@
 
 #  This test module is in development...
 
-import sys
-import os.path
 import logging
 import opasAPISupportLib
 logger = logging.getLogger(__name__)
 
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
 from starlette.testclient import TestClient
 
 import unittest
+import requests
+
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 from datetime import datetime
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
-from main import app
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 
-client = TestClient(app)
 # login
 full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}')
-response = client.get(full_URL)
+response = requests.get(full_URL, headers=headers)
+r = response.json()
+headers["client-session"] = r["session_id"]
 
 class TestGetDocuments(unittest.TestCase):
     """
@@ -46,7 +37,7 @@ class TestGetDocuments(unittest.TestCase):
     def test_1_get_document(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/IJP.077.0217A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
-        response = client.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -59,7 +50,7 @@ class TestGetDocuments(unittest.TestCase):
     def test_2_get_document_with_search_context(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A/?search=?journal=&fulltext1=mother love&sort=citeCount')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
-        response = client.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -72,7 +63,7 @@ class TestGetDocuments(unittest.TestCase):
     def test_2_get_document_with_similarcount(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A/?search=?journal=&fulltext1=mother love&sort=citeCount&similarcount=2')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
-        response = client.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -92,15 +83,19 @@ class TestGetDocuments(unittest.TestCase):
         # this newer function includes the search parameters if there were some
         data = opasAPISupportLib.documents_get_document("LU-AM.029B.0202A")
         # Confirm that the request-response cycle completed successfully.
-        assert (data.documents.responseInfo.fullCount == 1)
-        assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')
-        assert (len(data.documents.responseSet[0].abstract)) > 0
+        if data is None:
+            print ("Data not found")
+            assert ("doc not found" == True)
+        else:
+            assert (data.documents.responseInfo.fullCount == 1)
+            assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')
+            assert (len(data.documents.responseSet[0].abstract)) > 0
 
     def test_3_get_document_logged_out_verify_only_abstract_return(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Session/Logout')
-        response = client.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A')
-        response = client.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documents"]["responseInfo"]

@@ -28,7 +28,7 @@ from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
 # import jwt
 from datetime import datetime
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_info
 from main import app
 
 client = TestClient(app)
@@ -46,7 +46,7 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v2/Database/MostViewed/')
+        response = client.get(base_api + '/v2/Database/MostViewed/', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -69,7 +69,7 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&author=tuck%2A&viewperiod=4&limit=5')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&author=tuck%2A&viewperiod=4&limit=5', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -91,36 +91,36 @@ class TestMost(unittest.TestCase):
         """
         """
         # Try it with variations of the sourcetype to test new robust argument values
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=0')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=0', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=v')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=v', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=j')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=j', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=b')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=b', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=x')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=x', headers=headers)
         #  let's fail
         r = response.json()
         assert(response.ok == False)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=videos&viewperiod=4&limit=5')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=videos&viewperiod=4&limit=5', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vids&viewperiod=4&limit=5')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vids&viewperiod=4&limit=5', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vxds&viewperiod=4&limit=5')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vxds&viewperiod=4&limit=5', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
@@ -128,7 +128,7 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=videostream&viewperiod=4&limit=5')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=videostream&viewperiod=4&limit=5', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -145,14 +145,14 @@ class TestMost(unittest.TestCase):
         #assert(r["db_server_ok"] == True)
         print (r)
         # Try it with variations of the sourcetype to test new robust argument values
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vid&viewperiod=4&limit=5')
+        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vid&viewperiod=4&limit=5', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
     def test_0_most_cited(self):
         """
         """
-        response = client.get(base_api + '/v2/Database/MostCited/')
+        response = client.get(base_api + '/v2/Database/MostCited/', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -164,7 +164,7 @@ class TestMost(unittest.TestCase):
         
     def test_0_most_cited_with_similardocs(self):
         # see if it can correctly return moreLikeThese
-        response = client.get(base_api + '/v2/Database/MostCited/?similarcount=3')
+        response = client.get(base_api + '/v2/Database/MostCited/?similarcount=3', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -178,7 +178,7 @@ class TestMost(unittest.TestCase):
 
     def test_0_most_cited_download(self):
         # see if it can correctly return moreLikeThese
-        response = client.get(base_api + '/v2/Database/MostCited/?download=True')
+        response = client.get(base_api + '/v2/Database/MostCited/?download=True', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         #r = response.json()
@@ -186,7 +186,7 @@ class TestMost(unittest.TestCase):
 
     def test_0_most_viewed_download(self):
         # see if it can correctly return moreLikeThese
-        response = client.get(base_api + '/v2/Database/MostViewed/?download=True')
+        response = client.get(base_api + '/v2/Database/MostViewed/?download=True', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         #r = response.json()
@@ -195,7 +195,7 @@ class TestMost(unittest.TestCase):
     def test_0_most_cited_for_source(self):
         """
         """
-        response = client.get(base_api + '/v2/Database/MostCited/?limit=5&sourcecode=PAQ')
+        response = client.get(base_api + '/v2/Database/MostCited/?limit=5&sourcecode=PAQ', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -217,7 +217,7 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v2/Database/MostCited/?pubperiod=20&author=Benjamin&limit=5')
+        response = client.get(base_api + '/v2/Database/MostCited/?pubperiod=20&author=Benjamin&limit=5', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -238,7 +238,7 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v2/Database/WhatsNew/?days_back=90')
+        response = client.get(base_api + '/v2/Database/WhatsNew/?days_back=90', headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -247,7 +247,7 @@ class TestMost(unittest.TestCase):
         print (f"{r['whatsNew']['responseInfo']['limit']}")
         print (r)
 
-    def test_00_most_cited_direct(self):
+    def test_100_most_cited_direct(self):
         """
         """
         import opasQueryHelper
@@ -268,7 +268,7 @@ class TestMost(unittest.TestCase):
         r, status = opasAPISupportLib.search_stats_for_download(solr_query_spec)
         print (r)
 
-    def test_00_most_cited_direct_simple(self):
+    def test_100_most_cited_direct_simple(self):
         """
         """
         import opasQueryHelper
@@ -286,7 +286,7 @@ class TestMost(unittest.TestCase):
                                                           similar_count=0
                                                           )
     
-        r, status = opasAPISupportLib.search_stats_for_download(solr_query_spec)
+        r, status = opasAPISupportLib.search_stats_for_download(solr_query_spec, session_info=session_info)
         print (r)
 
 if __name__ == '__main__':
