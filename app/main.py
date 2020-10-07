@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1007.1.Alpha"
+__version__     = "2020.1007.2.Alpha"
 __status__      = "Development"
 
 """
@@ -355,6 +355,7 @@ async def api_live_doc(api_key: APIKey = Depends(get_api_key),
     return response
 
 #-----------------------------------------------------------------------------
+@app.get("/v2/Session/Status/", response_model=models.APIStatusItem, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_SERVER_STATUS)
 @app.get("/v2/Api/Status/", response_model=models.APIStatusItem, response_model_exclude_unset=True, tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_API_STATUS)
 async def api_status(response: Response, 
                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
@@ -1103,7 +1104,7 @@ async def session_whoami(response: Response,
     return(session_info)
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Session/Status/", response_model=models.ServerStatusItem, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_SERVER_STATUS)
+@app.get("/v2/Session/StatusTempDown/", response_model=models.ServerStatusItem, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_SERVER_STATUS)
 async def session_status(response: Response, 
                          request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                          moreinfo: bool=Query(False, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO),
