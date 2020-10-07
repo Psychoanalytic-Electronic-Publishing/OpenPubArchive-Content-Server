@@ -1,51 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-#  This test module is in development...
-
-import sys
-import os.path
-
-import opasDocPermissions as opasDocPerm
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
-
-from starlette.testclient import TestClient
-
 import unittest
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW
-from datetime import datetime
 import opasAPISupportLib
 import opasConfig
 import opasQueryHelper
 import opasCentralDBLib
 import models
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
-# from main import app
-
-# client = TestClient(app)
-
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 ocd = opasCentralDBLib.opasCentralDB()
-
-## Login!
-#resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
-## Confirm that the request-response cycle completed successfully.
-#sessID = resp.SessionId
-#headers = {f"client-session":f"{sessID}",
-           #"client-id": "0"
-           #}
 
 class TestStandaloneFunctions(unittest.TestCase):
     """

@@ -1,24 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-#  This test module is in development...
-
 import logging
 import opasAPISupportLib
 logger = logging.getLogger(__name__)
 
-from starlette.testclient import TestClient
-
 import unittest
 import requests
 
+from unitTestConfig import base_plus_endpoint_encoded, headers
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW
-from datetime import datetime
-
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 
 # login
 full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}')

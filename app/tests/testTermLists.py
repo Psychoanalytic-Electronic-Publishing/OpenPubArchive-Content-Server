@@ -1,34 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-import sys
-import os.path
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
 import unittest
 import requests
-from requests.utils import requote_uri
-import urllib
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_plus_endpoint_encoded, headers
 import opasAPISupportLib
 
 class TestTermSearch(unittest.TestCase):
 
     def test_0a_searchanalysis(self):
-        full_URL = base_plus_endpoint_encoded('/v1/Database/SearchAnalysis/?author=greenfield')
-        response = requests.get(full_URL)
+        full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?author=greenfield')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
@@ -40,7 +23,7 @@ class TestTermSearch(unittest.TestCase):
         
     def test_0a_termcounts(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/TermCounts/?termlist=motherhood, fatherhood, child')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
@@ -55,7 +38,7 @@ class TestTermSearch(unittest.TestCase):
         print (response_set)
         # Confirm that the request-response cycle completed successfully.
         full_URL = base_plus_endpoint_encoded('/v2/Database/TermCounts/?termlist=mother')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
@@ -88,7 +71,7 @@ class TestTermSearch(unittest.TestCase):
 
     #def test_1c_search_wildcard(self):
         #full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=gre?nfield')
-        #response = requests.get(full_URL)
+        #response = requests.get(full_URL, headers=headers)
         #assert(response.ok == True)
         #r = response.json()
         #print (r)

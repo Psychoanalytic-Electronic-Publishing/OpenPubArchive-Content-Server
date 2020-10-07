@@ -6,38 +6,9 @@ Tests of the OPAS functions which depend on the Solr API.  (Direct, rather than 
 """
 #2020-08-24 Changed numeric counts to symbols from unitTestConfig
 
-import sys
-import os.path
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
-
-# from starlette.testclient import TestClient
-
 import unittest
-# from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-# import jwt
-# from datetime import datetime
 import opasAPISupportLib
-# import opasConfig
 import unitTestConfig
-import opasQueryHelper
-import opasCentralDBLib
-# import models
-
-from unitTestConfig import base_api, base_plus_endpoint_encoded
-# from main import app
-
-# client = TestClient(app)
-
-ocd = opasCentralDBLib.opasCentralDB()
 
 class TestSolrAPIStandaloneFunctions(unittest.TestCase):
     """

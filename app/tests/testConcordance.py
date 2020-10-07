@@ -1,53 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-#  This test module is in development...
-
-import sys
-import os.path
 import logging
 
 logger = logging.getLogger(__name__)
 
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
-
-from starlette.testclient import TestClient
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 
 import unittest
-from unitTestConfig import base_api, base_plus_endpoint_encoded
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
+from unitTestConfig import base_plus_endpoint_encoded, headers, session_id
 
 import requests
-from datetime import datetime
 import opasAPISupportLib
-#import opasConfig
-#import opasQueryHelper
-import opasCentralDBLib
 import opasDocPermissions
 
-#import models
-# from main import app
-
-# client = TestClient(app)
-
-ocd = opasCentralDBLib.opasCentralDB()
-
 # Login!
-resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=session_id)
 # Confirm that the request-response cycle completed successfully.
-sessID = resp.SessionId
-headers = {"client-session":sessID, "client-id": "0", "Content-Type":"application/json"}
+session_id = resp.SessionId
+headers = {"client-session":session_id, "client-id": "0", "Content-Type":"application/json"}
 
 class TestConcordance(unittest.TestCase):
     """

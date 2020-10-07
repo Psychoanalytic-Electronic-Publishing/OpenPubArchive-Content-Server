@@ -1098,10 +1098,14 @@ def metadata_get_source_info(src_type=None,
     source_info_dblist = []
     ocd = opasCentralDBLib.opasCentralDB()
     # standardize Source type, allow plural, different cases, but code below this part accepts only those three.
-    if src_type is not None:
+    if src_type is not None and src_type != "*":
         src_type = opasConfig.normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
 
-    if src_type == "videos":
+    if src_type is None:
+        errMsg = f"MetadataGetSourceByType: Unknown source type."
+        total_count = count = 0
+        logger.error(errMsg)
+    elif src_type == "videos":
         # This is not part of the original API, it brings back individual videos rather than the videostreams
         # but here in case we need it.  In that case, your source must be videos.*, like videostream, in order
         # to load individual videos rather than the video journals

@@ -1,46 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-#  This test module is in development...
-
-import sys
-import os.path
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
-from starlette.testclient import TestClient
-
 import unittest
 import localsecrets
 import pathlib
 
-# from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-# import jwt
-# from datetime import datetime
-# import opasAPISupportLib
-# import opasConfig
-# import opasQueryHelper
-import opasCentralDBLib
-# import models
-
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 import opasFileSupport
 
-# from main import app
-
-# client = TestClient(app)
-
-ocd = opasCentralDBLib.opasCentralDB()
+from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestFileSystemFunctions(unittest.TestCase):
     """

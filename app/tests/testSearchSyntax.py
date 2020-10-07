@@ -1,40 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-#  This test module is in development...
-
-import sys
-import os.path
-
-import opasDocPermissions as opasDocPerm
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
-from starlette.testclient import TestClient
-
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-import jwt
-from datetime import datetime
-import opasAPISupportLib
 import opasQueryHelper
 import opasCentralDBLib
 import starlette.status as httpCodes
 import models
 
 import requests
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, session_info
-# from main import app
+from unitTestConfig import base_plus_endpoint_encoded, headers, session_id, session_info
 
 ocd = opasCentralDBLib.opasCentralDB()
 fulltext1 = [

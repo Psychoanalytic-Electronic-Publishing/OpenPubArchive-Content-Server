@@ -1,23 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-#  This test module is in development...
-
-import sys
-import os.path
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW
-from localsecrets import TESTUSER, TESTPW
-
-from starlette.testclient import TestClient
 
 import unittest
 import requests
 import opasConfig
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestStatus(unittest.TestCase):
     """

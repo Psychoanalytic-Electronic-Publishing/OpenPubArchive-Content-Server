@@ -2,27 +2,10 @@
 # -*- coding: utf-8 -*-
 #2020.0610 # Upgraded tests to v2; set up tests against AOP which seems to be discontinued and thus constant
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-import sys
-import os.path
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
 import unittest
 import requests
-from requests.utils import requote_uri
-import urllib
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestSearch(unittest.TestCase):
     def test_search_long_para(self):

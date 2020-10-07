@@ -2,27 +2,10 @@
 # -*- coding: utf-8 -*-
 #2020.0610 # Upgraded tests to v2; set up tests against AOP which seems to be discontinued and thus constant
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-import sys
-import os.path
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
 import unittest
 import requests
-from requests.utils import requote_uri
-import urllib
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestSmartSearch(unittest.TestCase):
     def test_1_smartsearch_regular(self):
@@ -32,7 +15,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         print (response_info)
-        response_set = r["documentList"]["responseSet"] 
+        #response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 4)
 
     def test__2a_smartsearch_locator1(self):
@@ -42,7 +25,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         print (response_info)
-        response_set = r["documentList"]["responseSet"] 
+        #response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 1) # should be .  I confirmed all three papers above in test_search_long_para...not sure why this fails.
 
     def test_2b_smartsearch_locator2(self):

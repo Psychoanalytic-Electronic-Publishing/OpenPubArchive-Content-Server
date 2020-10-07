@@ -5,34 +5,17 @@
 #  2020-04-06 - Testing tightened to be exact.
 #  2020-04-30 - Added test 8x to test source info retrieval with wildcards
 
-import sys
-import os.path
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
-from starlette.testclient import TestClient
 import unittest
+import requests
 import unitTestConfig
-from unitTestConfig import base_api, base_plus_endpoint_encoded
-import opasCentralDBLib
-from main import app
+from unitTestConfig import base_plus_endpoint_encoded, headers
 
-client = TestClient(app)
+# import opasCentralDBLib
 
 class TestMetadata(unittest.TestCase):
     """
-    Tests
-    
     Note: tests are performed in alphabetical order, hence the function naming
           with forced order in the names.
-    
     """   
 
     #def test_0_meta_volumes_db(self):
@@ -83,8 +66,8 @@ class TestMetadata(unittest.TestCase):
         # ---------------------------------------------------------------------------------------
         # Version 2 style, better, including sourcetype support
         # ---------------------------------------------------------------------------------------
-        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcetype=book') #  all books
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcetype=book') 
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -93,8 +76,8 @@ class TestMetadata(unittest.TestCase):
 
     def test_0_meta_volumes_api_journal(self): 
         # ---------------------------------------------------------------------------------------
-        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcetype=journal') #  all journals
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcetype=journal') #  all journals
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -103,8 +86,8 @@ class TestMetadata(unittest.TestCase):
 
     def test_0_meta_volumes_api_videostream(self): 
         # ---------------------------------------------------------------------------------------
-        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcetype=videostream') #  all videos
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcetype=videostream') #  all videos
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -113,8 +96,8 @@ class TestMetadata(unittest.TestCase):
 
     def test_0_meta_volumes_api_ZBK(self): 
         # ---------------------------------------------------------------------------------------
-        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=ZBK')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcecode=ZBK')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -123,8 +106,8 @@ class TestMetadata(unittest.TestCase):
 
     def test_0_meta_volumes_api_IJPSP(self): 
         # ---------------------------------------------------------------------------------------
-        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=IJPSP')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcecode=IJPSP')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -132,8 +115,8 @@ class TestMetadata(unittest.TestCase):
 
     def test_0_meta_volumes_api_GW(self): 
         # ---------------------------------------------------------------------------------------
-        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=GW')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcecode=GW')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -142,8 +125,8 @@ class TestMetadata(unittest.TestCase):
 
     def test_0_meta_volumes_api_SE(self): 
         # ---------------------------------------------------------------------------------------
-        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=SE')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcecode=SE')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -152,8 +135,8 @@ class TestMetadata(unittest.TestCase):
 
     def test_0_meta_volumes_api_IPL(self): 
         # ---------------------------------------------------------------------------------------
-        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=IPL')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcecode=IPL')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -162,8 +145,8 @@ class TestMetadata(unittest.TestCase):
 
     def test_0_meta_volumes_api_NLP(self): 
         # ---------------------------------------------------------------------------------------
-        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=NLP')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcecode=NLP')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -174,9 +157,9 @@ class TestMetadata(unittest.TestCase):
     def test_0_meta_volumes_api_error(self): 
         # ---------------------------------------------------------------------------------------
         # try an error
-        response = client.get(base_api + '/v2/Metadata/Volumes/?sourcecode=IJPNOT')
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == False)
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/?sourcecode=IJPNOT')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.status_code == 400)
         r = response.json()
         assert(r["detail"] == "Failure: Bad SourceCode IJPNOT")
 
@@ -184,8 +167,8 @@ class TestMetadata(unittest.TestCase):
         # ---------------------------------------------------------------------------------------
         # all journals and videos 
         # (books not included, ***perhaps this option should not exist since it seems inconsistent ***.)
-        response = client.get(base_api + '/v2/Metadata/Volumes/') 
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Volumes/') 
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -197,8 +180,8 @@ class TestMetadata(unittest.TestCase):
         Journal Content Lists for a source
         /v1/Metadata/Contents/{SourceCode}/
         """
-        response = client.get(base_api + '/v2/Metadata/Contents/BJP/')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Contents/BJP/')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -211,17 +194,17 @@ class TestMetadata(unittest.TestCase):
         Journal Content Lists for a source and vol
         ​/v1​/Metadata​/Contents​/{SourceCode}​/{SourceVolume}​/
         """
-        response = client.get(base_api + '/v2/Metadata/Contents/BJP/1/')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Contents/BJP/1/')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
         assert(r['documentList']['responseInfo']['fullCount'] == unitTestConfig.ARTICLE_COUNT_VOL1_BJP)
 
-        response = client.get(base_api + '/v2/Metadata/Contents/IJP/1/?limit=1')
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Contents/IJP/1/?limit=1')
         # Confirm that the request-response cycle completed successfully.
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
-        # test return
         r = response.json()
         assert(r['documentList']['responseSet'][0]['documentID'] == 'IJP.001.0001A')
         assert(r['documentList']['responseSet'][0]['pgRg'] == '1-2')
@@ -231,8 +214,8 @@ class TestMetadata(unittest.TestCase):
         List of video sources (not individual videos, EXCEPT if specified by parameter)
         /v1/Metadata/Videos/
         """
-        response = client.get(base_api + '/v2/Metadata/Videos/')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -240,8 +223,8 @@ class TestMetadata(unittest.TestCase):
         assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.VIDEOSOURCECOUNT)
 
         # try with src code parameter
-        response = client.get(base_api + '/v2/Metadata/Videos/?SourceCode=AFCVS&limit=1')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/?SourceCode=AFCVS&limit=1')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -252,8 +235,8 @@ class TestMetadata(unittest.TestCase):
         List of book names
         /v2/Metadata/Books/
         """
-        response = client.get(base_api + '/v2/Metadata/Books/')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Books/')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -265,8 +248,8 @@ class TestMetadata(unittest.TestCase):
         List of names for a specific source
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
-        response = client.get(base_api + '/v2/Metadata/Journals/IJPSP/')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/IJPSP/')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -278,8 +261,8 @@ class TestMetadata(unittest.TestCase):
         List of names for a specific source
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
-        response = client.get(base_api + '/v2/Metadata/*/*/')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/*/')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -292,8 +275,8 @@ class TestMetadata(unittest.TestCase):
         List of names for a specific source
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
-        response = client.get(base_api + '/v2/Metadata/*/IJP/')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/IJP/')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -305,8 +288,8 @@ class TestMetadata(unittest.TestCase):
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
         # get all the PEP Codes
-        response = client.get(base_api + '/v2/Metadata/*/*/')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/*/')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -315,26 +298,28 @@ class TestMetadata(unittest.TestCase):
             pep_codes.append(n['PEPCode'])
         # Now test to make sure they can be read (if there's missing data in the product table, can cause error)
         for n in pep_codes:
-            response = client.get(base_api + f'/v2/Metadata/*/{n}/')
+            full_URL = base_plus_endpoint_encoded(f'/v2/Metadata/*/{n}/')
             # Confirm that the request-response cycle completed successfully.
             assert(response.ok == True)
             # test return
             r = response.json()
-            assert(r['sourceInfo']['responseInfo']['count'] == 1)
+            print(f"{n} count={r['sourceInfo']['responseInfo']['count']}")
+            assert(r['sourceInfo']['responseInfo']['count'] >= 1)
 
     def test_8b3_meta_sourcename(self):
         """
         List of names for a specific source by name
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
-        response = client.get(base_api + '/v2/Metadata/*/*/?sourcename=.*psychoanalytic.*')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/*/?sourcename=.*psychoanalytic.*')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
         assert(r['sourceInfo']['responseInfo']['count'] == 33)
 
-        response = client.get(base_api + '/v2/Metadata/*/*/?sourcename=.*international journal of psychoanalysis.*')
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/*/?sourcename=.*international journal of psychoanalysis.*')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return
@@ -346,8 +331,8 @@ class TestMetadata(unittest.TestCase):
         List of names for a source that doesn't match the type
         /v1/Metadata/{SourceType}/{SourceCode}/
         """
-        response = client.get(base_api + '/v2/Metadata/Books/IJP/')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Books/IJP/')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
@@ -360,32 +345,36 @@ class TestMetadata(unittest.TestCase):
         
         Currently: just changes to Journal, maybe should change to "*"
         """
-        response = client.get(base_api + '/v2/Metadata/Garbage/*/')
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Garbage/*/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseInfo']['count'] == 0)
+        
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Garbage/IJP/')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['count'] != 0)
-        response = client.get(base_api + '/v2/Metadata/Garbage/IJP/')
+        assert(r['sourceInfo']['responseInfo']['count'] == 0)
+        
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Garbage/GW/')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['count'] == 1)
-        response = client.get(base_api + '/v2/Metadata/Garbage/GW/')
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        # test return
-        r = response.json()
-        assert(r['sourceInfo']['responseInfo']['count'] == 1)
+        assert(r['sourceInfo']['responseInfo']['count'] == 0)
         
     def test_9a_meta_journal_parameter_errors(self):
         """
         /v2/Metadata/Journals/ (with sample of errors)
         /v1/Metadata/Journals/ (with sample of errors)
         """
-        response = client.get(base_api + '/v2/Metadata/Journals/?limit=20&offset=0&sourcecode=a')
-        # Confirm that the request-response cycle completed successfully.
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/?limit=20&offset=0&sourcecode=a')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()

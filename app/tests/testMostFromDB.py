@@ -1,39 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-#  This test module is in development...
-
-import sys
-import os.path
 import logging
-
 logger = logging.getLogger(__name__)
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
 
 from starlette.testclient import TestClient
 
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-#import jwt
-from datetime import datetime
 
-import opasQueryHelper
-import opasAPISupportLib
 import opasCentralDBLib
 import opasConfig
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 from main import app
 
 client = TestClient(app)
@@ -251,7 +229,7 @@ class TestMostFromDb(unittest.TestCase):
         assert (countAll1 > 10)
 
     def test_1_most_cited_endpoint(self):
-        response = client.get(base_api + '/v2/Database/MostCited/?download=True') # limit is trick to get it to return #
+        response = client.get(base_api + '/v2/Database/MostCited/') # limit is trick to get it to return #
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         
