@@ -1683,7 +1683,15 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         #solr_query_spec.fullReturn = False
                         
                 # try checking PaDS for authenticated; if false, no need to check permits
-                
+                try:
+                    if session_info.authenticated == False:
+                        logger.info("User is not authenticated.  Permit optimization enabled.")
+                    else:
+                        logger.info("User is authenticated.  Permit optimization disabled.")
+                except:
+                    #  no session info...what to do?
+                    pass
+                    
                 for result in results.results:
                     # reset anchor counts for full-text markup re.sub
                     count_anchors = 0
@@ -1695,6 +1703,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # Always check if fullReturn is selected
                     # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)
                     if record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
+                        #print(f"Precheck: Session info archive access: {session_info.authorized_peparchive}")
                         opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
                                                             classification=documentListItem.accessClassification, 
                                                             year=documentListItem.year,
@@ -1703,6 +1712,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                             documentListItem=documentListItem,
                                                             fulltext_request=solr_query_spec.fullReturn
                                                            ) # will updated accessLimited fields in documentListItem
+                        #print(f"Postcheck: Session info archive access: {session_info.authorized_peparchive}")
     
                     documentListItem.score = result.get("score", None)               
                     documentID = documentListItem.documentID

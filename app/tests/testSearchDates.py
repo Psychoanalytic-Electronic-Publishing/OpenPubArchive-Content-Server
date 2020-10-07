@@ -7,52 +7,6 @@ import requests
 from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestSearchDates(unittest.TestCase):
-    def test_2a_search_year(self):
-        # Send a request to the API server and store the response.
-        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?startyear=1908&endyear=1909')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        #print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        print(response_info["fullCount"])
-        assert(response_info["fullCount"] >= 300)
-        
-    def test_2b_search_year(self):
-        # Send a request to the API server and store the response.
-        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?startyear=*&endyear=1944')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        #print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        print(response_info["fullCount"])
-        assert(response_info["fullCount"] >= 19558)
-
-    def test_2c_search_year(self):
-        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?endyear=1932')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        #print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        print(response_info["fullCount"])
-        assert(response_info["fullCount"] >= 12948)
-
-    def test_2d_search_year(self):
-        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?startyear=1932&endyear=1944')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        #print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        print(response_info["fullCount"])
-        assert(response_info["fullCount"] >= 7337)
-
     def test_3a_search_year(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?startyear=1932') # in 1932

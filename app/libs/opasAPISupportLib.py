@@ -219,11 +219,15 @@ def find_client_session_id(request: Request,
     elif client_session_cookie is not None:
         ret_val = client_session_cookie
     elif opas_session_cookie is not None and opas_session_cookie != '':
+        # save cookie!
         ret_val = opas_session_cookie
     else:
         # start a new one!
-        session = opasDocPerm.pads_get_session()
-        ret_val = session.SessionId
+        session_info, pads_session_info = opasDocPerm.pads_get_session()
+        ret_val = session_info.session_id
+        # save it in cookie
+        response.set_cookie(opasConfig.OPASSESSIONID,
+                            value=ret_val)
 
     return ret_val
 
@@ -907,7 +911,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     return ret_val
 
 #-----------------------------------------------------------------------------
-def metadata_get_database_statistics():
+def metadata_get_database_statistics(session_info):
     """
     Return counts for the annual summary (or load checks)
 
@@ -922,21 +926,24 @@ def metadata_get_database_statistics():
                                                limit=1,
                                                facet_fields="art_year,art_pgcount,art_figcount,art_sourcetitleabbr", 
                                                abstract_requested=False,
-                                               full_text_requested=False
+                                               full_text_requested=False,
+                                               session_info=session_info
                                                )
     
     bookList, ret_status = search_text(query=f"art_sourcecode:(ZBK || IPL || NLP)", 
                                                limit=1,
                                                facet_fields="art_product_key", 
                                                abstract_requested=False,
-                                               full_text_requested=False
+                                               full_text_requested=False, 
+                                               session_info=session_info
                                                )
     
     videoList, ret_status = search_text(query=f"art_sourcecode:*VS", 
                                                limit=1,
                                                facet_fields=None, 
                                                abstract_requested=False,
-                                               full_text_requested=False
+                                               full_text_requested=False, 
+                                               session_info=session_info
                                                )
 
     content.article_count = documentList.documentList.responseInfo.fullCount

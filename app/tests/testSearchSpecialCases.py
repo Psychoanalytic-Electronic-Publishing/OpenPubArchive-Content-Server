@@ -57,7 +57,7 @@ class TestSearch(unittest.TestCase):
         print (response_set)
 
     def test_search_author_and_journalcode_and_text_and_citecount(self):
-        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=tuckett&citecount=3')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=tuckett&citecount=3')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()

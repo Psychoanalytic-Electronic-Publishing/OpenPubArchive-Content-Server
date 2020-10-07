@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1005.1.Alpha"
+__version__     = "2020.1007.1.Alpha"
 __status__      = "Development"
 
 """
@@ -211,13 +211,14 @@ def get_client_id(response: Response,
     elif client_id_cookie is not None:
         ret_val = client_id_cookie
     else:
-        ret_val = None
+        ret_val = opasConfig.NO_CLIENT_ID # no client id
 
     return ret_val
 
 def get_client_session(response: Response,
                        request: Request,
-                       client_session: str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION)
+                       client_session: str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
+                       client_id: int=Depends(get_client_id), 
                        ):
     """
     Dependency for client_session id:
@@ -232,9 +233,9 @@ def get_client_session(response: Response,
     # if there's no client session, get a session_id from PaDS without logging in
     if session_id is None:
         # get one from PaDS, without login info
-        resp = opasDocPermissions.pads_get_session()
+        session_info, pads_session_info = opasDocPermissions.pads_get_session(client_id=client_id)
         try:
-            session_id = resp.SessionId
+            session_id = session_info.session_id
         except Exception as e:
             # We didn't get a session id
             raise HTTPException(
@@ -256,31 +257,34 @@ def login_via_pads(response: Response,
     # client_id = get_client_id(response, request, 0)
     session_id = request.cookies.get(OPASSESSIONID)
     ocd = opasCentralDBLib.opasCentralDB()
+    # I think this will work as follows:
+    #  - If you don't supply a session ID, and depend on the default opasSessionCookie,
+    #    then all events will be logged under the same session id
+    #    #TODO - need to check
     if session_id is not None:
         session_info = ocd.get_session_from_db(session_id)
-        if session_info.username != opasConfig.USER_NOT_LOGGED_IN_ID:
-            # we need a new session_id for this one
+        if session_info.user_id != opasConfig.USER_NOT_LOGGED_IN_ID:
+            # we need to force the login
             session_id = None
-            
-    resp = opasDocPermissions.pads_login(username=credentials.username, password=credentials.password, session_id=session_id)
+
+    if session_id is None:
+        # Ok, login
+        session_info, pads_response = opasDocPermissions.pads_login(username=credentials.username, password=credentials.password, session_id=session_id)
+    else:
+        msg = f"Session {session_id} is already logged in."
+        logger.info(msg)
+        print (msg)
         
-    #valid_login = False
-    if resp is not None:
-        if resp.ReasonId == 200:
-            session_id = resp.SessionId
-            response.set_cookie(
-                OPASSESSIONID,
-                value=f"{session_id}",
-            )
-            #return response
-        else:     
-            raise HTTPException(
-                status_code=httpCodes.HTTP_401_UNAUTHORIZED,
-                detail=ERR_MSG_PASSWORD, 
-                headers={"WWW-Authenticate": "Basic"},
-            )
+    if session_info is None:
+        raise HTTPException(
+            status_code=httpCodes.HTTP_401_UNAUTHORIZED,
+            detail=ERR_MSG_PASSWORD, 
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    else:
+        ret_val = session_info
     
-    return session_id
+    return ret_val
 
 #-----------------------------------------------------------------------------
 api_key_query = APIKeyQuery(name=localsecrets.API_KEY_NAME, auto_error=False)
@@ -349,6 +353,39 @@ async def api_live_doc(api_key: APIKey = Depends(get_api_key),
         expires=1800,
     )
     return response
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Api/Status/", response_model=models.APIStatusItem, response_model_exclude_unset=True, tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_API_STATUS)
+async def api_status(response: Response, 
+                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                    ):
+    """
+    ## Function
+       <b>Return the status of the API to check if it's available.</b>
+
+    ## Return Type
+       models.ServerStatusItem
+
+    ## Status
+       Status: Working
+
+    ## Sample Call
+         /v2/Api/Status/
+
+    """
+    try:
+        api_status_item = models.APIStatusItem(timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
+                                                  opas_version = __version__, 
+                                                 )
+
+    except ValidationError as e:
+        logger.warning("ValidationError", e.json())
+        raise HTTPException(
+            status_code=httpCodes.HTTP_400_BAD_REQUEST,
+            detail=ERR_MSG_STATUS_DATA_ISSUE
+        )
+
+    return api_status_item
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Reports/{report}", response_model=models.Report, tags=["Reports"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
@@ -1118,7 +1155,7 @@ async def session_status(response: Response,
                                                          user_ip = request.client.host,
                                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
                                                          text_server_version = text_server_ver,
-                                                         serverContent=opasAPISupportLib.metadata_get_database_statistics(), 
+                                                         serverContent=opasAPISupportLib.metadata_get_database_statistics(session_info), 
                                                          # admin only fields
                                                          text_server_url = localsecrets.SOLRURL,
                                                          opas_version = __version__, 
@@ -1143,7 +1180,7 @@ async def session_status(response: Response,
                                                              dataSource = localsecrets.DATA_SOURCE, 
                                                              text_server_version = text_server_ver,
                                                              opas_version = __version__, 
-                                                             serverContent=opasAPISupportLib.metadata_get_database_statistics(), 
+                                                             serverContent=opasAPISupportLib.metadata_get_database_statistics(session_info), 
                                                              user_ip = request.client.host,
                                                              timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
                                                              )
@@ -1168,8 +1205,8 @@ async def session_status(response: Response,
     return server_status_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v1/Token/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_TOKEN, description="Used by PEP-Easy to login; will be need to be changed in V2 for oauth")  
-@app.get("/v1/License/Status/Login/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_LICENSE_STATUS)
+#@app.get("/v1/Token/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_TOKEN, description="Used by PEP-Easy to login; will be need to be changed in V2 for oauth")  
+#@app.get("/v1/License/Status/Login/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_LICENSE_STATUS)
 @app.get("/v2/Session/Login/", response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_LOGIN) # I like it under Users so I did them both.
 def session_login(response: Response, 
                   request: Request,
@@ -1201,7 +1238,7 @@ def session_login(response: Response,
     
     """
     session_id = client_session
-    pads_session_info = opasDocPermissions.pads_login(username=username, password=password, session_id=None) # don't pass session
+    session_info, pads_session_info = opasDocPermissions.pads_login(username=username, password=password, session_id=None) # don't pass session
     
     if pads_session_info.IsValidLogon != True:
         detail = "Bad login credentials"
@@ -1238,9 +1275,8 @@ def session_login(response: Response,
 @app.get("/v2/Session/BasicLogin/", response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_LOGIN_BASIC)
 def session_login_basic(response: Response, 
                         request: Request,
-                        ka=False,
-                        client_id:int=Depends(get_client_id), 
-                        client_session:str= Depends(login_via_pads)
+                        client_id:int=Depends(get_client_id),
+                        session_info=Depends(login_via_pads)
                         ):
     """
     ## Function
@@ -1262,29 +1298,14 @@ def session_login_basic(response: Response,
     ## Potential Errors
 
     """
+    # everything should be already handled in the dependencies.
+    #session_info = login_via_pads(response, request)
+    session_id = session_info.session_id
     logger.debug("V2 Basic Login Request: ")
-    err_code = None
-
-    session_id = client_session
-
-    padsuserinfo = opasDocPermissions.pads_get_userinfo(session_id)
-    if padsuserinfo is not None:
-        authenticated = True
-        #session_start_time = datetime.utcfromtimestamp(time.time())
-        #success = ocd.update_session(session_id=session_id, 
-                                     #session_start_time=session_end_time
-                                     #)            
-                                     # New session id
-
-    # Save it for eating later; most importantly, overwrite any existing cookie!
-    response.set_cookie(
-        OPASSESSIONID,
-        value=f"{session_id}",
-    )
     try:
         login_return_item = models.LoginReturnItem(token_type = "bearer", 
                                                    session_id = session_id,
-                                                   authenticated=authenticated,
+                                                   authenticated=session_info.authenticated,
                                                    error_message = None,
                                                    scope = None
                                                    )
@@ -1311,7 +1332,6 @@ def session_logout_user(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v1/Logout/
          /v2/Session/Logout/
 
     ## Notes
@@ -1917,89 +1937,6 @@ async def database_extendedsearch(response: Response,
     return solr_ret_list
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v1/Database/Search/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_V1) #  removed pydantic validation for now: response_model=models.DocumentList, 
-async def database_search_v1(response: Response, 
-                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                             fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1_V1, description=opasConfig.DESCRIPTION_FULLTEXT1_V1),
-                             zone1: str=Query("doc", title=opasConfig.TITLE_PARAZONE1_V1, description=opasConfig.DESCRIPTION_PARAZONE_V1),
-                             synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
-                             # filters, v1 naming
-                             journal: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                             volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
-                             author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
-                             title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
-                             datetype: str=Query(None, title=opasConfig.TITLE_DATETYPE, description=opasConfig.DESCRIPTION_DATETYPE), 
-                             startyear: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
-                             endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
-                             sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                             limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                             offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                             client_id:int=Depends(get_client_id), 
-                             client_session:str= Depends(get_client_session)
-                             ):
-    """
-    ## Function
-       <b>Backwards compatibility function to search the database by a simple list of words within paragraphs for the PEPEasy client.</b>
-
-       In v1, at GVPi, search was by para, for field fulltext1.  It also allowed for scopes.
-
-       In the v2 function, the names of these parameters will be changed to reflect whether it's para or full document search.
-
-       New functionality and names are not present here.  This just maps the old interface onto the newwer v2 function
-
-    ## Return Type
-       models.DocumentList
-
-    ## Status
-       Status: In Development
-
-    ## Sample Call
-
-    ## Notes
-
-    ## Potential Errors
-
-    """
-    # need to decide if we should parse and cleanup fulltext1.
-    # IMPORTANT NOTE: when calling another endpoint directly like this, you must include all parameters, or else what gets defaulted for that 
-    #                 schema description which isn't what you want!
-
-    # mainly to handle PEP-Easy, which can't put only the start year (without changes)
-    #  and this is a deprecated call anyway
-    if datetype == "Before":
-        endyear = startyear
-        startyear = "*"
-
-    ret_val = await database_search_paragraphs(response,
-                                               request,
-                                               paratext=fulltext1, #  no advanced search. Only words, phrases, prox ~ op, and booleans allowed
-                                               parascope=zone1,
-                                               synonyms=synonyms,
-                                               similarcount=0, 
-                                               sourcecode=journal,
-                                               sourcename=None, # not used in V1
-                                               sourcetype=None, # not used in V1
-                                               sourcelangcode=None, # not used in v1
-                                               volume=volume, 
-                                               author=author,
-                                               title=title,
-                                               articletype=None, # not used in V1
-                                               startyear=startyear,
-                                               endyear=endyear, 
-                                               citecount=None,   # not used in V1 
-                                               viewcount=None,   # not used in V1
-                                               viewperiod=None, # not used in V1 
-                                               highlightlimit=opasConfig.DEFAULT_MAX_KWIC_RETURNS, 
-                                               facetfields=None,
-                                               abstract=True, 
-                                               sort=sort,
-                                               limit=limit,
-                                               offset=offset,
-                                               client_id=client_id,
-                                               client_session=client_session
-                                               )
-    return ret_val
-#---------------------------------------------------------------------------------------------------------
 @app.get("/v2/Database/SearchParagraphs/", tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_PARAGRAPHS)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, 
 async def database_search_paragraphs(response: Response, 
                                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -2511,86 +2448,86 @@ async def database_search_v2(response: Response,
 
     return ret_val
 
-#---------------------------------------------------------------------------------------------------------
-@app.get("/v1/Database/SearchAnalysis/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ANALYSIS)  #  remove validation response_model=models.DocumentList, 
-async def database_searchanalysis_v1(response: Response, 
-                                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                     fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1_V1, description=opasConfig.DESCRIPTION_FULLTEXT1_V1),
-                                     zone1: str=Query("doc", title=opasConfig.TITLE_PARAZONE1_V1, description=opasConfig.DESCRIPTION_PARAZONE_V1),
-                                     synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
-                                     # filters (Solr query filter)
-                                     journal: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2), 
-                                     volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
-                                     author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
-                                     title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
-                                     datetype: str=Query(None, title=opasConfig.TITLE_DATETYPE, description=opasConfig.DESCRIPTION_DATETYPE), 
-                                     startyear: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
-                                     endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
-                                     # return set control
-                                     sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                                     limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                                     offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                                     client_id:int=Depends(get_client_id), 
-                                     client_session:str= Depends(get_client_session)
-                                     ):
-    """
-    ## Function
-       <b>Backwards compatibility function to analyze the search .</b>
+##---------------------------------------------------------------------------------------------------------
+#@app.get("/v1/Database/SearchAnalysis/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ANALYSIS)  #  remove validation response_model=models.DocumentList, 
+#async def database_searchanalysis_v1(response: Response, 
+                                     #request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                                     #fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1_V1, description=opasConfig.DESCRIPTION_FULLTEXT1_V1),
+                                     #zone1: str=Query("doc", title=opasConfig.TITLE_PARAZONE1_V1, description=opasConfig.DESCRIPTION_PARAZONE_V1),
+                                     #synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
+                                     ## filters (Solr query filter)
+                                     #journal: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2), 
+                                     #volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
+                                     #author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
+                                     #title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
+                                     #datetype: str=Query(None, title=opasConfig.TITLE_DATETYPE, description=opasConfig.DESCRIPTION_DATETYPE), 
+                                     #startyear: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
+                                     #endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
+                                     ## return set control
+                                     #sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                                     #limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                     #offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                                     #client_id:int=Depends(get_client_id), 
+                                     #client_session:str= Depends(get_client_session)
+                                     #):
+    #"""
+    ### Function
+       #<b>Backwards compatibility function to analyze the search .</b>
 
-       New functionality and names are not present here.  This just maps the old interface onto the newwer v2 function
+       #New functionality and names are not present here.  This just maps the old interface onto the newwer v2 function
 
-    ## Return Type
-       models.DocumentList (for v1, originally, but as of 2020 even that now returns models.Termindex)
-       models.TermIndex (for v2)
+    ### Return Type
+       #models.DocumentList (for v1, originally, but as of 2020 even that now returns models.Termindex)
+       #models.TermIndex (for v2)
 
-    ## Status
-       Status: This endpoint is DEPRECATED and will be removed in the release
+    ### Status
+       #Status: This endpoint is DEPRECATED and will be removed in the release
 
-    ## Sample Call
+    ### Sample Call
 
-    ## Notes
+    ### Notes
 
-    ## Potential Errors
+    ### Potential Errors
 
-    """
-    # need to decide if we should parse and cleanup fulltext1.
+    #"""
+    ## need to decide if we should parse and cleanup fulltext1.
 
-    # mainly to handle PEP-Easy, which can't put only the start year (without changes)
-    #  and this is a deprecated call anyway
-    if datetype == "Before":
-        endyear = startyear
-        startyear = "*"
+    ## mainly to handle PEP-Easy, which can't put only the start year (without changes)
+    ##  and this is a deprecated call anyway
+    #if datetype == "Before":
+        #endyear = startyear
+        #startyear = "*"
 
-    solr_query_spec = \
-        opasQueryHelper.parse_search_query_parameters(para_textsearch=fulltext1,     # v1 fulltext was by para  
-                                                      para_scope=zone1,              # from v1 terminology
-                                                      source_code=journal,
-                                                      synonyms=synonyms, 
-                                                      vol=volume,
-                                                      author=author,
-                                                      title=title,
-                                                      startyear=startyear,
-                                                      endyear=endyear,
-                                                      sort = sort,
-                                                      req_url = request.url._url
-                                                      )
+    #solr_query_spec = \
+        #opasQueryHelper.parse_search_query_parameters(para_textsearch=fulltext1,     # v1 fulltext was by para  
+                                                      #para_scope=zone1,              # from v1 terminology
+                                                      #source_code=journal,
+                                                      #synonyms=synonyms, 
+                                                      #vol=volume,
+                                                      #author=author,
+                                                      #title=title,
+                                                      #startyear=startyear,
+                                                      #endyear=endyear,
+                                                      #sort = sort,
+                                                      #req_url = request.url._url
+                                                      #)
 
-    solr_query_spec.urlRequest = request.url._url
-    solr_query_params = solr_query_spec.solrQuery
+    #solr_query_spec.urlRequest = request.url._url
+    #solr_query_params = solr_query_spec.solrQuery
 
-    # We don't always need full-text, but if we need to request the doc later we'll need to repeat the search parameters plus the docID
-    ret_val = opasAPISupportLib.search_analysis(query_list=solr_query_params.searchAnalysisTermList, 
-                                                filter_query = solr_query_params.filterQ,
-                                                def_type = "lucene",
-                                                full_text_requested=False,
-                                                limit=limit, 
-                                                api_version="v1"
-                                                )
+    ## We don't always need full-text, but if we need to request the doc later we'll need to repeat the search parameters plus the docID
+    #ret_val = opasAPISupportLib.search_analysis(query_list=solr_query_params.searchAnalysisTermList, 
+                                                #filter_query = solr_query_params.filterQ,
+                                                #def_type = "lucene",
+                                                #full_text_requested=False,
+                                                #limit=limit, 
+                                                #api_version="v1"
+                                                #)
 
-    logger.debug("Done with search analysis.")
-    # print (f"Search analysis called: {solr_query_params}")
+    #logger.debug("Done with search analysis.")
+    ## print (f"Search analysis called: {solr_query_params}")
 
-    return ret_val
+    #return ret_val
 
 #---------------------------------------------------------------------------------------------------------
 @app.get("/v2/Database/SearchAnalysis/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ANALYSIS)  #  remove validation response_model=models.DocumentList, 
@@ -3050,7 +2987,9 @@ async def database_smartsearch(response: Response,
                                        sort=sort,
                                        formatrequested=formatrequested, 
                                        limit=limit,
-                                       offset=offset
+                                       offset=offset,
+                                       client_id=client_id,
+                                       client_session=client_session
                                        )
     return ret_val
 
@@ -4182,7 +4121,7 @@ async def database_glossary_search_v2(response: Response,
     """
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session)
-    # session_id = session_info.session_id
+    session_id = session_info.session_id
 
     ret_val = await database_search_v2(response,
                                        request,
@@ -4211,7 +4150,9 @@ async def database_glossary_search_v2(response: Response,
                                         facetfields=facetfields, 
                                         sort=sort,
                                         limit=limit,
-                                        offset=offset
+                                        offset=offset,
+                                        client_session=client_session,
+                                        client_id=client_id
                                         )
     if ret_val != {}:
         matches = len(ret_val.documentList.responseSet)

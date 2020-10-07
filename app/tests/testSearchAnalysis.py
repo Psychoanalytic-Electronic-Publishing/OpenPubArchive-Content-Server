@@ -12,18 +12,6 @@ class TestSearchAnalysis(unittest.TestCase):
     Tests use 'out of circulation' journals to try and create counts that persist over time
        even as the database is updated
     """
-    def test_v1_searchanalysis(self):
-        full_URL = base_plus_endpoint_encoded('/v1/Database/SearchAnalysis/?author=greenfield')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        print (r)
-        response_info = r["termIndex"]["responseInfo"]
-        response_set = r["termIndex"]["responseSet"] 
-        assert(response_set[0]["termCount"] >= 6)
-        print (response_set)
-        # Confirm that the request-response cycle completed successfully.       
-
     def test_v2_searchanalysis(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?author=rangell&fulltext1=transference&soucecode=AOP')
         response = requests.get(full_URL, headers=headers)

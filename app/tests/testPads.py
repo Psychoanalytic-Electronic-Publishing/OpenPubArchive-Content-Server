@@ -16,24 +16,24 @@ class TestPadsEndpoints(unittest.TestCase):
     def test_00a_pads_tests(self):
         global session_id
         # Login to PaDS with test account and then check responses to mostCited for access.
-        pads_session_info = opasDocPermissions.pads_get_session(session_id=session_id)
-        print (pads_session_info.SessionId)
-        assert(pads_session_info.SessionId is not None)
+        session_info, pads_session_info = opasDocPermissions.pads_get_session(session_id=session_id)
+        print (session_info.session_id)
+        assert(session_info.session_id is not None)
         
     def test_0a_pads_tests(self):
         global session_id
         # Login to PaDS with test account and then check responses to mostCited for access.
-        pads_session = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=session_id)
-        assert (pads_session.HasSubscription == True)
-        assert (pads_session.IsValidLogon == True)
-        assert (pads_session.IsValidUserName == True)
-        assert (pads_session.ReasonId == 200)
+        session_info, pads_session_info = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=session_id)
+        assert (pads_session_info.HasSubscription == True)
+        assert (pads_session_info.IsValidLogon == True)
+        assert (pads_session_info.IsValidUserName == True)
+        assert (pads_session_info.ReasonId == 200)
         
         ## Confirm that the request-response cycle completed successfully.
         try:
-            session_id = pads_session.SessionId
+            session_id = session_info.session_id
         except:
-            err = f"PaDS response error: {pads_session}"
+            err = f"PaDS response error: {pads_session_info}"
             logger.error(err)
             print (err)
             assert(False)

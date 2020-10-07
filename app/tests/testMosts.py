@@ -255,7 +255,8 @@ class TestMost(unittest.TestCase):
                                                           startyear=None,
                                                           highlighting_max_snips=0, 
                                                           abstract_requested=False,
-                                                          similar_count=0
+                                                          similar_count=0,
+                                                          limit=200
                                                           )
     
         r, status = opasAPISupportLib.search_stats_for_download(solr_query_spec)
@@ -276,7 +277,8 @@ class TestMost(unittest.TestCase):
                                                           startyear=None,
                                                           highlighting_max_snips=0, 
                                                           abstract_requested=False,
-                                                          similar_count=0
+                                                          similar_count=0,
+                                                          limit=200
                                                           )
     
         r, status = opasAPISupportLib.search_stats_for_download(solr_query_spec, session_info=session_info)

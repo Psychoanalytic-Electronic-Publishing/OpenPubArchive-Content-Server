@@ -13,9 +13,9 @@ from unitTestConfig import base_plus_endpoint_encoded, headers, session_id
 
 
 # login
-resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=session_id)
+session_info, pads_response = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=session_id)
 # Confirm that the request-response cycle completed successfully.
-session_id = resp.SessionId
+session_id = pads_response.SessionId
 headers = {f"client-session":f"{session_id}",
            "client-id": "0"
            }

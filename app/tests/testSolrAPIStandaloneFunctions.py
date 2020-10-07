@@ -9,15 +9,15 @@ Tests of the OPAS functions which depend on the Solr API.  (Direct, rather than 
 import unittest
 import opasAPISupportLib
 import unitTestConfig
+from unitTestConfig import base_plus_endpoint_encoded, headers, session_id, session_info
 
 class TestSolrAPIStandaloneFunctions(unittest.TestCase):
     """
     Tests of functions getting the metadata from solr rather than the database
     
-    
     """
     def test_0_get_database_statistics(self):
-        data = opasAPISupportLib.metadata_get_database_statistics()
+        data = opasAPISupportLib.metadata_get_database_statistics(session_info)
         count = data.article_count
         assert(count >= unitTestConfig.ARTICLE_COUNT)
     

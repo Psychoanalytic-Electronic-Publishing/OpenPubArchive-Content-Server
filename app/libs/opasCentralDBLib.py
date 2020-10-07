@@ -772,9 +772,6 @@ class opasCentralDB(object):
                 session = curs.fetchone()
                 # sessionRecord
                 ret_val = SessionInfo(**session)
-                if ret_val.access_token == "None":
-                    ret_val.access_token = None
-                
             else:
                 ret_val = None
             
@@ -900,19 +897,8 @@ class opasCentralDB(object):
         return ret_val # return true or false, success or failure
         
     def save_session(self,
-                     session_id, 
-                     expiresTime=None, 
-                     username=opasConfig.USER_NOT_LOGGED_IN_NAME, 
-                     userID=0,  # can save us a lookup ... #TODO
-                     userIP=None,
-                     connected_via=None,
-                     referrer=None,
-                     apiClientID=0,
-                     apiClientSession=False, 
-                     accessToken=None,
-                     keepActive=False,
-                     authorized_peparchive=False,
-                     authorized_pepcurrent=False,
+                     session_id,
+                     session_info: models.SessionInfo=None
                      ):
         """
         Save the session info to the database
@@ -920,59 +906,42 @@ class opasCentralDB(object):
         Tested in main instance docstring
         """
         ret_val = False
-        session_info = None
         if session_id is None:
             logger.error("SaveSession: No session ID specified")
+        elif session_info is None: # for now, required
+            logger.error("SaveSession: No session_info specified")
         else:
             if not self.open_connection(caller_name="save_session"): # make sure connection opens
                 logger.error("Save session could not open database")
             else: # its open
-                session_start=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-                session_admin = False
                 if self.db is not None:  # don't need this check, but leave it.
                     cursor = self.db.cursor()
-                    if username != opasConfig.USER_NOT_LOGGED_IN_NAME:
-                        authenticated = True
-                    else:
-                        userID = opasConfig.USER_NOT_LOGGED_IN_ID
-                        authenticated = False
-        
                     # now insert the session
                     sql = """INSERT INTO api_sessions(session_id,
                                                       user_id, 
                                                       username,
-                                                      user_ip,
-                                                      connected_via,
-                                                      referrer,
                                                       session_start, 
                                                       session_expires_time,
-                                                      access_token, 
                                                       authenticated,
                                                       admin,
                                                       api_client_id,
-                                                      api_client_session,
                                                       authorized_peparchive,
                                                       authorized_pepcurrent
                                               )
                                               VALUES 
-                                                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
+                                                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s ) """
                     try:
                         success = cursor.execute(sql, 
-                                                 (session_id, 
-                                                  userID, 
-                                                  username,
-                                                  userIP,
-                                                  connected_via,
-                                                  referrer,
-                                                  session_start, 
-                                                  expiresTime,
-                                                  accessToken,
-                                                  authenticated,
-                                                  session_admin, 
-                                                  apiClientID,
-                                                  apiClientSession, 
-                                                  authorized_peparchive,
-                                                  authorized_pepcurrent
+                                                 (session_info.session_id, 
+                                                  session_info.user_id, 
+                                                  session_info.username,
+                                                  session_info.session_start, 
+                                                  session_info.session_expires_time,
+                                                  session_info.authenticated,
+                                                  session_info.admin, 
+                                                  session_info.api_client_id,
+                                                  session_info.authorized_peparchive,
+                                                  session_info.authorized_pepcurrent
                                                   )
                                                  )
                     except pymysql.IntegrityError:
@@ -987,12 +956,12 @@ class opasCentralDB(object):
                         # msg = f"Session {session_id} Record Saved"
                         #print (msg)
                         ret_val = True
+                        self.db.commit()
                     else:
                         msg = f"save_session {session_id} Record Could not be Saved"
                         logger.warning(msg)
                         ret_val = False
                     
-                    self.db.commit()
                     cursor.close()
                     session_info = self.get_session_from_db(session_id)
                     self.sessionInfo = session_info
@@ -1132,7 +1101,7 @@ class opasCentralDB(object):
             logger.error("record_session_endpoint could not open database")
         else:
             try:
-                session_id = session_info.session_id         
+                session_id = session_info.session_id
             except:
                 if self.session_id is None:
                     # no session open!
@@ -1171,9 +1140,9 @@ class opasCentralDB(object):
                     cursor.close()
                 except pymysql.IntegrityError:
                     logger.error(f"Integrity Error logging endpoint {api_endpoint_id} for session {session_id}.")
-                    session_info = self.get_session_from_db(session_id)
-                    if session_info is None:
-                        self.save_session(session_id) # recover for next time.
+                    #session_info = self.get_session_from_db(session_id)
+                    #if session_info is None:
+                        #self.save_session(session_id) # recover for next time.
                 except Exception as e:
                     logger.error(f"Error logging endpoint {api_endpoint_id} for session {session_id}. Error: {e}")
             

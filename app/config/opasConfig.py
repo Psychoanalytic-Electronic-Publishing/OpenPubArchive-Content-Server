@@ -70,6 +70,7 @@ HITMARKEREND_OUTPUTHTML = "</span>"
       
 USER_NOT_LOGGED_IN_ID = 0
 USER_NOT_LOGGED_IN_NAME = "NotLoggedIn"
+NO_CLIENT_ID = 666
     
 COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
 COOKIE_MAX_KEEP_TIME = 86400 # 24 hours in seconds
@@ -344,7 +345,8 @@ ENDPOINT_SUMMARY_SEARCH_PARAGRAPHS = "Search at the paragraph (lowest) level by 
 ENDPOINT_SUMMARY_SEARCH_V1 = "Search at the paragraph level by document zone (API v1 backwards compatible)"
 ENDPOINT_SUMMARY_SEARCH_V2 = "Full search implementation, at the document or paragraph level"
 ENDPOINT_SUMMARY_SEARCH_V3 = "Full search implementation, at the document or paragraph level with body (termlist)"
-ENDPOINT_SUMMARY_SERVER_STATUS = "Return the server status"
+ENDPOINT_SUMMARY_API_STATUS = "Return the API version and status"
+ENDPOINT_SUMMARY_SERVER_STATUS = "Return the server status and more"
 ENDPOINT_SUMMARY_SOURCE_NAMES = "Return a list of available sources"
 ENDPOINT_SUMMARY_SUBSCRIBE_USER = "Add a new publication subscription for a user (Restricted)"
 ENDPOINT_SUMMARY_TERM_COUNTS = "Get term frequency counts"

@@ -1,20 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+
 import logging
 logger = logging.getLogger(__name__)
 
-from starlette.testclient import TestClient
-
 import unittest
+import requests
 
 import opasCentralDBLib
 import opasConfig
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
-from main import app
+from unitTestConfig import base_plus_endpoint_encoded, headers
 
-client = TestClient(app)
 ocd = opasCentralDBLib.opasCentralDB()
 
 class TestMostFromDb(unittest.TestCase):
@@ -229,11 +227,11 @@ class TestMostFromDb(unittest.TestCase):
         assert (countAll1 > 10)
 
     def test_1_most_cited_endpoint(self):
-        response = client.get(base_api + '/v2/Database/MostCited/') # limit is trick to get it to return #
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/')
+        response = requests.get(full_URL, headers=headers) # limit is trick to get it to return #
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         
 if __name__ == '__main__':
     unittest.main()
-    client.close()
     

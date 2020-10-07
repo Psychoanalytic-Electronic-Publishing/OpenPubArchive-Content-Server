@@ -4,15 +4,17 @@
 import unittest
 import requests
 import timeit
+import logging
+logger = logging.getLogger(__name__)
 
 import opasDocPermissions
 from unitTestConfig import base_plus_endpoint_encoded, headers
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 
 # Login!
-resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+session_info, pads_response = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
 # Confirm that the request-response cycle completed successfully.
-sessID = resp.SessionId
+sessID = session_info.session_id
 headers = {f"client-session":f"{sessID}",
            "client-id": "0"
            }
@@ -38,7 +40,7 @@ class TestSecurityFunctions(unittest.TestCase):
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)
         else:
-            headers = '"client-session":"%s", "client-id": "2"' % sessID
+            headers = '"client-session":"%s", "client-id": "0"' % sessID
             test = 'response = requests.get(full_URL, headers={%s})' % headers
             setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')"
             timing = timeit.timeit(test, setup, number=1)
@@ -54,16 +56,32 @@ class TestSecurityFunctions(unittest.TestCase):
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)
         else:
-            headers = '"client-session":"%s", "client-id": "2"' % sessID
+            headers = '"client-session":"%s", "client-id": "0"' % sessID
             test = 'response = requests.get(full_URL, headers={%s})' % headers
             setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=99')"
             timing = timeit.timeit(test, setup, number=1)
             print (f"timing return 99 documents: {timing}")
             assert(timing < 19)
+            
             setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=101')"
             timing = timeit.timeit(test, setup, number=1)
             print (f"timing return 101 documents (no pads): {timing}")
             assert(timing < 19)            
 
+    def test_1c_get_search_logged_out(self): 
+        global sessID
+        opasDocPermissions.pads_logout(sessID)
+        sessID = ""
+        headers = '"client-session":"%s", "client-id": "0"' % sessID
+        test = 'response = requests.get(full_URL, headers={%s})' % headers
+        setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=99')"
+        timing = timeit.timeit(test, setup, number=1)
+        print (f"timing return 99 documents: {timing}")
+        assert(timing < 19)
+        
+        setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=101')"
+        timing = timeit.timeit(test, setup, number=1)
+        print (f"timing return 101 documents (no pads): {timing}")
+        assert(timing < 19)            
 if __name__ == '__main__':
     unittest.main()

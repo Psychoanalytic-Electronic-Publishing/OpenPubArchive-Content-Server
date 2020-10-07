@@ -366,20 +366,15 @@ class SessionInfo(BaseModel):
     session_id: str = Schema(None, title="A generated session Identifier number the client passes in the header to identify the session")
     user_id: int = Schema(None, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
     username: str = Schema(None, title="Registered user name, for convenience here")
-    user_ip: str = Schema(None, title="IP from which the user is connected")
-    connected_via: str = Schema(None, title="connection info (e.g., browser, os) per the standard field in the request")
+    authenticated: bool = Schema(False, title="True if the user has been authenticated.")
+    authorized_peparchive: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the archive.")
+    authorized_pepcurrent: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the current issues.")
     session_start: datetime = Schema(None, title="The datetime when the user started the session")
     session_end: datetime = Schema(None, title="The datetime when the user ended the session")
     session_expires_time: datetime = Schema(None, title="The limit on the user's session information without renewing")
-    access_token: str = Schema(None, title="Not currently used by the OPAS server")
-    token_type: str = Schema(None, title="Not currently used by the OPAS server")
-    scope: str = Schema(None, title="Not currently used by the OPAS server")
-    authenticated: bool = Schema(False, title="True if the user has been authenticated.")
-    keep_active: bool = Schema(False, title="ka field was set on login...don't timeout this user.")
-    authorized_peparchive: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the archive.")
-    authorized_pepcurrent: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the current issues.")
+    user_type: str = Schema(None, title="User type, e.g., Admin or Individual")
+    admin: bool = Schema(False, title="True if the user has been authenticated as admin.")
     api_client_id: int = Schema(None, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
-    api_client_session: bool = Schema(False, title="True if the session_id is from the header via the client rather than a cookie")
 
 #-------------------------------------------------------
 class ServerStatusContent(BaseModel):
@@ -398,6 +393,10 @@ class ServerStatusContent(BaseModel):
     source_count: dict = Schema(None, title="")
     description_html: str = Schema(None, title="")
     source_count_html: str = Schema(None, title="")
+
+class APIStatusItem(BaseModel):
+    opas_version: str = Schema(None, title="Version of OPAS")
+    timeStamp: str = Schema(None, title="Current time")
     
 class ServerStatusItem(BaseModel):
     db_server_ok: bool = Schema(None, title="Database server is online")

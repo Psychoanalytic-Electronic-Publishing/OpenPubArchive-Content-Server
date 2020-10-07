@@ -36,9 +36,9 @@ from main import app
 client = TestClient(app)
 
 # Login!
-resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+session_info, pads_response = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
 # Confirm that the request-response cycle completed successfully.
-sessID = resp.SessionId
+sessID = session_info.session_id
 headers = {f"client-session":f"{sessID}",
            "client-id": "0"
            }
