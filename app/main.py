@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1007.2.Alpha"
+__version__     = "2020.1007.3.Alpha"
 __status__      = "Development"
 
 """
@@ -246,6 +246,7 @@ def get_client_session(response: Response,
             response.set_cookie(
                 OPASSESSIONID,
                 value=f"{session_id}",
+                domain=localsecrets.COOKIE_DOMAIN
             )
     return session_id       
     
@@ -263,9 +264,12 @@ def login_via_pads(response: Response,
     #    #TODO - need to check
     if session_id is not None:
         session_info = ocd.get_session_from_db(session_id)
-        if session_info.user_id != opasConfig.USER_NOT_LOGGED_IN_ID:
-            # we need to force the login
-            session_id = None
+        if session_info is not None: # there's a running session with that number or was one
+            if session_info.user_id != opasConfig.USER_NOT_LOGGED_IN_ID:
+                # we need to force the login
+                session_id = None
+        else: # not in database
+            session_info, pads_response = opasDocPermissions.pads_login(username=credentials.username, password=credentials.password, session_id=session_id)
 
     if session_id is None:
         # Ok, login
@@ -376,8 +380,8 @@ async def api_status(response: Response,
     """
     try:
         api_status_item = models.APIStatusItem(timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
-                                                  opas_version = __version__, 
-                                                 )
+                                               opas_version = __version__, 
+                                              )
 
     except ValidationError as e:
         logger.warning("ValidationError", e.json())
@@ -516,13 +520,13 @@ async def reports(response: Response,
         pass
     else:
         select = f"""SELECT * from {report_view}
-            WHERE {standard_filter}
-            {date_condition}
-            {userid_condition}
-            {sessionid_condition}
-            ORDER BY last_update DESC
-            {limit_clause};
-            """
+                     WHERE {standard_filter}
+                     {date_condition}
+                     {userid_condition}
+                     {sessionid_condition}
+                     ORDER BY last_update DESC
+                     {limit_clause};
+                     """
 
         count = ocd.get_select_count(select)
         if count == 0:
@@ -1254,6 +1258,7 @@ def session_login(response: Response,
     response.set_cookie(
         OPASSESSIONID,
         value=f"{session_id}",
+        domain=localsecrets.COOKIE_DOMAIN
     )
 
     try:
@@ -1302,6 +1307,14 @@ def session_login_basic(response: Response,
     # everything should be already handled in the dependencies.
     #session_info = login_via_pads(response, request)
     session_id = session_info.session_id
+    # Save it for eating later; most importantly, overwrite any existing cookie!
+    response.set_cookie(
+        OPASSESSIONID,
+        value=f"{session_id}",
+        domain=localsecrets.COOKIE_DOMAIN
+    )
+    
+    
     logger.debug("V2 Basic Login Request: ")
     try:
         login_return_item = models.LoginReturnItem(token_type = "bearer", 

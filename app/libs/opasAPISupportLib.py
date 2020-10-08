@@ -57,6 +57,8 @@ import re
 import secrets
 import socket, struct
 from collections import OrderedDict
+from urllib.parse import unquote
+import json
 
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
@@ -211,15 +213,30 @@ def find_client_session_id(request: Request,
         client_session = request.headers.get("client-session", None)
     client_session_qparam = request.query_params.get("client-session", None)
     client_session_cookie = request.cookies.get("client-session", None)
+    pepweb_session_cookie = request.cookies.get("pepweb-session", None)
     opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
     if client_session is not None:
         ret_val = client_session
+        msg = f"client-session from header: {ret_val} "
+        print(msg)
+        logger.info(msg)
     elif client_session_qparam is not None:
         ret_val = client_session_qparam
+        msg = f"client-session from param: {ret_val} "
+        print(msg)
+        logger.info(msg)
     elif client_session_cookie is not None:
         ret_val = client_session_cookie
+    elif pepweb_session_cookie is not None: # this is what Gavant client sets
+        s = unquote(pepweb_session_cookie)
+        cookie_dict = json.loads(s)
+        ret_val = cookie_dict["authenticated"]["SessionId"]
+        msg = f"SessionId from client cookie: {ret_val} "
+        print(msg)
+        logger.info(msg)
+        
     elif opas_session_cookie is not None and opas_session_cookie != '':
-        # save cookie!
+        print (f"Using stored Opas cookie {opas_session_cookie}")
         ret_val = opas_session_cookie
     else:
         # start a new one!
