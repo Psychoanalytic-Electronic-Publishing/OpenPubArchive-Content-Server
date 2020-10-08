@@ -88,7 +88,7 @@ from ebooklib import epub
 from io import StringIO, BytesIO
 
 show_dbg_messages = False
-stop_on_exceptions = True
+stop_on_exceptions = False
 
 #-----------------------------------------------------------------------------
 # at least for testing
