@@ -195,6 +195,12 @@ def get_max_age(keep_active=False):
 
     #return ret_val
 
+def verify_header(request, caller_name):
+    # Double Check for missing header test--I think this is missing
+    client_id = request.headers.get(opasConfig.CLIENTSESSIONID, None)
+    if client_id == None:
+        logger.error(f"{caller_name} - No client-session (client-id) supplied in header")
+
 def find_client_id(request: Request,
                    response: Response,
                   ):
@@ -238,9 +244,9 @@ def find_client_session_id(request: Request,
     """
     #client_id = int(request.headers.get("client-id", '0'))
     if client_session is None:
-        client_session = request.headers.get("client-session", None)
-    client_session_qparam = request.query_params.get("client-session", None)
-    client_session_cookie = request.cookies.get("client-session", None)
+        client_session = request.headers.get(opasConfig.CLIENTSESSIONID, None)
+    client_session_qparam = request.query_params.get(opasConfig.CLIENTSESSIONID, None)
+    client_session_cookie = request.cookies.get(opasConfig.CLIENTSESSIONID, None)
     pepweb_session_cookie = request.cookies.get("pepweb-session", None)
     opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
     if client_session is not None:
@@ -255,26 +261,29 @@ def find_client_session_id(request: Request,
         logger.info(msg)
     elif client_session_cookie is not None:
         ret_val = client_session_cookie
-        msg = f"SessionId from client-session cookie: {ret_val} "
+        msg = f"client-session from client-session cookie: {ret_val} "
         print(msg)
         logger.info(msg)
     elif pepweb_session_cookie is not None: # this is what Gavant client sets
         s = unquote(pepweb_session_cookie)
         cookie_dict = json.loads(s)
         ret_val = cookie_dict["authenticated"]["SessionId"]
-        msg = f"SessionId from pepweb-session cookie: {ret_val} "
+        msg = f"client-session from pepweb-session cookie: {ret_val} "
         print(msg)
         logger.info(msg)       
     elif opas_session_cookie is not None and opas_session_cookie != '':
-        print (f"SessionId from stored Opas cookie {opas_session_cookie}")
+        msg = f"client-session from stored Opas cookie {opas_session_cookie}"
+        print(msg)
+        logger.error(msg)       
         ret_val = opas_session_cookie
     else:
         # start a new one!
         session_info, pads_session_info = opasDocPerm.pads_get_session()
         ret_val = session_info.session_id
-        # save it in cookie
-        response.set_cookie(opasConfig.OPASSESSIONID,
-                            value=ret_val)
+
+    # save it in cookie in case they call without it.
+    response.set_cookie(opasConfig.OPASSESSIONID,
+                        value=ret_val)
 
     return ret_val
 
