@@ -767,13 +767,17 @@ class opasCentralDB(object):
             curs = self.db.cursor(pymysql.cursors.DictCursor)
             # now insert the session
             sql = f"SELECT * FROM api_sessions WHERE session_id = '{session_id}'";
+            if 1: logger.info(sql) # temp
             res = curs.execute(sql)
             if res == 1:
                 session = curs.fetchone()
                 # sessionRecord
                 ret_val = SessionInfo(**session)
+                if 1: logger.info(ret_val) # temp
             else:
                 ret_val = None
+                if 1: logger.info(f"get_session_from_db - Session info not found in db {session_id}")
+                     
             
         self.close_connection(caller_name="get_session_from_db") # make sure connection is closed
 
@@ -944,9 +948,9 @@ class opasCentralDB(object):
                                                   session_info.authorized_pepcurrent
                                                   )
                                                  )
-                    except pymysql.IntegrityError:
+                    except pymysql.IntegrityError as e:
                         success = False
-                        logger.error(f"Save: Integrity Error")
+                        logger.error(f"Save: Integrity Error {e}")
                         
                     except Exception as e:
                         success = False
@@ -957,13 +961,14 @@ class opasCentralDB(object):
                         #print (msg)
                         ret_val = True
                         self.db.commit()
+                        logger.info(f"Saved sessioninfo: {session_info.session_id}")
                     else:
                         msg = f"save_session {session_id} Record Could not be Saved"
                         logger.warning(msg)
                         ret_val = False
                     
                     cursor.close()
-                    session_info = self.get_session_from_db(session_id)
+                    # session_info = self.get_session_from_db(session_id)
                     self.sessionInfo = session_info
                     self.close_connection(caller_name="save_session") # make sure connection is closed
     

@@ -80,8 +80,8 @@ SESSION_INACTIVE_LIMIT = 30  # minutes
 OPASSESSIONID = "opasSessionID"
 OPASACCESSTOKEN = "opasSessionInfo"
 OPASEXPIRES= "OpasExpiresTime"
-CLIENTID = "client-id"
-CLIENTSESSIONID = "client-session"
+CLIENTID = "client-id" # also header param or qparam
+CLIENTSESSIONID = "client-session" # also header param or qparam
 
 AUTH_DOCUMENT_VIEW_REQUEST = "DocumentView"
 AUTH_ABSTRACT_VIEW_REQUEST = "AbstractView"

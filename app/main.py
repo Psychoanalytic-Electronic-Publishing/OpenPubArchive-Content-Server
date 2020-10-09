@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1007.3.Alpha"
+__version__     = "2020.1008.1.Alpha"
 __status__      = "Development"
 
 """
@@ -252,33 +252,17 @@ def get_client_session(response: Response,
     
 security = HTTPBasic()
 def login_via_pads(response: Response, 
-                     request: Request,
-                     credentials: HTTPBasicCredentials = Depends(security)):
+                   request: Request,
+                   credentials: HTTPBasicCredentials = Depends(security)):
 
-    # client_id = get_client_id(response, request, 0)
-    session_id = request.cookies.get(OPASSESSIONID)
-    ocd = opasCentralDBLib.opasCentralDB()
-    # I think this will work as follows:
-    #  - If you don't supply a session ID, and depend on the default opasSessionCookie,
-    #    then all events will be logged under the same session id
-    #    #TODO - need to check
-    if session_id is not None:
-        session_info = ocd.get_session_from_db(session_id)
-        if session_info is not None: # there's a running session with that number or was one
-            if session_info.user_id != opasConfig.USER_NOT_LOGGED_IN_ID:
-                # we need to force the login
-                session_id = None
-        else: # not in database
-            session_info, pads_response = opasDocPermissions.pads_login(username=credentials.username, password=credentials.password, session_id=session_id)
+    client_id = request.headers.get("client-id", None)
+    # ocd = opasCentralDBLib.opasCentralDB()
+    session_id = opasAPISupportLib.find_client_session_id(request, response)
+    # Ok, login
+    session_info, pads_response = opasDocPermissions.pads_login(username=credentials.username,
+                                                                password=credentials.password,
+                                                                session_id=session_id)
 
-    if session_id is None:
-        # Ok, login
-        session_info, pads_response = opasDocPermissions.pads_login(username=credentials.username, password=credentials.password, session_id=session_id)
-    else:
-        msg = f"Session {session_id} is already logged in."
-        logger.info(msg)
-        print (msg)
-        
     if session_info is None:
         raise HTTPException(
             status_code=httpCodes.HTTP_401_UNAUTHORIZED,
@@ -4493,7 +4477,7 @@ def documents_document_fetch(response: Response,
                 detail=status_message
             )
         else:
-            if ret_val != {}:
+            if ret_val is not None and ret_val != {}:
                 response.status_code = httpCodes.HTTP_200_OK
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
 
@@ -4512,7 +4496,7 @@ def documents_document_fetch(response: Response,
                                         status_message=status_message
                                         )
 
-            if ret_val == {}:
+            if ret_val is None or ret_val == {}:
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=status_message
@@ -5017,6 +5001,6 @@ if __name__ == "__main__":
     print(f"Server Running ({localsecrets.BASEURL}:{localsecrets.API_PORT_MAIN})")
     print (f"Running in Python {sys.version_info[0]}.{sys.version_info[1]}")
     print (f"Configuration used: {CONFIG}")
-    uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=True)
+    uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=False)
         # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
     print ("Now we're exiting...")

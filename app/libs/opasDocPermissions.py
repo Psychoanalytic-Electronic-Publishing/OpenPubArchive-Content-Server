@@ -6,6 +6,8 @@ import datetime
 import opasConfig
 import models
 import logging
+import localsecrets
+
 logger = logging.getLogger(__name__)
 
 from starlette.responses import JSONResponse, Response
@@ -30,10 +32,13 @@ def update_sessioninfo_with_userinfo(pads_session_info, client_id):
     # now get userinfo
     session_id = pads_session_info.SessionId
     userinfo = pads_get_userinfo(session_id)
+    logger.info(f"update_sessioninfo_with_userinfo: Session ID from PaDS: {session_id}")
+    logger.info(f"update_sessioninfo_with_userinfo: Userinfo from PaDS: {userinfo}")
     if userinfo is not None:
         msg = f"Session info and user fetched for sessionid {session_id}"
         logger.debug(msg)
         print(msg)
+        print(userinfo)
         userid = userID=userinfo.UserId
         username = userinfo.UserName
         usertype = userinfo.UserType
@@ -67,13 +72,18 @@ def set_session_info(response, client_id):
         # PaDS session info
         pads_session_info = models.PadsSessionInfo(**response)
         session_id = pads_session_info.SessionId # PaDS session ID
+        logger.info(f"set_session_info: Session ID from PaDS: {session_id}")
         # add user fields
         ret_val = session_info = update_sessioninfo_with_userinfo(pads_session_info, client_id)
         # make sure the session is recorded.
         ocd = opasCentralDBLib.opasCentralDB(session_id=session_id)
         db_session_info = ocd.get_session_from_db(session_id)
         if db_session_info is None:
-            ocd.save_session(session_id, session_info) 
+            ocd.save_session(session_id, session_info)
+        else:
+            # TODO: update?
+            logger.info(f"Session {session_id} already found in db...not saved.")
+
     except Exception as e:
         logger.error(f"Can't get or save session info from auth server {e}")
         ret_val = None
@@ -93,6 +103,7 @@ def pads_get_session(session_id=None, client_id=opasConfig.NO_CLIENT_ID):
     pads_session_info = pads_session_info.json()
     pads_session_info = fix_pydantic_invalid_nones(pads_session_info)
     session_info = set_session_info(pads_session_info, client_id)
+    logger.info(f"Fetched session info {session_info} from PaDS.")
     return session_info, pads_session_info
 
 def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, client_id=opasConfig.NO_CLIENT_ID):
@@ -103,6 +114,7 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, cl
       -- #TODO but that's not implemented yet!
       
     """
+    logger.info(f"Logging in user {username} with session_id {session_id}")
     if session_id is not None:
         full_URL = base + f"/v1/Authenticate/" + f"?SessionID={session_id}"
     else:
@@ -261,32 +273,44 @@ def get_access_limitations(doc_id,
                     reason_for_check = opasConfig.AUTH_DOCUMENT_VIEW_REQUEST
                 else:
                     reason_for_check = opasConfig.AUTH_ABSTRACT_VIEW_REQUEST
+
                 logger.debug(f"Sending permit request for {session_info.session_id}")
-                authorized, resp = pads_permission_check(session_id=session_info.session_id,
-                                                         doc_id=doc_id,
-                                                         doc_year=year,
-                                                         reason_for_check=reason_for_check)
-    
-                # if this is True, then as long as session_info is valid, it won't need to check again
-                # if accessLimited is ever True again, e.g., now a different type of document, it will check again.
-                # should markedly decrease the number of calls to PaDS to check.
-                if resp.HasArchiveAccess == True:
-                    session_info.authorized_peparchive = True
+                try:
+                    authorized, resp = pads_permission_check(session_id=session_info.session_id,
+                                                             doc_id=doc_id,
+                                                             doc_year=year,
+                                                             reason_for_check=reason_for_check)
+                except Exception as e:
+                    # PaDS could be down, local development
+                    if localsecrets.BASEURL == "development.org":
+                        resp = models.PadsPermitInfo(Permit=True, HasArchiveAccess=True, HasCurrentAccess=True)
+                        # so it doesn't have to check this later
+                        session_info.authorized_peparchive = True
+                        session_info.authorized_pepcurrent = True
+                        authorized = True
+
+                finally:
+                    # if this is True, then as long as session_info is valid, it won't need to check again
+                    # if accessLimited is ever True again, e.g., now a different type of document, it will check again.
+                    # should markedly decrease the number of calls to PaDS to check.
+                    if resp.HasArchiveAccess == True:
+                        session_info.authorized_peparchive = True
+                        ret_val.accessLimited = False
+                    
+                    if resp.HasCurrentAccess == True:
+                        session_info.authorized_pepcurrent = True
+                        ret_val.accessLimitedCurrentContent = False
                 
-                if resp.HasCurrentAccess == True:
-                    session_info.authorized_pepcurrent = True
-                    ret_val.accessLimitedCurrentContent = False
-    
-                if authorized:
-                    # "This content is available for you to access"
-                    ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-                    ret_val.accessLimited = False
-                    #documentListItem.accessLimitedCurrentContent = False
-                    # "This content is available for you to access"
-                    ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-                else:
-                    ret_val.accessLimited = True
-                    ret_val.accessLimitedReason = resp.ReasonStr # limited...get it elsewhere
+                    if authorized:
+                        # "This content is available for you to access"
+                        ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+                        ret_val.accessLimited = False
+                        #documentListItem.accessLimitedCurrentContent = False
+                        # "This content is available for you to access"
+                        ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+                    else:
+                        ret_val.accessLimited = True
+                        ret_val.accessLimitedReason = resp.ReasonStr # limited...get it elsewhere
     
         except Exception as e:
             logger.debug(f"Issue checking document permission. Possibly not logged in {e}")

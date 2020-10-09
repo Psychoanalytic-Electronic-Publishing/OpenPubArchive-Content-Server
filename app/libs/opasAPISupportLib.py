@@ -195,6 +195,34 @@ def get_max_age(keep_active=False):
 
     #return ret_val
 
+def find_client_id(request: Request,
+                   response: Response,
+                  ):
+    """
+    ALWAYS returns a client ID.
+    
+    Dependency for client_id:
+           gets it from header;
+           if not there, gets it from query param;
+           if not there, gets it from a cookie
+    """
+    #client_id = int(request.headers.get("client-id", '0'))
+    
+    client_id = request.headers.get(opasConfig.CLIENTID, None)
+    client_id_qparam = request.query_params.get(opasConfig.CLIENTID, None)
+    if client_id is not None:
+        ret_val = client_id
+        msg = f"client-id from header: {ret_val} "
+        print(msg)
+        logger.info(msg)
+    elif client_id_qparam is not None:
+        ret_val = client_id_qparam
+        msg = f"client-session from param: {ret_val} "
+        print(msg)
+        logger.info(msg)
+
+    return ret_val
+
 def find_client_session_id(request: Request,
                            response: Response,
                            client_session: str=None
@@ -227,16 +255,18 @@ def find_client_session_id(request: Request,
         logger.info(msg)
     elif client_session_cookie is not None:
         ret_val = client_session_cookie
+        msg = f"SessionId from client-session cookie: {ret_val} "
+        print(msg)
+        logger.info(msg)
     elif pepweb_session_cookie is not None: # this is what Gavant client sets
         s = unquote(pepweb_session_cookie)
         cookie_dict = json.loads(s)
         ret_val = cookie_dict["authenticated"]["SessionId"]
-        msg = f"SessionId from client cookie: {ret_val} "
+        msg = f"SessionId from pepweb-session cookie: {ret_val} "
         print(msg)
-        logger.info(msg)
-        
+        logger.info(msg)       
     elif opas_session_cookie is not None and opas_session_cookie != '':
-        print (f"Using stored Opas cookie {opas_session_cookie}")
+        print (f"SessionId from stored Opas cookie {opas_session_cookie}")
         ret_val = opas_session_cookie
     else:
         # start a new one!
