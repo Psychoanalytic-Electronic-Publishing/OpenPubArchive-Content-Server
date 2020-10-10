@@ -43,7 +43,7 @@
   xmlns:xlink="http://www.w3.org/1999/xlink">
   <!--  xmlns:fn="http://www.w3.org/2005/xpath-functions" -->
 
-<!--  <xsl:import href="http://www.w3.org/2003/entities/2007/entitynamesmap.xsl"/>-->
+  <xsl:import href="http://www.w3.org/2003/entities/2007/entitynamesmap.xsl"/>
   
   <xsl:output method="html" encoding="UTF-8" indent="yes" />
   

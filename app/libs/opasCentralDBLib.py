@@ -968,20 +968,18 @@ class opasCentralDB(object):
                                                  )
                     except pymysql.IntegrityError as e:
                         success = False
-                        logger.error(f"Save: Integrity Error {e}")
+                        logger.error(f"save_session: Integrity Error {e}")
                         
                     except Exception as e:
                         success = False
-                        logger.error(f"Save: {e}")
+                        logger.error(f"save_session Error: {e}")
                        
                     if success:
-                        # msg = f"Session {session_id} Record Saved"
-                        #print (msg)
                         ret_val = True
                         self.db.commit()
                         logger.info(f"Saved sessioninfo: {session_info.session_id}")
                     else:
-                        msg = f"save_session {session_id} Record Could not be Saved"
+                        msg = f"save_session {session_id} Insert Error. Record Could not be Saved"
                         logger.warning(msg)
                         ret_val = False
                     

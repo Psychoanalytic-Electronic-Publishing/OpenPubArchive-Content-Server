@@ -231,98 +231,52 @@ def find_client_id(request: Request,
 
     return ret_val
 
-def find_client_session_id(request: Request,
-                           response: Response,
-                           client_session: str=None
-                           ):
-    """
-    ALWAYS returns a session ID.
-    
-    Dependency for client_session id:
-           gets it from header;
-           if not there, gets it from query param;
-           if not there, gets it from a cookie
-           Otherwise, gets a new one from the auth server
-    """
-    #client_id = int(request.headers.get("client-id", '0'))
-    if client_session is None:
-        client_session = request.headers.get(opasConfig.CLIENTSESSIONID, None)
-    client_session_qparam = request.query_params.get(opasConfig.CLIENTSESSIONID, None)
-    client_session_cookie = request.cookies.get(opasConfig.CLIENTSESSIONID, None)
-    pepweb_session_cookie = request.cookies.get("pepweb-session", None)
-
-    #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
-    if client_session is not None:
-        ret_val = client_session
-        msg = f"client-session from header: {ret_val} "
-        print(msg)
-        logger.info(msg)
-    elif client_session_qparam is not None:
-        ret_val = client_session_qparam
-        msg = f"client-session from param: {ret_val} "
-        print(msg)
-        logger.info(msg)
-    elif client_session_cookie is not None:
-        ret_val = client_session_cookie
-        msg = f"client-session from client-session cookie: {ret_val} "
-        print(msg)
-        logger.info(msg)
-    elif pepweb_session_cookie is not None: # this is what Gavant client sets
-        s = unquote(pepweb_session_cookie)
-        cookie_dict = json.loads(s)
-        ret_val = cookie_dict["authenticated"]["SessionId"]
-        msg = f"client-session from pepweb-session cookie: {ret_val} "
-        print(msg)
-        logger.info(msg)
-    else:
-        msg = f"No client-session ID provided. No authorizations available."
-        ret_val = None
-        print(msg)
-        logger.error(msg)       
-
-    #elif opas_session_cookie is not None and opas_session_cookie != '':
-        #msg = f"client-session from stored Opas cookie {opas_session_cookie}"
-        #print(msg)
-        #logger.error(msg)       
-        #ret_val = opas_session_cookie
-    #else:
-        ## start a new one!
-        #session_info, pads_session_info = opasDocPerm.pads_get_session()
-        #ret_val = session_info.session_id
-
-    ## save it in cookie in case they call without it.
-    #response.set_cookie(opasConfig.OPASSESSIONID,
-                        #value=ret_val)
-
-    return ret_val
-
 #-----------------------------------------------------------------------------
 def get_session_info(request: Request,
                      response: Response,
                      session_id:str=None, 
-                     access_token=None,
+                     client_id=None,
                      expires_time=None, 
-                     keep_active=False,
                      force_new_session=False,
                      user=None):
     """
-    Get session info from cookies, or create a new session if one doesn't exist.
     Return a sessionInfo object with all of that info, and a database handle
 
-    """
-    #if session_id is None:
-        #logger.warning("SessionID is None, but shouldn't be in this call")
-        ## try to find it
-        #session_id = find_client_session_id(request, response)
+    Get session info accesses the DB per the session_id to see if the session exists.
 
-    if session_id is not None:
+     1) If no session_id is supplied (None), it returns a default SessionInfo object, user not logged in,
+        with a session id constant defined in opasConfig.NO_SESSION_ID.  These should
+        not be written to the DB api_session table (watch elsewhere).
+
+     2) If there is a session_id, it gets the session_info from the api_sessions table in the DB.
+        a) If it's not there (None):
+           i) It does a permission check on the user via the session_id
+           ii) It saves the session
+        b) If it's there already: (Repeatable, quickest path)
+           i) Done, returns it.  No update.  
+    """
+    if session_id is not None and session_id != opasConfig.NO_SESSION_ID:
+        ts = time.time()
         ocd = opasCentralDBLib.opasCentralDB(session_id)
         session_info = ocd.get_session_from_db(session_id)
+        if session_info is None:
+            session_info, pads_session_info = opasDocPerm.pads_get_session(session_id=session_id, client_id=client_id)
+            # do a quick permission check
+            authorized, pads_permit = opasDocPerm.pads_permission_check(session_id, "IJP.027.0099A", "1946", reason_for_check="Check")
+            session_info.authorized_peparchive = pads_permit.HasArchiveAccess
+            session_info.authorized_pepcurrent = pads_permit.HasCurrentAccess
+            # save it for next time
+            ocd.save_session(session_id, session_info)
+
+        if opasConfig.LOG_CALL_TIMING:
+            logger.info(f"Get/Save session info response time: {time.time() - ts}")
+        
         logger.debug("getSessionInfo: %s", session_info)
+        
     else:
         ocd = opasCentralDBLib.opasCentralDB()
-        logger.warning("No SessionID; Default session info returned (Not Logged In)")
-        session_info = models.SessionInfo()
+        logger.debug("No SessionID; Default session info returned (Not Logged In)")
+        session_info = models.SessionInfo() # default session model
 
     return ocd, session_info
 

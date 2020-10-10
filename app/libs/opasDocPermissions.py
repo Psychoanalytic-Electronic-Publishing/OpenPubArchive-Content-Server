@@ -19,6 +19,72 @@ base = "https://padstest.zedra.net/PEPSecure/api"
 
 import opasCentralDBLib
 
+def find_client_session_id(request: Request,
+                           response: Response,
+                           client_session: str=None
+                           ):
+    """
+    ALWAYS returns a session ID.
+    
+    Dependency for client_session id:
+           gets it from header;
+           if not there, gets it from query param;
+           if not there, gets it from a cookie
+           Otherwise, gets a new one from the auth server
+    """
+    #client_id = int(request.headers.get("client-id", '0'))
+    if client_session is None:
+        client_session = request.headers.get(opasConfig.CLIENTSESSIONID, None)
+    client_session_qparam = request.query_params.get(opasConfig.CLIENTSESSIONID, None)
+    client_session_cookie = request.cookies.get(opasConfig.CLIENTSESSIONID, None)
+    pepweb_session_cookie = request.cookies.get("pepweb-session", None)
+
+    #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
+    if client_session is not None:
+        ret_val = client_session
+        msg = f"client-session from header: {ret_val} "
+        print(msg)
+        logger.info(msg)
+    elif client_session_qparam is not None:
+        ret_val = client_session_qparam
+        msg = f"client-session from param: {ret_val} "
+        print(msg)
+        logger.info(msg)
+    elif client_session_cookie is not None:
+        ret_val = client_session_cookie
+        msg = f"client-session from client-session cookie: {ret_val} "
+        print(msg)
+        logger.info(msg)
+    elif pepweb_session_cookie is not None: # this is what Gavant client sets
+        s = unquote(pepweb_session_cookie)
+        cookie_dict = json.loads(s)
+        ret_val = cookie_dict["authenticated"]["SessionId"]
+        msg = f"client-session from pepweb-session cookie: {ret_val} "
+        print(msg)
+        logger.info(msg)
+    else:
+        msg = f"No client-session ID provided. No authorizations available."
+        ret_val = None
+        print(msg)
+        logger.error(msg)       
+
+    #elif opas_session_cookie is not None and opas_session_cookie != '':
+        #msg = f"client-session from stored Opas cookie {opas_session_cookie}"
+        #print(msg)
+        #logger.error(msg)       
+        #ret_val = opas_session_cookie
+    #else:
+        ## start a new one!
+        #session_info, pads_session_info = opasDocPerm.pads_get_session()
+        #ret_val = session_info.session_id
+
+    ## save it in cookie in case they call without it.
+    #response.set_cookie(opasConfig.OPASSESSIONID,
+                        #value=ret_val)
+
+    return ret_val
+
+
 def fix_pydantic_invalid_nones(response_data):
     try:
         if response_data["ReasonStr"] is None:
@@ -37,7 +103,6 @@ def update_sessioninfo_with_userinfo(pads_session_info, client_id):
     if userinfo is not None:
         msg = f"Session info and user fetched for sessionid {session_id} - {userinfo}"
         logger.debug(msg)
-        print(msg)
         userid = userID=userinfo.UserId
         username = userinfo.UserName
         usertype = userinfo.UserType
@@ -45,7 +110,6 @@ def update_sessioninfo_with_userinfo(pads_session_info, client_id):
     else:
         msg = f"Authorization server returned no user info for sessionid {session_id}"
         logger.debug(msg)
-        print(msg)
         userid = 0
         username = opasConfig.USER_NOT_LOGGED_IN_NAME
         usertype = "Unknown"
@@ -66,6 +130,9 @@ def update_sessioninfo_with_userinfo(pads_session_info, client_id):
 def set_session_info(response, client_id):
     """
     Take the return info from the auth server and put it in the Opas SessionInfo model
+    
+    ** Saves or Updates the Session record in the api_sessions table **
+    
     """
     try:
         # PaDS session info
@@ -80,7 +147,12 @@ def set_session_info(response, client_id):
         if db_session_info is None:
             ocd.save_session(session_id, session_info)
         else:
-            logger.info(f"Session {session_id} already found in db...not saved.")
+            logger.info(f"Session {session_id} already found in db. Updating...")
+            if session_info.username != db_session_info.username and db_session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
+                msg = f"MISMATCH! Two Usernames with same session_id. OLD(DB): {db_session_info}; NEW(SESSION): {session_info}"
+                print (msg)
+                logger.error(msg)
+            
             ocd.update_session(session_id,
                                userID=session_info.user_id,
                                username=session_info.username, 
@@ -115,6 +187,7 @@ def pads_get_session(session_id=None, client_id=opasConfig.NO_CLIENT_ID):
     else:
         pads_session_info = pads_session_info.json()
         pads_session_info = fix_pydantic_invalid_nones(pads_session_info)
+        # Save or update the data in the database
         session_info = set_session_info(pads_session_info, client_id)
         logger.info(f"Fetched session info {session_info} from PaDS.")
 
@@ -164,20 +237,20 @@ def pads_logout(session_id):
 
 def pads_get_userinfo(session_id):
     ret_val = None
-    print (f"Getting user info for session {session_id}")
+    print (f"get_user_info for session {session_id}")
     if session_id is not None:
         full_URL = base + f"/v1/Users" + f"?SessionID={session_id}"
         try:
             response = requests.get(full_URL, headers={"Content-Type":"application/json"})
         except Exception as e:
-            msg = f"Can't get user info from authorization server {e}. User not logged in for sessionId: {session_id} from PaDS: {padsinfo}. "
+            msg = f"Can't get user info from authorization server {e}. Non-logged in user for sessionId: {session_id}.  Message from PaDS: {padsinfo}. "
             logger.error(msg)
         else:
             padsinfo = response.json()
             if response.ok:
                 ret_val = models.PadsUserInfo(**padsinfo)
             else:
-                print(f"User not logged in for sessionId: {session_id} from PaDS: {padsinfo}")
+                print(f"Non-logged in user for sessionId: {session_id}. Info from PaDS: {padsinfo}")
             
     return ret_val
 
@@ -250,11 +323,11 @@ def get_access_limitations(doc_id,
         #"This content is currently free to all users."
         ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_EMBARGOED + publisherAccess # limited...get it elsewhere
 
-    elif session_info is None:
-        # not logged in; take the quickest way out.
-        ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
-        ret_val.accessLimited = True
-        ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS
+    #elif session_info is None:
+        ## not logged in; take the quickest way out.
+        #ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
+        #ret_val.accessLimited = True
+        #ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS
     
     elif classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED): # PEPCurrent
         ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_EMBARGOED

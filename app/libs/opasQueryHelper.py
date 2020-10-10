@@ -1665,10 +1665,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                 
     else: #  search was ok
         try:
-            logger.info("Search Performed: %s", solr_query_spec.solrQuery.searchQ)
-            logger.info("...The Filtering: %s", solr_query_spec.solrQuery.filterQ)
-            logger.info("...Result  Set Size: %s", results._numFound)
-            logger.info("...Return set limit: %s", solr_query_spec.limit)
+            logger.debug(f"Result Size: {results._numFound}; Search: {solr_query_spec.solrQuery.searchQ}; Filter: {solr_query_spec.solrQuery.searchQ}")
             scopeofquery = [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ]
     
             if ret_status[0] == 200: 
