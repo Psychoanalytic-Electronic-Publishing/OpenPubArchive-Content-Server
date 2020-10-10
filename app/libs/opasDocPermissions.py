@@ -35,16 +35,15 @@ def update_sessioninfo_with_userinfo(pads_session_info, client_id):
     logger.info(f"update_sessioninfo_with_userinfo: Session ID from PaDS: {session_id}")
     logger.info(f"update_sessioninfo_with_userinfo: Userinfo from PaDS: {userinfo}")
     if userinfo is not None:
-        msg = f"Session info and user fetched for sessionid {session_id}"
+        msg = f"Session info and user fetched for sessionid {session_id} - {userinfo}"
         logger.debug(msg)
         print(msg)
-        print(userinfo)
         userid = userID=userinfo.UserId
         username = userinfo.UserName
         usertype = userinfo.UserType
         admin = userinfo.UserType=="Admin"
     else:
-        msg = f"Session info returned no user info...not logged in for sessionid {session_id}"
+        msg = f"Authorization server returned no user info for sessionid {session_id}"
         logger.debug(msg)
         print(msg)
         userid = 0
@@ -81,8 +80,16 @@ def set_session_info(response, client_id):
         if db_session_info is None:
             ocd.save_session(session_id, session_info)
         else:
-            # TODO: update?
             logger.info(f"Session {session_id} already found in db...not saved.")
+            ocd.update_session(session_id,
+                               userID=session_info.user_id,
+                               username=session_info.username, 
+                               authenticated=1 if session_info.authenticated == True else 0,
+                               authorized_peparchive=1 if session_info.authorized_peparchive == True else 0,
+                               authorized_pepcurrent=1 if session_info.authorized_pepcurrent == True else 0,
+                               session_end=session_info.session_expires_time,
+                               api_client_id=session_info.api_client_id
+                               )
 
     except Exception as e:
         logger.error(f"Can't get or save session info from auth server {e}")
@@ -98,12 +105,19 @@ def pads_get_session(session_id=None, client_id=opasConfig.NO_CLIENT_ID):
         full_URL = base + f"/v1/Authenticate/IP/" + f"?SessionID={session_id}"
     else:
         full_URL = base + f"/v1/Authenticate/IP/"
-    
-    pads_session_info = requests.get(full_URL)
-    pads_session_info = pads_session_info.json()
-    pads_session_info = fix_pydantic_invalid_nones(pads_session_info)
-    session_info = set_session_info(pads_session_info, client_id)
-    logger.info(f"Fetched session info {session_info} from PaDS.")
+
+    try:
+        pads_session_info = requests.get(full_URL)
+    except Exception as e:
+        logger.error(f"PaDS Authorization server not available. {e}")
+        pads_session_info = models.PadsSessionInfo()
+        session_info = models.SessionInfo()
+    else:
+        pads_session_info = pads_session_info.json()
+        pads_session_info = fix_pydantic_invalid_nones(pads_session_info)
+        session_info = set_session_info(pads_session_info, client_id)
+        logger.info(f"Fetched session info {session_info} from PaDS.")
+
     return session_info, pads_session_info
 
 def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, client_id=opasConfig.NO_CLIENT_ID):
@@ -111,7 +125,7 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, cl
     Login directly via the auth server (e.g., in this case PaDS)
     
     If session_id is included, the idea is that the logged in entity will keep that constant.
-      -- #TODO but that's not implemented yet!
+      -- #TODO but that's not implemented in this server itself, if logged in through there, yet!
       
     """
     logger.info(f"Logging in user {username} with session_id {session_id}")
@@ -119,12 +133,19 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, cl
         full_URL = base + f"/v1/Authenticate/" + f"?SessionID={session_id}"
     else:
         full_URL = base + f"/v1/Authenticate/"
-        
-    pads_response = requests.post(full_URL, headers={"Content-Type":"application/json"}, json={"UserName":f"{username}", "Password":f"{password}"})
-    pads_response = pads_response.json()
-    pads_response = fix_pydantic_invalid_nones(pads_response)
-    session_info = set_session_info(pads_response, client_id)
-    pads_session_info = models.PadsSessionInfo(**pads_response)
+
+    try:
+        pads_response = requests.post(full_URL, headers={"Content-Type":"application/json"}, json={"UserName":f"{username}", "Password":f"{password}"})
+    except Exception as e:
+        logger.error(f"PaDS Authorization server not available. {e}")
+        pads_session_info = models.PadsSessionInfo()
+        session_info = models.SessionInfo()
+    else:
+        pads_response = pads_response.json()
+        pads_response = fix_pydantic_invalid_nones(pads_response)
+        session_info = set_session_info(pads_response, client_id)
+        pads_session_info = models.PadsSessionInfo(**pads_response)
+
     return session_info, pads_session_info
 
 def pads_logout(session_id):
@@ -146,12 +167,17 @@ def pads_get_userinfo(session_id):
     print (f"Getting user info for session {session_id}")
     if session_id is not None:
         full_URL = base + f"/v1/Users" + f"?SessionID={session_id}"
-        response = requests.get(full_URL, headers={"Content-Type":"application/json"})
-        padsinfo = response.json()
-        if response.ok:
-            ret_val = models.PadsUserInfo(**padsinfo)
+        try:
+            response = requests.get(full_URL, headers={"Content-Type":"application/json"})
+        except Exception as e:
+            msg = f"Can't get user info from authorization server {e}. User not logged in for sessionId: {session_id} from PaDS: {padsinfo}. "
+            logger.error(msg)
         else:
-            print(f"User not logged in for sessionId: {session_id} from PaDS: {padsinfo}")
+            padsinfo = response.json()
+            if response.ok:
+                ret_val = models.PadsUserInfo(**padsinfo)
+            else:
+                print(f"User not logged in for sessionId: {session_id} from PaDS: {padsinfo}")
             
     return ret_val
 

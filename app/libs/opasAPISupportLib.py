@@ -197,9 +197,11 @@ def get_max_age(keep_active=False):
 
 def verify_header(request, caller_name):
     # Double Check for missing header test--I think this is missing
-    client_id = request.headers.get(opasConfig.CLIENTSESSIONID, None)
+    ret_val = client_id = request.headers.get(opasConfig.CLIENTSESSIONID, None)
     if client_id == None:
         logger.error(f"{caller_name} - No client-session (client-id) supplied in header")
+    
+    return ret_val
 
 def find_client_id(request: Request,
                    response: Response,
@@ -248,7 +250,8 @@ def find_client_session_id(request: Request,
     client_session_qparam = request.query_params.get(opasConfig.CLIENTSESSIONID, None)
     client_session_cookie = request.cookies.get(opasConfig.CLIENTSESSIONID, None)
     pepweb_session_cookie = request.cookies.get("pepweb-session", None)
-    opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
+
+    #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
     if client_session is not None:
         ret_val = client_session
         msg = f"client-session from header: {ret_val} "
@@ -270,20 +273,26 @@ def find_client_session_id(request: Request,
         ret_val = cookie_dict["authenticated"]["SessionId"]
         msg = f"client-session from pepweb-session cookie: {ret_val} "
         print(msg)
-        logger.info(msg)       
-    elif opas_session_cookie is not None and opas_session_cookie != '':
-        msg = f"client-session from stored Opas cookie {opas_session_cookie}"
+        logger.info(msg)
+    else:
+        msg = f"No client-session ID provided. No authorizations available."
+        ret_val = None
         print(msg)
         logger.error(msg)       
-        ret_val = opas_session_cookie
-    else:
-        # start a new one!
-        session_info, pads_session_info = opasDocPerm.pads_get_session()
-        ret_val = session_info.session_id
 
-    # save it in cookie in case they call without it.
-    response.set_cookie(opasConfig.OPASSESSIONID,
-                        value=ret_val)
+    #elif opas_session_cookie is not None and opas_session_cookie != '':
+        #msg = f"client-session from stored Opas cookie {opas_session_cookie}"
+        #print(msg)
+        #logger.error(msg)       
+        #ret_val = opas_session_cookie
+    #else:
+        ## start a new one!
+        #session_info, pads_session_info = opasDocPerm.pads_get_session()
+        #ret_val = session_info.session_id
+
+    ## save it in cookie in case they call without it.
+    #response.set_cookie(opasConfig.OPASSESSIONID,
+                        #value=ret_val)
 
     return ret_val
 
@@ -301,14 +310,20 @@ def get_session_info(request: Request,
     Return a sessionInfo object with all of that info, and a database handle
 
     """
-    if session_id is None:
-        logger.warning("SessionID is None, but shouldn't be in this call")
-        # try to find it
-        session_id = find_client_session_id(request, response)
-    
-    ocd = opasCentralDBLib.opasCentralDB(session_id)
-    session_info = ocd.get_session_from_db(session_id)
-    logger.debug("getSessionInfo: %s", session_info)
+    #if session_id is None:
+        #logger.warning("SessionID is None, but shouldn't be in this call")
+        ## try to find it
+        #session_id = find_client_session_id(request, response)
+
+    if session_id is not None:
+        ocd = opasCentralDBLib.opasCentralDB(session_id)
+        session_info = ocd.get_session_from_db(session_id)
+        logger.debug("getSessionInfo: %s", session_info)
+    else:
+        ocd = opasCentralDBLib.opasCentralDB()
+        logger.warning("No SessionID; Default session info returned (Not Logged In)")
+        session_info = models.SessionInfo()
+
     return ocd, session_info
 
 #-----------------------------------------------------------------------------
@@ -1068,7 +1083,9 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
     """
     Fill out a sourceInfoDBList which can be used for a getSources return, but return individual 
       videos, as is done for books.  This provides more information than the 
-      original API which returned video "journals" names.  
+      original API which returned video "journals" names.
+      
+    Authorizations are not checked or returned (thus no session id is needed)
 
     """
 
@@ -1953,6 +1970,7 @@ def prep_document_download(document_id,
                         filename = document_id + ".PDF" 
                         result_file = open(filename, "w+b")
                         # convert HTML to PDF
+                        # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
                         pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
                                                     dest=result_file)           # file handle to receive result
                         # close output file

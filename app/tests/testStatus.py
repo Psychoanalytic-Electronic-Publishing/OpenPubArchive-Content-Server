@@ -18,6 +18,13 @@ class TestStatus(unittest.TestCase):
     
     """   
 
+    def test_v2_api_status(self):
+        # Send a request to the API server and store the response.
+        full_URL = base_plus_endpoint_encoded('/v2/Api/Status/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
     def test_v2_session_status(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Session/Status/')

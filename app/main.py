@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1008.3.Alpha"
+__version__     = "2020.1009.1.Alpha"
 __status__      = "Development"
 
 """
@@ -131,7 +131,7 @@ import config.opasConfig as opasConfig
 import logging
 logger = logging.getLogger(__name__)
 
-import jwt
+# import jwt
 import localsecrets
 import libs.opasAPISupportLib as opasAPISupportLib
 from configLib.opasCoreConfig import EXTENDED_CORES, SOLR_DOCS
@@ -264,7 +264,7 @@ def login_via_pads(response: Response,
                                                                 session_id=session_id,
                                                                 client_id=client_id)
 
-    if session_info is None:
+    if session_info is None or session_info.authenticated == False:
         raise HTTPException(
             status_code=httpCodes.HTTP_401_UNAUTHORIZED,
             detail=ERR_MSG_PASSWORD, 
@@ -1112,9 +1112,16 @@ async def session_whoami(response: Response,
     """
 
     # for debugging client call
-    opasAPISupportLib.verify_header(request, "WhoAmI")
-
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session)
+    session_id = opasAPISupportLib.verify_header(request, "WhoAmI")
+    if session_id is not None:
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session)
+    else:
+        logger.error(f"Bad Request: Client-Session ID not provided")
+        raise HTTPException(
+            status_code=httpCodes.HTTP_400_BAD_REQUEST,
+            detail=ERR_MSG_SESSION_ID_ERROR
+        )
+        
     return(session_info)
 
 #-----------------------------------------------------------------------------
@@ -1130,7 +1137,7 @@ async def session_status(response: Response,
        <b>Return the status of the database and text server.  Some field returns depend on the user's security level.</b>
 
     ## Return Type
-       models.ServerStatusItem
+       models.ServerStatusItem (includes extra fields for admins)
 
     ## Status
        Status: Working
@@ -1139,33 +1146,31 @@ async def session_status(response: Response,
          /v2/Session/Status/
 
     ## Notes
-       NA
+       2020-09-09 - client-session (id) is not longer needed except if extended admin information is required
 
     ## Potential Errors
        NA
 
     """
     global text_server_ver
+    admin = False
 
-    # for debugging client call
-    opasAPISupportLib.verify_header(request, "Status")
-    
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session)
-
+    # see if user is an admin
+    if client_session is not None:
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session)
+        if ocd.verify_admin(session_info):
+            admin = True
+    else:
+        ocd = opasCentralDBLib.opasCentralDB()
+        
     db_ok = ocd.open_connection()
     solr_ok = opasAPISupportLib.check_solr_docs_connection()
     config_name = None
     mysql_ver = None
-    config_name = None
-    mysql_ver = ocd.get_mysql_version()
-    admin = False
-    if client_session is None:
-        # Otherwise, not an admin currently
-        if ocd.verify_admin(session_info):
-            admin = True
-
+    
     if admin:
         config_name = localsecrets.CONFIG
+        mysql_ver = ocd.get_mysql_version()
         try:
             server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
                                                          db_server_ok = db_ok,
@@ -1231,7 +1236,6 @@ def session_login(response: Response,
                   username=None, 
                   password=None, 
                   grant_type=None, 
-                  ka=False,
                   client_id:int=Depends(get_client_id), 
                   client_session:str= Depends(get_client_session)
                   ):
@@ -1258,7 +1262,7 @@ def session_login(response: Response,
     # for debugging client call
     opasAPISupportLib.verify_header(request, "Login")
 
-    session_info, pads_session_info = opasDocPermissions.pads_login(username=username, password=password, session_id=None) # don't pass session
+    session_info, pads_session_info = opasDocPermissions.pads_login(username=username, password=password, session_id=client_session) # don't pass session
     
     if pads_session_info.IsValidLogon != True:
         detail = "Bad login credentials"
@@ -1269,6 +1273,9 @@ def session_login(response: Response,
 
     # New session id
     session_id = pads_session_info.SessionId
+    
+    # NOTE: This is currently disabled in find_client_session_id so the only way to get authorization is
+    #       by using tests where a client-session (id) is supplied.
     # Save it for eating later; most importantly, overwrite any existing cookie!
     response.set_cookie(
         OPASSESSIONID,
@@ -1322,14 +1329,16 @@ def session_login_basic(response: Response,
     # everything should be already handled in the dependencies.
     #session_info = login_via_pads(response, request)
     session_id = session_info.session_id
+
+    # NOTE: This is currently disabled in find_client_session_id so the only way to get authorization is
+    #       by using tests where a client-session (id) is supplied.
     # Save it for eating later; most importantly, overwrite any existing cookie!
     response.set_cookie(
         OPASSESSIONID,
         value=f"{session_id}",
         domain=localsecrets.COOKIE_DOMAIN
     )
-    
-    
+       
     logger.debug("V2 Basic Login Request: ")
     try:
         login_return_item = models.LoginReturnItem(token_type = "bearer", 
@@ -1396,8 +1405,8 @@ async def database_term_counts(response: Response,
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                termlist: str=Query(None, title=opasConfig.TITLE_TERMLIST, description=opasConfig.DESCRIPTION_TERMLIST),
                                termfield: str=Query("text", title=opasConfig.TITLE_TERMFIELD, description=opasConfig.DESCRIPTION_TERMFIELD),
-                               client_id:int=Depends(get_client_id), 
-                               client_session:str= Depends(get_client_session)
+                               #client_id:int=Depends(get_client_id), 
+                               #client_session:str= Depends(get_client_session)
                                ):
     """
     ## Function
@@ -1426,7 +1435,7 @@ async def database_term_counts(response: Response,
 
     ## Notes
 
-    See also: /v2/Database/WordWheel/
+    See also: /v2/Database/TermCounts/
 
     ## Potential Errors
 
@@ -1434,9 +1443,8 @@ async def database_term_counts(response: Response,
 
     """
     # for debugging client call
-    opasAPISupportLib.verify_header(request, "TermCounts")
-
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session)
+    #opasAPISupportLib.verify_header(request, "TermCounts")
+    #ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session)
 
     term_index_items = []
     param_error = False
@@ -1449,7 +1457,6 @@ async def database_term_counts(response: Response,
             statusMsg = f"Bad Request: Field {termfield} underfined"
 
     if param_error == False:
-
         results = {}  # results = {field1:{term:value, term:value, term:value}, field2:{term:value, term:value, term:value}}
         terms = shlex.split(termlist)
         for n in terms:
@@ -1522,11 +1529,11 @@ async def database_term_counts(response: Response,
         logger.debug(statusMsg)
 
     # client_host = request.client.host
-    ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_TERMCOUNTS,
-                                session_info=session_info, 
-                                params=request.url._url,
-                                status_message=statusMsg
-                                )
+    #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_TERMCOUNTS,
+                                #session_info=session_info, 
+                                #params=request.url._url,
+                                #status_message=statusMsg
+                                #)
     if param_error:
         logging.warning(statusMsg)
         raise HTTPException(
@@ -3276,8 +3283,7 @@ def database_mostcited(response: Response,
                                           source_type=sourcetype,  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                           select_clause=opasConfig.VIEW_MOSTCITED_DOWNLOAD_COLUMNS, 
                                           limit=limit,
-                                          offset=offset,
-                                          session_info=session_info
+                                          offset=offset
                                           )
 
         header = ["Document", "Last 5 Years", "Last 10 years", "Last 20 years", "All years"]

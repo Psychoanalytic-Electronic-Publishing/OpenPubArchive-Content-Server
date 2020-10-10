@@ -524,8 +524,7 @@ class opasCentralDB(object):
                               select_clause: str=opasConfig.VIEW_MOSTCITED_DOWNLOAD_COLUMNS, 
                               limit: int=None,
                               offset: int=0,
-                              sort=None, #  can be None (default sort), False (no sort) or a column name + ASC || DESC
-                              session_info=None
+                              sort=None #  can be None (default sort), False (no sort) or a column name + ASC || DESC
                               ):
         """
         Return records which are the most viewed for the view_in_period
@@ -809,7 +808,16 @@ class opasCentralDB(object):
         self.close_connection(caller_name="update_session") # make sure connection is closed
         return ret_val
     
-    def update_session(self, session_id, userID=None, access_token=None, userIP=None, connected_via=None, session_end=None):
+    def update_session(self,
+                       session_id,
+                       api_client_id, 
+                       userID=None,
+                       username=None, 
+                       authenticated: int=None,
+                       authorized_peparchive: int=None,
+                       authorized_pepcurrent: int=None,
+                       session_end=None, 
+                       userIP=None):
         """
         Update the extra fields in the session record
         """
@@ -817,23 +825,33 @@ class opasCentralDB(object):
         self.open_connection(caller_name="update_session") # make sure connection is open
         setClause = "SET "
         added = 0
-        if access_token is not None:
-            setClause += f" access_token = '{access_token}'"
+        if api_client_id is not None:
+            setClause += f" api_client_id = '{api_client_id}'"
             added += 1
         if userID is not None:
             if added > 0:
                 setClause += ", "
             setClause += f" user_id = '{userID}'"
             added += 1
-        if userIP is not None:
+        if username is not None:
             if added > 0:
                 setClause += ", "
-            setClause += f" user_ip = '{userIP}'"
+            setClause += f" username = '{username}'"
             added += 1
-        if connected_via is not None:
+        if authenticated:
             if added > 0:
                 setClause += ", "
-            setClause += f" connected_via = '{connected_via}'"
+            setClause += f" authenticated = '{authenticated}'"
+            added += 1
+        if authorized_peparchive:
+            if added > 0:
+                setClause += ", "
+            setClause += f" authorized_peparchive = '{authorized_peparchive}'"
+            added += 1
+        if authorized_pepcurrent:
+            if added > 0:
+                setClause += ", "
+            setClause += f" authorized_current = '{authorized_peparchive}'"
             added += 1
         if session_end is not None:
             if added > 0:
@@ -1114,6 +1132,10 @@ class opasCentralDB(object):
                     return ret_val
                 else:
                     session_id = self.session_id
+                    
+            # Workaround for None in session id
+            if session_id is None:
+                session_id = opasConfig.NO_SESSION_ID # just to record it
                 
             if self.db is not None:  # shouldn't need this test
                 cursor = self.db.cursor()
@@ -1143,8 +1165,8 @@ class opasCentralDB(object):
                                                   ))
                     self.db.commit()
                     cursor.close()
-                except pymysql.IntegrityError:
-                    logger.error(f"Integrity Error logging endpoint {api_endpoint_id} for session {session_id}.")
+                except pymysql.IntegrityError as e:
+                    logger.error(f"Integrity Error {e} logging endpoint {api_endpoint_id} for session {session_id}.")
                     #session_info = self.get_session_from_db(session_id)
                     #if session_info is None:
                         #self.save_session(session_id) # recover for next time.

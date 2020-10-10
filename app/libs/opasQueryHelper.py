@@ -2083,7 +2083,7 @@ def get_fulltext_from_search_results(result,
             offset = page - int(documentListItem.pgStart)
             reduce = True
         # Only use supplied offset if page parameter is out of range, or not supplied
-        if reduce == False and page_offset is not None: 
+        if reduce == False and page_offset is not None and page_offset != 0: 
             offset = page_offset
             reduce = True
 
@@ -2123,11 +2123,16 @@ def get_fulltext_from_search_results(result,
                                                pgrg=documentListItem.pgRg,
                                                ret_format="HTML"
                                                )
-        text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
-        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-        text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
-        if child_xml is not None:
-            child_xml = opasxmllib.xml_str_to_html(child_xml)
+        try:
+            text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+        except Exception as e:
+            logger.error(f"Could not convert to HTML {e}; returning native format")
+            text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+        else:
+            text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+            text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
+            if child_xml is not None:
+                child_xml = opasxmllib.xml_str_to_html(child_xml)
     elif format_requested_ci == "textonly":
         # strip tags
         text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)

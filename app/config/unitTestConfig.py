@@ -56,9 +56,10 @@ def base_plus_endpoint_encoded(endpoint):
     ret_val = base_api + endpoint
     return ret_val
 
-from opasDocPermissions import pads_get_session
-session_info, pads_session_info = pads_get_session()
-session_id = session_info.session_id
-headers = {"client-session":session_id, "client-id": "0", "Content-Type":"application/json"}
-print (f"unitTestConfig harness fetched session-id {session_id} (not logging in)")
+if 1:
+    from opasDocPermissions import pads_get_session
+    session_info, pads_session_info = pads_get_session()
+    session_id = session_info.session_id
+    headers = {"client-session":session_id, "client-id": "0", "Content-Type":"application/json"}
+    print (f"unitTestConfig harness fetched session-id {session_id} (not logging in)")
 

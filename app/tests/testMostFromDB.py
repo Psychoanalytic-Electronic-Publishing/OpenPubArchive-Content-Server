@@ -32,7 +32,7 @@ class TestMostFromDb(unittest.TestCase):
             count += 1
             if count > 2:
                 break
-        assert(len(list(views)) >= 600)
+        assert(len(list(views)) >= 50)
             
     def test_001_download(self):
         import codecs
@@ -87,8 +87,7 @@ class TestMostFromDb(unittest.TestCase):
                                           source_code=None,
                                           source_type="journals",  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                           limit=None,
-                                          offset=0,
-                                          session_info=None
+                                          offset=0
                                         )            
         
         countAll5 = len(list(views))
@@ -103,8 +102,7 @@ class TestMostFromDb(unittest.TestCase):
                                           source_code=None,
                                           source_type="journals",  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                           limit=None,
-                                          offset=0,
-                                          session_info=None
+                                          offset=0
                                         )            
         
         countAll5 = len(list(views))
@@ -120,8 +118,7 @@ class TestMostFromDb(unittest.TestCase):
                                           source_code="IJP",
                                           source_type="journals",  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                           limit=None,
-                                          offset=0,
-                                          session_info=None
+                                          offset=0
                                           )            
         
         countAll5 = len(list(views))
@@ -137,8 +134,7 @@ class TestMostFromDb(unittest.TestCase):
                                           source_code="IJP",
                                           source_type="journals",  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                           limit=None,
-                                          offset=0,
-                                          session_info=None
+                                          offset=0
                                           )            
         
         countAll5 = len(list(views))
@@ -155,8 +151,7 @@ class TestMostFromDb(unittest.TestCase):
                                           source_code=None,
                                           source_type="journals",  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                           limit=None,
-                                          offset=0,
-                                          session_info=None
+                                          offset=0
                                           )            
         
         countAll5 = len(list(views))
@@ -172,8 +167,7 @@ class TestMostFromDb(unittest.TestCase):
                                           source_code=None,
                                           source_type="journals",  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                           limit=None,
-                                          offset=0,
-                                          session_info=None
+                                          offset=0
                                           )            
         countAll4 = len(list(views))
         assert (countAll4 > 1000)
@@ -188,8 +182,7 @@ class TestMostFromDb(unittest.TestCase):
                                           source_code=None,
                                           source_type="journals",  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                           limit=None,
-                                          offset=0,
-                                          session_info=None
+                                          offset=0
                                           )            
         countAll3 = len(list(views))
         assert (countAll3 > 500)
@@ -204,8 +197,7 @@ class TestMostFromDb(unittest.TestCase):
                                           source_code=None,
                                           source_type="journals",  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                           limit=None,
-                                          offset=0,
-                                          session_info=None
+                                          offset=0
                                           )            
         countAll2 = len(list(views))
         assert (countAll2 > 175)
@@ -220,8 +212,7 @@ class TestMostFromDb(unittest.TestCase):
                                           source_code=None,
                                           source_type="journals",  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                           limit=None,
-                                          offset=0,
-                                          session_info=None
+                                          offset=0
                                           )            
         countAll1 = len(list(views))
         assert (countAll1 > 10)

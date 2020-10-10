@@ -364,8 +364,8 @@ class LicenseStatusInfo(BaseModel):
 #-------------------------------------------------------
 class SessionInfo(BaseModel):    
     session_id: str = Schema(None, title="A generated session Identifier number the client passes in the header to identify the session")
-    user_id: int = Schema(None, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
-    username: str = Schema(None, title="Registered user name, for convenience here")
+    user_id: int = Schema(opasConfig.USER_NOT_LOGGED_IN_ID, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
+    username: str = Schema(opasConfig.USER_NOT_LOGGED_IN_NAME, title="Registered user name, for convenience here")
     authenticated: bool = Schema(False, title="True if the user has been authenticated.")
     authorized_peparchive: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the archive.")
     authorized_pepcurrent: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the current issues.")
@@ -374,7 +374,7 @@ class SessionInfo(BaseModel):
     session_expires_time: datetime = Schema(None, title="The limit on the user's session information without renewing")
     user_type: str = Schema(None, title="User type, e.g., Admin or Individual")
     admin: bool = Schema(False, title="True if the user has been authenticated as admin.")
-    api_client_id: int = Schema(None, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
+    api_client_id: int = Schema(0, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
 
 #-------------------------------------------------------
 class ServerStatusContent(BaseModel):

@@ -78,7 +78,6 @@ class TestDatabaseSearch(unittest.TestCase):
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
         assert(r['documentList']['responseInfo']['fullCount'] >= 3)
         assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
-       
 
     def test_2_pubs_authornames(self):
         """

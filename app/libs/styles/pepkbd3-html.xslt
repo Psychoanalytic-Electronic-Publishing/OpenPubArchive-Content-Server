@@ -43,8 +43,7 @@
   xmlns:xlink="http://www.w3.org/1999/xlink">
   <!--  xmlns:fn="http://www.w3.org/2005/xpath-functions" -->
 
-   <xsl:import
-    href="http://www.w3.org/2003/entities/2007/entitynamesmap.xsl"/>
+<!--  <xsl:import href="http://www.w3.org/2003/entities/2007/entitynamesmap.xsl"/>-->
   
   <xsl:output method="html" encoding="UTF-8" indent="yes" />
   
@@ -196,8 +195,13 @@
       <p class="banner">
         <a class="anchor" name="{$document-id}" id="{$document-id}"/>
         <a class="toc-link" href="/#/ArticleList/?journal={$journal-code}">
-		  <!--Client relative...but could use /v2/Document/Images command instead.-->
-          <img src="./images/banner{$journal-code}Logo.gif" alt=""/>
+           <!--<img src="./images/banner{$journal-code}Logo.gif" alt=""/>-->
+          <img>
+            <xsl:attribute name="src">
+              <xsl:value-of select="concat($imageurl, $journal-code, 'Logo.gif')"/>
+            </xsl:attribute>
+            <xsl:attribute name="alt">Journal Logo</xsl:attribute>
+          </img>
         </a>
       </p>
       <div class='pubinfotop'><xsl:value-of select="'[[RunningHead]]'"/></div>
@@ -415,7 +419,13 @@
             <xsl:when test="position() = last()">
               <xsl:text> </xsl:text>
               <span class="peppopup newauthortip">
-                <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>
+                <!-- <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>-->
+                <img>
+                  <xsl:attribute name="src">
+                    <xsl:value-of select="concat($imageurl, 'infoicon.gif')"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="alt">Author Information</xsl:attribute>
+                </img>
                 <br></br>
                 <xsl:text>&#xa;</xsl:text>
                 <div class="peppopuptext" id="autaffinfo" hidden="True">
@@ -631,7 +641,13 @@
           <xsl:when test="position() = last()">
             <xsl:text> </xsl:text>
             <span class="peppopup hauthortip">
-              <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>
+              <!-- <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>-->
+              <img>
+                <xsl:attribute name="src">
+                  <xsl:value-of select="concat($imageurl, 'infoicon.gif')"/>
+                </xsl:attribute>
+                <xsl:attribute name="alt">Author Information</xsl:attribute>
+              </img>
               <br></br>
               <div class="peppopuptext" id="hautaffinfo" hidden="True">
                 <div id="hautcontent" class="hautcontent">
@@ -1090,7 +1106,11 @@
   
   <xsl:template match="dictalso">
     <p class="dictentrygrp-dictalso">
-      <img src="images/flag.gif" alt=""/>
+      <img>
+        <xsl:attribute name="src">
+          <xsl:value-of select="concat($imageurl, 'flag.gif')"/>
+        </xsl:attribute>
+      </img>
       <xsl:text> </xsl:text>
       <xsl:apply-templates/>
     </p>
@@ -1143,6 +1163,7 @@
     <p class="dictentry-src">
       <xsl:call-template name="assign-id"/>
       <img src="images/book.gif" alt="" />
+      
       <xsl:text> </xsl:text>
       <xsl:apply-templates/>
     </p>
