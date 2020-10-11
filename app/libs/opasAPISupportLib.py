@@ -830,7 +830,7 @@ def metadata_get_volumes(source_code=None,
 
                 
     except Exception as e:
-        print (f"Error: {e}")
+        logger.error(f"Error: {e}")
     else:
         response_info.count = len(volume_item_list)
         response_info.fullCount = len(volume_item_list)

@@ -222,7 +222,7 @@ def parse_to_query_term_list(str_query):
                 temp.connector = data_split[-1].upper()
             count += 1
             
-    print (term_list)
+    logger.info(term_list)
     return term_list
     
 #-----------------------------------------------------------------------------

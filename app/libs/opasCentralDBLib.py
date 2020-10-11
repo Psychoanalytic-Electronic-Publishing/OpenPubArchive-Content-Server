@@ -184,7 +184,7 @@ class SourceInfoDB(object):
             try:
                 self.sourceData[n["pepsrccode"]] = n
             except KeyError as e:
-                print ("Missing Source Code Value in %s" % n)
+                logger.error("Missing Source Code Value in %s" % n)
 
     def lookupSourceCode(self, sourceCode):
         """
@@ -766,16 +766,14 @@ class opasCentralDB(object):
             curs = self.db.cursor(pymysql.cursors.DictCursor)
             # now insert the session
             sql = f"SELECT * FROM api_sessions WHERE session_id = '{session_id}'";
-            if 1: logger.info(sql) # temp
             res = curs.execute(sql)
             if res == 1:
                 session = curs.fetchone()
                 # sessionRecord
                 ret_val = SessionInfo(**session)
-                if 1: logger.info(ret_val) # temp
             else:
                 ret_val = None
-                if 1: logger.info(f"get_session_from_db - Session info not found in db {session_id}")
+                logger.debug(f"get_session_from_db - Session info not found in db {session_id}")
                      
             
         self.close_connection(caller_name="get_session_from_db") # make sure connection is closed
@@ -870,7 +868,6 @@ class opasCentralDB(object):
                     success = cursor.execute(sql, (session_id))
                 except pymysql.InternalError as error:
                     code, message = error.args
-                    print (">>>>>>>>>>>>> %s %s", code, message)
                     logger.error(code, message)
                 else:
                     self.db.commit()
@@ -1013,7 +1010,6 @@ class opasCentralDB(object):
                 success = cursor.execute(sql)
             except pymysql.InternalError as error:
                 code, message = error.args
-                print (">>>>>>>>>>>>> %s %s", code, message)
                 logger.error(code, message)
             else:
                 self.db.commit()
@@ -1021,10 +1017,9 @@ class opasCentralDB(object):
             cursor.close()
             if success:
                 ret_val = True
-                print (f"Closed {success} expired sessions")
+                logger.debug(f"Closed {success} expired sessions")
             else:
                 ret_val = False
-                print ("Closed expired sessions did not work")
                 logger.warning("Could not retire sessions in DB")
 
         self.close_connection(caller_name="close_expired_sessions") # make sure connection is closed
@@ -1052,14 +1047,13 @@ class opasCentralDB(object):
                     
             except pymysql.InternalError as error:
                 code, message = error.args
-                print (f">>>>>>>>>>>>> {code} {message}")
                 logger.error(code, message)
             else:
                 if success:
                     result = cursor.fetchone()
                     ret_val = result[0]
                 else:
-                    retVal = 0
+                    ret_val = 0
             
             cursor.close()
 
@@ -1091,14 +1085,13 @@ class opasCentralDB(object):
                     
             except pymysql.InternalError as error:
                 code, message = error.args
-                print (f">>>>>>>>>>>>> {code} {message}")
                 logger.error(code, message)
             else:
                 self.db.commit()
             
             cursor.close()
             ret_val = int(success)
-            print (f"Closed {ret_val} expired sessions")
+            logger.info(f"Closed {ret_val} expired sessions")
 
         self.close_connection(caller_name="close_expired_sessions") # make sure connection is closed
         return ret_val
@@ -1677,19 +1670,17 @@ class opasCentralDB(object):
                           )
                 if curs.execute(sql):
                     msg = f"Created user {user.username}"
-                    print (msg)
+                    logger.debug(msg)
                     self.db.commit()
                 else:
                     err = f"Could not create user {user.username}"
                     logger.error(err)
-                    print (err)
     
                 curs.close()
                 ret_val = User(**user.dict())
             else:
                 err = f"Username {user.username} already in database."
                 logger.error(err)
-                print (err)
     
         self.close_connection(caller_name="create_user") # make sure connection is closed
         return ret_val
@@ -1735,19 +1726,17 @@ class opasCentralDB(object):
                 if curs.execute(sql, chgs):
                     msg = f"Updated user {user.username}"
                     user.password = new_hashed_password
-                    print (msg)
+                    logger.info(msg)
                     self.db.commit()
                 else:
                     err = f"Could not update user {user.username}"
                     logger.error(err)
-                    print (err)
     
                 curs.close()
                 ret_val = User(**user.dict())
             else:
                 err = f"Username {user.username} not found."
                 logger.error(err)
-                print (err)
     
         self.close_connection(caller_name="change_user_password") # make sure connection is closed
         return ret_val
@@ -1810,15 +1799,13 @@ class opasCentralDB(object):
                                                    )):
                         self.db.commit()
                         msg = f"Added subscription to {product_parent_code}/{product_code}"
-                        print (msg)
+                        logger.info(msg)
                     else:
                         err = f"Could not add subscription to {product_parent_code}/{product_code}"
                         logger.error(err)
-                        print (err)
                 else:
                     err = f"Could not find product {product_parent_code}/{product_code}"
                     logger.error(err)
-                    print (err)
 
                 curs.close()
                 curs2.close()
@@ -1826,7 +1813,6 @@ class opasCentralDB(object):
             else:
                 err = f"Username {username} not found."
                 logger.error(err)
-                print (err)
     
         self.close_connection(caller_name="change_user_password") # make sure connection is closed
         return ret_val
@@ -1843,7 +1829,6 @@ class opasCentralDB(object):
         >>> status
         True
         """
-        #print (f"Authenticating user: {username}")
         self.open_connection(caller_name="authenticate_user") # make sure connection is open
         user = self.get_user(username)  # returns a UserInDB object
         if not user:
@@ -1911,13 +1896,11 @@ class opasCentralDB(object):
                 self.user = user
                 msg = f"Authenticated (with active subscription) referrer: {referrer}"
                 logger.info(msg)
-                # print (msg)
                 ret_val = (True, user)
             else:
                 ret_val = (False, None)
                 msg = f"Referrer: {referrer} turned away"
                 logger.warning(msg)
-                print (msg)
 
         if db_opened: # if we opened it, close it.
             self.close_connection(caller_name="authenticate_referrer") # make sure connection is closed
@@ -1947,7 +1930,6 @@ class opasCentralDB(object):
         ns = {"pepprod": "http://localhost/PEPProduct/PEPProduct"}
         soap_message = authenticate_more
         response = requests.post(localsecrets.url_pads, data=soap_message, headers=headers)
-        #print (response.content)
         root = ET.fromstring(response.content)
         # parse XML return
         authenticate_user_and_return_extra_info_result_node = root.find('.//pepprod:AuthenticateUserAndReturnExtraInfoResult', ns)
@@ -1978,8 +1960,6 @@ class opasCentralDB(object):
             else:
                 ret_val = None
         
-        # print (ret_val)
-    
         return ret_val
 
     

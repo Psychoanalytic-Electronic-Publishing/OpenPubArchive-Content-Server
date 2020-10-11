@@ -7,6 +7,8 @@ import opasConfig
 import models
 import logging
 import localsecrets
+import urllib.parse
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -46,35 +48,29 @@ def find_client_session_id(request: Request,
     if client_session is not None:
         ret_val = client_session
         msg = f"client-session from header: {ret_val} "
-        print(msg)
         logger.info(msg)
     elif client_session_qparam is not None:
         ret_val = client_session_qparam
         msg = f"client-session from param: {ret_val} "
-        print(msg)
         logger.info(msg)
     elif client_session_cookie is not None:
         ret_val = client_session_cookie
         msg = f"client-session from client-session cookie: {ret_val} "
-        print(msg)
         logger.info(msg)
     elif pepweb_session_cookie is not None: # this is what Gavant client sets
-        s = unquote(pepweb_session_cookie)
+        s = urllib.parse.unquote(pepweb_session_cookie)
         cookie_dict = json.loads(s)
         ret_val = cookie_dict["authenticated"]["SessionId"]
         msg = f"client-session from pepweb-session cookie: {ret_val} "
-        print(msg)
         logger.info(msg)
     elif opas_session_cookie is not None and opas_session_cookie != 'None':
         msg = f"client-session from stored Opas cookie {opas_session_cookie}"
-        print(msg)
-        logger.error(msg)       
+        logger.info(msg)       
         ret_val = opas_session_cookie
     else:
-        #msg = f"No client-session ID provided. No authorizations available."
+        msg = f"No client-session ID provided. No authorizations available."
+        logger.error(msg)       
         ret_val = None
-        #print(msg)
-        #logger.error(msg)       
 
     ## save it in cookie in case they call without it.
     #response.set_cookie(opasConfig.OPASSESSIONID,
@@ -235,7 +231,7 @@ def pads_logout(session_id):
 
 def pads_get_userinfo(session_id):
     ret_val = None
-    print (f"get_user_info for session {session_id}")
+    logger.debug(f"get_user_info for session {session_id}")
     if session_id is not None:
         full_URL = base + f"/v1/Users" + f"?SessionID={session_id}"
         try:
@@ -248,7 +244,7 @@ def pads_get_userinfo(session_id):
             if response.ok:
                 ret_val = models.PadsUserInfo(**padsinfo)
             else:
-                print(f"Non-logged in user for sessionId: {session_id}. Info from PaDS: {padsinfo}")
+                logger.info(f"Non-logged in user for sessionId: {session_id}. Info from PaDS: {padsinfo}")
             
     return ret_val
 
