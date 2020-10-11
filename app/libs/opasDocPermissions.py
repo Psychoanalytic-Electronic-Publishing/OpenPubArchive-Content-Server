@@ -38,6 +38,9 @@ def find_client_session_id(request: Request,
     client_session_qparam = request.query_params.get(opasConfig.CLIENTSESSIONID, None)
     client_session_cookie = request.cookies.get(opasConfig.CLIENTSESSIONID, None)
     pepweb_session_cookie = request.cookies.get("pepweb-session", None)
+    if pepweb_session_cookie is not None:
+        # just verify that we can see it (they will need to chg the )
+        logger.info("pep-web session cookie visible")
 
     #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
     if client_session is not None:
@@ -63,10 +66,10 @@ def find_client_session_id(request: Request,
         print(msg)
         logger.info(msg)
     else:
-        msg = f"No client-session ID provided. No authorizations available."
+        #msg = f"No client-session ID provided. No authorizations available."
         ret_val = None
-        print(msg)
-        logger.error(msg)       
+        #print(msg)
+        #logger.error(msg)       
 
     #elif opas_session_cookie is not None and opas_session_cookie != '':
         #msg = f"client-session from stored Opas cookie {opas_session_cookie}"
