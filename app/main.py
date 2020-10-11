@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1010.1.Alpha"
+__version__     = "2020.1011.1.Alpha"
 __status__      = "Development"
 
 """
@@ -214,6 +214,32 @@ def get_client_id(response: Response,
 
     return ret_val
 
+def save_opas_session_cookie(request: Request, response: Response, session_id):
+    ret_val = False
+    already_set = False
+    if session_id is not None and session_id is not 'None':
+        already_set = False
+        try:
+            opasSession = [x for x in response.raw_headers[0] if b"opasSessionID" in x]
+            already_set = b"opasSessionID" in opasSession[0][0:13]
+        except Exception as e:
+            logger.warning(f"Not in response {e}")
+
+    if already_set == False:
+        try:
+            logger.info("Saved OpasSessionID Cookie")
+            response.set_cookie(
+                OPASSESSIONID,
+                value=f"{session_id}",
+                domain=localsecrets.COOKIE_DOMAIN
+            )
+            ret_val = True
+        except Exception as e:
+            logger.error(f"Can't save session-id cookie: {e}")
+            ret_val = False
+            
+    return ret_val
+    
 def get_client_session(response: Response,
                        request: Request,
                        client_session: str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
@@ -239,14 +265,11 @@ def get_client_session(response: Response,
             # We didn't get a session id
             raise HTTPException(
                 status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
-                detail=ERR_MSG_PASSWORD, 
+                detail=ERR_MSG_PASSWORD + f" ({e})", 
             )
         else:
-            response.set_cookie(
-                OPASSESSIONID,
-                value=f"{session_id}",
-                domain=localsecrets.COOKIE_DOMAIN
-            )
+            save_opas_session_cookie(request, response, session_id)
+
     return session_id       
     
 security = HTTPBasic()
@@ -993,8 +1016,8 @@ async def session_whoami(response: Response,
        NA
 
     """
-    session_id = opasAPISupportLib.verify_header(request, "WhoAmI") # for debugging client call
-    if session_id is not None:
+    opasAPISupportLib.verify_header(request, "WhoAmI") # for debugging client call
+    if client_session is not None:
         ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     else:
         logger.error(f"Bad Request: Client-Session ID not provided")
@@ -1142,6 +1165,8 @@ def session_login(response: Response,
     opasAPISupportLib.verify_header(request, "Login")
 
     session_info, pads_session_info = opasDocPermissions.pads_login(username=username, password=password, session_id=client_session) # don't pass session
+    # New session id
+    session_id = pads_session_info.SessionId
     
     if pads_session_info.IsValidLogon != True:
         detail = "Bad login credentials"
@@ -1149,18 +1174,11 @@ def session_login(response: Response,
             status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
             detail=detail 
         )
-
-    # New session id
-    session_id = pads_session_info.SessionId
-    
-    # NOTE: This is currently disabled in find_client_session_id so the only way to get authorization is
-    #       by using tests where a client-session (id) is supplied.
-    # Save it for eating later; most importantly, overwrite any existing cookie!
-    response.set_cookie(
-        OPASSESSIONID,
-        value=f"{session_id}",
-        domain=localsecrets.COOKIE_DOMAIN
-    )
+    else:
+        # Save it for eating later; most importantly, overwrite any existing cookie!
+        logger.info("Successful login - saved OpasSessionID Cookie")
+        # already should be in response per get_client_session
+        # save_opas_session_cookie(request, response, session_id)        
 
     try:
         login_return_item = models.LoginReturnItem(token_type = "bearer", 
@@ -1177,6 +1195,7 @@ def session_login(response: Response,
             status_code=httpCodes.HTTP_400_BAD_REQUEST, 
             detail=detail 
         )    
+   
     return login_return_item
 
 #-----------------------------------------------------------------------------
@@ -1211,13 +1230,10 @@ def session_login_basic(response: Response,
     session_id = session_info.session_id
 
     # Save it for eating later; most importantly, overwrite any existing cookie!
-    response.set_cookie(
-        OPASSESSIONID,
-        value=f"{session_id}",
-        domain=localsecrets.COOKIE_DOMAIN
-    )
+    if session_info.authenticated:
+        logger.info("Successful basic login - saved OpasSessionID Cookie")
+        save_opas_session_cookie(request, response, session_id)
        
-    logger.debug("V2 Basic Login Request: ")
     try:
         login_return_item = models.LoginReturnItem(token_type = "bearer", 
                                                    session_id = session_id,
@@ -4806,6 +4822,6 @@ if __name__ == "__main__":
     print(f"Server Running ({localsecrets.BASEURL}:{localsecrets.API_PORT_MAIN})")
     print (f"Running in Python {sys.version_info[0]}.{sys.version_info[1]}")
     print (f"Configuration used: {CONFIG}")
-    uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=False)
+    uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=False, log_level="warning")
         # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
     print ("Now we're exiting...")
