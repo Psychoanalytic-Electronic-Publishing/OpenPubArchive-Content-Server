@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1013.1.Alpha"
+__version__     = "2020.1013.2.Alpha"
 __status__      = "Development"
 
 """
@@ -257,11 +257,6 @@ def get_client_session(response: Response,
             save_opas_session_cookie(request, response, session_id)
 
     return session_id       
-
-def set_log_level(level:str=Header("WARNING", title="Set log level")):
-    logger = logging.getLogger()
-    logger.setLevel(level)
-    return True
     
 security = HTTPBasic()
 def login_via_pads(request: Request,
@@ -315,13 +310,13 @@ async def get_api_key(api_key_query: str = Security(api_key_query),
 # ############################################################################
 
 def log_endpoint(request, client_id=None, session_id=None, path_params=True):
-    logger.info(f"{client_id}({session_id}):{request['path']}")
+    logger.info(f"***[{client_id}:{session_id}]:{request['path']}***")
     if path_params and request.path_params != {}:
         logger.info(f"....{request.path_params}")
 
 def log_endpoint_time(request, ts): 
     if opasConfig.LOG_CALL_TIMING:
-        logger.info(f"{request['path']} response time: {time.time() - ts}")
+        logger.info(f"***{request['path']} response time: {time.time() - ts}***")
 
 # ############################################################################
 # EndPoints
@@ -347,14 +342,36 @@ async def api_openapi_spec(api_key: APIKey = Depends(get_api_key),
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Admin/LogLevel/", tags=["Admin"], summary="Admin function to change logging level")
-async def api_set_loglevel(response: Response, 
-                           request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                           api_key: APIKey = Depends(get_api_key), 
-                           client_id:int=Depends(get_client_id), 
-                           log_level:str=Depends(set_log_level)
-                           ): 
+async def admin_set_loglevel(response: Response, 
+                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                             api_key: APIKey = Depends(get_api_key), 
+                             client_id:int=Depends(get_client_id),
+                             level:str=Query("WARNING", title="Log Level", description="DEBUG, INFO, WARNING, or ERROR"),
+                            ): 
     # TODO: Make this an admin only function
-    return log_level
+    try:
+        # not necessary, since setLevel accepts the same strings
+        # but this protects from name input errors
+        # (as does the Exception)
+        # At this point there's no reason I see to accept numeric levels
+        level = level.upper()
+        if level == "DEBUG":
+            lev_int = logging.DEBUG
+        elif level == "INFO":
+            lev_int = logging.INFO
+        elif level == "WARNING" or level == "WARN":
+            lev_int = logging.WARNING
+        elif level == "ERROR":
+            lev_int = logging.ERROR
+        
+        logger = logging.getLogger() # Get root logger
+        logger.setLevel(lev_int)
+    except Exception as e:
+        logger.error(f"Error setting log level {e}.  Current level {logger.level}")
+    
+    levels = {10: "DEBUG", 20: "INFO", 30: "WARNING", 40: "ERROR", 50: "CRITICAL"}
+    ret_val = levels.get(logger.level, str(logger.level))
+    return ret_val
 #-----------------------------------------------------------------------------
 @app.get("/v2/Api/LiveDoc", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENTATION)
 async def api_live_doc(api_key: APIKey = Depends(get_api_key),

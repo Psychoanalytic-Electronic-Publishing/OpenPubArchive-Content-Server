@@ -191,7 +191,7 @@ def get_session_info(request: Request,
             ocd.save_session(session_id, session_info)
 
         if opasConfig.LOG_CALL_TIMING:
-            logger.info(f"Get/Save session info response time: {time.time() - ts}")
+            logger.debug(f"Get/Save session info response time: {time.time() - ts}")
         
         logger.debug("getSessionInfo: %s", session_info)
         
@@ -1058,9 +1058,9 @@ def metadata_get_source_info(src_type=None,
         src_type = opasConfig.normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
 
     if src_type is None:
-        errMsg = f"MetadataGetSourceByType: Unknown source type."
+        errMsg = f"MetadataGetSourceByType: Parameter error, Unknown source type."
         total_count = count = 0
-        logger.error(errMsg)
+        logger.warning(errMsg)
     elif src_type == "videos":
         # This is not part of the original API, it brings back individual videos rather than the videostreams
         # but here in case we need it.  In that case, your source must be videos.*, like videostream, in order
@@ -1079,7 +1079,7 @@ def metadata_get_source_info(src_type=None,
         except Exception as e:
             errMsg = "MetadataGetSourceByType: Error getting source information.  {}".format(e)
             count = 0
-            logger.error(errMsg)
+            logger.warning(errMsg)
 
     response_info = models.ResponseInfo( count = count,
                                          fullCount = total_count,
@@ -1121,7 +1121,7 @@ def metadata_get_source_info(src_type=None,
                 if src_type == "book":
                     book_code = source.get("pepcode")
                     if book_code is None:
-                        logger.error(f"Book code information missing for requested basecode {base_code} in productbase")
+                        logger.warning(f"Book code information missing for requested basecode {base_code} in productbase")
                     else:
                         m = re.match("(?P<code>[a-z]+)(?P<num>[0-9]+)", book_code, re.IGNORECASE)
                         if m is not None:
@@ -1167,7 +1167,7 @@ def metadata_get_source_info(src_type=None,
                     err = 1
     
             except Exception as e:
-                logger.error("metadataGetSourceByType: %s", e)
+                logger.error("metadataGetSourceByType: Exception: %s", e)
                 err = 1
     
             if err == 0:
@@ -1534,7 +1534,7 @@ def documents_get_document(document_id,
                 document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
             
         except Exception as e:
-            logger.info("get_document: No matches or error: %s", e)
+            logger.warning("get_document: No matches or error: %s", e)
             # return None
         else:
             if page_limit is None:
@@ -1617,7 +1617,7 @@ def documents_get_concordance_paras(para_lang_id,
         else:
             logger.info(f"get_para_trans: No matches: {filterQ}")
     except Exception as e:
-        logger.info(f"get_para_trans: No matches or error: {e}")
+        logger.error(f"get_para_trans: No matches or error: {e}")
     else:
         if matches == 1:       
             document_list_struct = models.DocumentListStruct( responseInfo = document_list.documentList.responseInfo, 

@@ -8,6 +8,8 @@ Version: 2020-08-24
 """
 import os.path
 import sys
+import localsecrets
+
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
     sys.path.append('../libs')
@@ -60,6 +62,10 @@ if 1:
     from opasDocPermissions import pads_get_session
     session_info, pads_session_info = pads_get_session()
     session_id = session_info.session_id
-    headers = {"client-session":session_id, "client-id": "4", "Content-Type":"application/json"}
+    headers = {"client-session":session_id,
+               "client-id": "4",
+               "Content-Type":"application/json",
+               localsecrets.API_KEY_NAME: localsecrets.API_KEY}
+
     print (f"unitTestConfig harness fetched session-id {session_id} (not logging in)")
 

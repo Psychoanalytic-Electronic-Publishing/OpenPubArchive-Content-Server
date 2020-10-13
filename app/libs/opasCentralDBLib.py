@@ -249,7 +249,7 @@ class opasCentralDB(object):
                 logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT}")
                 self.connected = True
             except Exception as e:
-                logger.debug(f"Database connection not opened ({caller_name}) ({e})")
+                logger.warning(f"Database connection not opened ({caller_name}) ({e})")
                 # status = False
         
         return self.connected
@@ -262,7 +262,7 @@ class opasCentralDB(object):
                     self.db = None
                     logger.debug(f"Database closed by ({caller_name})")
                 else:
-                    logger.debug(f"Database close request, but not open ({caller_name})")
+                    logger.warning(f"Database close request, but not open ({caller_name})")
                     
             except Exception as e:
                 logger.error(f"caller: {caller_name} the db is not open ({e})")
@@ -893,8 +893,8 @@ class opasCentralDB(object):
         ret_val = False
         #session = None
         if session_id is None:
-            err_msg = "No session ID specified"
-            logger.error(err_msg)
+            err_msg = "Parameter error: No session ID specified"
+            logger.warning(err_msg)
         else:
             if not self.open_connection(caller_name="delete_session"): # make sure connection opens
                 logger.error("Delete session could not open database")
@@ -928,9 +928,9 @@ class opasCentralDB(object):
         """
         ret_val = False
         if session_id is None:
-            logger.error("SaveSession: No session ID specified")
+            logger.warning("SaveSession: No session ID specified")
         elif session_info is None: # for now, required
-            logger.error("SaveSession: No session_info specified")
+            logger.warning("SaveSession: No session_info specified")
         else:
             if not self.open_connection(caller_name="save_session"): # make sure connection opens
                 logger.error("Save session could not open database")
@@ -976,7 +976,7 @@ class opasCentralDB(object):
                     if success:
                         ret_val = True
                         self.db.commit()
-                        logger.info(f"Saved sessioninfo: {session_info.session_id}")
+                        logger.debug(f"Saved sessioninfo: {session_info.session_id}")
                     else:
                         msg = f"save_session {session_id} Insert Error. Record Could not be Saved"
                         logger.warning(msg)
@@ -1122,7 +1122,7 @@ class opasCentralDB(object):
             except:
                 if self.session_id is None:
                     # no session open!
-                    logger.debug("OCD: No session is open")
+                    logger.warning("OCD: No session is open")
                     return ret_val
                 else:
                     session_id = self.session_id
@@ -1147,8 +1147,7 @@ class opasCentralDB(object):
                                                  VALUES 
                                                  (%s, %s, %s, %s, %s, %s, %s)"""
 
-                #TODO: Later - Should be debug
-                logger.info(f"Session ID: {session_id} (client {client_id}) accessed Session Endpoint {api_endpoint_id}")
+                logger.debug(f"Session ID: {session_id} (client {client_id}) accessed Session Endpoint {api_endpoint_id}")
                 try:
                     ret_val = cursor.execute(sql, (session_id, 
                                                    api_endpoint_id, 
@@ -1265,10 +1264,10 @@ class opasCentralDB(object):
                     curs.close()
 
                     if limit_clause is not None:
-                        # do another query to count possil
+                        # do another query to count
                         curs2 = self.db.cursor()
                         sqlCount = "SELECT COUNT(*) " + sqlAll
-                        count_cur = curs2.execute(sqlCount)
+                        curs2.execute(sqlCount)
                         try:
                             total_count = curs2.fetchone()[0]
                         except:
@@ -1515,7 +1514,7 @@ class opasCentralDB(object):
                      and enabled = 1"""
 
         if sql is None:
-            logger.error("get_user: No user info supplied to search by")
+            logger.warning("get_user: No user info supplied to search by")
             ret_val = None
         else:
             res = curs.execute(sql)
@@ -1546,7 +1545,7 @@ class opasCentralDB(object):
                 ret_val = logged_in_user.get("admin", False)
             except Exception as e:
                 err_msg = f"Not logged in or error getting admin status ({e})"
-                logger.debug(err_msg)
+                logger.warning(err_msg)
             
         return ret_val   
        

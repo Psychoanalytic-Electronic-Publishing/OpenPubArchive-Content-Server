@@ -1680,12 +1680,12 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                 # try checking PaDS for authenticated; if false, no need to check permits
                 try:
                     if session_info.authenticated == False:
-                        logger.info("User is not authenticated.  Permit optimization enabled.")
+                        logger.debug("User is not authenticated.  Permit optimization enabled.")
                     else:
-                        logger.info("User is authenticated.  Permit optimization disabled.")
+                        logger.debug("User is authenticated.  Permit optimization disabled.")
                 except:
                     #  no session info...what to do?
-                    pass
+                    logger.debug("No session info to perform optimizations")
                     
                 for result in results.results:
                     # reset anchor counts for full-text markup re.sub

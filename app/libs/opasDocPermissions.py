@@ -46,33 +46,31 @@ def find_client_session_id(request: Request,
         client_session = request.headers.get(opasConfig.CLIENTSESSIONID, None)
     client_session_qparam = request.query_params.get(opasConfig.CLIENTSESSIONID, None)
     client_session_cookie = request.cookies.get(opasConfig.CLIENTSESSIONID, None)
-    pepweb_session_cookie = request.cookies.get("pepweb_session", None)
-    if pepweb_session_cookie is not None:
-        # just verify that we can see it (they will need to chg the )
-        logger.info("pep-web session cookie visible")
-
+    #Won't work unless they expose cookie to client, so don't waste time 
+    #pepweb_session_cookie = request.cookies.get("pepweb_session", None)
+    
     opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
     if client_session is not None:
         ret_val = client_session
         msg = f"client-session from header: {ret_val} "
-        logger.info(msg)
+        logger.debug(msg)
     elif client_session_qparam is not None:
         ret_val = client_session_qparam
         msg = f"client-session from param: {ret_val} "
-        logger.info(msg)
+        logger.debug(msg)
     elif client_session_cookie is not None:
         ret_val = client_session_cookie
         msg = f"client-session from client-session cookie: {ret_val} "
         logger.info(msg)
-    elif pepweb_session_cookie is not None: # this is what Gavant client sets
-        s = urllib.parse.unquote(pepweb_session_cookie)
-        cookie_dict = json.loads(s)
-        ret_val = cookie_dict["authenticated"]["SessionId"]
-        msg = f"client-session from pepweb-session cookie: {ret_val} "
-        logger.info(msg)
+    #elif pepweb_session_cookie is not None: # this is what Gavant client sets
+        #s = urllib.parse.unquote(pepweb_session_cookie)
+        #cookie_dict = json.loads(s)
+        #ret_val = cookie_dict["authenticated"]["SessionId"]
+        #msg = f"client-session from pepweb-session cookie: {ret_val} "
+        #logger.info(msg)
     elif opas_session_cookie is not None and opas_session_cookie != 'None':
-        msg = f"client-session from stored Opas cookie {opas_session_cookie}"
-        logger.info(msg)       
+        msg = f"client-session from stored OPASSESSION cookie {opas_session_cookie}"
+        logger.debug(msg)       
         ret_val = opas_session_cookie
     else:
         msg = f"No client-session ID found."
@@ -105,19 +103,19 @@ def find_client_id(request: Request,
     if client_id is not None:
         ret_val = client_id
         msg = f"client-id from header: {ret_val} "
-        logger.info(msg)
+        logger.debug(msg)
     elif client_id_qparam is not None:
         ret_val = client_id_qparam
         msg = f"client-id from param: {ret_val} "
-        logger.info(msg)
+        logger.debug(msg)
     elif client_id_cookie is not None:
         ret_val = client_id_cookie
         msg = f"client-id from cookie: {ret_val} "
-        logger.info(msg)
+        logger.debug(msg)
     elif pepweb_session_cookie is not None:
         ret_val = 2 #  pep-web client
         msg = f"client-id inferred from pepweb-session cookie: {ret_val} "
-        logger.info(msg)
+        logger.debug(msg)
     else:
         ret_val = opasConfig.NO_CLIENT_ID # no client id
 
