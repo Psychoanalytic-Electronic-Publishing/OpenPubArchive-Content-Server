@@ -1579,18 +1579,16 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     except Exception as e:
         logger.error(f"Solr Param Assignment Error {e}")
 
-    # Add this only if it's not None, or else Solr returns an SAX Parse error!
-    #if solr_query_spec.limit is not None:
-        #solr_param_dict["rows"] = solr_query_spec.limit
-    #else:
-        #solr_param_dict["rows"] = 999
-
     # add additional facet parameters from faceSpec
     for key, value in solr_query_spec.facetSpec.items():
         if key[0:1] != "f":
             continue
         else:
             solr_param_dict[key] = value
+    
+    # Solr sometimes returns an SAX Parse error because of Nones!
+    # just in case, get rid of all Nones
+    solr_param_dict = {k: v for k, v in solr_param_dict.items() if v is not None}
 
     #allow core parameter here
     if solr_core is None:
