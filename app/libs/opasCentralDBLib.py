@@ -58,6 +58,8 @@ from contextlib import closing
 sys.path.append('../libs')
 sys.path.append('../config')
 
+from fastapi import Depends
+
 import opasConfig
 from opasConfig import normalize_val # use short form everywhere
 
@@ -936,19 +938,19 @@ class opasCentralDB(object):
                 if self.db is not None:  # don't need this check, but leave it.
                     cursor = self.db.cursor()
                     # now insert the session
-                    sql = """INSERT INTO api_sessions(session_id,
-                                                      user_id, 
-                                                      username,
-                                                      session_start, 
-                                                      session_expires_time,
-                                                      authenticated,
-                                                      admin,
-                                                      api_client_id,
-                                                      authorized_peparchive,
-                                                      authorized_pepcurrent
-                                              )
-                                              VALUES 
-                                                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s ) """
+                    sql = """REPLACE INTO api_sessions(session_id,
+                                                       user_id, 
+                                                       username,
+                                                       session_start, 
+                                                       session_expires_time,
+                                                       authenticated,
+                                                       admin,
+                                                       api_client_id,
+                                                       authorized_peparchive,
+                                                       authorized_pepcurrent
+            )
+            VALUES 
+              (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s ) """
                     try:
                         success = cursor.execute(sql, 
                                                  (session_info.session_id, 
@@ -1102,7 +1104,7 @@ class opasCentralDB(object):
                                 params=None,
                                 item_of_interest=None,
                                 return_status_code=0,
-                                api_endpoint_method="get", 
+                                api_endpoint_method="get",
                                 status_message=None):
         """
         Track endpoint calls
@@ -1116,6 +1118,7 @@ class opasCentralDB(object):
         else:
             try:
                 session_id = session_info.session_id
+                client_id = session_info.client_id
             except:
                 if self.session_id is None:
                     # no session open!
@@ -1123,6 +1126,7 @@ class opasCentralDB(object):
                     return ret_val
                 else:
                     session_id = self.session_id
+                    client_id = opasConfig.NO_CLIENT_ID
                     
             # Workaround for None in session id
             if session_id is None:
@@ -1144,7 +1148,7 @@ class opasCentralDB(object):
                                                  (%s, %s, %s, %s, %s, %s, %s)"""
 
                 #TODO: Later - Should be debug
-                logger.info(f"Session ID: {session_id} acccessed Session Endpoint {api_endpoint_id}")
+                logger.info(f"Session ID: {session_id} (client {client_id}) accessed Session Endpoint {api_endpoint_id}")
                 try:
                     ret_val = cursor.execute(sql, (session_id, 
                                                    api_endpoint_id, 

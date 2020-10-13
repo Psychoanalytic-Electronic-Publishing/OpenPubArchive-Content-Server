@@ -10,7 +10,7 @@ import opasConfig
 
 no_session = True
 import unitTestConfig
-from unitTestConfig import base_plus_endpoint_encoded
+from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestsWithoutClientSession(unittest.TestCase):
     """
@@ -44,7 +44,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
         response = requests.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == False)
+        assert(response.ok == True)
     
     def test_3_metadata_books(self):
         full_URL = base_plus_endpoint_encoded('/v2/Metadata/Books/')

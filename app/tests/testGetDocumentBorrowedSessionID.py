@@ -4,27 +4,26 @@
 import logging
 import opasAPISupportLib
 logger = logging.getLogger(__name__)
+import opasDocPermissions
 
 import unittest
 import requests
 
-# from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW, APIURL
 base_api = APIURL
 def base_plus_endpoint_encoded(endpoint):
     ret_val = base_api + endpoint
     return ret_val
 
-headers = {"client-id": "2"}
-headers["client-session"] = "00894BA7-CE12-47AC-AC5F-EBB96400BE43"
-
 class TestGetDocumentsTrySession(unittest.TestCase):
     """
     """
     def test_1_get_document(self):
+        # user will not be authenticated. Only abstract returned.
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/IJP.077.0217A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
-        response = requests.get(full_URL, headers=headers)
+        response = requests.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -35,11 +34,11 @@ class TestGetDocumentsTrySession(unittest.TestCase):
         abstr = response_set[0]["abstract"]
         dlen = len(document)
         alen = len(abstr)
-        assert(alen != dlen)
+        print (f"Abstract size: {alen}; Doc size: {dlen}; Document only returned abstract (indicates no user permissions): {alen==dlen}")
+        assert(alen == dlen)
         
     def test_2_get_document_another_user(self):
         # login
-        import opasDocPermissions
         session_info, pads_session_info = opasDocPermissions.pads_get_session()
         session_id = session_info.session_id        
         headers["client-session"] = session_id
@@ -60,6 +59,7 @@ class TestGetDocumentsTrySession(unittest.TestCase):
         abstr = response_set[0]["abstract"]
         dlen = len(document)
         alen = len(abstr)
+        print (f"Abstract size: {alen}; Doc size: {dlen}; Logged in user full document return: {alen!=dlen}")
         assert(alen != dlen)
         
 

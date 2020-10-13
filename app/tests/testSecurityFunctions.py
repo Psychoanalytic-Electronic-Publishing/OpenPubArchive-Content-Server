@@ -71,8 +71,7 @@ class TestSecurityFunctions(unittest.TestCase):
     def test_1c_get_search_logged_out(self): 
         global sessID
         opasDocPermissions.pads_logout(sessID)
-        sessID = ""
-        headers = '"client-session":"%s", "client-id": "0"' % sessID
+        headers = '"client-id": "0"' #  no session id
         test = 'response = requests.get(full_URL, headers={%s})' % headers
         setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=99')"
         timing = timeit.timeit(test, setup, number=1)

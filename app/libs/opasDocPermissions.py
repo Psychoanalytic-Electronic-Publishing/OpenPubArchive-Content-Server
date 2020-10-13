@@ -21,6 +21,13 @@ base = "https://padstest.zedra.net/PEPSecure/api"
 
 import opasCentralDBLib
 
+def verify_header(request, caller_name):
+    # Double Check for missing header test--ONLY checks headers, not other avenues used by find
+    client_session_from_header = request.headers.get(opasConfig.CLIENTSESSIONID, None)
+    client_id_from_header = request.headers.get(opasConfig.CLIENTID, None)
+    if client_session_from_header == None:
+        logger.error(f"***{caller_name}*** - No client-session supplied. Client-id (from header): {client_id_from_header}.")
+
 def find_client_session_id(request: Request,
                            response: Response,
                            client_session: str=None
@@ -39,7 +46,7 @@ def find_client_session_id(request: Request,
         client_session = request.headers.get(opasConfig.CLIENTSESSIONID, None)
     client_session_qparam = request.query_params.get(opasConfig.CLIENTSESSIONID, None)
     client_session_cookie = request.cookies.get(opasConfig.CLIENTSESSIONID, None)
-    pepweb_session_cookie = request.cookies.get("pepweb-session", None)
+    pepweb_session_cookie = request.cookies.get("pepweb_session", None)
     if pepweb_session_cookie is not None:
         # just verify that we can see it (they will need to chg the )
         logger.info("pep-web session cookie visible")
@@ -68,8 +75,8 @@ def find_client_session_id(request: Request,
         logger.info(msg)       
         ret_val = opas_session_cookie
     else:
-        msg = f"No client-session ID provided. No authorizations available."
-        logger.error(msg)       
+        msg = f"No client-session ID found."
+        logger.debug(msg)       
         ret_val = None
 
     ## save it in cookie in case they call without it.
@@ -78,6 +85,43 @@ def find_client_session_id(request: Request,
 
     return ret_val
 
+def find_client_id(request: Request,
+                   response: Response,
+                  ):
+    """
+    ALWAYS returns a client ID.
+    
+    Dependency for client_id:
+           gets it from header;
+           if not there, gets it from query param;
+           if not there, defaults to 0 (server is client)
+    """
+    #client_id = int(request.headers.get("client-id", '0'))
+    ret_val = 0
+    client_id = request.headers.get(opasConfig.CLIENTID, None)
+    client_id_qparam = request.query_params.get(opasConfig.CLIENTID, None)
+    client_id_cookie = request.cookies.get(opasConfig.CLIENTID, None)
+    pepweb_session_cookie = request.cookies.get("pepweb_session", None)
+    if client_id is not None:
+        ret_val = client_id
+        msg = f"client-id from header: {ret_val} "
+        logger.info(msg)
+    elif client_id_qparam is not None:
+        ret_val = client_id_qparam
+        msg = f"client-id from param: {ret_val} "
+        logger.info(msg)
+    elif client_id_cookie is not None:
+        ret_val = client_id_cookie
+        msg = f"client-id from cookie: {ret_val} "
+        logger.info(msg)
+    elif pepweb_session_cookie is not None:
+        ret_val = 2 #  pep-web client
+        msg = f"client-id inferred from pepweb-session cookie: {ret_val} "
+        logger.info(msg)
+    else:
+        ret_val = opasConfig.NO_CLIENT_ID # no client id
+
+    return ret_val
 
 def fix_pydantic_invalid_nones(response_data):
     try:
@@ -91,7 +135,7 @@ def fix_pydantic_invalid_nones(response_data):
 def update_sessioninfo_with_userinfo(pads_session_info, client_id):
     # now get userinfo
     session_id = pads_session_info.SessionId
-    userinfo = pads_get_userinfo(session_id)
+    userinfo = pads_get_userinfo(session_id, client_id)
     logger.info(f"update_sessioninfo_with_userinfo: Session ID from PaDS: {session_id}")
     logger.info(f"update_sessioninfo_with_userinfo: Userinfo from PaDS: {userinfo}")
     if userinfo is not None:
@@ -215,9 +259,13 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, cl
 
     return session_info, pads_session_info
 
-def pads_logout(session_id):
+def pads_logout(session_id, request: Request=None, response: Response=None):
     ret_val = False
     if session_id is not None:
+        if response is not None:
+            response.delete_cookie(key=opasConfig.OPASSESSIONID,path="/",
+                                   domain=localsecrets.COOKIE_DOMAIN)
+        
         full_URL = base + f"/v1/Users/Logout/?SessionId={session_id}"
         response = requests.post(full_URL, headers={"Content-Type":"application/json"})
         if response.ok:
@@ -229,22 +277,22 @@ def pads_logout(session_id):
 
     return ret_val
 
-def pads_get_userinfo(session_id):
+def pads_get_userinfo(session_id, client_id):
     ret_val = None
-    logger.debug(f"get_user_info for session {session_id}")
+    logger.debug(f"get_user_info for session {session_id} from client {client_id}")
     if session_id is not None:
         full_URL = base + f"/v1/Users" + f"?SessionID={session_id}"
         try:
             response = requests.get(full_URL, headers={"Content-Type":"application/json"})
         except Exception as e:
-            msg = f"Can't get user info from authorization server {e}. Non-logged in user for sessionId: {session_id}.  Message from PaDS: {padsinfo}. "
+            msg = f"No user info from authorization server {e}. Non-logged in user for sessionId: {session_id} client-id {client_id}.  Message from PaDS: {padsinfo}. "
             logger.error(msg)
         else:
             padsinfo = response.json()
             if response.ok:
                 ret_val = models.PadsUserInfo(**padsinfo)
             else:
-                logger.info(f"Non-logged in user for sessionId: {session_id}. Info from PaDS: {padsinfo}")
+                logger.info(f"No userinfo returned for non-logged in user for client-id {client_id} sessionId: {session_id}. Info from PaDS: {padsinfo}")
             
     return ret_val
 

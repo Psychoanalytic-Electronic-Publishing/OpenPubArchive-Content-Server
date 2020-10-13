@@ -685,9 +685,11 @@
     <xsl:apply-templates/>
     <p class="figure">
       <img alt="{@xlink:href}">
-        <xsl:attribute name="align">
-          <xsl:value-of select="@align"/>
-        </xsl:attribute>
+        <xsl:if test="@align">
+          <xsl:attribute name="style">
+            <xsl:value-of select="@align"/>
+          </xsl:attribute>
+        </xsl:if>
         <xsl:for-each select="alt-text">
           <xsl:attribute name="alt">
             <xsl:value-of select="normalize-space(string(.))"/>

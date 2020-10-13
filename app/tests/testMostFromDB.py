@@ -23,17 +23,6 @@ class TestMostFromDb(unittest.TestCase):
           with forced order in the names.
     
     """
-    def test_000_generator(self):
-        views = ocd.SQLSelectGenerator("select * from vw_stat_most_viewed")
-        count = 0
-        # print (f"Length of set to be exported: {len(list(views))}")
-        for n in views:
-            print (n)
-            count += 1
-            if count > 2:
-                break
-        assert(len(list(views)) >= 50)
-            
     def test_001_download(self):
         import codecs
         import csv
