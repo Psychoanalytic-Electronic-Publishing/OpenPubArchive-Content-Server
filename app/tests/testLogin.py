@@ -37,7 +37,7 @@ class TestLogin(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        assert(r["licenseInfo"]["responseInfo"]["loggedIn"] == False)
+        assert(r["authenticated"] == False)
 
         full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
         response = requests.get(full_URL)

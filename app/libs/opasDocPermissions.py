@@ -252,10 +252,36 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, cl
         pads_session_info = models.PadsSessionInfo()
         session_info = models.SessionInfo()
     else:
-        pads_response = pads_response.json()
-        pads_response = fix_pydantic_invalid_nones(pads_response)
-        session_info = set_session_info(pads_response, client_id)
-        pads_session_info = models.PadsSessionInfo(**pads_response)
+        if pads_response.ok:
+            pads_response = pads_response.json()
+            pads_response = fix_pydantic_invalid_nones(pads_response)
+            session_info = set_session_info(pads_response, client_id)
+            if isinstance(pads_response, str):
+                pads_session_info = models.PadsSessionInfo()
+                logger.error(f"Pads returned error string: {pads_response}")
+            else:
+                try:
+                    pads_session_info = models.PadsSessionInfo(**pads_response)
+                except Exception as e:
+                    logger.error(f"Pads return assignment error: {e}")
+                    pads_session_info = models.PadsSessionInfo()
+        elif pads_response.status_code == 500: # TODO: may want to limit this to error 500
+            # try without session id
+            logger.error(f"PaDS login returned {pads_response.status_code}. Trying without session id.")
+            session_info, pads_session_info = pads_login(username=username, password=password, client_id=client_id)
+        else:
+            pads_response = pads_response.json()
+            pads_response = fix_pydantic_invalid_nones(pads_response)
+            session_info = set_session_info(pads_response, client_id)
+            if isinstance(pads_response, str):
+                pads_session_info = models.PadsSessionInfo()
+                logger.error(f"Pads returned error string: {pads_response}")
+            else:
+                try:
+                    pads_session_info = models.PadsSessionInfo(**pads_response)
+                except Exception as e:
+                    logger.error(f"Pads return assignment error: {e}")
+                    pads_session_info = models.PadsSessionInfo()
 
     return session_info, pads_session_info
 
