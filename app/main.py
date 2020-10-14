@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1013.4.Alpha"
+__version__     = "2020.1014.1.Alpha"
 __status__      = "Development"
 
 """
@@ -4143,8 +4143,8 @@ def documents_document_fetch(response: Response,
                              return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                              similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                              search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
-                             limit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
-                             offset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),
+                             pagelimit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
+                             pageoffset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),
                              client_id:int=Depends(get_client_id), 
                              client_session:str= Depends(get_client_session)
                              ):
@@ -4153,8 +4153,18 @@ def documents_document_fetch(response: Response,
         <b>Returns the Document information, document summary (absract) and full-text - but conditionally.</b>
 
         Returns only the summary (abstract) if non-authorized for that document via the authorization/license server (e.g., PaDS)
-
+        
         Restricted to a single document return (partial documentID not permitted).
+
+        To have hits marked in the full-text context, you can include a search, matching the /v2/Database/Search parameters,
+           in the search parameter.  For example:
+               search: fulltext1="philosophical differences"
+
+        Parameter Additonal information
+            - A Page component to the documentID, e.g., PCT.011.0171A.P0172 _is ignored_.
+              This should be used by a client to jump to a page number instead.
+            - limit, offset have been renamed to pagelimit, pageoffset to avoid confusion with the equivalent search parameters
+            - page is an alternative to pageoffset, to use a page number from the document
 
     ## Return Type
        models.Documents
@@ -4192,18 +4202,20 @@ def documents_document_fetch(response: Response,
         #ret_val = view_a_glossary_entry(response, request, term_id=term_id, search=search, return_format=return_format)
         ret_val = documents_glossary_term(response, request, termIdentifier=term_id, return_format=return_format)
     else:
+        # notes:
+        #  if a page extension to the docid is supplied, it is ignored. The client should use that instead to jump to that page.
         m = re.match("(?P<docid>[A-Z]{2,12}\.[0-9]{3,3}[A-F]?\.(?P<pagestart>[0-9]{4,4})[A-Z]?)(\.P(?P<pagenbr>[0-9]{4,4}))?", documentID)
-        if m is not None:
-            documentID = m.group("docid")
-            page_number = m.group("pagenbr")
-            if page_number is not None:
-                try:
-                    page_start_int = int(m.group("pagestart"))
-                    page_number_int = int(page_number)
-                    offset = page_number_int - page_start_int
-                except Exception as e:
-                    logger.error(f"Page offset calc issue.  {e}")
-                    offset = 0
+        #if m is not None:
+            #documentID = m.group("docid")
+            #page_number = m.group("pagenbr")
+            #if page_number is not None:
+                #try:
+                    #page_start_int = int(m.group("pagestart"))
+                    #page_number_int = int(page_number)
+                    #pageoffset = page_number_int - page_start_int
+                #except Exception as e:
+                    #logger.error(f"Page offset calc issue.  {e}")
+                    #pageoffset = 0
 
         # TODO: do we really need to do this extra query?  Why not just let get_document do the work?
         # doc_info = opasAPISupportLib.document_get_info(documentID,
@@ -4229,8 +4241,8 @@ def documents_document_fetch(response: Response,
                                                                 solr_query_params,
                                                                 ret_format=return_format, 
                                                                 similar_count=similarcount, 
-                                                                page_offset=offset, # starting page
-                                                                page_limit=limit, # number of pages
+                                                                page_offset=pageoffset, # starting page
+                                                                page_limit=pagelimit, # number of pages
                                                                 page=page, # specific page number request (rather than offset),
                                                                 req_url=request.url._url, 
                                                                 session_info=session_info

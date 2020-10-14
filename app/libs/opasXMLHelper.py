@@ -106,6 +106,18 @@ def read_file(filename):
 
     return xml_data
 
+def xml_remove_tags_from_xmlstr(xmlstr, remove_tags=[]):
+    ret_val = xmlstr
+    try:
+        root = etree.fromstring(xmlstr.encode()) # encode fixes lxml error 'Unicode strings with encoding declaration are not supported...'
+        xml_remove_tags(root, remove_tags=remove_tags)
+        ret_val = etree.tostring(root)
+        ret_val = ret_val.decode("UTF8")
+    except Exception as e:
+        logger.error(f"Could not remove tags {remove_tags}. Exception {e}")
+
+    return ret_val
+
 def xml_remove_tags(root, remove_tags=[]):
     ret_val = True
     try:
@@ -114,7 +126,7 @@ def xml_remove_tags(root, remove_tags=[]):
             for n in remove_these:
                 n.getparent().remove(n)
     except Exception as e:
-        logger.error(f"Error removing requested tags for xml_get_pages: {e}")
+        logger.error(f"Error removing requested tags: {e}")
         ret_val = False
         
     return ret_val
@@ -656,6 +668,9 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
     
         try:
             root = xmlstr_to_etree(xmlstr)
+            page_count = len(root.xpath("//pb"))
+            if offset2 > page_count:
+                offset2 = page_count - 2
             xml_remove_tags(root, remove_tags=remove_tags)
         except Exception as e:
             logger.error(f"xml conversion (extract) error: {e}. Returning full xml instance")
@@ -1226,8 +1241,8 @@ def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
     else:
         try:
             if isinstance(elem_or_xmlstr, str):
-                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
-                elem = etree.fromstring(elem_or_xmlstr, parser)
+                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)
+                elem = etree.fromstring(elem_or_xmlstr.encode("utf8"), parser)
             else:
                 elem = copy.copy(elem_or_xmlstr) # etree will otherwise change calling parm elem_or_xmlstr when stripping
         except Exception as err:

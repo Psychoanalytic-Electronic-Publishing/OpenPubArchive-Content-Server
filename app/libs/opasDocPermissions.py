@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
+import starlette.status as httpCodes
 
 # import localsecrets
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
@@ -205,7 +206,7 @@ def set_session_info(response, client_id):
 
     return ret_val
     
-def pads_get_session(session_id=None, client_id=opasConfig.NO_CLIENT_ID):
+def pads_get_session(session_id=None, client_id=opasConfig.NO_CLIENT_ID, retry=True):
     """
     Get a session ID from the auth server (e.g., PaDS).  This is how PaDS does it.
     """
@@ -221,11 +222,18 @@ def pads_get_session(session_id=None, client_id=opasConfig.NO_CLIENT_ID):
         pads_session_info = models.PadsSessionInfo()
         session_info = models.SessionInfo()
     else:
-        pads_session_info = pads_session_info.json()
-        pads_session_info = fix_pydantic_invalid_nones(pads_session_info)
-        # Save or update the data in the database
-        session_info = set_session_info(pads_session_info, client_id)
-        logger.info(f"Fetched session info {session_info} from PaDS.")
+        if pads_session_info.status_code == httpCodes.HTTP_500_INTERNAL_SERVER_ERROR:
+            # try once without the session ID
+            if retry == True:
+                session_info, pads_session_info = pads_get_session(client_id=client_id, retry=False)
+            else:
+                logger.error(f"PaDS error 500")
+        else:
+            pads_session_info = pads_session_info.json()
+            pads_session_info = fix_pydantic_invalid_nones(pads_session_info)
+            # Save or update the data in the database
+            session_info = set_session_info(pads_session_info, client_id)
+            logger.info(f"Fetched session info {session_info} from PaDS.")
 
     return session_info, pads_session_info
 

@@ -27,7 +27,8 @@ class TestGetDocuments(unittest.TestCase):
     
     """
     def test_0_get_document_with_hits(self):
-        search = 'search=fulltext1=%22Evenly%20Suspended%20Attention%22~25&viewperiod=4&formatrequested=HTML&highlightlimit=5&facetmincount=1&facetlimit=15&sort=score%20desc&limit=15'
+        search = 'search=?fulltext1=%22Evenly%20Suspended%20Attention%22~25&viewperiod=4&formatrequested=HTML&highlightlimit=5&facetmincount=1&facetlimit=15&sort=score%20desc&limit=15'
+        # search = 'search=?fulltext1=%22Evenly%20Suspended%20Attention%22~25'
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171A?{search}')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
@@ -35,9 +36,8 @@ class TestGetDocuments(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"]
-        doc = response_set[0]["document"]
-        matches = re.findall("\<span class\=\'searchhit\'\>(.*?)\</span\>", doc)
-        assert(len(matches) >= 90)
+        docitem = response_set[0]
+        assert(docitem["termCount"] >= 90)
 
     def test_1_get_document(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/IJP.077.0217A/')

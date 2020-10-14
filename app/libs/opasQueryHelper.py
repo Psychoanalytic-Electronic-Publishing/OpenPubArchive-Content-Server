@@ -1787,6 +1787,18 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                                             page_offset=solr_query_spec.page_offset,
                                                                             page_limit=solr_query_spec.page_limit,
                                                                             documentListItem=documentListItem)
+
+                        #  test remove glossary..for my tests, not for stage/production code.
+                        # Note: the question mark before the first field in search= matters
+                        #  e.g., http://development.org:9100/v2/Documents/Document/JCP.001.0246A/?return_format=XML&search=%27?fulltext1="Evenly%20Suspended%20Attention"~25&limit=10&facetmincount=1&facetlimit=15&sort=score%20desc%27
+                        # documentListItem.document = opasxmllib.xml_remove_tags_from_xmlstr(documentListItem.document,['impx']) 
+                        try:
+                            matches = re.findall(f"class='searchhit'|{opasConfig.HITMARKERSTART}", documentListItem.document)
+                            documentListItem.term = f"SearchHits({solr_query_spec.solrQuery.searchQ})"
+                            documentListItem.termCount = len(matches)
+                        except Exception as e:
+                            logger.warning(f"Exception.  Could not count matches. {e}")
+                        
                     else: # by virtue of not calling that...
                         # no full-text if accessLimited or offsite article
                         # free up some memory, since it may be large
@@ -2149,7 +2161,9 @@ def get_fulltext_from_search_results(result,
         if child_xml is not None:
             child_xml = opasxmllib.xml_elem_or_str_to_text(child_xml, default_return=text_xml)
     elif format_requested_ci == "xml":
-        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+        # don't do this for XML
+        pass
+        # text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
         # child_xml = child_xml
 
     documentListItem.document = text_xml
