@@ -431,6 +431,16 @@ def get_term_list_spec(termlist):
 
 #---------------------------------------------------------------------------------------------------------
 # this function lets various endpoints like search, searchanalysis, and document, share this large parameter set.
+# IMPORTANT: Parameter names here must match the endpoint parameters since they are mapped in main using
+# 
+#            argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
+#            solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
+# and then resubmitted to solr for such things as document retrieval with hits in context marked.
+# 
+# Example:
+#    http://development.org:9100/v2/Documents/Document/JCP.001.0246A/?return_format=HTML&search=?fulltext1=%22Evenly%20Suspended%20Attention%22~25&viewperiod=4&formatrequested=HTML&highlightlimit=5&facetmincount=1&facetlimit=15&sort=score%20desc&limit=15
+# 
+# 
 def parse_search_query_parameters(search=None,             # url based parameters, e.g., from previous search to be parsed
                                   # model based query specification, allows full specification 
                                   # of words/thes in request body, component at a time, per model
@@ -469,10 +479,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   facetoffset=0,
                                   facetspec: dict=None, 
                                   abstract_requested: bool=None,
-                                  format_requested:str=None,
+                                  formatrequested:str=None,
                                   return_field_set=None, 
                                   sort=None,
-                                  highlighting_max_snips:int=None, 
+                                  highlightlimit:int=None, 
                                   extra_context_len=None,
                                   limit=None,
                                   offset=None, 
@@ -525,6 +535,12 @@ def parse_search_query_parameters(search=None,             # url based parameter
     artLevel = 1 # Doc query, sets to 2 if clauses indicate child query
     search_q_prefix = ""
     search_result_explanation = None
+    # IMPORTANT: 
+    # These parameters need match the query line endpoint parameters for search, 
+    #   but had been renamed, causing a problem.  So I've put the parameters back to the endpoint query parameter
+    #   names, and converted them here to the new, cleaner, names.
+    highlighting_max_snips = highlightlimit
+    format_requested = formatrequested   
     
     # watch for some explicit None parameters which override defaults
     if similar_count is None:

@@ -73,3 +73,4 @@ app/libs/styles/xxxpepkbd3-abstract-html.xslt
 app/updateSolrViewData.zip
 # Include  pdfs in the schemas folder
 !*/schemas/*.pdf
+*.odt#
