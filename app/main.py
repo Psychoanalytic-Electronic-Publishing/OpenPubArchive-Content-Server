@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1013.2.Alpha"
+__version__     = "2020.1013.4.Alpha"
 __status__      = "Development"
 
 """
@@ -2003,7 +2003,7 @@ async def database_search_paragraphs(response: Response,
                                                       citecount=citecount,
                                                       viewcount=viewcount,
                                                       viewperiod=viewperiod,
-                                                      highlighting_max_snips=highlightlimit, 
+                                                      highlightlimit=highlightlimit, 
                                                       facetfields=facetfields, 
                                                       facetmincount=facetmincount,
                                                       facetlimit=facetlimit,
@@ -2199,7 +2199,7 @@ async def database_search_v3(
                                                       citecount=citecount,
                                                       viewcount=viewcount,
                                                       viewperiod=viewperiod,
-                                                      highlighting_max_snips=highlightlimit, 
+                                                      highlightlimit=highlightlimit, 
                                                       facetfields=facetfields,
                                                       facetmincount=facetmincount,
                                                       facetlimit=facetlimit,
@@ -2375,7 +2375,7 @@ async def database_search_v2(response: Response,
                                                       endyear=endyear,
                                                       citecount=citecount,
                                                       viewcount=viewcount,
-                                                      highlighting_max_snips=highlightlimit, 
+                                                      highlightlimit=highlightlimit, 
                                                       viewperiod=viewperiod,
                                                       facetfields=facetfields,
                                                       facetmincount=facetmincount,

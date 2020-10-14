@@ -16,7 +16,7 @@ This library is meant to hold parsing and other functions which support query tr
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1004.1"
+__version__     = "2020.1013.1"
 __status__      = "Development"
 
 import re
@@ -482,7 +482,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   formatrequested:str=None,
                                   return_field_set=None, 
                                   sort=None,
-                                  highlightlimit:int=None, 
+                                  highlightlimit:int=None, # same as highlighting_max_snips, but matches params (REQUIRED TO MATCH!)
                                   extra_context_len=None,
                                   limit=None,
                                   offset=None, 
@@ -539,7 +539,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     # These parameters need match the query line endpoint parameters for search, 
     #   but had been renamed, causing a problem.  So I've put the parameters back to the endpoint query parameter
     #   names, and converted them here to the new, cleaner, names.
-    highlighting_max_snips = highlightlimit
+    # highlighting_max_snips = highlightlimit
     format_requested = formatrequested   
     
     # watch for some explicit None parameters which override defaults
@@ -1146,13 +1146,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     # Turn off highlighting if it's not needed, e.g, when there's no text search, e.g., a filter only, like mostcited and mostviewed calls
     # As of 2020-09-28, allow limit to be set here (via params)
-    if highlighting_max_snips is not None: # otherwise defaults to opasConfig.DEFAULT_MAX_KWIC_RETURNS (see SolrQueryOpts)
-        if highlighting_max_snips == 0:
+    if highlightlimit is not None: # otherwise defaults to opasConfig.DEFAULT_MAX_KWIC_RETURNS (see SolrQueryOpts)
+        if highlightlimit == 0: # max highlights to maark
             # solr wants a string boolean here (JSON style)
             solr_query_spec.solrQueryOpts.hl = "false"
         else:
             solr_query_spec.solrQueryOpts.hl = "true"
-            solr_query_spec.solrQueryOpts.hlMaxKWICReturns = highlighting_max_snips
+            solr_query_spec.solrQueryOpts.hlMaxKWICReturns = highlightlimit
             
     solr_query_spec.abstractReturn = abstract_requested
     solr_query_spec.returnFormat = format_requested # HTML, TEXT_ONLY, XML
@@ -1216,7 +1216,7 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
                         facet_fields = None,
                         facet_mincount = None, 
                         extra_context_len = None,
-                        highlighting_max_snips = None,
+                        highlightlimit = None,
                         sort= None,
                         limit = None, 
                         offset = None,
@@ -1371,8 +1371,8 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is 0 or solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is None:
         solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = solr_query_spec.solrQueryOpts.hlFragsize  
         
-    if highlighting_max_snips is not None:
-        solr_query_spec.solrQueryOpts.hlSnippets = highlighting_max_snips 
+    if highlightlimit is not None:
+        solr_query_spec.solrQueryOpts.hlSnippets = highlightlimit # highlighting_max_snips 
        
     ret_val = solr_query_spec
     
@@ -1397,7 +1397,7 @@ def search_text(query,
                 facet_fields = None,
                 facet_mincount = 1, 
                 extra_context_len = None,
-                highlighting_max_snips = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
+                highlightlimit = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
                 sort="score desc",
                 limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
                 offset = 0,
@@ -1439,7 +1439,7 @@ def search_text(query,
                                 facet_fields = facet_fields,
                                 facet_mincount=facet_mincount,
                                 extra_context_len=extra_context_len, 
-                                highlighting_max_snips=highlighting_max_snips,
+                                highlightlimit=highlightlimit,
                                 sort = sort,
                                 limit = limit,
                                 offset = offset,

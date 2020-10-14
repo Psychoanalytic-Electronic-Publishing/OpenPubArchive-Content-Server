@@ -253,7 +253,7 @@ class TestMost(unittest.TestCase):
                                                           author=None,
                                                           title=None,
                                                           startyear=None,
-                                                          highlighting_max_snips=0, 
+                                                          highlightlimit=0, 
                                                           abstract_requested=False,
                                                           similar_count=0,
                                                           limit=200
@@ -275,7 +275,7 @@ class TestMost(unittest.TestCase):
                                                           author=None,
                                                           title=None,
                                                           startyear=None,
-                                                          highlighting_max_snips=0, 
+                                                          highlightlimit=0, 
                                                           abstract_requested=False,
                                                           similar_count=0,
                                                           limit=200
