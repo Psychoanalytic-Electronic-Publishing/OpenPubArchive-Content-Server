@@ -2062,6 +2062,7 @@ def get_fulltext_from_search_results(result,
                                      format_requested="HTML"):
 
     child_xml = None
+    offset = 0
     if documentListItem.sourceTitle is None:
         documentListItem = get_base_article_info_from_search_result(result, documentListItem)
         
@@ -2098,9 +2099,6 @@ def get_fulltext_from_search_results(result,
             offset = page_offset
             reduce = True
 
-        #if page_limit is not None:
-            #limit = page_limit
-
         if reduce == True or page_limit is not None:
             # extract the requested pages
             try:
@@ -2111,6 +2109,7 @@ def get_fulltext_from_search_results(result,
                                                     inside="body",
                                                     env="body")
                 temp_xml = temp_xml[0]
+                
             except Exception as e:
                 logger.error(f"Page extraction from document failed. Error: {e}.  Keeping entire document.")
             else: # ok

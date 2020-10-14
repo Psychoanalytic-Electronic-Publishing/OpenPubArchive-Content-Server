@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import re
 import logging
 import opasAPISupportLib
 logger = logging.getLogger(__name__)
@@ -25,6 +26,19 @@ class TestGetDocuments(unittest.TestCase):
           with forced order in the names.
     
     """
+    def test_0_get_document_with_hits(self):
+        search = 'search=fulltext1=%22Evenly%20Suspended%20Attention%22~25&viewperiod=4&formatrequested=HTML&highlightlimit=5&facetmincount=1&facetlimit=15&sort=score%20desc&limit=15'
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171A?{search}')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"]
+        doc = response_set[0]["document"]
+        matches = re.findall("\<span class\=\'searchhit\'\>(.*?)\</span\>", doc)
+        assert(len(matches) >= 90)
+
     def test_1_get_document(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/IJP.077.0217A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
