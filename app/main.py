@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1018.1.Alpha"
+__version__     = "2020.1019.1.Alpha"
 __status__      = "Development"
 
 """
@@ -3371,14 +3371,14 @@ def metadata_videos(response: Response,
 @app.get("/v2/Metadata/Journals/", response_model=models.JournalInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_JOURNALS)
 def metadata_journals(response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                #this param changed to sourcecode in v2 from journal in v1 (sourcecode is more accurately descriptive since this includes book series and video series)
-                                sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                                sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
-                                limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                                offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                                client_id:int=Depends(get_client_id), 
-                                client_session:str= Depends(get_client_session)
-                                ):
+                      #this param changed to sourcecode in v2 from journal in v1 (sourcecode is more accurately descriptive since this includes book series and video series)
+                      sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                      sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
+                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                      client_id:int=Depends(get_client_id), 
+                      client_session:str= Depends(get_client_session)
+                      ):
     """
     ## Function
     <b>Get a complete list of journal names</b>
@@ -3514,13 +3514,13 @@ def metadata_volumes(response: Response,
 @app.get("/v2/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
 def metadata_books(response: Response,
                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                             sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                             sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
-                             limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                             offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                             client_id:int=Depends(get_client_id), 
-                             #client_session:str= Depends(get_client_session)
-                             ):
+                   sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                   sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
+                   limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                   client_id:int=Depends(get_client_id), 
+                   #client_session:str= Depends(get_client_session)
+                   ):
     """
     ## Function
        <b>Get a list of Book names equivalent to what is displayed on the original PEP-Web in the books tab.</b>
@@ -3731,7 +3731,7 @@ def authors_publications(response: Response,
         ret_val = opasAPISupportLib.authors_get_author_publications(author_name_to_check, limit=limit, offset=offset)
     except Exception as e:
         response.status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR
-        status_message = f"Error: {e}"
+        status_message = f"Internal Server Error: {e}"
         logger.error(status_message)
         raise HTTPException(
             status_code=response.status_code,
@@ -4737,7 +4737,7 @@ def database_word_wheel(response: Response,
                 detail=status_message
             )
         except Exception as e:
-            status_message = f"Error: {e}"
+            status_message = f"Internal Server Error: {e}"
             logger.error(status_message)
             raise HTTPException(
                 status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -4767,5 +4767,5 @@ if __name__ == "__main__":
     print (f"Running in Python {sys.version_info[0]}.{sys.version_info[1]}")
     print (f"Configuration used: {CONFIG}")
     uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=False, log_level="warning")
-        # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
+    # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
     print ("Now we're exiting...")

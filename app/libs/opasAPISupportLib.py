@@ -800,7 +800,18 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         pep_code = code
 
     results = solr_docs.query(q = f"art_sourcecode:{pep_code} && {field}:{search_val}",  
-                              fields = "art_id, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, title, art_author_id, art_citeas_xml, art_info_xml",
+                              fields = """art_id,
+                                          art_vol,
+                                          art_year,
+                                          art_iss,
+                                          art_iss_title,
+                                          art_newsecnm,
+                                          art_pgrg,
+                                          title,
+                                          art_authors,
+                                          art_authors_mast,
+                                          art_citeas_xml,
+                                          art_info_xml""",
                               sort="art_year, art_pgrg", sort_order="asc",
                               rows=limit, start=offset
                              )
@@ -818,11 +829,12 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     document_item_list = []
     for result in results.results:
         # transform authorID list to authorMast
-        authorIDs = result.get("art_author_id", None)
-        if authorIDs is None:
-            authorMast = None
+        author_ids = result.get("art_authors", None)
+        if author_ids is None:
+            # try this, instead of abberrant behavior in alpha of display None!
+            authorMast = result.get("art_authors_mast", "")
         else:
-            authorMast = opasgenlib.derive_author_mast(authorIDs)
+            authorMast = opasgenlib.derive_author_mast(author_ids)
 
         pgRg = result.get("art_pgrg", None)
         pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
@@ -1975,7 +1987,7 @@ def search_analysis( query_list,
                      def_type = None,
                      # summaryFields="art_id, art_sourcecode, art_vol, art_year, art_iss, 
                      # art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
-                         summary_fields="art_id",                    
+                     summary_fields="art_id",                    
                      # highlightFields='art_title_xml, abstract_xml, summaries_xml, art_authors_xml, text_xml', 
                      full_text_requested=False, 
                      user_logged_in=False,
@@ -2108,13 +2120,13 @@ def search_analysis( query_list,
         #rowCount += 1
         #print ("Analysis: Term %s, matches %s" % ("combined: ", results._numFound))
 
-    response_info = models.ResponseInfo( count = rowCount,
-                                         fullCount = rowCount,
-                                         listType = "srclist",
-                                         fullCountComplete = True,
-                                         request=f"{req_url}",
-                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
-                                         )
+    response_info = models.ResponseInfo(count = rowCount,
+                                        fullCount = rowCount,
+                                        listType = "srclist",
+                                        fullCountComplete = True,
+                                        request=f"{req_url}",
+                                        timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
+                                        )
 
     response_info.count = len(return_item_list)
 
