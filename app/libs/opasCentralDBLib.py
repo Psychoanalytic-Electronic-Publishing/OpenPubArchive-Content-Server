@@ -771,6 +771,13 @@ class opasCentralDB(object):
             res = curs.execute(sql)
             if res == 1:
                 session = curs.fetchone()
+                try:
+                    if session["username"] is None:
+                        session["username"] = opasConfig.USER_NOT_LOGGED_IN_NAME
+                except Exception as e:
+                    session["username"] = opasConfig.USER_NOT_LOGGED_IN_NAME
+                    logger.error(f"Username is None. {e}")
+
                 # sessionRecord
                 ret_val = SessionInfo(**session)
             else:
