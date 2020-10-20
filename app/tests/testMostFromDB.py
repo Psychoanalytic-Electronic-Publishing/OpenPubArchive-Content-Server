@@ -211,6 +211,7 @@ class TestMostFromDb(unittest.TestCase):
         response = requests.get(full_URL, headers=headers) # limit is trick to get it to return #
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
+        r = response.json()
         
 if __name__ == '__main__':
     unittest.main()

@@ -466,6 +466,10 @@ def get_access_limitations(doc_id,
                     # if this is True, then as long as session_info is valid, it won't need to check again
                     # if accessLimited is ever True again, e.g., now a different type of document, it will check again.
                     # should markedly decrease the number of calls to PaDS to check.
+                    # check for conflicts
+                    if session_info.authorized_peparchive == True and resp.HasArchiveAccess == False:
+                        logger.error(f"Permission Conflict: session {session_info.session_id} PEPArchive authorized; PaDS says No. PaDS message: {resp.ReasonStr} ")
+                        
                     if resp.HasArchiveAccess == True:
                         session_info.authorized_peparchive = True
                         ret_val.accessLimited = False

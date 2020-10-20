@@ -9,6 +9,7 @@ Version: 2020-08-24
 import os.path
 import sys
 import localsecrets
+from localsecrets import use_server
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
@@ -26,8 +27,11 @@ base_api = APIURL
 # or override below.
 # base_api = "http://stage.pep.gvpi.net/api"
 #base_api = "http://127.0.0.1:9100" # local server without naming
-#base_api = "http://api.psybrarian.com" # remote AWS server (one of them)
-base_api = "http://development.org:9100" #  local server (Scilab)
+# base_api = "http://api.psybrarian.com" # remote AWS server (one of them)
+if use_server == 0:
+    base_api = "http://development.org:9100" #  local server (Scilab)
+else:
+    base_api = "http://stage-api.pep-web.rocks" # remote AWS server (one of them)
 
 ALL_SOURCES_COUNT = 191
 # this must be set to the number of unique journals for testing to pass.

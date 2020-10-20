@@ -622,6 +622,7 @@ async def reports(response: Response,
                                 api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_GET, 
                                 session_info=session_info, 
                                 params=request.url._url,
+                                return_status_code = response.status_code,
                                 status_message=opasCentralDBLib.API_STATUS_SUCCESS
                                 )
 
@@ -686,19 +687,21 @@ async def client_save_configuration(response: Response,
                                           client_id=client_id, 
                                           client_configuration=configuration,
                                           replace=False)
-    if ret_val not in (200, 201):
+    status_code = ret_val
+    if status_code not in (200, 201):
         raise HTTPException(
-            status_code=ret_val, 
+            status_code=status_code, 
             detail=msg
         )
     else:
         ret_val = configuration
-
+        
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_CLIENT_CONFIGURATION,
                                 api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_POST, 
                                 session_info=session_info, 
                                 params=request.url._url,
-                                status_message=opasCentralDBLib.API_STATUS_SUCCESS
+                                status_message=opasCentralDBLib.API_STATUS_SUCCESS, 
+                                return_status_code = status_code
                                 )
     return ret_val
 
@@ -756,14 +759,18 @@ async def client_update_configuration(response: Response,
     ret_val = None
 
     #if 1: # for now, just use API_KEY as the requirement.  Later admin?  if ocd.verify_admin(session_info):
+    try:
+        status_code, msg = ocd.save_client_config(session_id=session_info.session_id,
+                                                  client_id=client_id, 
+                                                  client_configuration=configuration,
+                                                  replace=True)
+    except Exception as e:
+        logger.error(f"Trapped error saving client config: {e}")
 
-    status, msg = ocd.save_client_config(session_id=session_info.session_id,
-                                         client_id=client_id, 
-                                         client_configuration=configuration,
-                                         replace=True)
-    if status not in (200, 201):
+    if status_code not in (200, 201):
+        logger.error(f"HTTPException Called: {status_code}")
         raise HTTPException(
-            status_code=status, # HTTP_xxx 
+            status_code=status_code, # HTTP_xxx
             detail=msg
         )
     else:
@@ -773,7 +780,8 @@ async def client_update_configuration(response: Response,
                                 api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_PUT, 
                                 session_info=session_info, 
                                 params=request.url._url,
-                                status_message=opasCentralDBLib.API_STATUS_SUCCESS
+                                status_message=opasCentralDBLib.API_STATUS_SUCCESS, 
+                                return_status_code = status_code
                                 )
     return ret_val
 
@@ -828,16 +836,20 @@ async def client_get_configuration(response: Response,
 
 
     if ret_val is None:
+        status_code = httpCodes.HTTP_404_NOT_FOUND
         raise HTTPException(
             status_code=httpCodes.HTTP_404_NOT_FOUND, 
             detail=ERR_MSG_CONFIG_NOT_FOUND
-        )        
+        )
+    else:
+        status_code = httpCodes.HTTP_200_OK
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_CLIENT_CONFIGURATION,
                                 api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_GET, 
                                 session_info=session_info, 
                                 params=request.url._url,
-                                status_message=opasCentralDBLib.API_STATUS_SUCCESS
+                                status_message=opasCentralDBLib.API_STATUS_SUCCESS, 
+                                return_status_code = status_code
                                 )
 
     #  return it.
@@ -1682,6 +1694,7 @@ async def database_advanced_search(response: Response,
                                 api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_POST, 
                                 session_info=session_info, 
                                 params=request.url._url,
+                                return_status_code = ret_status[0], 
                                 status_message=statusMsg
                                 )
 
@@ -1862,6 +1875,8 @@ async def database_extendedsearch(response: Response,
                         item = models.SolrReturnItem(solrRet=n)
                         solr_ret_list_items.append(item)
 
+                    ret_status = httpCodes.HTTP_200_OK
+
             except solr.SolrException as e:
                 #if e.httpcode == 400:
                     #ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input {e.reason}")
@@ -1897,6 +1912,7 @@ async def database_extendedsearch(response: Response,
             ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
                                         session_info=session_info, 
                                         params=request.url._url,
+                                        return_status_code = ret_status, 
                                         status_message=statusMsg
                                         )
 
@@ -1975,7 +1991,6 @@ async def database_search_paragraphs(response: Response,
     opasDocPermissions.verify_header(request, "SearchParas")
     log_endpoint(request, client_id=client_id, session_id=client_session)
 
-
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     # session_id = session_info.session_id 
@@ -2050,6 +2065,7 @@ async def database_search_paragraphs(response: Response,
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
                                 session_info=session_info, 
                                 params=request.url._url,
+                                return_status_code = ret_status[0], 
                                 status_message=statusMsg
                                 )
 
@@ -2250,6 +2266,7 @@ async def database_search_v3(
                                 api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_POST, 
                                 session_info=session_info,
                                 params=request.url._url,
+                                return_status_code = ret_status[0], 
                                 status_message=statusMsg
                                 )
 
@@ -2425,6 +2442,7 @@ async def database_search_v2(response: Response,
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
                                 session_info=session_info, 
                                 params=request.url._url,
+                                return_status_code = ret_status[0], 
                                 status_message=statusMsg
                                 )
 
@@ -2435,32 +2453,32 @@ async def database_search_v2(response: Response,
 @app.get("/v2/Database/SearchAnalysis/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ANALYSIS)  #  remove validation response_model=models.DocumentList, 
 def database_searchanalysis_v2(response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                            fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
-                            paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
-                            parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
-                            synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
-                            # filters (Solr query filter)
-                            sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
-                            sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2),
-                            sourcelangcode: str=Query(None, title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE), 
-                            volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
-                            issue: str=Query(None, title=opasConfig.TITLE_ISSUE, description=opasConfig.DESCRIPTION_ISSUE),
-                            author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
-                            title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
-                            articletype: str=Query(None, title=opasConfig.TITLE_ARTICLETYPE, description=opasConfig.DESCRIPTION_ARTICLETYPE),
-                            startyear: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
-                            endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
-                            citecount: str=Query(None, title=opasConfig.TITLE_CITECOUNT, description=opasConfig.DESCRIPTION_CITECOUNT),   
-                            viewcount: int=Query(0, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),    
-                            viewperiod: int=Query(4, title=opasConfig.TITLE_VIEWPERIOD, description=opasConfig.DESCRIPTION_VIEWPERIOD),     
-                            # return set control
-                            facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
-                            sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                            limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                            offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                            #client_id:int=Depends(get_client_id), 
-                            #client_session:str= Depends(get_client_session)
-                            ):
+                               fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
+                               paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
+                               parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
+                               synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
+                               # filters (Solr query filter)
+                               sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
+                               sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2),
+                               sourcelangcode: str=Query(None, title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE), 
+                               volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
+                               issue: str=Query(None, title=opasConfig.TITLE_ISSUE, description=opasConfig.DESCRIPTION_ISSUE),
+                               author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
+                               title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
+                               articletype: str=Query(None, title=opasConfig.TITLE_ARTICLETYPE, description=opasConfig.DESCRIPTION_ARTICLETYPE),
+                               startyear: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
+                               endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
+                               citecount: str=Query(None, title=opasConfig.TITLE_CITECOUNT, description=opasConfig.DESCRIPTION_CITECOUNT),   
+                               viewcount: int=Query(0, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),    
+                               viewperiod: int=Query(4, title=opasConfig.TITLE_VIEWPERIOD, description=opasConfig.DESCRIPTION_VIEWPERIOD),     
+                               # return set control
+                               facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
+                               sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                               limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                               offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                               #client_id:int=Depends(get_client_id), 
+                               #client_session:str= Depends(get_client_session)
+                               ):
     """
     ## Function
        <b>Mirror function to search to request an analysis of the search parameters.</b>
@@ -4582,7 +4600,7 @@ def documents_downloads(response: Response,
                                                                  flex_fs=flex_fs,
                                                                 )    
 
-    error_status_message = f" The requested document {filename} could not be returned."
+    error_status_message = f" The requested document {documentID} could not be returned."
 
     if filename is None:
         response.status_code = status.httpcode
