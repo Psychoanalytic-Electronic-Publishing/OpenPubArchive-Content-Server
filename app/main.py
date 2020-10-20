@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1019.2.Alpha"
+__version__     = "2020.1020.1.Alpha"
 __status__      = "Development"
 
 """
@@ -310,9 +310,14 @@ async def get_api_key(api_key_query: str = Security(api_key_query),
 # ############################################################################
 
 def log_endpoint(request, client_id=None, session_id=None, path_params=True):
-    logger.info(f"***[{client_id}:{session_id}]:{request['path']}***")
-    if path_params and request.path_params != {}:
-        logger.info(f"....{request.path_params}")
+    if client_id == 3: # PaDS, sends a lot of requests at once, so mute
+        logger.debug(f"***[{client_id}:{session_id}]:{request['path']}***")
+        if path_params and request.path_params != {}:
+            logger.debug(f"....{request.path_params}")
+    else:
+        logger.info(f"***[{client_id}:{session_id}]:{request['path']}***")
+        if path_params and request.path_params != {}:
+            logger.info(f"....{request.path_params}")
 
 def log_endpoint_time(request, ts): 
     if opasConfig.LOG_CALL_TIMING:
@@ -442,7 +447,7 @@ async def reports(response: Response,
                   userid:str=Query(None, title="Global User ID", description="Filter by this common (global) system userid"), 
                   startdate: str=Query(None, title=opasConfig.TITLE_STARTDATE, description=opasConfig.DESCRIPTION_STARTDATE), 
                   enddate: str=Query(None, title=opasConfig.TITLE_ENDDATE, description=opasConfig.DESCRIPTION_ENDDATE),
-                  limit: int=Query(None, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                  limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                   download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
                   client_id:int=Depends(get_client_id), 
@@ -493,9 +498,6 @@ async def reports(response: Response,
     if userid is not None:
         userid_condition = f" AND global_uid={userid}"
 
-    #if username is not None:
-        #username_condition = f" AND username={username}"
-
     try:
         if enddate is not None:
             enddate = enddate.replace("-", "")
@@ -528,30 +530,52 @@ async def reports(response: Response,
 
     report_view = None
     header = None
-    standard_filter = "endpoint rlike '.*Search' " #AND params not like 'http://development.org:9100/v%' "
-    if report == models.ReportTypeEnum.sessionLog:
+    if report == models.ReportTypeEnum.documentViewLog:
+        standard_filter = "1 = 1 " 
+        report_view = "vw_reports_document_activity"
+        orderby_clause = "ORDER BY last_update DESC"
+        header = ["user id",
+                  "session id",
+                  "document id",
+                  "view type",
+                  "last update"]
+        
+    elif report == models.ReportTypeEnum.sessionLog:
+        standard_filter = "endpoint rlike '.*Search' " 
         report_view = "vw_reports_session_activity"
-        header = ["session id", "user id", "connection", "referrer", "session_start", "session end", "item of interest", "endpoint", "params", "status code", "status message", "last update"]
+        orderby_clause = "ORDER BY last_update DESC"
+        header = ["user id",
+                  "session id",
+                  "session_start",
+                  "session end",
+                  "item of interest",
+                  "endpoint",
+                  "params",
+                  "status code",
+                  "status message",
+                  "last update"]
     elif report == models.ReportTypeEnum.userSearches:
+        standard_filter = "endpoint rlike '.*Search' "
         report_view = "vw_reports_user_searches"
-        header = ["user id", "session id", "session_start", "item of interest", "endpoint", "params", "status code", "status message", "last update"]
-        # filter out my local test machine
+        orderby_clause = "ORDER BY last_update DESC"
+        header = ["user id", 
+                  "session id",
+                  "session start",
+                  "item of interest",
+                  "endpoint",
+                  "params",
+                  "status code",
+                  "status message",
+                  "last update"]
     elif report == models.ReportTypeEnum.documentViews:
+        standard_filter = "1 = 1 " 
         report_view = "vw_reports_document_views"
-        header = ["document id", "view type", "view count"]
-        # filter out my local test machine
-    elif report == models.ReportTypeEnum.opasLogs:
-        report_view = "opas_error_logs"
-        # Download CSV of selected set.  Returns only response with download, not usual documentList
-        #   response to client
-        if download:
-            return FileResponse(logging.root.handlers[0].baseFilename, media_type='application/octet-stream',filename=os.path.basename(logging.root.handlers[0].baseFilename))
-            #file_like = open(logging.root.handlers[0].baseFilename, mode="r")
-            #response.headers["Content-Disposition"] = f"attachment; filename={os.path.basename(logging.root.handlers[0].baseFilename)}"
-            #return StreamingResponse(file_like, media_type="text/plain")            
-        else:
-            name = logging.root.handlers[0].baseFilename
-            ret_val = FileResponse(name)
+        orderby_clause = "ORDER BY views DESC"
+        header = ["document id",
+                  "view type",
+                  "view count"]
+    else:
+        report_view = None
 
     if report_view is None:
         raise HTTPException(
@@ -559,64 +583,61 @@ async def reports(response: Response,
             detail=ERR_MSG_REPORT_NOT_FOUND
         )        
 
-    if report_view == "opas_error_logs":
-        # opas eror logs
-        pass
+    # Get report
+    select = f"""SELECT * from {report_view}
+                 WHERE {standard_filter}
+                 {date_condition}
+                 {userid_condition}
+                 {sessionid_condition}
+                 {orderby_clause}
+                 {limit_clause};
+                 """
+
+    count = ocd.get_select_count(select)
+    if count == 0:
+        raise HTTPException(
+            status_code=httpCodes.HTTP_404_NOT_FOUND, 
+            detail=ERR_MSG_NO_DATA_FOR_REPORT
+        )               
     else:
-        select = f"""SELECT * from {report_view}
-                     WHERE {standard_filter}
-                     {date_condition}
-                     {userid_condition}
-                     {sessionid_condition}
-                     ORDER BY last_update DESC
-                     {limit_clause};
-                     """
-
-        count = ocd.get_select_count(select)
-        if count == 0:
-            raise HTTPException(
-                status_code=httpCodes.HTTP_404_NOT_FOUND, 
-                detail=ERR_MSG_NO_DATA_FOR_REPORT
-            )               
+        if download:
+            # Download CSV of selected set.  Returns only response with download, not usual documentList
+            #   response to client
+            results = ocd.get_select_as_list(select)
+            df = pd.DataFrame(results)
+            stream = io.StringIO()
+            df.to_csv(stream, header=header, index = False)
+            response = StreamingResponse(iter([stream.getvalue()]),
+                                         media_type="text/csv"
+                                               )
+            response.headers["Content-Disposition"] = f"attachment; filename={report_view}.csv"
+            ret_val = response
         else:
-            if download:
-                # Download CSV of selected set.  Returns only response with download, not usual documentList
-                #   response to client
-                results = ocd.get_select_as_list(select)
-                df = pd.DataFrame(results)
-                stream = io.StringIO()
-                df.to_csv(stream, header=header, index = False)
-                response = StreamingResponse(iter([stream.getvalue()]),
-                                             media_type="text/csv"
-                                                   )
-                response.headers["Content-Disposition"] = f"attachment; filename={report_view}.csv"
-                ret_val = response
-            else:
-                results = ocd.get_select_as_list_of_dicts(select)
-                limited_count = len(results)
+            results = ocd.get_select_as_list_of_dicts(select)
+            limited_count = len(results)
 
-                response_info = models.ResponseInfo(count = limited_count,
-                                                    fullCount = count,
-                                                    totalMatchCount = count,
-                                                    limit = limit,
-                                                    offset = offset,
-                                                    listType="reportlist",
-                                                    fullCountComplete = limited_count >= count,
-                                                    request=f"{request.url._url}",
-                                                    timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                                    )   
+            response_info = models.ResponseInfo(count = limited_count,
+                                                fullCount = count,
+                                                totalMatchCount = count,
+                                                limit = limit,
+                                                offset = offset,
+                                                listType="reportlist",
+                                                fullCountComplete = limited_count >= count,
+                                                request=f"{request.url._url}",
+                                                timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                                )   
 
-                if count == 0:
-                    raise HTTPException(
-                        status_code=httpCodes.HTTP_404_NOT_FOUND, 
-                        detail=ERR_MSG_NO_DATA_FOR_REPORT
-                    )       
+            if count == 0:
+                raise HTTPException(
+                    status_code=httpCodes.HTTP_404_NOT_FOUND, 
+                    detail=ERR_MSG_NO_DATA_FOR_REPORT
+                )       
 
-                report_struct = models.ReportStruct( responseInfo = response_info, 
-                                                     responseSet = results
-                                                     )
+            report_struct = models.ReportStruct( responseInfo = response_info, 
+                                                 responseSet = results
+                                                 )
 
-                ret_val = models.Report(report = report_struct)
+            ret_val = models.Report(report = report_struct)
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_REPORTS,
                                 api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_GET, 
