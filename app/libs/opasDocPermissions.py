@@ -487,7 +487,9 @@ def get_access_limitations(doc_id,
                         ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
                     else:
                         ret_val.accessLimited = True
-                        ret_val.accessLimitedReason = ret_val.accessLimitedDescription
+                        if classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
+                            ret_val.accessLimitedReason
+                        
                         logger.info(f"Document unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
     
         except Exception as e:

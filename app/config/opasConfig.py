@@ -360,10 +360,10 @@ ENDPOINT_SUMMARY_WHO_AM_I = "Return information about the current user"
 ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the specified field"
 
 ACCESS_SUMMARY_DESCRIPTION = "This is a summary excerpt from the full text of the document. "
-ACCESS_SUMMARY_FORSUBSCRIBERS = "The full content of the document is available to subscribers. "
-ACCESS_SUMMARY_EMBARGOED = "The full content of the document is embargoed per an agreement with the publisher. "
-ACCESS_SUMMARY_EMBARGOED_YEARS = "The full content of the document is embargoed for %s years per an agreement with the publisher. "
-ACCESS_SUMMARY_PUBLISHER_INFO = "The full content of the document may be available on the publisher's website. "
+ACCESS_SUMMARY_FORSUBSCRIBERS = "The full-text content of the document is available to subscribers. "
+ACCESS_SUMMARY_EMBARGOED = "The full-text content of the document is embargoed per an agreement with the publisher. "
+ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
+ACCESS_SUMMARY_PUBLISHER_INFO = "The full-text content of the document may be available on the publisher's website. "
 ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = "<a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>."
 ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."
 
@@ -569,3 +569,8 @@ PREDEFINED_SORTS = {
     "rank":(SORT_SCORE, "desc"), 
     }
 
+PEPWEB_ABSTRACT_MSG1 = """
+This is a summary or excerpt from the full text of the article. PEP-Web provides full-text search of the complete articles for
+current and archive content, but only the abstracts are displayed for current content, due to contractual obligations with the
+journal publishers. For details on how to read the full text of 2017 and more current articles see the publishers official website 
+"""

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1020.2.Alpha"
+__version__     = "2020.1020.3.Alpha"
 __status__      = "Development"
 
 """
@@ -938,19 +938,19 @@ async def client_del_configuration(response: Response,
 @app.post("/v2/Admin/CreateUser/", response_model=models.User, response_model_exclude_unset=True, tags=["Admin"], summary=opasConfig.ENDPOINT_SUMMARY_CREATE_USER)
 async def client_create_user(response: Response, 
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                            username: str = Form(..., description="Username"),
-                            password: str = Form(..., description="Password"),
-                            company: str = Form(default=None, description="Optional, company name"),
-                            fullname: str = Form(default=None, description="Optional, full name"),
-                            email: str = Form(default=None, description="The user's email address"),
-                            tracking: bool = Form(default=1, description="Tracking information recorded for reports"),
-                            cookies: bool = Form(default=1, description="User agrees to site cookies"),
-                            reports: bool = Form(default=0, description="View Parent Reports"),
-                            optin: bool = Form(default=1, description="User agrees to email communications"),
-                            hide: bool = Form(default=1, description="User agrees to site cookies"),
-                            client_id:int=Depends(get_client_id), 
-                            client_session:str= Depends(get_client_session)
-                            ):
+                             username: str = Form(..., description="Username"),
+                             password: str = Form(..., description="Password"),
+                             company: str = Form(default=None, description="Optional, company name"),
+                             fullname: str = Form(default=None, description="Optional, full name"),
+                             email: str = Form(default=None, description="The user's email address"),
+                             tracking: bool = Form(default=1, description="Tracking information recorded for reports"),
+                             cookies: bool = Form(default=1, description="User agrees to site cookies"),
+                             reports: bool = Form(default=0, description="View Parent Reports"),
+                             optin: bool = Form(default=1, description="User agrees to email communications"),
+                             hide: bool = Form(default=1, description="User agrees to site cookies"),
+                             client_id:int=Depends(get_client_id), 
+                             client_session:str= Depends(get_client_session)
+                             ):
     """
     ## Function
        <b>Add a new user</b>
@@ -4290,7 +4290,7 @@ def documents_document_fetch(response: Response,
 
         except Exception as e:
             response.status_code=httpCodes.HTTP_400_BAD_REQUEST
-            status_message = f"Document Fetch Error: {e}"
+            status_message = f"{client_id}:{session_id}: Document Fetch Error: {e}"
             logger.error(status_message)
             ret_val = None
             raise HTTPException(
@@ -4301,6 +4301,17 @@ def documents_document_fetch(response: Response,
             if ret_val is not None and ret_val != {}:
                 response.status_code = httpCodes.HTTP_200_OK
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
+                try:
+                    access = not ret_val.documents.responseSet[0].accessLimited
+                    doc_len = len(ret_val.documents.responseSet[0].document)
+                except Exception as e:
+                    access = False
+                    doc_len = 0
+                    status_message = f"{client_id}:{session_id}: Document fetch Error {e}"
+                    logger.info(status_message)
+                finally:
+                    status_message = f"{client_id}:{session_id}: Document fetch (access: {access}; doc length: {doc_len}"
+                    logger.info(status_message)
 
             else:
                 # make sure we specify an error in the session log

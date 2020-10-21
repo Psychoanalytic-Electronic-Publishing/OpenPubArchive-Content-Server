@@ -681,7 +681,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             except Exception as e:
                 logger.warning(f"Predefined sort key {s} not found. Trying it directly against the database.")
         else:
-            logger.info(f"No match with predefined sort key; Passing sort through: {s}")
+            logger.debug(f"No match with predefined sort key; Passing sort through: {s}")
     #else:
         #sort = f"{opasConfig.DEFAULT_SOLR_SORT_FIELD} {opasConfig.DEFAULT_SOLR_SORT_DIRECTION}"
 
