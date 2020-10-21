@@ -1147,7 +1147,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list = [cleanup_solr_query(x) for x in search_analysis_term_list]  
 
     if search_q == "*:*" and filter_q == "*:*":
-        filter_q = "art_level:1"
+        search_q = "art_level:1"
 
     # Turn off highlighting if it's not needed, e.g, when there's no text search, e.g., a filter only, like mostcited and mostviewed calls
     # As of 2020-09-28, allow limit to be set here (via params)
@@ -1320,9 +1320,13 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
 
     # part of the query model
 
-    if query is not None:
+    if query is not None and query != "":
         solr_query_spec.solrQuery.searchQ = query
-        
+        logger.debug(f"query: {query}. Request: {req_url}")
+    else:
+        logger.debug(f"query was None or empty. Chgd to *:*. {query}. Request: {req_url}")
+        solr_query_spec.solrQuery.searchQ = "*:*"           
+            
     if solr_query_spec.solrQuery.searchQ is None:
         solr_query_spec.solrQuery.searchQ = "*:*"       
 
@@ -1567,8 +1571,9 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
 
     # q must be part of any query; this appears to be the cause of the many solr syntax errors seen. 
     if solr_query_spec.solrQuery.searchQ is None or solr_query_spec.solrQuery.searchQ == "":
-        logger.error(f"ERROR!  solr_query_spec.solrQuery.searchQ is {solr_query_spec.solrQuery.searchQ}")
+        logger.error(f">>>>>> solr_query_spec.solrQuery.searchQ is {solr_query_spec.solrQuery.searchQ}.  Filter: {solr_query_spec.solrQuery.filterQ} The endpoint request was: {req_url}")
         solr_query_spec.solrQuery.searchQ = "*.*"
+
     try:
         solr_param_dict = { 
                             "q": solr_query_spec.solrQuery.searchQ,
@@ -1650,15 +1655,15 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     except solr.SolrException as e:
         if e is None:
             ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
-            logger.error(f"Solr Runtime Search Error: {e.reason}")
+            logger.error(f"Solr Runtime Search Error (a): {e.reason}")
             logger.error(e.body)
         elif e.reason is not None:
             ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
-            logger.error(f"Solr Runtime Search Error: {e.reason}")
+            logger.error(f"Solr Runtime Search Error (b): {e.reason}")
             logger.error(e.body)
         else:
             ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-            logger.error(f"Solr Runtime Search Error: {e.httpcode}")
+            logger.error(f"Solr Runtime Search Error (c): {e.httpcode}")
             logger.error(e.body)
         
         ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
@@ -1677,12 +1682,12 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     except SAXParseException as e:
         ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Search syntax error", error_description=f"{e.getMessage()}")
         ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-        logger.error(f"Solr Runtime Search Error: {ret_val}")
+        logger.error(f"Solr Runtime Search Error (parse): {ret_val}. Params sent: {solr_param_dict}")
                                 
     except Exception as e:
         ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
         ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-        logger.error(f"Solr Runtime Search Error: {e.httpcode}")
+        logger.error(f"Solr Runtime Search Error (syntax): {e.httpcode}. Params sent: {solr_param_dict}")
         logger.error(e.body)
                                 
     else: #  search was ok
