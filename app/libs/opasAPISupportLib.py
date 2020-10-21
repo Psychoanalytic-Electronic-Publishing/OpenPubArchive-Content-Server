@@ -1495,7 +1495,8 @@ def documents_get_document(document_id,
                 # only if they haven't directly specified page
                 if page == None:
                     page = m.group("pagejump")
-
+        # just to be sure
+        query = "*:*"
         if solr_query_spec is not None:
             solr_query_params = solr_query_spec.solrQuery
             # repeat the query that the user had done when retrieving the document

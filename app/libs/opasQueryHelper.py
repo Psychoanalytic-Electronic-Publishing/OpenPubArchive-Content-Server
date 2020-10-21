@@ -1565,8 +1565,11 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     if sort is not None:
         solr_query_spec.solrQuery.sort = sort
 
+    # q must be part of any query; this appears to be the cause of the many solr syntax errors seen. 
+    if solr_query_spec.solrQuery.searchQ is None or solr_query_spec.solrQuery.searchQ == "":
+        logger.error(f"ERROR!  solr_query_spec.solrQuery.searchQ is {solr_query_spec.solrQuery.searchQ}")
+        solr_query_spec.solrQuery.searchQ = "*.*"
     try:
-            
         solr_param_dict = { 
                             "q": solr_query_spec.solrQuery.searchQ,
                             "fq": solr_query_spec.solrQuery.filterQ,
