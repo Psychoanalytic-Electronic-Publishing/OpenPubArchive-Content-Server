@@ -4229,7 +4229,8 @@ def documents_document_fetch(response: Response,
 
     ts = time.time()
     ret_val = None
-
+    
+    session_id = client_session
     opasDocPermissions.verify_header(request, "documents_fetch") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
