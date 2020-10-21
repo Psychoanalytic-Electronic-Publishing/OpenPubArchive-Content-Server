@@ -769,7 +769,12 @@ def parse_search_query_parameters(search=None,             # url based parameter
                             search_q += f"&& {q1} "
                         else:
                             # terms
-                            search_q += f"&& '{q1}'~25"
+                            field_name = "body_xml"
+                            if synonyms:
+                                field_name += "_syn"
+                                
+                            search_q += f'&& {field_name}:"{q1}"~25 '
+                            art_level = 1
                             
             
 

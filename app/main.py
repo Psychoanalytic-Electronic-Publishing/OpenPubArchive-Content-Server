@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1020.1.Alpha"
+__version__     = "2020.1020.2.Alpha"
 __status__      = "Development"
 
 """
@@ -213,7 +213,7 @@ def save_opas_session_cookie(request: Request, response: Response, session_id):
 
     if already_set == False:
         try:
-            logger.info("Saved OpasSessionID Cookie")
+            logger.debug("Saved OpasSessionID Cookie")
             response.set_cookie(
                 OPASSESSIONID,
                 value=f"{session_id}",
@@ -4227,6 +4227,7 @@ def documents_document_fetch(response: Response,
     """
     # NOTE: Calls the code for the Glossary endpoint via function view_a_glossary_entry)
 
+    ts = time.time()
     ret_val = None
 
     opasDocPermissions.verify_header(request, "documents_fetch") # for debugging client call
@@ -4329,6 +4330,7 @@ def documents_document_fetch(response: Response,
                                              session_info=session_info,
                                              view_type="Document")
 
+    log_endpoint_time(request, ts=ts)
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -4586,7 +4588,7 @@ def documents_downloads(response: Response,
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
     """
-
+    ts = time.time()
     opasDocPermissions.verify_header(request, "documents_downloads") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
@@ -4696,6 +4698,7 @@ def documents_downloads(response: Response,
                                             status_message=status_message
                                             )
 
+    log_endpoint_time(request, ts=ts)
     return ret_val
 
 @app.get("/v2/Database/WordWheel/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WORD_WHEEL)

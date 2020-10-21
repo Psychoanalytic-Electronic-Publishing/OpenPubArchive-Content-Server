@@ -62,7 +62,7 @@ def find_client_session_id(request: Request,
     elif client_session_cookie is not None:
         ret_val = client_session_cookie
         msg = f"client-session from client-session cookie: {ret_val} "
-        logger.info(msg)
+        logger.debug(msg)
     #elif pepweb_session_cookie is not None: # this is what Gavant client sets
         #s = urllib.parse.unquote(pepweb_session_cookie)
         #cookie_dict = json.loads(s)
@@ -135,8 +135,8 @@ def update_sessioninfo_with_userinfo(pads_session_info, client_id):
     # now get userinfo
     session_id = pads_session_info.SessionId
     userinfo = pads_get_userinfo(session_id, client_id)
-    logger.info(f"update_sessioninfo_with_userinfo: Session ID from PaDS: {session_id}")
-    logger.info(f"update_sessioninfo_with_userinfo: Userinfo from PaDS: {userinfo}")
+    logger.debug(f"update_sessioninfo_with_userinfo: Session ID from PaDS: {session_id}")
+    logger.debug(f"update_sessioninfo_with_userinfo: Userinfo from PaDS: {userinfo}")
     if userinfo is not None:
         msg = f"Session info and user fetched for sessionid {session_id} - {userinfo}"
         logger.debug(msg)
@@ -175,7 +175,7 @@ def set_session_info(response, client_id):
         # PaDS session info
         pads_session_info = models.PadsSessionInfo(**response)
         session_id = pads_session_info.SessionId # PaDS session ID
-        logger.info(f"set_session_info: Session ID from PaDS: {session_id}")
+        logger.debug(f"set_session_info: Session ID from PaDS: {session_id}")
         # add user fields
         ret_val = session_info = update_sessioninfo_with_userinfo(pads_session_info, client_id)
         # make sure the session is recorded.
@@ -184,7 +184,7 @@ def set_session_info(response, client_id):
         if db_session_info is None:
             ocd.save_session(session_id, session_info)
         else:
-            logger.info(f"Session {session_id} already found in db. Updating...")
+            logger.debug(f"Session {session_id} already found in db. Updating...")
             if session_info.username != db_session_info.username and db_session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
                 msg = f"MISMATCH! Two Usernames with same session_id. OLD(DB): {db_session_info}; NEW(SESSION): {session_info}"
                 print (msg)
@@ -487,7 +487,8 @@ def get_access_limitations(doc_id,
                         ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
                     else:
                         ret_val.accessLimited = True
-                        ret_val.accessLimitedReason = resp.ReasonStr # limited...get it elsewhere
+                        ret_val.accessLimitedReason = ret_val.accessLimitedDescription
+                        logger.info(f"Document unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
     
         except Exception as e:
             logger.debug(f"Issue checking document permission. Possibly not logged in {e}")

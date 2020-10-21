@@ -109,6 +109,19 @@ class TestGetDocuments(unittest.TestCase):
         assert(response_set[0]["accessLimited"] == True)
         assert(len(response_set[0]["abstract"]) == len(response_set[0]["document"])) 
 
+    def test_4_get_long_document(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/ZBK.153.0001A/')
+        # local, this works...but fails in the response.py code trying to convert self.status to int.
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"] 
+        assert(response_info["count"] == 1)
+        print (response_set)
+
 
 if __name__ == '__main__':
     unittest.main()    

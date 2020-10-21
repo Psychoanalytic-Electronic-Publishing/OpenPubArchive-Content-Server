@@ -16,7 +16,7 @@ class TestSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         print (response_info)
         #response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 4)
+        assert(response_info["count"] == 1)
 
     def test__2a_smartsearch_locator1(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=aop.033.0079a&abstract=True')
@@ -354,9 +354,43 @@ class TestSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (response_info["fullCount"])
-        assert(response_info["count"] >= 1)
-        print (response_set[0])
+        assert(response_info["fullCount"] >= 650 and response_info["fullCount"] <= 710)
 
+    def test_13b_dts_example_searches(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=transference interpretation')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (response_info["fullCount"])
+        assert(response_info["fullCount"] >= 6500 and response_info["fullCount"] <= 7000)
+
+    def test_13c_dts_example_searches(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Eitingon Model')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (response_info["fullCount"])
+        assert(response_info["fullCount"] >= 133 and response_info["fullCount"] <= 170)
+
+    def test_13d_dts_example_searches(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=unconscious phantasy')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (response_info["fullCount"])
+        assert(response_info["fullCount"] >= 2331 and response_info["fullCount"] <= 2400)
 
 if __name__ == '__main__':
     unittest.main()
