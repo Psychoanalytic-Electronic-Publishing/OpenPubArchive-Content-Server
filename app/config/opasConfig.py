@@ -112,7 +112,7 @@ DEFAULT_LIMIT_FOR_METADATA_LISTS = 200
 DEFAULT_SOLR_SORT_FIELD = "art_cited_5" 
 DEFAULT_SOLR_SORT_DIRECTION = "asc" # desc or asc
 DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 4000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
-DEFAULT_CITED_MORE_THAN = 25
+DEFAULT_CITED_MORE_THAN = 0
 DEFAULT_PAGE_LIMIT = 999
 DEFAULT_PUBLICATION_PERIOD = "ALL"
 
@@ -182,7 +182,7 @@ DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(a
 DESCRIPTION_AUTHOR = "Author name, use wildcard * for partial entries (e.g., Johan*)"
 DESCRIPTION_AUTHORNAMEORPARTIAL = "The author name or a partial name (regex type wildcards [.*] permitted EXCEPT at the end of the string--the system will try that automatically)"
 DESCRIPTION_AUTHORNAMEORPARTIALNOWILD = "The author name or a author partial name (prefix)"
-DESCRIPTION_CITECOUNT = "Find documents cited more than 'X' times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL. Default period is 5 years."  
+DESCRIPTION_CITECOUNT = "Include documents cited this many or more times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL. Default (implied) period is 5 years."  
 DESCRIPTION_CITED_MORETHAN = f"Lower limit for counts - articles must be cited more than this many times (default={DEFAULT_CITED_MORE_THAN})"
 DESCRIPTION_CLIENT_ID = "Numeric ID assigned to a client app by Opas Administrator"
 DESCRIPTION_CLIENT_SESSION = "Client session GUID"
@@ -238,7 +238,7 @@ DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field b
 DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification"
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
 DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
-DESCRIPTION_VIEWCOUNT = "Filter by # of times document downloaded (viewed) per the viewedwithin period.  Does not include abstract views."    
+DESCRIPTION_VIEWCOUNT = "Include documents viewed this many times or more within the view period. Does not include abstract views."    
 DESCRIPTION_VIEWPERIOD = "One of a few preset time frames for which to evaluate viewcount; 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months."
 DESCRIPTION_VOLUMENUMBER = "The volume number if the source has one"
 DESCRIPTION_WORD = "A word prefix to return a limited word index (word-wheel)."
@@ -302,7 +302,7 @@ TITLE_TERMLIST = "List of terms"
 TITLE_QTERMLIST = "Opas Model SolrQeryTermList"
 TITLE_TITLE = "Document Title"
 TITLE_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
-TITLE_VIEWCOUNT = "Find Documents viewed this many times within the view period"
+TITLE_VIEWCOUNT = "Include documents viewed this many times or more within the view period"
 TITLE_VIEWPERIOD = "One of the preset timeframes within which to evaluate viewcount"
 TITLE_VOLUMENUMBER = "Volume Number"
 TITLE_WORD = "Word prefix"

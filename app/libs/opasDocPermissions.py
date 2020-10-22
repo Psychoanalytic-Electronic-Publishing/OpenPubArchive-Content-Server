@@ -489,8 +489,7 @@ def get_access_limitations(doc_id,
                         ret_val.accessLimited = True
                         if classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
                             ret_val.accessLimitedReason
-                        
-                        logger.info(f"Document unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
+                        logger.debug(f"Document unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
     
         except Exception as e:
             logger.debug(f"Issue checking document permission. Possibly not logged in {e}")

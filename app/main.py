@@ -934,129 +934,58 @@ async def client_del_configuration(response: Response,
     #  return it.
     return ret_val
 
-#-----------------------------------------------------------------------------
-@app.post("/v2/Admin/CreateUser/", response_model=models.User, response_model_exclude_unset=True, tags=["Admin"], summary=opasConfig.ENDPOINT_SUMMARY_CREATE_USER)
-async def client_create_user(response: Response, 
-                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                             username: str = Form(..., description="Username"),
-                             password: str = Form(..., description="Password"),
-                             company: str = Form(default=None, description="Optional, company name"),
-                             fullname: str = Form(default=None, description="Optional, full name"),
-                             email: str = Form(default=None, description="The user's email address"),
-                             tracking: bool = Form(default=1, description="Tracking information recorded for reports"),
-                             cookies: bool = Form(default=1, description="User agrees to site cookies"),
-                             reports: bool = Form(default=0, description="View Parent Reports"),
-                             optin: bool = Form(default=1, description="User agrees to email communications"),
-                             hide: bool = Form(default=1, description="User agrees to site cookies"),
-                             client_id:int=Depends(get_client_id), 
-                             client_session:str= Depends(get_client_session)
-                             ):
-    """
-    ## Function
-       <b>Add a new user</b>
+##-----------------------------------------------------------------------------
+#@app.post("/vX/Admin/SubmitFile/", response_model_exclude_unset=True, tags=["Admin"])
+#async def submit_file(response: Response, 
+                      #request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                      #submit_token: bytes= File(...), 
+                      #xml_data: bytes = File(..., description="Article data (complete) or just metadata and abstract in xml"),
+                      #pdf_data: bytes = File(..., description="Article data (complete) in original PDF file"),
+                      #client_id:int=Depends(get_client_id), 
+                      #client_session:str= Depends(get_client_session)
+                      #):
+    #"""
+    ### Function
 
-       Temporary admin for development
+       #<b>Submit a XML file and PDF for inclusion</b>
 
-       This is only a stopgap for development
-       All authentication processing is to be done in PaDS as planned
-       (though it may be this stays conditionally for future iteration of local development TBD)
+       #Requires an authenticated submit_token, and temporarily is only available to admins
 
+       #NOTE: PLACEHOLDER - THIS IS NOT CURRENTLY FOR USE
 
-    ## Return Type
-       models.UserInfo
+    ### Return Type
+       #models.FileItem
 
-    ## Status
-       Status: In Development
+    ### Status
+       #Status: Future Use Only
 
-    ## Sample Call
-         /v2/Admin/CreateUser/
+    ### Sample Call
+         #/vX/Admin/SubmitFile/
 
-    ## Notes
-         NA
+    ### Notes
+         #NA
 
-    ## Potential Errors
-       NA
+    ### Potential Errors
+       #NA
 
-    """
-    
-    opasDocPermissions.verify_header(request, "CreateUser") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    #"""
+    #opasDocPermissions.verify_header(request, "SubmitFile") # for debugging client call
+    #log_endpoint(request, client_id=client_id, session_id=client_session)
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    #ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
-    # ensure user is admin
-    if ocd.verify_admin(session_info):
-        ret_val = ocd.create_user(session_info=session_info,
-                                  username=username,
-                                  password=password,
-                                  full_name=fullname, 
-                                  company=company,
-                                  email=email,
-                                  user_agrees_tracking=tracking,
-                                  user_agrees_cookies=cookies,
-                                  view_parent_user_reports=reports, 
-                                  email_optin=optin,
-                                  hide_activity=hide
-                                  )
-    else:
-        raise HTTPException(
-            status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
-            detail=ERR_MSG_NOT_AUTHORIZED
-        )        
-    return ret_val
-
-#-----------------------------------------------------------------------------
-@app.post("/vX/Admin/SubmitFile/", response_model_exclude_unset=True, tags=["Admin"])
-async def submit_file(response: Response, 
-                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                      submit_token: bytes= File(...), 
-                      xml_data: bytes = File(..., description="Article data (complete) or just metadata and abstract in xml"),
-                      pdf_data: bytes = File(..., description="Article data (complete) in original PDF file"),
-                      client_id:int=Depends(get_client_id), 
-                      client_session:str= Depends(get_client_session)
-                      ):
-    """
-    ## Function
-
-       <b>Submit a XML file and PDF for inclusion</b>
-
-       Requires an authenticated submit_token, and temporarily is only available to admins
-
-       NOTE: PLACEHOLDER - THIS IS NOT CURRENTLY FOR USE
-
-    ## Return Type
-       models.FileItem
-
-    ## Status
-       Status: Future Use Only
-
-    ## Sample Call
-         /vX/Admin/SubmitFile/
-
-    ## Notes
-         NA
-
-    ## Potential Errors
-       NA
-
-    """
-    opasDocPermissions.verify_header(request, "SubmitFile") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
-
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
-
-    # ensure user is admin
-    if ocd.verify_admin(session_info):
-        ret_val = opasAPISupportLib.submit_file(submit_token,
-                                                xml_data,
-                                                pdf_data
-                                                )
-    else:
-        raise HTTPException(
-            status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
-            detail=ERR_MSG_NOT_AUTHORIZED
-        )        
-    return ret_val
+    ## ensure user is admin
+    #if ocd.verify_admin(session_info):
+        #ret_val = opasAPISupportLib.submit_file(submit_token,
+                                                #xml_data,
+                                                #pdf_data
+                                                #)
+    #else:
+        #raise HTTPException(
+            #status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
+            #detail=ERR_MSG_NOT_AUTHORIZED
+        #)        
+    #return ret_val
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_AM_I)
@@ -2810,8 +2739,10 @@ def database_mostviewed(response: Response,
                         # viewperiod=4 for last 12 months
                         viewperiod: int=Query(4, title=opasConfig.TITLE_MOST_VIEWED_PERIOD, description=opasConfig.DESCRIPTION_MOST_VIEWED_PERIOD), # 4=Prior year, per PEP-Web design
                         viewcount: int=Query(0, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),
+                        # ##############################
                         # deprecate morethan next push
-                        morethan: int=Query(0, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),
+                        morethan: int=Query(None, description="Deprecated-Use Viewcount"),
+                        # ##############################
                         author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                         title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
                         sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
@@ -2865,7 +2796,7 @@ def database_mostviewed(response: Response,
         query_arg_error = f"Most Viewed: viewperiod: {viewperiod}.  Range should be 0-4 (int)."
 
     #TODO deprecate morethan next push
-    if morethan is not None and viewcount is None:
+    if morethan is not None:
         viewcount = morethan
 
     if sourcetype is not None: # none is ok
@@ -2922,23 +2853,32 @@ def database_mostviewed(response: Response,
     else: # go ahead! Search Solr
         try:
             # we want the last year (default, per PEP-Web) of views, for all articles (journal articles)
-            ret_val = opasAPISupportLib.database_get_most_viewed( publication_period=pubperiod,
-                                                                  view_period=viewperiod, # limiting to 5, you'd get the 5 biggest values for this view period
-                                                                  view_count=viewcount, 
-                                                                  author=author,
-                                                                  title=title,
-                                                                  source_name=sourcename, 
-                                                                  source_code=sourcecode,
-                                                                  source_type=sourcetype, # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
-                                                                  abstract_requested=abstract, 
-                                                                  req_url=request.url._url,
-                                                                  stat=stat, 
-                                                                  limit=limit, 
-                                                                  offset=offset,
-                                                                  download=download, 
-                                                                  mlt_count=similarcount, 
-                                                                  session_info=session_info
-                                                                  )
+            ret_val, ret_status = opasAPISupportLib.database_get_most_viewed( publication_period=pubperiod,
+                                                                              view_period=viewperiod, # limiting to 5, you'd get the 5 biggest values for this view period
+                                                                              view_count=viewcount, 
+                                                                              author=author,
+                                                                              title=title,
+                                                                              source_name=sourcename, 
+                                                                              source_code=sourcecode,
+                                                                              source_type=sourcetype, # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                                                              abstract_requested=abstract, 
+                                                                              req_url=request.url._url,
+                                                                              stat=stat, 
+                                                                              limit=limit, 
+                                                                              offset=offset,
+                                                                              download=download, 
+                                                                              mlt_count=similarcount, 
+                                                                              session_info=session_info
+                                                                              )
+
+            if ret_val is None:
+                status_message = f"Solr error for request (no return)"
+                logger.error(status_message)
+                raise HTTPException(
+                    status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                    detail=status_message
+                )        
+                
         except Exception as e:
             ret_val = None
             status_message = f"Error: {e}"
@@ -2948,9 +2888,13 @@ def database_mostviewed(response: Response,
                 detail=status_message
             )        
         else:
-            status_message = opasCentralDBLib.API_STATUS_SUCCESS
-            status_code = httpCodes.HTTP_200_OK
-
+            if isinstance(ret_val, models.ErrorReturn):
+                logger.error("Getmostviewed error return. Raising exception")
+                raise HTTPException(
+                    status_code=ret_val.httpcode, 
+                    detail = ret_val.error + " - " + ret_val.error_description
+                )
+        
     log_endpoint_time(request, ts=ts)
     return ret_val  # document_list
 
@@ -2960,8 +2904,10 @@ def database_mostcited(response: Response,
                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                        citeperiod: str=Query('5', title=opasConfig.TITLE_MOST_CITED_PERIOD, description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
                        citecount: str=Query(None, title=opasConfig.TITLE_CITECOUNT, description=opasConfig.DESCRIPTION_CITECOUNT),   
+                       # ##############################
                        # deprecate morethan next push
-                       morethan: int=Query(0, title=opasConfig.TITLE_CITED_MORETHAN, description=opasConfig.DESCRIPTION_CITED_MORETHAN),
+                       morethan: int=Query(None, title="Deprecated-Use citecount"),
+                       # ##############################
                        pubperiod: int=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
                        author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                        title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
@@ -3016,7 +2962,7 @@ def database_mostcited(response: Response,
     # session_id = session_info.session_id 
 
     #TODO deprecate morethan next push
-    if morethan is not None and citecount is None:
+    if morethan is not None:
         citecount = morethan
 
     if download == True:
@@ -3060,7 +3006,7 @@ def database_mostcited(response: Response,
     else:
         # return documentList, much more limited document list if download==True
         ret_val, ret_status = opasAPISupportLib.database_get_most_cited( cited_in_period=citeperiod,
-                                                                         more_than=citecount,
+                                                                         cite_count=citecount,
                                                                          publication_period=pubperiod,
                                                                          author=author,
                                                                          title=title,
@@ -3077,14 +3023,19 @@ def database_mostcited(response: Response,
                                                                          )
 
         if isinstance(ret_val, models.ErrorReturn): 
+            logger.error("GetmostCited error return. Raising exception")
             raise HTTPException(
                 status_code=ret_val.httpcode, 
                 detail = ret_val.error + " - " + ret_val.error_description
             )
-        else:
-            status_message = opasCentralDBLib.API_STATUS_SUCCESS
-            status_code = httpCodes.HTTP_200_OK
 
+        if ret_val is None:
+            logger.error("GetmostCited error return. Raising exception")
+            raise HTTPException(
+                status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                detail = f"Search for MostCited returned None.  Status: {ret_status}"
+            )
+            
         # Don't record in final build - (ok for now during testing)
 
     log_endpoint_time(request, ts=ts)

@@ -218,17 +218,17 @@ def extract_abstract_from_html(html_str, xpath_to_extract=opasConfig.HTML_XPATH_
     return ret_val
 
 #-----------------------------------------------------------------------------
-def get_session_id(request):
-    # this will be a sesson ID from the client--must be in every call!
-    ret_val = request.cookies.get(opasConfig.OPASSESSIONID, None)
-    if ret_val is None:
-        ret_val = request.headers.get(opasConfig.CLIENTSESSIONID, None)
+#def get_session_id(request):
+    ## this will be a sesson ID from the client--must be in every call!
+    #ret_val = request.cookies.get(opasConfig.OPASSESSIONID, None)
+    #if ret_val is None:
+        #ret_val = request.headers.get(opasConfig.CLIENTSESSIONID, None)
 
-    return ret_val
+    #return ret_val
 #-----------------------------------------------------------------------------
-def get_access_token(request):
-    ret_val = request.cookies.get(opasConfig.OPASACCESSTOKEN, None)
-    return ret_val
+#def get_access_token(request):
+    #ret_val = request.cookies.get(opasConfig.OPASACCESSTOKEN, None)
+    #return ret_val
 
 #-----------------------------------------------------------------------------
 def get_expiration_time(request):
@@ -343,6 +343,7 @@ def database_get_most_viewed( publication_period: int=5,
 
     """
     ret_val = None
+    ret_status = (200, "OK") # default is like HTTP_200_OK
     period = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS.get(view_period, "last12mos")
     
     if sort is None:
@@ -391,12 +392,12 @@ def database_get_most_viewed( publication_period: int=5,
         except Exception as e:
             logger.warning(f"Search error {e}")
 
-    return ret_val   
+    return ret_val, ret_status   
 
 #-----------------------------------------------------------------------------
 def database_get_most_cited( publication_period: int=None,   # Limit the considered pubs to only those published in these years
                              cited_in_period: str='5',  # 
-                             more_than: int=25,              # Has to be cited more than this number of times, a large nbr speeds the query
+                             cite_count: int=0,              # Has to be cited more than this number of times, a large nbr speeds the query
                              author: str=None,
                              title: str=None,
                              source_name: str=None,  
@@ -427,6 +428,9 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
     True
 
     """
+    ret_val = {}
+    ret_status = (200, "OK") # default is like HTTP_200_OK
+    
     cited_in_period = opasConfig.normalize_val(cited_in_period, opasConfig.VALS_YEAROPTIONS, default='5')
     #if str(period).lower() not in models.TimePeriod._value2member_map_:
         #period = '5'
@@ -441,14 +445,14 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
         start_year -= publication_period
         start_year = f">{start_year}"
 
-    cite_count = f"{more_than} in {cited_in_period}"
+    cite_count_predicate = f"{cite_count} in {cited_in_period}"
     if stat:
         field_set = "STAT"
     else:
         field_set = None
     
     solr_query_spec = \
-        opasQueryHelper.parse_search_query_parameters(citecount=cite_count, 
+        opasQueryHelper.parse_search_query_parameters(citecount=cite_count_predicate, 
                                                       source_name=source_name,
                                                       source_code=source_code,
                                                       source_type=source_type, 
@@ -1910,76 +1914,76 @@ def convert_xml_to_html_file(xmltext_str, output_filename=None):
 
     return output_filename
 
-#-----------------------------------------------------------------------------
-def get_kwic_list( marked_up_text, 
-                   extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, 
-                   solr_start_hit_tag=opasConfig.HITMARKERSTART, # supply whatever the start marker that solr was told to use
-                   solr_end_hit_tag=opasConfig.HITMARKEREND,     # supply whatever the end marker that solr was told to use
-                   output_start_hit_tag_marker=opasConfig.HITMARKERSTART_OUTPUTHTML, # the default output marker, in HTML
-                   output_end_hit_tag_marker=opasConfig.HITMARKEREND_OUTPUTHTML,
-                   limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS
-                   ):
-    """
-    Find all nonoverlapping matches, using Solr's return.  Limit the number.
+##-----------------------------------------------------------------------------
+#def get_kwic_list( marked_up_text, 
+                   #extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, 
+                   #solr_start_hit_tag=opasConfig.HITMARKERSTART, # supply whatever the start marker that solr was told to use
+                   #solr_end_hit_tag=opasConfig.HITMARKEREND,     # supply whatever the end marker that solr was told to use
+                   #output_start_hit_tag_marker=opasConfig.HITMARKERSTART_OUTPUTHTML, # the default output marker, in HTML
+                   #output_end_hit_tag_marker=opasConfig.HITMARKEREND_OUTPUTHTML,
+                   #limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS
+                   #):
+    #"""
+    #Find all nonoverlapping matches, using Solr's return.  Limit the number.
 
-    (See git version history for an earlier -- and different version)
-    """
+    #(See git version history for an earlier -- and different version)
+    #"""
 
-    ret_val = []
-    em_marks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extra_context_len, solr_start_hit_tag, solr_end_hit_tag, extra_context_len))
-    marked_up = re.compile(".*(%s.*%s).*" % (solr_start_hit_tag, solr_end_hit_tag))
-    marked_up_text = opasxmllib.xml_string_to_text(marked_up_text) # remove markup except match tags which shouldn't be XML
+    #ret_val = []
+    #em_marks = re.compile("(.{0,%s}%s.*%s.{0,%s})" % (extra_context_len, solr_start_hit_tag, solr_end_hit_tag, extra_context_len))
+    #marked_up = re.compile(".*(%s.*%s).*" % (solr_start_hit_tag, solr_end_hit_tag))
+    #marked_up_text = opasxmllib.xml_string_to_text(marked_up_text) # remove markup except match tags which shouldn't be XML
 
-    match_text_pattern = "({{.*?}})"
-    pat_compiled = re.compile(match_text_pattern)
-    word_list = pat_compiled.split(marked_up_text) # split all the words
-    index = 0
-    count = 0
-    #TODO may have problems with adjacent matches!
-    skip_next = False
-    for n in word_list:
-        if pat_compiled.match(n) and skip_next == False:
-            # we have a match
-            try:
-                text_before = word_list[index-1]
-                text_before_words = text_before.split(" ")[-extra_context_len:]
-                text_before_phrase = " ".join(text_before_words)
-            except:
-                text_before = ""
-            try:
-                text_after = word_list[index+1]
-                text_after_words = text_after.split(" ")[:extra_context_len]
-                text_after_phrase = " ".join(text_after_words)
-                if pat_compiled.search(text_after_phrase):
-                    skip_next = True
-            except:
-                text_after = ""
+    #match_text_pattern = "({{.*?}})"
+    #pat_compiled = re.compile(match_text_pattern)
+    #word_list = pat_compiled.split(marked_up_text) # split all the words
+    #index = 0
+    #count = 0
+    ##TODO may have problems with adjacent matches!
+    #skip_next = False
+    #for n in word_list:
+        #if pat_compiled.match(n) and skip_next == False:
+            ## we have a match
+            #try:
+                #text_before = word_list[index-1]
+                #text_before_words = text_before.split(" ")[-extra_context_len:]
+                #text_before_phrase = " ".join(text_before_words)
+            #except:
+                #text_before = ""
+            #try:
+                #text_after = word_list[index+1]
+                #text_after_words = text_after.split(" ")[:extra_context_len]
+                #text_after_phrase = " ".join(text_after_words)
+                #if pat_compiled.search(text_after_phrase):
+                    #skip_next = True
+            #except:
+                #text_after = ""
 
-            # change the tags the user told Solr to use to the final output tags they want
-            #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
-            match = re.sub(solr_start_hit_tag, output_start_hit_tag_marker, n)
-            match = re.sub(solr_end_hit_tag, output_end_hit_tag_marker, match)
+            ## change the tags the user told Solr to use to the final output tags they want
+            ##   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
+            #match = re.sub(solr_start_hit_tag, output_start_hit_tag_marker, n)
+            #match = re.sub(solr_end_hit_tag, output_end_hit_tag_marker, match)
 
-            context_phrase = text_before_phrase + match + text_after_phrase
+            #context_phrase = text_before_phrase + match + text_after_phrase
 
-            ret_val.append(context_phrase)
+            #ret_val.append(context_phrase)
 
-            try:
-                logger.info("getKwicList Match: '...{}...'".format(context_phrase))
-            except Exception as e:
-                logger.error("getKwicList Error printing or logging matches. %s", e)
+            #try:
+                #logger.info("getKwicList Match: '...{}...'".format(context_phrase))
+            #except Exception as e:
+                #logger.error("getKwicList Error printing or logging matches. %s", e)
 
-            index += 1
-            count += 1
-            if count >= limit:
-                break
-        else:
-            skip_next = False
-            index += 1
+            #index += 1
+            #count += 1
+            #if count >= limit:
+                #break
+        #else:
+            #skip_next = False
+            #index += 1
 
-    # matchCount = len(ret_val)
+    ## matchCount = len(ret_val)
 
-    return ret_val    
+    #return ret_val    
 #-----------------------------------------------------------------------------
 def search_analysis( query_list, 
                      filter_query = None,
@@ -2508,8 +2512,8 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
     return ret_val, ret_status
 
 ##================================================================================================================
-def submit_file(submit_token: bytes, xml_data: bytes, pdf_data: bytes): 
-    pass
+#def submit_file(submit_token: bytes, xml_data: bytes, pdf_data: bytes): 
+    #pass
 
 # -------------------------------------------------------------------------------------------------------
 # run it (tests)!

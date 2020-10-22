@@ -1075,7 +1075,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)
 
-    if citecount is not None:
+    if citecount is not None and citecount is not 0:
         # This is the only citation query handled by GVPi and the current API.  But
         # the Solr database is set up so this could be easily extended to
         # the 10, 20, and "all" periods.  Here we add syntax to the 
@@ -1090,6 +1090,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # the default period is 5 years.
         # citecount = citecount.strip()
         val = None
+        cited_in_period = None
+        val_end = "*"
+        
         match_ptn = "\s*(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?\s*"
         m = re.match(match_ptn, citecount, re.IGNORECASE)
         if m is not None:
@@ -1101,6 +1104,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
         if val is None:
             val = 1
+            
         if cited_in_period is None:
             cited_in_period = '5'
 
@@ -1110,29 +1114,17 @@ def parse_search_query_parameters(search=None,             # url based parameter
         
     # if viewcount == 0, then it's not a criteria needed (same as None)
     # if user inputs text instead, also no criteria.
-    try:
-        viewcount_int = int(viewcount)
-    except:
-        viewcount_int = 0
-    
-    if viewcount_int != 0:
-        # bring back top documents viewed viewcount times
+    if viewperiod is not None and viewcount != 0:
         try:
-            viewedwithin = int(viewedwithin) # note default is 4
+            viewcount_int = int(viewcount)
         except:
-            viewedwithin = 4 # default last 12 months
-        else:
-            # check range, set default if out of bounds
-            if viewedwithin < 0 or viewedwithin > 4:
-                viewedwithin = 4
+            viewcount_int = 0
 
-        #VALS_VIEWPERIODDICT_SOLRFIELD = {1: "art_views_lastweek", 2: "art_views_last1mos", 3: "art_views_last6mos", 4: "art_views_last12mos", 5: "art_views_lastcalyear", 0: "art_views_lastcalyear" }
-        view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[viewedwithin]
-        
+        view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[viewperiod]
         analyze_this = f"&& {view_count_field}:[{viewcount_int} TO *] "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
-
+    
     # now clean up the final components.
     search_q = cleanup_solr_query(search_q)
     filter_q = cleanup_solr_query(filter_q)
@@ -1324,11 +1316,9 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
         solr_query_spec.solrQuery.searchQ = query
         logger.debug(f"query: {query}. Request: {req_url}")
     else:
-        logger.debug(f"query was None or empty. Chgd to *:*. {query}. Request: {req_url}")
-        solr_query_spec.solrQuery.searchQ = "*:*"           
-            
-    if solr_query_spec.solrQuery.searchQ is None:
-        solr_query_spec.solrQuery.searchQ = "*:*"       
+        if solr_query_spec.solrQuery.searchQ is None or solr_query_spec.solrQuery.searchQ == "":
+            logger.debug(f"query and searchQ were None or empty. Chgd to *:*. {query}. Request: {req_url}")
+            solr_query_spec.solrQuery.searchQ = "*:*"       
 
     if filter_query is not None:
         solr_query_spec.solrQuery.filterQ = filter_query
@@ -1655,30 +1645,20 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     except solr.SolrException as e:
         if e is None:
             ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
+            ret_status = (e.httpcode, None) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
             logger.error(f"Solr Runtime Search Error (a): {e.reason}")
             logger.error(e.body)
         elif e.reason is not None:
             ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
+            ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
             logger.error(f"Solr Runtime Search Error (b): {e.reason}")
             logger.error(e.body)
         else:
             ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
+            ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
             logger.error(f"Solr Runtime Search Error (c): {e.httpcode}")
             logger.error(e.body)
         
-        ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-                                #  (I added the 400 first element, because then I have a known quantity to catch)
-                                #  httpcode: 400
-                                #  reason: 'Bad Request'
-                                #  body: b'<?xml version="1.0" encoding="UTF-8"?>\n<response>\n\n<lst name="responseHeader">\n  <int name="status">400</int>\n  <int name="QTime">0</int>\n  <lst name="params">\n    
-                                #          <str name="hl">true</str>\n    <str name="fl">art_id, art_sourcecode, art_vol, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, abstract_xml, art_title, art_author_id, 
-                                #          art_citeas_xml, text_xml,score</str>\n    <str name="hl.fragsize">200</str>\n    <str name="hl.usePhraseHighlighter">true</str>\n    <str name="start">0</str>\n    <str name="fq">*:* 
-                                #          </str>\n    <str name="mlt.minwl">None</str>\n    <str name="sort">rank asc</str>\n    <str name="rows">15</str>\n    <str name="hl.multiterm">true</str>\n    <str name="mlt.count">2</str>\n
-                                #          <str name="version">2.2</str>\n    <str name="hl.simple.pre">%##</str>\n    <str name="hl.snippets">5</str>\n    <str name="q">*:* &amp;&amp; text:depression &amp;&amp; text:"passive withdrawal" </str>\n
-                                #          <str name="mlt">false</str>\n    <str name="hl.simple.post">##%</str>\n    <str name="disMax">None</str>\n    <str name="mlt.fl">None</str>\n    <str name="hl.fl">text_xml</str>\n    <str name="wt">xml</str>\n
-                                #          <str name="debugQuery">off</str>\n  </lst>\n</lst>\n<lst name="error">\n  <lst name="metadata">\n    <str name="error-class">org.apache.solr.common.SolrException</str>\n
-                                #          <str name="root-error-class">org.apache.solr.common.SolrException</str>\n  </lst>\n  <str name="msg">sort param field can\'t be found: rank</str>\n
-                                #          <int name="code">400</int>\n</lst>\n</response>\n'
     except SAXParseException as e:
         ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Search syntax error", error_description=f"{e.getMessage()}")
         ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
@@ -1938,7 +1918,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             ret_val = documentList
             
         except Exception as e:
-            logger.error(f"problem with query {e}")
+            logger.error(f"Problem with query results processing {e}")
             
 
     return ret_val, ret_status
@@ -2055,8 +2035,10 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
         documentListItem.issue = result.get("art_iss", None)
         documentListItem.issn = result.get("art_issn", None)
         # documentListItem.isbn = result.get("art_isbn", None) # no isbn in solr stored data, only in products table
-
-        documentListItem.title = result.get("art_title_xml", "")  
+        
+        # see if using art_title instead is a problem for clients...at least that drops the footnote
+        documentListItem.title = result.get("art_title", "")  
+        # documentListItem.title = result.get("art_title_xml", "")  
         if documentListItem.pgRg is not None:
             pg_start, pg_end = opasgenlib.pgrg_splitter(documentListItem.pgRg)
             documentListItem.pgStart = pg_start
