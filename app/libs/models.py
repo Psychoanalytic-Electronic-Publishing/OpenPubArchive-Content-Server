@@ -61,8 +61,9 @@ class ListTypeEnum(Enum):
 class ReportTypeEnum(str, Enum):
     sessionLog = "Session-Log"
     userSearches = "User-Searches"
-    documentViews = "Document-Views"
-    opasLogs = "Opas-Error-Logs"
+    documentViews = "Document-View-Stat"
+    documentViewLog = "Document-View-Log"
+    #opasLogs = "Opas-Error-Logs"
     
 class TermTypeIDEnum(str, ExtendedEnum):
     termid = "ID"
@@ -210,9 +211,11 @@ class DocumentListItem(BaseModel):
     documentRef: str = Schema(None, title="Document Ref (bibliographic)", description="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
     documentRefHTML: str = Schema(None, title="Same as documentRef but in HTML.")
     documentMetaXML: str = Schema(None, title="Metadata content in XML, , e.g., element meta")
-    documentInfoXML: str = Schema(None, title="The document meta information in XML, e.g., element artinfo") 
+    documentInfoXML: str = Schema(None, title="The document meta information in XML, e.g., element artinfo")
     title: str = Schema(None, title="Document Title")
     authorMast: str = Schema(None, title="Author Names", description="The author names as displayed below the title in an article.")
+    #2020-10-19, new convenience listing of author info (requires schema change to parse during load)
+    authorList: list = Schema(None, title="List of individual author data parsed from documentInfoXML", description="List of individual author data parsed from documentInfoXML")
     origrx: str = Schema(None, title="Original Document (documentID)", description="Document idref (documentID) linking this to an original document, e.g, this is a translation of...")
     relatedrx: str = Schema(None, title="Closely Related Documents (documentID)", description="Document idref (documentID) associating all closely related documents to this one, e.g., this is a commentary on...")
     PEPCode: str = Schema(None, title="Source Acronym", description="Acronym-type code assigned to the document source e.g., CPS, IJP, ANIJP-EL, ZBK. (The first part of the document ID.)")
