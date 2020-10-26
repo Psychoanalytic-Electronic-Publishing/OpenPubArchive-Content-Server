@@ -510,6 +510,9 @@ def get_access_limitations(doc_id,
                             if classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
                                 ret_val.accessLimitedReason
                             logger.info(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
+                else:
+                    # not full-text OR (not authenticated or accessLimited==False)
+                    logger.info(f"No PaDS check needed.  Document {doc_id} authenticated: {session_info.authenticated} accessLimited: {ret_val.accessLimited}. Reason: {ret_val.accessLimitedReason}")
         
             except Exception as e:
                 logger.error(f"Issue checking document permission. Possibly not logged in {e}")
