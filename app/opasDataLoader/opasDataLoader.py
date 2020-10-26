@@ -181,8 +181,10 @@ def file_is_same_as_in_solr(solrcore, filename, timestamp_str):
             ret_val = True
         else:
             ret_val = False
+    except KeyError as e:
+        ret_val = False # not found, return false so it's loaded anyway.
     except Exception as e:
-        logger.warning(f"File check error: {e}")
+        logger.info(f"File check error: {e}")
         ret_val = False # error, return false so it's loaded anyway.
         
     return ret_val
@@ -200,8 +202,11 @@ def main():
     ocd =  opasCentralDBLib.opasCentralDB()
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root="pep-web-xml")
 
-    logger = logging.getLogger(programNameShort)
+    # set toplevel logger to specified loglevel
+    logger = logging.getLogger()
     logger.setLevel(options.logLevel)
+    # get local logger
+    logger = logging.getLogger(programNameShort)
 
     logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
     # logging.basicConfig(filename=logFilename, level=options.logLevel)
@@ -304,6 +309,8 @@ def main():
             logger.warning(msg)
             print (msg)
             exit(0)
+        else:
+            options.forceRebuildAllFiles = True
     else:
         pat = fr"(.*?){loaderConfig.file_match_pattern}"
         filenames = []
@@ -345,7 +352,7 @@ def main():
         for n in filenames:
             fileTimeStart = time.time()
             if not options.forceRebuildAllFiles:                    
-                if not options.display_verbose and processed_files_count % 100 == 0:
+                if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0:
                     print (f"Processed Files ...loaded {processed_files_count} out of {files_found} possible.")
 
                 if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0:

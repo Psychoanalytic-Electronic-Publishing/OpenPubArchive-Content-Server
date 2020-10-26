@@ -374,6 +374,13 @@ def get_access_limitations(doc_id,
     ret_val.accessLimitedPubLink = None
     ret_val.accessLimited = True # no access...default, may be changed below.
     
+    if session_info is None:
+        logger.info(f"Document permissions for {doc_id} -- no session info")
+        ## not logged in; take the quickest way out.
+        #ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
+        #ret_val.accessLimited = True
+        #ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS
+    
     if ret_val.doi is not None:
         publisherAccess = opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO + opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK % ret_val.doi
         # TODO: get the link we use to send users to publishers site when we don't have it, and no doi, and implement here.
@@ -397,12 +404,6 @@ def get_access_limitations(doc_id,
         #"This content is currently free to all users."
         ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_EMBARGOED + publisherAccess # limited...get it elsewhere
 
-    #elif session_info is None:
-        ## not logged in; take the quickest way out.
-        #ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
-        #ret_val.accessLimited = True
-        #ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS
-    
     elif classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED): # PEPCurrent
         ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_EMBARGOED
         ret_val.accessLimitedCurrentContent = True
@@ -414,6 +415,7 @@ def get_access_limitations(doc_id,
                 # "This current content is available for you to access"
                 ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE 
         except:
+            logger.error(f"PEPCurrent document error checking permission: {e}")
             pass # could be a direct call without a session; returns unauthorized
             
     elif classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE):
@@ -426,8 +428,10 @@ def get_access_limitations(doc_id,
                 ret_val.accessLimitedCurrentContent = False
                 # "This content is available for you to access"
                 ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-        except:
-            pass # could be a direct call without a session; returns unauthorized
+        except Exception as e:
+            logger.error(f"PEPArchive document error checking permission: {e}")
+    else:
+        logger.error(f"Unknown classification: {classification}")
     
     # We COULD check the session_id in PADS here with the art_id and year, for EVERY return!
     #  would it be slow?  Certainly for more than a dozen records, might...this is just for one instance though.
@@ -492,7 +496,7 @@ def get_access_limitations(doc_id,
                         logger.debug(f"Document unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
     
         except Exception as e:
-            logger.debug(f"Issue checking document permission. Possibly not logged in {e}")
+            logger.error(f"Issue checking document permission. Possibly not logged in {e}")
             pass # can't be checked, will be unauthorized.
     
     return ret_val

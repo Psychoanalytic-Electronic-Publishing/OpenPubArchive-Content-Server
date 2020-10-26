@@ -2,6 +2,15 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2020-10-02 Added schema fields for sort issue with Solr.  Solr doesn't properly sort fields
+               that are tokenized for full-text search.  So added string_lc, which uses a solr.KeywordTokenizerFactory
+               tokenizer (as described on the internet), which actually works better than a plain string
+               field because it sorts mixed case properly (ignoring case).  But I populate these fields
+               with the data having punctuation removed, instead of using copy fields, because I also remove
+               all punctuation, which otherwise negatively affects the sort.
+               
+               (This mod note added in the 10-03 update, but the push before this on 10-02 had the schema changes.)
+
     2020-09-24 Many simple fields changed to non-stored, non-indexed, but docvalues       
                As tested/confirmed with this element in Solr 8.6, Solr Schema elements (at least strings and integers) 
                that are docvalues don't need to be indexed or saved to be returnable in results and be searchable
@@ -236,6 +245,14 @@
   <field name="authors" type="string" indexed="true" stored="true" multiValued="true" docValues="true" />
   <field name="art_authors" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_mast" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  
+  <!--Added 20201019 to compare the masts with ids and see if they are complete, and the same (this field 
+      was apparently here in an early incarnation but has been removed)
+      art_authors_ids_str compare to art_authors_mast, though the former is from the attribute author_id
+      -->
+  <field name="art_authors_ids" type="string_ci" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_ids_str"  type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  
   <!--Added 20200410 to allow sort by authors-->
   <field name="art_authors_citation" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_authors_citation_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting

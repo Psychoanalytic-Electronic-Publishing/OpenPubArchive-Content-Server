@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1022.2.Alpha"
+__version__     = "2020.1024.1.Alpha"
 __status__      = "Development"
 
 """
@@ -447,6 +447,7 @@ async def reports(response: Response,
                   userid:str=Query(None, title="Global User ID", description="Filter by this common (global) system userid"), 
                   startdate: str=Query(None, title=opasConfig.TITLE_STARTDATE, description=opasConfig.DESCRIPTION_STARTDATE), 
                   enddate: str=Query(None, title=opasConfig.TITLE_ENDDATE, description=opasConfig.DESCRIPTION_ENDDATE),
+                  matchstr: str=Query(None, title=opasConfig.TITLE_REPORT_MATCHSTR, description=opasConfig.DESCRIPTION_REPORT_MATCHSTR), 
                   limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                   download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
@@ -459,8 +460,7 @@ async def reports(response: Response,
       <b>Returns a report in JSON per the Reports</b>
 
       Requires API key.
-
-
+      
     ### Return Type
 
       models.Report
@@ -472,7 +472,16 @@ async def reports(response: Response,
          #/v2/Reports/
 
     ### Notes
-       #NA
+      For session-views and user-searches reports:
+         matchstr does a regex search of the url (endpoint plus parameters)
+         e.g.,
+           /Documents/Document/AIM.023.0227A/
+         
+      For document-view-log
+         matchstr does a regex search of the document type, e.g.,
+            PDF
+ 
+      Note as the examples above, you don't need to include special regex wildcards (it matches anywhere in the text)
 
     ### Potential Errors
        #NA
@@ -486,6 +495,7 @@ async def reports(response: Response,
 
     userid_condition = ""
     sessionid_condition = ""
+    extra_condition = ""
     #username_condition = ""
     standard_filter = "1"
     limited_count = 0
@@ -532,6 +542,8 @@ async def reports(response: Response,
     header = None
     if report == models.ReportTypeEnum.documentViewLog:
         standard_filter = "1 = 1 " 
+        if matchstr is not None:
+            extra_condition = f" AND type RLIKE '{matchstr}'"
         report_view = "vw_reports_document_activity"
         orderby_clause = "ORDER BY last_update DESC"
         header = ["user id",
@@ -541,8 +553,10 @@ async def reports(response: Response,
                   "last update"]
         
     elif report == models.ReportTypeEnum.sessionLog:
-        standard_filter = "endpoint rlike '.*Search' " 
+        standard_filter = "1 = 1 " 
         report_view = "vw_reports_session_activity"
+        if matchstr is not None:
+            extra_condition = f" AND params RLIKE '{matchstr}'"
         orderby_clause = "ORDER BY last_update DESC"
         header = ["user id",
                   "session id",
@@ -556,6 +570,8 @@ async def reports(response: Response,
                   "last update"]
     elif report == models.ReportTypeEnum.userSearches:
         standard_filter = "endpoint rlike '.*Search' "
+        if matchstr is not None:
+            extra_condition = f" AND params RLIKE '{matchstr}'"
         report_view = "vw_reports_user_searches"
         orderby_clause = "ORDER BY last_update DESC"
         header = ["user id", 
@@ -589,8 +605,8 @@ async def reports(response: Response,
                  {date_condition}
                  {userid_condition}
                  {sessionid_condition}
+                 {extra_condition}
                  {orderby_clause}
-                 {limit_clause};
                  """
 
     count = ocd.get_select_count(select)
@@ -600,6 +616,9 @@ async def reports(response: Response,
             detail=ERR_MSG_NO_DATA_FOR_REPORT
         )               
     else:
+        # now add the limit clause
+        select += f"{limit_clause};"
+        
         if download:
             # Download CSV of selected set.  Returns only response with download, not usual documentList
             #   response to client

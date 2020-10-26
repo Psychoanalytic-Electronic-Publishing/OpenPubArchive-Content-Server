@@ -245,6 +245,14 @@
   <field name="authors" type="string" indexed="true" stored="true" multiValued="true" docValues="true" />
   <field name="art_authors" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_mast" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  
+  <!--Added 20201019 to compare the masts with ids and see if they are complete, and the same (this field 
+      was apparently here in an early incarnation but has been removed)
+      art_authors_ids_str compare to art_authors_mast, though the former is from the attribute author_id
+      -->
+  <field name="art_authors_ids" type="string_ci" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_ids_str"  type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  
   <!--Added 20200410 to allow sort by authors-->
   <field name="art_authors_citation" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_authors_citation_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting

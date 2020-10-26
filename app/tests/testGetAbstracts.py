@@ -32,6 +32,31 @@ class TestGetAbstracts(unittest.TestCase):
         print(response_info["fullCount"])
         assert(response_info["fullCount"] == 36)
         
+    def test_2a_get_abstract_permissions(self):
+        from localsecrets import PADS_TEST_ID, PADS_TEST_PW
+        # login
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={"test1"}&password={PADS_TEST_PW}')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        headers["client-session"] = r["session_id"]
+
+        full_URL = base_plus_endpoint_encoded(f'/v2/Database/Search/?abstract=true&formatrequested=XML&fulltext1=art_qual%3A(%22PAQ.085.0885A%22)&synonyms=false')
+        response = requests.get(full_URL, headers=headers)
+        r1 = response.json()
+        response_info = r1["documentList"]["responseInfo"]
+        response_set = r1["documentList"]["responseSet"]
+        doc_of_interest = r1["documentList"]["responseSet"][4]
+        accessLimited = doc_of_interest["accessLimited"]
+        assert (accessLimited == False)
+            
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PAQ.085.0851A/?similarcount=5&return_format=XML')
+        response = requests.get(full_URL, headers=headers)
+        r2 = response.json()
+        response_info = r2["documents"]["responseInfo"]
+        response_set = r2["documents"]["responseSet"]
+        doc_of_interest = r2["documents"]["responseSet"][0]
+        accessLimited = doc_of_interest["accessLimited"]
+        assert (accessLimited == False)
 
 if __name__ == '__main__':
     unittest.main()    

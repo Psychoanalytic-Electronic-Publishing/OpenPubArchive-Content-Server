@@ -406,7 +406,7 @@ class ArticleInfo(object):
             logger.warning("This document %s does not have an author list; may be missing authindexids" % art_id)
             self.art_author_id_list = self.author_list
 
-        self.author_ids_str = ", ".join(self.art_author_id_list)
+        self.art_author_ids_str = ", ".join(self.art_author_id_list)
         self.art_auth_mast, self.art_auth_mast_list = opasxmllib.author_mast_from_xmlstr(self.author_xml, listed=True)
         self.art_auth_mast_unlisted_str, self.art_auth_mast_unlisted_list = opasxmllib.author_mast_from_xmlstr(self.author_xml, listed=False)
         self.art_auth_count = len(self.author_xml_list)
@@ -850,7 +850,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
                 "file_classification" : non_empty_string(artInfo.file_classification),
                 "file_size" : artInfo.file_size,
                 "file_name" : artInfo.filename,
-                "art_subtitle_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//artsubtitle", default_return = None),
+                "art_subtitle_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//artsub", default_return = None),
                 "art_citeas_xml" : artInfo.art_citeas_xml,
                 #"art_cited_all" : cited_counts.countAll,
                 #"art_cited_5" : cited_counts.count5,
@@ -861,6 +861,10 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
                 "art_authors" : artInfo.author_list,
                 "art_authors_count" : artInfo.art_authors_count,
                 "art_authors_mast" : non_empty_string(artInfo.art_auth_mast),
+                # next two fields may be temp, but I want to compare mast to ids
+                "art_authors_ids" : artInfo.art_author_id_list,
+                "art_authors_ids_str" : non_empty_string(artInfo.art_author_ids_str),
+                # end insertion ################################################
                 "art_authors_citation" : non_empty_string(artInfo.art_auth_citation),
                 "art_authors_unlisted" : non_empty_string(artInfo.art_auth_mast_unlisted_str),
                 "art_authors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//aut", default_return = None),
