@@ -335,6 +335,7 @@ def pads_permission_check(session_id, doc_id, doc_year, reason_for_check=None):
         logger.warning("fulltext_request info not supplied")
         
     full_URL = base + f"/v1/Permits?SessionId={session_id}&DocId={doc_id}&DocYear={doc_year}&ReasonForCheck={reason_for_check}"
+    
     response = requests.get(full_URL)
     # if response.ok == True:  # returns 401 for a non-authenticated session
     try:
@@ -431,7 +432,8 @@ def get_access_limitations(doc_id,
                         ret_val.accessLimited = False
                         ret_val.accessLimitedCurrentContent = False
                         # "This content is available for you to access"
-                        ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+                        ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE
+                        logger.info("Optimization - session info used to authorize PEPArchive document (msg will be moved to debug later)")
                 except Exception as e:
                     logger.error(f"PEPArchive document error checking permission: {e}")
             else:
@@ -495,11 +497,12 @@ def get_access_limitations(doc_id,
                             #documentListItem.accessLimitedCurrentContent = False
                             # "This content is available for you to access"
                             ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+                            logger.info(f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}")
                         else:
                             ret_val.accessLimited = True
                             if classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
                                 ret_val.accessLimitedReason
-                            logger.debug(f"Document unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
+                            logger.info(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
         
             except Exception as e:
                 logger.error(f"Issue checking document permission. Possibly not logged in {e}")
