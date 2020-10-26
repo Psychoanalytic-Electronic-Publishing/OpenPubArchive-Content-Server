@@ -467,12 +467,19 @@ def get_access_limitations(doc_id,
                                                                  reason_for_check=reason_for_check)
                     except Exception as e:
                         # PaDS could be down, local development
+                        logger.error(f"PaDS Access Exception: {e}")
                         if localsecrets.BASEURL == "development.org":
                             resp = models.PadsPermitInfo(Permit=True, HasArchiveAccess=True, HasCurrentAccess=True)
                             # so it doesn't have to check this later
                             session_info.authorized_peparchive = True
                             session_info.authorized_pepcurrent = True
                             authorized = True
+                        else:
+                            session_info.authorized_peparchive = False
+                            session_info.authorized_pepcurrent = False
+                            authorized = False
+                            resp = models.PadsPermitInfo(Permit=False, HasArchiveAccess=False, HasCurrentAccess=False)
+                            
     
                     finally:
                         # if this is True, then as long as session_info is valid, it won't need to check again
@@ -497,7 +504,7 @@ def get_access_limitations(doc_id,
                             #documentListItem.accessLimitedCurrentContent = False
                             # "This content is available for you to access"
                             ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-                            logger.info(f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}")
+                            logger.info(f"Document {doc_id} available.  Opas Reason: {ret_val.accessLimitedDescription}")
                         else:
                             ret_val.accessLimited = True
                             if classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
