@@ -222,11 +222,10 @@ class opasCentralDB(object):
     def __init__(self, session_id=None, access_token=None, token_expires_time=None, username=opasConfig.USER_NOT_LOGGED_IN_NAME, user=None):
         self.db = None
         self.connected = False
-        self.authenticated = False
-        self.session_id = session_id
-        self.access_token = access_token
-        self.user = None
-        self.sessionInfo = None
+        # self.authenticated = False
+        self.session_id = session_id # deprecate?
+        # self.user = None
+        # self.sessionInfo = None
         
     def open_connection(self, caller_name=""):
         """
@@ -919,7 +918,7 @@ class opasCentralDB(object):
                         ret_val = self.db.commit()
 
                     cursor.close()
-                    self.sessionInfo = None
+                    # self.sessionInfo = None
                     self.close_connection(caller_name="delete_session") # make sure connection is closed
                 else:
                     logger.fatal("Connection not available to database.")
@@ -993,7 +992,7 @@ class opasCentralDB(object):
                     
                     cursor.close()
                     # session_info = self.get_session_from_db(session_id)
-                    self.sessionInfo = session_info
+                    # self.sessionInfo = session_info
                     self.close_connection(caller_name="save_session") # make sure connection is closed
     
         # return session model object
@@ -1127,7 +1126,7 @@ class opasCentralDB(object):
         else:
             try:
                 session_id = session_info.session_id
-                client_id = session_info.client_id
+                client_id = session_info.api_client_id
             except:
                 if self.session_id is None:
                     # no session open!
@@ -1496,22 +1495,22 @@ class opasCentralDB(object):
 
         return ret_val
 
-    def get_user(self, username = None, user_id = None):
-        """
-        If user exists (via username or user_id) and has an active subscription
-          Returns userSubscriptions object and saves it to the ocd object properties.
+    #def get_user(self, username = None, user_id = None):
+        #"""
+        #If user exists (via username or user_id) and has an active subscription
+          #Returns userSubscriptions object and saves it to the ocd object properties.
           
-        Note: a user cannot login without an active subscription. 
+        #Note: a user cannot login without an active subscription. 
 
-        Specify either username or userID, not both.
+        #Specify either username or userID, not both.
         
-        >>> ocd = opasCentralDB()
-        >>> ocd.get_user("demo")
+        #>>> ocd = opasCentralDB()
+        #>>> ocd.get_user("demo")
         
-        """
-        ret_val = None
+        #"""
+        #ret_val = None
 
-        return ret_val
+        #return ret_val
     
     def verify_admin(self, session_info):
         """

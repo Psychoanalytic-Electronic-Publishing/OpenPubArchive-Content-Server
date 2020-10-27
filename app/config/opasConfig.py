@@ -402,7 +402,10 @@ DEFAULT_MORE_LIKE_THIS_COUNT = 0
 # Standard Document List Summary fields 
 # (potential data return in document list)
 # Indent moved to left so when in query, only a few spaces sent to Solr
-DOCUMENT_ITEM_SUMMARY_FIELDS ="""
+
+DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, art_title, art_title_xml, art_subtitle_xml, art_author_id, art_authors, art_citeas_xml, art_info_xml, art_sourcecode, art_sourcetitleabbr, art_sourcetitlefull, art_sourcetype, art_level, para_art_id,parent_tag, para, art_vol, art_type, art_vol_title, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_lang, art_doi, art_issn, art_origrx, art_qual, art_kwds, art_cited_all, art_cited_5, art_cited_10, art_cited_20, art_views_lastcalyear, art_views_last1mos, art_views_last6mos, art_views_last12mos, art_views_lastweek, reference_count, file_last_modified, timestamp, score"
+
+DOCUMENT_ITEM_SUMMARY_FIELDS_x ="""
  art_id, 
  art_title, 
  art_title_xml, 

@@ -291,6 +291,7 @@ class QueryTextToSolr():
 #-----------------------------------------------------------------------------
 def year_parser_support(year_arg):
 
+    ret_val = ""
     year_query = re.match("[ ]*(?P<option>[\>\^\<\=])?[ ]*(?P<start>[12][0-9]{3,3})?[ ]*(?P<separator>([-]|TO))*[ ]*(?P<end>[12][0-9]{3,3})?[ ]*", year_arg, re.IGNORECASE)            
     if year_query is None:
         logger.warning("Search - StartYear bad argument {}".format(year_arg))
@@ -375,13 +376,18 @@ def year_arg_parser(year_arg):
     clause = ""
     for n in bools:
         if n != "":
-            if clause != "":
-                clause += f" || {year_parser_support(n)}"
-            else:
-                clause += f"{year_parser_support(n)}"
+            year_n = year_parser_support(n)
+            if year_n is not None:
+                if clause != "" and year_n != "":
+                    clause += f" || {year_n}"
+                else:
+                    clause += f"{year_n}"
 
-    # if there's an || in here, you need parens to give it precedence on the &&    
-    ret_val = f"&& ({clause})"
+    # if there's an || in here, you need parens to give it precedence on the &&
+    if clause != "":
+        ret_val = f"&& ({clause})"
+    else:
+        ret_val = ""
 
     return ret_val
                    

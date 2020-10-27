@@ -62,12 +62,14 @@ def base_plus_endpoint_encoded(endpoint):
     ret_val = base_api + endpoint
     return ret_val
 
+UNIT_TEST_CLIENT_ID = "4"
+
 if 1:
     from opasDocPermissions import pads_get_session
-    session_info, pads_session_info = pads_get_session()
+    session_info, pads_session_info = pads_get_session(client_id=UNIT_TEST_CLIENT_ID)
     session_id = session_info.session_id
     headers = {"client-session":session_id,
-               "client-id": "4",
+               "client-id": UNIT_TEST_CLIENT_ID,
                "Content-Type":"application/json",
                localsecrets.API_KEY_NAME: localsecrets.API_KEY}
 

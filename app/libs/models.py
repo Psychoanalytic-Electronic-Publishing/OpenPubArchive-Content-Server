@@ -370,6 +370,8 @@ class SessionInfo(BaseModel):
     user_id: int = Schema(opasConfig.USER_NOT_LOGGED_IN_ID, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
     username: str = Schema(opasConfig.USER_NOT_LOGGED_IN_NAME, title="Registered user name, for convenience here")
     authenticated: bool = Schema(False, title="True if the user has been authenticated.")
+    # the next field allows us to stop asking for permits
+    permit_confirms_unauthenticated: bool = Schema(False, title="True if PaDS has replied to a permit with http code 401 unauthenticated.")
     authorized_peparchive: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the archive.")
     authorized_pepcurrent: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the current issues.")
     session_start: datetime = Schema(None, title="The datetime when the user started the session")
@@ -720,6 +722,7 @@ class PadsPermitInfo(BaseModel):
     HasCurrentAccess:bool = Schema(False, title="User has subscription to PEP Current (rare)")
     Permit:bool = Schema(False, title="True if the user has permission to view fulltext of DocId")
     ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
+    StatusCode: int = Schema(None, title="status code returned ")
     ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
     
 #-------------------------------------------------------

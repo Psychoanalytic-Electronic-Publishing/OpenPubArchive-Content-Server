@@ -21,7 +21,7 @@ session_info, pads_response = opasDocPermissions.pads_login(username=PADS_TEST_I
 # Confirm that the request-response cycle completed successfully.
 sessID = session_info.session_id
 headers = {f"client-session":f"{sessID}",
-           "client-id": "2"
+           "client-id": "4"
            }
 
 class TestDocumentImageFetch(unittest.TestCase):

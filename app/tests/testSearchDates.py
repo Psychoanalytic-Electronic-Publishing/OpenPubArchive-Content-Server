@@ -121,6 +121,17 @@ class TestSearchDates(unittest.TestCase):
         print(response_info["fullCount"])
         assert(response_info["fullCount"] >= 7337)
 
+    def test_4d_search_bad_year(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?startyear=19')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print(response_info["fullCount"])
+        assert(response_info["fullCount"] >= 7337)
+
 if __name__ == '__main__':
     unittest.main()
     

@@ -179,7 +179,7 @@ def get_session_info(request: Request,
     """
     if session_id is not None and session_id != opasConfig.NO_SESSION_ID:
         ts = time.time()
-        ocd = opasCentralDBLib.opasCentralDB(session_id)
+        ocd = opasCentralDBLib.opasCentralDB()
         session_info = ocd.get_session_from_db(session_id)
         if session_info is None:
             session_info, pads_session_info = opasDocPerm.pads_get_session(session_id=session_id, client_id=client_id)
@@ -193,7 +193,7 @@ def get_session_info(request: Request,
         if opasConfig.LOG_CALL_TIMING:
             logger.debug(f"Get/Save session info response time: {time.time() - ts}")
         
-        logger.debug("getSessionInfo: %s", session_info)
+        logger.info("getSessionInfo: %s", session_info)
         
     else:
         ocd = opasCentralDBLib.opasCentralDB()

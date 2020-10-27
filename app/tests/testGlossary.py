@@ -17,7 +17,7 @@ session_info, pads_response = opasDocPermissions.pads_login(username=PADS_TEST_I
 # Confirm that the request-response cycle completed successfully.
 session_id = pads_response.SessionId
 headers = {f"client-session":f"{session_id}",
-           "client-id": "0"
+           "client-id": "4"
            }
 
 class TestGlossary(unittest.TestCase):

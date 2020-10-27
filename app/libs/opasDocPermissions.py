@@ -19,7 +19,6 @@ import starlette.status as httpCodes
 # import localsecrets
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
 base = "https://padstest.zedra.net/PEPSecure/api"
-
 import opasCentralDBLib
 
 def verify_header(request, caller_name):
@@ -131,6 +130,47 @@ def fix_pydantic_invalid_nones(response_data):
 
     return response_data
 
+def gather_session_info(session_id, client_id):
+    """
+    >>> session_info = gather_session_info("7F481226-9AF1-47BC-8E26-F07DB8C3E78D", "4")
+    >>> session_info.username == "NotLoggedIn"
+    True
+    
+    >>> session_info, pads_session_info = pads_login()
+    >>> session_info = gather_session_info(session_info.session_id, "4")
+    >>> session_info.authorized_peparchive == True
+    True
+
+    
+    """
+    session_info, pads_session_info = pads_get_session(session_id=session_id, client_id=client_id, retry=False)
+    # try getting a permit
+    authorized, pads_permit_info = pads_permission_check(session_id=session_id,
+                                                         doc_id="IJP.001.0027A",
+                                                         doc_year="1921",
+                                                         reason_for_check="sessionCheck")
+    session_info.authorized_peparchive = pads_permit_info.HasArchiveAccess
+    session_info.authorized_pepcurrent = pads_permit_info.HasCurrentAccess
+    authorized_sub = session_info.authorized_peparchive or session_info.authorized_pepcurrent 
+    session_info.authenticated=1 if authorized_sub == True else 0
+    
+    userinfo = pads_get_userinfo(session_id, client_id)
+    if userinfo is not None:
+        session_info.user_id = userID=userinfo.UserId
+        session_info.username = userinfo.UserName
+        session_info.user_type = userinfo.UserType
+        session_info.admin = userinfo.UserType=="Admin"
+    else:
+        session_info.user_id = 0
+        session_info.username = opasConfig.USER_NOT_LOGGED_IN_NAME
+        session_info.user_type = "Unknown"
+        session_info.admin = False
+    
+    ret_val = save_session_info_to_db(session_info)
+    
+    return session_info
+    
+
 def update_sessioninfo_with_userinfo(pads_session_info, client_id):
     # now get userinfo
     session_id = pads_session_info.SessionId
@@ -164,7 +204,7 @@ def update_sessioninfo_with_userinfo(pads_session_info, client_id):
 
     return ret_val # returns a sessionInfo model
 
-def set_session_info(response, client_id):
+def set_session_info_login(response, client_id):
     """
     Take the return info from the auth server and put it in the Opas SessionInfo model
     
@@ -184,7 +224,7 @@ def set_session_info(response, client_id):
         if db_session_info is None:
             ocd.save_session(session_id, session_info)
         else:
-            logger.debug(f"Session {session_id} already found in db. Updating...")
+            logger.info(f"Session {session_id} already found in db. Updating...")
             if session_info.username != db_session_info.username and db_session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
                 msg = f"MISMATCH! Two Usernames with same session_id. OLD(DB): {db_session_info}; NEW(SESSION): {session_info}"
                 print (msg)
@@ -206,6 +246,53 @@ def set_session_info(response, client_id):
 
     return ret_val
     
+def set_session_info(pads_session_info, client_id):
+    """
+    Take the return info from the auth server and put it in the Opas SessionInfo model
+    
+    ** Saves or Updates the Session record in the api_sessions table **
+    
+    """
+    try:
+        session_id = pads_session_info.SessionId # PaDS session ID
+        logger.debug(f"set_session_info: Session ID from PaDS: {session_id}")
+        # add user fields
+        ret_val = session_info = update_sessioninfo_with_userinfo(pads_session_info, client_id)
+        # make sure the session is recorded.
+        saved = save_session_info_to_db(session_info)
+
+    except Exception as e:
+        logger.error(f"Can't get or save session info from auth server {e}")
+        ret_val = None
+
+    return ret_val
+
+def save_session_info_to_db(session_info):
+    # make sure the session is recorded.
+    session_id = session_info.session_id
+    ocd = opasCentralDBLib.opasCentralDB()
+    db_session_info = ocd.get_session_from_db(session_id)
+    if db_session_info is None:
+        ret_val, saved_session_info = ocd.save_session(session_id, session_info)
+    else:
+        logger.info(f"Session {session_id} already found in db. Updating...")
+        if session_info.username != db_session_info.username and db_session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
+            msg = f"MISMATCH! Two Usernames with same session_id. OLD(DB): {db_session_info}; NEW(SESSION): {session_info}"
+            print (msg)
+            logger.error(msg)
+        
+        ret_val = ocd.update_session(session_id,
+                                     userID=session_info.user_id,
+                                     username=session_info.username, 
+                                     authenticated=1 if session_info.authenticated == True else 0,
+                                     authorized_peparchive=1 if session_info.authorized_peparchive == True else 0,
+                                     authorized_pepcurrent=1 if session_info.authorized_pepcurrent == True else 0,
+                                     session_end=session_info.session_expires_time,
+                                     api_client_id=session_info.api_client_id
+                                     )
+    
+    return ret_val
+
 def pads_get_session(session_id=None, client_id=opasConfig.NO_CLIENT_ID, retry=True):
     """
     Get a session ID from the auth server (e.g., PaDS).  This is how PaDS does it.
@@ -220,17 +307,20 @@ def pads_get_session(session_id=None, client_id=opasConfig.NO_CLIENT_ID, retry=T
     except Exception as e:
         logger.error(f"PaDS Authorization server not available. {e}")
         pads_session_info = models.PadsSessionInfo()
-        session_info = models.SessionInfo()
+        session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
     else:
         if pads_session_info.status_code == httpCodes.HTTP_500_INTERNAL_SERVER_ERROR:
             # try once without the session ID
             if retry == True:
                 session_info, pads_session_info = pads_get_session(client_id=client_id, retry=False)
             else:
+                pads_session_info = models.PadsSessionInfo()
+                session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
                 logger.error(f"PaDS error 500")
         else:
             pads_session_info = pads_session_info.json()
             pads_session_info = fix_pydantic_invalid_nones(pads_session_info)
+            pads_session_info = models.PadsSessionInfo(**pads_session_info)
             # Save or update the data in the database
             session_info = set_session_info(pads_session_info, client_id)
             logger.info(f"Fetched session info {session_info} from PaDS.")
@@ -261,7 +351,7 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, cl
         if pads_response.ok:
             pads_response = pads_response.json()
             pads_response = fix_pydantic_invalid_nones(pads_response)
-            session_info = set_session_info(pads_response, client_id)
+            session_info = set_session_info_login(pads_response, client_id)
             if isinstance(pads_response, str):
                 pads_session_info = models.PadsSessionInfo()
                 logger.error(f"Pads returned error string: {pads_response}")
@@ -278,7 +368,7 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, cl
         else:
             pads_response = pads_response.json()
             pads_response = fix_pydantic_invalid_nones(pads_response)
-            session_info = set_session_info(pads_response, client_id)
+            session_info = set_session_info_login(pads_response, client_id)
             if isinstance(pads_response, str):
                 pads_session_info = models.PadsSessionInfo()
                 logger.error(f"Pads returned error string: {pads_response}")
@@ -311,7 +401,7 @@ def pads_logout(session_id, request: Request=None, response: Response=None):
 
 def pads_get_userinfo(session_id, client_id):
     ret_val = None
-    logger.debug(f"get_user_info for session {session_id} from client {client_id}")
+    logger.info(f"get_user_info for session {session_id} from client {client_id}")
     if session_id is not None:
         full_URL = base + f"/v1/Users" + f"?SessionID={session_id}"
         try:
@@ -337,11 +427,12 @@ def pads_permission_check(session_id, doc_id, doc_year, reason_for_check=None):
     full_URL = base + f"/v1/Permits?SessionId={session_id}&DocId={doc_id}&DocYear={doc_year}&ReasonForCheck={reason_for_check}"
     
     response = requests.get(full_URL)
-    # if response.ok == True:  # returns 401 for a non-authenticated session
     try:
         ret_resp = response.json()
-        ret_val = ret_resp["Permit"]
         ret_resp = models.PadsPermitInfo(**ret_resp)
+        # returns 401 for a non-authenticated session
+        ret_resp.StatusCode = response.status_code
+        ret_val = ret_resp.Permit
         
     except Exception as e:
         msg = f"Permits response error {e}. Composing no access response."
@@ -356,7 +447,6 @@ def pads_permission_check(session_id, doc_id, doc_year, reason_for_check=None):
 def get_access_limitations(doc_id,
                            classification,
                            session_info,
-                           authenticated=None, 
                            year=None,
                            doi=None,
                            documentListItem: models.DocumentListItem=None,
@@ -446,13 +536,10 @@ def get_access_limitations(doc_id,
         # print (f"SessionID {session_info.session_id}, classificaton: {ret_val.accessLimited} and client_session: {session_info.api_client_session}")
         
         if session_info is not None:
-            try:
-                # always check for a full-text request so PaDS can track them.  
-                # This is an optimization attempt.  
-                #     However, if it's not full-text if you're not logged in, save the test.
-                # and the user is not logged in, then no need to check special permissions.
-                # TODO - Need to double check this...is there ever special permissions for nonlogged in users?
-                if ((session_info.authenticated == True and ret_val.accessLimited == True) or fulltext_request == True): # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
+            try:                   
+                # always check for a full-text request so PaDS can track them.
+                # since we don't really always know about authentication, we need to check all requests that are otherwise rejected.
+                if (session_info.permit_confirms_unauthenticated == False and (ret_val.accessLimited == True or fulltext_request == True)): # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
         
                     if fulltext_request:
                         reason_for_check = opasConfig.AUTH_DOCUMENT_VIEW_REQUEST
@@ -482,37 +569,63 @@ def get_access_limitations(doc_id,
                             
     
                     finally:
-                        # if this is True, then as long as session_info is valid, it won't need to check again
-                        # if accessLimited is ever True again, e.g., now a different type of document, it will check again.
-                        # should markedly decrease the number of calls to PaDS to check.
-                        # check for conflicts
-                        if session_info.authorized_peparchive == True and resp.HasArchiveAccess == False:
-                            logger.error(f"Permission Conflict: session {session_info.session_id} PEPArchive authorized; PaDS says No. PaDS message: {resp.ReasonStr} ")
-                            
-                        if resp.HasArchiveAccess == True:
-                            session_info.authorized_peparchive = True
-                            ret_val.accessLimited = False
-                        
-                        if resp.HasCurrentAccess == True:
-                            session_info.authorized_pepcurrent = True
-                            ret_val.accessLimitedCurrentContent = False
-                    
-                        if authorized:
-                            # "This content is available for you to access"
-                            ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-                            ret_val.accessLimited = False
-                            #documentListItem.accessLimitedCurrentContent = False
-                            # "This content is available for you to access"
-                            ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-                            logger.info(f"Document {doc_id} available.  Opas Reason: {ret_val.accessLimitedDescription}")
+                        # if this is True, then we can stop asking this time
+                        if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED:
+                            logger.info(f"Document {doc_id} unavailable.  Reason: {ret_val.accessLimitedDescription}. No more checks needed this set")
+                            session_info.permit_confirms_unauthenticated = True # now we can exit
                         else:
-                            ret_val.accessLimited = True
-                            if classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
-                                ret_val.accessLimitedReason
-                            logger.info(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
+                            # if this is True, then as long as session_info is valid, it won't need to check again
+                            # if accessLimited is ever True again, e.g., now a different type of document, it will check again.
+                            # should markedly decrease the number of calls to PaDS to check.
+                            # check for conflicts
+                            if session_info.authorized_peparchive == True and resp.HasArchiveAccess == False:
+                                logger.error(f"Permission Conflict: session {session_info.session_id} PEPArchive authorized; PaDS says No. PaDS message: {resp.ReasonStr} ")
+                                
+                            if resp.HasArchiveAccess == True:
+                                session_info.authorized_peparchive = True
+                                ret_val.accessLimited = False
+                            
+                            if resp.HasCurrentAccess == True:
+                                session_info.authorized_pepcurrent = True
+                                ret_val.accessLimitedCurrentContent = False
+                        
+                            if fulltext_request and authorized:
+                                # let's make sure we know about this user.
+                                if session_info.user_id == opasConfig.USER_NOT_LOGGED_IN_NAME:
+                                    # We got this far, We need to find out who this is
+                                    pads_user_info = pads_get_userinfo(session_info.session_id, session_info.api_client_id)
+                                    if pads_user_info is not None:
+                                        session_info.user_id = pads_user_info.UserId
+                                        session_info.username = pads_user_info.UserName
+                                        session_info.user_type = pads_user_info.UserType # TODO - Add this to session table
+                                        # session_info.session_expires_time = ?
+                                        ocd = opasCentralDBLib.opasCentralDB()
+                                        ocd.update_session(session_info.session_id,
+                                                           userID=session_info.user_id,
+                                                           username=session_info.username, 
+                                                           authenticated=1,
+                                                           authorized_peparchive=1 if session_info.authorized_peparchive == True else 0,
+                                                           authorized_pepcurrent=1 if session_info.authorized_pepcurrent == True else 0,
+                                                           session_end=session_info.session_expires_time,
+                                                           api_client_id=session_info.api_client_id
+                                                           )
+                                        
+                            if authorized:
+                                # "This content is available for you to access"
+                                ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+                                ret_val.accessLimited = False
+                                #documentListItem.accessLimitedCurrentContent = False
+                                # "This content is available for you to access"
+                                ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+                                logger.info(f"Document {doc_id} available.  Opas Reason: {ret_val.accessLimitedDescription}")
+                            else:
+                                ret_val.accessLimited = True
+                                if classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
+                                    ret_val.accessLimitedReason
+                                logger.info(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
                 else:
                     # not full-text OR (not authenticated or accessLimited==False)
-                    logger.info(f"No PaDS check needed.  Document {doc_id} authenticated: {session_info.authenticated} accessLimited: {ret_val.accessLimited}. Reason: {ret_val.accessLimitedReason}")
+                    logger.info(f"No PaDS check needed.  Document {doc_id} accessLimited: {ret_val.accessLimited}. Reason: {ret_val.accessLimitedReason} Verified Unauthent: {session_info.permit_confirms_unauthenticated}")
         
             except Exception as e:
                 logger.error(f"Issue checking document permission. Possibly not logged in {e}")
@@ -523,3 +636,19 @@ def get_access_limitations(doc_id,
         
     return ret_val
 
+
+if __name__ == "__main__":
+    import doctest
+    import sys
+    
+    print (40*"*", "opasDocPermissionsTests", 40*"*")
+    print (f"Running in Python {sys.version_info[0]}.{sys.version_info[1]}")
+   
+    logger = logging.getLogger(__name__)
+    ch = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s')    
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+    
+    doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
+    print ("Fini. Tests complete.")

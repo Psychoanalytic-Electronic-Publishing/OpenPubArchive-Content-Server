@@ -18,6 +18,22 @@ class TestMost(unittest.TestCase):
     
     """   
 
+    def test_0_client_init_set_test(self):
+        """
+        Test calls made by typical client (e.g., Gavant)
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?formatrequested=XML&limit=10&viewperiod=2')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=30&limit=10')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?formatrequested=XML&limit=10&period=all')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+
     def test_0_most_downloaded(self):
         """
         """
@@ -67,6 +83,7 @@ class TestMost(unittest.TestCase):
     def test_0_mostviewed_argument_robustness(self):
         """
         """
+        
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=0')
         response = requests.get(full_URL, headers=headers)
         # Try it with variations of the sourcetype to test new robust argument values

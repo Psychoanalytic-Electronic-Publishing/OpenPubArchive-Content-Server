@@ -18,7 +18,7 @@ import opasDocPermissions
 session_info, pads_response = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=session_id)
 # Confirm that the request-response cycle completed successfully.
 session_id = session_info.session_id
-headers = {"client-session":session_id, "client-id": "0", "Content-Type":"application/json"}
+headers = {"client-session":session_id, "client-id": "4", "Content-Type":"application/json"}
 
 class TestConcordance(unittest.TestCase):
     """

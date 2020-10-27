@@ -16,7 +16,7 @@ session_info, pads_response = opasDocPermissions.pads_login(username=PADS_TEST_I
 # Confirm that the request-response cycle completed successfully.
 sessID = session_info.session_id
 headers = {f"client-session":f"{sessID}",
-           "client-id": "0"
+           "client-id": "4"
            }
 
 class TestSecurityFunctions(unittest.TestCase):
@@ -28,7 +28,7 @@ class TestSecurityFunctions(unittest.TestCase):
             assert(False)
         else:
             full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')
-            response = requests.get(full_URL, headers={"client-session":sessID, "client-id": "2", "Content-Type":"application/json"})
+            response = requests.get(full_URL, headers={"client-session":sessID, "client-id": "4", "Content-Type":"application/json"})
             # Confirm that the request-response cycle completed successfully.
             r = response.json()
             print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
@@ -40,7 +40,7 @@ class TestSecurityFunctions(unittest.TestCase):
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)
         else:
-            headers = '"client-session":"%s", "client-id": "0"' % sessID
+            headers = '"client-session":"%s", "client-id": "4"' % sessID
             test = 'response = requests.get(full_URL, headers={%s})' % headers
             setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')"
             timing = timeit.timeit(test, setup, number=1)
@@ -56,7 +56,7 @@ class TestSecurityFunctions(unittest.TestCase):
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)
         else:
-            headers = '"client-session":"%s", "client-id": "0"' % sessID
+            headers = '"client-session":"%s", "client-id": "4"' % sessID
             test = 'response = requests.get(full_URL, headers={%s})' % headers
             setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=99')"
             timing = timeit.timeit(test, setup, number=1)
@@ -71,7 +71,7 @@ class TestSecurityFunctions(unittest.TestCase):
     def test_1c_get_search_logged_out(self): 
         global sessID
         opasDocPermissions.pads_logout(sessID)
-        headers = '"client-id": "0"' #  no session id
+        headers = '"client-id": "4"' #  no session id
         test = 'response = requests.get(full_URL, headers={%s})' % headers
         setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=99')"
         timing = timeit.timeit(test, setup, number=1)
