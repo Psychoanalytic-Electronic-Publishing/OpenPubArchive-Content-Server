@@ -10,6 +10,7 @@ import os.path
 import sys
 import localsecrets
 from localsecrets import use_server
+import opasDocPermissions
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
@@ -32,6 +33,9 @@ if use_server == 0:
     base_api = "http://development.org:9100" #  local server (Scilab)
 else:
     base_api = "http://stage-api.pep-web.rocks" # remote AWS server (one of them)
+
+# force local
+# base_api = "http://development.org:9100" #  local server (Scilab)
 
 ALL_SOURCES_COUNT = 191
 # this must be set to the number of unique journals for testing to pass.
@@ -64,14 +68,26 @@ def base_plus_endpoint_encoded(endpoint):
 
 UNIT_TEST_CLIENT_ID = "4"
 
+def test_login():
+    pads_session_info = opasDocPermissions.pads_new_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TEST_PW)
+    session_info = opasDocPermissions.get_full_session_info(pads_session_info.SessionId, client_id=UNIT_TEST_CLIENT_ID, pads_session_info=pads_session_info)
+    # Confirm that the request-response cycle completed successfully.
+    sessID = session_info.session_id
+    headers = {f"client-session":f"{sessID}",
+               "client-id": UNIT_TEST_CLIENT_ID, 
+               "Content-Type":"application/json",
+               localsecrets.API_KEY_NAME: localsecrets.API_KEY}
+    return sessID, headers
+
 if 1:
-    from opasDocPermissions import pads_get_session
-    session_info, pads_session_info = pads_get_session(client_id=UNIT_TEST_CLIENT_ID)
+    # session_info, pads_session_info = pads_get_session(client_id=UNIT_TEST_CLIENT_ID)
+    session_info = opasDocPermissions.get_full_session_info(session_id=None, client_id=UNIT_TEST_CLIENT_ID)
     session_id = session_info.session_id
     headers = {"client-session":session_id,
                "client-id": UNIT_TEST_CLIENT_ID,
                "Content-Type":"application/json",
                localsecrets.API_KEY_NAME: localsecrets.API_KEY}
+
 
     print (f"unitTestConfig harness fetched session-id {session_id} (not logging in)")
 

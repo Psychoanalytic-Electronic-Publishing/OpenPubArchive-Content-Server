@@ -121,6 +121,13 @@ class ResponseInfo(BaseModel):
     timeStamp: str = Schema(None, title="Server timestamp of return data.")   
 
 #-------------------------------------------------------
+# Simple API Status class
+#-------------------------------------------------------
+class APIStatusItem(BaseModel):
+    opas_version: str = Schema(None, title="Version of OPAS")
+    timeStamp: str = Schema(None, title="Current time")
+    
+#-------------------------------------------------------
 # General Data Encapsulation classes
 #-------------------------------------------------------
 class AccessLimitations(BaseModel):
@@ -364,23 +371,64 @@ class LicenseInfoStruct(BaseModel):
 class LicenseStatusInfo(BaseModel):
     licenseInfo: LicenseInfoStruct 
 
+# Classes returned by PaDS
+class PadsSessionInfo(BaseModel):
+    HasSubscription: bool = Schema(False, title="")
+    IsValidLogon: bool = Schema(False, title="")
+    IsValidUserName: bool = Schema(False, title="")
+    ReasonId: int = Schema(0, title="")
+    ReasonStr = Schema("", title="")
+    SessionExpires: int = Schema(0, title="")
+    SessionId: str = Schema(None, title="")
+    # added session_started to model, not supplied
+    session_start_time: datetime = Schema(datetime.now(), title="")
+
+class PadsUserInfo(BaseModel):
+    UserId:int = Schema(None, title="")
+    UserName:str = Schema(None, title="")
+    UserType:str = Schema(None, title="")
+    SubscriptionEndDate:str = Schema(None, title="")
+    Branding:bool = Schema(None, title="")
+    ClientSettings:Optional[dict]=Schema({}, title="Client app settings.  Type is dict.") # 
+    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
+    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
+    HasArchiveAccess:bool = Schema(False, title="User has subscription to PEP Archive")
+    HasCurrentAccess:bool = Schema(False, title="User has subscription to PEP Current (rare)")   
+
+class PadsPermitInfo(BaseModel):
+    # see https://app.swaggerhub.com/apis/nrshapiro/PEPSecure/1.03#/PermitResponse
+    SessionId:str = Schema(None, title="session GUID")
+    DocId:str = Schema(None, title="PEP Document Locator (Document ID: e.g., IJP.082.0215A)")
+    HasArchiveAccess:bool = Schema(False, title="User has subscription to PEP Archive")
+    HasCurrentAccess:bool = Schema(False, title="User has subscription to PEP Current (rare)")
+    Permit:bool = Schema(False, title="True if the user has permission to view fulltext of DocId")
+    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
+    StatusCode: int = Schema(None, title="status code returned ")
+    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
+
 #-------------------------------------------------------
 class SessionInfo(BaseModel):    
     session_id: str = Schema(None, title="A generated session Identifier number the client passes in the header to identify the session")
     user_id: int = Schema(opasConfig.USER_NOT_LOGGED_IN_ID, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
     username: str = Schema(opasConfig.USER_NOT_LOGGED_IN_NAME, title="Registered user name, for convenience here")
+    is_valid_login: bool = Schema(False, title="")
+    has_subscription: bool = Schema(False, title="")
+    is_valid_username: bool = Schema(False, title="")
     authenticated: bool = Schema(False, title="True if the user has been authenticated.")
     # the next field allows us to stop asking for permits
-    permit_confirms_unauthenticated: bool = Schema(False, title="True if PaDS has replied to a permit with http code 401 unauthenticated.")
+    confirmed_unauthenticated: bool = Schema(False, title="True if PaDS has replied to a permit with http code 401 unauthenticated.")
     authorized_peparchive: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the archive.")
     authorized_pepcurrent: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the current issues.")
     session_start: datetime = Schema(None, title="The datetime when the user started the session")
     session_end: datetime = Schema(None, title="The datetime when the user ended the session")
     session_expires_time: datetime = Schema(None, title="The limit on the user's session information without renewing")
-    user_type: str = Schema(None, title="User type, e.g., Admin or Individual")
+    user_type: str = Schema("Unknown", title="User type, e.g., Admin or Individual")
     admin: bool = Schema(False, title="True if the user has been authenticated as admin.")
     api_client_id: int = Schema(0, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
-
+    # temporary, for debug
+    pads_session_info: PadsSessionInfo = None
+    pads_user_info: PadsUserInfo = None
+    
 #-------------------------------------------------------
 class ServerStatusContent(BaseModel):
     article_count: int = Schema(0, title="")
@@ -399,10 +447,6 @@ class ServerStatusContent(BaseModel):
     description_html: str = Schema(None, title="")
     source_count_html: str = Schema(None, title="")
 
-class APIStatusItem(BaseModel):
-    opas_version: str = Schema(None, title="Version of OPAS")
-    timeStamp: str = Schema(None, title="Current time")
-    
 class ServerStatusItem(BaseModel):
     db_server_ok: bool = Schema(None, title="Database server is online")
     db_server_version: str = Schema(None, title="Version of the Database server")
@@ -695,35 +739,6 @@ class WhatsNewListStruct(BaseModel):
 class WhatsNewList(BaseModel):
     whatsNew: WhatsNewListStruct
 
-class PadsSessionInfo(BaseModel):
-    HasSubscription: bool = Schema(False, title="")
-    IsValidLogon: bool = Schema(False, title="")
-    IsValidUserName: bool = Schema(False, title="")
-    ReasonId: int = Schema(0, title="")
-    ReasonStr = Schema("", title="")
-    SessionExpires: int = Schema(0, title="")
-    SessionId: str = Schema(None, title="")
-
-class PadsUserInfo(BaseModel):
-    UserId:int = Schema(None, title="")
-    UserName:str = Schema(None, title="")
-    UserType:str = Schema(None, title="")
-    SubscriptionEndDate:str = Schema(None, title="")
-    Branding:bool = Schema(None, title="")
-    ClientSettings:Optional[dict]=Schema({}, title="Client app settings.  Type is dict.") # 
-    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
-    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
-
-class PadsPermitInfo(BaseModel):
-    # see https://app.swaggerhub.com/apis/nrshapiro/PEPSecure/1.03#/PermitResponse
-    SessionId:str = Schema(None, title="session GUID")
-    DocId:str = Schema(None, title="PEP Document Locator (Document ID: e.g., IJP.082.0215A)")
-    HasArchiveAccess:bool = Schema(False, title="User has subscription to PEP Archive")
-    HasCurrentAccess:bool = Schema(False, title="User has subscription to PEP Current (rare)")
-    Permit:bool = Schema(False, title="True if the user has permission to view fulltext of DocId")
-    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
-    StatusCode: int = Schema(None, title="status code returned ")
-    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
     
 #-------------------------------------------------------
 # Perhaps use termindex instead

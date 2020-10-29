@@ -9,14 +9,11 @@ logger = logging.getLogger(__name__)
 import unittest
 import requests
 
-from unitTestConfig import base_plus_endpoint_encoded, headers
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW
+import opasDocPermissions
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 
-# login
-full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}')
-response = requests.get(full_URL, headers=headers)
-r = response.json()
-headers["client-session"] = r["session_id"]
+# Login!
+session_id, headers = test_login()
 
 class TestGetDocuments(unittest.TestCase):
     """

@@ -9,16 +9,14 @@ from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 import opasAPISupportLib
 import opasDocPermissions
 
-from unitTestConfig import base_plus_endpoint_encoded, headers, session_id
-
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID
 
 # login
-session_info, pads_response = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=session_id)
+pads_session_info = opasDocPermissions.pads_new_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+session_info = opasDocPermissions.get_full_session_info(pads_session_info.SessionId, client_id=UNIT_TEST_CLIENT_ID, pads_session_info=pads_session_info)
 # Confirm that the request-response cycle completed successfully.
-session_id = pads_response.SessionId
-headers = {f"client-session":f"{session_id}",
-           "client-id": "4"
-           }
+session_id = pads_session_info.SessionId
+headers = {f"client-session":f"{session_id}","client-id": UNIT_TEST_CLIENT_ID}
 
 class TestGlossary(unittest.TestCase):
     """

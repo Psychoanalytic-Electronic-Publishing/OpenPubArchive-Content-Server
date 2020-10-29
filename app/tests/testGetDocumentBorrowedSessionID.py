@@ -9,12 +9,8 @@ import opasDocPermissions
 import unittest
 import requests
 
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW, APIURL
-base_api = APIURL
-def base_plus_endpoint_encoded(endpoint):
-    ret_val = base_api + endpoint
-    return ret_val
 
 class TestGetDocumentsTrySession(unittest.TestCase):
     """
@@ -39,7 +35,9 @@ class TestGetDocumentsTrySession(unittest.TestCase):
         
     def test_2_get_document_another_user(self):
         # login
-        session_info, pads_session_info = opasDocPermissions.pads_get_session()
+        # session_info, pads_session_info = opasDocPermissions.pads_get_session()
+        session_info = opasDocPermissions.get_full_session_info(session_id=None, client_id=headers["client-id"])
+        
         session_id = session_info.session_id        
         headers["client-session"] = session_id
         full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}')

@@ -182,13 +182,15 @@ def get_session_info(request: Request,
         ocd = opasCentralDBLib.opasCentralDB()
         session_info = ocd.get_session_from_db(session_id)
         if session_info is None:
-            session_info, pads_session_info = opasDocPerm.pads_get_session(session_id=session_id, client_id=client_id)
-            # do a quick permission check
-            authorized, pads_permit = opasDocPerm.pads_permission_check(session_id, "IJP.027.0099A", "1946", reason_for_check="Check")
-            session_info.authorized_peparchive = pads_permit.HasArchiveAccess
-            session_info.authorized_pepcurrent = pads_permit.HasCurrentAccess
-            # save it for next time
-            ocd.save_session(session_id, session_info)
+            session_info = opasDocPerm.get_full_session_info(session_id=session_id, client_id=client_id)
+
+            #session_info, pads_session_info = opasDocPerm.pads_get_session(session_id=session_id, client_id=client_id)
+            ## do a quick permission check
+            #authorized, pads_permit = opasDocPerm.pads_permission_check(session_id, "IJP.027.0099A", "1946", reason_for_check="Check")
+            #session_info.authorized_peparchive = pads_permit.HasArchiveAccess
+            #session_info.authorized_pepcurrent = pads_permit.HasCurrentAccess
+            ## save it for next time
+            #ocd.save_session(session_id, session_info)
 
         if opasConfig.LOG_CALL_TIMING:
             logger.debug(f"Get/Save session info response time: {time.time() - ts}")

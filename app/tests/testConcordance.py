@@ -8,17 +8,18 @@ logger = logging.getLogger(__name__)
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 
 import unittest
-from unitTestConfig import base_plus_endpoint_encoded, headers, session_id
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID
 
 import requests
 import opasAPISupportLib
 import opasDocPermissions
 
 # Login!
-session_info, pads_response = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=session_id)
+pads_session_info = opasDocPermissions.pads_new_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+session_info = opasDocPermissions.get_full_session_info(pads_session_info.SessionId, client_id=UNIT_TEST_CLIENT_ID, pads_session_info=pads_session_info)
 # Confirm that the request-response cycle completed successfully.
 session_id = session_info.session_id
-headers = {"client-session":session_id, "client-id": "4", "Content-Type":"application/json"}
+headers = {"client-session":session_id, "client-id": UNIT_TEST_CLIENT_ID, "Content-Type":"application/json"}
 
 class TestConcordance(unittest.TestCase):
     """

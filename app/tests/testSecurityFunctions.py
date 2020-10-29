@@ -8,27 +8,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 import opasDocPermissions
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 
 # Login!
-session_info, pads_response = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
-# Confirm that the request-response cycle completed successfully.
-sessID = session_info.session_id
-headers = {f"client-session":f"{sessID}",
-           "client-id": "4"
-           }
+session_id, headers = test_login()
 
 class TestSecurityFunctions(unittest.TestCase):
 
     def test_0a_pads_tests(self):
         # Login to PaDS with test account and then check responses to mostCited for access.
-        if sessID is None:
+        if session_id is None:
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)
         else:
             full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')
-            response = requests.get(full_URL, headers={"client-session":sessID, "client-id": "4", "Content-Type":"application/json"})
+            response = requests.get(full_URL, headers={"client-session":session_id, "client-id": UNIT_TEST_CLIENT_ID, "Content-Type":"application/json"})
             # Confirm that the request-response cycle completed successfully.
             r = response.json()
             print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
@@ -36,11 +31,11 @@ class TestSecurityFunctions(unittest.TestCase):
             assert(r['documentList']['responseSet'][0].get("accessLimited", None) == False)
 
     def test_1a_timing_Pads(self):
-        if sessID is None:
+        if session_id is None:
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)
         else:
-            headers = '"client-session":"%s", "client-id": "4"' % sessID
+            headers = '"client-session":"%s", "client-id": "4"' % session_id
             test = 'response = requests.get(full_URL, headers={%s})' % headers
             setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')"
             timing = timeit.timeit(test, setup, number=1)
@@ -52,11 +47,11 @@ class TestSecurityFunctions(unittest.TestCase):
             assert(timing < 7.5)            
             
     def test_1b_get_search(self):
-        if sessID is None:
+        if session_id is None:
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)
         else:
-            headers = '"client-session":"%s", "client-id": "4"' % sessID
+            headers = '"client-session":"%s", "client-id": "4"' % session_id
             test = 'response = requests.get(full_URL, headers={%s})' % headers
             setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=99')"
             timing = timeit.timeit(test, setup, number=1)
@@ -69,8 +64,8 @@ class TestSecurityFunctions(unittest.TestCase):
             assert(timing < 19)            
 
     def test_1c_get_search_logged_out(self): 
-        global sessID
-        opasDocPermissions.pads_logout(sessID)
+        global session_id
+        opasDocPermissions.pads_logout(session_id)
         headers = '"client-id": "4"' #  no session id
         test = 'response = requests.get(full_URL, headers={%s})' % headers
         setup = "import requests; from unitTestConfig import base_plus_endpoint_encoded; full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Freud&limit=99')"

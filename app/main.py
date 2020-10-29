@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1027.1.Alpha"
+__version__     = "2020.1029.1.Alpha"
 __status__      = "Development"
 
 """
@@ -244,7 +244,8 @@ def get_client_session(response: Response,
     # if there's no client session, get a session_id from PaDS without logging in
     if session_id is None:
         # get one from PaDS, without login info
-        session_info, pads_session_info = opasDocPermissions.pads_get_session(client_id=client_id)
+        # session_info, pads_session_info = opasDocPermissions.pads_get_session(client_id=client_id)
+        session_info = opasDocPermissions.get_full_session_info(session_id=session_id, client_id=client_id)
         try:
             session_id = session_info.session_id
         except Exception as e:
@@ -267,10 +268,10 @@ def login_via_pads(request: Request,
     # ocd = opasCentralDBLib.opasCentralDB()
     session_id = opasDocPermissions.find_client_session_id(request, response)
     # Ok, login
-    session_info, pads_response = opasDocPermissions.pads_login(username=credentials.username,
-                                                                password=credentials.password,
-                                                                session_id=session_id,
-                                                                client_id=client_id)
+    session_info, pads_response = opasDocPermissions.pads_new_login(username=credentials.username,
+                                                                    password=credentials.password,
+                                                                    session_id=session_id,
+                                                                    client_id=client_id)
 
     if session_info is None or session_info.authenticated == False:
         raise HTTPException(
@@ -1194,10 +1195,10 @@ def session_login(response: Response,
         # logout of any opas session
         opasDocPermissions.pads_logout(opas_session_cookie, response=response)
 
-    session_info, pads_session_info = opasDocPermissions.pads_login(username=username, password=password, session_id=client_session) # don't pass session
-    # New session id
+    pads_session_info = opasDocPermissions.pads_new_login(username=username, password=password, session_id=client_session) # don't pass session
+    # New session id, need to get rest of session_info (below)
     session_id = pads_session_info.SessionId
-    
+
     if pads_session_info.IsValidLogon != True:
         detail = "Bad login credentials"
         raise HTTPException(
@@ -1205,13 +1206,14 @@ def session_login(response: Response,
             detail=detail 
         )
     else:
+        # need to do this, saves to db, but we're not directly using return values here
+        session_info = opasDocPermissions.get_full_session_info(session_id, client_id, pads_session_info=pads_session_info)
         # Save it for eating later; most importantly, overwrite any existing cookie!
         logger.info("Successful login - saved OpasSessionID Cookie")
         # already should be in response per get_client_session
         # save_opas_session_cookie(request, response, session_id)        
 
     try:
-        
         login_return_item = models.LoginReturnItem(token_type = "bearer", 
                                                    session_id = session_id,
                                                    authenticated=pads_session_info.IsValidLogon,

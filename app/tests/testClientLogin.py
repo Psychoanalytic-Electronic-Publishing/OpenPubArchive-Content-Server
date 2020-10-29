@@ -25,7 +25,7 @@ import requests
 
 from starlette.testclient import TestClient
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
 
 import timeit
@@ -36,12 +36,7 @@ from main import app
 client = TestClient(app)
 
 # Login!
-session_info, pads_response = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
-# Confirm that the request-response cycle completed successfully.
-sessID = session_info.session_id
-headers = {f"client-session":f"{sessID}",
-           "client-id": "4"
-           }
+sessID, headers = session_id = test_login()
 
 class TestClientLogin(unittest.TestCase):
 
@@ -57,9 +52,7 @@ class TestClientLogin(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
-
-        
+        assert(response_set[0]["accessLimited"] == False)
 
 
 if __name__ == '__main__':

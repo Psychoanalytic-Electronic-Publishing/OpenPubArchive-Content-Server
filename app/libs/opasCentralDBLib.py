@@ -656,15 +656,102 @@ class opasCentralDB(object):
         
         self.close_connection(caller_name="most_cited_generator") # make sure connection is closed
 
+    def get_citation_counts(self) -> dict:
+        """
+         Using the opascentral vw_stat_cited_crosstab view, based on the api_biblioxml which is used to detect citations,
+           return the cited counts for each art_id
+           
+           Primary view definition copied here for safe keeping.
+           ----------------------
+           vw_stat_cited_crosstab
+           ----------------------
+           
+           SELECT
+           `r0`.`cited_document_id` AS `cited_document_id`,
+           any_value (
+           COALESCE ( `r1`.`count5`, 0 )) AS `count5`,
+           any_value (
+           COALESCE ( `r2`.`count10`, 0 )) AS `count10`,
+           any_value (
+           COALESCE ( `r3`.`count20`, 0 )) AS `count20`,
+           any_value (
+           COALESCE ( `r4`.`countAll`, 0 )) AS `countAll` 
+           FROM
+               (((((
+                               SELECT DISTINCT
+                                   `api_biblioxml`.`art_id` AS `articleID`,
+                                   `api_biblioxml`.`bib_local_id` AS `internalID`,
+                                   `api_biblioxml`.`full_ref_xml` AS `fullReference`,
+                                   `api_biblioxml`.`bib_rx` AS `cited_document_id` 
+                               FROM
+                                   `api_biblioxml` 
+                                   ) `r0`
+                               LEFT JOIN `vw_stat_cited_in_last_5_years` `r1` ON ((
+                                       `r1`.`cited_document_id` = `r0`.`cited_document_id` 
+                                   )))
+                           LEFT JOIN `vw_stat_cited_in_last_10_years` `r2` ON ((
+                                   `r2`.`cited_document_id` = `r0`.`cited_document_id` 
+                               )))
+                       LEFT JOIN `vw_stat_cited_in_last_20_years` `r3` ON ((
+                               `r3`.`cited_document_id` = `r0`.`cited_document_id` 
+                           )))
+                   LEFT JOIN `vw_stat_cited_in_all_years` `r4` ON ((
+                           `r4`.`cited_document_id` = `r0`.`cited_document_id` 
+                       ))) 
+           WHERE
+               ((
+                       `r0`.`cited_document_id` IS NOT NULL 
+                       ) 
+                   AND ( `r0`.`cited_document_id` <> 'None' ) 
+                   AND (
+                   substr( `r0`.`cited_document_id`, 1, 3 ) NOT IN ( 'ZBK', 'IPL', 'SE.', 'GW.' ))) 
+           GROUP BY
+               `r0`.`cited_document_id` 
+           ORDER BY
+               `countAll` DESC
+           
+        """
+        citation_table = []
+        print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
+        try:
+            self.open_connection("collect_citation_counts")
+            # Get citation lookup table
+            try:
+                cursor = self.db.cursor(pymysql.cursors.DictCursor)
+                sql = """
+                      SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
+                      """
+                success = cursor.execute(sql)
+                if success:
+                    citation_table = cursor.fetchall()
+                    cursor.close()
+                else:
+                    logger.error("Cursor execution failed.  Can't fetch.")
+                    
+            except MemoryError as e:
+                print(("Memory error loading table: {}".format(e)))
+            except Exception as e:
+                print(("Table Query Error: {}".format(e)))
+            
+            self.close_connection("collect_citation_counts")
+            
+        except Exception as e:
+            print(("Database Connect Error: {}".format(e)))
+            citation_table["dummy"] = MostCitedArticles()
+        
+        return citation_table
+
     def get_most_viewed_crosstab(self):
         """
          Using the opascentral api_docviews table data, as dynamically statistically aggregated into
            the view vw_stat_most_viewed return the most downloaded (viewed) documents
            
+         Returns 0,[] if no rows are returned
+         
          Supports the updates to Solr via solrXMLPEPWebload, used for view count queries.
             
         """
-        ret_val = None
+        ret_val = []
         row_count = 0
         # always make sure we have the right input value
         self.open_connection(caller_name="get_most_viewed_crosstab") # make sure connection is open
@@ -673,8 +760,7 @@ class opasCentralDB(object):
             cursor = self.db.cursor(pymysql.cursors.DictCursor)
             sql = """SELECT DISTINCTROW * FROM vw_stat_docviews_crosstab"""
             row_count = cursor.execute(sql)
-            if row_count:
-                ret_val = cursor.fetchall()
+            ret_val = cursor.fetchall() # returns empty list if no rows
             cursor.close()
         else:
             logger.fatal("Connection not available to database.")
@@ -940,6 +1026,8 @@ class opasCentralDB(object):
         elif session_info is None: # for now, required
             logger.warning("SaveSession: No session_info specified")
         else:
+            if session_info.session_start is None:
+                session_info.session_start = datetime.now()                
             if not self.open_connection(caller_name="save_session"): # make sure connection opens
                 logger.error("Save session could not open database")
             else: # its open
