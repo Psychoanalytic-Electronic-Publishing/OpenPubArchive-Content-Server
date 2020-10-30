@@ -131,21 +131,21 @@ def fix_pydantic_invalid_nones(response_data):
 
     return response_data
 
-def get_full_session_info(session_id, client_id, pads_session_info=None):
+def get_authserver_session_info(session_id, client_id, pads_session_info=None):
     """
     Return a filled-in SessionInfo object from several PaDS calls
     
-    >>> session_info = get_full_session_info(None, "4")
+    >>> session_info = get_authserver_session_info(None, "4")
     >>> session_info.username == "NotLoggedIn"
     True
     
-    >>> pads_session_info = pads_new_login()
+    >>> pads_session_info = pads_login()
     >>> session_id = pads_session_info.SessionId
-    >>> session_info = get_full_session_info(session_id, "4", pads_session_info=pads_session_info)
+    >>> session_info = get_authserver_session_info(session_id, "4", pads_session_info=pads_session_info)
     >>> session_info.authorized_peparchive == True
     True
 
-    >>> session_info = get_full_session_info("7F481226-9AF1-47BC-8E26-F07DB8C3E78D", "4")
+    >>> session_info = get_authserver_session_info("7F481226-9AF1-47BC-8E26-F07DB8C3E78D", "4")
     >>> print (session_info)
     session_id='7F481226-9AF1-47BC-8E26-F07DB8C3E78D' user_id=0 username='NotLoggedIn' ...
     >>> session_info.username == "NotLoggedIn"
@@ -197,108 +197,6 @@ def get_full_session_info(session_id, client_id, pads_session_info=None):
     logger.info(f"***authent: {session_info.authenticated} - get_full_session_info total time: {time.time() - ts}***")
     return session_info
     
-def update_sessioninfo_with_userinfo(pads_session_info, client_id):
-    # now get userinfo
-    session_id = pads_session_info.SessionId
-    userinfo, status_code = pads_get_userinfo(session_id, client_id)
-    try:
-        if status_code != 401:
-            logger.debug(f"update_sessioninfo_with_userinfo: Session ID from PaDS: {session_id}")
-            logger.debug(f"update_sessioninfo_with_userinfo: Userinfo from PaDS: {userinfo}")
-            msg = f"Session info and user fetched for sessionid {session_id} - {userinfo}"
-            logger.debug(msg)
-            userid = userID=userinfo.UserId
-            username = userinfo.UserName
-            usertype = userinfo.UserType
-            authorized_peparchive = userinfo.HasArchiveAccess
-            authorized_pepcurrent = userinfo.HasCurrentAccess
-            admin = userinfo.UserType=="Admin"
-        else:
-            msg = f"Authorization server returned no user info for sessionid {session_id}"
-            logger.debug(msg)
-            userid = 0
-            username = opasConfig.USER_NOT_LOGGED_IN_NAME
-            usertype = "Unknown"
-            admin = False
-    except Exception as e:
-        logger.error(f"error updating sessioninfo with userinfo: {e}")
-        
-    ret_val = models.SessionInfo(session_id=session_id,
-                                 user_id=userid,
-                                 username=username,
-                                 authenticated=pads_session_info.IsValidLogon,
-                                 session_start=datetime.datetime.now(),
-                                 user_type=usertype, 
-                                 admin=admin,
-                                 
-                                 api_client_id=client_id
-    )
-
-    return ret_val # returns a sessionInfo model
-
-def set_session_info_login(response, client_id):
-    """
-    Take the return info from the auth server and put it in the Opas SessionInfo model
-    
-    ** Saves or Updates the Session record in the api_sessions table **
-    
-    """
-    try:
-        # PaDS session info
-        pads_session_info = models.PadsSessionInfo(**response)
-        session_id = pads_session_info.SessionId # PaDS session ID
-        logger.debug(f"set_session_info: Session ID from PaDS: {session_id}")
-        # add user fields
-        ret_val = session_info = update_sessioninfo_with_userinfo(pads_session_info, client_id)
-        # make sure the session is recorded.
-        ocd = opasCentralDBLib.opasCentralDB(session_id=session_id)
-        db_session_info = ocd.get_session_from_db(session_id)
-        if db_session_info is None:
-            ocd.save_session(session_id, session_info)
-        else:
-            logger.info(f"Session {session_id} already found in db. Updating...")
-            if session_info.username != db_session_info.username and db_session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
-                msg = f"MISMATCH! Two Usernames with same session_id. OLD(DB): {db_session_info}; NEW(SESSION): {session_info}"
-                print (msg)
-                logger.error(msg)
-            
-            ocd.update_session(session_id,
-                               userID=session_info.user_id,
-                               username=session_info.username, 
-                               authenticated=1 if session_info.authenticated == True else 0,
-                               authorized_peparchive=1 if session_info.authorized_peparchive == True else 0,
-                               authorized_pepcurrent=1 if session_info.authorized_pepcurrent == True else 0,
-                               session_end=session_info.session_expires_time,
-                               api_client_id=session_info.api_client_id
-                               )
-
-    except Exception as e:
-        logger.error(f"Can't get or save session info from auth server {e}")
-        ret_val = None
-
-    return ret_val
-    
-def set_session_info(pads_session_info, client_id):
-    """
-    Take the return info from the auth server and put it in the Opas SessionInfo model
-    
-    ** Saves or Updates the Session record in the api_sessions table **
-    
-    """
-    try:
-        session_id = pads_session_info.SessionId # PaDS session ID
-        logger.debug(f"set_session_info: Session ID from PaDS: {session_id}")
-        # add user fields
-        ret_val = session_info = update_sessioninfo_with_userinfo(pads_session_info, client_id)
-        # make sure the session is recorded.
-        saved = save_session_info_to_db(session_info)
-
-    except Exception as e:
-        logger.error(f"Can't get or save session info from auth server {e}")
-        ret_val = None
-
-    return ret_val
-
 def save_session_info_to_db(session_info):
     # make sure the session is recorded.
     session_id = session_info.session_id
@@ -343,7 +241,7 @@ def get_pads_session_info(session_id=None, client_id=opasConfig.NO_CLIENT_ID, re
         if pads_session_info.status_code == httpCodes.HTTP_500_INTERNAL_SERVER_ERROR:
             # try once without the session ID
             if retry == True:
-                pads_session_info = pads_get_session(client_id=client_id, retry=False)
+                pads_session_info = get_pads_session_info(client_id=client_id, retry=False)
             else:
                 pads_session_info = models.PadsSessionInfo()
                 logger.error(f"PaDS error 500")
@@ -354,42 +252,7 @@ def get_pads_session_info(session_id=None, client_id=opasConfig.NO_CLIENT_ID, re
 
     return pads_session_info
 
-
-def pads_get_session(session_id=None, client_id=opasConfig.NO_CLIENT_ID, retry=True):
-    """
-    Get a session ID from the auth server (e.g., PaDS).  This is how PaDS does it.
-    """
-    if session_id is not None:
-        full_URL = base + f"/v1/Authenticate/IP/" + f"?SessionID={session_id}"
-    else:
-        full_URL = base + f"/v1/Authenticate/IP/"
-
-    try:
-        pads_session_info = requests.get(full_URL)
-    except Exception as e:
-        logger.error(f"PaDS Authorization server not available. {e}")
-        pads_session_info = models.PadsSessionInfo()
-        session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
-    else:
-        if pads_session_info.status_code == httpCodes.HTTP_500_INTERNAL_SERVER_ERROR:
-            # try once without the session ID
-            if retry == True:
-                session_info, pads_session_info = pads_get_session(client_id=client_id, retry=False)
-            else:
-                pads_session_info = models.PadsSessionInfo()
-                session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
-                logger.error(f"PaDS error 500")
-        else:
-            pads_session_info = pads_session_info.json()
-            pads_session_info = fix_pydantic_invalid_nones(pads_session_info)
-            pads_session_info = models.PadsSessionInfo(**pads_session_info)
-            # Save or update the data in the database
-            session_info = set_session_info(pads_session_info, client_id)
-            logger.info(f"Fetched session info {session_info} from PaDS.")
-
-    return session_info, pads_session_info
-
-def pads_new_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, client_id=opasConfig.NO_CLIENT_ID):
+def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, client_id=opasConfig.NO_CLIENT_ID):
     """
     Login directly via the auth server (e.g., in this case PaDS)
     
@@ -425,7 +288,7 @@ def pads_new_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None
         elif pads_response.status_code == 500: # TODO: may want to limit this to error 500
             # try without session id
             logger.error(f"PaDS login returned {pads_response.status_code}. Trying without session id.")
-            pads_session_info = pads_new_login(username=username, password=password, client_id=client_id)
+            pads_session_info = pads_login(username=username, password=password, client_id=client_id)
         else:
             pads_response = pads_response.json()
             pads_response = fix_pydantic_invalid_nones(pads_response)
@@ -478,7 +341,7 @@ def pads_get_userinfo(session_id, client_id):
             else:
                 logger.info(f"No userinfo returned for non-logged in user for client-id {client_id} sessionId: {session_id}. Info from PaDS: {padsinfo}")
             
-    return ret_val, status_code
+    return ret_val, status_code # padsinfo, status_code
 
 def pads_permission_check(session_id, doc_id, doc_year, reason_for_check=None):
     ret_val = False

@@ -55,6 +55,11 @@ sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
 pat_prefix_amps = re.compile("^\s*&& ")
 
+cores  = {
+    "docs": solr_docs,
+    "authors": solr_authors,
+}
+
 def cleanup_solr_query(solrquery):
     """
     Clean up whitespace and extra symbols that happen when building up query or solr query filter
@@ -1710,6 +1715,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # authorIDs = result.get("art_authors", None)
                     documentListItem = models.DocumentListItem()
                     documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+                    documentID = documentListItem.documentID
                     # sometimes, we don't need to check permissions
                     # Always check if fullReturn is selected
                     # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)
@@ -1726,7 +1732,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         #print(f"Postcheck: Session info archive access: {session_info.authorized_peparchive}")
     
                     documentListItem.score = result.get("score", None)               
-                    documentID = documentListItem.documentID
                     try:
                         text_xml = results.highlighting[documentID].get("text_xml", None)
                     except:
@@ -1848,12 +1853,14 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             # documentListItem.moreLikeThis = results.moreLikeThis[documentID]
     
                     if similarityMatch is not None: documentListItem.similarityMatch = similarityMatch
-                    documentListItem.docLevel = result.get("art_level", None)
-                    parent_tag = result.get("parent_tag", None)
-                    if parent_tag is not None:
-                        documentListItem.docChild = {}
-                        documentListItem.docChild["parent_tag"] = parent_tag
-                        documentListItem.docChild["para"] = result.get("para", None)
+                    #parent_tag = result.get("parent_tag", None)
+                    #if parent_tag is not None:
+                        #documentListItem.docChild = {}
+                        #documentListItem.docChild["id"] = result.get("id", None)
+                        #documentListItem.docChild["parent_tag"] = parent_tag
+                        #documentListItem.docChild["para"] = result.get("para", None)
+                        #documentListItem.docChild["lang"] = result.get("lang", None)
+                        #documentListItem.docChild["para_art_id"] = result.get("para_art_id", None)
                     #else:
                         #documentListItem.docChild = None
     
@@ -1929,6 +1936,40 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             
 
     return ret_val, ret_status
+
+#-----------------------------------------------------------------------------
+def get_parent_data(child_para_id, documentListItem=None):
+    """
+    Returns True if the value is found in the field specified in the docs core.
+    
+    """
+    m = re.match(".*\..*\.*(^\..*)", child_para_id)
+    if m is not None:
+        parent_id = m.group(0)
+        if parent_id is not None:
+            try:
+                results = solr_docs.query(q = f"art_level:1 && art_id:{art_id}",  
+                                          fields = f"art_year, id, art_citeas_xml, file_classification, art_isbn, art_issn, art_pgrg", 
+                                          rows = 1,
+                                          )
+            except Exception as e:
+                logger.warning(f"Solr query: {q} fields {field} {e}")
+           
+    if len(results) > 0:
+        result = results.results[0]
+        if documentListItem is None:
+            ret_val = models.DocumentListItem(**result)
+        else:
+            ret_val = documentListItem
+            
+        ret_val = get_base_article_info_from_search_result(result, ret_val)
+    else:
+        if documentListItem is None:
+            ret_val = models.DocumentListItem()
+        else:
+            ret_val = documentListItem
+
+    return ret_val
 
 #-----------------------------------------------------------------------------
 def get_excerpt_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="HTML"):
@@ -2013,28 +2054,17 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
     
     if result is not None:
         documentListItem.documentID = result.get("art_id", None)
-        para_art_id = result.get("para_art_id", None)
-        if documentListItem.documentID is None and para_art_id is not None:
-            # this is part of a document, we should retrieve the parent info
-            top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
-            if top_level_doc is not None:
-                merge_documentListItems(documentListItem, top_level_doc)
-
+        documentListItem.docLevel = result.get("art_level", None)
         documentListItem.PEPCode = result.get("art_sourcecode", None)
+        parent_tag = result.get("parent_tag", None)
 
-        # don't set the value, if it's None, so it's not included at all in the pydantic return
         if result.get("meta_xml", None): documentListItem.documentMetaXML = result.get("meta_xml", None)
         if result.get("art_info_xml", None): documentListItem.documentInfoXML = result.get("art_info_xml", None)
         if result.get("art_pgrg", None): documentListItem.pgRg = result.get("art_pgrg", None)
-        # temp workaround for art_lang change
         art_lang = result.get("art_lang", None)
         if isinstance(art_lang, list):
             art_lang = art_lang[0]
         documentListItem.lang=art_lang
-        if result.get("art_origrx", None): documentListItem.origrx = result.get("art_origrx", None)
-        if result.get("art_qual", None): documentListItem.relatedrx= result.get("art_qual", None)
-        documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
-        documentListItem.sourceType = result.get("art_sourcetype", None)
         documentListItem.year = result.get("art_year", None)
         documentListItem.vol = result.get("art_vol", None)
         documentListItem.docType = result.get("art_type", None)
@@ -2042,7 +2072,6 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
         documentListItem.issue = result.get("art_iss", None)
         documentListItem.issn = result.get("art_issn", None)
         # documentListItem.isbn = result.get("art_isbn", None) # no isbn in solr stored data, only in products table
-        
         # see if using art_title instead is a problem for clients...at least that drops the footnote
         documentListItem.title = result.get("art_title", "")  
         # documentListItem.title = result.get("art_title_xml", "")  
@@ -2050,6 +2079,11 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             pg_start, pg_end = opasgenlib.pgrg_splitter(documentListItem.pgRg)
             documentListItem.pgStart = pg_start
             documentListItem.pgEnd = pg_end
+
+        if result.get("art_origrx", None): documentListItem.origrx = result.get("art_origrx", None)
+        if result.get("art_qual", None): documentListItem.relatedrx= result.get("art_qual", None)
+        documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
+        documentListItem.sourceType = result.get("art_sourcetype", None)
         author_ids = result.get("art_authors", None)
         if author_ids is None:
             # try this, instead of abberrant behavior in alpha of display None!
@@ -2063,6 +2097,24 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
         documentListItem.documentRefHTML = citeas
         documentListItem.updated=result.get("file_last_modified", None)
         documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_ARCHIVE)
+
+        if parent_tag is not None:
+            documentListItem.docChild = {}
+            documentListItem.docChild["id"] = result.get("id", None)
+            documentListItem.docChild["parent_tag"] = parent_tag
+            documentListItem.docChild["para"] = result.get("para", None)
+            documentListItem.docChild["lang"] = result.get("lang", None)
+            documentListItem.docChild["para_art_id"] = result.get("para_art_id", None)
+        
+        para_art_id = result.get("para_art_id", None)
+        if documentListItem.documentID is None and para_art_id is not None:
+            # this is part of a document, we should retrieve the parent info
+            top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
+            if top_level_doc is not None:
+                merge_documentListItems(documentListItem, top_level_doc)
+
+        # don't set the value, if it's None, so it's not included at all in the pydantic return
+        # temp workaround for art_lang change
 
     return documentListItem # return a partially filled document list item
 
@@ -2096,9 +2148,10 @@ def get_fulltext_from_search_results(result,
         except:
             text_xml = None
 
-    elif len(fullText) > len(text_xml):
-        logger.warning("Warning: text with highlighting is smaller than full-text area.  Returning without hit highlighting.")
-        text_xml = fullText
+    elif fullText is not None:
+        if len(fullText) > len(text_xml):
+            logger.warning("Warning: text with highlighting is smaller than full-text area.  Returning without hit highlighting.")
+            text_xml = fullText
 
     if text_xml is not None:
         reduce = False

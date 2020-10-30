@@ -245,7 +245,7 @@ def get_client_session(response: Response,
     if session_id is None:
         # get one from PaDS, without login info
         # session_info, pads_session_info = opasDocPermissions.pads_get_session(client_id=client_id)
-        session_info = opasDocPermissions.get_full_session_info(session_id=session_id, client_id=client_id)
+        session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id, client_id=client_id)
         try:
             session_id = session_info.session_id
         except Exception as e:
@@ -268,11 +268,11 @@ def login_via_pads(request: Request,
     # ocd = opasCentralDBLib.opasCentralDB()
     session_id = opasDocPermissions.find_client_session_id(request, response)
     # Ok, login
-    session_info, pads_response = opasDocPermissions.pads_new_login(username=credentials.username,
-                                                                    password=credentials.password,
-                                                                    session_id=session_id,
-                                                                    client_id=client_id)
-
+    pads_session_info = opasDocPermissions.pads_login(username=credentials.username,
+                                                          password=credentials.password,
+                                                          session_id=session_id,
+                                                          client_id=client_id)
+  
     if session_info is None or session_info.authenticated == False:
         raise HTTPException(
             status_code=httpCodes.HTTP_401_UNAUTHORIZED,
@@ -280,6 +280,8 @@ def login_via_pads(request: Request,
             headers={"WWW-Authenticate": "Basic"},
         )
     else:
+        session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id, pads_session_info=pads_session_info)
+        # Confirm that the request-response cycle completed successfully.
         ret_val = session_info
     
     return ret_val
@@ -316,7 +318,7 @@ def log_endpoint(request, client_id=None, session_id=None, path_params=True):
         if path_params and request.path_params != {}:
             logger.debug(f"....{request.path_params}")
     else:
-        logger.info(f"***[{client_id}:{session_id}]:{request['path']}***")
+        logger.info(f"*************[{client_id}:{session_id}]:{request['path']}********************************************************************************")
         if path_params and request.path_params != {}:
             logger.info(f"....{request.path_params}")
 
@@ -1195,7 +1197,7 @@ def session_login(response: Response,
         # logout of any opas session
         opasDocPermissions.pads_logout(opas_session_cookie, response=response)
 
-    pads_session_info = opasDocPermissions.pads_new_login(username=username, password=password, session_id=client_session) # don't pass session
+    pads_session_info = opasDocPermissions.pads_login(username=username, password=password, session_id=client_session) # don't pass session
     # New session id, need to get rest of session_info (below)
     session_id = pads_session_info.SessionId
 
@@ -1207,7 +1209,7 @@ def session_login(response: Response,
         )
     else:
         # need to do this, saves to db, but we're not directly using return values here
-        session_info = opasDocPermissions.get_full_session_info(session_id, client_id, pads_session_info=pads_session_info)
+        session_info = opasDocPermissions.get_authserver_session_info(session_id, client_id, pads_session_info=pads_session_info)
         # Save it for eating later; most importantly, overwrite any existing cookie!
         logger.info("Successful login - saved OpasSessionID Cookie")
         # already should be in response per get_client_session

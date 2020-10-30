@@ -182,7 +182,7 @@ def get_session_info(request: Request,
         ocd = opasCentralDBLib.opasCentralDB()
         session_info = ocd.get_session_from_db(session_id)
         if session_info is None:
-            session_info = opasDocPerm.get_full_session_info(session_id=session_id, client_id=client_id)
+            session_info = opasDocPerm.get_authserver_session_info(session_id=session_id, client_id=client_id)
 
             #session_info, pads_session_info = opasDocPerm.pads_get_session(session_id=session_id, client_id=client_id)
             ## do a quick permission check

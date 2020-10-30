@@ -79,9 +79,6 @@ class TestGetDocuments(unittest.TestCase):
         """
         Retrieve an article; make sure it's there and the abstract len is not 0
         """
-        # This old function wasn't used by the code otherwise so removed this call
-        #  it retrieves an article but doesn't include search highlighting.
-        # data = opasAPISupportLib.get_article_data("ANIJP-DE.009.0189A", fields=None)
         # this newer function includes the search parameters if there were some
         data = opasAPISupportLib.documents_get_document("LU-AM.029B.0202A")
         # Confirm that the request-response cycle completed successfully.

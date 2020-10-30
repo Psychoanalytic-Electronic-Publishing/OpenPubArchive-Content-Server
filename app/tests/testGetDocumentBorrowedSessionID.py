@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import opasAPISupportLib
 logger = logging.getLogger(__name__)
 import opasDocPermissions
 
@@ -36,7 +35,7 @@ class TestGetDocumentsTrySession(unittest.TestCase):
     def test_2_get_document_another_user(self):
         # login
         # session_info, pads_session_info = opasDocPermissions.pads_get_session()
-        session_info = opasDocPermissions.get_full_session_info(session_id=None, client_id=headers["client-id"])
+        session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=headers["client-id"])
         
         session_id = session_info.session_id        
         headers["client-session"] = session_id
