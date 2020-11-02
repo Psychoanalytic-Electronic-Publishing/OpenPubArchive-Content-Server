@@ -1471,7 +1471,7 @@ def documents_get_document(document_id,
                            page=None, 
                            authenticated=True,
                            session_info=None, 
-                           option_flags=None
+                           option_flags=0
                            ):
     """
     For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
@@ -1555,12 +1555,13 @@ def documents_get_document(document_id,
                     document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
 
                 # experimental options: uses option_flags to turn on
-                if option_flags & opasConfig.OPTION_2_RETURN_TRANSLATION_SET:
-                    # get document translations of the first document (note this also includes the original)
-                    if document_list_item.origrx is not None:
-                        translationSet, count = opasQueryHelper.quick_docmeta_docsearch(qstr=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
-                        if translationSet is not None:
-                            document_list_item.translationSet = translationSet
+                if option_flags is not None:
+                    if option_flags & opasConfig.OPTION_2_RETURN_TRANSLATION_SET:
+                        # get document translations of the first document (note this also includes the original)
+                        if document_list_item.origrx is not None:
+                            translationSet, count = opasQueryHelper.quick_docmeta_docsearch(qstr=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
+                            if translationSet is not None:
+                                document_list_item.translationSet = translationSet
                     
         except Exception as e:
             logger.warning("get_document: No matches or error: %s", e)

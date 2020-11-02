@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1101.1.Alpha"
+__version__     = "2020.1102.1.Alpha"
 __status__      = "Development"
 
 """
@@ -4296,8 +4296,12 @@ def documents_document_fetch(response: Response,
                     doc_len = 0
                     status_message = f"{client_id}:{session_id}: Document fetch Error {e}"
                     logger.info(status_message)
-                finally:
-                    status_message = f"{client_id}:{session_id}: Document fetch (access: {access}; doc length: {doc_len}"
+                else:
+                    if access == False:
+                        status_message = f"{client_id}:{session_id}: Document (Abstract only) fetch (access: {access}; doc length: {doc_len}"
+                    else:
+                        status_message = f"{client_id}:{session_id}: Document fetch (access: {access}; doc length: {doc_len}"
+
                     logger.info(status_message)
 
             else:
@@ -4322,11 +4326,17 @@ def documents_document_fetch(response: Response,
                 )           
             else:
                 ret_val.documents.responseInfo.request = request.url._url
-                if ret_val.documents.responseInfo.count > 0:
-                    #  record document view if found
-                    ocd.record_document_view(document_id=documentID,
-                                             session_info=session_info,
-                                             view_type="Document")
+                if access == False:
+                    #  abstract returned...we don't count those currently.
+                    logger.info(f"Document request for non-logged-in user (session: {session_info.session_id}). Abstract returned instead for {documentID}.")
+                else:
+                    if ret_val.documents.responseInfo.count > 0:
+                        #  record document view if found
+                        ocd.record_document_view(document_id=documentID,
+                                                 session_info=session_info,
+                                                 view_type="Document")
+                    else:
+                        logger.debug(f"No document returned for request: {documentID} during session {session_info.session_id}")
 
     log_endpoint_time(request, ts=ts)
     return ret_val

@@ -66,6 +66,7 @@ class TestClientConfig(unittest.TestCase):
         assert(response.ok == True)
         assert (r == testbody)
 
+    def test_0_post_fail(self):
         #  try to update -- Fail
         full_URL = base_plus_endpoint_encoded('/v2/Client/Configuration/')
         response = requests.post(full_URL, 
