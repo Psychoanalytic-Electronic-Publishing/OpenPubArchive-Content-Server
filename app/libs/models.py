@@ -263,6 +263,7 @@ class DocumentListItem(BaseModel):
     # |- new v2 field, but removed during cleanup, better ata is in stat.
     stat: dict = Schema(None, title="Statistics", description="Reusable field to return counts requested")
     similarityMatch: dict = Schema(None, title="Information about similarity matches")
+    translationSet: dict = Schema(None, title="Information about document translations and the original")
     # Search Analysis fields (and shared Glossary term)
     term: str = Schema(None, title="Search Analysis Term", description="For search analysis, the clause or term being reported")
     termCount: int = Schema(None, title="Search Analysis Term Count", description="For search analysis, the count of occurences of the clause or term being reported")
@@ -570,6 +571,7 @@ class SolrQuerySpec(BaseModel):
     returnFieldSet: str = Schema(None, title="Return field predefined set: DEFAULT, TOC, META, applies only to AdvancedSearch")
     returnFields: str = Schema(None, title="List of return fields (ExtendedSearch Only)", description="Comma separated list of return fields.  Only applies to ExtendedSearch.")
     returnFormat: str = Schema("HTML", title="Return type: XML, HTML, TEXT_ONLY", description="Return type applies to abstract and document fields only.")
+    returnOptions: dict = Schema({}, title="Dictionary of special options for return data (e.g., glossary=False, ...)")
     limit: int = Schema(15, title="Record Limit for Solr returns")
     offset: int = Schema(0, title="Record Offset in return set")
     page: int = Schema(None, title="Page Number in return set")

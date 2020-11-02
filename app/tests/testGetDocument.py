@@ -50,7 +50,7 @@ class TestGetDocuments(unittest.TestCase):
         print (response_set)
 
     def test_2_get_document_with_search_context(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A/?search=?journal=&fulltext1=mother love&sort=citeCount')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/AJP.057.0360A/?search=?fulltext1=reverie&sort=citeCount')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
@@ -63,7 +63,9 @@ class TestGetDocuments(unittest.TestCase):
         print (response_set)
 
     def test_2_get_document_with_similarcount(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A/?search=?journal=&fulltext1=mother love&sort=citeCount&similarcount=2')
+        # either format works 
+        # full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PSAR.073C.0301A/?return_format=xml&search=&search=?fulltext1=human&sort=citeCount&similarcount=2&specialoptions=1')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PSAR.073C.0301A/?return_format=xml&pagelimit=2&sort=citeCount&similarcount=2&specialoptions=1&search=?fulltext1=human')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.

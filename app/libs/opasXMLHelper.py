@@ -1643,6 +1643,22 @@ def remove_encoding_string(xmlstr):
     ret_val = ENCODER_MATCHER.sub("", xmlstr)                
     return ret_val
 
+def remove_glossary_impx(xmlstr):
+    """
+    Since there can be so many glossary impx's in the document, if they are not needed, remove them, reducing the size
+    of the return data greatly, and cleaning the xml to the eye.
+
+    >>> teststr = "<myxml>this <b>is <i>really</i></b> xml with term <impx type='TERM2'>big term</impx>.</myxml>"
+    >>> remove_glossary_impx(teststr)
+    '<myxml>this <b>is <i>really</i></b> xml with term big term.</myxml>\n'
+    """
+    root = xmlstr_to_etree(xmlstr)
+    deltag ="xxyyzzdelme"
+    for el in root.iterfind("//impx[@type='TERM2']"):
+        el.tag = deltag
+    etree.strip_tags(root, deltag)
+    return etree.tostring(root, encoding="unicode", pretty_print=True)
+    
 # -------------------------------------------------------------------------------------------------------
 # run it! (for testing)
 # 
@@ -1658,7 +1674,7 @@ if __name__ == "__main__":
                 <abstract>whatever is in the abstract</abstract>
                 <pb></pb>
                 <p id="1">A random paragraph</p>
-                <p id="2" type="speech">Another random paragraph</p>
+                <p id="2" type="speech">Another random paragraph with impx <impx>contents</impx></p>
                 <pb></pb>
                 <p id="3">Another <b>random</b> paragraph</p>
                 <p id="4">Another random paragraph</p>

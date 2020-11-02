@@ -157,6 +157,13 @@ def normalize_val(val, val_dict, default=None):
     
     return ret_val
 
+# Special Options flag map:
+OPTION_1_NO_GLOSSARY_TERM_MARKUP = 1
+OPTION_2_RETURN_TRANSLATION_SET = 2
+OPTION_4_RESERVED = 4
+OPTION_8_RESERVED = 8
+OPTION_16_RESERVED = 16
+
 # Standard view categories for View functions, mapping to RDS/MySQL and SOLR
 VALS_VIEWPERIODDICT_SQLFIELDS = {1: "lastweek", 2: "lastmonth", 3: "last6months", 4: "last12months", 5: "lastcalyear", 0: "lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
 VALS_VIEWPERIODDICT_SOLRFIELDS = {1: "art_views_lastweek", 2: "art_views_last1mos", 3: "art_views_last6mos", 4: "art_views_last12mos", 5: "art_views_lastcalyear", 0: "art_views_lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
@@ -228,6 +235,7 @@ DESCRIPTION_SORT ="Comma separated list of field names to sort by."
 DESCRIPTION_SOURCECODE = "The FULL 2-8 character PEP Code of the source for matching documents (e.g., journals: APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE; books: GW, SE, ZBK; videostreams: PEPGRANTVS, PEPTOPAUTHVS)"
 DESCRIPTION_SOURCELANGCODE = "Language code or comma separated list of codes for matching documents (e.g., EN, ES, DE, ...)"
 DESCRIPTION_SOURCENAME = "Name or partial name of the source journal, book, or videostream  (e.g., 'international')"
+DESCRIPTION_SPECIALOPTIONS = "Integer mapped to Option flags for special options"
 DESCRIPTION_STATONLY = "Return minimal documentListItems for statistics."
 DESCRIPTION_STARTDATE = "Find records on or after this date (input date as 2020-08-10 or 20200810)"
 DESCRIPTION_STARTYEAR = "Find documents published on or after this year, or in this range of years (e.g, 1999, Between range: 1999-2010. After: >1999 Before: <1999" 
@@ -280,6 +288,7 @@ TITLE_PAGEREQUEST = "Document's Page or page range"
 TITLE_PARASCOPE = "Scope for paragraph search"
 TITLE_PARATEXT = "Paragraph based search"
 TITLE_SMARTSEARCH = "Search input parser"
+TITLE_SPECIALOPTIONS = "Integer mapped to Option flags for special options"
 TITLE_PARAZONE1_V1 = "Zone for paragraph search"
 TITLE_PUBLICATION_PERIOD = "Number of Years to include" 
 TITLE_REPORT_MATCHSTR="Report specific match string"
@@ -403,9 +412,9 @@ DEFAULT_MORE_LIKE_THIS_COUNT = 0
 # (potential data return in document list)
 # Indent moved to left so when in query, only a few spaces sent to Solr
 
-DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, art_title, art_title_xml, art_subtitle_xml, art_author_id, art_authors, art_citeas_xml, art_info_xml, art_sourcecode, art_sourcetitleabbr, art_sourcetitlefull, art_sourcetype, art_level, para_art_id,parent_tag, para, art_vol, art_type, art_vol_title, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_lang, art_doi, art_issn, art_origrx, art_qual, art_kwds, art_cited_all, art_cited_5, art_cited_10, art_cited_20, art_views_lastcalyear, art_views_last1mos, art_views_last6mos, art_views_last12mos, art_views_lastweek, reference_count, file_last_modified, timestamp, score"
+# DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, art_title, art_title_xml, art_subtitle_xml, art_author_id, art_authors, art_citeas_xml, art_info_xml, art_sourcecode, art_sourcetitleabbr, art_sourcetitlefull, art_sourcetype, art_level, para_art_id,parent_tag, para, art_vol, art_type, art_vol_title, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_lang, art_doi, art_issn, art_origrx, art_qual, art_kwds, art_cited_all, art_cited_5, art_cited_10, art_cited_20, art_views_lastcalyear, art_views_last1mos, art_views_last6mos, art_views_last12mos, art_views_lastweek, reference_count, file_last_modified, timestamp, score"
 
-DOCUMENT_ITEM_SUMMARY_FIELDS_x ="""
+DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_id, 
  art_title, 
  art_title_xml, 

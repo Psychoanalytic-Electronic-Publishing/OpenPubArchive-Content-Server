@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1029.1.Alpha"
+__version__     = "2020.1101.1.Alpha"
 __status__      = "Development"
 
 """
@@ -273,7 +273,7 @@ def login_via_pads(request: Request,
                                                           session_id=session_id,
                                                           client_id=client_id)
   
-    if session_info is None or session_info.authenticated == False:
+    if pads_session_info is None or pads_session_info.IsValidLogon == False:
         raise HTTPException(
             status_code=httpCodes.HTTP_401_UNAUTHORIZED,
             detail=ERR_MSG_PASSWORD, 
@@ -1083,7 +1083,7 @@ async def session_status(response: Response,
        NA
 
     """
-    global text_server_ver
+    global text_server_ver # solr ver
     admin = False
 
     # see if user is an admin
@@ -1098,6 +1098,7 @@ async def session_status(response: Response,
     solr_ok = opasAPISupportLib.check_solr_docs_connection()
     config_name = None
     mysql_ver = None
+    hierarchical_server_ver = f"{text_server_ver}/{__version__}"
     
     if admin:
         config_name = localsecrets.CONFIG
@@ -1108,7 +1109,7 @@ async def session_status(response: Response,
                                                          dataSource = localsecrets.DATA_SOURCE, 
                                                          user_ip = request.client.host,
                                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
-                                                         text_server_version = text_server_ver,
+                                                         text_server_version = hierarchical_server_ver,
                                                          serverContent=opasAPISupportLib.metadata_get_database_statistics(session_info), 
                                                          # admin only fields
                                                          text_server_url = localsecrets.SOLRURL,
@@ -1132,7 +1133,7 @@ async def session_status(response: Response,
                 server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
                                                              db_server_ok = db_ok,
                                                              dataSource = localsecrets.DATA_SOURCE, 
-                                                             text_server_version = text_server_ver,
+                                                             text_server_version = hierarchical_server_ver,
                                                              opas_version = __version__, 
                                                              serverContent=opasAPISupportLib.metadata_get_database_statistics(session_info), 
                                                              user_ip = request.client.host,
@@ -1142,7 +1143,7 @@ async def session_status(response: Response,
                 server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
                                                              db_server_ok = db_ok,
                                                              dataSource = localsecrets.DATA_SOURCE, 
-                                                             text_server_version = text_server_ver,
+                                                             text_server_version = hierarchical_server_ver,
                                                              opas_version = __version__, 
                                                              user_ip = request.client.host,
                                                              timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
@@ -4142,6 +4143,7 @@ def documents_document_fetch(response: Response,
                              search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
                              pagelimit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
                              pageoffset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),
+                             specialoptions:int=Query(0, title=opasConfig.TITLE_SPECIALOPTIONS, description=opasConfig.DESCRIPTION_SPECIALOPTIONS), 
                              client_id:int=Depends(get_client_id), 
                              client_session:str= Depends(get_client_session)
                              ):
@@ -4168,11 +4170,36 @@ def documents_document_fetch(response: Response,
 
     ## Status
        This endpoint is working.
+       
+       EXPERIMENTAL:
+          Use the specialoptions parameter, with an integer representing (flags) to turn on or off experimental features.
+            If the feature is kept, they can be formally parameterized in a later edition.
+            
+            1 = Turn off glossary markup in documents
+            2 = Return basic doclistinfo for any translations of the document (or original language) so
+                they can be listed in a infocard or popup.  Note the original is returned in the list as well whenever there are
+                translations.
+                
+            bitwise & these flags (full reference in opasConfig) together, e.g., 3 selects both options.  
 
     ## Sample Call
          http://localhost:9100/v2/Documents/Document/IJP.077.0217A/
 
     ## Notes
+    
+       Parameter "search" in the API Docs interface must include the variable name prefix "search=" to make it work
+       so in the /Docs interface, the search edit field should be like:
+           search=?fulltext1=adolescent
+           rather than just ?fulltext1=adolescent
+           
+           But in the command line sent to the API it can be just:
+           
+                http://development.org:9100/v2/Documents/Document/ANRP.012.0129A/?return_format=xml&search=?fulltext1%3Dmultiple%20dimension&specialoptions=3
+
+           or the longer form:
+           
+                http://development.org:9100/v2/Documents/Document/ANRP.012.0129A/?return_format=xml&search=?search%3D%26fulltext1%3Dmultiple%20dimension&specialoptions=3
+           
 
     ## Potential Errors
        THE USER NEEDS TO BE AUTHENTICATED to return a document.  Otherwise an abstract/excerpt will be returned.
@@ -4203,7 +4230,7 @@ def documents_document_fetch(response: Response,
     else:
         # notes:
         #  if a page extension to the docid is supplied, it is ignored. The client should use that instead to jump to that page.
-        m = re.match("(?P<docid>[A-Z]{2,12}\.[0-9]{3,3}[A-F]?\.(?P<pagestart>[0-9]{4,4})[A-Z]?)(\.P(?P<pagenbr>[0-9]{4,4}))?", documentID)
+        # m = re.match("(?P<docid>[A-Z]{2,12}\.[0-9]{3,3}[A-F]?\.(?P<pagestart>[0-9]{4,4})[A-Z]?)(\.P(?P<pagenbr>[0-9]{4,4}))?", documentID)
         #if m is not None:
             #documentID = m.group("docid")
             #page_number = m.group("pagenbr")
@@ -4238,15 +4265,16 @@ def documents_document_fetch(response: Response,
 
             ret_val = opasAPISupportLib.documents_get_document( documentID, 
                                                                 solr_query_params,
-                                                                ret_format=return_format, 
+                                                                ret_format=return_format,
                                                                 similar_count=similarcount, 
                                                                 page_offset=pageoffset, # starting page
                                                                 page_limit=pagelimit, # number of pages
                                                                 page=page, # specific page number request (rather than offset),
                                                                 req_url=request.url._url, 
-                                                                session_info=session_info
+                                                                session_info=session_info,
+                                                                option_flags=specialoptions
                                                                 )
-
+        
         except Exception as e:
             response.status_code=httpCodes.HTTP_400_BAD_REQUEST
             status_message = f"{client_id}:{session_id}: Document Fetch Error: {e}"

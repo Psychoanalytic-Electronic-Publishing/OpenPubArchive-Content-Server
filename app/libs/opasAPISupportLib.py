@@ -1470,7 +1470,8 @@ def documents_get_document(document_id,
                            page_limit=None,
                            page=None, 
                            authenticated=True,
-                           session_info=None
+                           session_info=None, 
+                           option_flags=None
                            ):
     """
     For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
@@ -1518,8 +1519,7 @@ def documents_get_document(document_id,
             # solrParams = None
 
         solr_query_spec = \
-                opasQueryHelper.parse_to_query_spec(
-                                                    query = query,
+                opasQueryHelper.parse_to_query_spec(query = query,
                                                     filter_query = filterQ,
                                                     similar_count=similar_count, 
                                                     full_text_requested=True,
@@ -1535,7 +1535,8 @@ def documents_get_document(document_id,
                                                     page_offset = page_offset,
                                                     page_limit = page_limit,
                                                     page = page,
-                                                    req_url = req_url
+                                                    req_url = req_url, 
+                                                    option_flags=option_flags # dictionary of return options
                                                     )
 
         document_list, ret_status = search_text_qs(solr_query_spec,
@@ -1546,12 +1547,21 @@ def documents_get_document(document_id,
 
         try:
             matches = document_list.documentList.responseInfo.count
-            # get the first document item only
-            document_list_item = document_list.documentList.responseSet[0]
-            # is user authorized?
-            if document_list.documentList.responseSet[0].accessLimited:
-                document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
-            
+            if matches > 0:
+                # get the first document item only
+                document_list_item = document_list.documentList.responseSet[0]
+                # is user authorized?
+                if document_list.documentList.responseSet[0].accessLimited:
+                    document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
+
+                # experimental options: uses option_flags to turn on
+                if option_flags & opasConfig.OPTION_2_RETURN_TRANSLATION_SET:
+                    # get document translations of the first document (note this also includes the original)
+                    if document_list_item.origrx is not None:
+                        translationSet, count = opasQueryHelper.quick_docmeta_docsearch(qstr=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
+                        if translationSet is not None:
+                            document_list_item.translationSet = translationSet
+                    
         except Exception as e:
             logger.warning("get_document: No matches or error: %s", e)
             # return None

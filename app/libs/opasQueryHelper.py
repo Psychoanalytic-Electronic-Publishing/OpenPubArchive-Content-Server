@@ -458,12 +458,12 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   solrQueryTermList=None,
                                   # parameter based options
                                   para_textsearch=None,    # search paragraphs as child of scope
-                                  para_scope=None,        # parent_tag of the para, i.e., scope of the para ()
+                                  para_scope=None,         # parent_tag of the para, i.e., scope of the para ()
                                   like_this_id=None,       # for morelikethis
                                   cited_art_id=None,       # for who cited this
-                                  similar_count:int=0, # Turn on morelikethis for the set
+                                  similar_count:int=0,     # Turn on morelikethis for the set
                                   fulltext1=None,          # term, phrases, and boolean connectors with optional fields for full-text search
-                                  art_level: int=None,              # Level of record (top or child, as artlevel)
+                                  art_level: int=None,     # Level of record (top or child, as artlevel)
                                   smarttext=None,          # experimental detection of search parameters
                                   #solrSearchQ=None,       # the standard solr (advanced) query, overrides other query specs
                                   synonyms=False,          # global field synonyn flag (for all applicable fields)
@@ -491,7 +491,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   facetspec: dict=None, 
                                   abstract_requested: bool=None,
                                   formatrequested:str=None,
-                                  return_field_set=None, 
+                                  return_field_set=None,
+                                  return_field_options=None, 
                                   sort=None,
                                   highlightlimit:int=None, # same as highlighting_max_snips, but matches params (REQUIRED TO MATCH!)
                                   extra_context_len=None,
@@ -627,7 +628,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
                              req_url=req_url
         )
     
-    set_return_fields(solr_query_spec, return_field_set)
+    set_return_fields(solr_query_spec=solr_query_spec,
+                      return_field_set=return_field_options,
+                      return_field_options=return_field_options)
 
     if limit is not None:
         solr_query_spec.limit = limit
@@ -1177,7 +1180,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
 # -------------------------------------------------------------------------------------------------------
 def set_return_fields(solr_query_spec: models.SolrQuerySpec,
-                      return_field_set=None, 
+                      return_field_set=None,
+                      return_field_options=None
                       ):
 
     if solr_query_spec is None:
@@ -1202,6 +1206,9 @@ def set_return_fields(solr_query_spec: models.SolrQuerySpec,
     else: #  true default!
         solr_query_spec.returnFieldSet = "DEFAULT"
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
+
+    if return_field_options is not None:
+        solr_query_spec.return_field_options = return_field_options 
 
     return    
     
@@ -1230,7 +1237,8 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
                         offset = None,
                         page_offset = None,
                         page_limit = None,
-                        page = None
+                        page = None, 
+                        option_flags=0
                         ):
     """
     This function creates or updates a SolrQuerySpec, with the caller specifying the Solr query and filter query fields
@@ -1306,6 +1314,18 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     if format_requested is not None:
         solr_query_spec.returnFormat = format_requested
 
+    if option_flags is not None:
+        # See opasConfig
+        #OPTION_NO_GLOSSARY_MARKUP = 1
+        #OPTION_2_RESERVED = 2
+        #OPTION_3_RESERVED = 4
+        #OPTION_4_RESERVED = 8
+        #OPTION_5_RESERVED = 16
+        solr_query_spec.returnOptions = {}
+        if option_flags & opasConfig.OPTION_1_NO_GLOSSARY_TERM_MARKUP:
+            # glossary Term markup off
+            solr_query_spec.returnOptions["Glossary"] = False
+ 
     if limit is not None:
         solr_query_spec.limit = limit
 
@@ -1415,9 +1435,10 @@ def search_text(query,
                 page_limit = None,
                 page = None,
                 req_url:str = None,
-                core = None, 
+                core = None,
                 #authenticated = None,
-                session_info = None 
+                session_info = None, 
+                option_flags=0
                 ):
     """
     Full-text search, via the Solr server api.
@@ -1457,7 +1478,8 @@ def search_text(query,
                                 page_limit = page_limit,
                                 page = page,
                                 core=core, 
-                                req_url = req_url
+                                req_url = req_url,
+                                option_flags=option_flags
                                 )
 
     ret_val, ret_status = search_text_qs(solr_query_spec,
@@ -1683,7 +1705,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                 
     else: #  search was ok
         try:
-            logger.debug(f"Result Size: {results._numFound}; Search: {solr_query_spec.solrQuery.searchQ}; Filter: {solr_query_spec.solrQuery.searchQ}")
+            logger.info(f"Result Size: {results._numFound}; Search: {solr_query_spec.solrQuery.searchQ}; Filter: {solr_query_spec.solrQuery.searchQ}")
             scopeofquery = [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ]
     
             if ret_status[0] == 200: 
@@ -1787,7 +1809,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     if solr_query_spec.fullReturn and not documentListItem.accessLimited and not offsite:
                         documentListItem = get_fulltext_from_search_results(result=result,
                                                                             text_xml=text_xml,
-                                                                            format_requested=solr_query_spec.returnFormat, 
+                                                                            format_requested=solr_query_spec.returnFormat,
+                                                                            return_options=solr_query_spec.returnOptions, 
                                                                             page=solr_query_spec.page,
                                                                             page_offset=solr_query_spec.page_offset,
                                                                             page_limit=solr_query_spec.page_limit,
@@ -1853,6 +1876,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             # documentListItem.moreLikeThis = results.moreLikeThis[documentID]
     
                     if similarityMatch is not None: documentListItem.similarityMatch = similarityMatch
+                    
                     #parent_tag = result.get("parent_tag", None)
                     #if parent_tag is not None:
                         #documentListItem.docChild = {}
@@ -2125,7 +2149,8 @@ def get_fulltext_from_search_results(result,
                                      page_offset,
                                      page_limit,
                                      documentListItem: models.DocumentListItem,
-                                     format_requested="HTML"):
+                                     format_requested="HTML",
+                                     return_options=None):
 
     child_xml = None
     offset = 0
@@ -2181,6 +2206,12 @@ def get_fulltext_from_search_results(result,
                 logger.error(f"Page extraction from document failed. Error: {e}.  Keeping entire document.")
             else: # ok
                 text_xml = temp_xml
+    
+        if return_options is not None:
+            if return_options.get("Glossary", None) == False:
+                # remove glossary markup
+                text_xml = opasxmllib.remove_glossary_impx(text_xml)   
+    
     try:
         format_requested_ci = format_requested.lower() # just in case someone passes in a wrong type
     except:
@@ -2246,6 +2277,23 @@ def get_base_article_info_by_id(art_id):
     return ret_val
 
 #-----------------------------------------------------------------------------
+def get_translated_article_info_by_origrx_id(art_id):
+    
+    documentList, ret_status = search_text(query=f"art_origrx:{art_id}", 
+                                               limit=10,
+                                               abstract_requested=False,
+                                               full_text_requested=False
+                                               )
+
+    try:
+        ret_val = documentListItem = documentList.documentList.responseSet[0]
+    except Exception as e:
+        logger.warning(f"Error getting article {art_id} by id: {e}")
+        ret_val = None
+        
+    return ret_val
+
+#-----------------------------------------------------------------------------
 def merge_documentListItems(old, new):     
     if old.documentID is None: old.documentID = new.documentID
     if old.PEPCode is None: old.PEPCode = new.PEPCode
@@ -2273,6 +2321,50 @@ def merge_documentListItems(old, new):
     if old.accessClassification is None: old.accessClassification = new.accessClassification 
 
     return old.accessClassification
+
+#-----------------------------------------------------------------------------
+def quick_docmeta_docsearch(qstr,
+                            fields=None,
+                            req_url=None, 
+                            limit=10,
+                            offset=0):
+    ret_val = None
+    count = 0
+    if fields is None:
+        fields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
+        
+    results = solr_docs.query(q = qstr, fields = fields, limit=limit, offset=offset)
+    document_item_list = []
+    count = len(results)
+    try:
+        for result in results:
+            documentListItem = models.DocumentListItem()
+            documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+            document_item_list.append(documentListItem)
+    except IndexError as e:
+        logger.warning("No matching entry for %s.  Error: %s", (qstr, e))
+    except KeyError as e:
+        logger.warning("No content found for %s.  Error: %s", (qstr, e))
+    else:
+        response_info = models.ResponseInfo( count = count,
+                                             fullCount = count,
+                                             limit = limit,
+                                             offset = offset,
+                                             listType = "documentlist",
+                                             fullCountComplete = True,
+                                             request=f"{req_url}",
+                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                             )
+
+        document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
+                                                          responseSet = document_item_list
+                                                          )
+
+        documents = models.Documents(documents = document_list_struct)
+
+        ret_val = documents
+
+    return ret_val, count
     
 #-----------------------------------------------------------------------------
 def force_string_return_from_various_return_types(text_str, min_length=5):
