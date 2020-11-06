@@ -193,8 +193,9 @@ def get_authserver_session_info(session_id, client_id, pads_session_info=None):
             session_info.session_expires_time = start_time + datetime.timedelta(seconds=pads_session_info.SessionExpires)
             session_info.authorized_peparchive = pads_user_info.HasArchiveAccess
             session_info.authorized_pepcurrent = pads_user_info.HasCurrentAccess
-
-    ret_val = save_session_info_to_db(session_info)
+            logger.info("PaDS returned user info.  Saving to DB")
+            unused_val = save_session_info_to_db(session_info)
+            
     # print (f"SessInfo: {session_info}")
     logger.info(f"***authent: {session_info.authenticated} - get_full_session_info total time: {time.time() - ts}***")
     return session_info
@@ -206,6 +207,7 @@ def save_session_info_to_db(session_info):
     db_session_info = ocd.get_session_from_db(session_id)
     if db_session_info is None:
         ret_val, saved_session_info = ocd.save_session(session_id, session_info)
+        logger.info(f"Saving session info {session_id}")
     else:
         logger.info(f"Session {session_id} already found in db. Updating...")
         if session_info.username != db_session_info.username and db_session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
@@ -213,6 +215,7 @@ def save_session_info_to_db(session_info):
             print (msg)
             logger.error(msg)
         
+        logger.info(f"Updating session info {session_id}")
         ret_val = ocd.update_session(session_id,
                                      userID=session_info.user_id,
                                      username=session_info.username, 
@@ -366,7 +369,7 @@ def pads_get_userinfo(session_id, client_id):
         try:
             response = requests.get(full_URL, headers={"Content-Type":"application/json"})
         except Exception as e:
-            msg = f"No user info from authorization server {e}. Non-logged in user for sessionId: {session_id} client-id {client_id}.  Message from PaDS: {padsinfo}. "
+            msg = f"No user info from authorization server {e}. Non-logged in user for sessionId: {session_id} client-id {client_id}."
             logger.error(msg)
         else:
             status_code = response.status_code
