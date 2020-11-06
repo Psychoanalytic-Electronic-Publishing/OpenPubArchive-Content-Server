@@ -34,7 +34,7 @@ def find_client_session_id(request: Request,
                            client_session: str=None
                            ):
     """
-    ALWAYS returns a session ID.
+    ALWAYS returns a session ID or None
     
     Dependency for client_session id:
            gets it from header;
@@ -54,28 +54,22 @@ def find_client_session_id(request: Request,
     if client_session is not None:
         ret_val = client_session
         msg = f"client-session from header: {ret_val} "
-        logger.debug(msg)
+        logger.info(msg)
     elif client_session_qparam is not None:
         ret_val = client_session_qparam
         msg = f"client-session from param: {ret_val} "
-        logger.debug(msg)
+        logger.info(msg)
     elif client_session_cookie is not None:
         ret_val = client_session_cookie
         msg = f"client-session from client-session cookie: {ret_val} "
-        logger.debug(msg)
-    #elif pepweb_session_cookie is not None: # this is what Gavant client sets
-        #s = urllib.parse.unquote(pepweb_session_cookie)
-        #cookie_dict = json.loads(s)
-        #ret_val = cookie_dict["authenticated"]["SessionId"]
-        #msg = f"client-session from pepweb-session cookie: {ret_val} "
-        #logger.info(msg)
+        logger.info(msg)
     elif opas_session_cookie is not None and opas_session_cookie != 'None':
         msg = f"client-session from stored OPASSESSION cookie {opas_session_cookie}"
-        logger.debug(msg)       
+        logger.info(msg)
         ret_val = opas_session_cookie
     else:
-        msg = f"No client-session ID found."
-        logger.debug(msg)       
+        msg = f"No client-session ID found. Returning None"
+        logger.info(msg)
         ret_val = None
 
     ## save it in cookie in case they call without it.
@@ -169,7 +163,7 @@ def get_authserver_session_info(session_id, client_id, pads_session_info=None):
             logger.error("PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned")
         # session is not logged in
         session_info.confirmed_unauthenticated = True
-        # defaults so commented out
+        # these are defaults so commented out
         # session_info.authenticated = False
         # session_info.user_id = 0
         # session_info.username = opasConfig.USER_NOT_LOGGED_IN_NAME

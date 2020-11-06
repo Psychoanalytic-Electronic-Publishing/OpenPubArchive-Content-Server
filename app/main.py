@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1105.2.Alpha"
+__version__     = "2020.1106.0.Alpha"
 __status__      = "Development"
 
 """
@@ -211,7 +211,7 @@ def save_opas_session_cookie(request: Request, response: Response, session_id):
         except Exception as e:
             logger.debug(f"Ok, opasSessionID not in response {e}")
 
-    if already_set == False:
+    if already_set == False and session_id is not None:
         try:
             logger.debug("Saved OpasSessionID Cookie")
             response.set_cookie(
@@ -255,7 +255,10 @@ def get_client_session(response: Response,
                 detail=ERR_MSG_PASSWORD + f" ({e})", 
             )
         else:
-            save_opas_session_cookie(request, response, session_id)
+            if session_id is not None:
+                save_opas_session_cookie(request, response, session_id)
+            else:
+                logger.info("Session_id is None, no cookie saved.")
 
     return session_id       
     
