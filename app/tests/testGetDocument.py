@@ -13,7 +13,7 @@ import opasDocPermissions
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 
 # Login!
-session_id, headers = test_login()
+sessID, headers, session_info = test_login()
 
 class TestGetDocuments(unittest.TestCase):
     """
@@ -37,7 +37,7 @@ class TestGetDocuments(unittest.TestCase):
         assert(docitem["termCount"] >= 90)
 
     def test_1_get_document(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/IJP.077.0217A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
@@ -47,6 +47,8 @@ class TestGetDocuments(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
+        # this document should be available
+        assert(response_info[0]["accessLimited"] == False)
         print (response_set)
 
     def test_2_get_document_with_search_context(self):
@@ -82,7 +84,8 @@ class TestGetDocuments(unittest.TestCase):
         Retrieve an article; make sure it's there and the abstract len is not 0
         """
         # this newer function includes the search parameters if there were some
-        data = opasAPISupportLib.documents_get_document("LU-AM.029B.0202A")
+        print (f"Current Session: ")
+        data = opasAPISupportLib.documents_get_document("LU-AM.029B.0202A", session_info=session_info)
         # Confirm that the request-response cycle completed successfully.
         if data is None:
             print ("Data not found")

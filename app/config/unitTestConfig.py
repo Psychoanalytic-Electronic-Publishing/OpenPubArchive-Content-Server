@@ -77,7 +77,7 @@ def test_login():
                "client-id": UNIT_TEST_CLIENT_ID, 
                "Content-Type":"application/json",
                localsecrets.API_KEY_NAME: localsecrets.API_KEY}
-    return sessID, headers
+    return sessID, headers, session_info
 
 if 1:
     # session_info, pads_session_info = pads_get_session(client_id=UNIT_TEST_CLIENT_ID)

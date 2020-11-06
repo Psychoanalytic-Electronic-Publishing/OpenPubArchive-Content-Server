@@ -17,7 +17,7 @@ from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 
 # Login!
-session_id, headers = test_login()
+sessID, headers, session_info = test_login()
 
 class TestDownload(unittest.TestCase):
     """

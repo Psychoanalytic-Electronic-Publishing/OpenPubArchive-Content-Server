@@ -12,6 +12,18 @@ import urllib.parse
 import json
 
 logger = logging.getLogger(__name__)
+# for this module
+logger.setLevel(logging.DEBUG)
+
+if 0:
+    # create console handler and set level to debug
+    ch = logging.StreamHandler()
+    # create formatter
+    formatter = logging.Formatter(opasConfig.FORMAT)
+    # add formatter to ch
+    ch.setFormatter(formatter)
+    ch.setLevel(logging.DEBUG)
+    logger.addHandler(ch)
 
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
@@ -43,7 +55,7 @@ def find_client_session_id(request: Request,
            Otherwise, gets a new one from the auth server
     """
     #client_id = int(request.headers.get("client-id", '0'))
-    if client_session is None:
+    if client_session is None or client_session == 'None':
         client_session = request.headers.get(opasConfig.CLIENTSESSIONID, None)
     client_session_qparam = request.query_params.get(opasConfig.CLIENTSESSIONID, None)
     client_session_cookie = request.cookies.get(opasConfig.CLIENTSESSIONID, None)
@@ -54,22 +66,22 @@ def find_client_session_id(request: Request,
     if client_session is not None:
         ret_val = client_session
         msg = f"client-session from header: {ret_val} "
-        logger.info(msg)
+        logger.debug(msg)
     elif client_session_qparam is not None:
         ret_val = client_session_qparam
         msg = f"client-session from param: {ret_val} "
-        logger.info(msg)
+        logger.debug(msg)
     elif client_session_cookie is not None:
         ret_val = client_session_cookie
         msg = f"client-session from client-session cookie: {ret_val} "
-        logger.info(msg)
+        logger.debug(msg)
     elif opas_session_cookie is not None and opas_session_cookie != 'None':
         msg = f"client-session from stored OPASSESSION cookie {opas_session_cookie}"
-        logger.info(msg)
+        logger.debug(msg)
         ret_val = opas_session_cookie
     else:
         msg = f"No client-session ID found. Returning None"
-        logger.info(msg)
+        logger.debug(msg)
         ret_val = None
 
     ## save it in cookie in case they call without it.
@@ -121,7 +133,7 @@ def fix_pydantic_invalid_nones(response_data):
         if response_data["ReasonStr"] is None:
             response_data["ReasonStr"] = ""
     except Exception as e:
-        print (e)
+        logger.error(f"Exception: {e}")
 
     return response_data
 
@@ -152,6 +164,7 @@ def get_authserver_session_info(session_id, client_id, pads_session_info=None):
         # not supplied, so fetch
         pads_session_info = get_pads_session_info(session_id=session_id, client_id=client_id, retry=False)
         session_info = models.SessionInfo(session_id=pads_session_info.SessionId, api_client_id=client_id)
+        session_id = session_info.session_id
     else:
         session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
         
@@ -160,7 +173,8 @@ def get_authserver_session_info(session_id, client_id, pads_session_info=None):
     session_info.pads_user_info = pads_user_info
     if status_code == 401:
         if session_info.pads_session_info.pads_status_response > 500:
-            logger.error("PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned")
+            msg = "PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned"
+            logger.error(msg)
         # session is not logged in
         session_info.confirmed_unauthenticated = True
         # these are defaults so commented out
@@ -357,7 +371,9 @@ def pads_logout(session_id, request: Request=None, response: Response=None):
 def pads_get_userinfo(session_id, client_id):
     ret_val = None
     status_code = 401
-    logger.info(f"get_user_info for session {session_id} from client {client_id}")
+    msg = f"get_user_info for session {session_id} from client {client_id}"
+    logger.debug(msg)
+    print (msg)
     if session_id is not None:
         full_URL = base + f"/v1/Users" + f"?SessionID={session_id}"
         try:
@@ -384,6 +400,20 @@ def pads_permission_check(session_id, doc_id, doc_year, reason_for_check=None):
     full_URL = base + f"/v1/Permits?SessionId={session_id}&DocId={doc_id}&DocYear={doc_year}&ReasonForCheck={reason_for_check}"
     
     response = requests.get(full_URL)
+    if response.status_code == 503:
+        # PaDS down, fake it for now
+        msg = f"Permits response error {e}. Temporarily return data."
+        logger.error(msg)
+        ret_resp = models.PadsPermitInfo(SessionId = session_id,
+                                         DocID = doc_id,
+                                         HasArchiveAccess=True, 
+                                         HasCurrentAccess=False,
+                                         Permit=True, 
+                                         ReasonId=0, 
+                                         StatusCode=200,
+                                         ReasonStr="PaDS not responding"
+        )
+        
     try:
         ret_resp = response.json()
         ret_resp = models.PadsPermitInfo(**ret_resp)
@@ -496,8 +526,9 @@ def get_access_limitations(doc_id,
             try:                   
                 # always check for a full-text request so PaDS can track them.
                 # since we don't really always know about authentication, we need to check all requests that are otherwise rejected.
-                if (session_info.confirmed_unauthenticated == False and (ret_val.accessLimited == True or fulltext_request == True)): # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
-        
+                # if (session_info.confirmed_unauthenticated == False and (ret_val.accessLimited == True or fulltext_request == True)): # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
+                # TODO: This is temp...just check as long as there is a session and full-text is requested
+                if session_info.session_id is not None and fulltext_request == True:
                     if fulltext_request:
                         reason_for_check = opasConfig.AUTH_DOCUMENT_VIEW_REQUEST
                     else:
@@ -582,7 +613,7 @@ def get_access_limitations(doc_id,
                                 logger.info(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
                 else:
                     # not full-text OR (not authenticated or accessLimited==False)
-                    logger.debug(f"No PaDS check needed.  Document {doc_id} accessLimited: {ret_val.accessLimited}. Unauthent: {session_info.confirmed_unauthenticated}")
+                    logger.debug(f"No PaDS check needed (no access).  Document {doc_id} accessLimited: {ret_val.accessLimited}. Unauthent: {session_info.confirmed_unauthenticated}")
         
             except Exception as e:
                 logger.error(f"Issue checking document permission. Possibly not logged in {e}")

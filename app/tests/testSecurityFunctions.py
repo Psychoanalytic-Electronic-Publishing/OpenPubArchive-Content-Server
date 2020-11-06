@@ -12,7 +12,7 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, sessio
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 
 # Login!
-session_id, headers = test_login()
+sessID, headers, session_info = test_login()
 
 class TestSecurityFunctions(unittest.TestCase):
 

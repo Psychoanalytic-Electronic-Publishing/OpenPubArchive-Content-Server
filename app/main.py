@@ -239,6 +239,9 @@ def get_client_session(response: Response,
            
     Call routine in library so other routines can get resolve from there as well       
     """
+    if client_session == 'None': # Not sure where this is coming from as string, but fix it.
+        client_session = None
+        
     session_id = opasDocPermissions.find_client_session_id(request, response, client_session)
     # client_id = get_client_id(response, request, 0)
     # if there's no client session, get a session_id from PaDS without logging in
@@ -250,6 +253,7 @@ def get_client_session(response: Response,
             session_id = session_info.session_id
         except Exception as e:
             # We didn't get a session id
+            logger.error(f"Session ID not received from authserver for client id {client_id} and session {client_session}.  Raising Exception 424.")
             raise HTTPException(
                 status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
                 detail=ERR_MSG_PASSWORD + f" ({e})", 
@@ -260,6 +264,13 @@ def get_client_session(response: Response,
             else:
                 logger.info("Session_id is None, no cookie saved.")
 
+    if session_id is None or len(session_id) < 12:
+        logger.error(f"Session ID not resolved {session_id}.  Raising Exception 424.")
+        raise HTTPException(
+            status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
+            detail=ERR_MSG_PASSWORD + f" ({e})", 
+        )
+        
     return session_id       
     
 security = HTTPBasic()
@@ -2781,7 +2792,7 @@ async def database_mostviewed(response: Response,
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                         download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
                         client_id:int=Depends(get_client_id), 
-                        client_session:str= Depends(get_client_session)
+                        client_session:str=Depends(get_client_session)
                         ):
     """
     ## Function

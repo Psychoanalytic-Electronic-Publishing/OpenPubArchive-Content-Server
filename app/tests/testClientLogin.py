@@ -36,7 +36,7 @@ from main import app
 client = TestClient(app)
 
 # Login!
-sessID, headers = session_id = test_login()
+sessID, headers, session_info = session_id = test_login()
 
 class TestClientLogin(unittest.TestCase):
 
