@@ -379,11 +379,13 @@ class PadsSessionInfo(BaseModel):
     IsValidUserName: bool = Schema(False, title="")
     ReasonId: int = Schema(0, title="")
     ReasonStr = Schema("", title="")
-    SessionExpires: int = Schema(0, title="")
-    SessionId: str = Schema(None, title="")
+    SessionExpires: int = Schema(0, title="Session expires time")
+    SessionId: str = Schema(None, title="Assigned session ID")
     # added session_started to model, not supplied
-    session_start_time: datetime = Schema(datetime.now(), title="")
-
+    session_start_time: datetime = Schema(datetime.now(), title="The time the session was started, not part of the model returned")
+    pads_status_response: int = Schema(0, title="The status code returned by PaDS, not part of the model returned")
+    pads_disposition: str = Schema(None, title="The disposition of PaDS either from error return or deduction")
+    
 class PadsUserInfo(BaseModel):
     UserId:int = Schema(None, title="")
     UserName:str = Schema(None, title="")

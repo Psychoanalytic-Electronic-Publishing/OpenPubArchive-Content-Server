@@ -177,9 +177,9 @@ def get_session_info(request: Request,
         b) If it's there already: (Repeatable, quickest path)
            i) Done, returns it.  No update.  
     """
+    ocd = opasCentralDBLib.opasCentralDB()
     if session_id is not None and session_id != opasConfig.NO_SESSION_ID:
         ts = time.time()
-        ocd = opasCentralDBLib.opasCentralDB()
         session_info = ocd.get_session_from_db(session_id)
         if session_info is None:
             session_info = opasDocPerm.get_authserver_session_info(session_id=session_id, client_id=client_id)
@@ -198,7 +198,6 @@ def get_session_info(request: Request,
         logger.info("getSessionInfo: %s", session_info)
         
     else:
-        ocd = opasCentralDBLib.opasCentralDB()
         logger.debug("No SessionID; Default session info returned (Not Logged In)")
         session_info = models.SessionInfo() # default session model
 

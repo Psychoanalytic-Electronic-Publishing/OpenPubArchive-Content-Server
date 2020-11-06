@@ -945,7 +945,7 @@ class opasCentralDB(object):
         if authorized_pepcurrent:
             if added > 0:
                 setClause += ", "
-            setClause += f" authorized_current = '{authorized_peparchive}'"
+            setClause += f" authorized_pepcurrent = '{authorized_pepcurrent}'"
             added += 1
         if session_end is not None:
             if added > 0:

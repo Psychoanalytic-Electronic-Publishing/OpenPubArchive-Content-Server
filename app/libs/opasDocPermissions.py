@@ -165,6 +165,8 @@ def get_authserver_session_info(session_id, client_id, pads_session_info=None):
     pads_user_info, status_code = pads_get_userinfo(session_id, client_id)
     session_info.pads_user_info = pads_user_info
     if status_code == 401:
+        if session_info.pads_session_info.pads_status_response > 500:
+            logger.error("PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned")
         # session is not logged in
         session_info.confirmed_unauthenticated = True
         # defaults so commented out
@@ -227,6 +229,8 @@ def get_pads_session_info(session_id=None, client_id=opasConfig.NO_CLIENT_ID, re
     """
     Get the PaDS session model, and get a new session ID from the auth server if needed 
     """
+    msg = ""
+    
     if session_id is not None:
         full_URL = base + f"/v1/Authenticate/IP/" + f"?SessionID={session_id}"
     else:
@@ -238,21 +242,34 @@ def get_pads_session_info(session_id=None, client_id=opasConfig.NO_CLIENT_ID, re
         logger.error(f"PaDS Authorization server not available. {e}")
         pads_session_info = models.PadsSessionInfo()
     else:
-        if pads_session_info.status_code == httpCodes.HTTP_500_INTERNAL_SERVER_ERROR:
+        status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below)
+        if status_code > 403: # e.g., (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, httpCodes.HTTP_503_SERVICE_UNAVAILABLE):
             # try once without the session ID
             if retry == True:
                 pads_session_info = get_pads_session_info(client_id=client_id, retry=False)
+                pads_session_info.pads_status_response = status_code
             else:
+                msg = f"PaDS error {pads_session_info.status_code}"
+                logger.error(msg)
                 pads_session_info = models.PadsSessionInfo()
-                logger.error(f"PaDS error 500")
+                pads_session_info.pads_status_response = status_code
+                pads_session_info.pads_disposition = msg 
         else:
-            pads_session_info = pads_session_info.json()
-            pads_session_info = fix_pydantic_invalid_nones(pads_session_info)
-            pads_session_info = models.PadsSessionInfo(**pads_session_info)
+            try:
+                pads_session_info = pads_session_info.json()
+                pads_session_info = fix_pydantic_invalid_nones(pads_session_info)
+                pads_session_info = models.PadsSessionInfo(**pads_session_info)
+                pads_session_info.pads_status_response = status_code
+            except Exception as e:
+                msg = f"PaDS response processing error {e}"
+                logger.error(msg)
+                pads_session_info = models.PadsSessionInfo(**pads_session_info)
+                pads_session_info.pads_status_response = status_code
+                pads_session_info.pads_disposition = msg 
 
     return pads_session_info
 
-def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, client_id=opasConfig.NO_CLIENT_ID):
+def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, client_id=opasConfig.NO_CLIENT_ID, retry=True):
     """
     Login directly via the auth server (e.g., in this case PaDS)
     
@@ -260,6 +277,7 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, cl
       -- #TODO but that's not implemented in this server itself, if logged in through there, yet!
       
     """
+    msg = ""
     logger.info(f"Logging in user {username} with session_id {session_id}")
     if session_id is not None:
         full_URL = base + f"/v1/Authenticate/" + f"?SessionID={session_id}"
@@ -273,6 +291,7 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, cl
         pads_session_info = models.PadsSessionInfo()
         #session_info = models.SessionInfo()
     else:
+        status_code = pads_response.status_code # save it for a bit (we replace pads_session_info below)
         if pads_response.ok:
             pads_response = pads_response.json()
             pads_response = fix_pydantic_invalid_nones(pads_response)
@@ -285,23 +304,39 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, cl
                 except Exception as e:
                     logger.error(f"Pads return assignment error: {e}")
                     pads_session_info = models.PadsSessionInfo()
-        elif pads_response.status_code == 500: # TODO: may want to limit this to error 500
-            # try without session id
-            logger.error(f"PaDS login returned {pads_response.status_code}. Trying without session id.")
-            pads_session_info = pads_login(username=username, password=password, client_id=client_id)
-        else:
-            pads_response = pads_response.json()
-            pads_response = fix_pydantic_invalid_nones(pads_response)
-            if isinstance(pads_response, str):
-                pads_session_info = models.PadsSessionInfo()
-                logger.error(f"Pads returned error string: {pads_response}")
+        elif status_code > 403: 
+            if retry == True:
+                # try once without the session ID
+                msg = f"PaDS login returned {status_code}. Trying without session id."
+                logger.error(msg)
+                pads_session_info = pads_login(username=username, password=password, client_id=client_id, retry=False)
             else:
-                try:
-                    pads_session_info = models.PadsSessionInfo(**pads_response)
-                except Exception as e:
-                    logger.error(f"Pads return assignment error: {e}")
+                msg = f"Authorization System Issue. PaDS login returned {status_code}. Already retried (failed), or retry not selected."
+                logger.error(msg)
+                pads_session_info = models.PadsSessionInfo()
+                pads_session_info.pads_status_response = status_code
+                pads_session_info.pads_disposition = msg 
+        else:
+            try:
+                pads_response = pads_response.json()
+                pads_response = fix_pydantic_invalid_nones(pads_response)
+                if isinstance(pads_response, str):
                     pads_session_info = models.PadsSessionInfo()
-
+                    msg = f"Pads returned error string: {pads_response}"
+                    logger.error(msg)
+                else:
+                    try:
+                        pads_session_info = models.PadsSessionInfo(**pads_response)
+                    except Exception as e:
+                        msg = f"Pads return assignment error: {e}"
+                        logger.error(msg)
+                        pads_session_info = models.PadsSessionInfo()
+            except Exception as e:
+                logger.error(f"PaDS response processing error {e}")
+                pads_session_info = models.PadsSessionInfo(**pads_session_info)
+                pads_session_info.pads_status_response = status_code
+                pads_session_info.pads_disposition = msg 
+                
     return pads_session_info
 
 def pads_logout(session_id, request: Request=None, response: Response=None):

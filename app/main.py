@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1104.1.Alpha"
+__version__     = "2020.1105.1.Alpha"
 __status__      = "Development"
 
 """
@@ -1203,7 +1203,10 @@ def session_login(response: Response,
     session_id = pads_session_info.SessionId
 
     if pads_session_info.IsValidLogon != True:
-        detail = "Bad login credentials"
+        if pads_session_info.pads_disposition is not None:
+            detail = f"{pads_session_info.pads_disposition}"
+        else:
+            detail = f"Login credential error. {pads_session_info.pads_status_response}"
         raise HTTPException(
             status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
             detail=detail 
@@ -4134,19 +4137,19 @@ async def documents_glossary_term(response: Response,
 #-----------------------------------------------------------------------------
 #@app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_VIEW, response_model_exclude_unset=True)  # the current PEP API
 @app.get("/v2/Documents/Document/{documentID}/", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_VIEW, response_model_exclude_unset=True) # more consistent with the model grouping
-async def documents_document_fetch(response: Response,
-                                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                                   documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDSINGLE), # return controls 
-                                   page:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
-                                   return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                                   similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
-                                   search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
-                                   pagelimit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
-                                   pageoffset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),
-                                   specialoptions:int=Query(0, title=opasConfig.TITLE_SPECIALOPTIONS, description=opasConfig.DESCRIPTION_SPECIALOPTIONS), 
-                                   client_id:int=Depends(get_client_id), 
-                                   client_session:str= Depends(get_client_session)
-                                   ):
+def documents_document_fetch(response: Response,
+                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                             documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDSINGLE), # return controls 
+                             page:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
+                             return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                             similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                             search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
+                             pagelimit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
+                             pageoffset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),
+                             specialoptions:int=Query(0, title=opasConfig.TITLE_SPECIALOPTIONS, description=opasConfig.DESCRIPTION_SPECIALOPTIONS), 
+                             client_id:int=Depends(get_client_id), 
+                             client_session:str= Depends(get_client_session)
+                             ):
     """
     ## Function
         <b>Returns the Document information, document summary (absract) and full-text - but conditionally.</b>
