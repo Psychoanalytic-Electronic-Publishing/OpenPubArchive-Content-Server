@@ -396,7 +396,9 @@ class PadsUserInfo(BaseModel):
     ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
     ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
     HasArchiveAccess:bool = Schema(False, title="User has subscription to PEP Archive")
-    HasCurrentAccess:bool = Schema(False, title="User has subscription to PEP Current (rare)")   
+    HasCurrentAccess:bool = Schema(False, title="User has subscription to PEP Current (rare)")
+    # for dummy auth server
+    Password:str = Schema(None, title="")
 
 class PadsPermitInfo(BaseModel):
     # see https://app.swaggerhub.com/apis/nrshapiro/PEPSecure/1.03#/PermitResponse

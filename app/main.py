@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1106.0.Alpha"
+__version__     = "2020.1106.1.Alpha"
 __status__      = "Development"
 
 """
@@ -283,9 +283,9 @@ def login_via_pads(request: Request,
     session_id = opasDocPermissions.find_client_session_id(request, response)
     # Ok, login
     pads_session_info = opasDocPermissions.pads_login(username=credentials.username,
-                                                          password=credentials.password,
-                                                          session_id=session_id,
-                                                          client_id=client_id)
+                                                      password=credentials.password,
+                                                      session_id=session_id,
+                                                      client_id=client_id)
   
     if pads_session_info is None or pads_session_info.IsValidLogon == False:
         raise HTTPException(

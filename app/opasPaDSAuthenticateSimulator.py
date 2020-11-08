@@ -22,22 +22,30 @@ from starlette.status import HTTP_200_OK, \
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, JSONResponse, Response, RedirectResponse, FileResponse
 from starlette.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Schema
-from pydantic import ValidationError
+from pydantic import BaseModel, Schema, ValidationError
 import secrets
 import localsecrets
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
 import models
 
-from fastapi import Security, FastAPI, Query, Path, Cookie, Header, Depends, HTTPException
+from fastapi import Security, FastAPI, Query, Body, Path, Cookie, Header, Depends, HTTPException
 from fastapi.openapi.utils import get_openapi
 
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 import opasCentralDBLib
-# import opasAPISupportLib as opasAPISupportLib
-security = HTTPBasic()
 
+def get_session_token(user_token=None):
+    """
+    Creates a cryptographically-secure, URL-safe string
+    """
+    if user_token is not None:
+        return user_token
+    else:
+        return secrets.token_urlsafe(16)
+
+
+security = HTTPBasic()
 app = FastAPI(
     debug=True,
     title="OpasPaDSAuthenticateSimulator for PEP-Web Development",
@@ -62,11 +70,24 @@ COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
 COOKIE_MAX_KEEP_TIME = 86400 # 24 hours in seconds
 SESSION_INACTIVE_LIMIT = 30  # minutes
 OPASPADSSESSIONID = "opasPaDSSessionID"
-USER_DB = { "peptest.april": {"pw":"April2020*", "permits": ["pep-web"]},
+USER_DB2 = { "peptest.april": {"pw":"April2020*", "permits": ["pep-web"]},
             "neil" : {"pw": "Scilab!!", "permits": ["pep-web"], "journals": [], "documents": []},
             "gvpi" : {"pw": "xyz", "permits": ["pep-web"], "journals": [], "documents": []},
             "TemporaryDeveloper": {"pw":"limited*", "permits": ["ijp-open"], "journals": ["IJP", "CPS"], "documents": ["PSP.015.0163A", ]}
           }
+
+USER_DB = { "test1": models.PadsUserInfo(UserId=1, HasArchiveAccess=True, HasCurrentAccess=True, Password="Zedra001", UserType="admin"),
+            "test2": models.PadsUserInfo(UserId=2, HasArchiveAccess=True, HasCurrentAccess=False, Password="Zedra001", UserType="normal"),
+            "test3": models.PadsUserInfo(UserId=3, HasArchiveAccess=True, HasCurrentAccess=False, Password="Zedra001", UserType="normal"),
+            "test4": models.PadsUserInfo(UserId=4, HasArchiveAccess=True, HasCurrentAccess=False, Password="Zedra001", UserType="normal"),
+            "nrs": models.PadsUserInfo(UserId=5, HasArchiveAccess=True, HasCurrentAccess=True, Password="Zedra001", UserType="admin")
+          }
+
+session_db = {}
+
+class UserNamePassword(BaseModel):
+    UserName:  str = None
+    Password: str = None
 
 #-----------------------------------------------------------------------------
 def get_max_age(keep_active=False):
@@ -86,33 +107,33 @@ def get_ip_authenticate(request: Request,
                         session_id=None): 
     """IP Login and SessionId
 
-    If IP is known then will useer will be logged on, if not a known IP address then return of just SessionId # noqa: E501
+    If IP is known then will user will be logged on, if not a known IP address then return of just SessionId # noqa: E501
 
     :param session_id: Optional SessionId.  If supplied will be linked to a previously allocated PaDS SessionId.  If not supplied will be allocated by PaDS.
     :type session_id: str
 
     :rtype: List[AuthenticateResponse]
     """
-    ret_val = models.PadsSessionInfo(HasSubscription=True, 
+    session_id = get_session_token(session_id)
+        
+    ret_val = models.PadsSessionInfo(SessionId=session_id, 
+                                     HasSubscription=True, 
                                      IsValidLogon=True, 
                                      IsValidUserName=True, 
                                      ReasonId=0, 
                                      ReasonStr = "", 
-                                     SessionExpires=0,
-                                     SessionId=session_id
+                                     SessionExpires=0
                                      )
     
-    return retVal 
+    return ret_val 
 
-@app.get("/v1/Authenticate/", response_model_exclude_unset=True, tags=["Open App Endpoints"])
+@app.post("/v1/Authenticate/", response_model_exclude_unset=True, tags=["Open App Endpoints"])
 def get_authenticate(response: Response,
-                      request: Request,
-                      body=None,
-                      session_id=None,                      
-                      credentials: HTTPBasicCredentials = Depends(security)):
+                     request: Request,
+                     body: UserNamePassword=Body(None, embed=False),
+                     session_id: str=None
+                    ): 
     """
-
-
         Returns:
         
         class PadsSessionInfo(BaseModel):
@@ -128,35 +149,36 @@ def get_authenticate(response: Response,
                               pads_status_response: int = Schema(0, title="The status code returned by PaDS, not part of the model returned")
                               pads_disposition: str = Schema(None, title="The disposition of PaDS either from error return or deduction")
     """    
-    sess_info = models.PadsSessionInfo(HasSubscription=True, 
-                                       IsValidLogon=True, 
-                                       IsValidUserName=True, 
-                                       ReasonId=0, 
-                                       ReasonStr = "", 
-                                       SessionExpires=0,
-                                       SessionId=session_id
-                                       )
-    
-    retVal = sess_info
 
-    if user is None:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Basic"}, # opens form again
-        )
-
-    session_id = secrets.token_urlsafe(16)
-    max_age = get_max_age(keep_active=False)
-    # expiration_time = datetime.utcfromtimestamp(time.time() + get_max_age(keep_active=ka))
-    response.set_cookie(key=OPASPADSSESSIONID,
-                        value=session_id,
-                        max_age=max_age,
-                        expires=None, 
-                        path="/",
-                        secure=False, 
-                        httponly=False)
-    return user  # pydantic model based user.  See modelsOpasCentralPydantic.py
+    ret_val = models.PadsSessionInfo()
+    user = USER_DB.get(body.UserName, None)
+    if user is not None:
+        if user.Password == body.Password:
+            ret_val.IsValidLogon = True
+            ret_val.IsValidUserName = True
+            ret_val.SessionId = get_session_token(session_id)
+            # expiration_time = datetime.utcfromtimestamp(time.time() + get_max_age(keep_active=ka))
+            response.set_cookie(key=OPASPADSSESSIONID,
+                                value=ret_val.SessionId,
+                                max_age=10,
+                                expires=None, 
+                                path="/",
+                                secure=False, 
+                                httponly=False)
+            
+            session_db[ret_val.SessionId] = models.PadsUserInfo(UserId=user.UserId,  
+                                                                UserName=user.UserName,  
+                                                                UserType=user.UserType, 
+                                                                SubscriptionEndDate="",  
+                                                                Branding=False, 
+                                                                ClientSettings=None, 
+                                                                ReasonId= 0, 
+                                                                ReasonStr="", 
+                                                                HasArchiveAccess=user.HasArchiveAccess, 
+                                                                HasCurrentAccess=user.HasCurrentAccess 
+                                                                ) 
+            
+    return ret_val
 
 @app.get("/v1/Users", response_model_exclude_unset=True, tags=["Open App Endpoints"])
 def get_users(request: Request,
@@ -172,17 +194,8 @@ def get_users(request: Request,
 
     :rtype: List[UserResponse]
     """
-    ret_val = models.PadsUserInfo(UserId="",  
-                                  UserName="",  
-                                  UserType="", 
-                                  SubscriptionEndDate="",  
-                                  Branding=False, 
-                                  ClientSettings=None, 
-                                  ReasonId= 0, 
-                                  ReasonStr="", 
-                                  HasArchiveAccess=True, 
-                                  HasCurrentAccess=False 
-                                  )
+    
+    ret_val = session_db.get(session_id, None)
    
     return ret_val
 

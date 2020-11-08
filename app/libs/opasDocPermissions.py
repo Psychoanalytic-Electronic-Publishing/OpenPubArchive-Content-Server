@@ -32,6 +32,7 @@ import starlette.status as httpCodes
 # import localsecrets
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
 base = "https://padstest.zedra.net/PEPSecure/api"
+base = "http://development.org:9300"
 import opasCentralDBLib
 
 def verify_header(request, caller_name):
