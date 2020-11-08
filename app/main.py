@@ -970,59 +970,6 @@ async def client_del_configuration(response: Response,
     #  return it.
     return ret_val
 
-##-----------------------------------------------------------------------------
-#@app.post("/vX/Admin/SubmitFile/", response_model_exclude_unset=True, tags=["Admin"])
-#async def submit_file(response: Response, 
-                      #request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                      #submit_token: bytes= File(...), 
-                      #xml_data: bytes = File(..., description="Article data (complete) or just metadata and abstract in xml"),
-                      #pdf_data: bytes = File(..., description="Article data (complete) in original PDF file"),
-                      #client_id:int=Depends(get_client_id), 
-                      #client_session:str= Depends(get_client_session)
-                      #):
-    #"""
-    ### Function
-
-       #<b>Submit a XML file and PDF for inclusion</b>
-
-       #Requires an authenticated submit_token, and temporarily is only available to admins
-
-       #NOTE: PLACEHOLDER - THIS IS NOT CURRENTLY FOR USE
-
-    ### Return Type
-       #models.FileItem
-
-    ### Status
-       #Status: Future Use Only
-
-    ### Sample Call
-         #/vX/Admin/SubmitFile/
-
-    ### Notes
-         #NA
-
-    ### Potential Errors
-       #NA
-
-    #"""
-    #opasDocPermissions.verify_header(request, "SubmitFile") # for debugging client call
-    #log_endpoint(request, client_id=client_id, session_id=client_session)
-
-    #ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
-
-    ## ensure user is admin
-    #if ocd.verify_admin(session_info):
-        #ret_val = opasAPISupportLib.submit_file(submit_token,
-                                                #xml_data,
-                                                #pdf_data
-                                                #)
-    #else:
-        #raise HTTPException(
-            #status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
-            #detail=ERR_MSG_NOT_AUTHORIZED
-        #)        
-    #return ret_val
-
 #-----------------------------------------------------------------------------
 @app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_AM_I)
 async def session_whoami(response: Response,
@@ -3424,39 +3371,6 @@ def metadata_journals(response: Response,
                                                 #client_session= client_session
                                                 )
     return ret_val
-
-##-----------------------------------------------------------------------------
-#@app.get("/v1/Metadata/Volumes/{SourceCode}", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_VOLUMES)
-#def metadata_volumes_v1(response: Response,
-                        #request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                        #sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
-                        #limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                        #offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                        ## v1 arg
-                        #SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                        #client_id:int=Depends(get_client_id), 
-                        #client_session:str= Depends(get_client_session)
-                        #):
-    #"""
-    ### Function
-       #<b>Return a list of volumes for a SourceCode (aka, PEPCode (e.g., IJP)) per the limit and offset parameters</b> 
-
-    ### Return Type
-       #models.JournalInfoList
-
-    ### Status
-       #This endpoint is working.
-
-    ### Sample Call
-         #http://localhost:9100/v1/Metadata/Volumes/CPS/
-
-    ### Notes
-
-    ### Potential Errors
-
-    #"""
-    #ret_val = metadata_volumes(response=response, request=request, sourcetype=sourcetype, sourcecode=SourceCode, limit=limit, offset=offset)
-    #return ret_val # returns volumeList
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Metadata/Volumes/", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_VOLUMES)
