@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1106.1.Alpha"
+__version__     = "2020.1108.1.Alpha"
 __status__      = "Development"
 
 """
@@ -2773,7 +2773,7 @@ async def database_smartsearch(response: Response,
 #---------------------------------------------------------------------------------------------------------
 #@app.get("/v1/Database/MostDownloaded/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_MOST_VIEWED)
 @app.get("/v2/Database/MostViewed/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_MOST_VIEWED)
-async def database_mostviewed(response: Response,
+def database_mostviewed(response: Response,
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                         # period is str because it can be "all"
                         pubperiod: int=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
@@ -2933,7 +2933,7 @@ async def database_mostviewed(response: Response,
 
 #---------------------------------------------------------------------------------------------------------
 @app.get("/v2/Database/MostCited/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_MOST_CITED)
-async def database_mostcited(response: Response,
+def database_mostcited(response: Response,
                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                        citeperiod: str=Query('5', title=opasConfig.TITLE_MOST_CITED_PERIOD, description=opasConfig.DESCRIPTION_MOST_CITED_PERIOD),
                        citecount: str=Query(None, title=opasConfig.TITLE_CITECOUNT, description=opasConfig.DESCRIPTION_CITECOUNT),   
@@ -3068,21 +3068,21 @@ async def database_mostcited(response: Response,
 
 #---------------------------------------------------------------------------------------------------------
 @app.get("/v2/Database/WhoCitedThis/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_CITED)
-async def database_who_cited_this(response: Response,
-                                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                  citedid: str=Query(None, title=opasConfig.TITLE_CITED_ID, description=opasConfig.DESCRIPTION_CITEDID), 
-                                  pubperiod: int=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
-                                  sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME + " of citing document"),  
-                                  sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE + " of citing document"), 
-                                  sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE + " of citing document"),
-                                  abstract:bool=Query(False, title=opasConfig.TITLE_RETURN_ABSTRACTS_BOOLEAN, description=opasConfig.DESCRIPTION_RETURN_ABSTRACTS),
-                                  similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
-                                  sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                                  limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                                  offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                                  client_id:int=Depends(get_client_id), 
-                                  client_session:str= Depends(get_client_session)
-                                  ):
+def database_who_cited_this(response: Response,
+                            request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                            citedid: str=Query(None, title=opasConfig.TITLE_CITED_ID, description=opasConfig.DESCRIPTION_CITEDID), 
+                            pubperiod: int=Query(None, title=opasConfig.TITLE_PUBLICATION_PERIOD, description=opasConfig.DESCRIPTION_PUBLICATION_PERIOD),
+                            sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME + " of citing document"),  
+                            sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE + " of citing document"), 
+                            sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE + " of citing document"),
+                            abstract:bool=Query(False, title=opasConfig.TITLE_RETURN_ABSTRACTS_BOOLEAN, description=opasConfig.DESCRIPTION_RETURN_ABSTRACTS),
+                            similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                            sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                            limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                            offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                            client_id:int=Depends(get_client_id), 
+                            client_session:str= Depends(get_client_session)
+                            ):
     """
     ## Function
        <b>Return a list of documents citing the document specified by citedid.</b>
@@ -3149,14 +3149,14 @@ async def database_who_cited_this(response: Response,
 #---------------------------------------------------------------------------------------------------------
 #@app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_WHATS_NEW)
 @app.get("/v2/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WHATS_NEW)
-async def database_whatsnew(response: Response,
-                            request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                            days_back: int=Query(14, title=opasConfig.TITLE_DAYSBACK, description=opasConfig.DESCRIPTION_DAYSBACK),
-                            limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                            offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                            client_id:int=Depends(get_client_id), 
+def database_whatsnew(response: Response,
+                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                      days_back: int=Query(14, title=opasConfig.TITLE_DAYSBACK, description=opasConfig.DESCRIPTION_DAYSBACK),
+                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                      client_id:int=Depends(get_client_id), 
                             #client_session:str= Depends(get_client_session)
-                            ):  
+                      ):  
     """
     ## Function
        <b>Return a list of issues for journals modified in the last week).</b>  
@@ -3209,15 +3209,15 @@ async def database_whatsnew(response: Response,
 #-----------------------------------------------------------------------------
 #@app.get("/v1/Metadata/Contents/{SourceCode}/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_CONTENTS_SOURCE)
 @app.get("/v2/Metadata/Contents/{SourceCode}/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_CONTENTS_SOURCE)
-async def metadata_contents_sourcecode(response: Response,
-                                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                       SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                                       year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
-                                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                                       client_id:int=Depends(get_client_id), 
+def metadata_contents_sourcecode(response: Response,
+                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                                 SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                                 year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
+                                 limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                 offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                                 client_id:int=Depends(get_client_id), 
                                        #client_session:str= Depends(get_client_session)
-                                       ):
+                                 ):
     """
     ## Function
        <b>Return a list of documents for a SourceCode (and optional year specified in query params).</b>  
@@ -3273,16 +3273,16 @@ async def metadata_contents_sourcecode(response: Response,
 #-----------------------------------------------------------------------------
 #@app.get("/v1/Metadata/Contents/{SourceCode}/{SourceVolume}/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_CONTENTS_SOURCE_VOLUME)
 @app.get("/v2/Metadata/Contents/{SourceCode}/{SourceVolume}/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_CONTENTS_SOURCE_VOLUME)
-async def metadata_contents(SourceCode: str, 
-                            SourceVolume: str, 
-                            response: Response,
-                            request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                            year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
-                            limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                            offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                            client_id:int=Depends(get_client_id), 
+def metadata_contents(SourceCode: str, 
+                      SourceVolume: str, 
+                      response: Response,
+                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                      year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
+                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                      client_id:int=Depends(get_client_id), 
                             #client_session:str= Depends(get_client_session)
-                            ):
+                      ):
     """
     ## Function
        <b>Return a list of documents for a SourceCode and Source Volume (required).</b>  
@@ -3384,16 +3384,16 @@ def metadata_videos(response: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Metadata/Journals/", response_model=models.JournalInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_JOURNALS)
-async def metadata_journals(response: Response,
-                            request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+def metadata_journals(response: Response,
+                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                             #this param changed to sourcecode in v2 from journal in v1 (sourcecode is more accurately descriptive since this includes book series and video series)
-                            sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                            sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
-                            limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                            offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                            client_id:int=Depends(get_client_id), 
-                            client_session:str= Depends(get_client_session)
-                            ):
+                      sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                      sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
+                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                      client_id:int=Depends(get_client_id), 
+                      client_session:str= Depends(get_client_session)
+                      ):
     """
     ## Function
     <b>Get a complete list of journal names</b>
@@ -3460,15 +3460,15 @@ async def metadata_journals(response: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Metadata/Volumes/", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_VOLUMES)
-async def metadata_volumes(response: Response,
-                           request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                           sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
-                           sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                           limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                           offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                           client_id:int=Depends(get_client_id), 
+def metadata_volumes(response: Response,
+                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                     sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
+                     sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                     limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                     offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                     client_id:int=Depends(get_client_id), 
                            #client_session:str= Depends(get_client_session)
-                           ):
+                     ):
     """
     ## Function
        <b>Return a list of volumes for a SourceCode (aka, PEPCode (e.g., IJP)) per the limit and offset parameters</b> 
@@ -3527,15 +3527,15 @@ async def metadata_volumes(response: Response,
 #-----------------------------------------------------------------------------
 #@app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
 @app.get("/v2/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
-async def metadata_books(response: Response,
-                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                         sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                         sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
-                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                         client_id:int=Depends(get_client_id), 
+def metadata_books(response: Response,
+                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                   sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                   sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
+                   limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                   client_id:int=Depends(get_client_id), 
                          #client_session:str= Depends(get_client_session)
-                         ):
+                   ):
     """
     ## Function
        <b>Get a list of Book names equivalent to what is displayed on the original PEP-Web in the books tab.</b>
@@ -3642,14 +3642,14 @@ def metadata_by_sourcetype_sourcecode(response: Response,
 #-----------------------------------------------------------------------------
 #@app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_AUTHOR_INDEX)
 @app.get("/v2/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_exclude_unset=True, tags=["Authors"], summary=opasConfig.ENDPOINT_SUMMARY_AUTHOR_INDEX)
-async def authors_index(response: Response,
-                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                        authorNamePartial: str=Path(..., title=opasConfig.TITLE_AUTHORNAMEORPARTIAL, description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
-                        limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                        client_id:int=Depends(get_client_id)
+def authors_index(response: Response,
+                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                  authorNamePartial: str=Path(..., title=opasConfig.TITLE_AUTHORNAMEORPARTIAL, description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
+                  limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                  offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                  client_id:int=Depends(get_client_id)
                         #client_session:str= Depends(get_client_session)
-                        ):
+                  ):
     """
     ## Function
        <b>Return a list (index) of authors.  The list shows the author IDs, which are a normalized form of an authors name.</b>
@@ -3710,14 +3710,14 @@ async def authors_index(response: Response,
 #-----------------------------------------------------------------------------
 #@app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_AUTHOR_PUBLICATIONS)
 @app.get("/v2/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, response_model_exclude_unset=True, tags=["Authors"], summary=opasConfig.ENDPOINT_SUMMARY_AUTHOR_PUBLICATIONS)
-async def authors_publications(response: Response,
-                               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                               authorNamePartial: str=Path(..., title=opasConfig.TITLE_AUTHORNAMEORPARTIAL, description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
-                               limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                               offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                               client_id:int=Depends(get_client_id)
+def authors_publications(response: Response,
+                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                         authorNamePartial: str=Path(..., title=opasConfig.TITLE_AUTHORNAMEORPARTIAL, description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
+                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                         client_id:int=Depends(get_client_id)
                                #client_session:str= Depends(get_client_session)
-                               ):
+                         ):
     """
     ## Function
        <b>Return a list of the author's publications.</b>  
@@ -3769,17 +3769,17 @@ async def authors_publications(response: Response,
 #-----------------------------------------------------------------------------
 #@app.get("/v1/Documents/Abstracts/{documentID}/", response_model=models.Documents, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_ABSTRACT_VIEW)
 @app.get("/v2/Documents/Abstracts/{documentID}/", response_model=models.Documents, response_model_exclude_unset=True, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_ABSTRACT_VIEW)
-async def documents_abstracts(response: Response,
-                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                              documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
-                              return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                              similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
-                              sort: str=Query("authors desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                              limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                              offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                              client_id:int=Depends(get_client_id), 
-                              client_session:str= Depends(get_client_session)
-                              ):
+def documents_abstracts(response: Response,
+                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                        documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
+                        return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                        similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                        sort: str=Query("authors desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                        limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                        client_id:int=Depends(get_client_id), 
+                        client_session:str= Depends(get_client_session)
+                        ):
     """
     ## Function
        <b>Return an abstract for the requested documentID (e.g., IJP.077.0001A, or multiple abstracts
@@ -4048,18 +4048,18 @@ async def database_glossary_search_v3(response: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Documents/Glossary/{termIdentifier}/", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_VIEW, response_model_exclude_unset=True)  # the current PEP API
-async def documents_glossary_term(response: Response,
-                                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                  termIdentifier: str=Path(..., title="Glossary Term ID or Partial ID", description=opasConfig.DESCRIPTION_GLOSSARYID),
-                                  termidtype: models.TermTypeIDEnum=Query(models.TermTypeIDEnum.termid, title="Type of term descriptor supplied", description=opasConfig.DESCRIPTION_TERMIDTYPE),
+def documents_glossary_term(response: Response,
+                            request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                            termIdentifier: str=Path(..., title="Glossary Term ID or Partial ID", description=opasConfig.DESCRIPTION_GLOSSARYID),
+                            termidtype: models.TermTypeIDEnum=Query(models.TermTypeIDEnum.termid, title="Type of term descriptor supplied", description=opasConfig.DESCRIPTION_TERMIDTYPE),
                                   #termname: str=Query(None, title="Glossary Term (string)", description=opasConfig.DESCRIPTION_GLOSSARYID),
                                   #termgroup: str=Query(None, title="Glossary Term (string)", description=opasConfig.DESCRIPTION_GLOSSARYID),
                                   #search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
-                                  similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
-                                  return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                                  client_id:int=Depends(get_client_id), 
-                                  client_session:str= Depends(get_client_session)
-                                  ): # Note this is called by the Document endpoint if it detects a term_id in the DocumentID
+                            similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                            return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                            client_id:int=Depends(get_client_id), 
+                            client_session:str= Depends(get_client_session)
+                            ): # Note this is called by the Document endpoint if it detects a term_id in the DocumentID
     """
     ## Function
        <b>Return a glossary entry for the specified {termIdentifier} if authenticated with permission.  If not, returns error.</b>
@@ -4360,15 +4360,15 @@ def documents_document_fetch(response: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Documents/Concordance", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_CONCORDANCE, response_model_exclude_unset=True)  # the current PEP API
-async def documents_concordance(response: Response,
-                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                                paralangid: str=Query(None, title=opasConfig.TITLE_DOCUMENT_CONCORDANCE_ID, description=opasConfig.DESCRIPTION_DOCUMENT_CONCORDANCE_ID), # return controls 
-                                paralangrx: str=Query(None, title=opasConfig.TITLE_DOCUMENT_CONCORDANCE_RX, description=opasConfig.DESCRIPTION_DOCUMENT_CONCORDANCE_RX), # return controls 
-                                return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                                search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
-                                client_id:int=Depends(get_client_id), 
-                                client_session:str= Depends(get_client_session)
-                                ):
+def documents_concordance(response: Response,
+                          request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                          paralangid: str=Query(None, title=opasConfig.TITLE_DOCUMENT_CONCORDANCE_ID, description=opasConfig.DESCRIPTION_DOCUMENT_CONCORDANCE_ID), # return controls 
+                          paralangrx: str=Query(None, title=opasConfig.TITLE_DOCUMENT_CONCORDANCE_RX, description=opasConfig.DESCRIPTION_DOCUMENT_CONCORDANCE_RX), # return controls 
+                          return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                          search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
+                          client_id:int=Depends(get_client_id), 
+                          client_session:str= Depends(get_client_session)
+                          ):
     """
     ## Function
         <b>Returns the translation paragraph identified by the unique para ID(s) .</b>
@@ -4727,16 +4727,16 @@ def documents_downloads(response: Response,
     return ret_val
 
 @app.get("/v2/Database/WordWheel/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WORD_WHEEL)
-async def database_word_wheel(response: Response,
-                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                              word: str=Query(None, title=opasConfig.TITLE_WORD, description=opasConfig.DESCRIPTION_WORD),
-                              field: str=Query("text", title=opasConfig.TITLE_WORDFIELD, description=opasConfig.DESCRIPTION_WORDFIELD),
-                              core: str=Query("docs", title=opasConfig.TITLE_CORE, description=opasConfig.DESCRIPTION_CORE),
-                              limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                              offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                              client_id:int=Depends(get_client_id), 
+def database_word_wheel(response: Response,
+                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                        word: str=Query(None, title=opasConfig.TITLE_WORD, description=opasConfig.DESCRIPTION_WORD),
+                        field: str=Query("text", title=opasConfig.TITLE_WORDFIELD, description=opasConfig.DESCRIPTION_WORDFIELD),
+                        core: str=Query("docs", title=opasConfig.TITLE_CORE, description=opasConfig.DESCRIPTION_CORE),
+                        limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                        client_id:int=Depends(get_client_id), 
                               #client_session:str= Depends(get_client_session)
-                              ):
+                        ):
     """
     ## Function
        <b>Return a list (termIndex) of words for the field matching the prefix.</b>
