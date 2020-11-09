@@ -1786,7 +1786,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     
                     # do this before we potentially clear text_xml if no full text requested below
                     if solr_query_spec.abstractReturn:
-                        documentListItem = get_excerpt_from_search_result(result, documentListItem, solr_query_spec.returnFormat)
+                        # experimental - remove abstract if not authenticated, per DT's requirement
+                        if not session_info.authenticated:
+                            omit_abstract = True
+                        else:
+                            omit_abstract = False
+                        
+                        documentListItem = get_excerpt_from_search_result(result, documentListItem, solr_query_spec.returnFormat, omit_abstract=omit_abstract)
     
                     documentListItem.kwic = "" # need this, so it doesn't default to Nonw
                     documentListItem.kwicList = []
@@ -1921,6 +1927,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         else:
                             documentListItem.rank = result.get(sort_field, None)
                             
+                            
                     rowCount += 1
                     # add it to the set!
                     documentItemList.append(documentListItem)
@@ -2009,7 +2016,7 @@ def get_parent_data(child_para_id, documentListItem=None):
     return ret_val
 
 #-----------------------------------------------------------------------------
-def get_excerpt_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="HTML"):
+def get_excerpt_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="HTML", omit_abstract=False):
     """
     pass in the result from a solr query and this retrieves the abstract/excerpt from the excerpt field
      which is stored based on the abstract or summary or the first page of the document.
@@ -2026,9 +2033,13 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
         art_excerpt  = "No abstract found for this title, or no abstract requested in search options."
         logger.info("No excerpt for document ID: %s", documentListItem.documentID)
 
+    # experimental - remove abstract if not authenticated
     if art_excerpt == "[]" or art_excerpt is None:
         abstract = None
     else:
+        if omit_abstract:
+            art_excerpt = opasConfig.ACCESS_ABSTRACT_RESTRICTED_MESSAGE
+        
         heading = opasxmllib.get_running_head(source_title=documentListItem.sourceTitle,
                                               pub_year=documentListItem.year,
                                               vol=documentListItem.vol,

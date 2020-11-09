@@ -383,6 +383,10 @@ ACCESSLIMITED_DESCRIPTION_FREE = "This content is currently free to all users."
 ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access"
 ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access"
 
+# control whether abstracts can be viewed by non-logged-in users
+ACCESS_ABSTRACT_RESTRICTION = True
+ACCESS_ABSTRACT_RESTRICTED_MESSAGE = "\n\nYou must be a registered user to view abstracts."
+
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()
 
