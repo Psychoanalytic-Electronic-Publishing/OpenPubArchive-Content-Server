@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1109.1.Alpha"
+__version__     = "2020.1109.2.Alpha"
 __status__      = "Development"
 
 """
@@ -253,7 +253,8 @@ def get_client_session(response: Response,
             session_id = session_info.session_id
         except Exception as e:
             # We didn't get a session id
-            logger.error(f"Session ID not received from authserver for client id {client_id} and session {client_session}.  Raising Exception 424.")
+            msg = f"Session ID not received from authserver for client id {client_id} and session {client_session}.  Raising Exception 424 ({e})."
+            logger.error(msg)
             raise HTTPException(
                 status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
                 detail=ERR_MSG_PASSWORD + f" ({e})", 
@@ -265,10 +266,11 @@ def get_client_session(response: Response,
                 logger.info("Session_id is None, no cookie saved.")
 
     if session_id is None or len(session_id) < 12:
-        logger.error(f"Session ID not resolved {session_id}.  Raising Exception 424.")
+        msg = f"Session ID not resolved {session_id}.  Raising Exception 424."
+        logger.error(msg)
         raise HTTPException(
             status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
-            detail=ERR_MSG_PASSWORD + f" ({e})", 
+            detail=ERR_MSG_PASSWORD + f" {msg}", 
         )
         
     return session_id       
