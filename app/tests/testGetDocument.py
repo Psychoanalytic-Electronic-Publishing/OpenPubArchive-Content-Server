@@ -48,7 +48,7 @@ class TestGetDocuments(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         # this document should be available
-        assert(response_info[0]["accessLimited"] == False)
+        assert(response_set[0]["accessLimited"] == False)
         print (response_set)
 
     def test_2_get_document_with_search_context(self):

@@ -293,6 +293,7 @@ class FlexFileSystem(object):
             elif  self.exists(ret_val + ".tif"):
                 ret_val = ret_val + ".tif"
             else:
+                logger.warning(f"File {ret_val} not found")
                 ret_val = None
     
         return ret_val   

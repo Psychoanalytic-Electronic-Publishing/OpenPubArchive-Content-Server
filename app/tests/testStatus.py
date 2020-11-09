@@ -45,7 +45,7 @@ class TestStatus(unittest.TestCase):
         r = response.json()
         print (r)
         # assert(r["user_id"] == 0)
-        assert(r["username"] == opasConfig.USER_NOT_LOGGED_IN_NAME)
+        assert(r["is_valid_login"] == False)
         # logout
         full_URL = base_plus_endpoint_encoded(f'/v2/Session/Logout')
         response = requests.get(full_URL, headers=headers)

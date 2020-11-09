@@ -169,8 +169,19 @@ def get_authserver_session_info(session_id, client_id, pads_session_info=None):
     else:
         session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
         
-    session_info.pads_session_info = pads_session_info
-    pads_user_info, status_code = pads_get_userinfo(session_id, client_id)
+    if pads_session_info is not None:
+        start_time = pads_session_info.session_start_time if pads_session_info.session_start_time is not None else datetime.datetime.now()
+        session_info.has_subscription = pads_session_info.HasSubscription
+        session_info.is_valid_login = pads_session_info.IsValidLogon
+        session_info.is_valid_username = pads_session_info.IsValidUserName
+        session_info.authenticated = pads_session_info.IsValidLogon
+        session_info.confirmed_unauthenticated = False
+        session_info.session_start = start_time
+        session_info.session_expires_time = start_time + datetime.timedelta(seconds=pads_session_info.SessionExpires)
+        session_info.pads_session_info = pads_session_info
+        
+    # either continue an existing session, or start a new one
+    pads_user_info, status_code = pads_get_session_userinfo(session_id, client_id)
     session_info.pads_user_info = pads_user_info
     if status_code == 401:
         if session_info.pads_session_info.pads_status_response > 500:
@@ -191,15 +202,8 @@ def get_authserver_session_info(session_id, client_id, pads_session_info=None):
         if pads_user_info is not None:
             session_info.user_id = userID=pads_user_info.UserId
             session_info.username = pads_user_info.UserName
-            session_info.has_subscription = pads_session_info.HasSubscription
-            session_info.is_valid_login = pads_session_info.IsValidLogon
-            session_info.authenticated = True
-            session_info.confirmed_unauthenticated = False
-            session_info.is_valid_username = pads_session_info.IsValidUserName
             session_info.user_type = pads_user_info.UserType
             session_info.admin = pads_user_info.UserType=="Admin"
-            session_info.session_start = start_time
-            session_info.session_expires_time = start_time + datetime.timedelta(seconds=pads_session_info.SessionExpires)
             session_info.authorized_peparchive = pads_user_info.HasArchiveAccess
             session_info.authorized_pepcurrent = pads_user_info.HasCurrentAccess
             logger.info("PaDS returned user info.  Saving to DB")
@@ -292,15 +296,20 @@ def pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, cl
     msg = ""
     logger.info(f"Logging in user {username} with session_id {session_id}")
     if session_id is not None:
-        full_URL = base + f"/v1/Authenticate/" + f"?SessionID={session_id}"
+        full_URL = base + f"/v1/Authenticate/" # + f"?SessionId={session_id}"
     else:
         full_URL = base + f"/v1/Authenticate/"
 
     try:
         pads_response = requests.post(full_URL, headers={"Content-Type":"application/json"}, json={"UserName":f"{username}", "Password":f"{password}"})
     except Exception as e:
-        logger.error(f"PaDS Authorization server not available. {e}")
+        msg = f"PaDS Authorization server not available. {e}"
+        logger.error(msg)
+        print (f"****WATCH_THIS****: {msg}")
+        # set up response with default model
         pads_session_info = models.PadsSessionInfo()
+        if session_id is not None:
+            pads_session_info.SessionId = session_id 
         #session_info = models.SessionInfo()
     else:
         status_code = pads_response.status_code # save it for a bit (we replace pads_session_info below)
@@ -369,7 +378,10 @@ def pads_logout(session_id, request: Request=None, response: Response=None):
 
     return ret_val
 
-def pads_get_userinfo(session_id, client_id):
+def pads_get_session_userinfo(session_id, client_id):
+    """
+    Send PaDS the session ID and see if that's associated with a user yet.
+    """
     ret_val = None
     status_code = 401
     msg = f"get_user_info for session {session_id} from client {client_id}"
@@ -388,7 +400,7 @@ def pads_get_userinfo(session_id, client_id):
             if response.ok:
                 ret_val = models.PadsUserInfo(**padsinfo)
             else:
-                logger.info(f"No userinfo returned for non-logged in user for client-id {client_id} sessionId: {session_id}. Info from PaDS: {padsinfo}")
+                logger.info(f"Non-logged in user for client-id {client_id} sessionId: {session_id}. Info from PaDS: {padsinfo}")
             
     return ret_val, status_code # padsinfo, status_code
 
@@ -529,7 +541,11 @@ def get_access_limitations(doc_id,
                 # since we don't really always know about authentication, we need to check all requests that are otherwise rejected.
                 # if (session_info.confirmed_unauthenticated == False and (ret_val.accessLimited == True or fulltext_request == True)): # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
                 # TODO: This is temp...just check as long as there is a session and full-text is requested
-                if session_info.session_id is not None and fulltext_request == True:
+                #if session_info.session_id is not None and fulltext_request == True:
+                if (session_info.confirmed_unauthenticated == False # Must be authenticated for this check
+                    and (ret_val.accessLimited == True # if it's marked limited, then may need to check, it might be first one
+                         or fulltext_request == True)): # or whenever full-text is requested.
+                    # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
                     if fulltext_request:
                         reason_for_check = opasConfig.AUTH_DOCUMENT_VIEW_REQUEST
                     else:
@@ -582,7 +598,7 @@ def get_access_limitations(doc_id,
                                 # let's make sure we know about this user.
                                 if session_info.user_id == opasConfig.USER_NOT_LOGGED_IN_NAME:
                                     # We got this far, We need to find out who this is
-                                    pads_user_info = pads_get_userinfo(session_info.session_id, session_info.api_client_id)
+                                    pads_user_info = pads_get_session_userinfo(session_info.session_id, session_info.api_client_id)
                                     if pads_user_info is not None:
                                         session_info.user_id = pads_user_info.UserId
                                         session_info.username = pads_user_info.UserName

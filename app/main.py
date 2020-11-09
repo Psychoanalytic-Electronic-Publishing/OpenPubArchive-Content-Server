@@ -1273,9 +1273,13 @@ def session_logout_user(response: Response,
         # session_info = ocd.get_session_from_db(session_id)
         # session_end_time = datetime.utcfromtimestamp(time.time())
         response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
-        opasDocPermissions.pads_logout(session_id, request=request, response=response)
-        ocd, session_info = opasAPISupportLib.get_session_info(request, response,
-                                                               session_id=session_id, client_id=client_id)
+        ret_val = opasDocPermissions.pads_logout(session_id, request=request, response=response)
+        if ret_val:
+            # logged out
+           session_info = models.SessionInfo(session_id=session_id)
+
+        #ocd, session_info = opasAPISupportLib.get_session_info(request, response,
+                                                               #session_id=session_id, client_id=client_id)
     return session_info
 
 #-----------------------------------------------------------------------------
@@ -4432,7 +4436,7 @@ async def documents_image_fetch(response: Response,
     if download == 0:
         if filename is None:
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-            status_message = "Error: no filename specified"
+            status_message = f"Error: {imageID} not found or no filename specified"
             logger.warning(status_message)
             raise HTTPException(status_code=response.status_code,
                                 detail=status_message)

@@ -23,7 +23,7 @@ class TestSecurityFunctions(unittest.TestCase):
             assert(False)
         else:
             full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')
-            response = requests.get(full_URL, headers={"client-session":session_id, "client-id": UNIT_TEST_CLIENT_ID, "Content-Type":"application/json"})
+            response = requests.get(full_URL, headers=headers)
             # Confirm that the request-response cycle completed successfully.
             r = response.json()
             print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
