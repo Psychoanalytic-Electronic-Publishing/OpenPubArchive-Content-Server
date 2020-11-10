@@ -1786,11 +1786,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     
                     # do this before we potentially clear text_xml if no full text requested below
                     if solr_query_spec.abstractReturn:
-                        # experimental - remove abstract if not authenticated, per DT's requirement
-                        if not session_info.authenticated:
+                        omit_abstract = False
+                        if opasConfig.ACCESS_ABSTRACT_RESTRICTION and not session_info.authenticated:
+                            # experimental - remove abstract if not authenticated, per DT's requirement
                             omit_abstract = True
-                        else:
-                            omit_abstract = False
                         
                         documentListItem = get_excerpt_from_search_result(result, documentListItem, solr_query_spec.returnFormat, omit_abstract=omit_abstract)
     
@@ -2046,6 +2045,14 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
                                               issue=documentListItem.issue,
                                               pgrg=documentListItem.pgRg,
                                               ret_format=ret_format)
+
+        if not omit_abstract:
+            art_excerpt = result.get("art_excerpt_xml", art_excerpt)
+        else:
+            art_excerpt = f"<abs><p>{art_excerpt}</p></abs>"
+            
+        abs_xml = f"""<pepkbd3>{documentListItem.documentInfoXML}{art_excerpt}<body/></pepkbd3>"""
+
         try:
             ret_format = ret_format.upper()
         except Exception as e:
@@ -2060,37 +2067,10 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
                         """
         elif ret_format == "XML":
             # for now, this is only an xml fragment so it's not quite as DTD specific.
-            abstract = result.get("art_excerpt_xml", art_excerpt)
-            # to make a complete pepkbd3 document, this is the structure...
-            #abstract = f"""
-                        #<pepkbd3>
-                        #{documentListItem.documentInfoXML}
-                        #{abstract}
-                        #<body></body>
-                        #</pepkbd3>
-                        #"""
-        
-        else: # ret_format == "HTML":
-            abstract = f"""
-                    <p class="heading">{heading}</p>
-                    <p class="title">{documentListItem.title}</p>
-                    <p class="title_author">{documentListItem.authorMast}</p>
-                    <div class="abstract">{art_excerpt}</div>
-                    """
+            abstract = abs_xml
             
-        
-    # elif ret_format == "HTML": #(Excerpt is in HTML already)
-
-    #abstract = opasxmllib.add_headings_to_abstract_html( abstract=art_excerpt, 
-                                                         #source_title=documentListItem.sourceTitle,
-                                                         #pub_year=documentListItem.year,
-                                                         #vol=documentListItem.vol, 
-                                                         #pgrg=documentListItem.pgRg, 
-                                                         #citeas=documentListItem.documentRefHTML, 
-                                                         #title=documentListItem.title,
-                                                         #author_mast=documentListItem.authorMast,
-                                                         #ret_format=ret_format
-                                                         #)
+        else: # ret_format == "HTML":
+            abstract = opasxmllib.xml_str_to_html(abs_xml)
 
     # return it in the abstract field for display
     documentListItem.abstract = abstract

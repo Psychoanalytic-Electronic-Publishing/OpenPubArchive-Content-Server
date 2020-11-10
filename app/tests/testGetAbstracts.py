@@ -15,14 +15,35 @@ class TestGetAbstracts(unittest.TestCase):
     
     """
     
-    def test_1a_get_abstract(self):
+    def test_1a_get_abstract_html(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
+        abstract = response_set[0]["abstract"]
+        print (abstract)
+       
+    def test_1a_get_abstract_xml(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4&return_format=XML')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"] 
+        assert(response_info["count"] == 1)
+        abstract = response_set[0]["abstract"]
+        print (abstract)
+       
+    def test_1a_get_abstract_textonly(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4&return_format=TEXTONLY')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"] 
+        assert(response_info["count"] == 1)
+        abstract = response_set[0]["abstract"]
+        print (abstract)
        
     def test_2a_get_multiple_abstracts(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017')

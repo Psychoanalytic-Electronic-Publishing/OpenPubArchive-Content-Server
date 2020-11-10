@@ -385,7 +385,7 @@ ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is a
 
 # control whether abstracts can be viewed by non-logged-in users
 ACCESS_ABSTRACT_RESTRICTION = True
-ACCESS_ABSTRACT_RESTRICTED_MESSAGE = "\n\nYou must be a registered user to view abstracts."
+ACCESS_ABSTRACT_RESTRICTED_MESSAGE = "You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
 
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()
