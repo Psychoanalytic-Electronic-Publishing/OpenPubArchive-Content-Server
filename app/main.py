@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1110.1.Alpha"
+__version__     = "2020.1110.2.Alpha"
 __status__      = "Development"
 
 """
@@ -284,7 +284,7 @@ def login_via_pads(request: Request,
     # ocd = opasCentralDBLib.opasCentralDB()
     session_id = opasDocPermissions.find_client_session_id(request, response)
     # Ok, login
-    pads_session_info = opasDocPermissions.pads_login(username=credentials.username,
+    pads_session_info = opasDocPermissions.authserver_login(username=credentials.username,
                                                       password=credentials.password,
                                                       session_id=session_id,
                                                       client_id=client_id)
@@ -1159,9 +1159,9 @@ def session_login(response: Response,
     opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
     if opas_session_cookie != client_session and opas_session_cookie is not None:
         # logout of any opas session
-        opasDocPermissions.pads_logout(opas_session_cookie, response=response)
+        opasDocPermissions.authserver_logout(opas_session_cookie, response=response)
 
-    pads_session_info = opasDocPermissions.pads_login(username=username, password=password, session_id=client_session) # don't pass session
+    pads_session_info = opasDocPermissions.authserver_login(username=username, password=password, session_id=client_session) # don't pass session
     # New session id, need to get rest of session_info (below)
     session_id = pads_session_info.SessionId
 
@@ -1275,7 +1275,7 @@ def session_logout_user(response: Response,
         # session_info = ocd.get_session_from_db(session_id)
         # session_end_time = datetime.utcfromtimestamp(time.time())
         response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
-        ret_val = opasDocPermissions.pads_logout(session_id, request=request, response=response)
+        ret_val = opasDocPermissions.authserver_logout(session_id, request=request, response=response)
         if ret_val:
             # logged out
            session_info = models.SessionInfo(session_id=session_id)

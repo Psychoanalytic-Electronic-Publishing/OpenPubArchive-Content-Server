@@ -69,7 +69,7 @@ def base_plus_endpoint_encoded(endpoint):
 UNIT_TEST_CLIENT_ID = "4"
 
 def test_login():
-    pads_session_info = opasDocPermissions.pads_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TEST_PW)
+    pads_session_info = opasDocPermissions.authserver_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TEST_PW)
     session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id=UNIT_TEST_CLIENT_ID, pads_session_info=pads_session_info)
     # Confirm that the request-response cycle completed successfully.
     sessID = session_info.session_id

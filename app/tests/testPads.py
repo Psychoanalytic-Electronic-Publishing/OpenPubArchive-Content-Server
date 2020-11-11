@@ -25,7 +25,7 @@ class TestPadsEndpoints(unittest.TestCase):
     def test_0a_pads_tests(self):
         global session_id
         # Login to PaDS with test account and then check responses to mostCited for access.
-        pads_session_info = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+        pads_session_info = opasDocPermissions.authserver_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
         session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id=UNIT_TEST_CLIENT_ID, pads_session_info=pads_session_info)
         assert (pads_session_info.HasSubscription == True)
         assert (pads_session_info.IsValidLogon == True)
@@ -41,7 +41,7 @@ class TestPadsEndpoints(unittest.TestCase):
             print (err)
             assert(False)
         else:
-            authorized, resp = opasDocPermissions.pads_permission_check(session_id=session_id,
+            authorized, resp = opasDocPermissions.authserver_permission_check(session_id=session_id,
                                                                         doc_id="AJRPP.002.0349A",
                                                                         doc_year="2008",
                                                                         reason_for_check=AUTH_ABSTRACT_VIEW_REQUEST)

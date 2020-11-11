@@ -1739,6 +1739,9 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             logger.debug("User is not authenticated.  Permit optimization enabled.")
                         else:
                             logger.debug("User is authenticated.  Permit optimization disabled.")
+                    else: # no session info provided.  Set it to defaults, non-authenticated
+                        logger.debug("No session info object provided.")
+                        
                 except Exception as e:
                     #  no session info...what to do?
                     logger.debug(f"No session info to perform optimizations {e}")
@@ -1787,9 +1790,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # do this before we potentially clear text_xml if no full text requested below
                     if solr_query_spec.abstractReturn:
                         omit_abstract = False
-                        if opasConfig.ACCESS_ABSTRACT_RESTRICTION and not session_info.authenticated:
-                            # experimental - remove abstract if not authenticated, per DT's requirement
-                            omit_abstract = True
+                        if opasConfig.ACCESS_ABSTRACT_RESTRICTION:
+                            if session_info is not None:
+                                if not session_info.authenticated:
+                                    # experimental - remove abstract if not authenticated, per DT's requirement
+                                    omit_abstract = True
+                            else: # no session info, omit abstract
+                                omit_abstract = True
                         
                         documentListItem = get_excerpt_from_search_result(result, documentListItem, solr_query_spec.returnFormat, omit_abstract=omit_abstract)
     

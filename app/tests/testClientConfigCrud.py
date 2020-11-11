@@ -15,7 +15,7 @@ from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 client_id = UNIT_TEST_CLIENT_ID
 
 # login
-pads_session_info = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=session_id)
+pads_session_info = opasDocPermissions.authserver_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=session_id)
 # saves to db, but clearly we're not using this here
 session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id, pads_session_info=pads_session_info)
 # Confirm that the request-response cycle completed successfully.
