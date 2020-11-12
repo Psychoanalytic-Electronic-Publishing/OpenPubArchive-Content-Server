@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.10.02" 
+__version__     = "2020.11.12" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -547,6 +547,9 @@ if __name__ == "__main__":
                       help="Display status and operational timing info as load progresses.")
 
     (options, args) = parser.parse_args()
+    
+    if options.glossary_only and options.file_key is None:
+        options.file_key = "ZBK.069"
 
     if options.testmode:
         import doctest
