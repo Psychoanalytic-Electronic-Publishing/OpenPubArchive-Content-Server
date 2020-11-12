@@ -1688,9 +1688,13 @@ def documents_get_glossary_entry(term_id,
 
     # Name and Group are strings, and case sensitive, so search, as submitted, and uppercase as well
     if term_id_type == "Name":
-        qstr = f'term:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
+        # 2020-11-11 use text field instead
+        qstr = f'term_terms:("{term_id}")'
+        # qstr = f'term:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
     elif term_id_type == "Group":
-        qstr = f'group_name:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
+        # 2020-11-11 use text field instead
+        qstr = f'group_name_terms:("{term_id}")'
+        # qstr = f'group_name:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
     else: # default
         term_id = term_id.upper()
         qstr = f"term_id:{term_id} || group_id:{term_id}"

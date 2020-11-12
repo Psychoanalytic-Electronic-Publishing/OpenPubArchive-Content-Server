@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1110.2.Alpha"
+__version__     = "2020.1112.1.Alpha"
 __status__      = "Development"
 
 """
@@ -3972,9 +3972,7 @@ def documents_glossary_term(response: Response,
                             request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                             termIdentifier: str=Path(..., title="Glossary Term ID or Partial ID", description=opasConfig.DESCRIPTION_GLOSSARYID),
                             termidtype: models.TermTypeIDEnum=Query(models.TermTypeIDEnum.termid, title="Type of term descriptor supplied", description=opasConfig.DESCRIPTION_TERMIDTYPE),
-                                  #termname: str=Query(None, title="Glossary Term (string)", description=opasConfig.DESCRIPTION_GLOSSARYID),
-                                  #termgroup: str=Query(None, title="Glossary Term (string)", description=opasConfig.DESCRIPTION_GLOSSARYID),
-                                  #search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
+                            #search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
                             similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                             return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                             client_id:int=Depends(get_client_id), 
