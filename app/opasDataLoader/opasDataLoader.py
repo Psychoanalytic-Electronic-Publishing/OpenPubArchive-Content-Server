@@ -236,7 +236,7 @@ def main():
                 print (msg)
             print(80*"*")
             print(f"Database will be updated. Location: {localsecrets.DBHOST}")
-            if 1: # options.fulltext_core_update:
+            if not options.glossary_only: # options.fulltext_core_update:
                 print("Solr Full-Text Core will be updated: ", solrurl_docs)
                 print("Solr Authors Core will be updated: ", solrurl_authors)
             if 1: # options.glossary_core_update:
@@ -269,7 +269,7 @@ def main():
 
     # Reset core's data if requested (mainly for early development)
     if options.resetCoreData:
-        if 1: # options.fulltext_core_update:
+        if not options.glossary_only: # options.fulltext_core_update:
             msg = "*** Deleting all data from the docs and author cores ***"
             logger.warning(msg)
             print (msg)
@@ -303,7 +303,7 @@ def main():
     if options.file_key is not None:  
         print (f"File Key Specified: {options.file_key}")
         pat = fr"({options.file_key}.*){loaderConfig.file_match_pattern}"
-        filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1)
+        filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1000)
         if len(filenames) is None:
             msg = f"File {pat} not found.  Exiting."
             logger.warning(msg)
@@ -416,7 +416,7 @@ def main():
                     opasSolrLoadSupport.process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLContents, verbose=options.display_verbose)
                 
             # input to the full-text and authors cores
-            if 1: # options.fulltext_core_update:
+            if not options.glossary_only: # options.fulltext_core_update:
                 # load the docs (pepwebdocs) core
                 opasSolrLoadSupport.process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents, verbose=options.display_verbose)
                 # load the authors (pepwebauthors) core.
@@ -459,7 +459,7 @@ def main():
         if processed_files_count > 0:
             try:
                 print ("Performing final commit.")
-                if 1: # options.fulltext_core_update:
+                if not options.glossary_only: # options.fulltext_core_update:
                     solr_docs2.commit()
                     solr_authors.commit()
                     # fileTracker.commit()
@@ -528,6 +528,8 @@ if __name__ == "__main__":
                       #help="Logfile name with full path where events should be logged")
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
                       help="Don't check whether to proceed.")
+    parser.add_option("--glossaryonly", action="store_true", dest="glossary_only", default=False,
+                      help="Only process the glossary (quicker).")
     parser.add_option("--pw", dest="httpPassword", default=None,
                       help="Password for the server")
     parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
