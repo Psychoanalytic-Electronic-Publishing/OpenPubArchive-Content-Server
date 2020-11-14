@@ -483,6 +483,7 @@ class JournalInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a fe
     language: str = Schema(None, title="")
     yearFirst: str = Schema(None, title="")
     yearLast: str = Schema(None, title="")
+    instanceCount: int = Schema(None, title="Number of document instances for this source")
     embargoYears: str = Schema(None, title="")
     
 class JournalInfoStruct(BaseModel):
@@ -666,6 +667,7 @@ class SourceInfoListItem(BaseModel):
     language: str = Schema(None, title="Publication language (mainly)")
     yearFirst: str = Schema(None, title="First year available for this source")
     yearLast: str = Schema(None, title="Last year available for this source")
+    instanceCount: int = Schema(None, title="Number of document instances for this source")
     embargoYears: str = Schema(None, title="")
 
 class SourceInfoStruct(BaseModel):
@@ -700,6 +702,7 @@ class VideoInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few 
     language: str = Schema(None, title="")
     yearFirst: str = Schema(None, title="")
     yearLast: str = Schema(None, title="")
+    instanceCount: int = Schema(None, title="Number of document instances for this source")
     embargoYears: str = Schema(None, title="")
 
 class VideoInfoStruct(BaseModel):

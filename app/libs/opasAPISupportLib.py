@@ -1131,6 +1131,7 @@ def metadata_get_source_info(src_type=None,
                 start_year = source.get("yearFirst")
                 end_year = source.get("yearLast")
                 base_code = source.get("basecode")
+                instance_count = source.get("instances")
                 if start_year is None:
                     start_year = pub_year
                 if end_year is None:
@@ -1177,6 +1178,7 @@ def metadata_get_source_info(src_type=None,
                                                       ISBN13 = source.get("ISBN-13"),
                                                       yearFirst = start_year,
                                                       yearLast = end_year,
+                                                      instanceCount = instance_count, 
                                                       embargoYears = source.get("embargo")
                                                       ) 
                 except ValidationError as e:
@@ -1675,6 +1677,9 @@ def documents_get_glossary_entry(term_id,
 
     IMPORTANT NOTE: At least the way the database is currently populated, for a group, the textual part (text) is the complete group, 
       and thus the same for all entries.  This is best for PEP-Easy now, otherwise, it would need to concatenate all the result entries.
+      
+    As of 2020-11, Group and Name use text fields, so partial matches are included rather than string fields which require exact
+     matches
 
     >> resp = documents_get_glossary_entry("ZBK.069.0001o.YN0019667860580", retFormat="html") 
 
@@ -1695,7 +1700,7 @@ def documents_get_glossary_entry(term_id,
         # 2020-11-11 use text field instead
         qstr = f'group_name_terms:("{term_id}")'
         # qstr = f'group_name:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
-    else: # default
+    else: # default is term ID
         term_id = term_id.upper()
         qstr = f"term_id:{term_id} || group_id:{term_id}"
 

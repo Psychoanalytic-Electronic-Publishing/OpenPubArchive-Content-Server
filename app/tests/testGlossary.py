@@ -70,7 +70,7 @@ class TestGlossary(unittest.TestCase):
         print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
-        assert(response_info["count"] == 7)
+        assert(response_info["count"] == 10) # chg from 7 to 10, since expanded group search to also search names
         print (response_set)
         
     def test_1c_get_glossary_endpoint_NAME(self):
