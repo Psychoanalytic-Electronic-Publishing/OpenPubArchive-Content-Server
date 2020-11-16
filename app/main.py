@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1114.1.Alpha"
+__version__     = "2020.1114.2.Alpha"
 __status__      = "Development"
 
 """
@@ -3295,8 +3295,9 @@ def metadata_contents(SourceCode: str,
 @app.get("/v2/Metadata/Videos/", response_model=models.VideoInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_VIDEOS)
 def metadata_videos(response: Response,
                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                    sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE),
-                    sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
+                    sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE_METADATA_VIDEOS),
+                    sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),
+                    streams: bool=Query(True, description="Return videostreams (e.g., by publisher) rather than individual video information"),
                     limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                     offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                     client_id:int=Depends(get_client_id), 
@@ -3306,8 +3307,12 @@ def metadata_videos(response: Response,
     ## Function
     <b>Get a complete list of video names</b>
 
-    sourcecode is the short abbreviation used as part of the DocumentIDs. e.g., for PEP in 2019, this includes:
-      IPSAVS, PEPVS, PEPTOPAUTHVS, BPSIVS, IJPVS, PCVS, SFCPVS, UCLVS, PEPGRANTVS, AFCVS, NYPSIVS, SPIVS
+    Query parameter sourcecode is the short abbreviation of the videostream (by publisher) used as part of the DocumentIDs. (e.g., for PEP in 2020, this includes:
+      IPSAVS, PEPVS, PEPTOPAUTHVS, BPSIVS, IJPVS, PCVS, SFCPVS, UCLVS, PEPGRANTVS, AFCVS, NYPSIVS, SPIVS).
+      
+    To get information on all, do not specify a sourcecode (* is the default)
+    
+    To get 
 
     ## Return Type
        models.VideoInfoList
@@ -3323,9 +3328,14 @@ def metadata_videos(response: Response,
     ## Potential Errors
 
     """
+    if streams:
+        source_type = "stream"
+    else:
+        source_type = "videos"
+        
     ret_val = metadata_by_sourcetype_sourcecode(response,
                                                 request,
-                                                SourceType="Video",
+                                                SourceType=source_type,
                                                 SourceCode=sourcecode,
                                                 sourcename=sourcename, 
                                                 limit=limit,
@@ -3339,8 +3349,8 @@ def metadata_videos(response: Response,
 @app.get("/v2/Metadata/Journals/", response_model=models.JournalInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_JOURNALS)
 def metadata_journals(response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                            #this param changed to sourcecode in v2 from journal in v1 (sourcecode is more accurately descriptive since this includes book series and video series)
-                      sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                      #this param changed to sourcecode in v2 from journal in v1 (sourcecode is more accurately descriptive since this includes book series and video series)
+                      sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE_METADATA_JOURNALS), 
                       sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
@@ -3349,10 +3359,13 @@ def metadata_journals(response: Response,
                       ):
     """
     ## Function
-    <b>Get a complete list of journal names</b>
-
+    <b>Get a list of of journal names and metadata equivalent to what is displayed on the original PEP-Web in the journals tab.</b>
+    
+    To get information on a specific journal, set the sourcecode query parameter to one of the standard PEP journal
+    codes (the first part of the three part document ID for articles (e.g., AJRPP, IJP, PAQ).  Case is not treated signficantly.
+    
     ## Return Type
-       models.JournalInfoList
+       models.JournalInfoList (return label sourceInfo)
 
     ## Status
        This endpoint is working.
@@ -3449,7 +3462,7 @@ def metadata_volumes(response: Response,
 @app.get("/v2/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
 def metadata_books(response: Response,
                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                   sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
+                   sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE_METADATA_BOOKS), 
                    sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                    limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                    offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
@@ -3460,18 +3473,24 @@ def metadata_books(response: Response,
     ## Function
        <b>Get a list of Book names equivalent to what is displayed on the original PEP-Web in the books tab.</b>
 
-       The data is pulled from the database ISSN table.  Subvolumes, of SE and GW are not returned, nor is any volume
+       The data is pulled from the database ISSN table.  Subvolumes of a book series (e.g., GW, SE) are not returned, nor is any volume
        marked with multivolumesubbok in the src_type_qualifier column.  This is exactly what's currently in PEP-Web's
        presentation today.
+       
+       To get metadata for a specific book of a series or subvolume of a multivolume book like GW, SE, NLP, IPL, or ZBK,
+       use the first two parts of the source document ID (series and series volume) without the period separator used in
+       the document ID. For example, to request metadata for SE volume 6, use SE006 in the sourcecode API parameter.
+       Similarly, use NLP014 to get metadata on the book published as volume 14 of the NLP series.  While ZBK is a general
+       series ID for classic books, the same is true...use ZBK047 to return metadata on that specific book.
 
     ## Return Type
-       models.SourceInfoList
+       models.SourceInfoList (return label sourceInfo)
 
     ## Status
        This endpoint is working.
 
     ## Sample Call
-         {url}/v2/Metadata/Books/?sourcecode=ipl
+         {url}/v2/Metadata/Books/?sourcecode=SE
 
     ## Notes
 

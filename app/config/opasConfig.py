@@ -175,7 +175,7 @@ VALS_VIEWPERIODDICT_SOLRFIELDS = {1: "art_views_lastweek", 2: "art_views_last1mo
 #  ALL
 #  
 # 
-VALS_PRODUCT_TYPES = {DICTLEN_KEY: 4, "jour": "journal", "vide": "videostream", "book": "book"}    
+VALS_PRODUCT_TYPES = {DICTLEN_KEY: 5, "journ": "journal", "video": "videos", "strea": "stream", "book": "book"}
 VALS_SOURCE_TYPE = {DICTLEN_KEY: 1, 'j': 'journal', 'b': 'book', 'v': 'videostream'} # standard values, can abbrev to 1st char or more
 VALS_ARTTYPE = {DICTLEN_KEY: 3, 'article': 'ART', 'abstract': 'ABS', 'announcement': 'ANN', 'commentary': 'COM', 'errata': 'ERR', 'profile': 'PRO', 'report': 'REP', 'review': 'REV'}
 VALS_DOWNLOADFORMAT = {DICTLEN_KEY: 4, 'html': 'HTML', 'pdf': 'PDF', 'pdfo': 'PDFORIG', 'epub': 'EPUB'}
@@ -210,7 +210,7 @@ DESCRIPTION_FULLTEXT1_V1 = "Words or phrases (in quotes) in a paragraph in the d
 DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to return the document. Specify which type of identifier using query param termidtype."
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_ISSUE = "The issue number if the source has one"
-DESCRIPTION_LIMIT = "Number of items to return."
+DESCRIPTION_LIMIT = "Maximum number of items to return."
 DESCRIPTION_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 DESCRIPTION_MOREINFO = "Return statistics on the Archive holdings"
 DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (years: {list_values(VALS_YEAROPTIONS)})"
@@ -234,8 +234,11 @@ DESCRIPTION_SEARCHPARAM = "This is a document request, including search paramete
 DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that."
 DESCRIPTION_SORT ="Comma separated list of field names to sort by."
 DESCRIPTION_SOURCECODE = "The FULL 2-8 character PEP Code of the source for matching documents (e.g., journals: APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE; books: GW, SE, ZBK; videostreams: PEPGRANTVS, PEPTOPAUTHVS)"
+DESCRIPTION_SOURCECODE_METADATA_BOOKS = "The 2-3 character PEP Code for the book series (e.g., SE, GW, IPL, NLP, ZBK), or the PEP Code and specific volume number of a book in the series (e.g., GW001, SE006, NLP014, ZBK047 (classic book, specific book assigned number) or * for all."
+DESCRIPTION_SOURCECODE_METADATA_JOURNALS = "The FULL 2-8 character PEP Code of the journal source for matching documents (e.g., APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE) or * for all."
+DESCRIPTION_SOURCECODE_METADATA_VIDEOS = "The PEP Code of the video series (e.g., BPSIVS, IPSAVS, PEPVS, PEPGRANTVS, PEPTOPAUTHVS) or * for all."
 DESCRIPTION_SOURCELANGCODE = "Language code or comma separated list of codes for matching documents (e.g., EN, ES, DE, ...)"
-DESCRIPTION_SOURCENAME = "Name or partial name of the source journal, book, or videostream  (e.g., 'international')"
+DESCRIPTION_SOURCENAME = "Name or partial name of the source (e.g., 'international' or 'psychoanalytic')"
 DESCRIPTION_SPECIALOPTIONS = "Integer mapped to Option flags for special options"
 DESCRIPTION_STATONLY = "Return minimal documentListItems for statistics."
 DESCRIPTION_STARTDATE = "Find records on or after this date (input date as 2020-08-10 or 20200810)"
@@ -464,6 +467,32 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  timestamp, 
  score
 """
+
+DOCUMENT_ITEM_VIDEO_FIELDS = """
+    art_id,
+    art_issn,
+    art_sourcecode,
+    art_authors,
+    title,
+    art_subtitle_xml, 
+    art_title_xml, 
+    art_sourcetitlefull,
+    art_sourcetitleabbr,
+    art_info_xml, 
+    art_vol,
+    art_vol_title, 
+    art_year, 
+    art_iss, 
+    art_iss_title, 
+    art_year,
+    art_citeas_xml,
+    art_pgrg,
+    art_lang,
+    art_origrx, 
+    art_qual, 
+    art_kwds 
+"""
+
 
 DOCUMENT_ITEM_TOC_FIELDS = """
  art_id, 

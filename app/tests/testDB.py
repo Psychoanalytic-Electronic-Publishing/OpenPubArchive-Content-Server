@@ -48,6 +48,21 @@ class TestDatabase(unittest.TestCase):
         assert(sources[0] == 1)
         sources = ocd.get_sources(src_type="journal")
         assert(sources[0] > 70)
+        sources = ocd.get_sources(src_type="videos")
+        assert(sources[0] >= 12)
+
+    def test_opasdb_getsourcetypes(self):
+        ocd = opasCentralDB()
+        sources = ocd.get_sources()
+        assert(sources[0] > 100)
+        # unlike the API higher level function, both of these src_types--videos and stream--return streams on this direct call
+        #  because the database vw_api_productbase_instance_counts view only has the stream information.
+        #  see testAPIMetadata.test_3B_meta_videostreams to see the difference which is driven by
+        #  query parameter streams
+        sources = ocd.get_sources(src_type="videos")
+        assert(sources[0] >= 12)
+        sources = ocd.get_sources(src_type="stream")
+        assert(sources[0] >= 12)
            
         
 if __name__ == '__main__':

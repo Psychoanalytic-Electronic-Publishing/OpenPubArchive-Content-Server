@@ -669,6 +669,14 @@ class SourceInfoListItem(BaseModel):
     yearLast: str = Schema(None, title="Last year available for this source")
     instanceCount: int = Schema(None, title="Number of document instances for this source")
     embargoYears: str = Schema(None, title="")
+    # these are not all currently used
+    accessClassification: str = Schema(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
+    accessLimited: bool = Schema(True, title="Access is limited, preventing full-text return")
+    accessLimitedReason: str = Schema(None, title="Explanation of user's access to this")
+    accessLimitedDescription: str = Schema(None, title="Description of the access limitation applied")
+    accessLimitedCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
+    accessLimitedPubLink: str = Schema(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
+    
 
 class SourceInfoStruct(BaseModel):
     responseInfo: ResponseInfo
@@ -704,6 +712,13 @@ class VideoInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few 
     yearLast: str = Schema(None, title="")
     instanceCount: int = Schema(None, title="Number of document instances for this source")
     embargoYears: str = Schema(None, title="")
+    # these are not all currently used
+    accessClassification: str = Schema(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
+    accessLimited: bool = Schema(True, title="Access is limited, preventing full-text return")
+    accessLimitedReason: str = Schema(None, title="Explanation of user's access to this")
+    accessLimitedDescription: str = Schema(None, title="Description of the access limitation applied")
+    accessLimitedCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
+    accessLimitedPubLink: str = Schema(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
 
 class VideoInfoStruct(BaseModel):
     responseInfo: ResponseInfo

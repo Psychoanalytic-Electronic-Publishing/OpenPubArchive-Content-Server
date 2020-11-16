@@ -1334,7 +1334,10 @@ class opasCentralDB(object):
                 if src_code is not None and src_code != "*":
                     src_code_clause = f"AND basecode = '{src_code}'"
                 if src_type is not None and src_type != "*":
-                    src_type = normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
+                    # already normalized, don't do it again
+                    # src_type = normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
+                    if src_type in ("stream", "videos"):
+                        src_type = "videostream"
                     prod_type_clause = f"AND product_type = '{src_type}'"
                 if src_name is not None:
                     src_title_clause = f"AND title rlike '(.*\s)?{src_name}(\s.*)?'"

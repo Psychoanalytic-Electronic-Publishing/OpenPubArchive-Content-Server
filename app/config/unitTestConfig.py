@@ -43,6 +43,7 @@ JOURNALCOUNT = 77
 # this must be set to the exact number of unique books for testing to pass.
 BOOKCOUNT = 100 # 100 book in 2020 on PEP-Web including 96 various ZBK, NLP, IPL books, + 4 special books: L&P, SE, GW, Glossary
 VIDEOSOURCECOUNT = 12 # Number of video sources (video journal codes)
+VIDEOCOUNT = 99
 ARTICLE_COUNT = 135632
 ARTICLE_COUNT_BJP = 2735 # Right.  2738 in everything with query "BJP (bEXP_ARCH1).xml", but 3 dups.
 ARTICLE_COUNT_VOL1_BJP = 49

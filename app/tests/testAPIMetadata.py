@@ -230,6 +230,36 @@ class TestMetadata(unittest.TestCase):
         r = response.json()
         assert(r['sourceInfo']['responseSet'][0]['title'] == 'Anna Freud Center Video Collection')
 
+    def test_3B_meta_videostreams(self):
+        """
+        List of video sources (not individual videos, EXCEPT if specified by parameter)
+        /v1/Metadata/Videos/
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/?streams=False')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print(r['sourceInfo']['responseInfo']['fullCount']) 
+        assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.VIDEOCOUNT)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/?streams=True')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print(r['sourceInfo']['responseInfo']['fullCount']) 
+        assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.VIDEOSOURCECOUNT)
+
+        # test default streams parameter (which is streams=True)
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print(r['sourceInfo']['responseInfo']['fullCount']) 
+        assert(r['sourceInfo']['responseInfo']['fullCount'] == unitTestConfig.VIDEOSOURCECOUNT)
+
     def test_6_meta_book_names(self):
         """
         List of book names

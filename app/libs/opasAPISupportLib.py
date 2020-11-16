@@ -581,7 +581,7 @@ def database_get_whats_new(days_back=7,
                                    fl = field_list,
                                    fq = "{!collapse field=art_sourcecode max=art_year_int}",
                                    sort=sort_by, sort_order="desc",
-                                   rows=limit, start=offset,
+                                   rows=limit, start=offset
                                    )
 
         # logger.debug("databaseWhatsNew Number found: %s", results._numFound)
@@ -704,7 +704,8 @@ def metadata_get_volumes(source_code=None,
                                   facet_pivot=facet_pivot,
                                   facet_mincount=1,
                                   facet_sort="art_year asc", 
-                                  rows=limit
+                                  rows=limit,
+                                  start=offset
                                  )
         facet_pivot = result.facet_counts["facet_pivot"][facet_pivot]
         #ret_val = [(piv['value'], [n["value"] for n in piv["pivot"]]) for piv in facet_pivot]
@@ -989,9 +990,7 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
         query = "art_sourcetype:video*"
     try:
         srcList = solr_docs.query(q = query,  
-                                  fields = "art_id, art_issn, art_sourcecode, art_authors, title, \
-                                            art_sourcetitlefull, art_sourcetitleabbr, art_vol, \
-                                            art_year, art_citeas_xml, art_lang, art_pgrg",
+                                  fields = opasConfig.DOCUMENT_ITEM_VIDEO_FIELDS,
                                   sort = "art_citeas_xml",
                                   sort_order = "asc",
                                   rows=limit, start=offset
@@ -1017,7 +1016,7 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
         source_info_record["ISSN"] = result.get("art_issn")
         source_info_record["documentID"] = result.get("art_id")
         try:
-            source_info_record["title"] = result.get("title")[0]
+            source_info_record["title"] = result.get("title")
         except:
             source_info_record["title"] = ""
 
@@ -1025,7 +1024,7 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
         source_info_record["pub_year"] = result.get("art_year")
         source_info_record["bib_abbrev"] = result.get("art_sourcetitleabbr")  # error in get field, fixed 2019.12.19
         try:
-            source_info_record["language"] = result.get("art_lang")[0]
+            source_info_record["language"] = result.get("art_lang")
         except:
             source_info_record["language"] = "EN"
 
@@ -1125,13 +1124,13 @@ def metadata_get_source_info(src_type=None,
                 title = source.get("title")
                 authors = source.get("author")
                 pub_year = source.get("pub_year")
-                publisher = source.get("publisher")
+                publisher = source.get("bib_abbrev")
                 book_code = None
-                src_type = source.get("product_type")
+                # src_type = source.get("product_type")
                 start_year = source.get("yearFirst")
                 end_year = source.get("yearLast")
                 base_code = source.get("basecode")
-                instance_count = source.get("instances")
+                instance_count = source.get("instances", 1)
                 if start_year is None:
                     start_year = pub_year
                 if end_year is None:
@@ -1154,7 +1153,7 @@ def metadata_get_source_info(src_type=None,
                                                  title,
                                                  publisher
                                                  )
-                elif src_type == "video":
+                elif src_type == "videos":
                     art_citeas = source.get("art_citeas")
                 else:
                     art_citeas = title # journals just should show display title
