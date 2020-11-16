@@ -819,7 +819,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                                           art_authors_mast,
                                           art_citeas_xml,
                                           art_info_xml""",
-                              sort="art_year, art_pgrg", sort_order="asc",
+                              sort="art_id", sort_order="asc",
                               rows=limit, start=offset
                              )
 
@@ -851,6 +851,9 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         item = models.DocumentListItem(PEPCode = pep_code, 
                                        year = result.get("art_year", None),
                                        vol = result.get("art_vol", None),
+                                       issue = result.get("art_iss", None),
+                                       issueTitle = result.get("art_iss_title", None),
+                                       newSectionName = result.get("art_newsecnm", None),
                                        pgRg = result.get("art_pgrg", None),
                                        pgStart = pgStart,
                                        pgEnd = pgEnd,
