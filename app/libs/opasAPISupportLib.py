@@ -847,12 +847,17 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
         citeAs = result.get("art_citeas_xml", None)  
         citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
+        issue = result.get("art_iss", None)
+        issue_title = result.get("art_iss_title", None)
+        if issue is not None:
+            if issue_title is None:
+                issue_title = f"Issue {issue}"
 
         item = models.DocumentListItem(PEPCode = pep_code, 
                                        year = result.get("art_year", None),
                                        vol = result.get("art_vol", None),
-                                       issue = result.get("art_iss", None),
-                                       issueTitle = result.get("art_iss_title", None),
+                                       issue = issue,
+                                       issueTitle = issue_title,
                                        newSectionName = result.get("art_newsecnm", None),
                                        pgRg = result.get("art_pgrg", None),
                                        pgStart = pgStart,
@@ -986,11 +991,14 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
     Authorizations are not checked or returned (thus no session id is needed)
 
     """
+    source_info_dblist = []
+    total_count = 0
 
     if pep_code is not None:
         query = "art_sourcetype:video* AND art_sourcecode:{}".format(pep_code)
     else:
         query = "art_sourcetype:video*"
+        
     try:
         srcList = solr_docs.query(q = query,  
                                   fields = opasConfig.DOCUMENT_ITEM_VIDEO_FIELDS,
@@ -1001,50 +1009,52 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
     except Exception as e:
         logger.error("metadataGetVideos Error: {}".format(e))
 
-    source_info_dblist = []
-    # count = len(srcList.results)
-    total_count = int(srcList.results.numFound)
-
-    for result in srcList.results:
-        source_info_record = {}
-        authors = result.get("art_authors")
-        if authors is None:
-            source_info_record["author"] = None
-        elif len(authors) > 1:
-            source_info_record["author"] = "; ".join(authors)
-        else:    
-            source_info_record["author"] = authors[0]
-
-        source_info_record["src_code"] = result.get("art_sourcecode")
-        source_info_record["ISSN"] = result.get("art_issn")
-        source_info_record["documentID"] = result.get("art_id")
-        try:
-            source_info_record["title"] = result.get("title")
-        except:
-            source_info_record["title"] = ""
-
-        source_info_record["art_citeas"] = result.get("art_citeas_xml")
-        source_info_record["pub_year"] = result.get("art_year")
-        source_info_record["bib_abbrev"] = result.get("art_sourcetitleabbr")  # error in get field, fixed 2019.12.19
-        try:
-            source_info_record["language"] = result.get("art_lang")
-        except:
-            source_info_record["language"] = "EN"
-
-        logger.debug("metadataGetVideos: %s", source_info_record)
-        source_info_dblist.append(source_info_record)
+    else:
+        # count = len(srcList.results)
+        total_count = int(srcList.results.numFound)
+    
+        for result in srcList.results:
+            source_info_record = {}
+            authors = result.get("art_authors")
+            if authors is None:
+                source_info_record["author"] = None
+            elif len(authors) > 1:
+                source_info_record["author"] = "; ".join(authors)
+            else:    
+                source_info_record["author"] = authors[0]
+    
+            source_info_record["src_code"] = result.get("art_sourcecode")
+            source_info_record["ISSN"] = result.get("art_issn")
+            source_info_record["documentID"] = result.get("art_id")
+            try:
+                source_info_record["title"] = result.get("title")
+            except:
+                source_info_record["title"] = ""
+    
+            source_info_record["art_citeas"] = result.get("art_citeas_xml")
+            source_info_record["pub_year"] = result.get("art_year")
+            source_info_record["bib_abbrev"] = result.get("art_sourcetitleabbr")  # error in get field, fixed 2019.12.19
+            try:
+                source_info_record["language"] = result.get("art_lang")
+            except:
+                source_info_record["language"] = "EN"
+    
+            logger.debug("metadataGetVideos: %s", source_info_record)
+            source_info_dblist.append(source_info_record)
 
     return total_count, source_info_dblist
 
 #-----------------------------------------------------------------------------
-def metadata_get_source_info(src_type=None,
+def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                              src_code=None,
                              src_name=None, 
                              req_url: str=None, 
                              limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS,
                              offset=0):
     """
-    Return a list of source metadata, by type (e.g., journal, video, etc.).
+    Return a list of source metadata, by type (e.g., journal, book, video, stream.)
+
+    NOTE: Stream is equiv to journal for videos. Video is more like books, individual videos).
 
     No attempt here to map to the correct structure, just checking what field/data items we have in sourceInfoDB.
 

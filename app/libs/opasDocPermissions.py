@@ -55,39 +55,37 @@ def find_client_session_id(request: Request,
            if not there, gets it from a cookie
            Otherwise, gets a new one from the auth server
     """
-    #client_id = int(request.headers.get("client-id", '0'))
+    ret_val = None
+
     if client_session is None or client_session == 'None':
         client_session = request.headers.get(opasConfig.CLIENTSESSIONID, None)
-    client_session_qparam = request.query_params.get(opasConfig.CLIENTSESSIONID, None)
-    client_session_cookie = request.cookies.get(opasConfig.CLIENTSESSIONID, None)
-    #Won't work unless they expose cookie to client, so don't waste time 
-    #pepweb_session_cookie = request.cookies.get("pepweb_session", None)
     
-    opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
     if client_session is not None:
         ret_val = client_session
-        msg = f"client-session from header: {ret_val} "
-        logger.debug(msg)
-    elif client_session_qparam is not None:
-        ret_val = client_session_qparam
-        msg = f"client-session from param: {ret_val} "
-        logger.debug(msg)
-    elif client_session_cookie is not None:
-        ret_val = client_session_cookie
-        msg = f"client-session from client-session cookie: {ret_val} "
-        logger.debug(msg)
-    elif opas_session_cookie is not None and opas_session_cookie != 'None':
-        msg = f"client-session from stored OPASSESSION cookie {opas_session_cookie}"
-        logger.debug(msg)
-        ret_val = opas_session_cookie
+        #msg = f"client-session from header: {ret_val} "
+        #logger.debug(msg)
     else:
-        msg = f"No client-session ID found. Returning None"
-        logger.debug(msg)
-        ret_val = None
-
-    ## save it in cookie in case they call without it.
-    #response.set_cookie(opasConfig.OPASSESSIONID,
-                        #value=ret_val)
+        #Won't work unless they expose cookie to client, so don't waste time 
+        #pepweb_session_cookie = request.cookies.get("pepweb_session", None)
+        opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
+        client_session_qparam = request.query_params.get(opasConfig.CLIENTSESSIONID, None)
+        client_session_cookie = request.cookies.get(opasConfig.CLIENTSESSIONID, None)
+        if client_session_qparam is not None:
+            ret_val = client_session_qparam
+            msg = f"client-session from param: {ret_val} "
+            logger.debug(msg)
+        elif client_session_cookie is not None:
+            ret_val = client_session_cookie
+            msg = f"client-session from client-session cookie: {ret_val} "
+            logger.debug(msg)
+        elif opas_session_cookie is not None and opas_session_cookie != 'None':
+            msg = f"client-session from stored OPASSESSION cookie {opas_session_cookie}"
+            logger.debug(msg)
+            ret_val = opas_session_cookie
+        else:
+            msg = f"No client-session ID found. Returning None"
+            logger.debug(msg)
+            ret_val = None
 
     return ret_val
 

@@ -471,7 +471,7 @@ def dequote(fulltext1):
     
     new_search = ""
     for item in items:
-        m = re.search("\&\&|\|\|", item[1])
+        m = re.search("\&\&|\|\||\sAND\s|\sOR\s", item[1], flags=re.I)
         if m is not None:
             new_search += f' && {item[0]}({item[1]})'
         else:

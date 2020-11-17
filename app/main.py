@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1116.2.Alpha"
+__version__     = "2020.1117.1.Alpha"
 __status__      = "Development"
 
 """
@@ -97,6 +97,8 @@ import wget
 import shlex
 import io
 import pathlib
+import urllib.parse
+
 # import json
 
 from urllib import parse
@@ -331,12 +333,11 @@ async def get_api_key(api_key_query: str = Security(api_key_query),
 def log_endpoint(request, client_id=None, session_id=None, path_params=True):
     if client_id == 3: # PaDS, sends a lot of requests at once, so mute
         logger.debug(f"***[{client_id}:{session_id}]:{request['path']}***")
-        if path_params and request.path_params != {}:
-            logger.debug(f"....{request.path_params}")
+        #logger.info(urllib.parse.unquote(f"....{request.url}"))
     else:
         logger.info(f"*************[{client_id}:{session_id}]:{request['path']}********************************************************************************")
-        if path_params and request.path_params != {}:
-            logger.info(f"....{request.path_params}")
+        url = urllib.parse.unquote(f"....{request.url}")
+        logger.info(f"************ URL: {url}")
 
 def log_endpoint_time(request, ts): 
     if opasConfig.LOG_CALL_TIMING:
@@ -3179,7 +3180,7 @@ def metadata_contents_sourcecode(response: Response,
                                  limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                  offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                                  client_id:int=Depends(get_client_id), 
-                                       #client_session:str= Depends(get_client_session)
+                                 client_session:str= Depends(get_client_session)
                                  ):
     """
     ## Function
@@ -3244,7 +3245,7 @@ def metadata_contents(SourceCode: str,
                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                       client_id:int=Depends(get_client_id), 
-                            #client_session:str= Depends(get_client_session)
+                      client_session:str= Depends(get_client_session)
                       ):
     """
     ## Function
@@ -3350,8 +3351,8 @@ def metadata_videos(response: Response,
                                                 sourcename=sourcename, 
                                                 limit=limit,
                                                 offset=offset,
-                                                client_id=client_id
-                                                #client_session= client_session
+                                                client_id=client_id, 
+                                                client_session= client_session
                                                 )
     return ret_val
 
@@ -3530,8 +3531,8 @@ def metadata_by_sourcetype_sourcecode(response: Response,
                                       sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
                                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                                      client_id:int=Depends(get_client_id) 
-                                      #client_session:str= Depends(get_client_session)
+                                      client_id:int=Depends(get_client_id), 
+                                      client_session:str= Depends(get_client_session)
                                       ):
     """
 
