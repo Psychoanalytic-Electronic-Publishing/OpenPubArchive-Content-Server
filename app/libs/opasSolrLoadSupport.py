@@ -291,6 +291,8 @@ class ArticleInfo(object):
             
         self.art_issue = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artiss/node()', default_return=None)
         self.art_issue_title = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artissinfo/isstitle/node()', default_return=None)
+        # special sequential numbering for issues used by journals like fa (we code it simply as artnbr in xml)
+        self.art_issue_seqnbr = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artnbr/node()', default_return=None)
 
         self.art_year_str = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artyear/node()', default_return=None)
         m = re.match("(?P<yearint>[0-9]{4,4})(?P<yearsuffix>[a-zA-Z])?(\s*\-\s*)?((?P<year2int>[0-9]{4,4})(?P<year2suffix>[a-zA-Z])?)?", self.art_year_str)
@@ -882,6 +884,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
                 "art_iss" : artInfo.art_issue,
                 "art_iss_title" : artInfo.art_issue_title,
                 "art_iss_title_str" : art_issue_title_str, # remove all punct for sorting
+                "art_iss_seqnbr" : artInfo.art_issue_seqnbr, # sequential issue numbering 1-n from start by some journals
                 "art_doi" : artInfo.art_doi,
                 "art_lang" : artInfo.art_lang,
                 "art_issn" : artInfo.art_issn,
