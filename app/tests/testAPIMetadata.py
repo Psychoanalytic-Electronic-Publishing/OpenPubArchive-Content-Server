@@ -190,14 +190,19 @@ class TestMetadata(unittest.TestCase):
         # print ("test_metadata_journals complete.")
        
     def test_1B_meta_contents_for_source(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Contents/FA/014/')
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Contents/FA/14/')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
         print(r['documentList']['responseInfo']['fullCount']) 
         # print ("test_metadata_journals complete.")
-        r['documentList']['responseSet'][0][]
+        # Check this TOC items
+        assert(r['documentList']['responseSet'][6]["documentID"] == "FA.014A.0104A")
+        assert(r['documentList']['responseSet'][6]["issueTitle"] == "No. 64")
+        assert(r['documentList']['responseSet'][6]["issueSeqNbr"] == "64")
+        assert(r['documentList']['responseSet'][6]["pgStart"] == "104")
+        
         
     def test_2_meta_contents_source_volume(self):
         """
