@@ -2300,6 +2300,16 @@ async def database_search_v2(response: Response,
     if re.search(r"/Search/", request.url._url):
         logger.debug("Search Request: %s", request.url._url)
 
+    if fulltext1 is not None:
+        logger.info("Search Fulltext1: %s", fulltext1)
+        # TEST TEST TEST Dequote!
+        if 'go go go' in fulltext1:
+            fulltext1 = opasQueryHelper.dequote(fulltext1)
+            logger.info("TESTING!!!! Search Modified Fulltext1: %s", fulltext1)
+        
+    if smarttext is not None:
+        logger.info("Search Smarttext: %s", smarttext)
+
     analysis_mode = False
 
     #if re.search(r"/MoreLikeThese/", request.url._url):

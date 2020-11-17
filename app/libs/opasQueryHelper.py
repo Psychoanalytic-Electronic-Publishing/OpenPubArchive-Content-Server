@@ -452,6 +452,40 @@ def get_term_list_spec(termlist):
 
     return ret_val        
 
+def dequote(fulltext1):
+    """
+    >>> test1='body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)'
+    >>> fulltext1 = 'text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:("basic || principles"~25)'
+    >>> dequote(test1)
+    """
+    quote_wrapper = '\s*(.*\:)?\(\"(.*)\"(~[1-9][0-9]*)\)|\s*(\&\&)?\s*(.*\:)?\((.*)\)'
+    
+    clauses = fulltext1.split(" && ")
+    items = []
+    for clause in clauses:
+        print (f"Clause:{clause}")
+        m = re.findall(quote_wrapper, clause, flags=re.I)
+        for n in m:
+            items.append([x for x in n if len(x) > 0 and x != "&&"])
+        print (items)
+    
+    new_search = ""
+    for item in items:
+        m = re.search("\&\&|\|\|", item[1])
+        if m is not None:
+            new_search += f' && {item[0]}({item[1]})'
+        else:
+            try:
+                new_search += f' && {item[0]}("{item[1]}"{item[2]})'
+            except:
+                print (item[1])
+                if item[1] != "go go go" and item[1] != '"go go go"':
+                    new_search += f' && {item[0]}({item[1]})'
+                
+
+    print (f"New Search: {new_search[4:]}")
+    return new_search       
+
 #---------------------------------------------------------------------------------------------------------
 # this function lets various endpoints like search, searchanalysis, and document, share this large parameter set.
 # IMPORTANT: Parameter names here must match the endpoint parameters since they are mapped in main using
@@ -1718,7 +1752,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                 
     else: #  search was ok
         try:
-            logger.info(f"Search Ok. Result Size:{results._numFound}; Search:{solr_query_spec.solrQuery.searchQ}; Filter:{solr_query_spec.solrQuery.searchQ}")
+            logger.info(f"Search Ok. Result Size:{results._numFound}; Search:{solr_query_spec.solrQuery.searchQ}; Filter:{solr_query_spec.solrQuery.filterQ}")
             scopeofquery = [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ]
     
             if ret_status[0] == 200: 
