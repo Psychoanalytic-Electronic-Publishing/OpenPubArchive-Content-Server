@@ -13,7 +13,7 @@ import json
 
 logger = logging.getLogger(__name__)
 # for this module
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 if 0:
     # create console handler and set level to debug
@@ -479,7 +479,7 @@ def get_access_limitations(doc_id,
                         ret_val.accessLimitedCurrentContent = False
                         # "This content is available for you to access"
                         ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE
-                        logger.debug("Optimization - session info used to authorize PEPArchive document (msg will be moved to debug later)")
+                        logger.debug("Optimization - session info used to authorize PEPArchive document")
                 except Exception as e:
                     logger.error(f"PEPArchive document error checking permission: {e}")
             else:

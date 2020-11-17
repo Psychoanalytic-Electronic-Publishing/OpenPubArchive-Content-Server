@@ -812,6 +812,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                                           art_year,
                                           art_iss,
                                           art_iss_title,
+                                          art_iss_seqnbr,
                                           art_newsecnm,
                                           art_pgrg,
                                           title,
@@ -849,15 +850,20 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
         issue = result.get("art_iss", None)
         issue_title = result.get("art_iss_title", None)
+        issue_seqnbr = result.get("art_iss_seqnbr", None)
         if issue is not None:
             if issue_title is None:
-                issue_title = f"Issue {issue}"
+                if issue_seqnbr is None:
+                    issue_title = f"Issue {issue}"
+                else:
+                    issue_title = f"No. {issue_seqnbr}"
 
         item = models.DocumentListItem(PEPCode = pep_code, 
                                        year = result.get("art_year", None),
                                        vol = result.get("art_vol", None),
                                        issue = issue,
                                        issueTitle = issue_title,
+                                       issueSeqNbr = issue_seqnbr, 
                                        newSectionName = result.get("art_newsecnm", None),
                                        pgRg = result.get("art_pgrg", None),
                                        pgStart = pgStart,

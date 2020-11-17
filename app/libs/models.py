@@ -237,6 +237,7 @@ class DocumentListItem(BaseModel):
     #isbn: str = Schema(None, title="The ISBN", description="The ISBN for the source") #  2020506 isbn is not stored at article level, so not now at least
     doi: str = Field(None, title="Document object identifier", description="Document object identifier, a standard id system admin by the International DOI Foundation (IDF)")
     issue: str = Schema(None, title="Serial Issue Number")
+    issueSeqNbr: str = Schema(None, title="Serial Issue Sequence Number (continuous count)") 
     issueTitle: str = Schema(None, title="Serial Issue Title", description="Issues may have titles, e.g., special topic")
     newSectionName: str = Schema(None, title="Name of Serial Section Starting", description="The name of the section of the issue, appears for the first article of a section")
     pgRg: str = Schema(None, title="Page Range as Published", description="The published start and end pages of the document, separated by a dash")

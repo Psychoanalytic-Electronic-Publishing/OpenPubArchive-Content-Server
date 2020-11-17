@@ -189,6 +189,16 @@ class TestMetadata(unittest.TestCase):
         assert(r['documentList']['responseInfo']['fullCount'] >= unitTestConfig.ARTICLE_COUNT_BJP)
         # print ("test_metadata_journals complete.")
        
+    def test_1B_meta_contents_for_source(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Contents/FA/014/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print(r['documentList']['responseInfo']['fullCount']) 
+        # print ("test_metadata_journals complete.")
+        r['documentList']['responseSet'][0][]
+        
     def test_2_meta_contents_source_volume(self):
         """
         Journal Content Lists for a source and vol
