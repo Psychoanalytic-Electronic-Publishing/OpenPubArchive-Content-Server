@@ -656,9 +656,10 @@ def database_get_whats_new(days_back=7,
 
 def metadata_get_volumes(source_code=None,
                          source_type=None,
-                         req_url: str=None, 
-                         limit=1,
-                         offset=0):
+                         req_url: str=None 
+                         #limit=1,
+                         #offset=0
+                        ):
     """
     Return a list of volumes
       - for a specific source_code (code),
@@ -701,19 +702,20 @@ def metadata_get_volumes(source_code=None,
                                   #fq="{!collapse field=art_sourcecode, art_vol}",
                                   facet="on", 
                                   facet_fields = facet_fields, 
-                                  facet_pivot=facet_pivot,
+                                  facet_pivot = facet_pivot,
+                                  #facet_offset = offset, 
                                   facet_mincount=1,
                                   facet_sort="art_year asc", 
-                                  rows=limit,
-                                  start=offset
+                                  rows=limit, 
+                                  #start=offset
                                  )
         facet_pivot = result.facet_counts["facet_pivot"][facet_pivot]
         #ret_val = [(piv['value'], [n["value"] for n in piv["pivot"]]) for piv in facet_pivot]
 
         response_info = models.ResponseInfo( count = count,
                                              fullCount = count,
-                                             limit = limit,
-                                             offset = offset,
+                                             #limit = limit,
+                                             #offset = offset,
                                              listType="volumelist",
                                              fullCountComplete = (limit == 0 or limit >= count),
                                              request=f"{req_url}",
@@ -774,12 +776,176 @@ def metadata_get_volumes(source_code=None,
         
     return ret_val
 
+
+def metadata_get_next_and_prev_articles(source_code=None,
+                                        source_year=None,
+                                        source_vol=None,
+                                        art_id=None, 
+                                        req_url: str=None 
+                                       ):
+    """
+    Return the previous, matching and next article, assuming they all exist.
+    The intent is to be able to have next and previous arrows on the articles.
+    
+    New: 2020-11-17      
+    """
+    # returns multiple gw's and se's, 139 unique volumes counting those (at least in 2020)
+    # works for journal, videostreams have more than one year per vol.
+    # works for books, videostream vol numbers
+    #results = solr_docs.query( q = f"art_sourcecode:{pep_code} && art_year:{year}",  
+                                #fields = "art_sourcecode, art_vol, art_year",
+                                #sort="art_sourcecode, art_year", sort_order="asc",
+                                #fq="{!collapse field=art_vol}",
+                                #rows=limit, start=offset
+                                #)
+    
+    distinct_return = "art_sourcecode, art_year, art_vol, art_id"
+    next_art = None
+    prev_art = None
+    match_art = None
+    
+    q_str = "bk_subdoc:false"
+    if source_code is not None:
+        q_str += f" && art_sourcecode:{source_code}"
+    if source_vol is not None:
+        q_str += f" && art_vol:{source_vol}"
+    if source_year is not None:
+        q_str += f" && art_year:{source_year}"
+        
+    try:
+        result = solr_docs.query( q = q_str,
+                                  fq="*:*", 
+                                  fields = distinct_return,
+                                  sort="art_id",
+                                  sort_order="asc",
+                                  rows=100
+                                 )
+    except Exception as e:
+        logger.error(f"Error: {e}")
+    else:
+        # find the doc
+        count = 0
+        for n in result.results:
+            if n["art_id"] == art_id:
+                # we found it
+                match_art = result.results[count]
+    
+                try:
+                    prev_art = result.results[count-1]
+                except:
+                    prev_art = None
+    
+                try:
+                    next_art = result.results[count+1]
+                except:
+                    next_art = None
+            else:
+                count += 1
+                continue
+
+    
+    return prev_art, match_art, next_art
+
+def metadata_get_next_and_prev_vols(source_code=None,
+                                    source_vol=None,
+                                    req_url: str=None 
+                                   ):
+    """
+    Return previous, matched, and next volume for the source code and year.
+    
+    New: 2020-11-17
+      
+    """
+    # returns multiple gw's and se's, 139 unique volumes counting those (at least in 2020)
+    # works for journal, videostreams have more than one year per vol.
+    # works for books, videostream vol numbers
+    #results = solr_docs.query( q = f"art_sourcecode:{pep_code} && art_year:{year}",  
+                                #fields = "art_sourcecode, art_vol, art_year",
+                                #sort="art_sourcecode, art_year", sort_order="asc",
+                                #fq="{!collapse field=art_vol}",
+                                #rows=limit, start=offset
+                                #)
+    
+    distinct_return = "art_sourcecode, art_year, art_vol"
+    next_vol = None
+    prev_vol = None
+    match_vol = None
+    
+    q_str = "bk_subdoc:false"
+    if source_code is not None:
+        q_str += f" && art_sourcecode:{source_code}"
+    if source_vol is not None:
+        source_vol_int = int(source_vol)
+        next_source_vol_int = source_vol_int + 1
+        prev_source_vol_int = source_vol_int - 1
+        q_str += f" && art_vol:({source_vol} || {next_source_vol_int} || {prev_source_vol_int})"
+        
+    facet_fields = ["art_vol", "art_sourcecode"]
+    facet_pivot_fields = "art_sourcecode,art_year,art_vol" # important ...no spaces!
+    try:
+        result = solr_docs.query( q = q_str,
+                                  fq="*:*", 
+                                  fields = distinct_return,
+                                  sort="art_sourcecode, art_year", sort_order="asc",
+                                  #fq="{!collapse field=art_sourcecode, art_vol}",
+                                  facet="on", 
+                                  facet_fields = facet_fields, 
+                                  facet_pivot = facet_pivot_fields,
+                                  facet_mincount=1,
+                                  facet_sort="art_year asc", 
+                                  #rows=limit, 
+                                  #start=offset
+                                 )
+        facet_pivot = result.facet_counts["facet_pivot"][facet_pivot_fields]
+        #ret_val = [(piv['value'], [n["value"] for n in piv["pivot"]]) for piv in facet_pivot]
+    except Exception as e:
+        logger.error(f"Error: {e}")
+    else:
+        prev_vol = None
+        match_vol = None
+        next_vol = None
+        if facet_pivot != []:
+            next_vol_idx = None
+            prev_vol_idx = None
+            match_vol_idx = None
+            pivot_len = len(facet_pivot[0]['pivot'])
+            counter = 0
+            for n in facet_pivot[0]['pivot']:
+                if n['pivot'][0]['value'] == source_vol:
+                    match_vol_idx = counter
+                    match_vol = n['pivot'][0]
+                    match_vol_year = n['value']
+                    match_vol['year'] = match_vol_year
+                    del(match_vol['field'])
+                counter += 1
+            
+            if match_vol_idx > 0:
+                prev_vol_idx = match_vol_idx - 1
+                prev_vol = facet_pivot[0]['pivot'][prev_vol_idx]
+                prev_vol_year = prev_vol['value']
+                prev_vol = prev_vol['pivot'][0]
+                prev_vol['year'] = prev_vol_year
+                del(prev_vol['field'])
+                
+            if match_vol_idx < pivot_len - 1:
+                next_vol_idx = match_vol_idx + 1
+                next_vol = facet_pivot[0]['pivot'][next_vol_idx]
+                next_vol_year = facet_pivot[0]['value']
+                next_vol = next_vol['pivot'][0]
+                next_vol['year'] = next_vol_year
+                del(next_vol['field'])
+        
+    
+    return prev_vol, match_vol, next_vol
+
 #-----------------------------------------------------------------------------
 def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                           year="*",
                           vol="*",
-                          req_url: str=None, 
-                          limit=opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, offset=0):
+                          req_url: str=None,
+                          extra_info:int=0, # since this requires an extra query of the DB
+                          limit=opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS,
+                          offset=0):
     """
     Return a source's contents
 
@@ -823,17 +989,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                               sort="art_id", sort_order="asc",
                               rows=limit, start=offset
                              )
-
-    response_info = models.ResponseInfo( count = len(results.results),
-                                         fullCount = results._numFound,
-                                         limit = limit,
-                                         offset = offset,
-                                         listType="documentlist",
-                                         fullCountComplete = limit >= results._numFound,
-                                         request=f"{req_url}",
-                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                         )
-
+    
     document_item_list = []
     for result in results.results:
         # transform authorID list to authorMast
@@ -848,6 +1004,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
         citeAs = result.get("art_citeas_xml", None)  
         citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
+        vol = result.get("art_vol", None)
         issue = result.get("art_iss", None)
         issue_title = result.get("art_iss_title", None)
         issue_seqnbr = result.get("art_iss_seqnbr", None)
@@ -857,10 +1014,9 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                     issue_title = f"Issue {issue}"
                 else:
                     issue_title = f"No. {issue_seqnbr}"
-
         item = models.DocumentListItem(PEPCode = pep_code, 
                                        year = result.get("art_year", None),
-                                       vol = result.get("art_vol", None),
+                                       vol = vol,
                                        issue = issue,
                                        issueTitle = issue_title,
                                        issueSeqNbr = issue_seqnbr, 
@@ -878,7 +1034,32 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         #logger.debug(item)
         document_item_list.append(item)
 
-    response_info.count = len(document_item_list)
+    # two options 2020-11-17 for extra info (lets see timing for each...)
+    suppinfo = None
+    if extra_info == 1 and search_val != "*" and pep_code != "*" and len(results.results) > 0:
+        ocd = opasCentralDBLib.opasCentralDB()
+        suppinfo = ocd.get_min_max_volumes(source_code=pep_code)
+
+    if extra_info == 2 and search_val != "*" and pep_code != "*" and len(results.results) > 0:
+        prev_vol, match_vol, next_vol = metadata_get_next_and_prev_vols(source_code=pep_code,
+                                                                        source_vol=vol,
+                                                                        req_url=req_url
+                                                                        )
+        suppinfo = {"infosource": "volumes_adjacent",
+                    "prev_vol": prev_vol,
+                    "matched_vol": match_vol,
+                    "next_vol": next_vol}
+
+    response_info = models.ResponseInfo( count = len(results.results),
+                                         fullCount = results._numFound,
+                                         limit = limit,
+                                         offset = offset,
+                                         listType="documentlist",
+                                         fullCountComplete = limit >= results._numFound,
+                                         supplementalInfo=suppinfo, 
+                                         request=f"{req_url}",
+                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                         )
 
     document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
                                                       responseSet=document_item_list

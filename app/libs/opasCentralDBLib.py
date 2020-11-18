@@ -820,6 +820,35 @@ class opasCentralDB(object):
         # return session model object
         return ret_val # None or Session Object
 
+    def get_min_max_volumes(self, source_code):
+        sel = f"""
+                SELECT `api_articles`.`src_code` AS `src_code`,
+                       min( `api_articles`.`art_vol` ) AS `min`,
+                       max( `api_articles`.`art_vol` ) AS `max` 
+                FROM
+                    `api_articles`
+                WHERE src_code = '{source_code}'
+                GROUP BY
+                    `api_articles`.`src_code`
+		"""
+
+        self.open_connection(caller_name="get_min_max_volumes") # make sure connection is open
+        ret_val = None
+        if self.db is not None:
+            curs = self.db.cursor(pymysql.cursors.DictCursor)
+            curs.execute(sel)
+            ret_val = curs.fetchall()
+
+        self.close_connection(caller_name="get_min_max_volumes") # make sure connection is closed
+
+        try:
+            ret_val = ret_val[0]
+            ret_val["infosource"] = "volumes_min_max"
+        except Exception as e:
+            ret_val = None
+            
+        return ret_val
+        
     def get_select_as_list(self, sqlSelect: str):
         """
         Generic retrieval from database, into dict

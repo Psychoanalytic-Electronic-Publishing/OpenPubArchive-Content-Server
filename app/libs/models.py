@@ -110,6 +110,7 @@ class ResponseInfo(BaseModel):
     totalMatchCount: int = Schema(None, title="The number of items in the complete match set that can be retrieved and paged through.")  # used in PEPEasy paging controls
     listLabel: str = Schema(None, title="Descriptive title of data return for SourceInfoList, e.g., Book List, Journal List, Video List. Should be used elsewhere too.")
     listType: ListTypeEnum = Schema(None, title="ListTypeEnum based identifier of the return structure, e.g., 'documentList'.")
+    supplementalInfo: dict = Schema(None, title="Additional info supplied based on the endpoint")
     scopeQuery: list = Schema(None, title="The query strings applied: [query_string, filter_string]")
     description: str = Schema(None, title="A semantic description explaining the action/response")
     request: str = Schema(None, title="The URL request (endpoint) that resulted in this response.")

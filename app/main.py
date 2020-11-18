@@ -3177,6 +3177,7 @@ def metadata_contents_sourcecode(response: Response,
                                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                  SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                                  year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
+                                 moreinfo:int=Query(0, title="Extra volume info", description="Extra info"), 
                                  limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                  offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                                  client_id:int=Depends(get_client_id), 
@@ -3209,6 +3210,7 @@ def metadata_contents_sourcecode(response: Response,
     try:       
         ret_val = opasAPISupportLib.metadata_get_contents(SourceCode,
                                                           year,
+                                                          extra_info=moreinfo, 
                                                           limit=limit,
                                                           offset=offset)
         # fill in additional return structure status info
@@ -3242,6 +3244,7 @@ def metadata_contents(SourceCode: str,
                       response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                       year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
+                      moreinfo:int=Query(0, title="Extra volume info", description="Extra info"), 
                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                       client_id:int=Depends(get_client_id), 
@@ -3275,6 +3278,7 @@ def metadata_contents(SourceCode: str,
         ret_val = documentList = opasAPISupportLib.metadata_get_contents(SourceCode,
                                                                          year,
                                                                          vol=SourceVolume,
+                                                                         extra_info=moreinfo, 
                                                                          limit=limit,
                                                                          offset=offset)
         # fill in additional return structure status info
@@ -3408,8 +3412,8 @@ def metadata_volumes(response: Response,
                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                      sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
                      sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                     limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                     offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                     #limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                     #offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                      client_id:int=Depends(get_client_id), 
                            #client_session:str= Depends(get_client_session)
                      ):
@@ -3427,6 +3431,8 @@ def metadata_volumes(response: Response,
          {url}/v2/Metadata/Volumes/?sourcecode=ijp
 
     ## Notes
+      2020.11.17 Removed limit and offset from q params: they don't work here with the facet pivot used,
+                 and moreover, don't make sense when you have more than one journal being returned
 
     ## Potential Errors
 
@@ -3452,9 +3458,10 @@ def metadata_volumes(response: Response,
         try:
             ret_val = opasAPISupportLib.metadata_get_volumes(source_code,
                                                              source_type=sourcetype,
-                                                             req_url=request.url,
-                                                             limit=limit,
-                                                             offset=offset)
+                                                             req_url=request.url
+                                                             #limit=limit,   # these don't work with facet pivot used here
+                                                             #offset=offset  # at least with solrpy
+                                                             )
         except Exception as e:
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST,
             status_message = "Error: {}".format(e)
