@@ -219,7 +219,6 @@ def get_authserver_session_userinfo(session_id, client_id):
     status_code = 401
     msg = f"get_user_info for session {session_id} from client {client_id}"
     logger.debug(msg)
-    print (msg)
     if session_id is not None:
         full_URL = base + f"/v1/Users" + f"?SessionID={session_id}"
         try:
@@ -424,7 +423,7 @@ def get_access_limitations(doc_id,
         ret_val.accessLimited = True # no access...default, may be changed below.
         
         if session_info is None:
-            logger.info(f"Document permissions for {doc_id} -- no session info")
+            logger.debug(f"Document permissions for {doc_id} -- no session info")
             ## not logged in; take the quickest way out.
             #ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
             #ret_val.accessLimited = True

@@ -6,6 +6,8 @@ logger = logging.getLogger(__name__)
 
 import unittest
 import requests
+import opasQueryHelper
+import opasAPISupportLib
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_info
 
@@ -21,8 +23,6 @@ class TestMost(unittest.TestCase):
     def test_100_most_cited_direct(self):
         """
         """
-        import opasQueryHelper
-        import opasAPISupportLib
         solr_query_spec = \
             opasQueryHelper.parse_search_query_parameters(citecount="5 in ALL", 
                                                           source_name=None,
@@ -43,8 +43,6 @@ class TestMost(unittest.TestCase):
     def test_100_most_cited_direct_simple(self):
         """
         """
-        import opasQueryHelper
-        import opasAPISupportLib
         solr_query_spec = \
             opasQueryHelper.parse_search_query_parameters(citecount="5", 
                                                           source_name=None,

@@ -47,6 +47,7 @@ import os.path
 import sys
 # import shlex
 import copy
+import string
 
 sys.path.append('./solrpy')
 sys.path.append('./libs/configLib')
@@ -128,9 +129,18 @@ import schemaMap
 import opasDocPermissions as opasDocPerm
 
 count_anchors = 0
+
+def has_data(str):
+    ret_val = True
+    if str is None or str == "":
+        ret_val = False
+
+    return ret_val
+        
 def remove_leading_zeros(numeric_string):
     """
         >>> remove_leading_zeros("0033")
+        '33'
         
     """
     ret_val = ""
@@ -143,28 +153,45 @@ def remove_leading_zeros(numeric_string):
 def split_article_id(article_id):
     """
     >>> split_article_id("gap.005.0199a")
-    gap, 005, 0199a
+    ('GAP', None, '5', '199A', None)
+
     >>> split_article_id("rfp.075.0017a")
-    rfp, 075, 0017a
+    ('RFP', None, '75', '17A', None)
+
+    >>> split_article_id(None)
+    (None, None, None, None, None)
+
     """
     journal = year = vol = page = page_id = None
-    try:
-        journal, vol, page = article_id.split(".")
-    except Exception as e:
+    if article_id is not None:
+        article_id = article_id.upper()
+        
         try:
-            a,b,c,d = article_id.split(".")
-            if d[0] == "P":
-                journal, vol, page, page_id = a, b, c, d
-            elif b[:2] in [19, 20]:
-                journal, year, vol, page = a, b, c, d
+            journal, vol, page = article_id.split(".")
         except Exception as e:
-            logger.log(f"Can not split {article_id} ({e})")
-    
-    vol = remove_leading_zeros(vol)
-    page = remove_leading_zeros(page)
-
-    if journal is not None:
-        journal = journal.upper()
+            try:
+                a,b,c,d = article_id.split(".")
+                if d[0] == "P":
+                    journal, vol, page, page_id = a, b, c, d
+                elif b[:2] in [19, 20]:
+                    journal, year, vol, page = a, b, c, d
+            except Exception as e:
+                logger.error(f"Split Article ID error: can not split ID {article_id} ({e})")
+        else:
+            vol = remove_leading_zeros(vol)
+            page = remove_leading_zeros(page)
+        
+            if journal is not None:
+                journal = journal.upper()
+        
+            if year is not None:
+                year = page.upper()
+                
+            if page is not None:
+                page = page.upper()
+                
+            if page_id is not None:
+                page_id = page_id.upper()
        
     return journal, year, vol, page, page_id
     
@@ -316,7 +343,9 @@ def document_get_info(document_id, fields="art_id, art_sourcetype, art_year, fil
         try:
             # PEP indexes field in upper case, but just in case caller sends lower case, convert.
             document_id = document_id.upper()
-            results = solr_docs.query(q = f"art_id:{document_id}",  fields = fields)
+            q_str = f"art_id:{document_id}"
+            logger.info(f"Solr Query: q={q_str}")
+            results = solr_docs.query(q = q_str, fields = fields)
         except Exception as e:
             logger.error(f"Solr Retrieval Error: {e}")
         else:
@@ -616,7 +645,9 @@ def database_get_whats_new(days_back=7,
 
     # two ways to get date, slightly different meaning: timestamp:[NOW-{days_back}DAYS TO NOW] AND file_last_modified:[NOW-{days_back}DAYS TO NOW]
     try:
-        results = solr_docs.query( q = f"file_last_modified:[NOW-{days_back}DAYS TO NOW] AND art_sourcetype:{source_type}",  
+        q_str = f"file_last_modified:[NOW-{days_back}DAYS TO NOW] AND art_sourcetype:{source_type}"
+        logger.info(f"Solr Query: q={q_str}")
+        results = solr_docs.query( q = q_str,  
                                    fl = field_list,
                                    fq = "{!collapse field=art_sourcecode max=art_year_int}",
                                    sort=sort_by, sort_order="desc",
@@ -734,6 +765,7 @@ def metadata_get_volumes(source_code=None,
     facet_fields = ["art_vol", "art_sourcecode"]
     facet_pivot = "art_sourcecode,art_year,art_vol" # important ...no spaces!
     try:
+        logger.info(f"Solr Query: q={q_str} facet='on'")
         result = solr_docs.query( q = q_str,
                                   fq="*:*", 
                                   fields = distinct_return,
@@ -815,16 +847,23 @@ def metadata_get_volumes(source_code=None,
         
     return ret_val
 
-
-def metadata_get_next_and_prev_articles(#source_code=None,
-                                        #source_year=None,
-                                        #source_vol=None,
-                                        art_id=None, 
+def metadata_get_next_and_prev_articles(art_id=None, 
                                         req_url: str=None 
                                        ):
     """
     Return the previous, matching and next article, assuming they all exist.
     The intent is to be able to have next and previous arrows on the articles.
+    
+    >>> prev, match, next = metadata_get_next_and_prev_articles(art_id="APA.066.0159A")
+    >>> prev.get("art_id", None), match.get("art_id", None), next.get("art_id", None)
+    ('APA.066.0149A', 'APA.066.0159A', 'APA.066.0167A')
+    
+    >>> prev, match, next = metadata_get_next_and_prev_articles(art_id="GW.016.0274A")
+    >>> prev.get("art_id", None), match.get("art_id", None), next.get("art_id", None)
+    ('GW.016.0273A', 'GW.016.0274A', 'GW.016.0276A')
+    
+    >>> metadata_get_next_and_prev_articles(art_id="GW.016")
+    ({}, {}, {})
     
     New: 2020-11-17      
     """
@@ -840,19 +879,22 @@ def metadata_get_next_and_prev_articles(#source_code=None,
     
     source_code, source_year, source_vol, source_page, source_page_id = split_article_id(art_id)
     distinct_return = "art_sourcecode, art_year, art_vol, art_id"
-    next_art = None
-    prev_art = None
-    match_art = None
+    next_art = {}
+    prev_art = {}
+    match_art = {}
     
-    q_str = "bk_subdoc:false"
-    if source_code is not None:
+    q_str = "art_level:1 "
+    if source_code is not None and source_code.isalpha():
         q_str += f" && art_sourcecode:{source_code}"
-    if source_vol is not None:
+
+    if source_vol is not None and source_vol.isalnum():
         q_str += f" && art_vol:{source_vol}"
-    if source_year is not None:
+        
+    if source_year is not None and source_year.isalnum():
         q_str += f" && art_year:{source_year}"
         
     try:
+        logger.info(f"Solr Query: q={q_str}")
         result = solr_docs.query( q = q_str,
                                   fq="*:*", 
                                   fields = distinct_return,
@@ -869,20 +911,17 @@ def metadata_get_next_and_prev_articles(#source_code=None,
             if n["art_id"] == art_id:
                 # we found it
                 match_art = result.results[count]
-    
                 try:
                     prev_art = result.results[count-1]
                 except:
-                    prev_art = None
-    
+                    prev_art = {}
                 try:
                     next_art = result.results[count+1]
                 except:
-                    next_art = None
+                    next_art = {}
             else:
                 count += 1
                 continue
-
     
     return prev_art, match_art, next_art
 
@@ -892,9 +931,26 @@ def metadata_get_next_and_prev_vols(source_code=None,
                                    ):
     """
     Return previous, matched, and next volume for the source code and year.
-    
     New: 2020-11-17
-      
+
+    >>> metadata_get_next_and_prev_vols(source_code="APA", source_vol="66")
+    ({'value': '65', 'count': 89, 'year': '2017'}, {'value': '66', 'count': 95, 'year': '2018'}, {'value': '67', 'count': 88, 'year': 'APA'})
+    
+    >>> metadata_get_next_and_prev_vols(source_code="GW", source_vol="16")
+    ({'value': '15', 'count': 1, 'year': '1933'}, {'value': '16', 'count': 1, 'year': '1993'}, None)
+    
+    >>> metadata_get_next_and_prev_vols(source_code="GW")
+    (None, None, None)
+    
+    >>> metadata_get_next_and_prev_vols(source_vol="66")
+    (None, None, None)
+    
+    >>> metadata_get_next_and_prev_vols(source_vol=66)
+    (None, None, None)
+    
+    >>> metadata_get_next_and_prev_vols(source_code="GW", source_vol=16)
+    ({'value': '15', 'count': 1, 'year': '1933'}, {'value': '16', 'count': 1, 'year': '1993'}, None)
+
     """
     # returns multiple gw's and se's, 139 unique volumes counting those (at least in 2020)
     # works for journal, videostreams have more than one year per vol.
@@ -912,69 +968,77 @@ def metadata_get_next_and_prev_vols(source_code=None,
     match_vol = None
     
     q_str = "bk_subdoc:false"
-    if source_code is not None:
-        q_str += f" && art_sourcecode:{source_code}"
-    if source_vol is not None:
-        source_vol_int = int(source_vol)
-        next_source_vol_int = source_vol_int + 1
-        prev_source_vol_int = source_vol_int - 1
-        q_str += f" && art_vol:({source_vol} || {next_source_vol_int} || {prev_source_vol_int})"
-        
-    facet_fields = ["art_vol", "art_sourcecode"]
-    facet_pivot_fields = "art_sourcecode,art_year,art_vol" # important ...no spaces!
-    try:
-        result = solr_docs.query( q = q_str,
-                                  fq="*:*", 
-                                  fields = distinct_return,
-                                  sort="art_sourcecode, art_year", sort_order="asc",
-                                  #fq="{!collapse field=art_sourcecode, art_vol}",
-                                  facet="on", 
-                                  facet_fields = facet_fields, 
-                                  facet_pivot = facet_pivot_fields,
-                                  facet_mincount=1,
-                                  facet_sort="art_year asc", 
-                                  #rows=limit, 
-                                  #start=offset
-                                 )
-        facet_pivot = result.facet_counts["facet_pivot"][facet_pivot_fields]
-        #ret_val = [(piv['value'], [n["value"] for n in piv["pivot"]]) for piv in facet_pivot]
-    except Exception as e:
-        logger.error(f"Error: {e}")
+    if source_code is None:
+        logger.error("No source code (e.g., journal code) provided;")
     else:
-        prev_vol = None
-        match_vol = None
-        next_vol = None
-        if facet_pivot != []:
-            next_vol_idx = None
-            prev_vol_idx = None
-            match_vol_idx = None
-            pivot_len = len(facet_pivot[0]['pivot'])
-            counter = 0
-            for n in facet_pivot[0]['pivot']:
-                if n['pivot'][0]['value'] == source_vol:
-                    match_vol_idx = counter
-                    match_vol = n['pivot'][0]
-                    match_vol_year = n['value']
-                    match_vol['year'] = match_vol_year
-                    del(match_vol['field'])
-                counter += 1
-            
-            if match_vol_idx > 0:
-                prev_vol_idx = match_vol_idx - 1
-                prev_vol = facet_pivot[0]['pivot'][prev_vol_idx]
-                prev_vol_year = prev_vol['value']
-                prev_vol = prev_vol['pivot'][0]
-                prev_vol['year'] = prev_vol_year
-                del(prev_vol['field'])
-                
-            if match_vol_idx < pivot_len - 1:
-                next_vol_idx = match_vol_idx + 1
-                next_vol = facet_pivot[0]['pivot'][next_vol_idx]
-                next_vol_year = facet_pivot[0]['value']
-                next_vol = next_vol['pivot'][0]
-                next_vol['year'] = next_vol_year
-                del(next_vol['field'])
+        q_str += f" && art_sourcecode:{source_code}"
+
+        if source_vol is None:
+            logger.error("No vol number provided;")
+        else:
+            source_vol_int = int(source_vol)
+            next_source_vol_int = source_vol_int + 1
+            prev_source_vol_int = source_vol_int - 1
+            q_str += f" && art_vol:({source_vol} || {next_source_vol_int} || {prev_source_vol_int})"
         
+            facet_fields = ["art_vol", "art_sourcecode"]
+            facet_pivot_fields = "art_sourcecode,art_year,art_vol" # important ...no spaces!
+            try:
+                logger.info(f"Solr Query: q={q_str}")
+                result = solr_docs.query( q = q_str,
+                                          fq="*:*", 
+                                          fields = distinct_return,
+                                          sort="art_sourcecode, art_year", sort_order="asc",
+                                          #fq="{!collapse field=art_sourcecode, art_vol}",
+                                          facet="on", 
+                                          facet_fields = facet_fields, 
+                                          facet_pivot = facet_pivot_fields,
+                                          facet_mincount=1,
+                                          facet_sort="art_year asc", 
+                                          #rows=limit, 
+                                          #start=offset
+                                         )
+                facet_pivot = result.facet_counts["facet_pivot"][facet_pivot_fields]
+                #ret_val = [(piv['value'], [n["value"] for n in piv["pivot"]]) for piv in facet_pivot]
+            except Exception as e:
+                logger.error(f"Error: {e}")
+            else:
+                prev_vol = None
+                match_vol = None
+                next_vol = None
+                if facet_pivot != []:
+                    next_vol_idx = None
+                    prev_vol_idx = None
+                    match_vol_idx = None
+                    pivot_len = len(facet_pivot[0]['pivot'])
+                    counter = 0
+                    for n in facet_pivot[0]['pivot']:
+                        if n['pivot'][0]['value'] == str(source_vol):
+                            match_vol_idx = counter
+                            match_vol = n['pivot'][0]
+                            match_vol_year = n['value']
+                            match_vol['year'] = match_vol_year
+                            del(match_vol['field'])
+                        counter += 1
+        
+                    if match_vol_idx is not None:
+                        if match_vol_idx > 0:
+                            prev_vol_idx = match_vol_idx - 1
+                            prev_vol = facet_pivot[0]['pivot'][prev_vol_idx]
+                            prev_vol_year = prev_vol['value']
+                            prev_vol = prev_vol['pivot'][0]
+                            prev_vol['year'] = prev_vol_year
+                            del(prev_vol['field'])
+                            
+                        if match_vol_idx < pivot_len - 1:
+                            next_vol_idx = match_vol_idx + 1
+                            next_vol = facet_pivot[0]['pivot'][next_vol_idx]
+                            next_vol_year = facet_pivot[0]['value']
+                            next_vol = next_vol['pivot'][0]
+                            next_vol['year'] = next_vol_year
+                            del(next_vol['field'])
+                    else:
+                        logger.warning("No volume to assess: ", match_vol_idx)
     
     return prev_vol, match_vol, next_vol
 
@@ -1012,7 +1076,9 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     else:
         pep_code = code
 
-    results = solr_docs.query(q = f"art_sourcecode:{pep_code} && {field}:{search_val}",  
+    q_str = f"art_sourcecode:{pep_code} && {field}:{search_val}"
+    logger.info(f"Solr Query: q:{q_str}")
+    results = solr_docs.query(q = q_str,  
                               fields = """art_id,
                                           art_vol,
                                           art_year,
@@ -1118,7 +1184,7 @@ def metadata_get_database_statistics(session_info=None):
     Return counts for the annual summary (or load checks)
 
     >>> results = metadata_get_database_statistics()
-    >>> results.documentList.responseInfo.count == 5
+    >>> results.article_count > 135000
     True
     """
     content = models.ServerStatusContent()
@@ -1223,12 +1289,13 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
     total_count = 0
 
     if pep_code is not None:
-        query = "art_sourcetype:video* AND art_sourcecode:{}".format(pep_code)
+        q_str = "art_sourcetype:video* AND art_sourcecode:{}".format(pep_code)
     else:
-        query = "art_sourcetype:video*"
+        q_str = "art_sourcetype:video*"
         
     try:
-        srcList = solr_docs.query(q = query,  
+        logger.info(f"Solr Query: q={q_str}")
+        srcList = solr_docs.query(q = q_str,  
                                   fields = opasConfig.DOCUMENT_ITEM_VIDEO_FIELDS,
                                   sort = "art_citeas_xml",
                                   sort_order = "asc",
@@ -1286,48 +1353,46 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
 
     No attempt here to map to the correct structure, just checking what field/data items we have in sourceInfoDB.
 
+    >>> results = metadata_get_source_info(src_code="APA")
+    >>> results.sourceInfo.responseInfo.count == 1
+    True
     >>> results = metadata_get_source_info(src_type="journal", limit=3)
     >>> results.sourceInfo.responseInfo.count >= 3
     True
     >>> results = metadata_get_source_info(src_type="book", limit=10)
-    >>> results.sourceInfo.responseInfo.count >= 5
+    >>> results.sourceInfo.responseInfo.count >= 10
     True
     >>> results = metadata_get_source_info(src_type="journals", limit=10, offset=0)
-    >>> results.sourceInfo.responseInfo.count >= 5
+    >>> results.sourceInfo.responseInfo.count >= 10
     True
     >>> results = metadata_get_source_info(src_type="journals", limit=10, offset=6)
-    >>> results.sourceInfo.responseInfo.count >= 5
-    True
-
-    >>> results = metadata_get_source_info(src_code="APA")
-    >>> results.sourceInfo.responseInfo.count == 1
+    >>> results.sourceInfo.responseInfo.count >= 10
     True
 
     >>> results = metadata_get_source_info()
-    >>> results.sourceInfo.responseInfo.fullCount >= 235
-    True
+    >>> results.sourceInfo.responseInfo.fullCount
+    191
     
     """
     ret_val = []
     source_info_dblist = []
+    err = None
     ocd = opasCentralDBLib.opasCentralDB()
     # standardize Source type, allow plural, different cases, but code below this part accepts only those three.
     if src_type is not None and src_type != "*":
+        src_type_in = src_type # save it for logging
         src_type = opasConfig.normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
+        if src_type == None:
+            err = f"Bad source type: {src_type_in}"
+            logger.error(err)
+            raise Exception(err)
 
-    if src_type is None:
-        errMsg = f"MetadataGetSourceByType: Parameter error, Unknown source type."
-        total_count = count = 0
-        logger.warning(errMsg)
-    elif src_type == "videos":
-        # This is not part of the original API, it brings back individual videos rather than the videostreams
-        # but here in case we need it.  In that case, your source must be videos.*, like videostream, in order
-        # to load individual videos rather than the video journals
-        #  gets count of videos and a list of them (from Solr database)
-        total_count, source_info_dblist = metadata_get_videos(src_type, src_code, limit, offset)
+    if src_type == "videos":
+        total_count, source_info_dblist = metadata_get_videos(src_type=src_type, pep_code=src_code, limit=limit, offset=offset)
         count = len(source_info_dblist)
     else: # get from mySQL
         try:
+            # print(src_type, src_code, src_name, limit, offset)
             total_count, source_info_dblist = ocd.get_sources(src_type = src_type, src_code=src_code, src_name=src_name, limit=limit, offset=offset)
             if source_info_dblist is not None:
                 count = len(source_info_dblist)
@@ -1801,7 +1866,7 @@ def documents_get_document(document_id,
                     if option_flags & opasConfig.OPTION_2_RETURN_TRANSLATION_SET:
                         # get document translations of the first document (note this also includes the original)
                         if document_list_item.origrx is not None:
-                            translationSet, count = opasQueryHelper.quick_docmeta_docsearch(qstr=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
+                            translationSet, count = opasQueryHelper.quick_docmeta_docsearch(q_str=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
                             if translationSet is not None:
                                 document_list_item.translationSet = translationSet
                     
@@ -2057,11 +2122,13 @@ def prep_document_download(document_id,
     ret_val = None
     status = httpCodes.HTTP_200_OK
 
-    results = solr_docs.query( q = "art_id:%s" % (document_id),  
+    q_str =  "art_id:%s" % (document_id)
+    logger.info(f"Solr Query: q={q_str}")
+    results = solr_docs.query( q = q_str,  
                                fields = """art_id, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
                                            art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi,
                                            art_issn, file_classification"""
-                               )
+                             )
     try:
         art_info = results.results[0]
         docs = art_info.get("text_xml", art_info.get("art_excerpt", None))
@@ -2293,6 +2360,7 @@ def search_analysis( query_list,
             #subfield_clauses = shlex.split(term_clause)
 
         try:
+            logger.info(f"Solr Query: q={query_item}")
             results = solr_docs.query(query_item,
                                       defType = def_type,
                                       q_op="AND", 

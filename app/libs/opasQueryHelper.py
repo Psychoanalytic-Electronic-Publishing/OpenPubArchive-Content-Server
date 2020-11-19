@@ -2032,7 +2032,9 @@ def get_parent_data(child_para_id, documentListItem=None):
         parent_id = m.group(0)
         if parent_id is not None:
             try:
-                results = solr_docs.query(q = f"art_level:1 && art_id:{art_id}",  
+                q_str = f"art_level:1 && art_id:{art_id}"
+                logger.info(f"Solr Query: q={q_str}")
+                results = solr_docs.query(q = q_str,  
                                           fields = f"art_year, id, art_citeas_xml, file_classification, art_isbn, art_issn, art_pgrg", 
                                           rows = 1,
                                           )
@@ -2368,7 +2370,7 @@ def merge_documentListItems(old, new):
     return old.accessClassification
 
 #-----------------------------------------------------------------------------
-def quick_docmeta_docsearch(qstr,
+def quick_docmeta_docsearch(q_str,
                             fields=None,
                             req_url=None, 
                             limit=10,
@@ -2378,7 +2380,8 @@ def quick_docmeta_docsearch(qstr,
     if fields is None:
         fields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
         
-    results = solr_docs.query(q = qstr, fields = fields, limit=limit, offset=offset)
+    logger.info(f"Solr Query: q={q_str}")
+    results = solr_docs.query(q = q_str, fields = fields, limit=limit, offset=offset)
     document_item_list = []
     count = len(results)
     try:
@@ -2387,9 +2390,9 @@ def quick_docmeta_docsearch(qstr,
             documentListItem = get_base_article_info_from_search_result(result, documentListItem)
             document_item_list.append(documentListItem)
     except IndexError as e:
-        logger.warning("No matching entry for %s.  Error: %s", (qstr, e))
+        logger.warning("No matching entry for %s.  Error: %s", (q_str, e))
     except KeyError as e:
-        logger.warning("No content found for %s.  Error: %s", (qstr, e))
+        logger.warning("No content found for %s.  Error: %s", (q_str, e))
     else:
         response_info = models.ResponseInfo( count = count,
                                              fullCount = count,

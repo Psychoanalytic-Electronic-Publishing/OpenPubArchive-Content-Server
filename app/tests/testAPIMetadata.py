@@ -293,7 +293,7 @@ class TestMetadata(unittest.TestCase):
         List of names for a specific source
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/IJPSP/')
+        full_URL = base_plus_endpoint_encoded('/v1/Metadata/Journals/IJPSP/')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
@@ -306,7 +306,7 @@ class TestMetadata(unittest.TestCase):
         List of names for a specific source
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/*/')
+        full_URL = base_plus_endpoint_encoded('/v1/Metadata/*/*/')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
@@ -320,7 +320,7 @@ class TestMetadata(unittest.TestCase):
         List of names for a specific source
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/IJP/')
+        full_URL = base_plus_endpoint_encoded('/v1/Metadata/*/IJP/')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
@@ -333,7 +333,7 @@ class TestMetadata(unittest.TestCase):
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
         # get all the PEP Codes
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/*/')
+        full_URL = base_plus_endpoint_encoded('/v1/Metadata/*/*/')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
@@ -356,14 +356,14 @@ class TestMetadata(unittest.TestCase):
         List of names for a specific source by name
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/*/?sourcename=.*psychoanalytic.*')
+        full_URL = base_plus_endpoint_encoded('/v1/Metadata/*/*/?sourcename=.*psychoanalytic.*')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
         assert(r['sourceInfo']['responseInfo']['count'] == 33)
 
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/*/?sourcename=.*international journal of psychoanalysis.*')
+        full_URL = base_plus_endpoint_encoded('/v1/Metadata/*/*/?sourcename=.*international journal of psychoanalysis.*')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -376,7 +376,7 @@ class TestMetadata(unittest.TestCase):
         List of names for a source that doesn't match the type
         /v1/Metadata/{SourceType}/{SourceCode}/
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Books/IJP/')
+        full_URL = base_plus_endpoint_encoded('/v1/Metadata/Books/IJP/')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
@@ -390,28 +390,19 @@ class TestMetadata(unittest.TestCase):
         
         Currently: just changes to Journal, maybe should change to "*"
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Garbage/*/')
+        full_URL = base_plus_endpoint_encoded('/v1/Metadata/Garbage/*/')
         response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        # test return
-        r = response.json()
-        assert(r['sourceInfo']['responseInfo']['count'] == 0)
+        assert(response.ok == False)
         
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Garbage/IJP/')
+        full_URL = base_plus_endpoint_encoded('/v1/Metadata/Garbage/IJP/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        # test return
-        r = response.json()
-        assert(r['sourceInfo']['responseInfo']['count'] == 0)
+        assert(response.ok == False)
         
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Garbage/GW/')
+        full_URL = base_plus_endpoint_encoded('/v1/Metadata/Garbage/GW/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        # test return
-        r = response.json()
-        assert(r['sourceInfo']['responseInfo']['count'] == 0)
+        assert(response.ok == False)
         
     def test_9a_meta_journal_parameter_errors(self):
         """
