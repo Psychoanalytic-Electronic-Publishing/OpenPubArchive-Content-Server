@@ -43,7 +43,7 @@ class TestSolrAPIPrevNextDirectFunctions(unittest.TestCase):
         print (prev_vol, match_vol, next_vol)
 
     def test_2_get_next_and_prev_articles(self):
-        prev_art, match_art, next_art = opasAPISupportLib.metadata_get_next_and_prev_articles(source_code="IJPSP", source_vol="4", art_id="IJPSP.004.0445A")
+        prev_art, match_art, next_art = opasAPISupportLib.metadata_get_next_and_prev_articles(art_id="IJPSP.004.0445A")
         print (prev_art, match_art, next_art)
     
 if __name__ == '__main__':

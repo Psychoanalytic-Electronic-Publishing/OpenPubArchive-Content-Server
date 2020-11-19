@@ -55,32 +55,32 @@ class TestsWithoutClientSession(unittest.TestCase):
         print (f"Book Count: {r['sourceInfo']['responseInfo']['fullCount']}")
         assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.BOOKCOUNT)
 
-    def test_7_meta_get_sourcenames(self):
-        """
-        List of names for a specific source
-        /v2/Metadata/{SourceType}/{SourceCode}/
-        """
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/IJPSP/')
-        response = requests.get(full_URL)
-        assert(response.ok == True)
-        # test return
-        r = response.json()
-        assert(r['sourceInfo']['responseInfo']['fullCount'] == 1)
-        assert(r['sourceInfo']['responseSet'][0]['displayTitle'] == 'International Journal of Psychoanalytic Self Psychology')
+    #def test_7_meta_get_sourcenames(self):
+        #"""
+        #List of names for a specific source
+        #/v2/Metadata/{SourceType}/{SourceCode}/
+        #"""
+        #full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/IJPSP/')
+        #response = requests.get(full_URL)
+        #assert(response.ok == True)
+        ## test return
+        #r = response.json()
+        #assert(r['sourceInfo']['responseInfo']['fullCount'] == 1)
+        #assert(r['sourceInfo']['responseSet'][0]['displayTitle'] == 'International Journal of Psychoanalytic Self Psychology')
         
-    def test_8_meta_all_sources(self):
-        """
-        List of names for a specific source
-        /v2/Metadata/{SourceType}/{SourceCode}/
-        """
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/*/')
-        response = requests.get(full_URL)
-        assert(response.ok == True)
-        # test return
-        r = response.json()
-        count = r['sourceInfo']['responseInfo']['count']
-        print (f"Count {count}")
-        assert(count >= unitTestConfig.ALL_SOURCES_COUNT)
+    #def test_8_meta_all_sources(self):
+        #"""
+        #List of names for a specific source
+        #/v2/Metadata/{SourceType}/{SourceCode}/
+        #"""
+        #full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/*/')
+        #response = requests.get(full_URL)
+        #assert(response.ok == True)
+        ## test return
+        #r = response.json()
+        #count = r['sourceInfo']['responseInfo']['count']
+        #print (f"Count {count}")
+        #assert(count >= unitTestConfig.ALL_SOURCES_COUNT)
 
     def test_9_pubs_authornames(self):
         """

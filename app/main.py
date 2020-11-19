@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1117.3.Alpha"
+__version__     = "2020.1118.1.Alpha"
 __status__      = "Development"
 
 """
@@ -3530,7 +3530,7 @@ def metadata_books(response: Response,
 
 #-----------------------------------------------------------------------------
 #@app.get("/v1/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_SOURCE_NAMES)
-@app.get("/v2/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_SOURCE_NAMES)
+@app.get("/v1/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_SOURCE_NAMES)
 def metadata_by_sourcetype_sourcecode(response: Response,
                                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                       SourceType: str=Path(..., title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PATH_SOURCETYPE), 
@@ -4246,6 +4246,15 @@ def documents_document_fetch(response: Response,
                                                                 session_info=session_info,
                                                                 option_flags=specialoptions
                                                                 )
+
+            try:
+                supplemental = opasAPISupportLib.metadata_get_next_and_prev_articles(art_id=documentID)
+                if supplemental[0] is not None:
+                    ret_val.documents.responseSet[0].sourcePrevious = supplemental[0]["art_id"]
+                if supplemental[2] is not None:
+                    ret_val.documents.responseSet[0].sourceNext = supplemental[2]["art_id"]
+            except Exception as e:
+                logger.debug(f"No next/prev data to return ({e})")
         
         except Exception as e:
             response.status_code=httpCodes.HTTP_400_BAD_REQUEST

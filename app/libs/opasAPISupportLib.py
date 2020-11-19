@@ -128,7 +128,46 @@ import schemaMap
 import opasDocPermissions as opasDocPerm
 
 count_anchors = 0
+def remove_leading_zeros(numeric_string):
+    """
+        >>> remove_leading_zeros("0033")
+        
+    """
+    ret_val = ""
+    for n in numeric_string:
+        if n != "0":
+            ret_val += n
+    
+    return ret_val
+            
+def split_article_id(article_id):
+    """
+    >>> split_article_id("gap.005.0199a")
+    gap, 005, 0199a
+    >>> split_article_id("rfp.075.0017a")
+    rfp, 075, 0017a
+    """
+    journal = year = vol = page = page_id = None
+    try:
+        journal, vol, page = article_id.split(".")
+    except Exception as e:
+        try:
+            a,b,c,d = article_id.split(".")
+            if d[0] == "P":
+                journal, vol, page, page_id = a, b, c, d
+            elif b[:2] in [19, 20]:
+                journal, year, vol, page = a, b, c, d
+        except Exception as e:
+            logger.log(f"Can not split {article_id} ({e})")
+    
+    vol = remove_leading_zeros(vol)
+    page = remove_leading_zeros(page)
 
+    if journal is not None:
+        journal = journal.upper()
+       
+    return journal, year, vol, page, page_id
+    
 #-----------------------------------------------------------------------------
 def get_basecode(document_id):
     """
@@ -185,13 +224,13 @@ def get_session_info(request: Request,
             logger.info(f"Session {session_id} not found.  Getting from authserver (will save on server)")
             session_info = opasDocPerm.get_authserver_session_info(session_id=session_id, client_id=client_id)
         else:
-            logger.info(f"Session {session_id} found in DB.  Checking if already marked authenticated.")
+            logger.debug(f"Session {session_id} found in DB.  Checking if already marked authenticated.")
             if session_info.authenticated == 0: # not logged in
                 # better check if now they are logged in
                 logger.info(f"User was not logged in; checking to see if they are now.")
                 session_info = opasDocPerm.get_authserver_session_info(session_id=session_id, client_id=client_id)
             else:
-                logger.info(f"User was logged in.  No further checks needed.")
+                logger.debug(f"User was logged in.  No further checks needed.")
 
         if opasConfig.LOG_CALL_TIMING:
             logger.debug(f"Get/Save session info response time: {time.time() - ts}")
@@ -339,7 +378,7 @@ def database_get_most_viewed( publication_period: int=5,
 
     Docstring Tests:
 
-    >>> result = database_get_most_viewed()
+    >>> result, status = database_get_most_viewed()
     >>> result.documentList.responseSet[0].documentID if result.documentList.responseInfo.count >0 else "No views yet."
     '...'
 
@@ -522,7 +561,7 @@ def database_who_cited( publication_period: int=None,   # Limit the considered p
     cited_in_period = opasConfig.normalize_val(cited_in_period, opasConfig.VALS_YEAROPTIONS, default='5')
 
     if sort is None:
-        sort = f"art_cited_{period} desc"
+        sort = f"art_cited_{cited_in_period} desc"
 
     start_year = dtime.date.today().year
     if publication_period is None:
@@ -777,9 +816,9 @@ def metadata_get_volumes(source_code=None,
     return ret_val
 
 
-def metadata_get_next_and_prev_articles(source_code=None,
-                                        source_year=None,
-                                        source_vol=None,
+def metadata_get_next_and_prev_articles(#source_code=None,
+                                        #source_year=None,
+                                        #source_vol=None,
                                         art_id=None, 
                                         req_url: str=None 
                                        ):
@@ -799,6 +838,7 @@ def metadata_get_next_and_prev_articles(source_code=None,
                                 #rows=limit, start=offset
                                 #)
     
+    source_code, source_year, source_vol, source_page, source_page_id = split_article_id(art_id)
     distinct_return = "art_sourcecode, art_year, art_vol, art_id"
     next_art = None
     prev_art = None
@@ -1024,6 +1064,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                                        pgRg = result.get("art_pgrg", None),
                                        pgStart = pgStart,
                                        pgEnd = pgEnd,
+                                       title = result.get("title", None), 
                                        authorMast = authorMast,
                                        documentID = result.get("art_id", None),
                                        documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
@@ -1072,11 +1113,11 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     return ret_val
 
 #-----------------------------------------------------------------------------
-def metadata_get_database_statistics(session_info):
+def metadata_get_database_statistics(session_info=None):
     """
     Return counts for the annual summary (or load checks)
 
-    >>> results = metadata_get_counts()
+    >>> results = metadata_get_database_statistics()
     >>> results.documentList.responseInfo.count == 5
     True
     """
@@ -1519,10 +1560,10 @@ def authors_get_author_publications(author_partial,
     >>> type(ret_val)
     <class 'models.AuthorPubList'>
     >>> print (f"{ret_val}"[0:68])
-    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=10
+    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=15
     >>> ret_val=authors_get_author_publications(author_partial="Fonag")
     >>> print (f"{ret_val}"[0:68])
-    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=10
+    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=15
     >>> ret_val=authors_get_author_publications(author_partial="Levinson, Nadine A.")
     >>> print (f"{ret_val}"[0:67])
     authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=8
@@ -1617,7 +1658,7 @@ def documents_get_abstracts(document_id,
       Not thrilled about the prospect of changing it, but probably the right thing to do.
 
     >>> results = documents_get_abstracts("IJP.075")
-    >>> results.documents.responseInfo.count == 10
+    >>> results.documents.responseInfo.count == 15
     True
     >>> results = documents_get_abstracts("AIM.038.0279A")  # no abstract on this one
     >>> results.documents.responseInfo.count == 1

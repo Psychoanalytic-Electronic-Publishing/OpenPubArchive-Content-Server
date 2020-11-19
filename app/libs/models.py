@@ -275,6 +275,8 @@ class DocumentListItem(BaseModel):
     groupName: str = Schema(None, title="Group Name", description="")
     groupAlso: str = Schema(None, title="Group Also", description="")
     groupTermCount: str = Schema(None, title="Group Term Count", description="")
+    sourcePrevious: str = Schema(None, title="Previous part (article)", description="Previous part (article) in a source divided into multiple articles (e.g., journals and some books)")
+    sourceNext: str = Schema(None, title="Previous part (article)", description="Previous part (article) in a source divided into multiple articles (e.g., journals and some books)")
     termType: str = Schema(None, title="", description="")
     termSource: str = Schema(None, title="", description="")
     termDefPartXML: str = Schema(None, title="", description="")

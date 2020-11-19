@@ -4,12 +4,27 @@
 import unittest
 import requests
 from unitTestConfig import base_plus_endpoint_encoded, headers
+import unitTestConfig
+
+# Login!
+sessID, headers, session_info = unitTestConfig.test_login()
 
 class TestConcurrency(unittest.TestCase):
     """
     Note: tests are performed in alphabetical order, hence the function naming
           with forced order in the names.
-    """   
+    """
+    
+    def test_contents_streams_reported_issue(self):
+        """
+        https://stage-api.pep-web.rocks/v2/Metadata/Videos/?sourcecode=%2A&streams=false&limit=200&offset=0
+        """
+        count = 0
+        while count <= 10:
+            full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/?sourcecode=%2A&streams=false&limit=200&offset=0')
+            response1 = requests.get(full_URL, headers=headers)
+            assert(response1.ok == True)
+            count += 1
 
     def test_all_three_together(self):
         """
