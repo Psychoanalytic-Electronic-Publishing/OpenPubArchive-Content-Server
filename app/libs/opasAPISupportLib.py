@@ -60,6 +60,7 @@ import socket, struct
 from collections import OrderedDict
 from urllib.parse import unquote
 import json
+from xml.sax import SAXParseException
 
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request

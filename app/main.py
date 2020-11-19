@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1118.3.Alpha"
+__version__     = "2020.1118.4.Alpha"
 __status__      = "Development"
 
 """
@@ -3347,7 +3347,10 @@ def metadata_videos(response: Response,
         source_type = "stream"
     else:
         source_type = "videos"
-        
+    
+    # TEMP - force for now, as a test    
+    source_type = "videos"
+    
     ret_val = metadata_by_sourcetype_sourcecode(response,
                                                 request,
                                                 SourceType=source_type,
