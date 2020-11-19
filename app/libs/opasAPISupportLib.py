@@ -1287,6 +1287,8 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
     """
     source_info_dblist = []
     total_count = 0
+    ret_val = {}
+    return_status = (200, "OK")
 
     if pep_code is not None:
         q_str = "art_sourcetype:video* AND art_sourcecode:{}".format(pep_code)
@@ -1301,9 +1303,34 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
                                   sort_order = "asc",
                                   rows=limit, start=offset
                                   )
+    except solr.SolrException as e:
+        if e is None:
+            ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
+            ret_status = (e.httpcode, None) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
+            logger.error(f"Solr Runtime Search Error (a): {e.reason}")
+            logger.error(e.body)
+        elif e.reason is not None:
+            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
+            ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
+            logger.error(f"Solr Runtime Search Error (b): {e.reason}")
+            logger.error(e.body)
+        else:
+            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
+            ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
+            logger.error(f"Solr Runtime Search Error (c): {e.httpcode}")
+            logger.error(e.body)
+        
+    except SAXParseException as e:
+        ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Search syntax error", error_description=f"{e.getMessage()}")
+        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+        logger.error(f"Solr Runtime Search Error (parse): {ret_val}. Params sent: {solr_param_dict}")
+                                
     except Exception as e:
         logger.error("metadataGetVideos Error: {}".format(e))
-
+        ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
+        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+        logger.error(f"Solr Runtime Search Error (syntax): {e.httpcode}. Params sent: {solr_param_dict}")
+        logger.error(e.body)
     else:
         # count = len(srcList.results)
         total_count = int(srcList.results.numFound)
@@ -1337,7 +1364,7 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
             logger.debug("metadataGetVideos: %s", source_info_record)
             source_info_dblist.append(source_info_record)
 
-    return total_count, source_info_dblist
+    return total_count, source_info_dblist, ret_val, return_status
 
 #-----------------------------------------------------------------------------
 def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
@@ -1388,8 +1415,10 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
             raise Exception(err)
 
     if src_type == "videos":
-        total_count, source_info_dblist = metadata_get_videos(src_type=src_type, pep_code=src_code, limit=limit, offset=offset)
+        total_count, source_info_dblist, ret_val, return_status = metadata_get_videos(src_type=src_type, pep_code=src_code, limit=limit, offset=offset)
         count = len(source_info_dblist)
+        if return_status != (200, "OK"):
+            raise Exception(return_status(1))
     else: # get from mySQL
         try:
             # print(src_type, src_code, src_name, limit, offset)
@@ -1498,6 +1527,9 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
             if err == 0:
                 source_info_listitems.append(item)
     
+
+
+
     try:
         source_info_struct = models.SourceInfoStruct( responseInfo = response_info, 
                                                       responseSet = source_info_listitems

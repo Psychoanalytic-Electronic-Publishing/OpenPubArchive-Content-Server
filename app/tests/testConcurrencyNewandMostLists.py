@@ -20,10 +20,15 @@ class TestConcurrency(unittest.TestCase):
         https://stage-api.pep-web.rocks/v2/Metadata/Videos/?sourcecode=%2A&streams=false&limit=200&offset=0
         """
         count = 0
-        while count <= 10:
-            full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/?sourcecode=%2A&streams=false&limit=200&offset=0')
-            response1 = requests.get(full_URL, headers=headers)
-            assert(response1.ok == True)
+        while count <= 20:
+            full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/?limit=1000&offset=0')
+            response = requests.get(full_URL, headers=headers)
+            full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/?limit=1000&offset=0')
+            response = requests.get(full_URL, headers=headers)
+            full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/?limit=1000&offset=0&streams=false')
+            response = requests.get(full_URL, headers=headers)
+            r = response.json()
+            print (count, response.ok, r["sourceInfo"]["responseInfo"]["count"])
             count += 1
 
     def test_all_three_together(self):
