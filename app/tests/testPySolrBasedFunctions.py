@@ -33,6 +33,9 @@ class TestPySolrBasedFunctions(unittest.TestCase):
         # check to make sure a known value is among the data returned
         dataList = [d['documentID'] for d in data[1] if 'documentID' in d]
         assert ('IPSAVS.001A.0001A' in dataList)
+        data = opasAPISupportLib.metadata_get_source_info(src_type="videos")
+        dataList = [d.documentID for d in data.sourceInfo.responseSet]
+        assert ('IPSAVS.001A.0001A' in dataList)
         data = opasAPISupportLib.metadata_get_source_info(src_type="journal")
         dataList = [d.PEPCode for d in data.sourceInfo.responseSet]
         assert ('PAQ' in dataList)

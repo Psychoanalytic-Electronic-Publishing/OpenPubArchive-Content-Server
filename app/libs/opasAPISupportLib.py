@@ -1468,6 +1468,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 end_year = source.get("yearLast")
                 base_code = source.get("basecode")
                 instance_count = source.get("instances", 1)
+                documentID = source.get("documentID", source.get("articleID"))
                 if start_year is None:
                     start_year = pub_year
                 if end_year is None:
@@ -1495,13 +1496,12 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 else:
                     art_citeas = title # journals just should show display title
     
-    
                 try:
                     item = models.SourceInfoListItem( sourceType = src_type,
                                                       PEPCode = base_code,
                                                       authors = authors,
                                                       pub_year = pub_year,
-                                                      documentID = source.get("articleID"),
+                                                      documentID = documentID,
                                                       displayTitle = art_citeas,
                                                       title = title,
                                                       srcTitle = title,  # v1 Deprecated for future
