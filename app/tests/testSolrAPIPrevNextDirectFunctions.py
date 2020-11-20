@@ -8,6 +8,7 @@ Tests of the OPAS functions which depend on the Solr API.  (Direct, rather than 
 
 import unittest
 import opasAPISupportLib
+import opasPySolrLib
 from opasCentralDBLib import opasCentralDB
 import unitTestConfig
 from unitTestConfig import base_plus_endpoint_encoded, headers, session_id, session_info
@@ -23,27 +24,27 @@ class TestSolrAPIPrevNextDirectFunctions(unittest.TestCase):
         print (ret_val)
 
     def test_1A_get_next_and_prev_vols_4(self):
-        prev_vol, match_vol, next_vol = opasAPISupportLib.metadata_get_next_and_prev_vols(source_code="IJPSP", source_vol="4")
+        prev_vol, match_vol, next_vol = opasPySolrLib.metadata_get_next_and_prev_vols(source_code="IJPSP", source_vol="4")
         print (prev_vol, match_vol, next_vol)
 
     def test_1D_get_next_and_prev_vol_6(self):
-        prev_vol, match_vol, next_vol = opasAPISupportLib.metadata_get_next_and_prev_vols(source_code="GAP", source_vol="6")
+        prev_vol, match_vol, next_vol = opasPySolrLib.metadata_get_next_and_prev_vols(source_code="GAP", source_vol="6")
         print (prev_vol, match_vol, next_vol)
 
     def test_1E_get_next_and_prev_vol_1(self):
-        prev_vol, match_vol, next_vol = opasAPISupportLib.metadata_get_next_and_prev_vols(source_code="GAP", source_vol="1")
+        prev_vol, match_vol, next_vol = opasPySolrLib.metadata_get_next_and_prev_vols(source_code="GAP", source_vol="1")
         print (prev_vol, match_vol, next_vol)
 
     def test_1F_get_next_and_prev_vol_3(self):
-        prev_vol, match_vol, next_vol = opasAPISupportLib.metadata_get_next_and_prev_vols(source_code="GAP", source_vol="3")
+        prev_vol, match_vol, next_vol = opasPySolrLib.metadata_get_next_and_prev_vols(source_code="GAP", source_vol="3")
         print (prev_vol, match_vol, next_vol)
 
     def test_1F_get_next_and_prev_vol_10(self):
-        prev_vol, match_vol, next_vol = opasAPISupportLib.metadata_get_next_and_prev_vols(source_code="GAP", source_vol="10")
+        prev_vol, match_vol, next_vol = opasPySolrLib.metadata_get_next_and_prev_vols(source_code="GAP", source_vol="10")
         print (prev_vol, match_vol, next_vol)
 
     def test_2_get_next_and_prev_articles(self):
-        prev_art, match_art, next_art = opasAPISupportLib.metadata_get_next_and_prev_articles(art_id="IJPSP.004.0445A")
+        prev_art, match_art, next_art = opasPySolrLib.metadata_get_next_and_prev_articles(art_id="IJPSP.004.0445A")
         print (prev_art, match_art, next_art)
     
 if __name__ == '__main__':

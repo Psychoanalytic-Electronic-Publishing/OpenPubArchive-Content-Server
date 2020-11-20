@@ -829,8 +829,8 @@ class SearchHandler(object):
                 query.append((key, strify(value)))
         request = urllib.urlencode(query, doseq=True)
         conn = self.conn
-        if conn.debug:
-            logging.info("solrpy request: %s" % request)
+        if 1: # conn.debug:
+            logging.info("solrpy request: %s" % urlparse.unquote(request))
 
         try:
             rsp = conn._post(self.selector, request, conn.form_headers)
@@ -838,8 +838,8 @@ class SearchHandler(object):
             if conn.debug:
                 logging.info("solrpy got response: %s" % data)
         except Exception as e:
-            data = None # nrs added since it can error out with no data defined
-            logging.error(f"Solrpy conn.post exception: {e}.  Request: {request}")
+            data = "" # nrs added since it can error out with no data defined
+            logging.error(f"Solrpy conn.post exception: {e}.  Request: {urlparse.unquote(request)}")
         finally:
             if not conn.persistent:
                 conn.close()

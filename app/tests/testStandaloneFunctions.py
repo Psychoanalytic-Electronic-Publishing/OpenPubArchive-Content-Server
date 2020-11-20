@@ -3,6 +3,7 @@
 
 import unittest
 import opasAPISupportLib
+import opasPySolrLib
 import opasConfig
 import opasQueryHelper
 import opasCentralDBLib
@@ -155,7 +156,7 @@ class TestStandaloneFunctions(unittest.TestCase):
           2) List of sources by type
           3) 
         """
-        data = opasAPISupportLib.metadata_get_videos(src_type="Videos", pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0)
+        data = opasPySolrLib.metadata_get_videos(src_type="Videos", pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0)
         # Confirm that the request-response cycle completed successfully.
         # check to make sure a known value is among the data returned
         dataList = [d['documentID'] for d in data[1] if 'documentID' in d]
