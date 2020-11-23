@@ -10,6 +10,10 @@ import logging
 import localsecrets
 import urllib.parse
 import json
+import sys
+# from opasAPISupportLib import save_opas_session_cookie
+sys.path.append("..") # Adds higher directory to python modules path.
+from config.opasConfig import OPASSESSIONID
 
 logger = logging.getLogger(__name__)
 # for this module
@@ -86,6 +90,15 @@ def find_client_session_id(request: Request,
             msg = f"No client-session ID found. Returning None"
             logger.debug(msg)
             ret_val = None
+
+        if ret_val is not None and opas_session_cookie is not None and opas_session_cookie != ret_val:
+            #  overwrite any saved cookie, if there is one
+            logger.debug("Saved OpasSessionID Cookie")
+            response.set_cookie(
+                OPASSESSIONID,
+                value=f"{client_session}",
+                domain=localsecrets.COOKIE_DOMAIN
+            )
 
     return ret_val
 
@@ -515,7 +528,7 @@ def get_access_limitations(doc_id,
                     except Exception as e:
                         # PaDS could be down, local development
                         logger.error(f"PaDS Access Exception: {e}")
-                        if localsecrets.BASEURL == "development.org":
+                        if localsecrets.BASEURL == "development.org:9100":
                             resp = models.PadsPermitInfo(Permit=True, HasArchiveAccess=True, HasCurrentAccess=True)
                             # so it doesn't have to check this later
                             session_info.authorized_peparchive = True

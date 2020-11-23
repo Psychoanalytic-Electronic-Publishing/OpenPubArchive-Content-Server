@@ -64,7 +64,7 @@ API_URL_DOCUMENTURL = "/v2/Documents/"
 
 #logger = logging.getLogger(programNameShort)
 
-IMAGES = "images"
+IMAGES = "v2/Documents/Image" # from endpoint; was just images, e.g., "http://pep-web.rocks/images/bannerADPSALogo.gif
 HITMARKERSTART = "#@@@"  # using non html/xml default markers, so we can strip all tags but leave the hitmarkers!
 HITMARKEREND = "@@@#"
 HITMARKERSTART_OUTPUTHTML = "<span class='searchhit'>"  # to convert the non-markup HIT markers to HTML, supply values here.  These match the current PEPEasy stylesheet.
@@ -387,7 +387,7 @@ ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you
 ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access"
 
 # control whether abstracts can be viewed by non-logged-in users
-ACCESS_ABSTRACT_RESTRICTION = True
+ACCESS_ABSTRACT_RESTRICTION = False
 ACCESS_ABSTRACT_RESTRICTED_MESSAGE = "You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
 
 # temp directory used for generated downloads

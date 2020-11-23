@@ -93,6 +93,15 @@ def cleanup_solr_query(solrquery):
     
     return ret_val
 
+def cleanNullTerms(dictionary):
+    # one liner comprehension to clean Nones from dict:
+    # from https://medium.com/better-programming/how-to-remove-null-none-values-from-a-dictionary-in-python-1bedf1aab5e4
+    return {
+        k:v
+        for k, v in dictionary.items()
+        if v is not None
+    }
+
 def wrap_clauses(solrquery):
     # split by OR clauses
     ret_val = solrquery.strip()
@@ -1200,7 +1209,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list = [cleanup_solr_query(x) for x in search_analysis_term_list]  
 
     if search_q == "*:*" and filter_q == "*:*":
-        search_q = "art_level:1"
+        filter_q = "art_level:1"
 
     # Turn off highlighting if it's not needed, e.g, when there's no text search, e.g., a filter only, like mostcited and mostviewed calls
     # As of 2020-09-28, allow limit to be set here (via params)
@@ -1413,6 +1422,9 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
         solr_query_spec.returnFields = ", ".join(e.lstrip() for e in solr_query_spec.returnFields.split(","))
 
     if sort is not None:
+        if " asc" not in sort and " desc" not in sort:
+            sort = sort + " asc"
+            
         solr_query_spec.solrQuery.sort = sort
 
     #  part of the options model
@@ -2263,47 +2275,48 @@ def get_fulltext_from_search_results(result,
                 # remove glossary markup
                 text_xml = opasxmllib.remove_glossary_impx(text_xml)   
     
-    try:
-        format_requested_ci = format_requested.lower() # just in case someone passes in a wrong type
-    except:
-        format_requested_ci = "html"
-
-    if documentListItem.docChild != {} and documentListItem.docChild is not None:
-        child_xml = documentListItem.docChild["para"]
-    else:
-        child_xml = None
-        
-    if format_requested_ci == "html":
-        # Convert to HTML
-        heading = opasxmllib.get_running_head( source_title=documentListItem.sourceTitle,
-                                               pub_year=documentListItem.year,
-                                               vol=documentListItem.vol,
-                                               issue=documentListItem.issue,
-                                               pgrg=documentListItem.pgRg,
-                                               ret_format="HTML"
-                                               )
-        try:
-            text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
-        except Exception as e:
-            logger.error(f"Could not convert to HTML {e}; returning native format")
-            text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-        else:
-            text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-            text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
-            if child_xml is not None:
-                child_xml = opasxmllib.xml_str_to_html(child_xml)
-    elif format_requested_ci == "textonly":
-        # strip tags
-        text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
-        if child_xml is not None:
-            child_xml = opasxmllib.xml_elem_or_str_to_text(child_xml, default_return=text_xml)
-    elif format_requested_ci == "xml":
-        # don't do this for XML
-        pass
-        # text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-        # child_xml = child_xml
-
-    documentListItem.document = text_xml
+                try:
+                    format_requested_ci = format_requested.lower() # just in case someone passes in a wrong type
+                except:
+                    format_requested_ci = "html"
+            
+                if documentListItem.docChild != {} and documentListItem.docChild is not None:
+                    child_xml = documentListItem.docChild["para"]
+                else:
+                    child_xml = None
+                    
+                if format_requested_ci == "html":
+                    # Convert to HTML
+                    heading = opasxmllib.get_running_head( source_title=documentListItem.sourceTitle,
+                                                           pub_year=documentListItem.year,
+                                                           vol=documentListItem.vol,
+                                                           issue=documentListItem.issue,
+                                                           pgrg=documentListItem.pgRg,
+                                                           ret_format="HTML"
+                                                           )
+                    try:
+                        text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+                    except Exception as e:
+                        logger.error(f"Could not convert to HTML {e}; returning native format")
+                        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                    else:
+                        text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                        text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
+                        if child_xml is not None:
+                            child_xml = opasxmllib.xml_str_to_html(child_xml)
+                elif format_requested_ci == "textonly":
+                    # strip tags
+                    text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
+                    if child_xml is not None:
+                        child_xml = opasxmllib.xml_elem_or_str_to_text(child_xml, default_return=text_xml)
+                elif format_requested_ci == "xml":
+                    # don't do this for XML
+                    pass
+                    # text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                    # child_xml = child_xml
+            
+                documentListItem.document = text_xml
+                
     if child_xml is not None:
         # return child para in requested format
         documentListItem.docChild['para'] = child_xml

@@ -19,6 +19,7 @@ import logging
 logger = logging.getLogger(__name__)
 import time
 from datetime import datetime
+import datetime as dtime
 
 import sys
 sys.path.append('./solrpy')
@@ -31,10 +32,11 @@ from localsecrets import TIME_FORMAT_STR
 
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 import starlette.status as httpCodes
-from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2, solr_docs_term_search2, solr_authors_term_search2
+from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
 import opasConfig 
 from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
 from configLib.opasCoreConfig import EXTENDED_CORES
+from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
 
 import models
 import opasCentralDBLib
@@ -44,6 +46,7 @@ import opasXMLHelper as opasxmllib
 import opasDocPermissions as opasDocPerm
 import smartsearch
 import opasQueryHelper
+from xhtml2pdf import pisa             # for HTML 2 PDF conversion
 
 import pysolr
 
@@ -109,6 +112,424 @@ def split_article_id(article_id):
        
     return journal, year, vol, page, page_id
 
+#-----------------------------------------------------------------------------
+def authors_get_author_info(author_partial,
+                            req_url:str=None, 
+                            limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, author_order="index"):
+    """
+    Returns a list of matching names (per authors last name), and the number of articles in PEP found by that author.
+
+    Args:
+        author_partial (str): String prefix of author names to return.
+        limit (int, optional): Paging mechanism, return is limited to this number of items.
+        offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
+        author_order (str, optional): Return the list in this order, per Solr documentation.  Defaults to "index", which is the Solr determined indexing order.
+
+    Returns:
+        models.DocumentList: Pydantic structure (dict) for DocumentList.  See models.py
+
+    Docstring Tests:    
+        >>> resp = authors_get_author_info("Tuck")
+        >>> resp.authorIndex.responseInfo.count >= 7
+        True
+        >>> resp = authors_get_author_info("Levins.*", limit=5)
+        >>> resp.authorIndex.responseInfo.count
+        5
+    """
+    ret_val = {}
+    method = 2
+
+    if method == 1:
+        query = "art_author_id:/%s.*/" % (author_partial)
+        args = {
+        "fl": "authors, art_author_id",
+        "facet": "on",
+        "facet.field": "art_author_id",
+        "facet.sort": author_order + " asc",
+        "facet.prefix" : "%s" % author_partial,
+        "facet.limit": limit,
+        "facet.offset": offset,
+        "rows": limit,
+        }
+        args = opasQueryHelper.cleanNullTerms(args)
+        
+        results = solr_authors2.search( q=query, **args)
+
+    if method == 2:
+        # should be faster way, but about the same measuring tuck (method1) vs tuck.* (method2) both about 2 query time.  However, allowing regex here.
+        if "*" in author_partial or "?" in author_partial or "." in author_partial:
+            results = solr_authors_term_search( terms_fl="art_author_id",
+                                                terms_limit=limit,  # this causes many regex expressions to fail
+                                               terms_regex=author_partial.lower() + ".*",
+                                               terms_sort=author_order  # index or count
+                                               )           
+        else:
+            results = solr_authors_term_search( terms_fl="art_author_id",
+                                                terms_prefix=author_partial.lower(),
+                                               terms_sort=author_order,  # index or count
+                                               terms_limit=limit
+                                               )
+
+    response_info = models.ResponseInfo( limit=limit,
+                                         offset=offset,
+                                         listType="authorindex",
+                                         scopeQuery=[f"Terms: {author_partial}"],
+                                         solrParams=results._params,
+                                         request=f"{req_url}",
+                                         timeStamp=datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
+                                         )
+
+    author_index_items = []
+    if method == 1:
+        for key, value in results.facet_counts["facet_fields"]["art_author_id"].items():
+            if value > 0:
+                item = models.AuthorIndexItem(authorID = key, 
+                                              publicationsURL = "/v1/Authors/Publications/{}/".format(key),
+                                              publicationsCount = value,
+                                              ) 
+                author_index_items.append(item)
+                logger.debug ("authorsGetAuthorInfo", item)
+
+    if method == 2:  # faster way
+        for key, value in results.terms["art_author_id"].items():
+            if value > 0:
+                item = models.AuthorIndexItem(authorID = key, 
+                                              publicationsURL = "/v1/Authors/Publications/{}/".format(key),
+                                              publicationsCount = value,
+                                              ) 
+                author_index_items.append(item)
+                logger.debug("authorsGetAuthorInfo: %s", item)
+
+    response_info.count = len(author_index_items)
+    response_info.fullCountComplete = limit >= response_info.count
+
+    author_index_struct = models.AuthorIndexStruct( responseInfo = response_info, 
+                                                    responseSet = author_index_items
+                                                    )
+
+    author_index = models.AuthorIndex(authorIndex = author_index_struct)
+
+    ret_val = author_index
+    return ret_val
+
+#-----------------------------------------------------------------------------
+def authors_get_author_publications(author_partial,
+                                    req_url:str=None, 
+                                    limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
+                                    offset=0):
+    """
+    Returns a list of publications (per authors partial name), and the number of articles by that author.
+
+    >>> ret_val =authors_get_author_publications(author_partial="Tuck") # doctest: +ELLIPSIS
+    >>> type(ret_val)
+    <class 'models.AuthorPubList'>
+    >>> print (f"{ret_val}"[0:68])
+    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=15
+    >>> ret_val=authors_get_author_publications(author_partial="Fonag")
+    >>> print (f"{ret_val}"[0:68])
+    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=15
+    >>> ret_val=authors_get_author_publications(author_partial="Levinson, Nadine A.")
+    >>> print (f"{ret_val}"[0:67])
+    authorPubList=AuthorPubListStruct(responseInfo=ResponseInfo(count=8
+    """
+    ret_val = {}
+    query = "art_author_id:/{}/".format(author_partial)
+    aut_fields = "art_author_id, art_year_int, art_id, art_auth_pos_int, art_author_role, art_author_bio, art_citeas_xml"
+    # wildcard in case nothing found for #1
+    results = solr_authors.query( q = "{}".format(query),   
+                                  fields = aut_fields,
+                                  sort="art_author_id, art_year_int", sort_order="asc",
+                                  rows=limit, start=offset
+                                  )
+
+    logger.debug("Author Publications: Number found: %s", results._numFound)
+
+    if results._numFound == 0:
+        logger.debug("Author Publications: Query didn't work - %s", query)
+        query = "art_author_id:/{}[ ]?.*/".format(author_partial)
+        logger.debug("Author Publications: trying again - %s", query)
+        results = solr_authors.query( q = "{}".format(query),  
+                                      fields = aut_fields,
+                                      sort="art_author_id, art_year_int", sort_order="asc",
+                                      rows=limit, start=offset
+                                      )
+
+        logger.debug("Author Publications: Number found: %s", results._numFound)
+        if results._numFound == 0:
+            query = "art_author_id:/(.*[ ])?{}[ ]?.*/".format(author_partial)
+            logger.debug("Author Publications: trying again - %s", query)
+            results = solr_authors.query( q = "{}".format(query),  
+                                          fields = aut_fields,
+                                          sort="art_author_id, art_year_int", sort_order="asc",
+                                          rows=limit, start=offset
+                                          )
+
+    response_info = models.ResponseInfo( count = len(results.results),
+                                         fullCount = results._numFound,
+                                         limit = limit,
+                                         offset = offset,
+                                         listType="authorpublist",
+                                         scopeQuery=[query],
+                                         solrParams = results._params,
+                                         fullCountComplete = limit >= results._numFound,
+                                         request=f"{req_url}",
+                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                         )
+
+    author_pub_list_items = []
+    for result in results.results:
+        citeas = result.get("art_citeas_xml", None)
+        citeas = opasQueryHelper.force_string_return_from_various_return_types(citeas)
+
+        item = models.AuthorPubListItem( authorID = result.get("art_author_id", None), 
+                                         documentID = result.get("art_id", None),
+                                         documentRefHTML = citeas,
+                                         documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return=""),
+                                         documentURL = opasConfig.API_URL_DOCUMENTURL + result.get("art_id", None),
+                                         year = result.get("art_year", None),
+                                         score = result.get("score", 0)
+                                         ) 
+
+        author_pub_list_items.append(item)
+
+    response_info.count = len(author_pub_list_items)
+
+    author_pub_list_struct = models.AuthorPubListStruct( responseInfo = response_info, 
+                                                         responseSet = author_pub_list_items
+                                           )
+
+    author_pub_list = models.AuthorPubList(authorPubList = author_pub_list_struct)
+
+    ret_val = author_pub_list
+    return ret_val
+
+
+def check_solr_docs_connection():
+    """
+    Queries the solrDocs core (i.e., pepwebdocs) to see if the server is up and running.
+    Solr also supports a ping, at the corename + "/ping", but that doesn't work through pysolr as far as I can tell,
+    so it was more straightforward to just query the Core. 
+
+    Note that this only checks one core, since it's only checking if the Solr server is running.
+
+    >>> check_solr_docs_connection()
+    True
+
+    """
+    ret_val = False
+
+    if solr_docs2 is not None:
+        args = {
+                   'fl':"art_id, art_vol, art_year",
+                   'rows':5,
+               }
+    
+        query = f"art_id:APA.009.0331A"
+        try:
+            results = solr_docs2.search(query, **args)
+        except Exception as e:
+            logger.error(f"Solr Connection Error: {e}")
+        else:
+            if len(results.docs) > 0:
+                ret_val = True
+            #else
+                # ret_val = False (default)
+
+        return ret_val
+
+#-----------------------------------------------------------------------------
+def document_get_info(document_id, fields="art_id, art_sourcetype, art_year, file_classification, art_sourcecode, score"):
+    """
+    Gets key information about a single document for the specified fields.
+    
+    Currently unused.
+
+    Note: Careful about letting the caller specify fields in an endpoint,
+       or they could get full-text
+
+    >>> document_get_info('PEPGRANTVS.001.0003A', fields='art_id, art_year, file_classification, score')
+    {'art_year': '2015', 'art_id': 'PEPGRANTVS.001.0003A', 'file_classification': 'free', 'score': ...}
+
+    """
+    ret_val = {}
+    if solr_docs2 is not None:
+        try:
+            # PEP indexes field in upper case, but just in case caller sends lower case, convert.
+            args = {
+                       'fl':fields,
+                       'rows':5,
+                   }
+
+            document_id = document_id.upper()
+            query = f"art_id:{document_id}"
+            logger.info(f"Solr Query: q={query}")
+            results = solr_docs2.search(query, **args)
+        except Exception as e:
+            logger.error(f"Solr Retrieval Error: {e}")
+        else:
+            if len(results.docs) == 0:
+                return ret_val
+            else:
+                try:
+                    ret_val = results.docs[0]
+                except Exception as e:
+                    logger.error(f"Solr Result Error: {e}")
+
+    return ret_val
+
+#-----------------------------------------------------------------------------
+def get_term_index(term_partial,
+                   term_field="text",
+                   core="docs",
+                   req_url:str=None, 
+                   limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
+                   offset=0,
+                   start_at=None, # a particular term to start with
+                   order="index"):
+    """
+    Returns a list of matching terms from an arbitrary field in the Solr database,
+      either for core "authors" or "docs" per parameter core.
+      
+    IMPORTANT NOTE: : The offset is not supported by the PySolr solr library,
+                      just simulated by this call, which does not save time or memory.
+                      Instead, use start_at to specify the term to start with, using the start_at
+    
+    You can specify more than one field at once, using a tuple, e.g.,
+          resp = get_term_index("love", term_field=('title','art_kwds_str'), limit=5)
+          
+    Typical fields (see docstring tests for examples):
+       docs:
+          art_kwds_str
+          title
+          text
+          
+
+    Args:
+        term_partial (str): String prefix of author names to return.
+        term_field (str): Where to look for term
+        limit (int, optional): Paging mechanism, return is limited to this number of items.
+        offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
+        order (str, optional): Return the list in this order, per Solr documentation.  Defaults to "index", which is the Solr determined indexing order.
+
+    Returns:
+        models.termIndex: Pydantic structure (dict) for termIndex.  See models.py
+
+    Docstring Tests:    
+        >>> resp = get_term_index("love", term_field='text', limit=2)
+        >>> resp.termIndex.responseInfo.count == 2
+        True
+        >>> resp = get_term_index("love", term_field='text', limit=20, offset=5)
+        >>> resp.termIndex.responseSet[0].term
+        'lovers'
+        >>> resp = get_term_index("love", term_field='text', limit=20, start_at='lovet')
+        >>> resp.termIndex.responseSet[0].term
+        'lovett'
+        >>> resp = get_term_index("love", term_field=('title','art_kwds_str'), limit=5)
+        >>> resp.termIndex.responseInfo.count > 0
+        True
+        >>> resp = get_term_index("love", term_field="art_kwds_str", limit=5)
+        >>> resp.termIndex.responseInfo.count > 0
+        True
+        >>> resp = get_term_index("love", term_field="title", limit=5)
+        >>> resp.termIndex.responseInfo.count > 0
+        True
+        >>> resp = get_term_index("bion", term_field="art_kwds", limit=5)
+        >>> resp.termIndex.responseInfo.count > 0
+        True
+        >>> resp = get_term_index("will", term_field="text", limit=5)
+        >>> resp.termIndex.responseInfo.count > 0
+        True
+        >>> resp = get_term_index("david", term_field="art_authors_mast", limit=5)
+        >>> resp.termIndex.responseInfo.count > 0
+        True
+        >>> resp = get_term_index("Inter.*", term_field="art_sourcetitlefull", limit=5)
+        >>> resp.termIndex.responseInfo.count == 0
+        True
+        >>> resp = get_term_index("pand", limit=20)
+        >>> resp.termIndex.responseInfo.count > 0
+        True
+        >>> resp = get_term_index("pand.*", limit=5)
+        >>> resp.termIndex.responseInfo.count == 0
+        True
+    """
+    ret_val = {}
+
+    def load_from_term_field(results, term_field, limit=9999, offset=0):
+        """
+        to use one code base for loading from a list of term_fields in main function
+        """
+        term_index_items = []
+        count = 0
+        for key, value in results[term_field]: # tuples
+            count += 1
+            if offset != 0:
+                if count < offset:
+                    continue
+    
+            if value > 0:
+                item = models.TermIndexItem(term = key, 
+                                            field = term_field,
+                                            termCount = value,
+                                            ) 
+                term_index_items.append(item)
+                logger.debug ("TermIndexInfo", item)
+        return term_index_items
+        
+    core_term_indexers = {
+        "docs": solr_docs2,
+        "authors": solr_authors2,
+    }
+
+    try:
+        # select core
+        term_index = core_term_indexers[core]
+        args = {
+            "terms.limit": limit,
+            "terms.lower": start_at,
+            "terms.lower.incl": 'true'
+        }
+        args = opasQueryHelper.cleanNullTerms(args)
+        # get index data
+        results = term_index.suggest_terms(fields=term_field,
+                                           prefix=term_partial.lower(),
+                                           handler='terms',
+                                           **args
+                                          )
+    except Exception as e:
+        # error
+        logger.error("Specified core does not have a term index configured ({e})")
+
+    else:
+        response_info = models.ResponseInfo( limit=limit,
+                                             offset=offset,
+                                             listType="termindex",
+                                             core=core, 
+                                             scopeQuery=[f"Terms: {term_partial}"],
+                                             #solrParams=None, 
+                                             request=f"{req_url}",
+                                             timeStamp=datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
+                                             )
+
+        term_index_items = []
+        if isinstance(term_field, (list, tuple)):
+            for term_field_member in term_field:
+                term_index_items.extend(load_from_term_field(results, term_field_member, limit=limit, offset=offset))
+        else:
+            term_index_items.extend(load_from_term_field(results, term_field, limit=limit, offset=offset))
+
+        response_info.count = len(term_index_items)
+        response_info.fullCountComplete = limit >= response_info.count
+
+        term_index_struct = models.TermIndexStruct( responseInfo = response_info, 
+                                                    responseSet = term_index_items
+                                                    )
+
+        term_index = models.TermIndex(termIndex = term_index_struct)
+
+        ret_val = term_index
+
+    return ret_val
+
 def search(query, summaryField, highlightFields='art_authors_xml, art_title_xml, text_xml', returnStartAt=0, returnLimit=10):
     args = {
                # 'fl':summaryField,
@@ -124,6 +545,173 @@ def search(query, summaryField, highlightFields='art_authors_xml, art_title_xml,
     #solr = pysolr.Solr('http://localhost:8983/solr/pepwebdocs', timeout=10)
     results = solr_docs2.search(query, **args)
     return results
+
+#-----------------------------------------------------------------------------
+def search_analysis( query_list, 
+                     filter_query = None,
+                     #more_like_these = False,
+                     #query_analysis = False,
+                     def_type = None,
+                     # summaryFields="art_id, art_sourcecode, art_vol, art_year, art_iss, 
+                     # art_iss_title, art_newsecnm, art_pgrg, art_title, art_author_id, art_citeas_xml", 
+                     summary_fields="art_id",                    
+                     # highlightFields='art_title_xml, abstract_xml, summaries_xml, art_authors_xml, text_xml', 
+                     full_text_requested=False, 
+                     user_logged_in=False,
+                     req_url:str=None, 
+                     limit=opasConfig.DEFAULT_MAX_KWIC_RETURNS,
+                     api_version="v2"
+                     ):
+    """
+    Analyze the search clauses in the query list
+    """
+    ret_val = {}
+    return_item_list = []
+    rowCount = 0
+    term_field = None
+    # save classes to neutral names so we can change between documentList and termIndex
+    if 0: # api_version == "v1":
+        RetItem = models.DocumentListItem
+        RetStruct = models.DocumentListStruct
+        RetList = models.DocumentList
+    else:
+        RetItem = models.TermIndexItem
+        RetStruct = models.TermIndexStruct
+        RetList = models.TermIndex
+
+    for query_item in query_list:
+        # get rid of illegal stuff
+        # boolean_subs = [termpair.strip() for termpair in re.split("\s+\|\||\&\&|[ ]\s+", query_item)]
+        # boolean_subs = [termpair.strip() for termpair in re.split("\s*\|\||\&\&|AND|OR\s*", query_item)]
+        # for clause in query_item:
+            #clauses = n.split(":")
+            #if len(clauses) == 1:
+                #term_clause = clauses[0]
+            #else:
+                #field_clause = clauses[0]
+                #term_clause = clauses[1]
+            #subfield_clauses = shlex.split(term_clause)
+
+        try:
+            logger.info(f"Solr Query: q={query_item}")
+            args = {
+                "defType": def_type,
+                "q.op": "AND",
+                "fl": summary_fields,
+                "queryAnalysis": "true",
+                "rows": 1,
+                "start": 0,
+            }
+            args = opasQueryHelper.cleanNullTerms(args)
+            results = solr_docs2.search(query_item, **args)
+            
+        except Exception as e:
+            # try to return an error message for now.
+            # logger.error(HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=e))
+            # raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Bad Search syntax")
+            return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
+
+        if "!parent" in query_item:
+            term = query_item
+            try:
+                query_item = query_item.replace("parent_tag:(p_body || p_summaries || p_appxs)", "parent_tag:(doc)")
+                query_parsed = re.split("(&&|\|\|) \(", query_item)
+                del(query_parsed[0])
+                for i in range(len(query_parsed)):
+                    if query_parsed[i] in ["&&", "||"]:
+                        continue
+                    if "parent_tag" in query_parsed[i]:
+                        m = re.match(".*parent_tag:\((?P<parent_tag>.*)\).*?(?P<field>[A-z_]+)\:\((?P<terms>.*)\)\)?\)?", query_parsed[i])
+                        if m is not None:
+                            query_parsed[i] = m.groupdict(default="")
+                            query_parsed[i]['parent_tag'] = schemaMap.solr2user(query_parsed[i]['parent_tag'])
+                            query_parsed[i]['terms'] = query_parsed[i]['terms'].strip("()")
+
+            except Exception as e:
+                pass
+
+            by_parent = {}
+            connector = ""
+            for n in query_parsed:
+                if n == '&&':
+                    connector = " AND "
+                    continue
+                elif n == '||':
+                    connector = " OR "
+                    continue
+
+                try:
+                    by_parent[n["parent_tag"]] += f"{connector}{n['terms']}"
+                except KeyError as e:
+                    by_parent[n["parent_tag"]] = f"{n['terms']}"
+                except Exception as e:
+                    logger.warning(f"Error saving term clause: {e}")
+
+
+            for key, value in by_parent.items():
+                term = value
+                term_field = f"in same paragraph in {key}"
+
+        else:
+            term = query_item
+            if ":" in query_item:
+                try:
+                    term_field, term_value = query_item.split(":")
+                except:
+                    # pat = "((?P<parent>parent_tag\:\([a-z\s\(\)]\))\s+(AND|&&)\s+(?P<term>[A-z]+\:[\(\)A-Z]+))+"
+                    # too complex
+                    pass
+                else:
+                    term_value = opasQueryHelper.strip_outer_matching_chars(term_value, ")")
+                    term = f"{term_value} (in {schemaMap.FIELD2USER_MAP.get(term_field, term_field)})"
+            else:
+                term = opasQueryHelper.strip_outer_matching_chars(term, ")")
+                term = f"{query_item} (in text)"
+
+        #logger.debug("Analysis: Term %s, matches %s", field_clause, results._numFound)
+        item = RetItem(term = term, 
+                       termCount = results.hits, 
+                       field=term_field
+                       )
+        return_item_list.append(item)
+        rowCount += 1
+
+    #if rowCount > 0:
+        #results = solr_docs.query(query_list,
+                                    #defType = def_type,
+                                    #q_op="AND", 
+                                    #queryAnalysis = True,
+                                    #fields = summary_fields,
+                                    #rows = 1,
+                                    #start = 0)
+
+        #item = models.DocumentListItem(term = "(combined)",
+                                        #termCount = results._numFound
+                                        #)
+        #document_item_list.append(item)
+        #rowCount += 1
+        #print ("Analysis: Term %s, matches %s" % ("combined: ", results._numFound))
+
+    response_info = models.ResponseInfo(count = rowCount,
+                                        fullCount = rowCount,
+                                        listType = "srclist",
+                                        fullCountComplete = True,
+                                        request=f"{req_url}",
+                                        timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
+                                        )
+
+    response_info.count = len(return_item_list)
+
+    return_list_struct = RetStruct( responseInfo = response_info, 
+                                    responseSet = return_item_list
+                                    )
+    if 0: # api_version == "v1":
+        ret_val = RetList(documentList = return_list_struct)
+    else:
+        ret_val = RetList(termIndex = return_list_struct)
+
+
+    return ret_val
 
 #================================================================================================================
 def search_text_qs(solr_query_spec: models.SolrQuerySpec,
@@ -237,20 +825,18 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
 
     try:
         query = solr_query_spec.solrQuery.searchQ
+        if solr_query_spec.fullReturn:
+            return_fields = solr_query_spec.returnFields + ",text_xml" #  in case no "highlightable search is included"
+        else:
+            return_fields = solr_query_spec.returnFields
+
         solr_param_dict = { 
                             # "q": solr_query_spec.solrQuery.searchQ,
                             "fq": solr_query_spec.solrQuery.filterQ,
                             "q.op": solr_query_spec.solrQueryOpts.qOper, 
                             # "debugQuery": solr_query_spec.solrQueryOpts.queryDebug or localsecrets.SOLR_DEBUG,
                             # "defType" : solr_query_spec.solrQueryOpts.defType,
-                            "fl" : solr_query_spec.returnFields,         
-                            "hl" : solr_query_spec.solrQueryOpts.hl, 
-                            "hl.multiterm" : solr_query_spec.solrQueryOpts.hlMultiterm,
-                            "hl.fl" : solr_query_spec.solrQueryOpts.hlFields,
-                            "hl.usePhraseHighlighter" : solr_query_spec.solrQueryOpts.hlUsePhraseHighlighter, 
-                            "hl.snippets" : solr_query_spec.solrQueryOpts.hlMaxKWICReturns,
-                            "hl.fragsize" : solr_query_spec.solrQueryOpts.hlFragsize, 
-                            "hl.maxAnalyzedChars" : solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars,
+                            "fl" : return_fields,         
                             "facet" : facet,
                             "facet.field" : solr_query_spec.facetFields, #["art_lang", "art_authors"],
                             "facet.mincount" : solr_query_spec.facetMinCount,
@@ -264,22 +850,17 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             "rows" : solr_query_spec.limit,
                             "start" : solr_query_spec.offset,
                             "sort" : solr_query_spec.solrQuery.sort,
-                            "hl_simple_pre" : opasConfig.HITMARKERSTART,
-                            "hl_simple_post" : opasConfig.HITMARKEREND        
+                            "hl" : solr_query_spec.solrQueryOpts.hl, 
+                            "hl.multiterm" : solr_query_spec.solrQueryOpts.hlMultiterm,
+                            "hl.fl" : solr_query_spec.solrQueryOpts.hlFields,
+                            "hl.usePhraseHighlighter" : solr_query_spec.solrQueryOpts.hlUsePhraseHighlighter, 
+                            "hl.snippets" : solr_query_spec.solrQueryOpts.hlMaxKWICReturns,
+                            "hl.fragsize" : solr_query_spec.solrQueryOpts.hlFragsize, 
+                            "hl.maxAnalyzedChars" : solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars,
+                            "hl.simplepre" : opasConfig.HITMARKERSTART,
+                            "hl.simplepost" : opasConfig.HITMARKEREND        
         }
 
-        args = {
-                   # 'fl':summaryField,
-                   # 'q':'tuck*',
-                   'hl': 'true',
-                   'hl.fragsize': 125,
-                   'hl.fl':highlightFields,
-                   'rows':returnLimit,
-                   'hl.simplepre': '<em>',
-                   'hl.simplepost': '</em>'
-               }
-
-        
     except Exception as e:
         logger.error(f"Solr Param Assignment Error {e}")
 
@@ -325,7 +906,12 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                 ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
 
     try:
-        results = solr_core.search(query, **solr_param_dict)
+        # PySolr does not like None's, so clean them
+        solr_param_dict = opasQueryHelper.cleanNullTerms(solr_param_dict)
+
+        # SEARCH!
+        results = solr_docs2.search(query, **solr_param_dict)
+        
 
     except solr.SolrException as e:
         if e is None:
@@ -360,7 +946,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                 
     else: #  search was ok
         try:
-            logger.info(f"Search Ok. Result Size:{results._numFound}; Search:{solr_query_spec.solrQuery.searchQ}; Filter:{solr_query_spec.solrQuery.filterQ}")
+            logger.info(f"Search Ok. Result Size:{results.hits}; Search:{solr_query_spec.solrQuery.searchQ}; Filter:{solr_query_spec.solrQuery.filterQ}")
             scopeofquery = [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ]
     
             if ret_status[0] == 200: 
@@ -388,13 +974,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     #  no session info...what to do?
                     logger.debug(f"No session info to perform optimizations {e}")
                     
-                for result in results.results:
+                for result in results.docs:
                     # reset anchor counts for full-text markup re.sub
                     count_anchors = 0
-                    record_count = len(results.results)
+                    record_count = len(results.docs)
                     # authorIDs = result.get("art_authors", None)
                     documentListItem = models.DocumentListItem()
-                    documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+                    documentListItem = opasQueryHelper.get_base_article_info_from_search_result(result, documentListItem)
                     documentID = documentListItem.documentID
                     # sometimes, we don't need to check permissions
                     # Always check if fullReturn is selected
@@ -426,13 +1012,16 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             except:
                                 text_xml = result.get("para", None)
     
+                    #if text_xml is None: # PySolrLib doesn't put text in highlight unless there was a term search, so get it here.
+                        #text_xml = result.get("text_xml", None)
+    
                     if text_xml is not None and type(text_xml) != list:
                         text_xml = [text_xml]
     
                     # do this before we potentially clear text_xml if no full text requested below
                     if solr_query_spec.abstractReturn:
                         omit_abstract = False
-                        if opasConfig.ACCESS_ABSTRACT_RESTRICTION:
+                        if opasConfig.ACCESS_ABSTRACT_RESTRICTION and documentListItem.accessLimited: # if restriction is on, AND this is restricted content
                             if session_info is not None:
                                 if not session_info.authenticated:
                                     # experimental - remove abstract if not authenticated, per DT's requirement
@@ -440,7 +1029,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             else: # no session info, omit abstract
                                 omit_abstract = True
                         
-                        documentListItem = get_excerpt_from_search_result(result, documentListItem, solr_query_spec.returnFormat, omit_abstract=omit_abstract)
+                        documentListItem = opasQueryHelper.get_excerpt_from_search_result(result,
+                                                                                          documentListItem,
+                                                                                          solr_query_spec.returnFormat,
+                                                                                          omit_abstract=omit_abstract)
     
                     documentListItem.kwic = "" # need this, so it doesn't default to Nonw
                     documentListItem.kwicList = []
@@ -474,14 +1066,14 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # This is the room where where full-text return HAPPENS
                     # ########################################################################
                     if solr_query_spec.fullReturn and not documentListItem.accessLimited and not offsite:
-                        documentListItem = get_fulltext_from_search_results(result=result,
-                                                                            text_xml=text_xml,
-                                                                            format_requested=solr_query_spec.returnFormat,
-                                                                            return_options=solr_query_spec.returnOptions, 
-                                                                            page=solr_query_spec.page,
-                                                                            page_offset=solr_query_spec.page_offset,
-                                                                            page_limit=solr_query_spec.page_limit,
-                                                                            documentListItem=documentListItem)
+                        documentListItem = opasQueryHelper.get_fulltext_from_search_results(result=result,
+                                                                                            text_xml=text_xml,
+                                                                                            format_requested=solr_query_spec.returnFormat,
+                                                                                            return_options=solr_query_spec.returnOptions, 
+                                                                                            page=solr_query_spec.page,
+                                                                                            page_offset=solr_query_spec.page_offset,
+                                                                                            page_limit=solr_query_spec.page_limit,
+                                                                                            documentListItem=documentListItem)
 
                         #  test remove glossary..for my tests, not for stage/production code.
                         # Note: the question mark before the first field in search= matters
@@ -527,19 +1119,19 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     
                     similarityMatch = None
                     if mlt_count > 0:
-                        if results.moreLikeThis[documentID] is not None:
+                        if results.raw_response["moreLikeThis"][documentID] is not None:
                             similarityMatch = {}
                             # remove text
                             similarityMatch["similarDocs"] = {}
                             similarityMatch["similarDocs"][documentID] = []
-                            for n in results.moreLikeThis[documentID]:
+                            for n in results.raw_response["moreLikeThis"][documentID]["docs"]:
                                 likeThisListItem = models.DocumentListItem()
                                 #n["text_xml"] = None
-                                n = get_base_article_info_from_search_result(n, likeThisListItem)                    
+                                n = opasQueryHelper.get_base_article_info_from_search_result(n, likeThisListItem)                    
                                 similarityMatch["similarDocs"][documentID].append(n)
     
-                            similarityMatch["similarMaxScore"] = results.moreLikeThis[documentID].maxScore
-                            similarityMatch["similarNumFound"] = results.moreLikeThis[documentID].numFound
+                            similarityMatch["similarMaxScore"] = results.raw_response["moreLikeThis"][documentID]["maxScore"]
+                            similarityMatch["similarNumFound"] = results.raw_response["moreLikeThis"][documentID]["numFound"]
                             # documentListItem.moreLikeThis = results.moreLikeThis[documentID]
     
                     if similarityMatch is not None: documentListItem.similarityMatch = similarityMatch
@@ -595,17 +1187,17 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
             #  was a full-text request with a page offset and limit
             # Solr search was ok
-            responseInfo = models.ResponseInfo(count = len(results.results),
-                                               fullCount = results._numFound,
-                                               totalMatchCount = results._numFound,
+            responseInfo = models.ResponseInfo(count = len(results.docs),
+                                               fullCount = results.hits,
+                                               totalMatchCount = results.hits,
                                                description=solr_query_spec.solrQuery.semanticDescription, 
                                                limit = solr_query_spec.limit,
                                                offset = solr_query_spec.offset,
                                                page = solr_query_spec.page, 
                                                listType="documentlist",
                                                scopeQuery=[scopeofquery], 
-                                               fullCountComplete = solr_query_spec.limit >= results._numFound,
-                                               solrParams = results._params,
+                                               fullCountComplete = solr_query_spec.limit >= results.hits,
+                                               solrParams = None, # results._params,
                                                facetCounts=facet_counts,
                                                #authenticated=authenticated, 
                                                request=f"{req_url}",
@@ -645,13 +1237,12 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
     return_status = (200, "OK")
 
     if pep_code is not None:
-        q_str = "art_sourcetype:video* AND art_sourcecode:{}".format(pep_code)
+        query = "art_sourcetype:video* AND art_sourcecode:{}".format(pep_code)
     else:
-        q_str = "art_sourcetype:video*"
+        query = "art_sourcetype:video*"
         
     try:
-        logger.info(f"Solr Query: q={q_str}")
-        query = q_str
+        logger.info(f"Solr Query: q={query}")
         args = {
                    'fl':opasConfig.DOCUMENT_ITEM_VIDEO_FIELDS,
                    # 'q':'tuck*',
@@ -703,6 +1294,153 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
             source_info_dblist.append(source_info_record)
 
     return total_count, source_info_dblist, ret_val, return_status
+
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
+                          year="*",
+                          vol="*",
+                          req_url: str=None,
+                          extra_info:int=0, # since this requires an extra query of the DB
+                          limit=opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS,
+                          offset=0):
+    """
+    Return a source's contents
+
+    >>> results = metadata_get_contents("IJP", "1993", limit=5, offset=0)
+    >>> results.documentList.responseInfo.count == 5
+    True
+    >>> results = metadata_get_contents("IJP", "1993", limit=5, offset=5)
+    >>> results.documentList.responseInfo.count == 5
+    True
+    """
+    ret_val = []
+    if year == "*" and vol != "*":
+        # specified only volume
+        field="art_vol"
+        search_val = vol
+    else:  #Just do year
+        field="art_year"
+        search_val = year  #  was "*", thats an error, fixed 2019-12-19
+
+    try:
+        code = pep_code.upper()
+    except:
+        logger.warning(f"Illegal PEP Code or None supplied to metadata_get_contents: {pep_code}")
+    else:
+        pep_code = code
+
+    query = f"art_sourcecode:{pep_code} && {field}:{search_val}"
+    logger.info(f"Solr Query: q:{query}")
+    
+    fields = """art_id,
+                art_vol,
+                art_year,
+                art_iss,
+                art_iss_title,
+                art_iss_seqnbr,
+                art_newsecnm,
+                art_pgrg,
+                title,
+                art_authors,
+                art_authors_mast,
+                art_citeas_xml,
+                art_info_xml"""
+    
+    args = {
+               'fl':fields,
+               'rows':limit,
+               'start': offset,
+               'sort':"art_id asc",
+           }
+
+    results = solr_docs2.search(query, **args)
+    
+    document_item_list = []
+    for result in results.docs:
+        # transform authorID list to authorMast
+        author_ids = result.get("art_authors", None)
+        if author_ids is None:
+            # try this, instead of abberrant behavior in alpha of display None!
+            authorMast = result.get("art_authors_mast", "")
+        else:
+            authorMast = opasgenlib.derive_author_mast(author_ids)
+
+        pgRg = result.get("art_pgrg", None)
+        pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
+        citeAs = result.get("art_citeas_xml", None)  
+        citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
+        vol = result.get("art_vol", None)
+        issue = result.get("art_iss", None)
+        issue_title = result.get("art_iss_title", None)
+        issue_seqnbr = result.get("art_iss_seqnbr", None)
+        if issue is not None:
+            if issue_title is None:
+                if issue_seqnbr is None:
+                    issue_title = f"Issue {issue}"
+                else:
+                    issue_title = f"No. {issue_seqnbr}"
+
+        item = models.DocumentListItem(PEPCode = pep_code, 
+                                       year = result.get("art_year", None),
+                                       vol = vol,
+                                       issue = issue,
+                                       issueTitle = issue_title,
+                                       issueSeqNbr = issue_seqnbr, 
+                                       newSectionName = result.get("art_newsecnm", None),
+                                       pgRg = result.get("art_pgrg", None),
+                                       pgStart = pgStart,
+                                       pgEnd = pgEnd,
+                                       title = result.get("title", None), 
+                                       authorMast = authorMast,
+                                       documentID = result.get("art_id", None),
+                                       documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
+                                       documentRefHTML = citeAs,
+                                       documentInfoXML=result.get("art_info_xml", None), 
+                                       score = result.get("score", None)
+                                       )
+        #logger.debug(item)
+        document_item_list.append(item)
+
+    # two options 2020-11-17 for extra info (lets see timing for each...)
+    suppinfo = None
+    if extra_info == 1 and search_val != "*" and pep_code != "*" and len(results.docs) > 0:
+        ocd = opasCentralDBLib.opasCentralDB()
+        suppinfo = ocd.get_min_max_volumes(source_code=pep_code)
+
+    if extra_info == 2 and search_val != "*" and pep_code != "*" and len(results.docs) > 0:
+        prev_vol, match_vol, next_vol = metadata_get_next_and_prev_vols(source_code=pep_code,
+                                                                        source_vol=vol,
+                                                                        req_url=req_url
+                                                                        )
+        suppinfo = {"infosource": "volumes_adjacent",
+                    "prev_vol": prev_vol,
+                    "matched_vol": match_vol,
+                    "next_vol": next_vol}
+
+    num_found = results.hits
+
+    response_info = models.ResponseInfo( count = len(results.docs),
+                                         fullCount = num_found,
+                                         limit = limit,
+                                         offset = offset,
+                                         listType="documentlist",
+                                         fullCountComplete = limit >= num_found,
+                                         supplementalInfo=suppinfo, 
+                                         request=f"{req_url}",
+                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                         )
+
+    document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
+                                                      responseSet=document_item_list
+                                                      )
+
+    document_list = models.DocumentList(documentList = document_list_struct)
+
+    ret_val = document_list
+
+    return ret_val
+#-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
 def database_get_whats_new(days_back=14,
@@ -818,7 +1556,175 @@ def database_get_whats_new(days_back=14,
         ret_val = models.WhatsNewList(whatsNew = whats_new_list_struct)
 
     return ret_val   # WhatsNewList
+#-----------------------------------------------------------------------------
 
+#-----------------------------------------------------------------------------
+def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
+                              limit=None,
+                              offset=None,
+                              sort=None, 
+                              session_info=None,
+                              solr_core="pepwebdocs"
+                              ):
+    """
+    SPECIAL - do the search for the purpose of downloading stat...could be many records.
+    
+    """
+    ret_val = {}
+    ret_status = (200, "OK") # default is like HTTP_200_OK
+    
+    if solr_query_spec.solrQueryOpts is None: # initialize a new model
+        solr_query_spec.solrQueryOpts = models.SolrQueryOpts()
+
+    if solr_query_spec.solrQuery is None: # initialize a new model
+        solr_query_spec.solrQuery = models.SolrQuery()
+
+    solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = 200
+    # let this be None, if no limit is set.
+    if offset is not None:
+        solr_query_spec.offset = offset
+
+    if limit is not None:
+        solr_query_spec.limit = min(limit, opasConfig.MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE) 
+    else:
+        solr_query_spec.limit = 99000 # opasConfig.MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE
+
+    if sort is not None:
+        solr_query_spec.solrQuery.sort = sort
+
+    # q must be part of any query; this appears to be the cause of the many solr syntax errors seen. 
+    if solr_query_spec.solrQuery.searchQ is None or solr_query_spec.solrQuery.searchQ == "":
+        logger.error(f">>>>>> solr_query_spec.solrQuery.searchQ is {solr_query_spec.solrQuery.searchQ}.  Filter: {solr_query_spec.solrQuery.filterQ} The endpoint request was: {req_url}")
+        solr_query_spec.solrQuery.searchQ = "*.*"
+
+    query = solr_query_spec.solrQuery.searchQ
+    try:
+        solr_param_dict = { 
+                            "fq": solr_query_spec.solrQuery.filterQ,
+                            "q.op": solr_query_spec.solrQueryOpts.qOper, 
+                            "debugQuery": solr_query_spec.solrQueryOpts.queryDebug or localsecrets.SOLR_DEBUG,
+                            "fl" : opasConfig.DOCUMENT_ITEM_STAT_FIELDS, 
+                            "rows" : solr_query_spec.limit,
+                            "start" : solr_query_spec.offset,
+                            "sort" : solr_query_spec.solrQuery.sort
+        }
+
+        # PySolr does not like None's, so clean them
+        solr_param_dict = opasQueryHelper.cleanNullTerms(solr_param_dict)
+        
+    except Exception as e:
+        logger.error(f"Solr Param Assignment Error {e}")
+
+    #allow core parameter here
+    solr_query_spec.core = "pepwebdocs"
+    solr_core = solr_docs2
+
+    # ############################################################################
+    # SOLR Download Query
+    # ############################################################################
+    try:
+        start_time = time.time()
+        results = solr_core.search(query, **solr_param_dict)
+        total_time = time.time() - start_time
+        
+    except solr.SolrException as e:
+        if e is None:
+            ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
+            logger.error(f"Solr Runtime Search Error: {e.reason}")
+            logger.error(e.body)
+        elif e.reason is not None:
+            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
+            logger.error(f"Solr Runtime Search Error: {e.reason}")
+            logger.error(e.body)
+        else:
+            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
+            logger.error(f"Solr Runtime Search Error: {e.httpcode}")
+            logger.error(e.body)
+        
+        ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+
+    else: #  search was ok
+        try:
+            logger.info("Download Search Performed: %s", solr_query_spec.solrQuery.searchQ)
+            logger.info("The Filtering: %s", solr_query_spec.solrQuery.filterQ)
+            logger.info("Result  Set Size: %s", results.hits)
+            logger.info("Return set limit: %s", solr_query_spec.limit)
+            logger.info(f"Download Stats Solr Search Time: {total_time}")
+            scopeofquery = [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ]
+    
+            if ret_status[0] == 200: 
+                documentItemList = []
+                rowCount = 0
+                for result in results.docs:
+                    documentListItem = models.DocumentListItem()
+                    #documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+                    citeas = result.get("art_citeas_xml", None)
+                    citeas = opasQueryHelper.force_string_return_from_various_return_types(citeas)
+                    
+                    documentListItem.score = result.get("score", None)               
+                    # see if this article is an offsite article
+                    result["text_xml"] = None                   
+                    stat = {}
+                    count_all = result.get("art_cited_all", None)
+                    if count_all is not None:
+                        stat["art_cited_5"] = result.get("art_cited_5", None)
+                        stat["art_cited_10"] = result.get("art_cited_10", None)
+                        stat["art_cited_20"] = result.get("art_cited_20", None)
+                        stat["art_cited_all"] = count_all
+    
+                    count0 = result.get("art_views_lastcalyear", 0)
+                    count1 = result.get("art_views_lastweek", 0)
+                    count2 = result.get("art_views_last1mos", 0)
+                    count3 = result.get("art_views_last6mos", 0)
+                    count4 = result.get("art_views_last12mos", 0)
+    
+                    if count0 + count1 + count2 + count3+ count4 > 0:
+                        stat["art_views_lastcalyear"] = count0
+                        stat["art_views_lastweek"] = count1
+                        stat["art_views_last1mos"] = count2
+                        stat["art_views_last6mos"] = count3
+                        stat["art_views_last12mos"] = count4
+    
+                    if stat == {}:
+                        stat = None
+    
+                    documentListItem.stat = stat
+                    documentListItem.docLevel = result.get("art_level", None)
+                    rowCount += 1
+                    # add it to the set!
+                    documentItemList.append(documentListItem)
+
+            responseInfo = models.ResponseInfo(
+                                               count = len(results.docs),
+                                               fullCount = results.hits,
+                                               totalMatchCount = results.hits,
+                                               limit = solr_query_spec.limit,
+                                               offset = solr_query_spec.offset,
+                                               listType="documentlist",
+                                               scopeQuery=[scopeofquery], 
+                                               fullCountComplete = solr_query_spec.limit >= results.hits,
+                                               solrParams = results.raw_response["responseHeader"]["params"],
+                                               request=f"{solr_query_spec.urlRequest}",
+                                               core=solr_query_spec.core, 
+                                               timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+            )
+    
+            documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
+                                                            responseSet = documentItemList
+                                                            )
+    
+            documentList = models.DocumentList(documentList = documentListStruct)
+    
+            ret_val = documentList
+            
+        except Exception as e:
+            logger.error(f"problem with query {e}")
+            
+    logger.info(f"Download Stats Document Return Time: {time.time() - start_time}")
+    return ret_val, ret_status
+#-----------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------
 def metadata_get_next_and_prev_articles(art_id=None, 
                                         req_url: str=None 
                                        ):
@@ -892,8 +1798,10 @@ def metadata_get_next_and_prev_articles(art_id=None,
                 continue
     
     return prev_art, match_art, next_art
+#-----------------------------------------------------------------------------
 
 
+#-----------------------------------------------------------------------------
 def metadata_get_next_and_prev_vols(source_code=None,
                                     source_vol=None,
                                     req_url: str=None 
@@ -999,8 +1907,10 @@ def metadata_get_next_and_prev_vols(source_code=None,
                         logger.warning("No volume to assess: ", match_vol_idx)
     
     return prev_vol, match_vol, next_vol
+#-----------------------------------------------------------------------------
 
 
+#-----------------------------------------------------------------------------
 def metadata_get_volumes(source_code=None,
                          source_type=None,
                          req_url: str=None 
@@ -1123,6 +2033,142 @@ def metadata_get_volumes(source_code=None,
         ret_val = volume_list
         
     return ret_val
+#-----------------------------------------------------------------------------
+def prep_document_download(document_id,
+                           session_info=None, 
+                           ret_format="HTML",
+                           base_filename="opasDoc",
+                           flex_fs=None):
+    """
+    Preps a file in the right format for download.  Returns the filename of the prepared file and the status.
+    Note:
+       Checks access with the auth server via opasDocPerm.get_access_limitations
+           - If access not permitted, this returns an error (and None for the filename)
+           - If access allowed, it returns with the document itself
+
+    >>> a = prep_document_download("IJP.051.0175A", ret_format="html") 
+
+    >>> a = prep_document_download("IJP.051.0175A", ret_format="epub") 
+
+
+    """
+    def add_epub_elements(str):
+        # for now, just return
+        return str
+
+    ret_val = None
+    status = httpCodes.HTTP_200_OK
+
+    query = "art_id:%s" % (document_id)
+    args = {
+             "fl": """art_id, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
+                      art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi,
+                      art_issn, file_classification"""
+    }
+
+    try:
+        results = solr_docs2.search(query, **args)
+    except Exception as e:
+        logger.error(f"Error: {e}")
+    else:
+        try:
+            art_info = results.docs[0]
+            docs = art_info.get("text_xml", art_info.get("art_excerpt", None))
+        except IndexError as e:
+            logger.warning("No matching document for %s.  Error: %s", document_id, e)
+        except KeyError as e:
+            logger.warning("No full-text content found for %s.  Error: %s", document_id, e)
+        else:
+            try:    
+                if isinstance(docs, list):
+                    doc = docs[0]
+                else:
+                    doc = docs
+            except Exception as e:
+                logger.warning("Empty return: %s", e)
+            else:
+                doi = art_info.get("art_doi", None)
+                pub_year = art_info.get("art_year", None)
+                file_classification = art_info.get("file_classification", None)
+                
+                access = opasDocPerm.get_access_limitations( doc_id=document_id,
+                                                             classification=file_classification,
+                                                             session_info=session_info,
+                                                             year=pub_year,
+                                                             doi=doi,
+                                                             fulltext_request=True
+                                                            )
+                if access.accessLimited != True:
+                    try:
+                        heading = opasxmllib.get_running_head( source_title=art_info.get("art_sourcetitleabbr", ""),
+                                                               pub_year=pub_year,
+                                                               vol=art_info.get("art_vol", ""),
+                                                               issue=art_info.get("art_iss", ""),
+                                                               pgrg=art_info.get("art_pgrg", ""),
+                                                               ret_format="HTML"
+                                                               )
+        
+                        if ret_format.upper() == "HTML":
+                            html = opasxmllib.remove_encoding_string(doc)
+                            filename = opasxmllib.convert_xml_to_html_file(html, output_filename=document_id + ".html")  # returns filename
+                            ret_val = filename
+                        elif ret_format.upper() == "PDFORIG":
+                            # setup so can include year in path (folder names) in AWS, helpful.
+                            if flex_fs is not None:
+                                pub_year = art_info.get("art_year", None)
+                                filename = flex_fs.get_download_filename(filespec=document_id, path=localsecrets.PDF_ORIGINALS_PATH, year=pub_year, ext=".pdf")    
+                                ret_val = filename
+                            else:
+                                err_msg = "File path error."
+                                status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
+                                                             error_description=err_msg
+                                                           )
+                                ret_val = None
+                        elif ret_format.upper() == "PDF":
+                            pisa.showLogging() # debug only
+                            doc = opasxmllib.remove_encoding_string(doc)
+                            html_string = opasxmllib.xml_str_to_html(doc)
+                            html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
+                            html_string = re.sub("</html>", f"{COPYRIGHT_PAGE_HTML}</html>", html_string, count=1)                        
+                            # open output file for writing (truncated binary)
+                            filename = document_id + ".PDF" 
+                            result_file = open(filename, "w+b")
+                            # convert HTML to PDF
+                            # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
+                            pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
+                                                        dest=result_file)           # file handle to receive result
+                            # close output file
+                            result_file.close()                 # close output file
+                            # return True on success and False on errors
+                            ret_val = filename
+                        elif ret_format.upper() == "EPUB":
+                            doc = opasxmllib.remove_encoding_string(doc)
+                            html_string = opasxmllib.xml_str_to_html(doc)
+                            html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
+                            html_string = add_epub_elements(html_string)
+                            filename = opasxmllib.html_to_epub(html_string, document_id, document_id)
+                            ret_val = filename
+                        else:
+                            err_msg = f"Format {ret_format} not supported"
+                            logger.warning(err_msg)
+                            ret_val = None
+                            status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
+                                                         error_description=err_msg
+                                                       )
+        
+                    except Exception as e:
+                        logger.warning("Can't convert data: %s", e)
+                        ret_val = None
+                        status = models.ErrorReturn( httpcode=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
+                                                     error_description="Can't convert document data"
+                                                   )
+                else:
+                    status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
+                                                 error_description="No permission for document"
+                                               )
+                    ret_val = None
+    
+    return ret_val, status
 
 if __name__ == "__main__":
     sys.path.append('./config') 

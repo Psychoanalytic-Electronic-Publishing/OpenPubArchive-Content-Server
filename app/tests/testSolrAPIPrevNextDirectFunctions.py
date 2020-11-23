@@ -47,6 +47,10 @@ class TestSolrAPIPrevNextDirectFunctions(unittest.TestCase):
         prev_art, match_art, next_art = opasPySolrLib.metadata_get_next_and_prev_articles(art_id="IJPSP.004.0445A")
         print (prev_art, match_art, next_art)
     
+    def test_3_get_document_info(self):
+        opasPySolrLib.document_get_info('PEPGRANTVS.001.0009A', fields='art_year, art_id, file_classification')
+        {'art_year': '2015', 'art_id': 'PEPGRANTVS.001.0009A', 'file_classification': 'free'}
+        
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")

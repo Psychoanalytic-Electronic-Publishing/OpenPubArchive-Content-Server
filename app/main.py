@@ -203,32 +203,6 @@ def get_client_id(response: Response,
     ret_val = opasDocPermissions.find_client_id(request, response)
     return ret_val
 
-def save_opas_session_cookie(request: Request, response: Response, session_id):
-    ret_val = False
-    already_set = False
-    if session_id is not None and session_id is not 'None':
-        already_set = False
-        try:
-            opasSession = [x for x in response.raw_headers[0] if b"opasSessionID" in x]
-            already_set = b"opasSessionID" in opasSession[0][0:13]
-        except Exception as e:
-            logger.debug(f"Ok, opasSessionID not in response {e}")
-
-    if already_set == False and session_id is not None:
-        try:
-            logger.debug("Saved OpasSessionID Cookie")
-            response.set_cookie(
-                OPASSESSIONID,
-                value=f"{session_id}",
-                domain=localsecrets.COOKIE_DOMAIN
-            )
-            ret_val = True
-        except Exception as e:
-            logger.error(f"Can't save opas session-id cookie: {e}")
-            ret_val = False
-            
-    return ret_val
-    
 def get_client_session(response: Response,
                        request: Request,
                        client_session: str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
@@ -264,7 +238,7 @@ def get_client_session(response: Response,
             )
         else:
             if session_id is not None:
-                save_opas_session_cookie(request, response, session_id)
+                opasAPISupportLib.save_opas_session_cookie(request, response, session_id)
             else:
                 logger.info("Session_id is None, no cookie saved.")
 
@@ -1180,9 +1154,15 @@ def session_login(response: Response,
         # need to do this, saves to db, but we're not directly using return values here
         session_info = opasDocPermissions.get_authserver_session_info(session_id, client_id, pads_session_info=pads_session_info)
         # Save it for eating later; most importantly, overwrite any existing cookie!
-        logger.info("Successful login - saved OpasSessionID Cookie")
+        #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
+        if session_info.is_valid_login:
+            response.set_cookie(
+                OPASSESSIONID,
+                value=f"{session_id}",
+                domain=localsecrets.COOKIE_DOMAIN
+            )
+            logger.info("Successful login - saved OpasSessionID Cookie")
         # already should be in response per get_client_session
-        # save_opas_session_cookie(request, response, session_id)        
 
     try:
         login_return_item = models.LoginReturnItem(token_type = "bearer", 
@@ -1236,7 +1216,16 @@ def session_login_basic(response: Response,
         # Save it for later; most importantly, overwrite any existing cookie!
         if session_info.authenticated:
             logger.info("Successful basic login - saved OpasSessionID Cookie")
-            save_opas_session_cookie(request, response, session_id)
+            opasAPISupportLib.save_opas_session_cookie(request, response, session_id)
+            
+        #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
+        if session_info.is_valid_login:
+            response.set_cookie(
+                OPASSESSIONID,
+                value=f"{session_id}",
+                domain=localsecrets.COOKIE_DOMAIN
+            )
+            
     else:
         logger.error(f"Bad login")
         raise HTTPException(
@@ -2490,15 +2479,15 @@ def database_searchanalysis_v2(response: Response,
     solr_query_params = solr_query_spec.solrQuery
 
     # We don't always need full-text, but if we need to request the doc later we'll need to repeat the search parameters plus the docID
-    ret_val = opasAPISupportLib.search_analysis(query_list=solr_query_params.searchAnalysisTermList, 
-                                                filter_query = solr_query_params.filterQ,
-                                                def_type = "lucene",
-                                                #query_analysis=analysis_mode,
-                                                #more_like_these = None,
-                                                full_text_requested=False,
-                                                limit=limit, 
-                                                api_version="v2"
-                                                )
+    ret_val = opasPySolrLib.search_analysis(query_list=solr_query_params.searchAnalysisTermList, 
+                                            filter_query = solr_query_params.filterQ,
+                                            def_type = "lucene",
+                                            #query_analysis=analysis_mode,
+                                            #more_like_these = None,
+                                            full_text_requested=False,
+                                            limit=limit, 
+                                            api_version="v2"
+                                            )
 
     logger.debug("Done with search analysis.")
     # print (f"Search analysis called: {solr_query_params}")
@@ -2597,15 +2586,15 @@ def database_searchanalysis_v3(response: Response,
     solr_query_params = solr_query_spec.solrQuery
 
     # We don't always need full-text, but if we need to request the doc later we'll need to repeat the search parameters plus the docID
-    ret_val = opasAPISupportLib.search_analysis(query_list=solr_query_params.searchAnalysisTermList, 
-                                                filter_query = solr_query_params.filterQ,
-                                                def_type = "lucene",
-                                                #query_analysis=analysis_mode,
-                                                #more_like_these = None,
-                                                full_text_requested=False,
-                                                limit=limit, 
-                                                api_version="v2"
-                                                )
+    ret_val = opasPySolrLib.search_analysis(query_list=solr_query_params.searchAnalysisTermList, 
+                                            filter_query = solr_query_params.filterQ,
+                                            def_type = "lucene",
+                                            #query_analysis=analysis_mode,
+                                            #more_like_these = None,
+                                            full_text_requested=False,
+                                            limit=limit, 
+                                            api_version="v2"
+                                            )
 
     logger.debug("Done with search analysis.")
     # print (f"Search analysis called: {solr_query_params}")
@@ -3209,7 +3198,7 @@ def metadata_contents_sourcecode(response: Response,
     log_endpoint(request, client_id=client_id)
     
     try:       
-        ret_val = opasAPISupportLib.metadata_get_contents(SourceCode,
+        ret_val = opasPySolrLib.metadata_get_contents(SourceCode,
                                                           year,
                                                           extra_info=moreinfo, 
                                                           limit=limit,
@@ -3276,7 +3265,7 @@ def metadata_contents(SourceCode: str,
     log_endpoint(request, client_id=client_id)
 
     try:
-        ret_val = documentList = opasAPISupportLib.metadata_get_contents(SourceCode,
+        ret_val = documentList = opasPySolrLib.metadata_get_contents(SourceCode,
                                                                          year,
                                                                          vol=SourceVolume,
                                                                          extra_info=moreinfo, 
@@ -4249,7 +4238,7 @@ def documents_document_fetch(response: Response,
                                                                 )
 
             try:
-                supplemental = opasAPISupportLib.metadata_get_next_and_prev_articles(art_id=documentID)
+                supplemental = opasPySolrLib.metadata_get_next_and_prev_articles(art_id=documentID)
                 if supplemental[0] != {}:
                     ret_val.documents.responseSet[0].sourcePrevious = supplemental[0]["art_id"]
                 if supplemental[2] != {}:
@@ -4606,12 +4595,12 @@ def documents_downloads(response: Response,
                                              secret=localsecrets.S3_SECRET,
                                              root=localsecrets.PDF_ORIGINALS_PATH) # important to use this path, not the XML one!
 
-    filename, status = opasAPISupportLib.prep_document_download( documentID,
-                                                                 ret_format=file_format,
-                                                                 base_filename="opasDoc",
-                                                                 session_info=session_info, 
-                                                                 flex_fs=flex_fs,
-                                                                )    
+    filename, status = opasPySolrLib.prep_document_download( documentID,
+                                                             ret_format=file_format,
+                                                             base_filename="opasDoc",
+                                                             session_info=session_info, 
+                                                             flex_fs=flex_fs,
+                                                            )    
 
     error_status_message = f" The requested document {documentID} could not be returned."
 
@@ -4698,9 +4687,10 @@ def database_word_wheel(response: Response,
                         field: str=Query("text", title=opasConfig.TITLE_WORDFIELD, description=opasConfig.DESCRIPTION_WORDFIELD),
                         core: str=Query("docs", title=opasConfig.TITLE_CORE, description=opasConfig.DESCRIPTION_CORE),
                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                        #offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                        startat:str=Query(None, title="Start at this term/prefix (inconsistent at best)."), 
                         client_id:int=Depends(get_client_id), 
-                              #client_session:str= Depends(get_client_session)
+                         #client_session:str= Depends(get_client_session)
                         ):
     """
     ## Function
@@ -4755,12 +4745,12 @@ def database_word_wheel(response: Response,
         try:
             # returns models.TermIndex
             term_to_check = word.lower()  # work with lower case only, since Solr is case sensitive.
-            ret_val = opasAPISupportLib.get_term_index(term_to_check,
-                                                       term_field=field,
-                                                       core=core,
-                                                       req_url=request.url, 
-                                                       limit=limit,
-                                                       offset=offset)
+            ret_val = opasPySolrLib.get_term_index(term_to_check,
+                                                   term_field=field,
+                                                   core=core,
+                                                   req_url=request.url, 
+                                                   limit=limit,
+                                                   start_at=startat)
         except ConnectionRefusedError as e:
             status_message = f"The server is not running or is currently not accepting connections: {e}"
             logger.error(status_message)

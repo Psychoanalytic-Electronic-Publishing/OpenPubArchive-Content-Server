@@ -91,6 +91,21 @@ show_dbg_messages = False
 stop_on_exceptions = False
 
 #-----------------------------------------------------------------------------
+def convert_xml_to_html_file(xmltext_str, output_filename=None):
+    if output_filename is None:
+        basename = "opasDoc"
+        suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+        filename_base = "_".join([basename, suffix]) # e.g. 'mylogfile_120508_171442'        
+        output_filename = filename_base + ".html"
+
+    htmlString = opasxmllib.xml_str_to_html(xmltext_str)
+    fo = open(output_filename, "w", encoding="utf-8")
+    fo.write(str(htmlString))
+    fo.close()
+
+    return output_filename
+
+#-----------------------------------------------------------------------------
 # at least for testing
 def read_file(filename):
     """
