@@ -2089,7 +2089,12 @@ def documents_get_glossary_entry(term_id,
                     logger.warning(f"Error converting glossary content: {term_id} ({e})")
             else:
                 try:
-                    document = opasxmllib.xml_str_to_html(document, transformer_name=opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
+                    if retFormat == "HTML":
+                        document = opasxmllib.xml_str_to_html(document, transformer_name=opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
+                    elif retFormat == "TEXTONLY":
+                        document = opasxmllib.xml_elem_or_str_to_text(document)
+                    else: # XML
+                        document = document                   
                 except ValidationError as e:
                     logger.error(e.json())  
                 except Exception as e:

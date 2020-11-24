@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1124.2.Alpha.PySolr"
+__version__     = "2020.1124.3.Alpha.PySolr"
 __status__      = "Development"
 
 """
