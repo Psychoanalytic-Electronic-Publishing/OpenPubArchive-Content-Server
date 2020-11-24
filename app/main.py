@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1119.2.Alpha"
+__version__     = "2020.1124.2.Alpha.PySolr"
 __status__      = "Development"
 
 """
@@ -147,6 +147,7 @@ import opasQueryHelper
 import opasSchemaHelper
 import opasDocPermissions
 import opasPySolrLib
+from opasPySolrLib import search_text, search_text_qs
 
 # Check text server version
 text_server_ver = None
@@ -1600,10 +1601,10 @@ async def database_advanced_search(response: Response,
                                             req_url=request.url._url
                                             )
     # try the query
-    ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec,
-                                                           #authenticated=session_info.authenticated
-                                                           session_info=session_info
-                                                           )
+    ret_val, ret_status = search_text_qs(solr_query_spec,
+                                         #authenticated=session_info.authenticated
+                                         session_info=session_info
+                                         )
 
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
     if ret_status[0] != httpCodes.HTTP_200_OK:
@@ -1967,14 +1968,15 @@ async def database_search_paragraphs(response: Response,
     solr_query_params = solr_query_spec.solrQuery
     # solr_query_opts = solr_query_spec.solrQueryOpts
 
-    ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec,
-                                                           extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
-                                                           limit=limit,
-                                                           offset=offset,
-                                                           req_url=request.url._url, 
-                                                           #authenticated=session_info.authenticated
-                                                           session_info=session_info
-                                                           )
+    ret_val, ret_status = search_text_qs(solr_query_spec,
+                                         extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                         limit=limit,
+                                         offset=offset,
+                                         req_url=request.url._url, 
+                                         #authenticated=session_info.authenticated
+                                         session_info=session_info
+                                         )
+
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
     if ret_status[0] != httpCodes.HTTP_200_OK:
         #  throw an exception rather than return an object (which will fail)
@@ -2163,13 +2165,12 @@ async def database_search_v3(
                                                       req_url = request.url._url
                                                       )
 
-    ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec, 
-                                                           extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
-                                                           limit=limit,
-                                                           offset=offset,
-                                                           session_info=session_info
-                                                           )
-
+    ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                         extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                         limit=limit,
+                                         offset=offset,
+                                         session_info=session_info
+                                         )
 
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
     if ret_status[0] != httpCodes.HTTP_200_OK:
@@ -2351,12 +2352,12 @@ async def database_search_v2(response: Response,
                                                       req_url = request.url._url
                                                       )
 
-    ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec, 
-                                                           extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
-                                                           limit=limit,
-                                                           offset=offset,
-                                                           session_info=session_info
-                                                           )
+    ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                         extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                         limit=limit,
+                                         offset=offset,
+                                         session_info=session_info
+                                         )
 
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
     if ret_status[0] != httpCodes.HTTP_200_OK:
@@ -3622,7 +3623,7 @@ def authors_index(response: Response,
     try:
         # returns models.AuthorIndex
         author_name_to_check = authorNamePartial.lower()  # work with lower case only, since Solr is case sensitive.
-        ret_val = opasAPISupportLib.authors_get_author_info(author_name_to_check, limit=limit, offset=offset)
+        ret_val = opasPySolrLib.authors_get_author_info(author_name_to_check, limit=limit, offset=offset)
     except ConnectionRefusedError as e:
         status_message = f"The server is not running or is currently not accepting connections: {e}"
         logger.error(status_message)
@@ -3690,7 +3691,7 @@ def authors_publications(response: Response,
 
     try:
         author_name_to_check = authorNamePartial.lower()  # work with lower case only, since Solr is case sensitive.
-        ret_val = opasAPISupportLib.authors_get_author_publications(author_name_to_check, limit=limit, offset=offset)
+        ret_val = opasPySolrLib.authors_get_author_publications(author_name_to_check, limit=limit, offset=offset)
     except Exception as e:
         response.status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR
         status_message = f"Internal Server Error: {e}"
@@ -4059,7 +4060,8 @@ def documents_glossary_term(response: Response,
         ret_val = opasAPISupportLib.documents_get_glossary_entry(term_id=termIdentifier,
                                                                  term_id_type=termidtype,
                                                                  retFormat=return_format,
-                                                                 session_info=session_info
+                                                                 session_info=session_info,
+                                                                 req_url=request.url._url
                                                                  )
 
         ret_val.documents.responseInfo.request = request.url._url
@@ -4363,7 +4365,7 @@ def documents_concordance(response: Response,
         ret_val = opasAPISupportLib.documents_get_concordance_paras( paralangid,
                                                                      paralangrx, 
                                                                      #solr_query_params,
-                                                                     ret_format=return_format, 
+                                                                     ret_format=return_format,
                                                                      req_url=request.url._url, 
                                                                      session_info=session_info
                                                                      )

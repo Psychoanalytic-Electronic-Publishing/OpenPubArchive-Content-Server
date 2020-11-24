@@ -6,6 +6,7 @@ import opasQueryHelper
 import opasCentralDBLib
 import starlette.status as httpCodes
 import models
+from opasPySolrLib import search_text, search_text_qs
 
 import requests
 from unitTestConfig import base_plus_endpoint_encoded, headers, session_id, session_info
@@ -68,11 +69,11 @@ class TestSearchSyntax(unittest.TestCase):
             response_set = r["documentList"]["responseSet"] 
             assert(response_info["fullCount"] >= expected_count) # just make sure there's a count
             
-            #ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec,
-                                                                 #limit=1,
-                                                                 #offset=0,
-                                                                 #session_info=session_info
-                                                                 #)
+            #ret_val, ret_status = search_text_qs(solr_query_spec,
+                                                    #limit=1,
+                                                    #offset=0,
+                                                    #session_info=session_info
+                                                    #)
             #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
             #assert(ret_status[0] == httpCodes.HTTP_200_OK)
             #print (ret_val.documentList.responseInfo.fullCount)
@@ -86,11 +87,11 @@ class TestSearchSyntax(unittest.TestCase):
         for n, expected_count in fulltext1:
             solr_query_spec = opasQueryHelper.parse_search_query_parameters(fulltext1=n, art_level=1)
             print (solr_query_spec.solrQuery.searchQ)
-            ret_val, ret_status = opasQueryHelper.search_text_qs(solr_query_spec,
-                                                                 limit=1,
-                                                                 offset=0, 
-                                                                 session_info=session_info
-                                                                 )
+            ret_val, ret_status = search_text_qs(solr_query_spec,
+                                                 limit=1,
+                                                 offset=0, 
+                                                 session_info=session_info
+                                                 )
             #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
             assert(ret_status[0] == httpCodes.HTTP_200_OK)
             print (ret_val.documentList.responseInfo.fullCount)

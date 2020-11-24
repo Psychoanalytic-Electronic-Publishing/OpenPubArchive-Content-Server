@@ -6,16 +6,16 @@ import requests
 
 from unitTestConfig import base_plus_endpoint_encoded, headers
 #import opasAPISupportLib
-import opasPySolrLib as opasSolrLib
+from opasPySolrLib import get_term_index
 import timeit
 
 class TestWordWheel(unittest.TestCase):
 
     def test_0a_get_term_index(self):
-        resp = opasSolrLib.get_term_index("psycho",
-                                                term_field="text",
-                                                core="docs", 
-                                                order="index")
+        resp = get_term_index("psycho",
+                              term_field="text",
+                              core="docs", 
+                              order="index")
         print (resp.termIndex.responseInfo.count)
         assert(resp.termIndex.responseInfo.count >= 10)
 
@@ -27,10 +27,10 @@ class TestWordWheel(unittest.TestCase):
         assert(timing < .4)
 
     def test_1a_get_term_index(self):
-        resp = opasSolrLib.get_term_index("tuck",
-                                                term_field="art_author_id",
-                                                core="authors", 
-                                                order="index")
+        resp = get_term_index("tuck",
+                              term_field="art_author_id",
+                              core="authors", 
+                              order="index")
         print (resp.termIndex.responseInfo.count)
         assert(resp.termIndex.responseInfo.count >= 7)
 

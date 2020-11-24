@@ -5,6 +5,9 @@ import tempfile
 import os
 import urllib.request
 from enum import Enum, EnumMeta, IntEnum
+
+# count_anchors = 0 # define here so it can be used globally across modules
+
 # Share httpCodes definition with all OPAS modules that need it.  Starlette provides the symbolic declarations for us.
 import starlette.status as httpCodes # HTTP_ codes, e.g.
                                      # HTTP_200_OK, \
@@ -463,6 +466,42 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_views_last12mos, 
  art_views_lastweek, 
  reference_count, 
+ file_last_modified, 
+ timestamp, 
+ score
+"""
+
+DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
+ art_id, 
+ art_title, 
+ art_title_xml, 
+ art_subtitle_xml, 
+ art_author_id, 
+ art_authors, 
+ art_citeas_xml, 
+ art_info_xml, 
+ art_sourcecode, 
+ art_sourcetitleabbr, 
+ art_sourcetitlefull, 
+ art_sourcetype, 
+ art_level,
+ para_art_id,
+ parent_tag, 
+ para,
+ lang,
+ art_vol, 
+ art_type, 
+ art_vol_title, 
+ art_year, 
+ art_iss, 
+ art_iss_title, 
+ art_pgrg, 
+ art_lang, 
+ art_doi, 
+ art_issn, 
+ art_origrx, 
+ art_qual, 
+ art_kwds, 
  file_last_modified, 
  timestamp, 
  score

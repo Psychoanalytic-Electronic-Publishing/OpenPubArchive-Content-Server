@@ -125,15 +125,14 @@ import models
 
 import opasXMLHelper as opasxmllib
 import opasQueryHelper
-from opasQueryHelper import search_text # , search_text_qs
 import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
 import schemaMap
 import opasDocPermissions as opasDocPerm
 import opasPySolrLib
-from opasPySolrLib import search_text_qs
+from opasPySolrLib import search_text, search_text_qs
 
-count_anchors = 0
+# count_anchors = 0
 
 def has_data(str):
     ret_val = True
@@ -1967,6 +1966,7 @@ def documents_get_concordance_paras(para_lang_id,
                                                     filter_query=filterQ,
                                                     full_text_requested=True,
                                                     format_requested=ret_format,
+                                                    return_field_set="CONCORDANCE", 
                                                     highlight_fields="para",
                                                     extra_context_len=opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
                                                     limit=1,
@@ -2063,15 +2063,18 @@ def documents_get_glossary_entry(term_id,
         
     gloss_template = gloss_info.documentList.responseSet[0]
     
-    results = solr_gloss.query(q = qstr,
-                               fields = opasConfig.GLOSSARY_ITEM_DEFAULT_FIELDS, 
-                               facet_field=opasConfig.DOCUMENT_VIEW_FACET_LIST,
-                               facet_mincount=1
-                               )
+    args = {
+        "fl": opasConfig.GLOSSARY_ITEM_DEFAULT_FIELDS, 
+        "facet.field": opasConfig.DOCUMENT_VIEW_FACET_LIST,
+        "facet.mincount": 1
+    }
+    
+    results = solr_gloss2.search(qstr, **args)
+    
     document_item_list = []
     count = 0
     try:
-        for result in results:
+        for result in results.docs:
             document = result.get("text", None)
             documentListItem = copy.copy(gloss_template)
             if not documentListItem.accessLimited:
@@ -2718,7 +2721,7 @@ def save_opas_session_cookie(request: Request, response: Response, session_id):
         try:
             logger.debug("Saved OpasSessionID Cookie")
             response.set_cookie(
-                OPASSESSIONID,
+                opasConfig.OPASSESSIONID,
                 value=f"{session_id}",
                 domain=localsecrets.COOKIE_DOMAIN
             )
