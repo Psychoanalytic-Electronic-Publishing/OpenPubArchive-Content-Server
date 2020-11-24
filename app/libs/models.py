@@ -61,8 +61,9 @@ class ListTypeEnum(Enum):
 class ReportTypeEnum(str, Enum):
     sessionLog = "Session-Log"
     userSearches = "User-Searches"
-    documentViews = "Document-Views"
-    opasLogs = "Opas-Error-Logs"
+    documentViews = "Document-View-Stat"
+    documentViewLog = "Document-View-Log"
+    #opasLogs = "Opas-Error-Logs"
     
 class TermTypeIDEnum(str, ExtendedEnum):
     termid = "ID"
@@ -109,7 +110,9 @@ class ResponseInfo(BaseModel):
     totalMatchCount: int = Schema(None, title="The number of items in the complete match set that can be retrieved and paged through.")  # used in PEPEasy paging controls
     listLabel: str = Schema(None, title="Descriptive title of data return for SourceInfoList, e.g., Book List, Journal List, Video List. Should be used elsewhere too.")
     listType: ListTypeEnum = Schema(None, title="ListTypeEnum based identifier of the return structure, e.g., 'documentList'.")
+    supplementalInfo: dict = Schema(None, title="Additional info supplied based on the endpoint")
     scopeQuery: list = Schema(None, title="The query strings applied: [query_string, filter_string]")
+    description: str = Schema(None, title="A semantic description explaining the action/response")
     request: str = Schema(None, title="The URL request (endpoint) that resulted in this response.")
     core: str = Schema(None, title="The Solr Core classname used (e.g., docs, authors).")
     solrParams: dict = Schema(None, title="A dictionary based set of the parameters passed to the Solr search engine for this request.")
@@ -118,6 +121,13 @@ class ResponseInfo(BaseModel):
     authenticated: bool = Schema(None, title="If request was processed as authenticated")
     timeStamp: str = Schema(None, title="Server timestamp of return data.")   
 
+#-------------------------------------------------------
+# Simple API Status class
+#-------------------------------------------------------
+class APIStatusItem(BaseModel):
+    opas_version: str = Schema(None, title="Version of OPAS")
+    timeStamp: str = Schema(None, title="Current time")
+    
 #-------------------------------------------------------
 # General Data Encapsulation classes
 #-------------------------------------------------------
@@ -209,9 +219,11 @@ class DocumentListItem(BaseModel):
     documentRef: str = Schema(None, title="Document Ref (bibliographic)", description="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
     documentRefHTML: str = Schema(None, title="Same as documentRef but in HTML.")
     documentMetaXML: str = Schema(None, title="Metadata content in XML, , e.g., element meta")
-    documentInfoXML: str = Schema(None, title="The document meta information in XML, e.g., element artinfo") 
+    documentInfoXML: str = Schema(None, title="The document meta information in XML, e.g., element artinfo")
     title: str = Schema(None, title="Document Title")
     authorMast: str = Schema(None, title="Author Names", description="The author names as displayed below the title in an article.")
+    #2020-10-19, new convenience listing of author info (requires schema change to parse during load)
+    authorList: list = Schema(None, title="List of individual author data parsed from documentInfoXML", description="List of individual author data parsed from documentInfoXML")
     origrx: str = Schema(None, title="Original Document (documentID)", description="Document idref (documentID) linking this to an original document, e.g, this is a translation of...")
     relatedrx: str = Schema(None, title="Closely Related Documents (documentID)", description="Document idref (documentID) associating all closely related documents to this one, e.g., this is a commentary on...")
     PEPCode: str = Schema(None, title="Source Acronym", description="Acronym-type code assigned to the document source e.g., CPS, IJP, ANIJP-EL, ZBK. (The first part of the document ID.)")
@@ -226,6 +238,7 @@ class DocumentListItem(BaseModel):
     #isbn: str = Schema(None, title="The ISBN", description="The ISBN for the source") #  2020506 isbn is not stored at article level, so not now at least
     doi: str = Field(None, title="Document object identifier", description="Document object identifier, a standard id system admin by the International DOI Foundation (IDF)")
     issue: str = Schema(None, title="Serial Issue Number")
+    issueSeqNbr: str = Schema(None, title="Serial Issue Sequence Number (continuous count)") 
     issueTitle: str = Schema(None, title="Serial Issue Title", description="Issues may have titles, e.g., special topic")
     newSectionName: str = Schema(None, title="Name of Serial Section Starting", description="The name of the section of the issue, appears for the first article of a section")
     pgRg: str = Schema(None, title="Page Range as Published", description="The published start and end pages of the document, separated by a dash")
@@ -252,6 +265,7 @@ class DocumentListItem(BaseModel):
     # |- new v2 field, but removed during cleanup, better ata is in stat.
     stat: dict = Schema(None, title="Statistics", description="Reusable field to return counts requested")
     similarityMatch: dict = Schema(None, title="Information about similarity matches")
+    translationSet: dict = Schema(None, title="Information about document translations and the original")
     # Search Analysis fields (and shared Glossary term)
     term: str = Schema(None, title="Search Analysis Term", description="For search analysis, the clause or term being reported")
     termCount: int = Schema(None, title="Search Analysis Term Count", description="For search analysis, the count of occurences of the clause or term being reported")
@@ -261,6 +275,8 @@ class DocumentListItem(BaseModel):
     groupName: str = Schema(None, title="Group Name", description="")
     groupAlso: str = Schema(None, title="Group Also", description="")
     groupTermCount: str = Schema(None, title="Group Term Count", description="")
+    sourcePrevious: str = Schema(None, title="Previous part (article)", description="Previous part (article) in a source divided into multiple articles (e.g., journals and some books)")
+    sourceNext: str = Schema(None, title="Previous part (article)", description="Previous part (article) in a source divided into multiple articles (e.g., journals and some books)")
     termType: str = Schema(None, title="", description="")
     termSource: str = Schema(None, title="", description="")
     termDefPartXML: str = Schema(None, title="", description="")
@@ -360,26 +376,68 @@ class LicenseInfoStruct(BaseModel):
 class LicenseStatusInfo(BaseModel):
     licenseInfo: LicenseInfoStruct 
 
+# Classes returned by PaDS
+class PadsSessionInfo(BaseModel):
+    HasSubscription: bool = Schema(False, title="")
+    IsValidLogon: bool = Schema(False, title="")
+    IsValidUserName: bool = Schema(False, title="")
+    ReasonId: int = Schema(0, title="")
+    ReasonStr = Schema("", title="")
+    SessionExpires: int = Schema(0, title="Session expires time")
+    SessionId: str = Schema(None, title="Assigned session ID")
+    # added session_started to model, not supplied
+    session_start_time: datetime = Schema(datetime.now(), title="The time the session was started, not part of the model returned")
+    pads_status_response: int = Schema(0, title="The status code returned by PaDS, not part of the model returned")
+    pads_disposition: str = Schema(None, title="The disposition of PaDS either from error return or deduction")
+    
+class PadsUserInfo(BaseModel):
+    UserId:int = Schema(None, title="")
+    UserName:str = Schema(None, title="")
+    UserType:str = Schema(None, title="")
+    SubscriptionEndDate:str = Schema(None, title="")
+    Branding:bool = Schema(None, title="")
+    ClientSettings:Optional[dict]=Schema({}, title="Client app settings.  Type is dict.") # 
+    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
+    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
+    HasArchiveAccess:bool = Schema(False, title="User has subscription to PEP Archive")
+    HasCurrentAccess:bool = Schema(False, title="User has subscription to PEP Current (rare)")
+    # for dummy auth server
+    Password:str = Schema(None, title="")
+
+class PadsPermitInfo(BaseModel):
+    # see https://app.swaggerhub.com/apis/nrshapiro/PEPSecure/1.03#/PermitResponse
+    SessionId:str = Schema(None, title="session GUID")
+    DocId:str = Schema(None, title="PEP Document Locator (Document ID: e.g., IJP.082.0215A)")
+    HasArchiveAccess:bool = Schema(False, title="User has subscription to PEP Archive")
+    HasCurrentAccess:bool = Schema(False, title="User has subscription to PEP Current (rare)")
+    Permit:bool = Schema(False, title="True if the user has permission to view fulltext of DocId")
+    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
+    StatusCode: int = Schema(None, title="status code returned ")
+    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
+
 #-------------------------------------------------------
 class SessionInfo(BaseModel):    
     session_id: str = Schema(None, title="A generated session Identifier number the client passes in the header to identify the session")
-    user_id: int = Schema(None, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
-    username: str = Schema(None, title="Registered user name, for convenience here")
-    user_ip: str = Schema(None, title="IP from which the user is connected")
-    connected_via: str = Schema(None, title="connection info (e.g., browser, os) per the standard field in the request")
+    user_id: int = Schema(opasConfig.USER_NOT_LOGGED_IN_ID, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
+    username: str = Schema(opasConfig.USER_NOT_LOGGED_IN_NAME, title="Registered user name, for convenience here")
+    is_valid_login: bool = Schema(False, title="")
+    has_subscription: bool = Schema(False, title="")
+    is_valid_username: bool = Schema(False, title="")
+    authenticated: bool = Schema(False, title="True if the user has been authenticated.")
+    # the next field allows us to stop asking for permits
+    confirmed_unauthenticated: bool = Schema(False, title="True if PaDS has replied to a permit with http code 401 unauthenticated.")
+    authorized_peparchive: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the archive.")
+    authorized_pepcurrent: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the current issues.")
     session_start: datetime = Schema(None, title="The datetime when the user started the session")
     session_end: datetime = Schema(None, title="The datetime when the user ended the session")
     session_expires_time: datetime = Schema(None, title="The limit on the user's session information without renewing")
-    access_token: str = Schema(None, title="Not currently used by the OPAS server")
-    token_type: str = Schema(None, title="Not currently used by the OPAS server")
-    scope: str = Schema(None, title="Not currently used by the OPAS server")
-    authenticated: bool = Schema(False, title="True if the user has been authenticated.")
-    keep_active: bool = Schema(False, title="ka field was set on login...don't timeout this user.")
-    authorized_peparchive: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the archive.")
-    authorized_pepcurrent: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the current issues.")
-    api_client_id: int = Schema(None, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
-    api_client_session: bool = Schema(False, title="True if the session_id is from the header via the client rather than a cookie")
-
+    user_type: str = Schema("Unknown", title="User type, e.g., Admin or Individual")
+    admin: bool = Schema(False, title="True if the user has been authenticated as admin.")
+    api_client_id: int = Schema(0, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
+    # temporary, for debug
+    pads_session_info: PadsSessionInfo = None
+    pads_user_info: PadsUserInfo = None
+    
 #-------------------------------------------------------
 class ServerStatusContent(BaseModel):
     article_count: int = Schema(0, title="")
@@ -397,7 +455,7 @@ class ServerStatusContent(BaseModel):
     source_count: dict = Schema(None, title="")
     description_html: str = Schema(None, title="")
     source_count_html: str = Schema(None, title="")
-    
+
 class ServerStatusItem(BaseModel):
     db_server_ok: bool = Schema(None, title="Database server is online")
     db_server_version: str = Schema(None, title="Version of the Database server")
@@ -429,6 +487,7 @@ class JournalInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a fe
     language: str = Schema(None, title="")
     yearFirst: str = Schema(None, title="")
     yearLast: str = Schema(None, title="")
+    instanceCount: int = Schema(None, title="Number of document instances for this source")
     embargoYears: str = Schema(None, title="")
     
 class JournalInfoStruct(BaseModel):
@@ -463,6 +522,7 @@ class SolrQuery(BaseModel):
     # Solr Query Parameters as generated by opasQueryHelper.parse_search_query_parameters
     searchQ: str = Schema(None, title="Query in Solr syntax", description="Advanced Query in Solr Q syntax (see schema names)")
     filterQ: str = Schema(None, title="Filter query in Solr syntax", description="Filter Query in Solr syntax (see schema names)")
+    semanticDescription: str = Schema(None, title="Server's semantic description of the search")
     searchQPrefix: str = Schema("", title="Prefix to searchQ", description="Prefix to SearchQ, e.g., for Level 2")
     # returnFields: str = Schema(None, title="List of return fields", description="Comma separated list of return fields.  Default=All fields.")
     sort: str=Schema(None, title="Fields and direction by which to sort", description="arranges search results in either ascending (asc) or descending (desc) order. The parameter can be used with either numerical or alphabetical content. The directions can be entered in either all lowercase or all uppercase letters (i.e., both asc or ASC).")
@@ -520,6 +580,7 @@ class SolrQuerySpec(BaseModel):
     returnFieldSet: str = Schema(None, title="Return field predefined set: DEFAULT, TOC, META, applies only to AdvancedSearch")
     returnFields: str = Schema(None, title="List of return fields (ExtendedSearch Only)", description="Comma separated list of return fields.  Only applies to ExtendedSearch.")
     returnFormat: str = Schema("HTML", title="Return type: XML, HTML, TEXT_ONLY", description="Return type applies to abstract and document fields only.")
+    returnOptions: dict = Schema({}, title="Dictionary of special options for return data (e.g., glossary=False, ...)")
     limit: int = Schema(15, title="Record Limit for Solr returns")
     offset: int = Schema(0, title="Record Offset in return set")
     page: int = Schema(None, title="Page Number in return set")
@@ -610,7 +671,16 @@ class SourceInfoListItem(BaseModel):
     language: str = Schema(None, title="Publication language (mainly)")
     yearFirst: str = Schema(None, title="First year available for this source")
     yearLast: str = Schema(None, title="Last year available for this source")
+    instanceCount: int = Schema(None, title="Number of document instances for this source")
     embargoYears: str = Schema(None, title="")
+    # these are not all currently used
+    accessClassification: str = Schema(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
+    accessLimited: bool = Schema(True, title="Access is limited, preventing full-text return")
+    accessLimitedReason: str = Schema(None, title="Explanation of user's access to this")
+    accessLimitedDescription: str = Schema(None, title="Description of the access limitation applied")
+    accessLimitedCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
+    accessLimitedPubLink: str = Schema(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
+    
 
 class SourceInfoStruct(BaseModel):
     responseInfo: ResponseInfo
@@ -636,15 +706,28 @@ class TermIndex(BaseModel):
 class VideoInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few fields
     sourceType: str = Schema(None, title="")
     PEPCode: str = Schema(None, title="")
+    documentID: str = Schema(None, title="OPAS ID for this document")
     bannerURL: str = Schema(None, title="")
     displayTitle: str = Schema(None, title="Reference format for this source")
     title: str = Schema(None, title="Title of this source")
+    authors: str = Schema(None, title="Authors of this source")
+    pub_year: str = Schema(None, title="Year this was first published in the database")
     abbrev: str = Schema(None, title="")
     ISSN: str = Schema(None, title="")
+    ISBN10: str = Schema(None, title="The ISBN10 for a book (or potentially a video), if available")
+    ISBN13: str = Schema(None, title="The ISBN13 for a book (or potentially a video), if available")
     language: str = Schema(None, title="")
     yearFirst: str = Schema(None, title="")
     yearLast: str = Schema(None, title="")
+    instanceCount: int = Schema(None, title="Number of document instances for this source")
     embargoYears: str = Schema(None, title="")
+    # these are not all currently used
+    accessClassification: str = Schema(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
+    accessLimited: bool = Schema(True, title="Access is limited, preventing full-text return")
+    accessLimitedReason: str = Schema(None, title="Explanation of user's access to this")
+    accessLimitedDescription: str = Schema(None, title="Description of the access limitation applied")
+    accessLimitedCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
+    accessLimitedPubLink: str = Schema(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
 
 class VideoInfoStruct(BaseModel):
     responseInfo: ResponseInfo
@@ -689,34 +772,6 @@ class WhatsNewListStruct(BaseModel):
 class WhatsNewList(BaseModel):
     whatsNew: WhatsNewListStruct
 
-class PadsSessionInfo(BaseModel):
-    HasSubscription: bool = Schema(False, title="")
-    IsValidLogon: bool = Schema(False, title="")
-    IsValidUserName: bool = Schema(False, title="")
-    ReasonId: int = Schema(0, title="")
-    ReasonStr = Schema("", title="")
-    SessionExpires: int = Schema(0, title="")
-    SessionId: str = Schema(None, title="")
-
-class PadsUserInfo(BaseModel):
-    UserId:int = Schema(None, title="")
-    UserName:str = Schema(None, title="")
-    UserType:str = Schema(None, title="")
-    SubscriptionEndDate:str = Schema(None, title="")
-    Branding:bool = Schema(None, title="")
-    ClientSettings:dict=Schema({}, title="")
-    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
-    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
-
-class PadsPermitInfo(BaseModel):
-    # see https://app.swaggerhub.com/apis/nrshapiro/PEPSecure/1.03#/PermitResponse
-    SessionId:str = Schema(None, title="session GUID")
-    DocId:str = Schema(None, title="PEP Document Locator (Document ID: e.g., IJP.082.0215A)")
-    HasArchiveAccess:bool = Schema(False, title="User has subscription to PEP Archive")
-    HasCurrentAccess:bool = Schema(False, title="User has subscription to PEP Current (rare)")
-    Permit:bool = Schema(False, title="True if the user has permission to view fulltext of DocId")
-    ReasonId:int = Schema(None, title="Code corresponding to applicable HTTP error codes")
-    ReasonStr:str = Schema(None, title="Description of reason for a non 200 return code")
     
 #-------------------------------------------------------
 # Perhaps use termindex instead

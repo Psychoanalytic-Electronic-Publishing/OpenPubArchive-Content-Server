@@ -2,8 +2,10 @@ import re
 import sys
 from datetime import datetime
 from optparse import OptionParser
-from configLib.opasCoreConfig import solr_docs, solr_authors, solr_gloss, solr_docs_term_search, solr_authors_term_search
 import logging
+
+from configLib.opasCoreConfig import solr_docs, solr_authors, solr_gloss, solr_docs_term_search, solr_authors_term_search
+from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
 
 logger = logging.getLogger(__name__)
 
@@ -132,9 +134,8 @@ def is_value_in_field(value,
         logger.warning(f"Solr query: {q} fields {field} {e}")
         results = []
        
-    if len(results) > 0: # it looks like the solr response object to this query always has a len == numFound
-        # but just in case
-        ret_val = results.numFound
+    if len(results) > 0: 
+        ret_val = len(results) # results.numFound # it looks like the solr response object to this query always has a len == numFound
 
     return ret_val
 
@@ -375,13 +376,14 @@ def smart_search(smart_search_text):
             ret_val = {"art_id": loc_corrected}
     
     if ret_val == {}:
+        # Smartpatterns:        
         patterns1 = {
-                    rx_author_list_and_year : "author_list_and_year",
-                    rx_year_pgrg : "rx_year_pgrg",
-                    ".*?" + rx_vol_pgrg : "rx_vol_pgrg",
-                    rx_doi : "rx_doi",
-                    rx_solr_field: "rx_solr_field", 
-                    rx_syntax: "rx_syntax",
+                    rx_author_list_and_year : "authors and years",
+                    rx_year_pgrg : "a page range",
+                    ".*?" + rx_vol_pgrg : "a citation vol and pg",
+                    rx_doi : "an article DOI",
+                    rx_solr_field: "article fields", 
+                    rx_syntax: "advanced query syntax",
                     }
 
         #patterns2 = {
@@ -394,7 +396,8 @@ def smart_search(smart_search_text):
             m = re.match(rx_str, smart_search_text)
             if m is not None:
                 ret_val = {**ret_val, **m.groupdict()}
-
+                ret_val[KEY_SEARCH_SMARTSEARCH] = f"SmartSearch recognized {label}. Matched articles: "
+                
         #for rx_str, label in patterns2.items():
             #m = re.match(rx_str, smart_search_text)
             #if m is not None:
@@ -409,18 +412,33 @@ def smart_search(smart_search_text):
             words = [re.sub('\"|\\\:', "", n) for n in words]
             words = " ".join(words)
             words = cleanup_solr_query(words)
+
+            #v2 for later...integrate below instead of is_value_in_field
+            #title_search = presearch_field(words, "title", match_type="ordered")
+            #text_search = presearch_field(words, core="doc", field="text", match_type="proximate")
+            #authors_search = presearch_field(words, core="authors", field="authors")
+            #authors_citation_search = presearch_field(words, core="doc", field="art_authors_citation")
+            #e.g.,
+            #elif authors_citation_search.found:
+            #elif word_count > 4 and title_search.found and text_search.found:
+            #elif text_search.found:
+            
             if word_count == 1 and len(words) > 3:
                 # could still be an author name
                 if is_value_in_field(words, core="authors", field="authors"):
-                    ret_val["schema_field"] = "art_authors_citation" 
-                    ret_val["schema_value"] = f"{words}"            elif word_count > 4 and is_value_in_field(words, "title", match_type="ordered") == 1: # unique match only
+                    ret_val[KEY_SEARCH_FIELD] = "art_authors_citation" 
+                    ret_val[KEY_SEARCH_VALUE] = f"{words}"
+                    ret_val[KEY_SEARCH_SMARTSEARCH] = f"SmartSearch recognized {words} as names. Matching articles:"            elif word_count > 4 and is_value_in_field(words, "title", match_type="ordered") == 1: # unique match only
                 ret_val["title"] = words
+                ret_val[KEY_SEARCH_SMARTSEARCH] = f"SmartSearch recognized unique {words} in titles.  Matched articles:"
             elif is_value_in_field(words, core="doc", field="art_authors_citation"):
                 # see if it's a list of names
-                ret_val["schema_field"] = "art_authors_citation" 
-                ret_val["schema_value"] = f"{words}"
+                ret_val[KEY_SEARCH_FIELD] = "art_authors_citation" 
+                ret_val[KEY_SEARCH_VALUE] = f"{words}"
+                ret_val[KEY_SEARCH_SMARTSEARCH] = f"SmartSearch recognized authors. Matched articles for ({words}):"
             elif is_value_in_field(words, core="doc", field="text", match_type="proximate"):
                 ret_val["wordsearch"] = re.sub(":", "\:", smart_search_text)
+                ret_val[KEY_SEARCH_SMARTSEARCH] = f"SmartSearch searched terms. Matched articles for ({smart_search_text}):"
             else:
                 # try to build a list of names, and check them individually
                 new_q = ""
@@ -437,185 +455,36 @@ def smart_search(smart_search_text):
                         logger.warning(f"Value error for {name}. {e}")
                 
                 if new_q != "":
-                    ret_val["schema_field"] = "authors" 
-                    ret_val["schema_value"] = f"{new_q}"
+                    ret_val[KEY_SEARCH_FIELD] = "authors" 
+                    ret_val[KEY_SEARCH_VALUE] = f"{new_q}"
                 else:
                     #  join the names
                     name_conjunction = " && ".join(names)
                     if is_value_in_field(name_conjunction, core="doc", field="art_authors_citation", match_type="bool"):
-                        ret_val["schema_field"] = "art_authors_citation" 
-                        ret_val["schema_value"] = f"{name_conjunction}"
+                        ret_val[KEY_SEARCH_FIELD] = "art_authors_citation" 
+                        ret_val[KEY_SEARCH_VALUE] = f"{name_conjunction}"
+                        ret_val[KEY_SEARCH_SMARTSEARCH] = f"{name_conjunction} found in titles, matching articles based on title"
     
     #  cleanup 
     if ret_val.get("art_id") is not None:
         ret_val["art_id"] = ret_val["art_id"].upper()
+        ret_val[KEY_SEARCH_SMARTSEARCH] = f"SmartSearch recognized an article ID. Matched articles for  {ret_val['art_id'].upper()}:"
     elif ret_val.get("doi") is not None:
         pass # we're done
-    #elif ret_val.get("schema_field") is not None:
-        #schema_field = ret_val.get("schema_field")
+    #elif ret_val.get(KEY_FIELD) is not None:
+        #schema_field = ret_val.get(KEY_FIELD)
         #if schema_field is not None:
             #if schema_field == "authors":
-                #ret_val["author_list"] = ret_val.get("schema_value")
-                #del ret_val["schema_field"]
-                #del ret_val["schema_value"]
+                #ret_val["author_list"] = ret_val.get(KEY_VALUE)
+                #del ret_val[KEY_FIELD]
+                #del ret_val[KEY_VALUE]
             #else:
-                #ret_val["schema_field"] = ret_val["schema_field"].lower()
+                #ret_val[KEY_FIELD] = ret_val[KEY_FIELD].lower()
         
     # print (ret_dict)
     if ret_val == {}:
         ret_val["wordsearch"] = re.sub(":", "\:", smart_search_text)
-
-    ret_val = dict_clean_none_terms(ret_val)
-    return ret_val
-
-def smart_search_v2(smart_search_text):
-    """
-    Function to take an input string and parse out information to do a search against the DOCS core schema.
-    
-    Some simple syntax is implemented to help identify certain functionality.
-    
-        schema_field:terms  = Solr field from schema, search terms against it.  (Will be presented
-            to solr as field:(terms).  Multiple terms are permitted, but currently, only one field
-            specification is permitted.  Field names are converted to lower case automatically.
-            
-            art_doi:10.1111/j.1745-8315.2012.00606.x
-            art_authors_text:[tuckett and fonagy]            
-           
-        doi = Just enter a DOI
-           10.1111/j.1745-8315.2012.00606.x 
-        
-        AuthorName Year = One or more names (initial capital), followed by a year
-            Tuckett and Fonagy 1972
-            Tuckett and Fonagy (1972)
-            
-    >>> smart_search("Kohut, H. & Wolf, E. S. (1978)")
-    {'schema_field': 'art_authors_citation', 'schema_value': "'Kohut, H.' && 'Wolf, E.'"}
-    
-    >>> smart_search("authors:Tuckett, D.")
-    {'schema_field': 'authors', 'schema_value': 'Tuckett, D.'}
-    
-    >>> smart_search("Tuckett 1982")
-    {'author_list': 'Tuckett', 'yr': '1982'}
-    
-    >>> smart_search("solr::art_authors_text:[tuckett and fonagy]")
-    {'syntax': 'solr', 'query': 'art_authors_text:[tuckett and fonagy]'}
-
-    >>> smart_search("009:0015")
-       
-    >>> smart_search("Freud, S. ( 1938), Some elementary lessons in psycho-analysis, Standard Edition. 23:279-286. pp. London: Hogarth Press, 1964.")
-    {'author_list': 'Freud, S.', 'yr': '1938', 'vol': '23', 'pgrg': '279-286'}
-    >>> smart_search("Tuckett")
-    {'author': 'Tuckett'}
-
-    >>> tst = []
-    >>> tst.append("Emerson, R. W. (1836), An essay on nature. In: The Selected Writings of Ralph Waldo Emerson, ed. W. H. Gilman. New York: New American Library, 1965, pp. 186-187.")
-    >>> tst.append("Rapaport, D. and Gill, M. M. ( 1959). The Points of View and Assumptions of Metapsychology. Int. J. Psycho-Anal.40:153-162")
-    >>> tst.append("Freud, S. ( 1938), Some elementary lessons in psycho-analysis, Standard Edition. 23:279-286. pp. London: Hogarth Press, 1964.")
-    >>> tst.append("Waelder, R. ( 1962). Psychoanalysis, Scientific Method, and Philosophy. J. Amer. Psychoanal. Assn.10:617-637")
-
-    >>> for n in tst: smart_search(n)
-    {'author_list': 'Emerson, R. W.', 'yr': '1836'}
-    {'author_list': 'Rapaport, D. and Gill, M. M.', 'yr': '1959'}
-    {'author_list': 'Freud, S.', 'yr': '1938', 'vol': '23', 'pgrg': '279-286'}
-    {'author_list': 'Waelder, R.', 'yr': '1962'}
-    """
-    # recognize Smart Search inputs
-    ret_val = {}
-    # get rid of leading spaces and zeros
-    smart_search_text = smart_search_text.lstrip(" 0")
-    
-    if re.match("[A-Z\-]{2,9}\.[0-9]{3,3}[A-Z]?\.[0-9]{4,4}[A-Z]?", smart_search_text, flags=re.IGNORECASE):
-        loc_corrected = smart_search_text.upper()
-        if is_value_in_field(loc_corrected, "art_id"):
-            ret_val = {"art_id": loc_corrected}
-    
-    if ret_val == {}:
-        patterns1 = {
-                    rx_author_list_and_year : "author_list_and_year",
-                    rx_year_pgrg : "rx_year_pgrg",
-                    ".*?" + rx_vol_pgrg : "rx_vol_pgrg",
-                    rx_doi : "rx_doi",
-                    rx_solr_field: "rx_solr_field", 
-                    rx_syntax: "rx_syntax",
-                    }
-
-        for rx_str, label in patterns1.items():
-            m = re.match(rx_str, smart_search_text)
-            if m is not None:
-                ret_val = {**ret_val, **m.groupdict()}
-
-        if ret_val == {}:
-            # nothing found yet.
-            # see if it's a title
-            words = smart_search_text.split(" ")
-            word_count = len(words)
-            words = [re.sub('\"|\\\:', "", n) for n in words]
-            words = " ".join(words)
-            words = cleanup_solr_query(words)
-            title_search = presearch_field(words, "title", match_type="ordered")
-            text_search = presearch_field(words, core="doc", field="text", match_type="proximate")
-            authors_search = presearch_field(words, core="authors", field="authors")
-            authors_citation_search = presearch_field(words, core="doc", field="art_authors_citation")
-
-            if word_count == 1 and len(words) > 3:
-                # could still be an author name
-                if authors_search.found:
-                    ret_val["schema_field"] = "art_authors_citation" 
-                    ret_val["schema_value"] = f"{words}"
-            elif word_count > 2 and title_search.found and text_search.found:
-                if title_search.score > text_search.score:
-                    ret_val["title"] = words
-                else:
-                    ret_val["wordsearch"] = re.sub(":", "\:", smart_search_text)
-            elif authors_citation_search.found:
-                # see if it's a list of names
-                ret_val["schema_field"] = "art_authors_citation" 
-                ret_val["schema_value"] = f"{words}"
-            elif text_search.found:
-                ret_val["wordsearch"] = re.sub(":", "\:", smart_search_text)
-            else:
-                # try to build a list of names, and check them individually
-                new_q = ""
-                names = name_id_list(smart_search_text)
-                for name in names:
-                    try:
-                        if is_value_in_field(name, core="doc", field="authors"):
-                            # ok, this is a list of names
-                            if new_q != "":
-                                new_q += f" && '{name}'"
-                            #else:
-                                #new_q += f"'{name}'"
-                    except Exception as e:
-                        logger.warning(f"Value error for {name}. {e}")
-                
-                if new_q != "":
-                    ret_val["schema_field"] = "authors" 
-                    ret_val["schema_value"] = f"{new_q}"
-                else:
-                    #  join the names
-                    name_conjunction = " && ".join(names)
-                    if is_value_in_field(name_conjunction, core="doc", field="art_authors_citation", match_type="bool"):
-                        ret_val["schema_field"] = "art_authors_citation" 
-                        ret_val["schema_value"] = f"{name_conjunction}"
-    
-    #  cleanup 
-    if ret_val.get("art_id") is not None:
-        ret_val["art_id"] = ret_val["art_id"].upper()
-    elif ret_val.get("doi") is not None:
-        pass # we're done
-    #elif ret_val.get("schema_field") is not None:
-        #schema_field = ret_val.get("schema_field")
-        #if schema_field is not None:
-            #if schema_field == "authors":
-                #ret_val["author_list"] = ret_val.get("schema_value")
-                #del ret_val["schema_field"]
-                #del ret_val["schema_value"]
-            #else:
-                #ret_val["schema_field"] = ret_val["schema_field"].lower()
-        
-    # print (ret_dict)
-    if ret_val == {}:
-        ret_val["wordsearch"] = re.sub(":", "\:", smart_search_text)
+        ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matching articles based on {smart_search_text}."
 
     ret_val = dict_clean_none_terms(ret_val)
     return ret_val

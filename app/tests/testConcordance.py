@@ -1,53 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-#  This test module is in development...
-
-import sys
-import os.path
 import logging
+import datetime
 
 logger = logging.getLogger(__name__)
 
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
-
-from starlette.testclient import TestClient
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 
 import unittest
-from unitTestConfig import base_api, base_plus_endpoint_encoded
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID
 
 import requests
-from datetime import datetime
 import opasAPISupportLib
-#import opasConfig
-#import opasQueryHelper
-import opasCentralDBLib
 import opasDocPermissions
 
-#import models
-# from main import app
-
-# client = TestClient(app)
-
-ocd = opasCentralDBLib.opasCentralDB()
-
 # Login!
-resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+pads_session_info = opasDocPermissions.authserver_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id=UNIT_TEST_CLIENT_ID, pads_session_info=pads_session_info)
 # Confirm that the request-response cycle completed successfully.
-sessID = resp.SessionId
-headers = {"client-session":sessID, "client-id": "0", "Content-Type":"application/json"}
+session_id = session_info.session_id
+headers = {"client-session":session_id, "client-id": UNIT_TEST_CLIENT_ID, "Content-Type":"application/json"}
 
 class TestConcordance(unittest.TestCase):
     """
@@ -60,10 +33,12 @@ class TestConcordance(unittest.TestCase):
     def test1_get_para_translation(self):
         """
         """
-        data = opasAPISupportLib.documents_get_concordance_paras("SEXixa5")
+        ts = datetime.datetime.now()
+        data = opasAPISupportLib.documents_get_concordance_paras("SEXixa5", session_info=session_info)
         # Confirm that the request-response cycle completed successfully.
         para_info = data.documents.responseSet[0].docChild
         para = para_info['para']
+        print (f"Time: {datetime.datetime.now()-ts}")
         print (para)
         assert (len(para) > 0)
         # check to make sure a known value is among the data returned
@@ -71,13 +46,15 @@ class TestConcordance(unittest.TestCase):
     def test2_concordance_endpoint(self):
         """
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Documents/Concordance/?paralangid=SEXixa5')
+        ts = datetime.datetime.now()
+        full_URL = base_plus_endpoint_encoded('/v2/Documents/Concordance?paralangid=SEXixa5')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         r = response.json()
         para_cordance = r['documents']['responseSet'][0]['docChild']
         # Confirm that the request-response cycle completed successfully.
         para = para_cordance['para']
+        print (f"Time: {datetime.datetime.now()-ts}")
         print (para)
         assert (len(para) > 0)
         # check to make sure a known value is among the data returned

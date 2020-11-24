@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.09.24" 
+__version__     = "2020.11.12" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -181,8 +181,10 @@ def file_is_same_as_in_solr(solrcore, filename, timestamp_str):
             ret_val = True
         else:
             ret_val = False
+    except KeyError as e:
+        ret_val = False # not found, return false so it's loaded anyway.
     except Exception as e:
-        logger.warning(f"File check error: {e}")
+        logger.info(f"File check error: {e}")
         ret_val = False # error, return false so it's loaded anyway.
         
     return ret_val
@@ -200,8 +202,11 @@ def main():
     ocd =  opasCentralDBLib.opasCentralDB()
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root="pep-web-xml")
 
-    logger = logging.getLogger(programNameShort)
+    # set toplevel logger to specified loglevel
+    logger = logging.getLogger()
     logger.setLevel(options.logLevel)
+    # get local logger
+    logger = logging.getLogger(programNameShort)
 
     logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
     # logging.basicConfig(filename=logFilename, level=options.logLevel)
@@ -231,7 +236,7 @@ def main():
                 print (msg)
             print(80*"*")
             print(f"Database will be updated. Location: {localsecrets.DBHOST}")
-            if 1: # options.fulltext_core_update:
+            if not options.glossary_only: # options.fulltext_core_update:
                 print("Solr Full-Text Core will be updated: ", solrurl_docs)
                 print("Solr Authors Core will be updated: ", solrurl_authors)
             if 1: # options.glossary_core_update:
@@ -264,7 +269,7 @@ def main():
 
     # Reset core's data if requested (mainly for early development)
     if options.resetCoreData:
-        if 1: # options.fulltext_core_update:
+        if not options.glossary_only: # options.fulltext_core_update:
             msg = "*** Deleting all data from the docs and author cores ***"
             logger.warning(msg)
             print (msg)
@@ -298,12 +303,14 @@ def main():
     if options.file_key is not None:  
         print (f"File Key Specified: {options.file_key}")
         pat = fr"({options.file_key}.*){loaderConfig.file_match_pattern}"
-        filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1)
+        filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1000)
         if len(filenames) is None:
             msg = f"File {pat} not found.  Exiting."
             logger.warning(msg)
             print (msg)
             exit(0)
+        else:
+            options.forceRebuildAllFiles = True
     else:
         pat = fr"(.*?){loaderConfig.file_match_pattern}"
         filenames = []
@@ -345,7 +352,7 @@ def main():
         for n in filenames:
             fileTimeStart = time.time()
             if not options.forceRebuildAllFiles:                    
-                if not options.display_verbose and processed_files_count % 100 == 0:
+                if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0:
                     print (f"Processed Files ...loaded {processed_files_count} out of {files_found} possible.")
 
                 if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0:
@@ -409,7 +416,7 @@ def main():
                     opasSolrLoadSupport.process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLContents, verbose=options.display_verbose)
                 
             # input to the full-text and authors cores
-            if 1: # options.fulltext_core_update:
+            if not options.glossary_only: # options.fulltext_core_update:
                 # load the docs (pepwebdocs) core
                 opasSolrLoadSupport.process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents, verbose=options.display_verbose)
                 # load the authors (pepwebauthors) core.
@@ -452,7 +459,7 @@ def main():
         if processed_files_count > 0:
             try:
                 print ("Performing final commit.")
-                if 1: # options.fulltext_core_update:
+                if not options.glossary_only: # options.fulltext_core_update:
                     solr_docs2.commit()
                     solr_authors.commit()
                     # fileTracker.commit()
@@ -521,6 +528,8 @@ if __name__ == "__main__":
                       #help="Logfile name with full path where events should be logged")
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
                       help="Don't check whether to proceed.")
+    parser.add_option("--glossaryonly", action="store_true", dest="glossary_only", default=False,
+                      help="Only process the glossary (quicker).")
     parser.add_option("--pw", dest="httpPassword", default=None,
                       help="Password for the server")
     parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
@@ -538,6 +547,9 @@ if __name__ == "__main__":
                       help="Display status and operational timing info as load progresses.")
 
     (options, args) = parser.parse_args()
+    
+    if options.glossary_only and options.file_key is None:
+        options.file_key = "ZBK.069"
 
     if options.testmode:
         import doctest

@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0917.1"
+__version__     = "2020.1029.1"
 __status__      = "Testing"
 
 programNameShort = "opasDataUpdateStat"
@@ -28,8 +28,11 @@ print(
           https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server/wiki/Loading-Data-into-OpenPubArchive
 
       The records added are controlled by the database views:
-         vw_stat_to_update_solr_docviews
+         vw_stat_docviews_crosstab
          vw_stat_cited_crosstab
+         
+      2020-10-29 Important update - Since it is used at database build/rebuild time, it now updates all records
+         where views are non-zero, not just the last week.
     """
 )
 
@@ -152,18 +155,21 @@ class opasCentralDBMini(object):
          Using the opascentral api_docviews table data, as dynamically statistically aggregated into
            the view vw_stat_most_viewed return the most downloaded (viewed) documents
            
+         Returns 0,[] if no rows are returned
+         
+         Supports the updates to Solr via solrXMLPEPWebload, used for view count queries.
+           
         """
-        ret_val = None
+        ret_val = []
         row_count = 0
         # always make sure we have the right input value
         self.open_connection(caller_name="get_most_viewed_crosstab") # make sure connection is open
         
         if self.db is not None:
             cursor = self.db.cursor(pymysql.cursors.DictCursor)
-            sql = """SELECT DISTINCTROW * FROM vw_stat_to_update_solr_docviews"""
+            sql = """SELECT DISTINCTROW * FROM vw_stat_docviews_crosstab"""
             row_count = cursor.execute(sql)
-            if row_count:
-                ret_val = cursor.fetchall()
+            ret_val = cursor.fetchall() # returns empty list if no rows
             cursor.close()
         else:
             logger.fatal("Connection not available to database.")
@@ -280,7 +286,7 @@ def load_unified_article_stat():
                 art_cited_20 = n.get("count20", 0), 
                 art_cited_all = n.get("countAll", 0)
             ) 
-
+            
     for n in most_viewed:
         doc_id = n.get("document_id", None)
         if doc_id is not None:

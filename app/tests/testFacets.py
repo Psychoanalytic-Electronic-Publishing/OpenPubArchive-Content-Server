@@ -1,33 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-import sys
-import os.path
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
 import unittest
 import requests
-# from requests.utils import requote_uri
-# import urllib
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 
 class TestFacets(unittest.TestCase):
     def test_1a_facet_art_sourcecode(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=art_sourcecode') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -49,7 +32,7 @@ class TestFacets(unittest.TestCase):
     def test_1b_facet_art_kwds_multi(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=art_kwds_str, art_kwds, terms_highlighted') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -62,7 +45,7 @@ class TestFacets(unittest.TestCase):
     def test_1b_facet_bib_title(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=bib_title&limit=60') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -73,7 +56,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_art_lang(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=art_lang') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -85,7 +68,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_art_type(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=art_type') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -96,7 +79,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_art_year(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=art_year') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -107,7 +90,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_art_sourcetype_multi(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=art_sourcetype,art_type') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -118,7 +101,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_art_authors(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=art_authors') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -128,7 +111,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_glossary_terms(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=glossary_terms') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -138,7 +121,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_glossary_group_terms(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=glossary_group_terms') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -148,7 +131,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_freuds_italics(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=freuds_italics') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -158,7 +141,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_reference_count(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=reference_count') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -168,7 +151,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_bib_authors(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=bib_authors') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -178,7 +161,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_tagline(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=tagline') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -188,7 +171,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_title(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=title') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
@@ -198,7 +181,7 @@ class TestFacets(unittest.TestCase):
     def test_1c_facet_journals(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?facetfields=title') 
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]

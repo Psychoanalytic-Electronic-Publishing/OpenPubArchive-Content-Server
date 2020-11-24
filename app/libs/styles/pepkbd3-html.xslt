@@ -2,28 +2,18 @@
 <!-- ============================================================= -->
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
 <!--     BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML   -->
-<!--  DATE:      Sep 7, 2020                                       -->
+<!--  DATE:      2020-10-10                                       -->
 <!--  Revisions:                                                   
         
-        TBD:
+        TODO:
           - I've yet to remove the irrelevant JATS rules
           - Decide if the data-pagehelper attributes are helpful 
             for page return
 
-        2019-08:   Misc fixes
-                    - Fixed functions by adding fn namespace missing 
-                      from declaration
-                    - Added some cases of list types found.
-        2019-11-25: fix lang attribute insertion  
-        2019-12-09: add xml to html video callout conversion  
-        2019-12-10: set video callout to newest Wistia player which 
-                    allows seek by captions!
-                    added link to banner icon to search volume
-                      (required an additon to PEPEasy to support it.
-        2020-01-09  Added conditionals to footer detection to mark first
-                     paragraph correctly.  
-        2020-02-22  Changed doctype generation to exclude ns from being 
-                    included and generic html (5) instead of 4 loose.
+        2020-10-10  - Substituted font-awesome icon for info, flag, 
+                      and book icons.  Also arrow after biblio
+        2020-09-07  - Added GW/SE language attributes so they are included
+                      in the HTML
         2020-04-21  - Some cleanup (removed commented code) 
                     - added experimental code to mark top level elements 
                       to permit easy page returns (for delivering a page 
@@ -31,8 +21,20 @@
                       html intact)
                     - removed some id prefixes (not sure why they were 
                       being used)
-        2020-09-07  - Added GW/SE language attributes so they are included
-                      in the HTML
+        2020-02-22  Changed doctype generation to exclude ns from being 
+                    included and generic html (5) instead of 4 loose.
+        2020-01-09  Added conditionals to footer detection to mark first
+                     paragraph correctly.  
+        2019-12-10: set video callout to newest Wistia player which 
+                    allows seek by captions!
+                    added link to banner icon to search volume
+                      (required an additon to PEPEasy to support it.
+        2019-12-09: add xml to html video callout conversion  
+        2019-11-25: fix lang attribute insertion  
+        2019-08:   Misc fixes
+                    - Fixed functions by adding fn namespace missing 
+                      from declaration
+                    - Added some cases of list types found.
 -->
 <!-- ============================================================= -->
 <!--
@@ -43,8 +45,8 @@
   xmlns:xlink="http://www.w3.org/1999/xlink">
   <!--  xmlns:fn="http://www.w3.org/2005/xpath-functions" -->
 
-   <xsl:import
-    href="http://www.w3.org/2003/entities/2007/entitynamesmap.xsl"/>
+  <!--  Commented out next line site seems to have availability problems -->
+  <!--  <xsl:import href="http://www.w3.org/2003/entities/2007/entitynamesmap.xsl"/>-->
   
   <xsl:output method="html" encoding="UTF-8" indent="yes" />
   
@@ -196,8 +198,13 @@
       <p class="banner">
         <a class="anchor" name="{$document-id}" id="{$document-id}"/>
         <a class="toc-link" href="/#/ArticleList/?journal={$journal-code}">
-		  <!--Client relative...but could use /v2/Document/Images command instead.-->
-          <img src="./images/banner{$journal-code}Logo.gif" alt=""/>
+           <!--<img src="./images/banner{$journal-code}Logo.gif" alt=""/>-->
+          <img>
+            <xsl:attribute name="src">
+              <xsl:value-of select="concat($imageurl, 'banner', $journal-code, 'Logo.gif')"/>
+            </xsl:attribute>
+            <xsl:attribute name="alt">Journal Logo</xsl:attribute>
+          </img>
         </a>
       </p>
       <div class='pubinfotop'><xsl:value-of select="'[[RunningHead]]'"/></div>
@@ -281,8 +288,7 @@
             <div class="cell empty"/>
             <div class="cell">
               <div class="metadata-group">
-                <xsl:apply-templates mode="metadata" select="aff | aff-alternatives | author-notes"
-                />
+                <xsl:apply-templates mode="metadata" select="aff | aff-alternatives | author-notes"/>
               </div>
             </div>
           </div>
@@ -415,7 +421,7 @@
             <xsl:when test="position() = last()">
               <xsl:text> </xsl:text>
               <span class="peppopup newauthortip">
-                <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>
+                <i class="fas fa-info-circle"></i>  
                 <br></br>
                 <xsl:text>&#xa;</xsl:text>
                 <div class="peppopuptext" id="autaffinfo" hidden="True">
@@ -600,7 +606,6 @@
     </xsl:call-template>
   </xsl:template>
 
-
   <xsl:template match="role" mode="metadata">
     <xsl:call-template name="metadata-entry"/>
   </xsl:template>
@@ -629,9 +634,9 @@
             <xsl:text> and </xsl:text>
           </xsl:when>
           <xsl:when test="position() = last()">
-            <xsl:text> </xsl:text>
             <span class="peppopup hauthortip">
-              <img src="images/infoicon.gif" width="13" height="12" alt="Author Information"/>
+            <i class="fas fa-info-circle"></i>  
+            <xsl:text></xsl:text>
               <br></br>
               <div class="peppopuptext" id="hautaffinfo" hidden="True">
                 <div id="hautcontent" class="hautcontent">
@@ -657,10 +662,8 @@
           </xsl:otherwise>
         </xsl:choose>
       </xsl:for-each>
-    </div>    
-    
+    </div>      
   </xsl:template>
-
 
   <xsl:template match="figure">
     <p class="figure" id="{@id}">
@@ -682,9 +685,11 @@
     <xsl:apply-templates/>
     <p class="figure">
       <img alt="{@xlink:href}">
-        <xsl:attribute name="align">
-          <xsl:value-of select="@align"/>
-        </xsl:attribute>
+        <xsl:if test="@align">
+          <xsl:attribute name="style">
+            <xsl:value-of select="@align"/>
+          </xsl:attribute>
+        </xsl:if>
         <xsl:for-each select="alt-text">
           <xsl:attribute name="alt">
             <xsl:value-of select="normalize-space(string(.))"/>
@@ -706,14 +711,13 @@
     </p>
   </xsl:template>
   
-  
-  <xsl:template match="*" mode="drop-title">
-    <xsl:apply-templates select="."/>
-  </xsl:template>
+<!--
+    <xsl:template match="*" mode="drop-title">
+       <xsl:apply-templates select="."/>
+    </xsl:template>
 
-
-  <xsl:template match="title | sec-meta" mode="drop-title"/>
-
+    <xsl:template match="title | sec-meta" mode="drop-title"/>
+-->
 
   <xsl:template match="app">
     <div class="section app">
@@ -757,7 +761,6 @@
       </h2>
     </xsl:if>
   </xsl:template>
-
 
   <xsl:template name="section-title"
     match="
@@ -868,7 +871,6 @@
       <xsl:apply-templates select="*[not(self::label | self::title)]"/>
     </div>
   </xsl:template>
-
 
   <xsl:template match="glossary/glossary | gloss-group/gloss-group">
     <!-- the same document shouldn't have both types -->
@@ -1090,8 +1092,13 @@
   
   <xsl:template match="dictalso">
     <p class="dictentrygrp-dictalso">
-      <img src="images/flag.gif" alt=""/>
-      <xsl:text> </xsl:text>
+      <i class="far fa-flag"></i>
+<!--      <img>
+        <xsl:attribute name="src">
+          <xsl:value-of select="concat($imageurl, 'flag.gif')"/>
+        </xsl:attribute>
+      </img>
+-->      <xsl:text> </xsl:text>
       <xsl:apply-templates/>
     </p>
   </xsl:template>
@@ -1142,7 +1149,8 @@
   <xsl:template match="src">
     <p class="dictentry-src">
       <xsl:call-template name="assign-id"/>
-      <img src="images/book.gif" alt="" />
+      <i class="fas fa-book-open"></i>
+      <!--      <img src="images/book.gif" alt="" />-->
       <xsl:text> </xsl:text>
       <xsl:apply-templates/>
     </p>
@@ -1159,7 +1167,8 @@
               <xsl:attribute name="href">
                 <xsl:value-of select="concat('#', '/Document/',@rx)"/>
               </xsl:attribute>
-              <xsl:text> [→]</xsl:text>
+              <!--              <xsl:text> [→]</xsl:text>-->
+              <i class="fas fa-arrow-circle-right"></i>
             </a>
           </xsl:if>
         </p>

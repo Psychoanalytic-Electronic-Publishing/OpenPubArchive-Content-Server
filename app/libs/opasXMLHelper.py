@@ -88,7 +88,7 @@ from ebooklib import epub
 from io import StringIO, BytesIO
 
 show_dbg_messages = False
-stop_on_exceptions = True
+stop_on_exceptions = False
 
 #-----------------------------------------------------------------------------
 # at least for testing
@@ -106,6 +106,18 @@ def read_file(filename):
 
     return xml_data
 
+def xml_remove_tags_from_xmlstr(xmlstr, remove_tags=[]):
+    ret_val = xmlstr
+    try:
+        root = etree.fromstring(xmlstr.encode()) # encode fixes lxml error 'Unicode strings with encoding declaration are not supported...'
+        xml_remove_tags(root, remove_tags=remove_tags)
+        ret_val = etree.tostring(root)
+        ret_val = ret_val.decode("UTF8")
+    except Exception as e:
+        logger.error(f"Could not remove tags {remove_tags}. Exception {e}")
+
+    return ret_val
+
 def xml_remove_tags(root, remove_tags=[]):
     ret_val = True
     try:
@@ -114,7 +126,7 @@ def xml_remove_tags(root, remove_tags=[]):
             for n in remove_these:
                 n.getparent().remove(n)
     except Exception as e:
-        logger.error(f"Error removing requested tags for xml_get_pages: {e}")
+        logger.error(f"Error removing requested tags: {e}")
         ret_val = False
         
     return ret_val
@@ -656,6 +668,9 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
     
         try:
             root = xmlstr_to_etree(xmlstr)
+            page_count = len(root.xpath("//pb"))
+            if offset2 > page_count:
+                offset2 = page_count - 2
             xml_remove_tags(root, remove_tags=remove_tags)
         except Exception as e:
             logger.error(f"xml conversion (extract) error: {e}. Returning full xml instance")
@@ -947,6 +962,11 @@ def xml_get_subelement_textsingleton(element_node, subelement_name, skip_tags=[]
                     
             # strip the tags
             ret_val = etree.tostring(elemcopy, method="text", with_tail=with_tail, encoding=encoding)
+            # strip leading and trailing spaces
+            try:
+                ret_val = ret_val.strip()
+            except Exception as e:
+                logger.warning(f"Whitepsace strip error: {ret_val} {e}")
 
     except Exception as err:
         logger.warning(err)
@@ -1109,10 +1129,13 @@ def xml_elem_or_str_to_xmlstring(elem_or_xmlstr, default_return=""):
         
     return ret_val
 
-def xml_string_to_text(xmlstr, default_return=""):
-    xmlstr = remove_encoding_string(xmlstr)
-    clearText = lhtml.fromstring(xmlstr)
-    ret_val = clearText.text_content()
+def xml_string_to_text(xmlstr, default_return=None):
+    if xmlstr is not None:
+        xmlstr = remove_encoding_string(xmlstr)
+        clearText = lhtml.fromstring(xmlstr)
+        ret_val = clearText.text_content()
+    else:
+        ret_val = default_return
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -1218,8 +1241,8 @@ def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
     else:
         try:
             if isinstance(elem_or_xmlstr, str):
-                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)                
-                elem = etree.fromstring(elem_or_xmlstr, parser)
+                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True)
+                elem = etree.fromstring(elem_or_xmlstr.encode("utf8"), parser)
             else:
                 elem = copy.copy(elem_or_xmlstr) # etree will otherwise change calling parm elem_or_xmlstr when stripping
         except Exception as err:
@@ -1321,7 +1344,11 @@ def xml_xpath_return_xmlsingleton(element_node, xpath, default_return=""):
         else:
             if isinstance(ret_val, list) and len(ret_val) > 0:
                 ret_val = ret_val[0]
-            ret_val = etree.tostring(ret_val, with_tail=False, encoding="unicode") 
+            ret_val = etree.tostring(ret_val, with_tail=False, encoding="unicode")
+            try:
+                ret_val = ret_val.strip()
+            except Exception as e:
+                logger.warning(f"Whitepsace strip error: {ret_val} {e}")
                 
     except Exception as err:
         logger.error(err)
@@ -1616,6 +1643,22 @@ def remove_encoding_string(xmlstr):
     ret_val = ENCODER_MATCHER.sub("", xmlstr)                
     return ret_val
 
+def remove_glossary_impx(xmlstr):
+    """
+    Since there can be so many glossary impx's in the document, if they are not needed, remove them, reducing the size
+    of the return data greatly, and cleaning the xml to the eye.
+
+    >>> teststr = "<myxml>this <b>is <i>really</i></b> xml with term <impx type='TERM2'>big term</impx>.</myxml>"
+    >>> remove_glossary_impx(teststr)
+    '<myxml>this <b>is <i>really</i></b> xml with term big term.</myxml>\n'
+    """
+    root = xmlstr_to_etree(xmlstr)
+    deltag ="xxyyzzdelme"
+    for el in root.iterfind("//impx[@type='TERM2']"):
+        el.tag = deltag
+    etree.strip_tags(root, deltag)
+    return etree.tostring(root, encoding="unicode", pretty_print=True)
+    
 # -------------------------------------------------------------------------------------------------------
 # run it! (for testing)
 # 
@@ -1631,7 +1674,7 @@ if __name__ == "__main__":
                 <abstract>whatever is in the abstract</abstract>
                 <pb></pb>
                 <p id="1">A random paragraph</p>
-                <p id="2" type="speech">Another random paragraph</p>
+                <p id="2" type="speech">Another random paragraph with impx <impx>contents</impx></p>
                 <pb></pb>
                 <p id="3">Another <b>random</b> paragraph</p>
                 <p id="4">Another random paragraph</p>

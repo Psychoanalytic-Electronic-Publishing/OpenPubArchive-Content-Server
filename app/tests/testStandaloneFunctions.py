@@ -1,51 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-#  This test module is in development...
-
-import sys
-import os.path
-
-import opasDocPermissions as opasDocPerm
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
-
-from starlette.testclient import TestClient
-
 import unittest
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW
-from datetime import datetime
 import opasAPISupportLib
+import opasPySolrLib
 import opasConfig
 import opasQueryHelper
 import opasCentralDBLib
 import models
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
-# from main import app
-
-# client = TestClient(app)
-
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 ocd = opasCentralDBLib.opasCentralDB()
-
-## Login!
-#resp = opasDocPermissions.pads_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
-## Confirm that the request-response cycle completed successfully.
-#sessID = resp.SessionId
-#headers = {f"client-session":f"{sessID}",
-           #"client-id": "0"
-           #}
 
 class TestStandaloneFunctions(unittest.TestCase):
     """
@@ -69,22 +34,22 @@ class TestStandaloneFunctions(unittest.TestCase):
         print (resp)
         
     def test_query_equivalence(self):
-        r1, status = opasAPISupportLib.search_text(query="mother and milk or father and child")
+        r1, status = opasQueryHelper.search_text(query="mother and milk or father and child")
         r1_count = r1.documentList.responseInfo.fullCount
-        r2, status = opasAPISupportLib.search_text(query="mother milk or father and child")
+        r2, status = opasQueryHelper.search_text(query="mother milk or father and child")
         r2_count = r2.documentList.responseInfo.fullCount
         assert(r1_count == r2_count)
-        r3, status = opasAPISupportLib.search_text(query="mother milk or (father and child)")
+        r3, status = opasQueryHelper.search_text(query="mother milk or (father and child)")
         r3_count = r3.documentList.responseInfo.fullCount
         assert(r1_count == r3_count)
         
     def test_query_equivalence2(self):
-        r1, status = opasAPISupportLib.search_text(query="'mother milk' or father and child")
+        r1, status = opasQueryHelper.search_text(query="'mother milk' or father and child")
         r1_count = r1.documentList.responseInfo.fullCount
-        r2, status = opasAPISupportLib.search_text(query="'mother milk' or (father and child)")
+        r2, status = opasQueryHelper.search_text(query="'mother milk' or (father and child)")
         r2_count = r2.documentList.responseInfo.fullCount
         assert(r1_count == r2_count)
-        r3, status = opasAPISupportLib.search_text(query="father child or 'mother milk'")
+        r3, status = opasQueryHelper.search_text(query="father child or 'mother milk'")
         r3_count = r3.documentList.responseInfo.fullCount
         assert(r1_count == r3_count)
     
@@ -191,7 +156,7 @@ class TestStandaloneFunctions(unittest.TestCase):
           2) List of sources by type
           3) 
         """
-        data = opasAPISupportLib.metadata_get_videos(src_type="Videos", pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0)
+        data = opasPySolrLib.metadata_get_videos(src_type="Videos", pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0)
         # Confirm that the request-response cycle completed successfully.
         # check to make sure a known value is among the data returned
         dataList = [d['documentID'] for d in data[1] if 'documentID' in d]

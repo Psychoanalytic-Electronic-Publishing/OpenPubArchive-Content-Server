@@ -17,8 +17,10 @@ import starlette.status as httpCodes # HTTP_ codes, e.g.
  
 # BASELOGFILENAME = "opasAPI"
 # logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
-FORMAT = '%(asctime)s %(name)s %(funcName)s %(lineno)d - %(levelname)s %(message)s'
-logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
+FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message)s'
+logging.basicConfig(format=FORMAT, level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+LOG_CALL_TIMING = True
+OUTPUT_LOCAL_DEBUGGER = True
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
@@ -70,6 +72,8 @@ HITMARKEREND_OUTPUTHTML = "</span>"
       
 USER_NOT_LOGGED_IN_ID = 0
 USER_NOT_LOGGED_IN_NAME = "NotLoggedIn"
+NO_CLIENT_ID = 666
+NO_SESSION_ID = "NO-SESSION-ID"
     
 COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
 COOKIE_MAX_KEEP_TIME = 86400 # 24 hours in seconds
@@ -79,8 +83,8 @@ SESSION_INACTIVE_LIMIT = 30  # minutes
 OPASSESSIONID = "opasSessionID"
 OPASACCESSTOKEN = "opasSessionInfo"
 OPASEXPIRES= "OpasExpiresTime"
-CLIENTID = "client-id"
-CLIENTSESSIONID = "client-session"
+CLIENTID = "client-id" # also header param or qparam
+CLIENTSESSIONID = "client-session" # also header param or qparam
 
 AUTH_DOCUMENT_VIEW_REQUEST = "DocumentView"
 AUTH_ABSTRACT_VIEW_REQUEST = "AbstractView"
@@ -109,7 +113,7 @@ DEFAULT_LIMIT_FOR_METADATA_LISTS = 200
 DEFAULT_SOLR_SORT_FIELD = "art_cited_5" 
 DEFAULT_SOLR_SORT_DIRECTION = "asc" # desc or asc
 DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 4000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
-DEFAULT_CITED_MORE_THAN = 25
+DEFAULT_CITED_MORE_THAN = 0
 DEFAULT_PAGE_LIMIT = 999
 DEFAULT_PUBLICATION_PERIOD = "ALL"
 
@@ -154,6 +158,13 @@ def normalize_val(val, val_dict, default=None):
     
     return ret_val
 
+# Special Options flag map:
+OPTION_1_NO_GLOSSARY_TERM_MARKUP = 1
+OPTION_2_RETURN_TRANSLATION_SET = 2
+OPTION_4_RESERVED = 4
+OPTION_8_RESERVED = 8
+OPTION_16_RESERVED = 16
+
 # Standard view categories for View functions, mapping to RDS/MySQL and SOLR
 VALS_VIEWPERIODDICT_SQLFIELDS = {1: "lastweek", 2: "lastmonth", 3: "last6months", 4: "last12months", 5: "lastcalyear", 0: "lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
 VALS_VIEWPERIODDICT_SOLRFIELDS = {1: "art_views_lastweek", 2: "art_views_last1mos", 3: "art_views_last6mos", 4: "art_views_last12mos", 5: "art_views_lastcalyear", 0: "art_views_lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
@@ -164,7 +175,7 @@ VALS_VIEWPERIODDICT_SOLRFIELDS = {1: "art_views_lastweek", 2: "art_views_last1mo
 #  ALL
 #  
 # 
-VALS_PRODUCT_TYPES = {DICTLEN_KEY: 4, "jour": "journal", "vide": "videostream", "book": "book"}    
+VALS_PRODUCT_TYPES = {DICTLEN_KEY: 4, "jour": "journal", "vide": "videos", "stre": "stream", "book": "book"}
 VALS_SOURCE_TYPE = {DICTLEN_KEY: 1, 'j': 'journal', 'b': 'book', 'v': 'videostream'} # standard values, can abbrev to 1st char or more
 VALS_ARTTYPE = {DICTLEN_KEY: 3, 'article': 'ART', 'abstract': 'ABS', 'announcement': 'ANN', 'commentary': 'COM', 'errata': 'ERR', 'profile': 'PRO', 'report': 'REP', 'review': 'REV'}
 VALS_DOWNLOADFORMAT = {DICTLEN_KEY: 4, 'html': 'HTML', 'pdf': 'PDF', 'pdfo': 'PDFORIG', 'epub': 'EPUB'}
@@ -179,8 +190,7 @@ DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(a
 DESCRIPTION_AUTHOR = "Author name, use wildcard * for partial entries (e.g., Johan*)"
 DESCRIPTION_AUTHORNAMEORPARTIAL = "The author name or a partial name (regex type wildcards [.*] permitted EXCEPT at the end of the string--the system will try that automatically)"
 DESCRIPTION_AUTHORNAMEORPARTIALNOWILD = "The author name or a author partial name (prefix)"
-DESCRIPTION_CITECOUNT = "Find documents cited more than 'X' times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL. Default period is 5 years."  
-DESCRIPTION_CITED_MORETHAN = f"Lower limit for counts - articles must be cited more than this many times (default={DEFAULT_CITED_MORE_THAN})"
+DESCRIPTION_CITECOUNT = "Include documents cited this many or more times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL. Default (implied) period is 5 years."  
 DESCRIPTION_CLIENT_ID = "Numeric ID assigned to a client app by Opas Administrator"
 DESCRIPTION_CLIENT_SESSION = "Client session GUID"
 DESCRIPTION_CORE = "The preset name for the specif core to use (e.g., docs, authors, etc.)"
@@ -200,7 +210,7 @@ DESCRIPTION_FULLTEXT1_V1 = "Words or phrases (in quotes) in a paragraph in the d
 DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to return the document. Specify which type of identifier using query param termidtype."
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_ISSUE = "The issue number if the source has one"
-DESCRIPTION_LIMIT = "Number of items to return."
+DESCRIPTION_LIMIT = "Maximum number of items to return."
 DESCRIPTION_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 DESCRIPTION_MOREINFO = "Return statistics on the Archive holdings"
 DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (years: {list_values(VALS_YEAROPTIONS)})"
@@ -217,14 +227,19 @@ DESCRIPTION_PARAZONE_V1 = "scope: doc, dreams, dialogs, biblios, per the schema 
 DESCRIPTION_PATH_SOURCETYPE = f"Source type.  One of: {list_values(VALS_SOURCE_TYPE)})"
 DESCRIPTION_PUBLICATION_PERIOD = "Number of publication years to include (counting back from current year, 0 means current year)"
 DESCRIPTION_REQUEST = "The request object, passed in automatically by FastAPI"
+DESCRIPTION_REPORT_MATCHSTR="Report specific match string (params for session-views/user-searches, e.g., /Documents/Document/AIM.023.0227A/, and type for document-activity, e.g., PDF)"
 DESCRIPTION_RETURNFORMATS = "The format of the returned full-text (e.g., abstract or document data).  One of: 'HTML', 'XML', 'TEXTONLY'.  The default is HTML."
 DESCRIPTION_RETURN_ABSTRACTS = "Return abstracts in the documentList (Boolean: true or false)"
 DESCRIPTION_SEARCHPARAM = "This is a document request, including search parameters, to show hits"
 DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that."
 DESCRIPTION_SORT ="Comma separated list of field names to sort by."
 DESCRIPTION_SOURCECODE = "The FULL 2-8 character PEP Code of the source for matching documents (e.g., journals: APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE; books: GW, SE, ZBK; videostreams: PEPGRANTVS, PEPTOPAUTHVS)"
+DESCRIPTION_SOURCECODE_METADATA_BOOKS = "The 2-3 character PEP Code for the book series (e.g., SE, GW, IPL, NLP, ZBK), or the PEP Code and specific volume number of a book in the series (e.g., GW001, SE006, NLP014, ZBK047 (classic book, specific book assigned number) or * for all."
+DESCRIPTION_SOURCECODE_METADATA_JOURNALS = "The FULL 2-8 character PEP Code of the journal source for matching documents (e.g., APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE) or * for all."
+DESCRIPTION_SOURCECODE_METADATA_VIDEOS = "The PEP Code of the video series (e.g., BPSIVS, IPSAVS, PEPVS, PEPGRANTVS, PEPTOPAUTHVS) or * for all."
 DESCRIPTION_SOURCELANGCODE = "Language code or comma separated list of codes for matching documents (e.g., EN, ES, DE, ...)"
-DESCRIPTION_SOURCENAME = "Name or partial name of the source journal, book, or videostream  (e.g., 'international')"
+DESCRIPTION_SOURCENAME = "Name or partial name of the source (e.g., 'international' or 'psychoanalytic')"
+DESCRIPTION_SPECIALOPTIONS = "Integer mapped to Option flags for special options"
 DESCRIPTION_STATONLY = "Return minimal documentListItems for statistics."
 DESCRIPTION_STARTDATE = "Find records on or after this date (input date as 2020-08-10 or 20200810)"
 DESCRIPTION_STARTYEAR = "Find documents published on or after this year, or in this range of years (e.g, 1999, Between range: 1999-2010. After: >1999 Before: <1999" 
@@ -235,7 +250,7 @@ DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field b
 DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification"
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
 DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
-DESCRIPTION_VIEWCOUNT = "Filter by # of times document downloaded (viewed) per the viewedwithin period.  Does not include abstract views."    
+DESCRIPTION_VIEWCOUNT = "Include documents viewed this many times or more within the view period. Does not include abstract views."    
 DESCRIPTION_VIEWPERIOD = "One of a few preset time frames for which to evaluate viewcount; 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months."
 DESCRIPTION_VOLUMENUMBER = "The volume number if the source has one"
 DESCRIPTION_WORD = "A word prefix to return a limited word index (word-wheel)."
@@ -250,7 +265,6 @@ TITLE_AUTHOR = "Author name"
 TITLE_AUTHORNAMEORPARTIAL = "Author name or partial/regex"
 TITLE_CITECOUNT = "Find Documents cited this many times"
 TITLE_CITED_ID = "Document ID of the cited document (e.g., IJP.077.0217A)"
-TITLE_CITED_MORETHAN = "Cited more than this many times for the specified cited period"
 TITLE_CLIENT_ID = "Client App Numeric ID"
 TITLE_CLIENT_SESSION = "GUID/UUID for client session"
 TITLE_CORE = "Core to use"
@@ -278,8 +292,10 @@ TITLE_PAGEREQUEST = "Document's Page or page range"
 TITLE_PARASCOPE = "Scope for paragraph search"
 TITLE_PARATEXT = "Paragraph based search"
 TITLE_SMARTSEARCH = "Search input parser"
+TITLE_SPECIALOPTIONS = "Integer mapped to Option flags for special options"
 TITLE_PARAZONE1_V1 = "Zone for paragraph search"
 TITLE_PUBLICATION_PERIOD = "Number of Years to include" 
+TITLE_REPORT_MATCHSTR="Report specific match string"
 TITLE_REQUEST = "HTTP Request" 
 TITLE_RETURN_ABSTRACTS_BOOLEAN = "Return an abstract with each match (true/false)"
 TITLE_RETURNFORMATS = "Document return format"
@@ -299,7 +315,7 @@ TITLE_TERMLIST = "List of terms"
 TITLE_QTERMLIST = "Opas Model SolrQeryTermList"
 TITLE_TITLE = "Document Title"
 TITLE_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
-TITLE_VIEWCOUNT = "Find Documents viewed this many times within the view period"
+TITLE_VIEWCOUNT = "Include documents viewed this many times or more within the view period"
 TITLE_VIEWPERIOD = "One of the preset timeframes within which to evaluate viewcount"
 TITLE_VOLUMENUMBER = "Volume Number"
 TITLE_WORD = "Word prefix"
@@ -344,7 +360,8 @@ ENDPOINT_SUMMARY_SEARCH_PARAGRAPHS = "Search at the paragraph (lowest) level by 
 ENDPOINT_SUMMARY_SEARCH_V1 = "Search at the paragraph level by document zone (API v1 backwards compatible)"
 ENDPOINT_SUMMARY_SEARCH_V2 = "Full search implementation, at the document or paragraph level"
 ENDPOINT_SUMMARY_SEARCH_V3 = "Full search implementation, at the document or paragraph level with body (termlist)"
-ENDPOINT_SUMMARY_SERVER_STATUS = "Return the server status"
+ENDPOINT_SUMMARY_API_STATUS = "Return the API version and status"
+ENDPOINT_SUMMARY_SERVER_STATUS = "Return the server status and more"
 ENDPOINT_SUMMARY_SOURCE_NAMES = "Return a list of available sources"
 ENDPOINT_SUMMARY_SUBSCRIBE_USER = "Add a new publication subscription for a user (Restricted)"
 ENDPOINT_SUMMARY_TERM_COUNTS = "Get term frequency counts"
@@ -356,10 +373,10 @@ ENDPOINT_SUMMARY_WHO_AM_I = "Return information about the current user"
 ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the specified field"
 
 ACCESS_SUMMARY_DESCRIPTION = "This is a summary excerpt from the full text of the document. "
-ACCESS_SUMMARY_FORSUBSCRIBERS = "The full content of the document is available to subscribers. "
-ACCESS_SUMMARY_EMBARGOED = "The full content of the document is embargoed per an agreement with the publisher. "
-ACCESS_SUMMARY_EMBARGOED_YEARS = "The full content of the document is embargoed for %s years per an agreement with the publisher. "
-ACCESS_SUMMARY_PUBLISHER_INFO = "The full content of the document may be available on the publisher's website. "
+ACCESS_SUMMARY_FORSUBSCRIBERS = "The full-text content of the document is available to subscribers. "
+ACCESS_SUMMARY_EMBARGOED = "The full-text content of the document is embargoed per an agreement with the publisher. "
+ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
+ACCESS_SUMMARY_PUBLISHER_INFO = "The full-text content of the document may be available on the publisher's website. "
 ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = "<a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>."
 ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."
 
@@ -368,6 +385,10 @@ ACCESSLIMITED_DESCRIPTION_LIMITED = "This is a summary excerpt from the full tex
 ACCESSLIMITED_DESCRIPTION_FREE = "This content is currently free to all users."
 ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access"
 ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access"
+
+# control whether abstracts can be viewed by non-logged-in users
+ACCESS_ABSTRACT_RESTRICTION = True
+ACCESS_ABSTRACT_RESTRICTED_MESSAGE = "You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
 
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()
@@ -398,6 +419,9 @@ DEFAULT_MORE_LIKE_THIS_COUNT = 0
 # Standard Document List Summary fields 
 # (potential data return in document list)
 # Indent moved to left so when in query, only a few spaces sent to Solr
+
+# DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, art_title, art_title_xml, art_subtitle_xml, art_author_id, art_authors, art_citeas_xml, art_info_xml, art_sourcecode, art_sourcetitleabbr, art_sourcetitlefull, art_sourcetype, art_level, para_art_id,parent_tag, para, art_vol, art_type, art_vol_title, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_lang, art_doi, art_issn, art_origrx, art_qual, art_kwds, art_cited_all, art_cited_5, art_cited_10, art_cited_20, art_views_lastcalyear, art_views_last1mos, art_views_last6mos, art_views_last12mos, art_views_lastweek, reference_count, file_last_modified, timestamp, score"
+
 DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_id, 
  art_title, 
@@ -442,6 +466,12 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  file_last_modified, 
  timestamp, 
  score
+"""
+
+# try the more squashed approach to listing, see if that shows better in the solr call logs
+DOCUMENT_ITEM_VIDEO_FIELDS = """
+art_id,art_issn, art_sourcecode, art_authors, title, art_subtitle_xml, art_title_xml,
+art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, art_vol,art_vol_title, art_year, art_iss, art_iss_title, art_year, art_citeas_xml, art_pgrg, art_lang, art_origrx, art_qual, art_kwds 
 """
 
 DOCUMENT_ITEM_TOC_FIELDS = """
@@ -533,15 +563,21 @@ running_head_fmts = {
 }
 
 # specify fields for sort, the variable allows ASC and DESC to be varied during calls.
-SORT_BIBLIOGRAPHIC = "art_authors_mast {0}, art_year {0}, art_title {0}"
+SORT_BIBLIOGRAPHIC = "art_authors_citation_str {0}, art_year {0}, art_title_str {0}"
 SORT_YEAR = "art_year {0}"
-SORT_AUTHOR = "art_authors_mast {0}"
-SORT_TITLE = "art_title {0}"
-SORT_SOURCE = "art_sourcetitlefull {0}"
+SORT_AUTHOR = "art_authors_citation_str {0}"
+SORT_TITLE = "art_title_str {0}"
+SORT_SOURCE = "art_sourcetitlefull_str {0}"
 SORT_CITATIONS = "art_cited_5 {0}"
 SORT_VIEWS = "art_views_last6mos {0}"
-SORT_TOC = "art_sourcetitleabbr {0}, art_year {0}, art_iss {0}, art_pgrg {0}"
+SORT_TOC = "art_sourcetitlefull_str {0}, art_year {0}, art_iss {0}, art_pgrg {0}"
 SORT_SCORE = "score {0}"
+
+# search description fields to communicate about the search
+KEY_SEARCH_SMARTSEARCH = "smart_search"
+KEY_SEARCH_FIELD = "schema_field"
+KEY_SEARCH_VALUE = "schema_value"
+KEY_SEARCH_WORDSEARCH = "wordsearch"
 
 # Dict = sort key to use, fields, default direction if one is not specified.
 PREDEFINED_SORTS = {
@@ -559,3 +595,8 @@ PREDEFINED_SORTS = {
     "rank":(SORT_SCORE, "desc"), 
     }
 
+PEPWEB_ABSTRACT_MSG1 = """
+This is a summary or excerpt from the full text of the article. PEP-Web provides full-text search of the complete articles for
+current and archive content, but only the abstracts are displayed for current content, due to contractual obligations with the
+journal publishers. For details on how to read the full text of 2017 and more current articles see the publishers official website 
+"""

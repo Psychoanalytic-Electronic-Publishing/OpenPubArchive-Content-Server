@@ -1,37 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-#  This test module is in development...
-
-import sys
-import os.path
 import logging
-
 logger = logging.getLogger(__name__)
 
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
-from starlette.testclient import TestClient
-
 import unittest
-from localsecrets import TESTUSER, TESTPW, SECRET_KEY, ALGORITHM
-# import jwt
-from datetime import datetime
+import requests
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
-from main import app
-
-client = TestClient(app)
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_info
 
 class TestMost(unittest.TestCase):
     """
@@ -42,11 +18,28 @@ class TestMost(unittest.TestCase):
     
     """   
 
+    def test_0_client_init_set_test(self):
+        """
+        Test calls made by typical client (e.g., Gavant)
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?formatrequested=XML&limit=10&viewperiod=2')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=30&limit=10')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?formatrequested=XML&limit=10&period=all')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+
     def test_0_most_downloaded(self):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v2/Database/MostViewed/')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -68,8 +61,8 @@ class TestMost(unittest.TestCase):
     def test_0_most_downloaded_pubperiod_author_viewperiod(self):
         """
         """
-        # request login to the API server
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&author=tuck%2A&viewperiod=4&limit=5')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&author=tuck%2A&viewperiod=4&limit=5')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -90,37 +83,46 @@ class TestMost(unittest.TestCase):
     def test_0_mostviewed_argument_robustness(self):
         """
         """
+        
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=0')
+        response = requests.get(full_URL, headers=headers)
         # Try it with variations of the sourcetype to test new robust argument values
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=0')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=v')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=v')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=j')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=j')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=b')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=b')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=x')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=x')
+        response = requests.get(full_URL, headers=headers)
         #  let's fail
         r = response.json()
         assert(response.ok == False)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=videos&viewperiod=4&limit=5')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=videos&viewperiod=4&limit=5')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vids&viewperiod=4&limit=5')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=vids&viewperiod=4&limit=5')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vxds&viewperiod=4&limit=5')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=vxds&viewperiod=4&limit=5')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
@@ -128,7 +130,8 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=videostream&viewperiod=4&limit=5')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=videostream&viewperiod=4&limit=5')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -145,14 +148,15 @@ class TestMost(unittest.TestCase):
         #assert(r["db_server_ok"] == True)
         print (r)
         # Try it with variations of the sourcetype to test new robust argument values
-        response = client.get(base_api + '/v2/Database/MostViewed/?pubperiod=30&sourcetype=vid&viewperiod=4&limit=5')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=vid&viewperiod=4&limit=5')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
     def test_0_most_cited(self):
         """
         """
-        response = client.get(base_api + '/v2/Database/MostCited/')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -164,7 +168,8 @@ class TestMost(unittest.TestCase):
         
     def test_0_most_cited_with_similardocs(self):
         # see if it can correctly return moreLikeThese
-        response = client.get(base_api + '/v2/Database/MostCited/?similarcount=3')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?similarcount=3')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -178,7 +183,8 @@ class TestMost(unittest.TestCase):
 
     def test_0_most_cited_download(self):
         # see if it can correctly return moreLikeThese
-        response = client.get(base_api + '/v2/Database/MostCited/?download=True')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?download=True')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         #r = response.json()
@@ -186,7 +192,8 @@ class TestMost(unittest.TestCase):
 
     def test_0_most_viewed_download(self):
         # see if it can correctly return moreLikeThese
-        response = client.get(base_api + '/v2/Database/MostViewed/?download=True')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?download=True')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         #r = response.json()
@@ -195,7 +202,8 @@ class TestMost(unittest.TestCase):
     def test_0_most_cited_for_source(self):
         """
         """
-        response = client.get(base_api + '/v2/Database/MostCited/?limit=5&sourcecode=PAQ')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=5&sourcecode=PAQ')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -217,7 +225,8 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v2/Database/MostCited/?pubperiod=20&author=Benjamin&limit=5')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?pubperiod=20&author=Benjamin&limit=5')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -238,7 +247,8 @@ class TestMost(unittest.TestCase):
         """
         """
         # request login to the API server
-        response = client.get(base_api + '/v2/Database/WhatsNew/?days_back=90')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=90')
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -247,47 +257,6 @@ class TestMost(unittest.TestCase):
         print (f"{r['whatsNew']['responseInfo']['limit']}")
         print (r)
 
-    def test_00_most_cited_direct(self):
-        """
-        """
-        import opasQueryHelper
-        import opasAPISupportLib
-        solr_query_spec = \
-            opasQueryHelper.parse_search_query_parameters(citecount="5 in ALL", 
-                                                          source_name=None,
-                                                          source_code=None,
-                                                          source_type=None, 
-                                                          author=None,
-                                                          title=None,
-                                                          startyear=None,
-                                                          highlighting_max_snips=0, 
-                                                          abstract_requested=False,
-                                                          similar_count=0
-                                                          )
-    
-        r, status = opasAPISupportLib.search_stats_for_download(solr_query_spec)
-        print (r)
-
-    def test_00_most_cited_direct_simple(self):
-        """
-        """
-        import opasQueryHelper
-        import opasAPISupportLib
-        solr_query_spec = \
-            opasQueryHelper.parse_search_query_parameters(citecount="5", 
-                                                          source_name=None,
-                                                          source_code=None,
-                                                          source_type=None, 
-                                                          author=None,
-                                                          title=None,
-                                                          startyear=None,
-                                                          highlighting_max_snips=0, 
-                                                          abstract_requested=False,
-                                                          similar_count=0
-                                                          )
-    
-        r, status = opasAPISupportLib.search_stats_for_download(solr_query_spec)
-        print (r)
 
 if __name__ == '__main__':
     unittest.main()

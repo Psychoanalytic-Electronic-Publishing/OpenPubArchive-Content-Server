@@ -1,0 +1,751 @@
+/*  Stylesheet for NLM/NCBI  Journal Publishing 3.0 Preview HTML
+    January 2009
+
+    ~~~~~~~~~~~~~~
+    National Center for Biotechnology Information (NCBI)
+    National Library of Medicine (NLM)
+    ~~~~~~~~~~~~~~
+    
+This work is in the public domain and may be reproduced, published or 
+otherwise used without the permission of the National Library of Medicine (NLM).
+
+We request only that the NLM is cited as the source of the work.
+
+Although all reasonable efforts have been taken to ensure the accuracy and 
+reliability of the software and data, the NLM and the U.S. Government  do 
+not and cannot warrant the performance or results that may be obtained  by
+using this software or data. The NLM and the U.S. Government disclaim all 
+warranties, express or implied, including warranties of performance, 
+merchantability or fitness for any particular purpose.
+
+*/
+
+
+/* --------------- Page setup ------------------------ */
+
+/* page and text defaults */
+
+body{
+    margin-left: 8%;
+    margin-right: 8%;
+    background-color: #f8f8f8}
+
+
+div > *:first-child{
+    margin-top: 0em
+}
+
+div{
+    margin-top: 0.5em
+}
+
+div.front,
+div.footer{
+
+}
+
+div.artauth:before {
+    content: "by: ";    
+}
+
+div.artauth {
+    text-align: center;
+}
+
+div.aut {
+    display:inline;    
+    text-align: center;
+}
+
+.authorwrapper .aut:not(:last-child):after {
+  content: ", ";        
+}
+
+.authorwrapper .aut:nth-last-child(2):after {
+  content: "";        
+}
+
+.authorwrapper .aut:nth-child(n+2):last-child:before {
+  content: " and ";        
+}
+
+.back,
+.body{
+    font-family: serif
+}
+
+.tmain {
+  display: block;
+  font-weight: bold;
+}
+
+.adddata {
+  display: block;
+}
+
+/*.artinfo:before {
+  content: "[" attr(j) "] See Also: " attr(origrx) " newsec: " attr(newsecnm) " issuetitle: " attr(issuetitle) " arttype: " attr(arttype) " artorigrx: " attr(origrx);
+}
+*/
+.artyear:before {
+  content: "(";
+}
+
+.artyear:after {
+  content: ") ";
+}
+
+.artvol:after {
+  content: ":";
+}
+
+p.pb {
+  display: block;
+  text-align: center;
+  border-bottom: 1pt lightblue dashed;
+}
+
+p.citation {
+   display: inline
+}
+
+.n:before {
+  content: "- ";
+}
+
+.n:after {
+  content: " -";
+}
+
+.n {
+  color: gray;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 24pt;
+  display: block;
+}
+
+.bx:before {
+  content: attr(r) ". ";
+}
+
+bj {
+  color: green;
+  font-style: italic;
+  display: inline;
+}
+
+bv {
+  color: green;
+  font-weight: bold;
+}
+
+bp {
+  color: green;
+}
+
+by {
+  color: maroon;
+}
+
+.quote {
+  font-style: italic;
+  margin-right: +.25in;
+  margin-left: +.25in;
+  background-color: silver;
+}
+
+.dream, .dialog {
+  display: block;
+  font-style: italic;
+  margin-left: +.25in;
+  margin-right: +.25in;
+}
+
+p {
+  margin-top: 2pt;
+  margin-bottom: 6pt;
+}
+
+.cs[name="FtnID"] {
+  font-style: normal;
+  font-weight: normal;
+  font-size: 6pt;
+  color: #9966FF;
+  vertical-align: super;
+  display: inline;
+}
+
+p.arttitle {
+  font-size: x-large;
+  display: block;
+  font-weight: bold;
+  text-align: center;
+}
+
+[name="Title"] {
+  font-size: x-large;
+  font-weight: bold;
+}
+
+.ftn {
+  border-top: thin none;
+  color: purple;
+  font-size: small;
+  display: block;
+  margin-left: +.25in;
+  text-indent: -.25in;
+  font-weight: lighter;
+  vertical-align: super;
+}
+
+footer {
+  color: #990066;
+  font-size: small;
+}
+
+fd, nm {
+  color: navy;
+}
+
+revisions {
+  color: teal;
+  font-size: smaller;
+}
+
+ce {
+  display: table-cell;
+}
+
+ta {
+  display: table;
+}
+
+ro {
+  display: table-row;
+}
+
+.aut {
+  text-align: center;
+  display: block;
+  font-weight: bold;
+}
+
+.autaff {
+  display: block;
+  text-align: center;
+}
+
+body {
+  padding-top: 6pt;
+  display: block;
+}
+
+.artinfo {
+  display: block;
+  margin-bottom: 12pt;
+}
+
+.nmid:after, .nfirst:after {
+  content: "  ";
+}
+
+poem {
+  margin-left: .25in;
+  margin-right: .25in;
+  font-style: italic;
+}
+
+.src {
+  font-weight: bold;
+  display: block;
+  padding-left: 14pt;
+  font-style: italic;
+}
+
+div.abs {
+  color: #3333CC;
+}
+
+.bt {
+  text-decoration: underline;
+}
+
+.bn {
+  color: purple;
+}
+
+ob:after {
+  content: "[Figure will be Inserted Here]";
+}
+
+graphic[align="Center"] {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;  
+  display: block;
+}
+
+graphic[align="Right"] {
+  position: absolute;
+  right: 0px;
+  width: 50%;
+  padding: 10px;
+  display: block;
+}
+
+.bet, i {
+  font-style: italic;
+}
+
+cr:after {
+  content: "";
+}
+
+graphic {
+  position: absolute;
+  right: 0px;
+  width: 50%;
+  padding: 10px;
+  display: block;
+}
+
+.ctitle {
+  text-align: center;
+  font-style: italic;
+  display: block;
+}
+
+.ftnid, .su, .ftnref {
+  vertical-align: super;
+  font-size: x-small;
+}
+
+.ftn:before {
+  content: attr(label);
+}
+
+.bex:before {
+  content: attr(id)":";
+  font-weight: bold;
+}
+
+.bex:after {
+  content: attr(rx) ": ";
+  font-weight: bold;
+}
+
+.be:before {
+  content: attr(label) attr(id)": ("attr(rx)")";
+  font-weight: bold;
+}
+
+.pgx:before {
+  content: attr(r) attr(rx)":";
+  font-weight: bold;
+}
+
+.artsub {
+  display: block;
+  font-weight: bold;
+  text-align: center;
+  font-size: 14pt;
+}
+
+.ftr {
+  color: maroon;
+  font-size: 9pt;
+}
+
+.be[rx], .jl {
+  color: blue;
+}
+
+.binc {
+  display: inline;
+  margin-left: .25in;
+  color: maroon;
+  background-color: silver;
+}
+
+.hdix {
+  color: purple;
+  font-weight: bold;
+}
+
+.tblx {
+  color: #7F007F;
+  font-weight: bold;
+}
+
+.impx {
+  color: blue;
+  font-size: larger;
+  font-weight: bold;
+  background-color: yellow;
+}
+
+.note:before {
+  content: attr(label)":";
+}
+
+.chtitle {
+  font-size: 14pt;
+  font-weight: bolder;
+}
+
+.sectitle {
+  display: block;
+  font-size: 16pt;
+  font-weight: bolder;
+  border: thin solid;
+}
+
+.hdsubtitle {
+  display: block;
+  font-weight: bolder;
+  font-size: 12pt;
+}
+
+[align="right"] {
+  text-align: right;
+}
+
+[align="center"] {
+  text-align: center;
+}
+
+h1, h2, h3, h4, h5, h6, figx {
+    display: block;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    font-family: helvetica, sans-serif;
+    font-weight: bold;
+    color: black;
+    font-weight: bold;
+    color: midnightblue;
+}
+
+/*h1:before, h2:before, h3:before, h4:before, h5:before, h6:before {
+  content: attr(label) ". ";
+}
+*/
+
+h3 {
+  font-weight: bold;
+  font-size: medium;
+}
+
+h4 {
+  font-weight: bold;
+  font-size: small;
+}
+
+h5 {
+  font-weight: bold;
+  font-size: smaller;
+}
+
+h1 {
+  font-weight: bold;
+  font-size: larger;
+  display: block;
+}
+
+h2 {
+  font-weight: bold;
+  font-size: large;
+}
+
+.blank:before {
+  content: "This page was blank";
+}
+
+.blank {
+  text-align: center;
+  vertical-align: middle;
+  display: block;
+  border: thin green solid;
+}
+
+.bi {
+  font-weight: bolder;
+}
+
+[class="i"], [rxp] {
+  color: red;
+}
+
+.pgx {
+  color: purple;
+  font-weight: bold;
+  font-size: larger;
+}
+
+.notex, .bx {
+  font-weight: bold;
+  color: red;
+}
+
+[style="su"] {
+  vertical-align: super;
+  font-size: smaller;
+}
+
+.arttitle:before {
+  content: "[" attr(lgrid) "|" attr(lgrx) "] " attr(label);
+  color: red;
+}
+
+.arttitle:after {
+  content: attr(postdata);
+  white-space: pre;
+}
+
+.be {
+  color: purple;
+  margin-top: 12pt;
+  margin-bottom: 12pt;
+  border-top: thin dotted;
+}
+
+j {
+  font-size: larger;
+  font-weight: bolder;
+  background-color: yellow;
+}
+
+.bxe {
+  font-weight: bold;
+  font-size: larger;
+}
+
+list {
+  list-style-type: decimal;
+}
+
+li {
+  display: list-item;
+  list-style-type: decimal;
+}
+
+li:before {
+  content: attr(label) "    ";
+  font-weight: bold;
+}
+
+artqual:after {
+  content: attr(rx);
+}
+
+dictentry, autnm, be, tby, ti, abs, addr, aff, au, autgrp, bib, bibl, bj, bjc, bjn, body, c, entry, fig, figcap, footer, ftn, h1, h2, h3, h4, h5, h6, instit, kwd, li, list, ln, loc, meta, p, pepkbd, pge, pgn, ps, row, sfx, sum, table, tbody, tgroup, thead, tmain, tno, tsub, ttl, autaff, autloc, revisions, _BibRefLvl, abstract, articlemast, artinfo, biblio, body, break, citeas, cm, endbody, figure, footer, ft, ftn, hdgauthor, hdgjrnl, hdgpgrg, hdgtitle, hdgvol, hdgyear, meta, pepxmlproc, pgbreak, pgtxt, poem, ps, rd, summaries, tocentry, artpgrg, artvol, artyear, ob, InlineGraphic, cr, bex, artauth, artkwds, note, tbl, sp, dictentrygrp {
+  display: block;
+}
+
+term, en, caption, ba, binc:after, b, t, h6, bst {
+  font-weight: bold;
+}
+
+dictentrygrp>term {
+  font-size: +1.25em;
+  font-weight: bold;
+  color: blue;
+  border-top: 2pt solid;
+  margin-top: 2em;
+  background-color: WhiteSmoke;
+  border-right: 2pt;
+  border-bottom: 2pt;
+  border-left: 2pt;
+}
+
+dictalso>term {
+  color: maroon;
+}
+
+dictentrygrp>dictalso>term:before {
+  content: attr(lang) ":";
+}
+
+dictentry>src {
+  color: maroon;
+  font-size: larger;
+}
+
+def {
+  display: block;
+}
+
+dictentrygrp {
+  border-top: thin dashed;
+  display: block;
+  margin-top: 4em;
+}
+
+dictentry {
+  display: block;
+  margin-top: 2em;
+}
+
+dictalso {
+  display: block;
+  color: maroon;
+}
+
+dictalso[type="translations"]:before {
+  content: "Translations: ";
+}
+
+dictalso:before {
+  content: "See ";
+}
+
+src:before {
+  content: "Source: ";
+}
+
+ai {
+  text-align: right;
+  display: block;
+}
+
+def>p {
+  background-color: lightgray;
+}
+
+defrest>p {
+  margin-left: 2em;
+}
+
+dictentry>bib {
+  margin-left: 2em;
+}
+
+defrest>dictentry {
+  margin-left: 2em;
+}
+
+dictentry>term {
+  background-color: yellow;
+  font-weight: bold;
+  font-size: large;
+}
+
+a:after {
+  content: ";  ";
+}
+
+table>tgroup {
+  margin-left: 2em;
+  margin-right: 2em;
+}
+
+[style="spacedout"] {
+  letter-spacing: .3em;
+  color: green;
+}
+
+bst {
+  background-color: silver;
+  display: block;
+}
+
+idxtrm {
+  display: inline;
+}
+
+primary {
+  display: block;
+}
+
+secondary {
+  display: block;
+}
+
+tertiary {
+  display: block;
+}
+
+idxent {
+  display: block;
+}
+
+idxloc {
+  display: inline;
+}
+
+idxent>idxent {
+  text-indent: 22pt;
+}
+
+namex:before {
+  content: attr(label);
+}
+
+span.ndeg:after {
+  content: attr(dgr);
+}
+
+div.nbio {
+    display:none;
+}
+
+div.autaff {
+    display:none;
+}
+
+artsub:before {
+  color: red;
+  content: "[" attr(lgrid) "|" attr(lgrx) "] ";
+}
+
+[style="spaced"] {
+  letter-spacing: 3px;
+  color: red;
+  text-decoration: blink;
+  font-weight: bold;
+}
+
+graphic:after {
+  content: attr(source);
+}
+
+[type="lng"] {
+  color: white;
+  background-color: green;
+}
+
+.aut:before {
+  content: "Role:" attr(data-role) "  Listed:" attr(data-listed) "  ";
+  color: lightgray;
+}
+
+figure {
+  background-color: #99FFCC;
+}
+
+webx {
+  color: red;
+}
+
+bx[cs="su"] {
+  vertical-align: super;
+}
+
+span.bibauthor {
+  font-weight: bold;    
+}
+
+span.bibyear:before {
+    content: " (";    
+}
+
+span.bibyear:after {
+    content: ") ";    
+}
+
+.footer {
+    font-size:smaller;
+    font-weight:lighter;
+    color: maroon;    
+}

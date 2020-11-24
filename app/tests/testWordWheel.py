@@ -1,27 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-import sys
-import os.path
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
 import unittest
 import requests
-from requests.utils import requote_uri
-import urllib
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_plus_endpoint_encoded, headers
 import opasAPISupportLib
 import timeit
 
@@ -52,7 +35,7 @@ class TestWordWheel(unittest.TestCase):
 
     def test_2a_get_term_index_api(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/WordWheel/?word=measuring&core=docs')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
@@ -61,7 +44,6 @@ class TestWordWheel(unittest.TestCase):
         assert(response_set[0]["termCount"] >= 3)
         print (response_set)
         
-    
     #def test_1a_termlist(self):
         #tests = ["jealous", "incest", "moth", "dog", "cat"]
         #term_list = opasAPISupportLib.get_term_count_list(tests)

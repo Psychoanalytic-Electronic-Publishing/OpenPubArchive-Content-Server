@@ -1,32 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
-import sys
-import os.path
-
-folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-if folder == "tests": # testing from within WingIDE, default folder is tests
-    sys.path.append('../libs')
-    sys.path.append('../config')
-    sys.path.append('../../app')
-else: # python running from should be within folder app
-    sys.path.append('./libs')
-    sys.path.append('./config')
-
 import unittest
 import requests
-from requests.utils import requote_uri
-import urllib
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded
+from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestSearch(unittest.TestCase):
     def test_search_viewed_count_1a(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=2&sourcecode=IJP')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
@@ -38,7 +21,7 @@ class TestSearch(unittest.TestCase):
 
     def test_search_viewed_count_1b(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=1')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
@@ -50,7 +33,7 @@ class TestSearch(unittest.TestCase):
 
     def test_search_viewed_count_1c(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=1&fulltext1=feel')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
@@ -63,7 +46,7 @@ class TestSearch(unittest.TestCase):
         assert(response_info["count"] >= 0) # just make sure there's a count
         print (response_set)
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=3&fulltext1=feel')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
@@ -74,8 +57,8 @@ class TestSearch(unittest.TestCase):
         print (response_set)
 
     def test_search_author_and_journalcode_and_text_and_citecount(self):
-        full_URL = base_plus_endpoint_encoded('/v1/Database/Search/?author=tuckett&citecount=3')
-        response = requests.get(full_URL)
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=tuckett&citecount=3')
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
