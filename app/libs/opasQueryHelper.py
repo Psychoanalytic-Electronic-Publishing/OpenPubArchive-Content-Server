@@ -1472,9 +1472,10 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
             solr_query_spec.solrQueryOpts.hlFragsize = max(solr_query_spec.solrQueryOpts.hlFragsize, opasConfig.DEFAULT_KWIC_CONTENT_LENGTH)
         except:
             solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
-            
-    if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is 0 or solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is None:
-        solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = solr_query_spec.solrQueryOpts.hlFragsize  
+
+    # taken care of later in search_text_qs        
+    #if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is 0 or solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is None:
+        #solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = solr_query_spec.solrQueryOpts.hlFragsize  
         
     if highlightlimit is not None:
         solr_query_spec.solrQueryOpts.hlSnippets = highlightlimit # highlighting_max_snips 

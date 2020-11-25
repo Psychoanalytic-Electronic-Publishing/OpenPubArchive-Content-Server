@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1124.3.Alpha.PySolr"
+__version__     = "2020.1125.1.Alpha.PySolr"
 __status__      = "Development"
 
 """
@@ -1768,7 +1768,7 @@ async def database_extendedsearch(response: Response,
                                               hl_bs_type="SENTENCE", 
                                               hl_fl = solrQueryOpts.hlFields,
                                               hl_fragsize = fragSize,  # from above
-                                              hl_maxAnalyzedChars=solrQueryOpts.hlMaxAnalyzedChars if solrQueryOpts.hlMaxAnalyzedChars>0 else opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
+                                              hl_maxAnalyzedChars=solrQueryOpts.hlMaxAnalyzedChars if solrQueryOpts.hlMaxAnalyzedChars>0 else opasConfig.SOLR_FULL_TEXT_MAX_ANALYZED_CHARS, 
                                               hl_multiterm = solrQueryOpts.hlMultiterm, # def "true", # only if highlighting is on
                                               hl_multitermQuery="true",
                                               hl_highlightMultiTerm="true",

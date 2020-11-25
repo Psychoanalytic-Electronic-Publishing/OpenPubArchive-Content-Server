@@ -105,7 +105,7 @@ MAX_EXCERPT_PARAS = 10
 MAX_PARAS_FOR_SUMMARY = 10
 MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE = 500 # needs to be practical too, for time out
 
-DEFAULT_KWIC_CONTENT_LENGTH = 200  # On each side of match (so use 1/2 of the total you want)
+DEFAULT_KWIC_CONTENT_LENGTH = 50  # On each side of match (so use 1/2 of the total you want)
 DEFAULT_MAX_KWIC_RETURNS = 5
 DEFAULT_LIMIT_FOR_SOLR_RETURNS = 15
 DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS = 1
@@ -120,6 +120,8 @@ DEFAULT_CITED_MORE_THAN = 0
 DEFAULT_PAGE_LIMIT = 999
 DEFAULT_PUBLICATION_PERIOD = "ALL"
 
+SOLR_KWIC_MAX_ANALYZED_CHARS = 100000 # kwic (and highlighting) wont show any hits past this.
+SOLR_FULL_TEXT_MAX_ANALYZED_CHARS = 2520000 # full-text markup won't show matches beyond this.
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 2520000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
 SOLR_HIGHLIGHT_RETURN_MIN_FRAGMENT_SIZE = 2000 # Abstract size
 

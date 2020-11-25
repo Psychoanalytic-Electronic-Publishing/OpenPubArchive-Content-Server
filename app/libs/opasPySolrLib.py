@@ -905,10 +905,15 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             facet = "off"
     
         try:
-            if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars < 200: # let caller configure, but not 0!
-                solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = opasConfig.SOLR_HIGHLIGHT_RETURN_MIN_FRAGMENT_SIZE # opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE
+            if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars != 0: # let caller configure, but not 0!
+                if solr_query_spec.fullReturn:
+                    solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = opasConfig.SOLR_KWIC_MAX_ANALYZED_CHARS 
+                else:
+                    solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = opasConfig.SOLR_FULL_TEXT_MAX_ANALYZED_CHARS 
+            else: # solr default
+                solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = None # will be removed from args, giving solr default of 51200
         except:
-            solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = opasConfig.SOLR_HIGHLIGHT_RETURN_MIN_FRAGMENT_SIZE # opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE
+            solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = opasConfig.SOLR_KWIC_MAX_ANALYZED_CHARS # opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE
         #else: OK, leave it be!
     
         try: # must have value
@@ -958,8 +963,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             "facet" : facet,
                             "facet.field" : solr_query_spec.facetFields, #["art_lang", "art_authors"],
                             "facet.mincount" : solr_query_spec.facetMinCount,
-                            #hl_method="unified",  # these don't work
-                            #hl_encoder="HTML",
+                            
                             "mlt" : mlt,
                             "mlt.fl" : mlt_fl,
                             "mlt.count" : mlt_count,
@@ -978,6 +982,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             # for unified method, use hl.tag.pre and hl.tag.post NOTE: This tags illegally in XML
                             # for original method, use hl.simple.pre and hl.simple.post
                             "hl.method": "unified",
+                            # "hl_encoder":"HTML",
                             "hl.tag.pre" : opasConfig.HITMARKERSTART,
                             "hl.tag.post" : opasConfig.HITMARKEREND        
         }
@@ -1060,10 +1065,18 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         logger.error(f"Attribute Error: {e}")
     
     except Exception as e:
-        ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-        logger.error(f"Solr Runtime Search Error (syntax): {e.httpcode}. Params sent: {solr_param_dict}")
-        logger.error(e.body)
+        try:
+            tb = sys.exc_info()[2]
+            raise ValueError(...).with_traceback(tb)
+        except Exception as e2:
+            error_code = 500
+            ret_status = (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, None)
+        else:
+            ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+        finally:
+            ret_val = models.ErrorReturn(httpcode=error_code, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
+            logger.error(f"Solr Runtime Search Error (syntax): {ret_status}. Params sent: {solr_param_dict}")
+            logger.error(e.body)
                                 
     else: #  search was ok
         try:
