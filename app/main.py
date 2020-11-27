@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1125.1.Alpha.PySolr"
+__version__     = "2020.1126.1.Alpha.PySolr"
 __status__      = "Development"
 
 """
@@ -1927,6 +1927,21 @@ async def database_search_paragraphs(response: Response,
     opasDocPermissions.verify_header(request, "SearchParas")
     log_endpoint(request, client_id=client_id, session_id=client_session)
 
+    errors, mod_args = opasQueryHelper.check_search_args(
+                                             paratext=paratext,
+                                             author=author,
+                                             title=title,
+                                             startyear=startyear,
+                                             endyear=endyear
+                                           )
+    if errors:
+        detail = "Error 425: Too few characters or unbalanced."
+        print(detail)
+        raise HTTPException(
+            status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
+            detail=detail
+        )
+
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     # session_id = session_info.session_id 
@@ -1965,6 +1980,7 @@ async def database_search_paragraphs(response: Response,
                                                       sort=sort,
                                                       req_url = request.url._url
                                                       )
+
     solr_query_params = solr_query_spec.solrQuery
     # solr_query_opts = solr_query_spec.solrQueryOpts
 
@@ -2010,46 +2026,45 @@ async def database_search_paragraphs(response: Response,
 
 #---------------------------------------------------------------------------------------------------------
 @app.post("/v2/Database/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_V3)
-async def database_search_v3(
-    response: Response, 
-    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-    qtermlist: models.SolrQueryTermList=Body(None, embed=True, title=opasConfig.TITLE_QTERMLIST, decription=opasConfig.DESCRIPTION_QTERMLIST), # allows full specification
-    fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
-    smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
-    paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
-    parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
-    synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
-    # filters (Solr query filter)
-    sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
-    sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2), 
-    sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE), 
-    sourcelangcode: str=Query(None, min_length=2, title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE), 
-    volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
-    issue: str=Query(None, title=opasConfig.TITLE_ISSUE, description=opasConfig.DESCRIPTION_ISSUE),
-    author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
-    title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
-    articletype: str=Query(None, title=opasConfig.TITLE_ARTICLETYPE, description=opasConfig.DESCRIPTION_ARTICLETYPE),
-    startyear: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
-    endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
-    citecount: str=Query(None, title=opasConfig.TITLE_CITECOUNT, description=opasConfig.DESCRIPTION_CITECOUNT),   
-    viewcount: int=Query(0, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),    
-    viewperiod: int=Query(4, title=opasConfig.TITLE_VIEWPERIOD, description=opasConfig.DESCRIPTION_VIEWPERIOD),     
-    # return set control
-    #returnfields: str=Query(None, title="Fields to return (see limitations)", description="Comma separated list of field names"),
-    abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
-    formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-    similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
-    highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
-    facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
-    facetmincount: int=Query(1, title="Minimum count to return a facet"),
-    facetlimit: int=Query(15, title="Maximum number of facet values to return"),
-    facetoffset: int=Query(0, title="Offset that can be used for paging through a facet"),
-    sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-    limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-    offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-    client_id:int=Depends(get_client_id), 
-    client_session:str= Depends(get_client_session)
-    ):
+async def database_search_v2b( response: Response, 
+                               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                               qtermlist: models.SolrQueryTermList=Body(None, embed=True, title=opasConfig.TITLE_QTERMLIST, decription=opasConfig.DESCRIPTION_QTERMLIST), # allows full specification
+                               fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
+                               smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
+                               paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
+                               parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
+                               synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
+                               # filters (Solr query filter)
+                               sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
+                               sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2), 
+                               sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE), 
+                               sourcelangcode: str=Query(None, min_length=2, title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE), 
+                               volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
+                               issue: str=Query(None, title=opasConfig.TITLE_ISSUE, description=opasConfig.DESCRIPTION_ISSUE),
+                               author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
+                               title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
+                               articletype: str=Query(None, title=opasConfig.TITLE_ARTICLETYPE, description=opasConfig.DESCRIPTION_ARTICLETYPE),
+                               startyear: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
+                               endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
+                               citecount: str=Query(None, title=opasConfig.TITLE_CITECOUNT, description=opasConfig.DESCRIPTION_CITECOUNT),   
+                               viewcount: int=Query(0, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),    
+                               viewperiod: int=Query(4, title=opasConfig.TITLE_VIEWPERIOD, description=opasConfig.DESCRIPTION_VIEWPERIOD),     
+                               # return set control
+                               #returnfields: str=Query(None, title="Fields to return (see limitations)", description="Comma separated list of field names"),
+                               abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
+                               formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                               similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                               highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
+                               facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
+                               facetmincount: int=Query(1, title="Minimum count to return a facet"),
+                               facetlimit: int=Query(15, title="Maximum number of facet values to return"),
+                               facetoffset: int=Query(0, title="Offset that can be used for paging through a facet"),
+                               sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                               limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                               offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                               client_id:int=Depends(get_client_id), 
+                               client_session:str= Depends(get_client_session)
+                             ):
     """
     ## Function
        <b>Search the database per one or more of the fields specified.</b>
@@ -2108,6 +2123,23 @@ async def database_search_v3(
     opasDocPermissions.verify_header(request, "SearchV3") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
 
+    errors, mod_args = opasQueryHelper.check_search_args(
+                                             smarttext=smarttext,
+                                             fulltext1=fulltext1,
+                                             paratext=paratext,
+                                             author=author,
+                                             title=title,
+                                             startyear=startyear,
+                                             endyear=endyear
+                                           )
+    if errors:
+        detail = "Error 425: Too few characters or unbalanced."
+        print(detail)
+        raise HTTPException(
+            status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
+            detail=detail
+        )
+
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     # session_id = session_info.session_id 
@@ -2136,11 +2168,11 @@ async def database_search_v3(
                                                       source_code=sourcecode,
                                                       source_type=sourcetype,
                                                       source_lang_code=sourcelangcode,
-                                                      para_textsearch=paratext, # search within paragraphs
+                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
                                                       para_scope=parascope, # scope for par_search
                                                       similar_count=similarcount, # Turn on morelikethis for the search, return this many similar docs for each
-                                                      fulltext1=fulltext1,  # more flexible search, including fields, anywhere in the doc, across paras
-                                                      smarttext=smarttext, # experimental detection of what user wants to query
+                                                      fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
+                                                      smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
                                                       vol=volume,
                                                       issue=issue,
@@ -2284,7 +2316,24 @@ async def database_search_v2(response: Response,
     ts = time.time()
     opasDocPermissions.verify_header(request, "Search") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
-
+    print (f"Call to database_search: SM:{smarttext} FT:{fulltext1} PTXT:{paratext} AU:{author} TI:{title} SY:{startyear} EY:{endyear}")
+    errors, mod_args = opasQueryHelper.check_search_args(
+                                             smarttext=smarttext,
+                                             fulltext1=fulltext1,
+                                             paratext=paratext,
+                                             author=author,
+                                             title=title,
+                                             startyear=startyear,
+                                             endyear=endyear
+                                           )
+    if errors:
+        detail = "Error 425: Too few characters or unbalanced."
+        print(detail)
+        raise HTTPException(
+            status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
+            detail=detail
+        )
+    
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     # session_id = session_info.session_id 
@@ -2294,10 +2343,10 @@ async def database_search_v2(response: Response,
 
     if fulltext1 is not None:
         logger.info("Search Fulltext1: %s", fulltext1)
-        # TEST TEST TEST Dequote!
-        if 'go go go' in fulltext1:
-            fulltext1 = opasQueryHelper.dequote(fulltext1)
-            logger.info("TESTING!!!! Search Modified Fulltext1: %s", fulltext1)
+        ## TEST TEST TEST Dequote!
+        #if 'go go go' in fulltext1:
+            #fulltext1 = opasQueryHelper.dequote(fulltext1)
+            #logger.info("TESTING!!!! Search Modified Fulltext1: %s", fulltext1)
         
     if smarttext is not None:
         logger.info("Search Smarttext: %s", smarttext)
@@ -2323,11 +2372,11 @@ async def database_search_v2(response: Response,
                                                       source_code=sourcecode,
                                                       source_type=sourcetype,
                                                       source_lang_code=sourcelangcode,
-                                                      para_textsearch=paratext, # search within paragraphs
+                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
                                                       para_scope=parascope, # scope for par_search
                                                       similar_count=similarcount, # Turn on morelikethis for the search, return this many similar docs for each
-                                                      fulltext1=fulltext1,  # more flexible search, including fields, anywhere in the doc, across paras
-                                                      smarttext=smarttext, # experimental detection of what user wants to query
+                                                      fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
+                                                      smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
                                                       vol=volume,
                                                       issue=issue,
@@ -2400,6 +2449,7 @@ async def database_search_v2(response: Response,
 def database_searchanalysis_v2(response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
+                               smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
                                paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
                                parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
                                synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
@@ -2450,6 +2500,23 @@ def database_searchanalysis_v2(response: Response,
     if paratext is not None and parascope is None:
         parascope = "doc"
 
+    errors, mod_args = opasQueryHelper.check_search_args(
+                                             smarttext=smarttext,
+                                             fulltext1=fulltext1,
+                                             paratext=paratext,
+                                             author=author,
+                                             title=title,
+                                             startyear=startyear,
+                                             endyear=endyear
+                                           )
+    if errors:
+        detail = "Error 425: Too few characters or unbalanced."
+        print(detail)
+        raise HTTPException(
+            status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
+            detail=detail
+        )
+    
     # this does intelligent processing of the query parameters and returns a smaller set of solr oriented         
     # params (per pydantic model SolrQuery), ready to use
     solr_query_spec = \
@@ -2457,9 +2524,10 @@ def database_searchanalysis_v2(response: Response,
                                                       source_name=sourcename,
                                                       source_code=sourcecode,
                                                       source_lang_code=sourcelangcode, 
-                                                      para_textsearch=paratext, # search within paragraphs
+                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
                                                       para_scope=parascope, # scope for par_search
-                                                      fulltext1=fulltext1,  # more flexible search, including fields, anywhere in the doc, across paras
+                                                      fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
+                                                      smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
                                                       vol=volume,
                                                       issue=issue,
@@ -2501,6 +2569,7 @@ def database_searchanalysis_v3(response: Response,
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                qtermlist: models.SolrQueryTermList=Body(None, embed=True, title=opasConfig.TITLE_QTERMLIST, decription=opasConfig.DESCRIPTION_QTERMLIST), # allows full specification
                                fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
+                               smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
                                paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
                                parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
                                synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
@@ -2557,6 +2626,23 @@ def database_searchanalysis_v3(response: Response,
     if paratext is not None and parascope is None:
         parascope = "doc"
 
+    errors, mod_args = opasQueryHelper.check_search_args(
+                                             smarttext=smarttext,
+                                             fulltext1=fulltext1,
+                                             paratext=paratext,
+                                             author=author,
+                                             title=title,
+                                             startyear=startyear,
+                                             endyear=endyear
+                                           )
+    if errors:
+        detail = "Error 425: Too few characters or unbalanced."
+        print(detail)
+        raise HTTPException(
+            status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
+            detail=detail
+        )
+
     # this does intelligent processing of the query parameters and returns a smaller set of solr oriented         
     # params (per pydantic model SolrQuery), ready to use
     solr_query_spec = \
@@ -2564,9 +2650,10 @@ def database_searchanalysis_v3(response: Response,
                                                       source_name=sourcename,
                                                       source_code=sourcecode,
                                                       source_lang_code=sourcelangcode, 
-                                                      para_textsearch=paratext, # search within paragraphs
+                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
                                                       para_scope=parascope, # scope for par_search
-                                                      fulltext1=fulltext1,  # more flexible search, including fields, anywhere in the doc, across paras
+                                                      fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
+                                                      smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
                                                       vol=volume,
                                                       issue=issue,
@@ -3850,8 +3937,8 @@ async def database_glossary_search_v2(response: Response,
     log_endpoint(request, client_id=client_id, session_id=client_session)
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
-    ret_val = await database_search_v2(response,
-                                       request,
+    ret_val = await database_search_v2( response,
+                                        request,
                                         fulltext1=fulltext1,
                                         smarttext=None, 
                                         paratext=paratext, #  no advanced search. Only words, phrases, prox ~ op, and booleans allowed
@@ -3945,8 +4032,8 @@ async def database_glossary_search_v3(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     # session_id = session_info.session_id
 
-    ret_val = await database_search_v3(response,
-                                       request,
+    ret_val = await database_search_v2b(response,
+                                        request,
                                         qtermlist=qtermlist,
                                         fulltext1=fulltext1,
                                         smarttext=None, 
@@ -4740,7 +4827,8 @@ def database_word_wheel(response: Response,
     ## Potential Errors
 
     """
-    ret_val = None 
+    ret_val = None
+    print (f"Called WordWheel: {word}")
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     if core in ["docs", "authors"] and word is not None:

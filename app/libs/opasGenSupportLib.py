@@ -28,13 +28,8 @@ import localsecrets
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.02.29"
+__version__     = "2020.11.26"
 __status__      = "Development"
-
-# Python program to convert Roman Numerals 
-# to Numbers 
-  
-# This function returns value of each Roman symbol 
 
 class DocumentID(object):
     def __init__(self, document_id):
@@ -67,22 +62,6 @@ class FileInfo(object):
         self.timestamp_obj = datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
         self.fileSize = os.path.getsize(filename)
         self.buildDate = time.time()
-
-#def get_mod_date(file_path):
-    #"""
-    #Get the date that a file was last modified
-    #"""
-    #retVal = None
-    #try:
-        #retVal = os.path.getmtime(file_path)
-    #except IOError:
-        ## try where the script is running from instead.
-        #logger.info("%s not found.", file_path)
-    #except Exception as e:
-        #logger.fatal("%s.", e)
-
-    #return retVal
-  
 
 def year_grabber(year_str: str):
     """

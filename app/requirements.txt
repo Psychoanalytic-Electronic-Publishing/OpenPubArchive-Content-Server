@@ -1,4 +1,4 @@
-# Updated 2020-08-31 to support import of Pandas for CSV export
+# Updated 2020-11-25 to install luqum to parse lucene queries
 aiofiles==0.5.0
 #
 bcrypt==3.1.7
@@ -25,6 +25,8 @@ idna==2.10
 #
 #
 jmespath==0.10.0
+#
+luqum=0.10.0 # requires PLY, should be auto 
 #
 lxml==4.5.2
 nameparser==1.0.6

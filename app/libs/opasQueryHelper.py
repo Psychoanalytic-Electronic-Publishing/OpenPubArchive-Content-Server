@@ -85,12 +85,58 @@ def not_empty(arg):
     else:
         return False
 
+#-----------------------------------------------------------------------------
 def is_empty(arg):
     if arg is None or arg == "":
         return True
     else:
         return False
 
+#-----------------------------------------------------------------------------
+def get_field_data_len(arg):
+    syn = r"(?P<field>[^\:]*?)\:(?P<rest>.*)"
+    m = re.match(syn, arg, flags=re.IGNORECASE)
+    if m:
+        mgr = m.group("rest")
+        ret_val = len(mgr)
+    else:
+        mgr = ""
+        ret_val = len(arg)
+        
+    print (f"Field Len: {ret_val} / {mgr} / {arg}")
+    return ret_val
+
+#-----------------------------------------------------------------------------
+def check_search_args(**kwargs):
+    ret_val = {}
+    errors = False
+    for kw in kwargs:
+        print(kw, ":", kwargs[kw])
+        arg = kwargs[kw]
+        if arg is not None and "text" in kw:
+            arg_len = get_field_data_len(arg)
+            if arg_len < 3: # includes parens
+                ret_val[kw] = 422 # unfinished
+                errors = True
+            else:
+                # check query and remove proximity if boolean
+                try:
+                    if are_brackets_balanced(arg):
+                        ret_val[kw] = remove_proximity_around_booleans(arg)
+                        print (f"After remove_proximity: {ret_val[kw]}")
+                    else:
+                        print (f"After remove_proximity: {ret_val[kw]}")
+                        ret_val[kw] = 422
+                        errors = True
+                except Exception as e:
+                    logger.error(f"fulltext cleanup error {e}")
+                    print (f"Cleanup error: {e}")
+                    errors = True
+        else: # for now, just return.  Later more checks
+            ret_val[kw] = arg
+            
+    return errors, ret_val        
+    
 #-----------------------------------------------------------------------------
 def cleanup_solr_query(solrquery):
     """
@@ -110,20 +156,29 @@ def cleanup_solr_query(solrquery):
 
     ret_val = re.sub("\s+(AND)\s+", " && ", ret_val, flags=re.IGNORECASE)
     ret_val = re.sub("\s+(OR)\s+", " || ", ret_val, flags=re.IGNORECASE)
+
+    # one last cleaning, watch for && *:*
+    ret_val = ret_val.replace(" && *:*", "")
+    
     
     return ret_val
 
 #-----------------------------------------------------------------------------
 def wrap_clauses(solrquery):
     # split by OR clauses
-    ret_val = solrquery.strip()
-    ret_val = ret_val.split(" || ")
-    ret_val = ["(" + x + ")" for x in ret_val]
-    ret_val = " || ".join(ret_val)
-
-    ret_val = ret_val.split(" && ")
-    ret_val = ["(" + x + ")" for x in ret_val]
-    ret_val = " && ".join(ret_val)
+    ret_val = solrquery
+    if isinstance(solrquery, str):
+        try:
+            ret_val = ret_val.strip()
+            ret_val = ret_val.split(" || ")
+            ret_val = ["(" + x + ")" for x in ret_val]
+            ret_val = " || ".join(ret_val)
+        
+            ret_val = ret_val.split(" && ")
+            ret_val = ["(" + x + ")" for x in ret_val]
+            ret_val = " && ".join(ret_val)
+        except Exception as e:
+            logger.error(f"Processing error: {e}")
     return ret_val    
 
 #-----------------------------------------------------------------------------
@@ -280,6 +335,10 @@ class QueryTextToSolr():
     >>> qs = QueryTextToSolr()
     >>> qs.boolConnectorsToSymbols("a and band")
     'a && band'
+    >>> qs.markup("year:[* TO 2010]")
+
+    >>> qs.markup("[2010]")
+    
     
     """
     def __init__(self):
@@ -358,11 +417,15 @@ def year_parser_support(year_arg):
                 # greater
                 if start is None and end is not None:
                     start = end # they put > in start rather than end.
+                else:
+                    start = int(start) + 1
+
                 search_clause = f" art_year_int:[{start} TO *] "
             elif option == "<":
                 # less than
                 if end is None and start is not None:
                     end = start  
+                    end = int(end) - 1
                 search_clause = f" art_year_int:[* TO {end}] "
 
             ret_val = search_clause
@@ -508,8 +571,71 @@ def dequote(fulltext1):
     print (f"New Search: {new_search[4:]}")
     return new_search       
 
+def remove_proximity_around_booleans(query_str):
+    """
+    Clients like PEP-Web (Gavant) send fulltext1 as a proximity string.
+    This removes the proximity if there's a boolean inside.
+    We could have the client "not do that", but it's actually easier to
+    remove than to parse and add.
+    
+    >>> a = '(article_xml:"dog AND cat"~25 AND body:"quick fox"~25) OR title:fox'
+    >>> remove_proximity(a)
+    '(article_xml:"dog AND cat && mouse"~25 AND body:"quick fox"~25) OR title:fox'
+    """
+    srch_ptn = r'\"([A-z\s0-9\!\@\*\~\-\&\|\[\]]+)\"~25'
+    while 1:
+        m = re.search(srch_ptn, query_str)
+        if m is not None:
+            n = re.search(r"\b(AND|OR|\&\&|\|\|)\b", m.group(1), flags=re.IGNORECASE)
+            # if it's not None, then this is not a proximity match
+            if n is not None:
+                query_str = re.subn(srch_ptn, r'(\1)', query_str, 1)[0]
+            else: # change it so it doesn't match next loop iter
+                query_str = re.subn(srch_ptn, r'"\1"~26', query_str, 1)[0]
+        else:
+            break
+        
+    return query_str
+
+def are_brackets_balanced(expr):
+    """
+    Checks to see if there are parens or brackets that are unbalanced
+    
+    """
+    stack = [] 
+
+    # Traversing the Expression 
+    for char in expr: 
+        if char in ["(", "{", "["]: 
+            # Push the element in the stack 
+            stack.append(char) 
+        elif char in [")", "}", "]"]: 
+            # IF current character is not opening 
+            # bracket, then it must be closing. 
+            # So stack cannot be empty at this point. 
+            if not stack: 
+                return False
+            current_char = stack.pop() 
+            if current_char == '(': 
+                if char != ")": 
+                    return False
+            if current_char == '{': 
+                if char != "}": 
+                    return False
+            if current_char == '[': 
+                if char != "]": 
+                    return False
+
+    # Check Empty Stack 
+    if stack: 
+        return False
+    return True
+
+
 #---------------------------------------------------------------------------------------------------------
-# this function lets various endpoints like search, searchanalysis, and document, share this large parameter set.
+# function parse_search_query_parameters lets various endpoints like search, searchanalysis, and document, 
+#   share this large parameter set.
+# 
 # IMPORTANT: Parameter names here must match the endpoint parameters since they are mapped in main using
 # 
 #            argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
@@ -1936,6 +2062,14 @@ if __name__ == "__main__":
     import sys
     print ("Running in Python %s" % sys.version_info[0])
 
+    ret = check_search_args(
+        smarttext="abcdefg",
+        fulltext1='body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)',
+        paratext="hij", author="klm", title="nop", startyear="1922", endyear="2020"
+    )
+    
+    print (ret)
+    
     import doctest
     doctest.testmod()
     print ("Fini. OpasQueryHelper Tests complete.")

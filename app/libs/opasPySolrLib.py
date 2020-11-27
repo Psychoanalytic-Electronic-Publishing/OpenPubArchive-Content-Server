@@ -942,9 +942,9 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             logger.error(f">>>>>> solr_query_spec.solrQuery.searchQ is {solr_query_spec.solrQuery.searchQ}.  Filter: {solr_query_spec.solrQuery.filterQ} The endpoint request was: {req_url}")
             solr_query_spec.solrQuery.searchQ = "*.*"
     
-        # one last cleaning
-        solr_query_spec.solrQuery.searchQ = solr_query_spec.solrQuery.searchQ.replace(" && *:*", "")
-        solr_query_spec.solrQuery.filterQ = solr_query_spec.solrQuery.filterQ.replace(" && *:*", "")
+        ## one last cleaning
+        #solr_query_spec.solrQuery.searchQ = solr_query_spec.solrQuery.searchQ.replace(" && *:*", "")
+        #solr_query_spec.solrQuery.filterQ = solr_query_spec.solrQuery.filterQ.replace(" && *:*", "")
 
     try:
         query = solr_query_spec.solrQuery.searchQ
