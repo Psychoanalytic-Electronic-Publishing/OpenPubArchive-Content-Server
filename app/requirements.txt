@@ -26,7 +26,8 @@ idna==2.10
 #
 jmespath==0.10.0
 #
-luqum=0.10.0 # requires PLY, should be auto 
+#20201127 - This addon for the build must require Leyla intervention
+#luqum=0.10.0 # requires PLY, should be auto 
 #
 lxml==4.5.2
 nameparser==1.0.6
