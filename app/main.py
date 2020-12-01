@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1130.1.Alpha.PySolr"
+__version__     = "2020.1201.1.Alpha.PySolr"
 __status__      = "Development"
 
 """
@@ -2316,16 +2316,15 @@ async def database_search_v2(response: Response,
     ts = time.time()
     opasDocPermissions.verify_header(request, "Search") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
-    print (f"Call to database_search: SM:{smarttext} FT:{fulltext1} PTXT:{paratext} AU:{author} TI:{title} SY:{startyear} EY:{endyear}")
-    errors, mod_args = opasQueryHelper.check_search_args(
-                                             smarttext=smarttext,
-                                             fulltext1=fulltext1,
-                                             paratext=paratext,
-                                             author=author,
-                                             title=title,
-                                             startyear=startyear,
-                                             endyear=endyear
-                                           )
+    #print (f"Call to database_search: SM:{smarttext} FT:{fulltext1} PTXT:{paratext} AU:{author} TI:{title} SY:{startyear} EY:{endyear}")
+    errors, mod_args = opasQueryHelper.check_search_args( smarttext=smarttext,
+                                                          fulltext1=fulltext1,
+                                                          paratext=paratext,
+                                                          author=author,
+                                                          title=title,
+                                                          startyear=startyear,
+                                                          endyear=endyear
+                                                        )
     if errors:
         detail = "Error 425: Too few characters or unbalanced."
         print(detail)

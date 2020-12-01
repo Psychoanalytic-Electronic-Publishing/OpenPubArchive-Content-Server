@@ -107,24 +107,19 @@ def check_search_args(**kwargs):
         print(kw, ":", kwargs[kw])
         arg = kwargs[kw]
         if arg is not None and "text" in kw:
-            arg_len = get_field_data_len(arg)
-            if arg_len < 3: # includes parens
-                ret_val[kw] = 422 # unfinished
-                errors = True
-            else:
-                # check query and remove proximity if boolean
-                try:
-                    if are_brackets_balanced(arg):
-                        ret_val[kw] = remove_proximity_around_booleans(arg)
-                        print (f"After remove_proximity: {ret_val[kw]}")
-                    else:
-                        print (f"After remove_proximity: {ret_val[kw]}")
-                        ret_val[kw] = 422
-                        errors = True
-                except Exception as e:
-                    logger.error(f"fulltext cleanup error {e}")
-                    print (f"Cleanup error: {e}")
+            # check query and remove proximity if boolean
+            try:
+                if are_brackets_balanced(arg):
+                    ret_val[kw] = remove_proximity_around_booleans(arg)
+                    print (f"After remove_proximity: {ret_val[kw]}")
+                else:
+                    print (f"After remove_proximity: {ret_val[kw]}")
+                    ret_val[kw] = 422
                     errors = True
+            except Exception as e:
+                logger.error(f"fulltext cleanup error {e}")
+                print (f"Cleanup error: {e}")
+                errors = True
         else: # for now, just return.  Later more checks
             ret_val[kw] = arg
             

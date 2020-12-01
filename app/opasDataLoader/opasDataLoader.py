@@ -371,19 +371,20 @@ def main():
             # get file basename without build (which is in paren)
             base = n.basename
             artID = os.path.splitext(base)[0]
-            m = re.match(r"(.*)\(.*\)", artID)
-    
-            msg = "Processing file #%s of %s: %s (%s bytes)." % (processed_files_count, files_found, base, n.filesize)
-            logger.info(msg)
-            if options.display_verbose:
-                print (msg)
-    
+            # watch out for comments in file name, like:
+            #   JICAP.018.0307A updated but no page breaks (bEXP_ARCH1).XML
+            #   so skip data after a space
+            m = re.match(r"([^ ]*).*\(.*\)", artID)
             # Note: We could also get the artID from the XML, but since it's also important
             # the file names are correct, we'll do it here.  Also, it "could" have been left out
             # of the artinfo (attribute), whereas the filename is always there.
             artID = m.group(1)
             # all IDs to upper case.
             artID = artID.upper()
+            msg = "Processing file #%s of %s: %s (%s bytes). Art-ID:%s" % (processed_files_count, files_found, base, n.filesize, artID)
+            logger.info(msg)
+            if options.display_verbose:
+                print (msg)
     
             # import into lxml
             root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents))

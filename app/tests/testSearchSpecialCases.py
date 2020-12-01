@@ -117,7 +117,7 @@ class TestSearch(unittest.TestCase):
         print (f'v1 Count (fulltext1="Eitingon or Model"~25): {v1_count}')
         assert(response_info["fullCount"] >= 31379 and response_info["fullCount"] <= 34000) # range just to give it some upper slack for new data
         # this is interpreted as a phrase
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=body:"Eitingon or Model"')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=body_xml:"Eitingon or Model"')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
