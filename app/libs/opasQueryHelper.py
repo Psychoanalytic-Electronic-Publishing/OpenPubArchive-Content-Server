@@ -96,7 +96,7 @@ def get_field_data_len(arg):
         mgr = ""
         ret_val = len(arg)
         
-    print (f"Field Len: {ret_val} / {mgr} / {arg}")
+    #print (f"Field Len: {ret_val} / {mgr} / {arg}")
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -104,16 +104,16 @@ def check_search_args(**kwargs):
     ret_val = {}
     errors = False
     for kw in kwargs:
-        print(kw, ":", kwargs[kw])
+        #print(kw, ":", kwargs[kw])
         arg = kwargs[kw]
         if arg is not None and "text" in kw:
             # check query and remove proximity if boolean
             try:
                 if are_brackets_balanced(arg):
                     ret_val[kw] = remove_proximity_around_booleans(arg)
-                    print (f"After remove_proximity: {ret_val[kw]}")
+                    #print (f"After remove_proximity: {ret_val[kw]}")
                 else:
-                    print (f"After remove_proximity: {ret_val[kw]}")
+                    #print (f"After remove_proximity: {ret_val[kw]}")
                     ret_val[kw] = 422
                     errors = True
             except Exception as e:

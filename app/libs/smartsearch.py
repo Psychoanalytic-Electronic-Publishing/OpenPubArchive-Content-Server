@@ -470,7 +470,7 @@ def smart_search(smart_search_text):
                 else:
                     ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched articles for terms: ({orig_smart_search_text})"
                     
-            else:
+            elif words[0].isupper():
                 # try to build a list of names, and check them individually
                 new_q = ""
                 names = name_id_list(smart_search_text)
@@ -494,7 +494,7 @@ def smart_search(smart_search_text):
                     if is_value_in_field(name_conjunction, core="doc", field="art_authors_citation", match_type="bool"):
                         ret_val[KEY_SEARCH_FIELD] = "art_authors_citation" 
                         ret_val[KEY_SEARCH_VALUE] = f"{name_conjunction}"
-                        ret_val[KEY_SEARCH_SMARTSEARCH] = f"{name_conjunction} found in titles, matching articles based on title"
+                        ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched articles for authors: {name_conjunction} "
     
     #  cleanup 
     if ret_val.get("art_id") is not None:

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1201.1.Alpha.PySolr"
+__version__     = "2020.1201.2.Alpha"
 __status__      = "Development"
 
 """
@@ -4817,7 +4817,7 @@ def database_word_wheel(response: Response,
 
     """
     ret_val = None
-    print (f"Called WordWheel: {word}")
+    # print (f"Called WordWheel: {word}")
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     if core in ["docs", "authors"] and word is not None:
