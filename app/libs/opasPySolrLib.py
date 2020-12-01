@@ -1076,7 +1076,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         finally:
             ret_val = models.ErrorReturn(httpcode=error_code, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
             logger.error(f"Solr Runtime Search Error (syntax): {ret_status}. Params sent: {solr_param_dict}")
-            logger.error(e.body)
                                 
     else: #  search was ok
         try:

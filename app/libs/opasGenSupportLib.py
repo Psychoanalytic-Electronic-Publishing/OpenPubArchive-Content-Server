@@ -248,6 +248,149 @@ def string_to_list(strlist: str, sep=","):
 
     return ret_val
 
+def not_empty(arg):
+    if arg is not None and arg != "":
+        return True
+    else:
+        return False
+
+def in_quotes(arg):
+    """
+    If string is quoted (must be at start and at end), return true
+    
+    >>> in_quotes('"animal or vegetable"')
+    True
+    >>> in_quotes('animal or vegetable')
+    False
+    >>> in_quotes("'animal or vegetable'")
+    True
+    
+    """
+    try:
+        if isinstance(arg, str):
+            if re.match(r"([\"\']).*?\1", arg):
+                return True
+            else:
+                return False
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"Exception {e}")
+        return False
+
+def in_brackets(arg):
+    """
+    If string is in brackets (must be at start and at end), return true
+    
+    >>> in_brackets('[("animal or vegetable")]')
+    True
+    >>> in_brackets('[(animal or vegetable)]')
+    True
+    >>> in_brackets("[('animal or vegetable')]")
+    True
+    >>> in_brackets("animal or vegetable")
+    False
+    >>> in_brackets("animal [(or)] vegetable")
+    False
+    >>> in_brackets("[animal (or)] vegetable")
+    False
+    
+    """
+    try:
+        if isinstance(arg, str):
+            if re.match(r"\[.*\]", arg):
+                return True
+            else:
+                return False
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"Exception {e}")
+        return False
+    
+def in_parens(arg):
+    """
+    If string is quoted (must be at start and at end), return true
+    
+    >>> in_parens('("animal or vegetable")')
+    True
+    >>> in_parens('(animal or vegetable)')
+    True
+    >>> in_parens("('animal or vegetable')")
+    True
+    >>> in_parens("animal or vegetable")
+    False
+    >>> in_parens("animal (or) vegetable")
+    False
+    
+    """
+    try:
+        if isinstance(arg, str):
+            if re.match(r"\(.*\)", arg):
+                return True
+            else:
+                return False
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"Exception {e}")
+        return False
+
+def one_term(arg):
+    """
+    >>> one_term("dog cat")
+    False
+    
+    >>> one_term("dog")
+    True
+    
+    >>> one_term("dog123rdd39--==")
+    True
+    """
+    ret_val = True
+    try:
+        if " " not in arg:
+            ret_val = True
+        else:
+            ret_val = False
+    except Exception as e:
+        logger.warning(f"Error checking one term {e}. Perhaps data type issue.")
+        
+    return ret_val
+
+def is_boolean(arg):
+    """
+    >>> is_boolean("a and b")
+    True
+    
+    >>> is_boolean("a or b")
+    True
+
+    >>> is_boolean("a || b && cc")
+    True
+
+    >>> is_boolean("aor b")
+    False
+    
+    """
+    try:
+        if isinstance(arg, str):
+            if re.search(r"\s(AND|OR|\&\&|\|\)\s)", arg, flags=re.IGNORECASE):
+                return True
+            else:
+                return False
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"Exception {e}")
+        return False
+    
+#-----------------------------------------------------------------------------
+def is_empty(arg):
+    if arg is None or arg == "":
+        return True
+    else:
+        return False
 
     
 # -------------------------------------------------------------------------------------------------------

@@ -79,13 +79,6 @@ def get_base_article_info_by_id(art_id):
     return ret_val
 
 #-----------------------------------------------------------------------------
-def not_empty(arg):
-    if arg is not None and arg != "":
-        return True
-    else:
-        return False
-
-#-----------------------------------------------------------------------------
 def is_empty(arg):
     if arg is None or arg == "":
         return True
@@ -136,50 +129,53 @@ def check_search_args(**kwargs):
             ret_val[kw] = arg
             
     return errors, ret_val        
-    
+
+def cleanup_spaces_within_parens(arg):
+    ret_val = arg
+    try:
+        # clean up spaces after open paren and before close
+        ret_val = re.sub("\(\s+", "(", ret_val)
+        ret_val = re.sub("\s+\)", ")", ret_val)
+    except Exception as e:
+        logger.error(f"Data conversion error: {e}")
+
+    return ret_val    
 #-----------------------------------------------------------------------------
 def cleanup_solr_query(solrquery):
     """
-    Clean up whitespace and extra symbols that happen when building up query or solr query filter
+    Clean up full solr query, which may have multiple clauses connected via booleans
 
+    Clean up whitespace and extra symbols that happen when building up query or solr query filter
+ 
+    >>> cleanup_solr_query('body_xml:"Evenly Suspended Attention"~25 && body_xml:tuckett')   
+    'body_xml:"Evenly Suspended Attention"~25 && body_xml:tuckett'
+    
+    >>> cleanup_solr_query('body_xml:"Even and Attention"~25 && body_xml:tuckett')   
+    'body_xml:(Even && Attention) && body_xml:tuckett'
+    
     """
     ret_val = solrquery.strip()
     ret_val = ' '.join(ret_val.split()) #solrquery = re.sub("\s+", " ", solrquery)
-    ret_val = re.sub("\(\s+", "(", ret_val)
-    ret_val = re.sub("\s+\)", ")", ret_val)
+    
+    # clean up spaces after open paren and before close
+    ret_val = cleanup_spaces_within_parens(ret_val)
     
     if ret_val is not None:
         # no need to start with '*:* && '.  Remove it.
-        ret_val = ret_val.replace("*:* && ", "")
-        ret_val = ret_val.replace("*:* {", "{")  # if it's before a solr join for level 2 queries
+        ret_val = ret_val.replace("*:* && ", "") # Typical instance, remove it
+        ret_val = ret_val.replace("*:* {", "{")  # Remove if it's before a solr join for level 2 queries
         ret_val = pat_prefix_amps.sub("", ret_val)
 
     ret_val = re.sub("\s+(AND)\s+", " && ", ret_val, flags=re.IGNORECASE)
     ret_val = re.sub("\s+(OR)\s+", " || ", ret_val, flags=re.IGNORECASE)
+
+    ret_val = remove_proximity_around_booleans(ret_val)
 
     # one last cleaning, watch for && *:*
     ret_val = ret_val.replace(" && *:*", "")
     
     
     return ret_val
-
-#-----------------------------------------------------------------------------
-def wrap_clauses(solrquery):
-    # split by OR clauses
-    ret_val = solrquery
-    if isinstance(solrquery, str):
-        try:
-            ret_val = ret_val.strip()
-            ret_val = ret_val.split(" || ")
-            ret_val = ["(" + x + ")" for x in ret_val]
-            ret_val = " || ".join(ret_val)
-        
-            ret_val = ret_val.split(" && ")
-            ret_val = ["(" + x + ")" for x in ret_val]
-            ret_val = " && ".join(ret_val)
-        except Exception as e:
-            logger.error(f"Processing error: {e}")
-    return ret_val    
 
 #-----------------------------------------------------------------------------
 def strip_outer_matching_chars(s, outer_char):
@@ -259,36 +255,47 @@ def comma_sep_list_to_simple_bool(termlist_str, boolpred="||"):
     ret_val = f" {boolpred} ".join(term_list)
     return ret_val
 #-----------------------------------------------------------------------------
-def termlist_to_doubleamp_query(termlist_str, field=None):
-    """
-    Take a comma separated term list and change to a
-    (double ampersand) type query term (e.g., for solr)
+#def termlist_to_doubleamp_query(termlist_str, field=None):
+    #"""
+    #Take a comma separated term list and change to a
+    #(double ampersand) type query term (e.g., for solr)
     
-    >>> a = "tuckett, dav"
-    >>> termlist_to_doubleamp_query(a)
-    'tuckett && dav'
-    >>> termlist_to_doubleamp_query(a, field="art_authors_ngrm")
-    'art_authors_ngrm:tuckett && art_authors_ngrm:dav'
+    #>>> a = "tuckett, dav"
+    #>>> termlist_to_doubleamp_query(a)
+    #'tuckett && dav'
+    #>>> termlist_to_doubleamp_query(a, field="art_authors_ngrm")
+    #'art_authors_ngrm:tuckett && art_authors_ngrm:dav'
 
-    """
-    # in case it's in quotes in the string
-    termlist_str = termlist_str.replace('"', '')
-    # split it
-    name_list = re.split("\W+", termlist_str)
-    # if a field or function is supplied, use it
-    if field is not None:
-        name_list = [f"art_authors_ngrm:{x}"
-                     for x in name_list if len(x) > 0]
-    else:
-        name_list = [f"{x}" for x in name_list]
+    #"""
+    ## in case it's in quotes in the string
+    #termlist_str = termlist_str.replace('"', '')
+    ## split it
+    #name_list = re.split("\W+", termlist_str)
+    ## if a field or function is supplied, use it
+    #if field is not None:
+        #name_list = [f"art_authors_ngrm:{x}"
+                     #for x in name_list if len(x) > 0]
+    #else:
+        #name_list = [f"{x}" for x in name_list]
         
-    ret_val = " && ".join(name_list)
-    return ret_val
+    #ret_val = " && ".join(name_list)
+    #return ret_val
 
 def parse_to_query_term_list(str_query):
     """
     Take a string and parse the field names and field data clauses to q list of
       SolrQueryTerms
+      
+      NOTE: this is only used by testSearchSyntax to produce term_lists!
+      
+    >>> str = "dreams_xml:mother and father and authors:David Tuckett and Nadine Levinson"
+    >>> parse_to_query_term_list(str)
+    [SolrQueryTerm(connector=' && ', subClause=[], field='dreams_xml', words='mother && father', parent=None, synonyms=False, synonyms_suffix='_syn'), SolrQueryTerm(connector='AND', subClause=[], field='authors', words='David Tuckett && Nadine Levinson', parent=None, synonyms=False, synonyms_suffix='_syn')]
+
+    >>> str = "dreams_xml:(mother and father)"
+    >>> parse_to_query_term_list(str)
+    [SolrQueryTerm(connector=' && ', subClause=[], field='dreams_xml', words='(mother && father)', parent=None, synonyms=False, synonyms_suffix='_syn')]
+    
       
     """
     field_splitter = "([a-z\_]+\:)"
@@ -335,9 +342,24 @@ class QueryTextToSolr():
     >>> qs = QueryTextToSolr()
     >>> qs.boolConnectorsToSymbols("a and band")
     'a && band'
+    
+    >>> qs.markup("dog -mouse", field_label="text_xml")
+    'text_xml:(dog -mouse)'
+    
+    >>> qs.markup("[* TO 2010]", field_label="year")
+    'year:[* TO 2010]'
+    
     >>> qs.markup("year:[* TO 2010]")
+    'year:[* TO 2010]'
 
-    >>> qs.markup("[2010]")
+    >>> qs.markup("[2010]", field_label="year")
+    'year:[2010]'
+    
+    >>> qs.markup("dog and cat or mouse", field_label="text_xml")
+    'text_xml:(dog && cat || mouse)'
+    
+    >>> qs.markup("'dog and cat or mouse'", field_label="text_xml")
+    "text_xml:'dog and cat or mouse'"
     
     
     """
@@ -354,24 +376,64 @@ class QueryTextToSolr():
         self.token_word = re.compile(regex_token_word, re.IGNORECASE)
         self.token_implied_and = re.compile("(^&&)+\s", re.IGNORECASE) 
 
+    #-----------------------------------------------------------------------------
+    def wrap_clauses(self, solrquery):
+        # split by OR clauses
+        ret_val = solrquery
+        if isinstance(solrquery, str):
+            try:
+                ret_val = ret_val.strip()
+                if "||" in solrquery:
+                    ret_val = ret_val.split(" || ")
+                    ret_val = ["(" + x + ")" for x in ret_val]
+                    ret_val = " || ".join(ret_val)
+                
+                if "&&" in solrquery:
+                    ret_val = ret_val.split(" && ")
+                    ret_val = ["(" + x + ")" for x in ret_val]
+                    ret_val = " && ".join(ret_val)
+    
+            except Exception as e:
+                logger.error(f"Processing error: {e}")
+        return ret_val    
+
     def boolConnectorsToSymbols(self, str_input):
         ret_val = str_input
-        if not_empty(ret_val):
-            ret_val = self.token_or.sub(" || ", ret_val)
-            ret_val = self.token_and.sub(" && ", ret_val)
-            ret_val = self.token_not.sub(" NOT ", ret_val) # upper case a must
+        if isinstance(str_input, str):
+            if opasgenlib.not_empty(ret_val) and not opasgenlib.in_quotes(ret_val):
+                ret_val = self.token_or.sub(" || ", ret_val)
+                ret_val = self.token_and.sub(" && ", ret_val)
+                ret_val = self.token_not.sub(" NOT ", ret_val) # upper case a must
         
         return ret_val
         
-    def markup(self, str_input, field_label, field_thesaurus=None, quoted=False):
+    def markup(self, str_input, field_label=None, field_thesaurus=None, quoted=False):
+        
+        bordered = opasgenlib.in_parens(str_input) or opasgenlib.in_quotes(str_input) or opasgenlib.one_term(str_input) or opasgenlib.in_brackets(str_input)
 
         if quoted == False:
-            wrapped_str_input = wrap_clauses(str_input)
-            ret_val = self.boolConnectorsToSymbols(f"{field_label}:({wrapped_str_input})")
+            str_input_mod = self.boolConnectorsToSymbols(str_input)
+            # str_input_mod = self.wrap_clauses(str_input_mod)
+            if field_label is not None:
+                if not bordered: 
+                    ret_val = f"{field_label}:({str_input_mod})"
+                else:
+                    ret_val = f"{field_label}:{str_input_mod}"
+            else:
+                ret_val = f"{str_input_mod}"
         else:
-            ret_val = self.boolConnectorsToSymbols(f'{field_label}:("{str_input}")')
-        
+            if field_label is not None:
+                if not bordered:
+                    ret_val = self.boolConnectorsToSymbols(f'{field_label}:"({str_input})"')
+                else:
+                    ret_val = self.boolConnectorsToSymbols(f'{field_label}:"{str_input}"')
+            else:
+                ret_val = self.boolConnectorsToSymbols(f'"{str_input}"')
+
+        # watch for - inside parens
+        ret_val = re.sub(r"\(\-([A-Z]+)", "-(\g<1>", ret_val)
         ret_val = re.sub("([A-Z]\.)([A-Z])", "\g<1> \g<2>", ret_val)
+
         # ret_val = self.handle_solr_not(ret_val)
 
         return ret_val
@@ -456,21 +518,21 @@ def year_arg_parser(year_arg):
         1970
 
     >>> year_arg_parser("=1955")
-    '&& art_year_int:=1955 '
+    '&& ( art_year_int:=1955 )'
     >>> year_arg_parser("1970")
-    '&& art_year_int:1970 '
+    '&& ( art_year_int:1970 )'
     >>> year_arg_parser("-1990")
-    '&& art_year_int:[* TO 1990] '
+    '&& ( art_year_int:[* TO 1990] )'
     >>> year_arg_parser("1980-")
-    '&& art_year_int:[1980 TO *] '
+    '&& ( art_year_int:[1980 TO *] )'
     >>> year_arg_parser("1980-1980")
-    '&& art_year_int:[1980 TO 1980] '
+    '&& ( art_year_int:[1980 TO 1980] )'
     >>> year_arg_parser(">1977")
-    '&& art_year_int:[1977 TO *] '
+    '&& ( art_year_int:[1978 TO *] )'
     >>> year_arg_parser("<1990")
-    '&& art_year_int:[* TO 1990] '
+    '&& ( art_year_int:[* TO 1989] )'
     >>> year_arg_parser("1980-1990")
-    '&& art_year_int:[1980 TO 1990] '
+    '&& ( art_year_int:[1980 TO 1990] )'
     """
     ret_val = None
     #  see if it's bool claused
@@ -523,10 +585,10 @@ def get_term_list_spec(termlist):
             if q_term.synonyms:
                 use_field = use_field + q_term.synonyms_suffix
             
-            if use_field is not None and not_empty(q_term.words):
+            if use_field is not None and opasgenlib.not_empty(q_term.words):
                 sub_clause = f"{use_field}:({q_term.words})"
             else:
-                if not_empty(q_term.words):
+                if opasgenlib.not_empty(q_term.words):
                     sub_clause = f"({q_term.words})"
                 else:
                     sub_clause = ""
@@ -537,39 +599,45 @@ def get_term_list_spec(termlist):
 
     return ret_val        
 
-def dequote(fulltext1):
-    """
-    >>> test1='body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)'
-    >>> fulltext1 = 'text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:("basic || principles"~25)'
-    >>> dequote(test1)
-    """
-    quote_wrapper = '\s*(.*\:)?\(\"(.*)\"(~[1-9][0-9]*)\)|\s*(\&\&)?\s*(.*\:)?\((.*)\)'
+#def dequote(fulltext1):
+    #"""
+    #>>> test1='body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)'
+    #>>> dequote(test1)
+    #' && body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)'
     
-    clauses = fulltext1.split(" && ")
-    items = []
-    for clause in clauses:
-        print (f"Clause:{clause}")
-        m = re.findall(quote_wrapper, clause, flags=re.I)
-        for n in m:
-            items.append([x for x in n if len(x) > 0 and x != "&&"])
-        print (items)
+    #>>> test2 = 'text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:("basic || principles"~25)'
+    #>>> dequote(test2)
+    #' && text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:(basic || principles)'
     
-    new_search = ""
-    for item in items:
-        m = re.search("\&\&|\|\||\sAND\s|\sOR\s", item[1], flags=re.I)
-        if m is not None:
-            new_search += f' && {item[0]}({item[1]})'
-        else:
-            try:
-                new_search += f' && {item[0]}("{item[1]}"{item[2]})'
-            except:
-                print (item[1])
-                if item[1] != "go go go" and item[1] != '"go go go"':
-                    new_search += f' && {item[0]}({item[1]})'
-                
+    #>>> test3 = 'text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:("basic OR principles"~25)'
+    #>>> dequote(test3)
+    #' && text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:(basic || principles)'
+    
+    #"""
+    #quote_wrapper = '\s*(.*\:)?\(\"(.*)\"(~[1-9][0-9]*)\)|\s*(\&\&)?\s*(.*\:)?\((.*)\)'
+    
+    #clauses = fulltext1.split(" && ")
+    #items = []
+    #for clause in clauses:
+        ## print (f"Clause:{clause}")
+        #m = re.findall(quote_wrapper, clause, flags=re.I)
+        #for n in m:
+            #items.append([x for x in n if len(x) > 0 and x != "&&"])
+        ## print (items)
+    
+    #new_search = ""
+    #for item in items:
+        #m = re.search("\&\&|\|\||\sAND\s|\sOR\s", item[1], flags=re.I)
+        #if m is not None:
+            #new_search += f' && {item[0]}({item[1]})'
+        #else:
+            #try:
+                #new_search += f' && {item[0]}("{item[1]}"{item[2]})'
+            #except Exception as e:
+                #logger.warning (f"Dequote Exception {e}")               
 
-    print (f"New Search: {new_search[4:]}")
-    return new_search       
+    ## print (f"New Search: {new_search[4:]}")
+    #return new_search       
 
 def remove_proximity_around_booleans(query_str):
     """
@@ -579,20 +647,31 @@ def remove_proximity_around_booleans(query_str):
     remove than to parse and add.
     
     >>> a = '(article_xml:"dog AND cat"~25 AND body:"quick fox"~25) OR title:fox'
-    >>> remove_proximity(a)
-    '(article_xml:"dog AND cat && mouse"~25 AND body:"quick fox"~25) OR title:fox'
+    >>> remove_proximity_around_booleans(a)
+    '(article_xml:(dog AND cat) AND body:"quick fox"~25) OR title:fox'
+
+    >>> a = 'body_xml:"Even and Attention"~25 && body_xml:tuckett'
+    >>> remove_proximity_around_booleans(a)
+    'body_xml:(Even and Attention) && body_xml:tuckett'
+    
     """
     srch_ptn = r'\"([A-z\s0-9\!\@\*\~\-\&\|\[\]]+)\"~25'
+    changes = False
     while 1:
         m = re.search(srch_ptn, query_str)
         if m is not None:
-            n = re.search(r"\b(AND|OR|\&\&|\|\|)\b", m.group(1), flags=re.IGNORECASE)
+            # does it have a boolean, a quote, or a bracket (range)?
+            n = re.search(r"\s(AND|OR|\&\&|\|\|)\s|([\"\[\']])", m.group(1), flags=re.IGNORECASE)
             # if it's not None, then this is not a proximity match
             if n is not None:
                 query_str = re.subn(srch_ptn, r'(\1)', query_str, 1)[0]
             else: # change it so it doesn't match next loop iter
                 query_str = re.subn(srch_ptn, r'"\1"~26', query_str, 1)[0]
+                changes = True
         else:
+            if changes:
+                # change proximity ranges back
+                query_str = re.sub("~26", "~25", query_str)
             break
         
     return query_str
@@ -735,7 +814,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     >>> search = parse_search_query_parameters(journal="IJP", vol=57, author="Tuckett")
     >>> search.solrQuery.analyzeThis
-    'art_authors_text:(Tuckett)'
+    '(art_authors_text:(Tuckett) || art_authors_citation:(Tuckett))'
     
     """
     artLevel = 1 # Doc query, sets to 2 if clauses indicate child query
@@ -836,7 +915,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         solr_query_spec.solrQueryOpts.hlFragsize = extra_context_len
            
     # v1 translation:
-    if not_empty(journal):
+    if opasgenlib.not_empty(journal):
         source_code = journal
 
     if similar_count > 0:
@@ -902,7 +981,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_result_explanation = search_dict[KEY_SEARCH_SMARTSEARCH]
         if schema_field is not None:
             schema_value = search_dict.get("schema_value")
-            if not_empty(schema_value):
+            if opasgenlib.not_empty(schema_value):
                 if "'" in schema_value or '"' in schema_value:
                     search_q += f"&& {schema_field}:{schema_value} "
                 else:
@@ -918,13 +997,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
                         limit = 1
             else:
                 doi = search_dict.get("doi")
-                if not_empty(doi):
+                if opasgenlib.not_empty(doi):
                     filter_q += f"&& art_doi:({doi}) "
                     limit = 1
                     
         if limit == 0: # not found special token
             art_id = search_dict.get("art_id")
-            if not_empty(art_id):
+            if opasgenlib.not_empty(art_id):
                 limit = 1
                 filter_q += f"&& art_id:({art_id}) "
             else:
@@ -934,7 +1013,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                         vol = art_vol.lstrip("0")
         
                 art_pgrg = search_dict.get("pgrg")
-                if not_empty(art_pgrg):
+                if opasgenlib.not_empty(art_pgrg):
                     # art_pgrg1 = art_pgrg.split("-")
                     if "-" in art_pgrg:
                         filter_q += f"&& art_pgrg:({art_pgrg}) "
@@ -963,28 +1042,41 @@ def parse_search_query_parameters(search=None,             # url based parameter
                         
                 word_search = search_dict.get("wordsearch")
                 if word_search is not None:
-                    if 0:
+                    if 0: # to turn on paragraph level 2 searches, but the simulation using proximity
+                          # 25 words is what GVPi did and that matches better.
                         if para_textsearch is None:
                             para_textsearch = word_search
                     else:
-                        m = re.match('([\"\'])(?P<q1>.*)([\"\'])', word_search)
-                        if m:
-                            q1 = m.group("q1")
+                        art_level = 1
+                        # if it already has a field name, it won't be a word search. so add body_xml as default
+                        field_name = "body_xml"
+                        if synonyms:
+                            field_name += "_syn"
+                        if 1:
+                            search_q += f'&& {field_name}:({word_search}) '
                         else:
-                            q1 = word_search
-                            
-                        if not_empty(q1):
-                            # unquoted string
-                            m = re.search('\|{2,2}|\&{2,2}|\sand\s|\sor\s', q1, flags=re.IGNORECASE)
-                            if m: # boolean, pass through
-                                search_q += f"&& {q1} "
+                            # is it in quotes?
+                            m = re.match('([\"\'])(?P<q1>.*)([\"\'])', word_search)
+                            if m:
+                                q1 = m.group("q1")
                             else:
-                                # terms
-                                field_name = "body_xml"
-                                if synonyms:
-                                    field_name += "_syn"
-                                search_q += f'&& {field_name}:"{q1}"~25 '
-                                art_level = 1
+                                q1 = word_search
+                                
+                            if opasgenlib.not_empty(q1):
+                                # unquoted string
+                                m = re.search('\|{2,2}|\&{2,2}|\sand\s|\sor\s', q1, flags=re.IGNORECASE)
+                                if m: # boolean, pass through
+    
+                                    search_q += f"&& {q1} "
+                                else:
+                                    # if it already has a field name, it won't be a word search. so add body_xml as default
+                                    field_name = "body_xml"
+                                    if synonyms:
+                                        field_name += "_syn"
+                                    if re.search("\"|\'", word_search):
+                                        search_q += f'&& {field_name}:({word_search}) '
+                                    else:
+                                        search_q += f'&& {field_name}:"{word_search}"~25 '
                                        
 
     if art_level is not None:
@@ -1062,7 +1154,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 if query.synonyms:
                     use_field = use_field + query.synonyms_suffix
                 
-                if not_empty(query.words):
+                if opasgenlib.not_empty(query.words):
                     if use_field is not None:
                         sub_clause = f"{use_field}:({query.words})"
                     else:
@@ -1146,14 +1238,14 @@ def parse_search_query_parameters(search=None,             # url based parameter
             search_analysis_term_list.append(analyze_this)  
             query_term_list.append(title)
 
-    if not_empty(source_name):
+    if opasgenlib.not_empty(source_name):
         # accepts a journal, book or video series name and optional wildcard.  No booleans.
         analyze_this = f"&& art_sourcetitlefull:({source_name}) "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
         query_term_list.append(f"art_sourcetitlefull:({source_name})")       
 
-    if not_empty(source_type):  # source_type = book, journal, video ... (maybe more later)
+    if opasgenlib.not_empty(source_type):  # source_type = book, journal, video ... (maybe more later)
         # accepts a source type or boolean combination of source types.
         source_type = qparse.markup(source_type, "art_sourcetype") # convert AND/OR/NOT, set up field
         analyze_this = f"&& {source_type} "
@@ -1161,7 +1253,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)  
         query_term_list.append(source_type)       
 
-    if not_empty(source_lang_code):  # source_language code, e.g., "EN" (added 2020-03, was omitted)
+    if opasgenlib.not_empty(source_lang_code):  # source_language code, e.g., "EN" (added 2020-03, was omitted)
         # accepts a source language code list (e.g., EN, DE, ...).  If a list of codes with boolean connectors, changes to simple OR list
         source_lang_code = source_lang_code.lower()
         if "," in source_lang_code:
@@ -1172,7 +1264,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
         
-    if not_empty(source_code):
+    if opasgenlib.not_empty(source_code):
         # accepts a journal or book code (no wildcards) or a list of journal or book codes (no wildcards)
         # ALSO can accept a single source name or partial name with an optional wildcard.  But
         #   that's really what argument source_name is for, so this is just extra and may be later removed.
@@ -1211,26 +1303,26 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # or it could be an abbreviation #TODO
         # or it counld be a complete name #TODO
 
-    if not_empty(cited_art_id):
+    if opasgenlib.not_empty(cited_art_id):
         cited_art_id = cited_art_id.upper()
         cited = qparse.markup(cited_art_id, "bib_rx") # convert AND/OR/NOT, set up field query
         analyze_this = f"&& {cited} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
     
-    if not_empty(vol):
+    if opasgenlib.not_empty(vol):
         vol = qparse.markup(vol, "art_vol") # convert AND/OR/NOT, set up field query
         analyze_this = f"&& {vol} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
-    if not_empty(issue):
+    if opasgenlib.not_empty(issue):
         issue = qparse.markup(issue, "art_iss") # convert AND/OR/NOT, set up field query
         analyze_this = f"&& {issue} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
-    if not_empty(author):
+    if opasgenlib.not_empty(author):
         author = author
         # if there's or and or not in lowercase, need to uppercase them
         # author = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", author)])
@@ -1244,7 +1336,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)  
         query_term_list.append(author)       
 
-    if not_empty(articletype):
+    if opasgenlib.not_empty(articletype):
         # articletype = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", articletype)])
         articletype = qparse.markup(articletype, "art_type") # convert AND/OR/NOT, set up field query
         analyze_this = f"&& {articletype} "   # search analysis
@@ -1252,7 +1344,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)
         query_term_list.append(articletype)       
         
-    if not_empty(datetype):
+    if opasgenlib.not_empty(datetype):
         #TODO for now, lets see if we need this. (We might not)
         pass
 
@@ -1541,7 +1633,7 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
 
     # part of the query model
 
-    if not_empty(query):
+    if opasgenlib.not_empty(query):
         solr_query_spec.solrQuery.searchQ = query
         logger.debug(f"query: {query}. Request: {req_url}")
     else:
@@ -1552,7 +1644,7 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     if filter_query is not None:
         solr_query_spec.solrQuery.filterQ = filter_query
 
-    if not_empty(solr_query_spec.solrQuery.filterQ):
+    if opasgenlib.not_empty(solr_query_spec.solrQuery.filterQ):
         # for logging/debug
         solr_query_spec.solrQuery.filterQ = solr_query_spec.solrQuery.filterQ.replace("*:* && ", "")
         logger.debug("Solr FilterQ: %s", filter_query)
@@ -1560,7 +1652,7 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
         solr_query_spec.solrQuery.filterQ = "*:*"
         
     #  clean up spaces and cr's from in code readable formatting
-    if not_empty(solr_query_spec.returnFields):
+    if opasgenlib.not_empty(solr_query_spec.returnFields):
         solr_query_spec.returnFields = ", ".join(e.lstrip() for e in solr_query_spec.returnFields.split(","))
 
     if sort is not None:

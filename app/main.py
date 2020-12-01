@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1127.1.Alpha.PySolr"
+__version__     = "2020.1130.1.Alpha.PySolr"
 __status__      = "Development"
 
 """
@@ -2343,21 +2343,11 @@ async def database_search_v2(response: Response,
 
     if fulltext1 is not None:
         logger.info("Search Fulltext1: %s", fulltext1)
-        ## TEST TEST TEST Dequote!
-        #if 'go go go' in fulltext1:
-            #fulltext1 = opasQueryHelper.dequote(fulltext1)
-            #logger.info("TESTING!!!! Search Modified Fulltext1: %s", fulltext1)
         
     if smarttext is not None:
         logger.info("Search Smarttext: %s", smarttext)
 
     analysis_mode = False
-
-    #if re.search(r"/MoreLikeThese/", request.url._url):
-        #logger.debug("MoreLikeThese Request: %s", request.url._url)
-        #more_like_these_mode = True
-    #else:
-        #more_like_these_mode = False
 
     # don't set parascope, unless they set paratext and forgot to set parascope
     if paratext is not None and parascope is None:
