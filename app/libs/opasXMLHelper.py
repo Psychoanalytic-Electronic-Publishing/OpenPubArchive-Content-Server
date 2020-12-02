@@ -462,12 +462,22 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
                 author_given_names = author_first_name
                 author_given_inits = author_first_initial + "."
     
-            if author_given_names != "":
-                author_name = author_last_name + ", " + author_given_names
-                author_name_inits = author_last_name + ", " + author_given_inits
+            if author_last_name != "":
+                if author_given_names != "":
+                    author_name = author_last_name + ", " + author_given_names
+                    author_name_inits = author_last_name + ", " + author_given_inits
+                else:
+                    author_name = author_last_name
+                    author_name_inits = ""
             else:
-                author_name = author_last_name
-                author_name_inits = ""
+                if author_given_names != "":
+                    author_name = author_given_names
+                    author_given_inits = author_first_initial + "."
+                    author_name_inits = author_given_inits
+                else:
+                    author_name = ""
+                    author_name_inits = ""
+                
     
             author_list.append(author_name)
             if authors_bib_style == "":

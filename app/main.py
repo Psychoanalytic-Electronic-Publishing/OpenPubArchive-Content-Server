@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1201.2.Alpha"
+__version__     = "2020.1202.1.Alpha"
 __status__      = "Development"
 
 """
@@ -124,9 +124,6 @@ from requests.auth import HTTPBasicAuth
 
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 
-# to protect documentation, use: app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-app = FastAPI()
-
 from pydantic import ValidationError
 import solrpy as solr # needed for extended search
 from config.opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES
@@ -167,8 +164,11 @@ if r.status_code == 200:
     except KeyError:
         text_server_ver = ver_json["lucene"]["solr-spec-version"]
 
+# to protect documentation, use: app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+#app = FastAPI()
+
 app = FastAPI(
-    debug=True,
+    debug=False,
     title="OpenPubArchive Server (OPAS) API for PEP-Web",
     description = "Open Publications Archive Server API for PEP-Web by Psychoanalytic Electronic Publishing (PEP)",
         version = f"{__version__}",
@@ -323,6 +323,21 @@ def log_endpoint_time(request, ts):
 # EndPoints
 # ############################################################################
 
+@app.get("/v3/Documents/Document/{documentID}/")
+async def read_item( documentID: str=Path(...), 
+                     search: str=Query(None),
+                     pagelimit: int=Query(None),
+                     pageoffset: int=Query(None),
+                     specialoptions:int=Query(0)
+                     ):
+    
+    if search is not None:
+        argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
+        search_arg = argdict.get("fulltext1", "Not Available")
+        return {"search_arg": search_arg,
+                "search": search, 
+                "doc_id": documentID
+                }
 #-----------------------------------------------------------------------------
 @app.get("/v2/Api/OpenapiSpec", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_OPEN_API)
 async def api_openapi_spec(api_key: APIKey = Depends(get_api_key), 
@@ -4291,6 +4306,12 @@ def documents_document_fetch(response: Response,
             # documents_get_document handles the view authorization and returns abstract if not authenticated.
             if search is not None:
                 argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
+                try:
+                    # if there's an abstract parameter, rename it to abstract_requested (used because that's clearer in code params, so that's what the underlying functions use)
+                    argdict["abstract_requested"] = argdict.pop("abstract")
+                except KeyError:
+                    pass # no abstract param. skip.
+                
                 if documentID is not None:
                     # make sure this is part of the last search set.
                     j = argdict.get("journal")

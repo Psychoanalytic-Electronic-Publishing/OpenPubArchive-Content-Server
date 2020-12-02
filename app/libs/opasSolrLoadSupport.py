@@ -402,6 +402,7 @@ class ArticleInfo(object):
         self.art_auth_citation = self.authors_bibliographic
         # ToDo: I think I should add an author ID to bib aut too.  But that will have
         #  to wait until later.
+        # TODO: fix PEP2XML--in cases like AJRPP.004.0273A it put Anonymous in the authindexid.
         self.art_author_id_list = opasxmllib.xml_xpath_return_textlist(pepxml, '//artinfo/artauth/aut[@listed="true"]/@authindexid')
         self.art_authors_count = len(self.author_list)
         if self.art_author_id_list == []: # no authindexid

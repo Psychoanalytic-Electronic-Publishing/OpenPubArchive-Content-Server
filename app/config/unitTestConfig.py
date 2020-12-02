@@ -63,8 +63,8 @@ VOL_COUNT_VIDEOS = VIDEOSOURCECOUNT # no actual volumes for videos, just the sou
 VOL_COUNT_VIDEOS_PEPVS = 4
 VOL_COUNT_IJPSP = 11 #  source code ended, 11 should always be correct
 
-def base_plus_endpoint_encoded(endpoint):
-    ret_val = base_api + endpoint
+def base_plus_endpoint_encoded(endpoint, base=base_api):
+    ret_val = base + endpoint
     return ret_val
 
 UNIT_TEST_CLIENT_ID = "4"

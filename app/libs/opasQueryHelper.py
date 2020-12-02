@@ -163,7 +163,7 @@ def cleanup_solr_query(solrquery):
 
     ret_val = re.sub("\s+(AND)\s+", " && ", ret_val, flags=re.IGNORECASE)
     ret_val = re.sub("\s+(OR)\s+", " || ", ret_val, flags=re.IGNORECASE)
-
+    ret_val = re.sub("\s+(NOT)\s+", " NOT ", ret_val, flags=re.IGNORECASE)
     ret_val = remove_proximity_around_booleans(ret_val)
 
     # one last cleaning, watch for && *:*
@@ -656,7 +656,7 @@ def remove_proximity_around_booleans(query_str):
         m = re.search(srch_ptn, query_str)
         if m is not None:
             # does it have a boolean, a quote, or a bracket (range)?
-            n = re.search(r"\s(AND|OR|\&\&|\|\|)\s|([\"\[\']])", m.group(1), flags=re.IGNORECASE)
+            n = re.search(r"\s(AND|OR|NOT|\&\&|\|\|)\s|([\"\[\']])", m.group(1), flags=re.IGNORECASE)
             # if it's not None, then this is not a proximity match
             if n is not None:
                 query_str = re.subn(srch_ptn, r'(\1)', query_str, 1)[0]

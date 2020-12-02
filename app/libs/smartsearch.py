@@ -34,8 +34,8 @@ rx_author_name_list = "(?P<author_list>([A-Z][A-z]+\,?\s+?(([A-Z]\.?\s?){0,2})((
 rx_author_list_and_year = "(?P<author_list>[A-Z][A-z\s\,\.\-]+?)" + rx_space_req + rx_year
 rx_series_of_author_last_names = "(?P<author_list>([A-Z][a-z]+((\,\s+)|(\s*and\s+))?)+)"
 rx_doi = "((h.*?://)?(.*?/))?(?P<doi>(10\.[0-9]{4,4}/[A-z0-9\.\-/]+)|(doi.org/[A-z0-9\-\./]+))"
-# schema fields must have a _ in them to use.
-rx_solr_field = "(?P<schema_field>([a-z]+_[a-z_]{2,13})|text|authors)\:(?P<schema_value>(.*$))"
+# schema fields must have a _ in them to use.  A - at the beginning is allowed, for negation
+rx_solr_field = "(?P<schema_field>(\-?[a-z]+_[a-z_]{2,21})|text|authors)\:(?P<schema_value>(.*$))"
 rx_syntax = "(?P<syntax>^[a-z]{3,9})\:\:(?P<query>.+$)"
 rx_pepdoi = "(?P<prefix>PEP\/\.)(?P<locator>[A-Z\-]{2,10}\.[0-9]{3,3}\.[0-9]{4,4}([PN]{1,2}[0-9]{4,4})?"
 pat_prefix_amps = re.compile("^\s*&& ")
@@ -394,7 +394,7 @@ def smart_search(smart_search_text):
         patterns1 = {
                     rx_author_list_and_year : "authors and years",
                     rx_year_pgrg : "a page range",
-                    ".*?" + rx_vol_pgrg : "a citation vol and pg",
+                    ".*?" + rx_vol_pgrg : "citation vol/pg",
                     rx_doi : "an article DOI",
                     rx_solr_field: "article fields", 
                     rx_syntax: "advanced query syntax",
@@ -410,7 +410,7 @@ def smart_search(smart_search_text):
             m = re.match(rx_str, smart_search_text)
             if m is not None:
                 ret_val = {**ret_val, **m.groupdict()}
-                ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched articles for {label}: "
+                ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched {label}: {smart_search_text}"
                 
         #for rx_str, label in patterns2.items():
             #m = re.match(rx_str, smart_search_text)
@@ -443,15 +443,15 @@ def smart_search(smart_search_text):
             #elif word_count > 4 and title_search.found and text_search.found:
             #elif text_search.found:
             
-            if word_count == 1 and len(words) > 3:
+            if word_count == 1 and len(words) > 3 and words[0].isupper():
                 # could still be an author name
                 if is_value_in_field(words, core="authors", field="authors"):
                     ret_val[KEY_SEARCH_FIELD] = "art_authors_citation" 
                     ret_val[KEY_SEARCH_VALUE] = f"{words}"
-                    ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched articles for authors: {words}"            elif word_count > 4 and is_value_in_field(words, "title", match_type="ordered") == 1: # unique match only
+                    ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched articles for author: {words}"            elif word_count > 4 and is_value_in_field(words, "title", match_type="ordered") == 1: # unique match only
                 ret_val["title"] = words
                 ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {words}"
-            elif is_value_in_field(words, core="doc", field="art_authors_citation"):
+            elif is_value_in_field(words, core="doc", field="art_authors_citation") and words[0].isupper():
                 # see if it's a list of names
                 ret_val[KEY_SEARCH_FIELD] = "art_authors_citation" 
                 ret_val[KEY_SEARCH_VALUE] = f"{words}"
