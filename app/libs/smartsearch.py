@@ -125,7 +125,8 @@ def is_value_in_field(value,
         q = f'{field}:"{value}"~25'
     else:
         q = f'{field}:({value})'
-        
+
+    
     try:
         results = solr_core.query(q=q,  
                                   fields = f"{field}", 

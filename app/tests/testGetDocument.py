@@ -23,9 +23,47 @@ class TestGetDocuments(unittest.TestCase):
           with forced order in the names.
     
     """
-    def test_000_get_document_with_hits(self):
+    
+    search_term = "test"
+    def test_001A_get_document_with_hits(self):
         # test with real client example
-        search_param = "'?facetfields=art_year_int,art_views_last12mos,art_cited_5,art_authors,art_lang,art_type,art_sourcetype,art_sourcetitleabbr,glossary_group_terms,art_kwds_str&facetlimit=15&facetmincount=1&abstract=true&highlightlimit=5&synonyms=false&fulltext1=Evenly+Suspended+Attention'"
+        search_param = f"?facetfields=art_year_int,art_views_last12mos,art_cited_5,art_authors,art_lang,art_type,art_sourcetype,art_sourcetitleabbr,glossary_group_terms,art_kwds_str&facetlimit=15&facetmincount=1&highlightlimit=4&synonyms=false&fulltext1={self.search_term}"
+        search_param_encoded = requests.utils.quote(search_param)
+        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJP.056.0303A/?return_format=XML&search={search_param_encoded}")
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"]
+        assert(response_info["count"] == 1)
+        termCount = r["documents"]["responseSet"][0]["termCount"]
+        term = r["documents"]["responseSet"][0]["term"]
+        print (f"Term: {term} / TermCount: {termCount}")
+        assert (term == f"SearchHits(text:{self.search_term})")
+        assert(termCount > 0)
+    
+    def test_001B_get_document_with_hits(self):
+        # test with real client example
+        search_param = f"?facetfields=art_year_int,art_views_last12mos,art_cited_5,art_authors,art_lang,art_type,art_sourcetype,art_sourcetitleabbr,glossary_group_terms,art_kwds_str&facetlimit=15&facetmincount=1&highlightlimit=4&synonyms=false&fulltext1={self.search_term}"
+        search_param_encoded = requests.utils.quote(search_param)
+        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/PAQ.028.0481A/?return_format=XML&search={search_param_encoded}")
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"]
+        assert(response_info["count"] == 1)
+        termCount = r["documents"]["responseSet"][0]["termCount"]
+        term = r["documents"]["responseSet"][0]["term"]
+        print (f"Term: {term} / TermCount: {termCount}")
+        assert (term == f"SearchHits(text:{self.search_term})")
+        assert(termCount > 0)
+    
+    def test_002A_get_document_with_hits(self):
+        # test with real client example
+        search_param = "?facetfields=art_year_int,art_views_last12mos,art_cited_5,art_authors,art_lang,art_type,art_sourcetype,art_sourcetitleabbr,glossary_group_terms,art_kwds_str&facetlimit=15&facetmincount=1&abstract=true&highlightlimit=5&synonyms=false&fulltext1=Evenly+Suspended+Attention"
         search_param_encoded = requests.utils.quote(search_param)
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/PAQ.058.0374A/?return_format=XML&search={search_param_encoded}")
         response = requests.get(full_URL, headers=headers)
@@ -38,9 +76,9 @@ class TestGetDocuments(unittest.TestCase):
         termCount = r["documents"]["responseSet"][0]["termCount"]
         term = r["documents"]["responseSet"][0]["term"]
         assert(termCount >= 11)
-        assert (term == "SearchHits(text:(Evenly Suspended Attention'))")
+        assert (term == "SearchHits(text:(Evenly Suspended Attention))")
 
-    def test_002_get_document_with_hits(self):
+    def test_002B_get_document_with_hits(self):
         search = 'search=?fulltext1=%22Evenly%20Suspended%20Attention%22~25&viewperiod=4&formatrequested=HTML&highlightlimit=5&facetmincount=1&facetlimit=15&sort=score%20desc&limit=15'
         # search = 'search=?fulltext1=%22Evenly%20Suspended%20Attention%22~25'
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171A?{search}')

@@ -1040,25 +1040,26 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         
 
     except solr.SolrException as e:
+        # TODO not sure if this exception model applies to pysolr, and no documentation on exceptions I can find.  So need to watch it.
         if e is None:
             ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
-            ret_status = (e.httpcode, None) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
+            ret_status = (e.httpcode, None) # e has useful elements of httpcode, reason, and body
             logger.error(f"Solr Runtime Search Error (a): {e.reason}")
             logger.error(e.body)
         elif e.reason is not None:
             ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
-            ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
+            ret_status = (e.httpcode, e) 
             logger.error(f"Solr Runtime Search Error (b): {e.reason}")
             logger.error(e.body)
         else:
             ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-            ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
+            ret_status = (e.httpcode, e) 
             logger.error(f"Solr Runtime Search Error (c): {e.httpcode}")
             logger.error(e.body)
         
     except SAXParseException as e:
         ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Search syntax error", error_description=f"{e.getMessage()}")
-        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) 
         logger.error(f"Solr Runtime Search Error (parse): {ret_val}. Params sent: {solr_param_dict}")
 
     except AttributeError as e:

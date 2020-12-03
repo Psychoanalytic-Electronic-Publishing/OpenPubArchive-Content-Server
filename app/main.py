@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1202.1.Alpha"
+__version__     = "2020.1203.1.Alpha"
 __status__      = "Development"
 
 """
@@ -75,6 +75,8 @@ Endpoint and model documentation automatically available when server is running 
 # --------------------------------------------------------------------------------------------
 # - Fix abstract return - Leadin needs to be inside HTML tagging (though works fine for display right now)
 # - Think about what to do when a Solr query is in error, and solr dumps back.
+# - Finish transition to PySolr...extended query (and perhaps another endpoint) still uses solrpy
+
 # --------------------------------------------------------------------------------------------
 # Not necessarily in the server code, but General TODOs
 # --------------------------------------------------------------------------------------------
@@ -322,22 +324,6 @@ def log_endpoint_time(request, ts):
 # ############################################################################
 # EndPoints
 # ############################################################################
-
-@app.get("/v3/Documents/Document/{documentID}/")
-async def read_item( documentID: str=Path(...), 
-                     search: str=Query(None),
-                     pagelimit: int=Query(None),
-                     pageoffset: int=Query(None),
-                     specialoptions:int=Query(0)
-                     ):
-    
-    if search is not None:
-        argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
-        search_arg = argdict.get("fulltext1", "Not Available")
-        return {"search_arg": search_arg,
-                "search": search, 
-                "doc_id": documentID
-                }
 #-----------------------------------------------------------------------------
 @app.get("/v2/Api/OpenapiSpec", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_OPEN_API)
 async def api_openapi_spec(api_key: APIKey = Depends(get_api_key), 
@@ -4309,6 +4295,7 @@ def documents_document_fetch(response: Response,
                 try:
                     # if there's an abstract parameter, rename it to abstract_requested (used because that's clearer in code params, so that's what the underlying functions use)
                     argdict["abstract_requested"] = argdict.pop("abstract")
+                    print ("Fulltext1:" + f'{argdict.get("fulltext1", "")}')
                 except KeyError:
                     pass # no abstract param. skip.
                 

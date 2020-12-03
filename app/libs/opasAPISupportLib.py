@@ -1852,6 +1852,9 @@ def documents_get_document(document_id,
             query = f"{solr_query_params.searchQ}"
             if query == "":
                 query = "*:*"
+                search_context = None
+            else:
+                search_context = query
             filterQ = f"art_id:{document_id} && {solr_query_params.filterQ}"
             # solrParams = solr_query_params.dict() 
         else:
@@ -1882,8 +1885,6 @@ def documents_get_document(document_id,
                                                     )
 
         document_list, ret_status = opasPySolrLib.search_text_qs(solr_query_spec,
-                                                                 #limit=limit,
-                                                                 #offset=offset, 
                                                                  session_info=session_info
                                                                  )
 
@@ -1892,19 +1893,22 @@ def documents_get_document(document_id,
             if matches > 0:
                 # get the first document item only
                 document_list_item = document_list.documentList.responseSet[0]
-                # is user authorized?
-                if document_list.documentList.responseSet[0].accessLimited:
-                    document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
-
-                # experimental options: uses option_flags to turn on
-                if option_flags is not None:
-                    if option_flags & opasConfig.OPTION_2_RETURN_TRANSLATION_SET:
-                        # get document translations of the first document (note this also includes the original)
-                        if document_list_item.origrx is not None:
-                            translationSet, count = opasQueryHelper.quick_docmeta_docsearch(q_str=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
-                            if translationSet is not None:
-                                document_list_item.translationSet = translationSet
-                    
+            elif search_context is not None:
+                # failed to retrieve, get it without the search qualifier from last time.
+                solr_query_spec.solrQuery.searchQ = "*:*"
+                document_list, ret_status = opasPySolrLib.search_text_qs(solr_query_spec,
+                                                                         session_info=session_info
+                                                                         )
+                matches = document_list.documentList.responseInfo.count
+                if matches > 0:
+                    # get the first document item only
+                    document_list_item = document_list.documentList.responseSet[0]
+                    # is user authorized?
+                    if document_list.documentList.responseSet[0].accessLimited:
+                        document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
+                    document_list.documentList.responseSet[0].term = f'SearchHits({search_context})'
+                    document_list.documentList.responseSet[0].termCount = 0
+    
         except Exception as e:
             logger.warning("get_document: No matches or error: %s", e)
             # return None
@@ -1921,7 +1925,20 @@ def documents_get_document(document_id,
             # response_info.solrParams = solrParams
             # response_info.request = req_url
             
-            if matches >= 1:       
+            if matches >= 1:
+                # experimental options: uses option_flags to turn on
+                if option_flags is not None:
+                    if option_flags & opasConfig.OPTION_2_RETURN_TRANSLATION_SET:
+                        # get document translations of the first document (note this also includes the original)
+                        if document_list_item.origrx is not None:
+                            translationSet, count = opasQueryHelper.quick_docmeta_docsearch(q_str=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
+                            if translationSet is not None:
+                                document_list_item.translationSet = translationSet
+                
+                # is user authorized?
+                if document_list.documentList.responseSet[0].accessLimited:
+                    document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
+                    
                 document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
                                                                   responseSet = [document_list_item]
                                                                   )
