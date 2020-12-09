@@ -2,6 +2,8 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2020-12-08 Changed art_graphic_list to indexed, so client can find an instance by a graphic id contained within.
+
     2020-11-17 Added art_iss_seqnbr for journals like FA which really work by number more than issue.  See FA.014A.0001A 
                for an example.
 
@@ -332,7 +334,7 @@
   <!--Added 2020-09-22-->
   <field name="art_figcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
   <field name="art_tblcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_graphic_list" type="string" indexed="false" stored="true" multiValued="true" docValues="false"/>
+  <field name="art_graphic_list" type="string_ci" indexed="true" stored="true" multiValued="true" docValues="false"/>
 
   <!-- 2020-09-23
        added art_product_key, a non-unique code that Opas can send to the auth server to verify access 

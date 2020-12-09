@@ -71,6 +71,7 @@ import os.path
 import pathlib
 
 import time
+import datetime as dtime
 from datetime import datetime
 import logging
 logger = logging.getLogger(programNameShort)
@@ -340,6 +341,7 @@ def main():
     precommit_file_count = 0
     skipped_files = 0
     cumulative_file_time_start = time.time()
+    issue_updates = {}
     if files_found  > 0:
         if options.run_in_reverse:
             print ("-r option selected.  Running the files found in reverse order.")
@@ -351,6 +353,7 @@ def main():
         print (f"Load process started ({time.ctime()}).  Examining files.")
         for n in filenames:
             fileTimeStart = time.time()
+            file_updated = False
             if not options.forceRebuildAllFiles:                    
                 if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0:
                     print (f"Processed Files ...loaded {processed_files_count} out of {files_found} possible.")
@@ -363,6 +366,8 @@ def main():
                     if options.display_verbose:
                         print (f"Skipped - No refresh needed for {n.basename}")
                     continue
+                else:
+                    file_updated = True
             
             # get mod date/time, filesize, etc. for mysql database insert/update
             processed_files_count += 1
@@ -395,6 +400,13 @@ def main():
             artInfo.filedatetime = n.timestamp_str
             artInfo.filename = base
             artInfo.file_size = n.filesize
+            artInfo.file_updated = file_updated
+            if file_updated: # keep track of src/vol/issue updates
+                try:
+                    issue_updates[artInfo.issue_id_str] = artInfo.filedatetime
+                except Exception as e:
+                    logger.error("Can't save issue update")
+
             try:
                 artInfo.file_classification = re.search("(?P<class>current|archive|future|free|offsite)", str(n.filespec), re.IGNORECASE).group("class")
                 # set it to lowercase for ease of matching later
@@ -471,6 +483,21 @@ def main():
                 print(("Exception: ", e))
 
     # end of docs, authors, and/or references Adds
+    
+    # write updated file
+    if issue_updates != {}:
+        try:
+            fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+            print(f"Issue updates.  Writing file {fname}")
+            with open(fname, 'w') as fo:
+                fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
+                fo.write('<issue_updates>\n')
+                for k in issue_updates.keys():
+                    fo.write("\t"+str(k)+'\n')
+                fo.write('</issue_updates>\n')
+
+        except Exception as e:
+            print(f"Issue Update File Write Error: ({e})")
 
     # ---------------------------------------------------------
     # Closing time
