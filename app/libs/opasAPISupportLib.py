@@ -373,7 +373,7 @@ def database_get_most_viewed( publication_period: int=5,
                               source_type: str="journal",
                               abstract_requested: bool=False, 
                               view_period: int=4,      # 4=last12months default
-                              view_count: int=1,        # up this later
+                              view_count: str="1",        # up this later
                               req_url: str=None,
                               stat:bool=False, 
                               limit: int=5,           # Get top 10 from the period

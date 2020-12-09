@@ -159,5 +159,78 @@ class TestSearch(unittest.TestCase):
         print (response_info["fullCount"])
         assert(response_info["fullCount"] >= 114 and response_info["fullCount"] <= 144)        
 
+    def test_search_viewed_count_3_ranges(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=2 TO 10&sourcecode=IJP')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f"Count: {response_info['count']}")
+        assert(response_info["count"] >= 0) # just make sure there's a count
+        print (response_set)
+
+    def test_search_viewed_count_3b_ranges(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=20 TO 30')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f"Count: {response_info['count']}")
+        assert(response_info["count"] >= 1) # just make sure there's a count
+        print (response_set)
+
+    def test_search_viewed_count_3c_ranges_last6months(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=20 TO 30 IN last6months')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f"Count: {response_info['count']}")
+        assert(response_info["count"] >= 1) # just make sure there's a count
+        print (response_set)
+
+    def test_search_viewed_count_3d_ranges_lastmonth(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=2 TO 30 IN lastmonth')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f"Count: {response_info['count']}")
+        assert(response_info["count"] >= 1) # just make sure there's a count
+        print (response_set)
+        
+    def test_search_viewed_count_3e_ranges_lastcalendaryear(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=1 TO 30 IN lastcalendaryear')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f"Count: {response_info['count']}")
+        assert(response_info["count"] >= 0) # just make sure there's a count
+        print (response_set)
+
+    def test_search_viewed_count_3f_ranges_with_viewperiod(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=20 TO 30&viewperiod=4')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f"Count: {response_info['count']}")
+        assert(response_info["count"] >= 1) # just make sure there's a count
+        print (response_set)
+
+        
 if __name__ == '__main__':
     unittest.main()

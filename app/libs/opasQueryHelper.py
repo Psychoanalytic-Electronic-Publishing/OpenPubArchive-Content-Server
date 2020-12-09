@@ -749,7 +749,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   startyear=None,          # can contain complete range syntax
                                   endyear=None,            # year only.
                                   citecount: str=None,     # can include both the count and the count period, e.g., 25 in 10 or 25 in ALL
-                                  viewcount=None,          # minimum view count
+                                  viewcount: str=None,     # can include both the count and the count period, e.g., 25 in last12months or 25 in ALL
                                   viewperiod=None,         # period to evaluate view count 0-4
                                   facetfields=None,        # facetfields to return
                                   # sort field and direction
@@ -1160,7 +1160,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                     sub_clause = ""
     
                 if query_sub_clause != "":
-                    query_sub_clause += boolean_connector
+                    query_sub_clause += " " + boolean_connector
                     
                 if artLevel == 2 and solr_parent is not None:
                     query_sub_clause += f" (parent_tag:{solr_parent} AND {sub_clause}) "
@@ -1371,7 +1371,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)
 
-    if citecount is not None and citecount is not 0:
+    if citecount is not None and citecount is not "0":
         # This is the only citation query handled by GVPi and the current API.  But
         # the Solr database is set up so this could be easily extended to
         # the 10, 20, and "all" periods.  Here we add syntax to the 
@@ -1410,17 +1410,37 @@ def parse_search_query_parameters(search=None,             # url based parameter
         
     # if viewcount == 0, then it's not a criteria needed (same as None)
     # if user inputs text instead, also no criteria.
-    if viewperiod is not None and viewcount != 0:
-        try:
-            viewcount_int = int(viewcount)
-        except:
-            viewcount_int = 0
-
-        view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[viewperiod]
-        analyze_this = f"&& {view_count_field}:[{viewcount_int} TO *] "
-        filter_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-    
+    if viewperiod is not None and viewcount is not None:
+        val = None
+        viewed_in_period = None
+        val_end = "*"
+        match_ptn = "\s*(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(lastweek|lastmonth|last6months|last12months|lastcalendaryear)))?\s*"
+        m = re.match(match_ptn, viewcount, re.IGNORECASE)
+        if m is not None:
+            val = m.group("nbr")
+            val_end = m.group("endnbr")
+            if val_end is None:
+                val_end = "*"
+            viewed_in_period = m.group("period")
+            # 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months.
+            # VALS_VIEWPERIODDICT_SOLRFIELDS = {1: "art_views_lastweek", 2: "art_views_last1mos", 3: "art_views_last6mos", 4: "art_views_last12mos", 5: "art_views_lastcalyear", 0: "art_views_lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
+            if viewed_in_period == 'lastcalendaryear':
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[5]
+            elif viewed_in_period == 'lastweek':
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[1]
+            elif viewed_in_period == 'last12months':
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[4]
+            elif viewed_in_period == 'last6months':
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[3]
+            elif viewed_in_period == 'lastmonth':
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[2]
+            else:
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[viewperiod]
+                
+            analyze_this = f"&& {view_count_field}:[{val} TO {val_end}] "
+            filter_q += analyze_this
+            search_analysis_term_list.append(analyze_this)
+               
     # now clean up the final components.
     search_q = cleanup_solr_query(search_q)
     filter_q = cleanup_solr_query(filter_q)
