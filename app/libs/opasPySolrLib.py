@@ -2030,7 +2030,6 @@ def metadata_get_next_and_prev_vols(source_code=None,
                             match_vol = n['pivot'][0]
                             match_vol_year = n['value']
                             match_vol['year'] = match_vol_year
-                            del(match_vol['field'])
                         counter += 1
         
                     if match_vol_idx is not None:
@@ -2040,7 +2039,6 @@ def metadata_get_next_and_prev_vols(source_code=None,
                             prev_vol_year = prev_vol['value']
                             prev_vol = prev_vol['pivot'][0]
                             prev_vol['year'] = prev_vol_year
-                            del(prev_vol['field'])
                             
                         if match_vol_idx < pivot_len - 1:
                             next_vol_idx = match_vol_idx + 1
@@ -2048,9 +2046,23 @@ def metadata_get_next_and_prev_vols(source_code=None,
                             next_vol_year = facet_pivot[0]['value']
                             next_vol = next_vol['pivot'][0]
                             next_vol['year'] = next_vol_year
-                            del(next_vol['field'])
                     else:
                         logger.warning("No volume to assess: ", match_vol_idx)
+                        
+                try:
+                    del(match_vol['field'])
+                except:
+                    pass
+                    
+                try:
+                    del(prev_vol['field'])
+                except:
+                    pass
+                    
+                try:
+                    del(next_vol['field'])
+                except:
+                    pass
     
     return prev_vol, match_vol, next_vol
 #-----------------------------------------------------------------------------
