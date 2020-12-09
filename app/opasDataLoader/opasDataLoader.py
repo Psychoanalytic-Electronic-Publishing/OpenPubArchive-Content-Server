@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.11.12" 
+__version__     = "2020.12.08" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -402,10 +402,11 @@ def main():
             artInfo.file_size = n.filesize
             artInfo.file_updated = file_updated
             if file_updated: # keep track of src/vol/issue updates
+                art = f"<article id='{artInfo.art_id}'>{artInfo.art_citeas_xml}</article>"
                 try:
-                    issue_updates[artInfo.issue_id_str] = artInfo.filedatetime
+                    issue_updates[artInfo.issue_id_str].append(art)
                 except Exception as e:
-                    logger.error("Can't save issue update")
+                    issue_updates[artInfo.issue_id_str] = [art]
 
             try:
                 artInfo.file_classification = re.search("(?P<class>current|archive|future|free|offsite)", str(n.filespec), re.IGNORECASE).group("class")
@@ -487,14 +488,22 @@ def main():
     # write updated file
     if issue_updates != {}:
         try:
-            fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+            fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}.xml"
             print(f"Issue updates.  Writing file {fname}")
-            with open(fname, 'w') as fo:
+            with open(fname, 'w', encoding="utf8") as fo:
                 fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
                 fo.write('<issue_updates>\n')
-                for k in issue_updates.keys():
-                    fo.write("\t"+str(k)+'\n')
-                fo.write('</issue_updates>\n')
+                for k, a in issue_updates.items():
+                    fo.write(f"\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
+                    for ref in a:
+                        try:
+                            ref = ref.replace(" & ", " &amp; ")
+                            fo.write(f"\t\t\t{ref}\n")
+                        except Exception as e:
+                            print(f"Issue Update Article Write Error: ({e})")
+                            
+                    fo.write("\t\t</articles>\n\t</issue>")
+                fo.write('\n</issue_updates>')
 
         except Exception as e:
             print(f"Issue Update File Write Error: ({e})")
