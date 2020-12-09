@@ -2086,8 +2086,13 @@ def documents_get_glossary_entry(term_id,
         "facet.mincount": 1
     }
     
-    results = solr_gloss2.search(qstr, **args)
-    
+    try:
+        results = solr_gloss2.search(qstr, **args)
+    except Exception as e:
+        err = f"Solr query failed {e}"
+        logger.error(err)
+        raise Exception(err)
+           
     document_item_list = []
     count = 0
     try:
