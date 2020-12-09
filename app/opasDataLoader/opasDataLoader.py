@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.12.08" 
+__version__     = "2020.12.08.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -494,7 +494,7 @@ def main():
                 fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
                 fo.write('<issue_updates>\n')
                 for k, a in issue_updates.items():
-                    fo.write(f"\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
+                    fo.write(f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
                     for ref in a:
                         try:
                             ref = ref.replace(" & ", " &amp; ")
