@@ -1371,24 +1371,36 @@ def parse_search_query_parameters(search=None,             # url based parameter
             filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)
 
-    if citecount is not None and citecount is not "0":
-        # This is the only citation query handled by GVPi and the current API.  But
-        # the Solr database is set up so this could be easily extended to
-        # the 10, 20, and "all" periods.  Here we add syntax to the 
-        # citecount field, to allow the user to say:
-        #  25 in 10 
-        # which means 25 citations in 10 years
+    if citecount is not None and citecount is not "0": #PEPSchemaSpecific
+        # The PEP Solr database is set up so citation count fields map to 
+        # 10, 20, and "all" year periods.
+        # The citecount parameter can specify an integer count and a period:
+        #  25 in 10                            (Solr/PEP schema mapping: art_cited_10:25)
+        # or a range and a period:
+        #  10 to 20 in 10                      (Solr/PEP schema mapping: art_cited_10:[10 TO 20])
         # or 
-        #  400 in ALL
-        # which means 400 in all years. 
-        # 'in' is required along with a space in front of it and after it
-        # when specifying the period.
-        # the default period is 5 years.
-        # citecount = citecount.strip()
+        #  10 to 20, 30 to 40 in 20            (Solr/PEP schema mapping: art_cited_20:([10 TO 20] OR [30 TO 40])
+        #    which means either between 10 and 20, or between 30 and 40, in the last 20 years with data.
+        #    'virtually' unlimited ranges can be specified.
+        # or equivalently 
+        #  10 to 20 OR 30 to 40 in 20            (Solr/PEP schema mapping: art_cited_20:([10 TO 20] OR [30 TO 40])
+        # or 
+        #  400 in ALL                          (Solr/PEP schema mapping: art_cited_all:25)
+        #    which means 400 in all years with data. 
+        # or
+        #  10 to 20, 30 to * in 20            (Solr/PEP schema mapping: art_cited_20:([10 TO 20] OR [30 TO 40])
+        #    which means 10 to 20 or 30 to the end of the range in 20 years
+        # or
+        #  * to 100 in 20            (Solr/PEP schema mapping: art_cited_20:([10 TO 20] OR [30 TO 40])
+        #    which means from the start of range to 100 in 20 years
+        # 
+        # 'IN' is required along with a space in front of it and after it when specifying the period.
+        # 
+        # The default period is 5 years.
+
         val = None
         cited_in_period = None
         val_end = "*"
-        
         match_ptn = "\s*(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?\s*"
         m = re.match(match_ptn, citecount, re.IGNORECASE)
         if m is not None:
@@ -1404,7 +1416,12 @@ def parse_search_query_parameters(search=None,             # url based parameter
         if cited_in_period is None:
             cited_in_period = '5'
 
-        analyze_this = f"&& art_cited_{cited_in_period.lower()}:[{val} TO {val_end}] "
+        range_list = opasgenlib.range_list(citecount)
+        if range_list != "":
+            analyze_this = f"&& art_cited_{cited_in_period.lower()}:({range_list})"
+        else:
+            analyze_this = f"&& art_cited_{cited_in_period.lower()}:[{val} TO {val_end}] "
+
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
         
@@ -1414,7 +1431,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         val = None
         viewed_in_period = None
         val_end = "*"
-        match_ptn = "\s*(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(lastweek|lastmonth|last6months|last12months|lastcalendaryear)))?\s*"
+        match_ptn = "\s*((?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?\,?\s*)+(\s+IN\s+(?P<period>(lastweek|lastmonth|last6months|last12months|lastcalendaryear)))?\s*"
         m = re.match(match_ptn, viewcount, re.IGNORECASE)
         if m is not None:
             val = m.group("nbr")
@@ -1422,6 +1439,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             if val_end is None:
                 val_end = "*"
             viewed_in_period = m.group("period")
+            
             # 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months.
             # VALS_VIEWPERIODDICT_SOLRFIELDS = {1: "art_views_lastweek", 2: "art_views_last1mos", 3: "art_views_last6mos", 4: "art_views_last12mos", 5: "art_views_lastcalyear", 0: "art_views_lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
             if viewed_in_period == 'lastcalendaryear':
@@ -1437,7 +1455,12 @@ def parse_search_query_parameters(search=None,             # url based parameter
             else:
                 view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[viewperiod]
                 
-            analyze_this = f"&& {view_count_field}:[{val} TO {val_end}] "
+            range_list = opasgenlib.range_list(viewcount)
+            if range_list != "":
+                analyze_this = f"&& {view_count_field}:({range_list})"
+            else:
+                analyze_this = f"&& {view_count_field}:[{val} TO {val_end}] "
+                
             filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)
                

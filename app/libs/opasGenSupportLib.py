@@ -384,7 +384,51 @@ def is_boolean(arg):
     except Exception as e:
         logger.error(f"Exception {e}")
         return False
+
+def range_list(arg):
+    """
+    Take a list of Solr like ranges, and return a boolean list of them
+    The list can be embedded with almost any separator, e.g.:
+        10 TO 20, 30 TO 40
+        or
+        10 to 20 OR 30 to 40
     
+    >>> range_list("10 TO 20, 20 TO 30, 50 to 60" )
+    '[10 TO 20] OR [20 TO 30] OR [50 TO 60]'
+
+    >>> range_list("10 TO 20 OR 20 TO 30 or 50 to 60" )
+    '[10 TO 20] OR [20 TO 30] OR [50 TO 60]'
+
+    >>> range_list("10 TO 20" )
+    '[10 TO 20]'
+    
+    >>> range_list("100 TO *" )
+    '[100 TO *]'
+    
+    >>> range_list("* TO 100" )
+    '[* TO 100]'
+    
+    >>> range_list("10 TO 20 OR 20 TO 30 or 50 to *" )
+    '[10 TO 20] OR [20 TO 30] OR [50 TO *]'
+
+    >>> range_list("10")
+    ''
+
+    """
+    ret_val = ""
+    mp2 = "(([0-9]+|\*) TO ([0-9]+|\*))"    
+    ranges = re.findall(mp2, arg, flags=re.I)
+    if len(ranges) > 0:
+        range_list = ""
+        for n in ranges:
+            if range_list != "":
+                range_list += " OR "
+            range_list += f"[{n[0].upper()}]"
+        ret_val = range_list
+        ret_val = ret_val.strip(" ")
+
+    return ret_val
+
 #-----------------------------------------------------------------------------
 def is_empty(arg):
     if arg is None or arg == "":
