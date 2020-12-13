@@ -120,6 +120,8 @@ DEFAULT_CITED_MORE_THAN = 0
 DEFAULT_PAGE_LIMIT = 999
 DEFAULT_PUBLICATION_PERIOD = "ALL"
 
+DB_ITEM_OF_INTEREST_WIDTH = 255 # database col for logging query/item of interest
+
 SOLR_KWIC_MAX_ANALYZED_CHARS = 25200000 # kwic (and highlighting) wont show any hits past this.
 SOLR_FULL_TEXT_MAX_ANALYZED_CHARS = 25200000 # full-text markup won't show matches beyond this.
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 25200000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.

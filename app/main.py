@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1210.1.Alpha"
+__version__     = "2020.1213.1.Alpha"
 __status__      = "Development"
 
 """
@@ -228,6 +228,7 @@ def get_client_session(response: Response,
     if session_id is None:
         # get one from PaDS, without login info
         # session_info, pads_session_info = opasDocPermissions.pads_get_session(client_id=client_id)
+        logger.info(f"Client {client_id} request w/o sessionID: {request.url._url}'")
         session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id, client_id=client_id)
         try:
             session_id = session_info.session_id
@@ -656,7 +657,8 @@ async def reports(response: Response,
             ret_val = models.Report(report = report_struct)
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_REPORTS,
-                                api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_GET, 
+                                api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_GET,
+                                item_of_interest=report, 
                                 session_info=session_info, 
                                 params=request.url._url,
                                 return_status_code = response.status_code,
@@ -2422,10 +2424,37 @@ async def database_search_v2(response: Response,
     statusMsg = f"{matches} hits; similar documents per result requested:{similarcount}; queryAnalysis: {analysis_mode}"
     logger.debug("Done with search.")
 
-    # client_host = request.client.host
+    #try:
+        #item_of_interest = None
+        #try:
+            #fq = re.sub("art_level:1(\s\&\&\s)?", "", solr_query_spec.solrQuery.filterQ, re.I)
+            #if fq != '':
+                #item_of_interest = f"f:'{fq}'"
+                #spacer = " "
+            #else:
+                #item_of_interest = ""
+                #spacer = ""
+        #except:
+            #fq = ""
+            #item_of_interest = ""
+            #spacer = ""
 
+        #try:
+            #q = re.sub("\*:\*|{!parent\swhich=\'art_level:1\'}\sart_level:2\s&&\s", "", solr_query_spec.solrQuery.searchQ, re.I)
+            #if q != '':
+                #col_width_remaining = opasConfig.DB_ITEM_OF_INTEREST_WIDTH - len(fq) # don't exceed column width for logging 
+                #item_of_interest += f"{spacer}q:'{q[:col_width_remaining]}'"
+        #except Exception as e:
+            #pass
+    #except:
+        #item_of_interest = None
+
+    # client_host = request.client.host
+    item_of_interest = opasAPISupportLib.get_query_item_of_interest(solrQuery=solr_query_spec.solrQuery)
+    
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
-                                session_info=session_info, 
+                                session_info=session_info,
+                                item_of_interest=item_of_interest, 
                                 params=request.url._url,
                                 return_status_code = ret_status[0], 
                                 status_message=statusMsg
@@ -4371,7 +4400,7 @@ def documents_document_fetch(response: Response,
             ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
                                         session_info=session_info, 
                                         params=request.url._url,
-                                        item_of_interest="{}".format(documentID), 
+                                        item_of_interest=documentID, 
                                         return_status_code = response.status_code,
                                         status_message=status_message
                                         )
@@ -4479,13 +4508,13 @@ def documents_concordance(response: Response,
             status_message = "Not Found"
             response.status_code = httpCodes.HTTP_404_NOT_FOUND
 
-        #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
-                                    #session_info=session_info, 
-                                    #params=request.url._url,
-                                    #item_of_interest=item_of_interest, 
-                                    #return_status_code = response.status_code,
-                                    #status_message=status_message
-                                    #)
+        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
+                                    session_info=session_info, 
+                                    params=request.url._url,
+                                    item_of_interest=item_of_interest, 
+                                    return_status_code = response.status_code,
+                                    status_message=status_message
+                                    )
 
         if ret_val == {}:
             raise HTTPException(

@@ -140,7 +140,39 @@ def has_data(str):
         ret_val = False
 
     return ret_val
-        
+
+def get_query_item_of_interest(solrQuery):
+    """
+    Give a solrQuery, use that to derive a string to be logged in the endpoint_session
+      record column item_of_interest
+    """
+    ret_val = None
+    try:
+        try:
+            fq = re.sub("art_level:1(\s\&\&\s)?", "", solrQuery.filterQ, re.I)
+            if fq != '':
+                ret_val = f"f:'{fq}'"
+                spacer = " "
+            else:
+                ret_val = ""
+                spacer = ""
+        except:
+            fq = ""
+            ret_val = ""
+            spacer = ""
+    
+        try:
+            q = re.sub("\*:\*|{!parent\swhich=\'art_level:1\'}\sart_level:2\s&&\s", "", solrQuery.searchQ, re.I)
+            if q != '':
+                col_width_remaining = opasConfig.DB_ITEM_OF_INTEREST_WIDTH - len(fq) # don't exceed column width for logging 
+                ret_val += f"{spacer}q:'{q[:col_width_remaining]}'"
+        except Exception as e:
+            pass
+    except:
+        ret_val = None
+
+    return ret_val
+
 def remove_leading_zeros(numeric_string):
     """
         >>> remove_leading_zeros("0033")
