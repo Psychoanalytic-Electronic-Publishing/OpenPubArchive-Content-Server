@@ -21,7 +21,7 @@ class TestStatusNoSession(unittest.TestCase):
     def test_v2_session_status(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Session/Status/')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -31,7 +31,7 @@ class TestStatusNoSession(unittest.TestCase):
         
         # Run it again...see what it does.  Does it pick up the same session from the cookie?
         full_URL = base_plus_endpoint_encoded('/v2/Session/Status/')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()

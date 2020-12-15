@@ -10,7 +10,9 @@ import opasConfig
 
 no_session = True
 import unitTestConfig
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, UNIT_TEST_CLIENT_ID
+headers = {"client-id": UNIT_TEST_CLIENT_ID,
+          }
 
 class TestsWithoutClientSession(unittest.TestCase):
     """
@@ -24,7 +26,7 @@ class TestsWithoutClientSession(unittest.TestCase):
     def test_0_api_status(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Api/Status/')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
@@ -33,7 +35,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded('/v2/Session/Status/')
         response = requests.get(full_URL)
         # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
+        response = requests.get(full_URL, headers=headers)
         r = response.json()
         assert(r["text_server_ok"] == True)
         assert(r["db_server_ok"] == True)
@@ -42,7 +44,7 @@ class TestsWithoutClientSession(unittest.TestCase):
     def test_2_session_whoami(self):
         # Send a request to the API server and store the response.
         full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
     
@@ -108,7 +110,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         
     def test_11_get_most_viewed(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -127,7 +129,7 @@ class TestsWithoutClientSession(unittest.TestCase):
 
     def test_12_get_most_cited(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
@@ -139,7 +141,7 @@ class TestsWithoutClientSession(unittest.TestCase):
 
     def test_13_search_wildcard(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=gre?nfield')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         # print (r)
@@ -151,7 +153,7 @@ class TestsWithoutClientSession(unittest.TestCase):
 
     def test_14_get_abstract(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
@@ -164,7 +166,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         """
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A/?search=?journal=&fulltext1=mother love&sort=citeCount&similarcount=2')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
