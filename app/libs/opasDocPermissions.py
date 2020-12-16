@@ -162,7 +162,10 @@ def fix_pydantic_invalid_nones(response_data):
 
     return response_data
 
-def get_authserver_session_info(session_id, client_id, pads_session_info=None):
+def get_authserver_session_info(session_id,
+                                client_id,
+                                pads_session_info=None,
+                                request=None):
     """
     Return a filled-in SessionInfo object from several PaDS calls
     
@@ -187,7 +190,10 @@ def get_authserver_session_info(session_id, client_id, pads_session_info=None):
     ts = time.time()
     if pads_session_info is None or session_id is None:
         # not supplied, so fetch
-        pads_session_info = get_pads_session_info(session_id=session_id, client_id=client_id, retry=False)
+        pads_session_info = get_pads_session_info(session_id=session_id,
+                                                  client_id=client_id,
+                                                  retry=False, 
+                                                  request=request)
         session_info = models.SessionInfo(session_id=pads_session_info.SessionId, api_client_id=client_id)
         session_id = session_info.session_id
     else:
@@ -290,7 +296,11 @@ def save_session_info_to_db(session_info):
     
     return ret_val
 
-def authserver_login(username=PADS_TEST_ID, password=PADS_TEST_PW, session_id=None, client_id=opasConfig.NO_CLIENT_ID, retry=True):
+def authserver_login(username=PADS_TEST_ID,
+                     password=PADS_TEST_PW,
+                     session_id=None,
+                     client_id=opasConfig.NO_CLIENT_ID,
+                     retry=True):
     """
     Login directly via the auth server (e.g., in this case PaDS)
     
@@ -640,7 +650,10 @@ def get_access_limitations(doc_id,
 #  LOCAL ROUTUNES
 #
 # ##################################################################################################################################################
-def get_pads_session_info(session_id=None, client_id=opasConfig.NO_CLIENT_ID, retry=True):
+def get_pads_session_info(session_id=None,
+                          client_id=opasConfig.NO_CLIENT_ID,
+                          retry=True,
+                          request=None):
     """
     Get the PaDS session model, and get a new session ID from the auth server if needed 
     """
@@ -651,8 +664,15 @@ def get_pads_session_info(session_id=None, client_id=opasConfig.NO_CLIENT_ID, re
     else:
         full_URL = base + f"/v1/Authenticate/IP/"
 
+    # user_ip is used to get the X_FORWARDED_FOR address to send to server for IP based users
+    user_ip = get_user_ip(request)
     try:
-        pads_session_info = requests.get(full_URL)
+        if user_ip is not None:
+            headers = { opasConfig.X_FORWARDED_FOR:user_ip }
+            pads_session_info = requests.get(full_URL, headers)
+        else:
+            pads_session_info = requests.get(full_URL)
+            
     except Exception as e:
         logger.error(f"PaDS Authorization server not available. {e}")
         pads_session_info = models.PadsSessionInfo()
@@ -661,7 +681,7 @@ def get_pads_session_info(session_id=None, client_id=opasConfig.NO_CLIENT_ID, re
         if status_code > 403: # e.g., (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, httpCodes.HTTP_503_SERVICE_UNAVAILABLE):
             # try once without the session ID
             if retry == True:
-                pads_session_info = get_pads_session_info(client_id=client_id, retry=False)
+                pads_session_info = get_pads_session_info(client_id=client_id, retry=False, request=request)
                 pads_session_info.pads_status_response = status_code
             else:
                 msg = f"PaDS error {pads_session_info.status_code}"

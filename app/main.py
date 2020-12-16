@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1216.1.Alpha"
+__version__     = "2020.1216.2.Alpha"
 __status__      = "Development"
 
 """
@@ -242,7 +242,9 @@ def get_client_session(response: Response,
         # get one from PaDS, without login info
         # session_info, pads_session_info = opasDocPermissions.pads_get_session(client_id=client_id)
         logger.info(f"Client {client_id} request w/o sessionID: {request.url._url}'")
-        session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id, client_id=client_id)
+        session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id,
+                                                                      client_id=client_id,
+                                                                      request=request)
         try:
             session_id = session_info.session_id
         except Exception as e:
@@ -290,7 +292,11 @@ def login_via_pads(request: Request,
             headers={"WWW-Authenticate": "Basic"},
         )
     else:
-        session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id, pads_session_info=pads_session_info)
+        session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId,
+                                                                      client_id,
+                                                                      pads_session_info=pads_session_info,
+                                                                      request=request)
+
         # Confirm that the request-response cycle completed successfully.
         ret_val = session_info
     
@@ -1154,7 +1160,9 @@ def session_login(response: Response,
         # logout of any opas session
         opasDocPermissions.authserver_logout(opas_session_cookie, response=response)
 
-    pads_session_info = opasDocPermissions.authserver_login(username=username, password=password, session_id=client_session) # don't pass session
+    pads_session_info = opasDocPermissions.authserver_login(username=username,
+                                                            password=password,
+                                                            session_id=client_session) # don't pass session
     # New session id, need to get rest of session_info (below)
     session_id = pads_session_info.SessionId
 
@@ -1169,7 +1177,11 @@ def session_login(response: Response,
         )
     else:
         # need to do this, saves to db, but we're not directly using return values here
-        session_info = opasDocPermissions.get_authserver_session_info(session_id, client_id, pads_session_info=pads_session_info)
+        session_info = opasDocPermissions.get_authserver_session_info(session_id,
+                                                                      client_id,
+                                                                      pads_session_info=pads_session_info,
+                                                                      request=request)
+        
         # Save it for eating later; most importantly, overwrite any existing cookie!
         #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
         if session_info.is_valid_login:
