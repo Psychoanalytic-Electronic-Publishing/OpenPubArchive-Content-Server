@@ -102,6 +102,19 @@ def find_client_session_id(request: Request,
 
     return ret_val
 
+def get_user_ip(request: Request):
+    """
+    Returns a users IP if passed in the headers.
+    """
+    ret_val = None
+    if request is not None:
+        ret_val = request.headers.get(opasConfig.X_FORWARDED_FOR, None)
+        if ret_val is not None:
+            msg = f"X-Forwarded-For from header: {ret_val} "
+            logger.info(msg)
+
+    return ret_val
+    
 def find_client_id(request: Request,
                    response: Response,
                   ):
@@ -370,15 +383,26 @@ def authserver_logout(session_id, request: Request=None, response: Response=None
 
     return ret_val
 
-def authserver_permission_check(session_id, doc_id, doc_year, reason_for_check=None):
+def authserver_permission_check(session_id,
+                                doc_id,
+                                doc_year,
+                                reason_for_check=None,
+                                request=None):
     ret_val = False
     ret_resp = None
     if reason_for_check is None:
         logger.warning("fulltext_request info not supplied")
         
     full_URL = base + f"/v1/Permits?SessionId={session_id}&DocId={doc_id}&DocYear={doc_year}&ReasonForCheck={reason_for_check}"
+
+    user_ip = get_user_ip(request)
+    if user_ip is not None:
+        headers = { opasConfig.X_FORWARDED_FOR:user_ip }
+    else:
+        headers = None
+
+    response = requests.get(full_URL, headers=headers)
     
-    response = requests.get(full_URL)
     if response.status_code == 503:
         # PaDS down, fake it for now
         msg = f"Permits response error {e}. Temporarily return data."
@@ -416,7 +440,8 @@ def get_access_limitations(doc_id,
                            year=None,
                            doi=None,
                            documentListItem: models.DocumentListItem=None,
-                           fulltext_request:bool=None):
+                           fulltext_request:bool=None,
+                           request=None):
     """
     Based on the classification of the document (archive, current [embargoed],
        free, offsite), and the users permissions in session_info, determine whether
@@ -524,7 +549,8 @@ def get_access_limitations(doc_id,
                         authorized, resp = authserver_permission_check(session_id=session_info.session_id,
                                                                  doc_id=doc_id,
                                                                  doc_year=year,
-                                                                 reason_for_check=reason_for_check)
+                                                                 reason_for_check=reason_for_check,
+                                                                 request=request)
                     except Exception as e:
                         # PaDS could be down, local development
                         logger.error(f"PaDS Access Exception: {e}")

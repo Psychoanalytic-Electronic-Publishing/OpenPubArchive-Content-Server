@@ -25,7 +25,7 @@ import sys
 sys.path.append('./solrpy')
 import solrpy as solr
 from xml.sax import SAXParseException
-import lxml
+# import lxml
 
 import localsecrets
 from localsecrets import TIME_FORMAT_STR
@@ -842,7 +842,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                    mlt_count=None, # 0 turns off defaults for mlt, number overrides defaults, setting solr_query_spec is top priority
                    sort=None, 
                    session_info=None,
-                   solr_core="pepwebdocs"
+                   solr_core="pepwebdocs", 
+                   request=None #pass around request object, needed for ip auth
                    ):
     """
     Full-text search, via the Solr server api.
@@ -1127,7 +1128,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                             doi=documentListItem.doi, 
                                                             session_info=session_info, 
                                                             documentListItem=documentListItem,
-                                                            fulltext_request=solr_query_spec.fullReturn
+                                                            fulltext_request=solr_query_spec.fullReturn,
+                                                            request=request
                                                            ) # will updated accessLimited fields in documentListItem
                         #print(f"Postcheck: Session info archive access: {session_info.authorized_peparchive}")
     

@@ -413,7 +413,8 @@ def database_get_most_viewed( publication_period: int=5,
                               mlt_count:int=None,
                               sort:str=None,
                               download=False, 
-                              session_info=None
+                              session_info=None,
+                              request=None
                             ):
     """
     Return the most viewed journal articles (often referred to as most downloaded) duing the prior period years.
@@ -484,7 +485,8 @@ def database_get_most_viewed( publication_period: int=5,
                                                        )
     if download: # much more limited document list if download==True
         ret_val, ret_status = opasPySolrLib.search_stats_for_download(solr_query_spec, 
-                                                                      session_info=session_info
+                                                                      session_info=session_info, 
+                                                                      request = request
                                                                       )
     else:
         try:
@@ -492,7 +494,8 @@ def database_get_most_viewed( publication_period: int=5,
                                                                limit=limit,
                                                                offset=offset,
                                                                req_url = req_url, 
-                                                               session_info=session_info
+                                                               session_info=session_info, 
+                                                               request = request
                                                               )
         except Exception as e:
             logger.warning(f"Search error {e}")
@@ -516,7 +519,8 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                              mlt_count:int=None, 
                              sort:str=None,
                              download:bool=None, 
-                             session_info=None
+                             session_info=None,
+                             request=None
                              ):
     """
     Return the most cited journal articles duing the prior period years.
@@ -583,7 +587,8 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                                                                offset=offset,
                                                                #mlt_count=mlt_count, 
                                                                session_info=session_info, 
-                                                               req_url = req_url
+                                                               req_url = req_url,
+                                                               request = request
                                                               )
         except Exception as e:
             logger.warning(f"Search error {e}")
@@ -607,7 +612,8 @@ def database_who_cited( publication_period: int=None,   # Limit the considered p
                         mlt_count:int=None, 
                         sort:str=None,
                         download:bool=None, 
-                        session_info=None
+                        session_info=None,
+                        request=None
                         ):
     """
     Return the list of documents that cited this journal article.
@@ -655,7 +661,8 @@ def database_who_cited( publication_period: int=None,   # Limit the considered p
                                              offset=offset,
                                              #mlt_count=mlt_count, 
                                              session_info=session_info, 
-                                             req_url = req_url
+                                             req_url = req_url, 
+                                             request = request                                             
                                             )
     except Exception as e:
         logger.warning(f"Who Cited Search error {e}")
@@ -1845,7 +1852,8 @@ def documents_get_document(document_id,
                            page=None, 
                            authenticated=True,
                            session_info=None, 
-                           option_flags=0
+                           option_flags=0,
+                           request=None
                            ):
     """
     For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
@@ -1917,7 +1925,8 @@ def documents_get_document(document_id,
                                                     )
 
         document_list, ret_status = opasPySolrLib.search_text_qs(solr_query_spec,
-                                                                 session_info=session_info
+                                                                 session_info=session_info, 
+                                                                 request=request
                                                                  )
 
         try:
@@ -1929,7 +1938,8 @@ def documents_get_document(document_id,
                 # failed to retrieve, get it without the search qualifier from last time.
                 solr_query_spec.solrQuery.searchQ = "*:*"
                 document_list, ret_status = opasPySolrLib.search_text_qs(solr_query_spec,
-                                                                         session_info=session_info
+                                                                         session_info=session_info,
+                                                                         request=request
                                                                          )
                 matches = document_list.documentList.responseInfo.count
                 if matches > 0:
@@ -1987,7 +1997,8 @@ def documents_get_concordance_paras(para_lang_id,
                                     solr_query_spec=None,
                                     ret_format="XML",
                                     req_url:str=None, 
-                                    session_info=None
+                                    session_info=None,
+                                    request=None
                                     ):
     """
     For non-authenticated users, this endpoint returns only Document summary information (summary/abstract)
@@ -2023,7 +2034,8 @@ def documents_get_concordance_paras(para_lang_id,
                                                     )
 
         document_list, ret_status = search_text_qs(solr_query_spec,
-                                                   session_info=session_info
+                                                   session_info=session_info,
+                                                   request=request
                                                    )
 
         matches = document_list.documentList.responseInfo.count
@@ -2059,7 +2071,8 @@ def documents_get_glossary_entry(term_id,
                                  req_url: str=None,
                                  session_info=None,
                                  limit=opasConfig.DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS,
-                                 offset=0):
+                                 offset=0,
+                                 request=None):
     """
     For non-authenticated users, this endpoint should return an error (#TODO)
 
@@ -2107,7 +2120,8 @@ def documents_get_glossary_entry(term_id,
     gloss_info, ret_status = search_text_qs(solr_query_spec, 
                                             extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                             limit=1,
-                                            session_info=session_info
+                                            session_info=session_info,
+                                            request = request
                                             )
         
     gloss_template = gloss_info.documentList.responseSet[0]

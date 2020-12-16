@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1213.1.Alpha"
+__version__     = "2020.1215.1.Alpha"
 __status__      = "Development"
 
 """
@@ -205,6 +205,19 @@ def get_client_id(response: Response,
     """
     ret_val = opasDocPermissions.find_client_id(request, response)
     return ret_val
+
+#def get_user_ip(response: Response,
+                #request: Request
+                #):
+    #"""
+    #Dependency for client id: see find_client_id
+    #"""
+    #ret_val = opasDocPermissions.find_user_ip(request, response)
+    #if ret_val is not None:
+        #msg = f"forward-for from header: {ret_val} "
+        #logger.info(msg)
+        
+    #return ret_val
 
 def get_client_session(response: Response,
                        request: Request,
@@ -1606,7 +1619,8 @@ async def database_advanced_search(response: Response,
     # try the query
     ret_val, ret_status = search_text_qs(solr_query_spec,
                                          #authenticated=session_info.authenticated
-                                         session_info=session_info
+                                         session_info=session_info,
+                                         request=request
                                          )
 
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
@@ -1993,7 +2007,8 @@ async def database_search_paragraphs(response: Response,
                                          offset=offset,
                                          req_url=request.url._url, 
                                          #authenticated=session_info.authenticated
-                                         session_info=session_info
+                                         session_info=session_info,
+                                         request=request
                                          )
 
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
@@ -2204,7 +2219,8 @@ async def database_search_v2b( response: Response,
                                          extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                          limit=limit,
                                          offset=offset,
-                                         session_info=session_info
+                                         session_info=session_info,
+                                         request=request
                                          )
 
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
@@ -2397,7 +2413,8 @@ async def database_search_v2(response: Response,
                                          extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                          limit=limit,
                                          offset=offset,
-                                         session_info=session_info
+                                         session_info=session_info, 
+                                         request=request
                                          )
 
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
@@ -4349,7 +4366,8 @@ def documents_document_fetch(response: Response,
                                                                 page=page, # specific page number request (rather than offset),
                                                                 req_url=request.url._url, 
                                                                 session_info=session_info,
-                                                                option_flags=specialoptions
+                                                                option_flags=specialoptions,
+                                                                request=request
                                                                 )
 
             try:
