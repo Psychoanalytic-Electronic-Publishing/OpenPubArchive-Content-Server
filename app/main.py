@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1215.1.Alpha"
+__version__     = "2020.1216.1.Alpha"
 __status__      = "Development"
 
 """
@@ -2837,6 +2837,78 @@ async def database_smartsearch(response: Response,
                                        facetfields=facetfields,
                                        facetmincount=1,
                                        facetlimit=15,
+                                       facetoffset=0,
+                                       abstract=abstract,
+                                       sort=sort,
+                                       formatrequested=formatrequested, 
+                                       limit=limit,
+                                       offset=offset,
+                                       client_id=client_id,
+                                       client_session=client_session
+                                       )
+    return ret_val
+
+#---------------------------------------------------------------------------------------------------------
+@app.get("/v2/Database/MoreLikeThis/", response_model_exclude_unset=True, tags=["Database", "In Development"]) 
+async def database_morelikethis(response: Response, 
+                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                                morelikethis: str=Query(None, title=opasConfig.TITLE_MORELIKETHIS, description=opasConfig.DESCRIPTION_MORELIKETHIS),
+                                sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                                abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
+                                similarcount: int=Query(5, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                                formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                                limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                                client_id:int=Depends(get_client_id), 
+                                client_session:str= Depends(get_client_session)
+                               ):
+    """
+    ## Function
+
+    Convenience function for sending a single article ID and returning similarcount entries.  
+
+    ## Return Type
+       models.DocumentList
+
+    ## Status
+       Status: Working, but in perpetual development to improve
+
+    ## Sample Call
+
+    ## Notes
+
+    ## Potential Errors
+
+    """
+    opasDocPermissions.verify_header(request, "MoreLikeThis") # for debugging client call
+    log_endpoint(request, client_id=client_id, session_id=client_session)
+
+    ret_val = await database_search_v2(response,
+                                       request,
+                                       fulltext1=None,
+                                       paratext=None, 
+                                       parascope=None,
+                                       smarttext=morelikethis, 
+                                       synonyms=False,
+                                       similarcount=similarcount, 
+                                       sourcecode=None,
+                                       sourcename=None, 
+                                       sourcetype=None, 
+                                       sourcelangcode=None, 
+                                       volume=None,
+                                       issue=None, 
+                                       author=None,
+                                       title=None,
+                                       articletype=None, 
+                                       startyear=None,
+                                       endyear=None, 
+                                       citecount=None,   
+                                       viewcount=None,   
+                                       viewperiod=None,
+                                       highlightlimit=0,
+                                       facetfields=None,
+                                       facetmincount=1,
+                                       facetlimit=0,
                                        facetoffset=0,
                                        abstract=abstract,
                                        sort=sort,
