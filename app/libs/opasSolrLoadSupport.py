@@ -261,7 +261,7 @@ class ArticleInfo(object):
     
             if vol_actual is not None:
                 self.art_vol_str = vol_actual
-        
+                  
         try: #  lookup source in db
             if self.src_code in ["ZBK", "IPL", "NLP"]:
                 self.src_prodkey = pepsrccode = f"{self.src_code}%03d" % self.art_vol_int
@@ -293,7 +293,7 @@ class ArticleInfo(object):
         self.art_issue_title = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artissinfo/isstitle/node()', default_return=None)
         # special sequential numbering for issues used by journals like fa (we code it simply as artnbr in xml)
         self.art_issue_seqnbr = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artnbr/node()', default_return=None)
-
+        
         self.art_year_str = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artyear/node()', default_return=None)
         m = re.match("(?P<yearint>[0-9]{4,4})(?P<yearsuffix>[a-zA-Z])?(\s*\-\s*)?((?P<year2int>[0-9]{4,4})(?P<year2suffix>[a-zA-Z])?)?", self.art_year_str)
         if m is not None:
@@ -351,6 +351,8 @@ class ArticleInfo(object):
             self.art_figcount = 0
 
         self.art_graphic_list = pepxml.xpath('//graphic//@source')
+        #if self.art_graphic_list != []:
+            #print (f"Graphics found: {self.art_graphic_list}")
         
         try:
             self.art_tblcount = int(pepxml.xpath("count(//tbl)")) # 20200922
@@ -402,6 +404,7 @@ class ArticleInfo(object):
         self.art_auth_citation = self.authors_bibliographic
         # ToDo: I think I should add an author ID to bib aut too.  But that will have
         #  to wait until later.
+        # TODO: fix PEP2XML--in cases like AJRPP.004.0273A it put Anonymous in the authindexid.
         self.art_author_id_list = opasxmllib.xml_xpath_return_textlist(pepxml, '//artinfo/artauth/aut[@listed="true"]/@authindexid')
         self.art_authors_count = len(self.author_list)
         if self.art_author_id_list == []: # no authindexid
@@ -417,6 +420,8 @@ class ArticleInfo(object):
         self.art_all_authors = self.art_auth_mast + " (" + self.art_auth_mast_unlisted_str + ")"
         self.art_kwds = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/artkwds/node()", None)
 
+        self.issue_id_str = f"<issue_id><src>{self.src_code}</src><yr>{self.art_year}</yr><vol>{self.art_vol_str}</vol><iss>{self.art_issue}</iss></issue_id>"
+        
         # Usually we put the abbreviated title here, but that won't always work here.
         self.art_citeas_xml = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="sourcetitle">%s</span> <span class="pgrg">%s</span>:<span class="pgrg">%s</span></p>""" \
             %                   (self.authors_bibliographic,

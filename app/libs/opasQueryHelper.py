@@ -7,7 +7,6 @@ opasQueryHelper
 
 This library is meant to hold parsing and other functions which support query translation to Solr
 
-2020.1004.1 - Moved the query routines themselves (search_text, search_text_qs) here from opasAPISupportLib
 2020.0530.1 - Doc Test updates
 2020.0416.1 - Sort fixes, new viewcount options
 2019.1205.1 - First version
@@ -48,6 +47,7 @@ import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
 import opasDocPermissions as opasDocPerm
 
+count_anchors = 0
 
 import smartsearch
 
@@ -60,51 +60,119 @@ cores  = {
     "authors": solr_authors,
 }
 
-def not_empty(arg):
-    if arg is not None and arg != "":
-        return True
-    else:
-        return False
+#-----------------------------------------------------------------------------
+def get_base_article_info_by_id(art_id):
+    from opasPySolrLib import search_text
+    
+    documentList, ret_status = search_text(query=f"art_id:{art_id}", 
+                                           limit=1,
+                                           abstract_requested=False,
+                                           full_text_requested=False
+                                           )
 
+    try:
+        ret_val = documentListItem = documentList.documentList.responseSet[0]
+    except Exception as e:
+        logger.warning(f"Error getting article {art_id} by id: {e}")
+        ret_val = None
+        
+    return ret_val
+
+#-----------------------------------------------------------------------------
 def is_empty(arg):
     if arg is None or arg == "":
         return True
     else:
         return False
 
+#-----------------------------------------------------------------------------
+def get_field_data_len(arg):
+    syn = r"(?P<field>[^\:]*?)\:(?P<rest>.*)"
+    m = re.match(syn, arg, flags=re.IGNORECASE)
+    if m:
+        mgr = m.group("rest")
+        ret_val = len(mgr)
+    else:
+        mgr = ""
+        ret_val = len(arg)
+        
+    #print (f"Field Len: {ret_val} / {mgr} / {arg}")
+    return ret_val
+
+#-----------------------------------------------------------------------------
+def check_search_args(**kwargs):
+    ret_val = {}
+    errors = False
+    for kw in kwargs:
+        #print(kw, ":", kwargs[kw])
+        arg = kwargs[kw]
+        if arg is not None and "text" in kw:
+            # check query and remove proximity if boolean
+            try:
+                if are_brackets_balanced(arg):
+                    ret_val[kw] = remove_proximity_around_booleans(arg)
+                    #print (f"After remove_proximity: {ret_val[kw]}")
+                else:
+                    #print (f"After remove_proximity: {ret_val[kw]}")
+                    ret_val[kw] = 422
+                    errors = True
+            except Exception as e:
+                logger.error(f"fulltext cleanup error {e}")
+                print (f"Cleanup error: {e}")
+                errors = True
+        else: # for now, just return.  Later more checks
+            ret_val[kw] = arg
+            
+    return errors, ret_val        
+
+def cleanup_spaces_within_parens(arg):
+    ret_val = arg
+    try:
+        # clean up spaces after open paren and before close
+        ret_val = re.sub("\(\s+", "(", ret_val)
+        ret_val = re.sub("\s+\)", ")", ret_val)
+    except Exception as e:
+        logger.error(f"Data conversion error: {e}")
+
+    return ret_val    
+#-----------------------------------------------------------------------------
 def cleanup_solr_query(solrquery):
     """
-    Clean up whitespace and extra symbols that happen when building up query or solr query filter
+    Clean up full solr query, which may have multiple clauses connected via booleans
 
+    Clean up whitespace and extra symbols that happen when building up query or solr query filter
+ 
+    >>> cleanup_solr_query('body_xml:"Evenly Suspended Attention"~25 && body_xml:tuckett')   
+    'body_xml:"Evenly Suspended Attention"~25 && body_xml:tuckett'
+    
+    >>> cleanup_solr_query('body_xml:"Even and Attention"~25 && body_xml:tuckett')   
+    'body_xml:(Even && Attention) && body_xml:tuckett'
+    
     """
     ret_val = solrquery.strip()
     ret_val = ' '.join(ret_val.split()) #solrquery = re.sub("\s+", " ", solrquery)
-    ret_val = re.sub("\(\s+", "(", ret_val)
-    ret_val = re.sub("\s+\)", ")", ret_val)
+    
+    # clean up spaces after open paren and before close
+    ret_val = cleanup_spaces_within_parens(ret_val)
     
     if ret_val is not None:
         # no need to start with '*:* && '.  Remove it.
-        ret_val = ret_val.replace("*:* && ", "")
-        ret_val = ret_val.replace("*:* {", "{")  # if it's before a solr join for level 2 queries
+        ret_val = ret_val.replace("*:* && ", "") # Typical instance, remove it
+        ret_val = ret_val.replace("*:* {", "{")  # Remove if it's before a solr join for level 2 queries
         ret_val = pat_prefix_amps.sub("", ret_val)
 
     ret_val = re.sub("\s+(AND)\s+", " && ", ret_val, flags=re.IGNORECASE)
     ret_val = re.sub("\s+(OR)\s+", " || ", ret_val, flags=re.IGNORECASE)
+    ret_val = re.sub("\s+(NOT)\s+", " NOT ", ret_val, flags=re.IGNORECASE)
+    ret_val = remove_proximity_around_booleans(ret_val)
+
+    # one last cleaning, watch for && *:*
+    ret_val = ret_val.replace(" && *:*", "")
+    
     
     return ret_val
 
-def wrap_clauses(solrquery):
-    # split by OR clauses
-    ret_val = solrquery.strip()
-    ret_val = ret_val.split(" || ")
-    ret_val = ["(" + x + ")" for x in ret_val]
-    ret_val = " || ".join(ret_val)
-
-    ret_val = ret_val.split(" && ")
-    ret_val = ["(" + x + ")" for x in ret_val]
-    ret_val = " && ".join(ret_val)
-    return ret_val    
-
+#-----------------------------------------------------------------------------
 def strip_outer_matching_chars(s, outer_char):
     """
     If a string has the same characters wrapped around it, remove them.
@@ -182,36 +250,47 @@ def comma_sep_list_to_simple_bool(termlist_str, boolpred="||"):
     ret_val = f" {boolpred} ".join(term_list)
     return ret_val
 #-----------------------------------------------------------------------------
-def termlist_to_doubleamp_query(termlist_str, field=None):
-    """
-    Take a comma separated term list and change to a
-    (double ampersand) type query term (e.g., for solr)
+#def termlist_to_doubleamp_query(termlist_str, field=None):
+    #"""
+    #Take a comma separated term list and change to a
+    #(double ampersand) type query term (e.g., for solr)
     
-    >>> a = "tuckett, dav"
-    >>> termlist_to_doubleamp_query(a)
-    'tuckett && dav'
-    >>> termlist_to_doubleamp_query(a, field="art_authors_ngrm")
-    'art_authors_ngrm:tuckett && art_authors_ngrm:dav'
+    #>>> a = "tuckett, dav"
+    #>>> termlist_to_doubleamp_query(a)
+    #'tuckett && dav'
+    #>>> termlist_to_doubleamp_query(a, field="art_authors_ngrm")
+    #'art_authors_ngrm:tuckett && art_authors_ngrm:dav'
 
-    """
-    # in case it's in quotes in the string
-    termlist_str = termlist_str.replace('"', '')
-    # split it
-    name_list = re.split("\W+", termlist_str)
-    # if a field or function is supplied, use it
-    if field is not None:
-        name_list = [f"art_authors_ngrm:{x}"
-                     for x in name_list if len(x) > 0]
-    else:
-        name_list = [f"{x}" for x in name_list]
+    #"""
+    ## in case it's in quotes in the string
+    #termlist_str = termlist_str.replace('"', '')
+    ## split it
+    #name_list = re.split("\W+", termlist_str)
+    ## if a field or function is supplied, use it
+    #if field is not None:
+        #name_list = [f"art_authors_ngrm:{x}"
+                     #for x in name_list if len(x) > 0]
+    #else:
+        #name_list = [f"{x}" for x in name_list]
         
-    ret_val = " && ".join(name_list)
-    return ret_val
+    #ret_val = " && ".join(name_list)
+    #return ret_val
 
 def parse_to_query_term_list(str_query):
     """
     Take a string and parse the field names and field data clauses to q list of
       SolrQueryTerms
+      
+      NOTE: this is only used by testSearchSyntax to produce term_lists!
+      
+    >>> str = "dreams_xml:mother and father and authors:David Tuckett and Nadine Levinson"
+    >>> parse_to_query_term_list(str)
+    [SolrQueryTerm(connector=' && ', subClause=[], field='dreams_xml', words='mother && father', parent=None, synonyms=False, synonyms_suffix='_syn'), SolrQueryTerm(connector='AND', subClause=[], field='authors', words='David Tuckett && Nadine Levinson', parent=None, synonyms=False, synonyms_suffix='_syn')]
+
+    >>> str = "dreams_xml:(mother and father)"
+    >>> parse_to_query_term_list(str)
+    [SolrQueryTerm(connector=' && ', subClause=[], field='dreams_xml', words='(mother && father)', parent=None, synonyms=False, synonyms_suffix='_syn')]
+    
       
     """
     field_splitter = "([a-z\_]+\:)"
@@ -259,6 +338,25 @@ class QueryTextToSolr():
     >>> qs.boolConnectorsToSymbols("a and band")
     'a && band'
     
+    >>> qs.markup("dog -mouse", field_label="text_xml")
+    'text_xml:(dog -mouse)'
+    
+    >>> qs.markup("[* TO 2010]", field_label="year")
+    'year:[* TO 2010]'
+    
+    >>> qs.markup("year:[* TO 2010]")
+    'year:[* TO 2010]'
+
+    >>> qs.markup("[2010]", field_label="year")
+    'year:[2010]'
+    
+    >>> qs.markup("dog and cat or mouse", field_label="text_xml")
+    'text_xml:(dog && cat || mouse)'
+    
+    >>> qs.markup("'dog and cat or mouse'", field_label="text_xml")
+    "text_xml:'dog and cat or mouse'"
+    
+    
     """
     def __init__(self):
         regex_token_quoted =  "[\^]?[\'\"][^\'\"]+[\'\"]"
@@ -273,24 +371,64 @@ class QueryTextToSolr():
         self.token_word = re.compile(regex_token_word, re.IGNORECASE)
         self.token_implied_and = re.compile("(^&&)+\s", re.IGNORECASE) 
 
+    #-----------------------------------------------------------------------------
+    def wrap_clauses(self, solrquery):
+        # split by OR clauses
+        ret_val = solrquery
+        if isinstance(solrquery, str):
+            try:
+                ret_val = ret_val.strip()
+                if "||" in solrquery:
+                    ret_val = ret_val.split(" || ")
+                    ret_val = ["(" + x + ")" for x in ret_val]
+                    ret_val = " || ".join(ret_val)
+                
+                if "&&" in solrquery:
+                    ret_val = ret_val.split(" && ")
+                    ret_val = ["(" + x + ")" for x in ret_val]
+                    ret_val = " && ".join(ret_val)
+    
+            except Exception as e:
+                logger.error(f"Processing error: {e}")
+        return ret_val    
+
     def boolConnectorsToSymbols(self, str_input):
         ret_val = str_input
-        if not_empty(ret_val):
-            ret_val = self.token_or.sub(" || ", ret_val)
-            ret_val = self.token_and.sub(" && ", ret_val)
-            ret_val = self.token_not.sub(" NOT ", ret_val) # upper case a must
+        if isinstance(str_input, str):
+            if opasgenlib.not_empty(ret_val) and not opasgenlib.in_quotes(ret_val):
+                ret_val = self.token_or.sub(" || ", ret_val)
+                ret_val = self.token_and.sub(" && ", ret_val)
+                ret_val = self.token_not.sub(" NOT ", ret_val) # upper case a must
         
         return ret_val
         
-    def markup(self, str_input, field_label, field_thesaurus=None, quoted=False):
+    def markup(self, str_input, field_label=None, field_thesaurus=None, quoted=False):
+        
+        bordered = opasgenlib.in_parens(str_input) or opasgenlib.in_quotes(str_input) or opasgenlib.one_term(str_input) or opasgenlib.in_brackets(str_input)
 
         if quoted == False:
-            wrapped_str_input = wrap_clauses(str_input)
-            ret_val = self.boolConnectorsToSymbols(f"{field_label}:({wrapped_str_input})")
+            str_input_mod = self.boolConnectorsToSymbols(str_input)
+            # str_input_mod = self.wrap_clauses(str_input_mod)
+            if field_label is not None:
+                if not bordered: 
+                    ret_val = f"{field_label}:({str_input_mod})"
+                else:
+                    ret_val = f"{field_label}:{str_input_mod}"
+            else:
+                ret_val = f"{str_input_mod}"
         else:
-            ret_val = self.boolConnectorsToSymbols(f'{field_label}:("{str_input}")')
-        
+            if field_label is not None:
+                if not bordered:
+                    ret_val = self.boolConnectorsToSymbols(f'{field_label}:"({str_input})"')
+                else:
+                    ret_val = self.boolConnectorsToSymbols(f'{field_label}:"{str_input}"')
+            else:
+                ret_val = self.boolConnectorsToSymbols(f'"{str_input}"')
+
+        # watch for - inside parens
+        ret_val = re.sub(r"\(\-([A-Z]+)", "-(\g<1>", ret_val)
         ret_val = re.sub("([A-Z]\.)([A-Z])", "\g<1> \g<2>", ret_val)
+
         # ret_val = self.handle_solr_not(ret_val)
 
         return ret_val
@@ -336,11 +474,15 @@ def year_parser_support(year_arg):
                 # greater
                 if start is None and end is not None:
                     start = end # they put > in start rather than end.
+                else:
+                    start = int(start) + 1
+
                 search_clause = f" art_year_int:[{start} TO *] "
             elif option == "<":
                 # less than
                 if end is None and start is not None:
                     end = start  
+                    end = int(end) - 1
                 search_clause = f" art_year_int:[* TO {end}] "
 
             ret_val = search_clause
@@ -371,21 +513,21 @@ def year_arg_parser(year_arg):
         1970
 
     >>> year_arg_parser("=1955")
-    '&& art_year_int:=1955 '
+    '&& ( art_year_int:=1955 )'
     >>> year_arg_parser("1970")
-    '&& art_year_int:1970 '
+    '&& ( art_year_int:1970 )'
     >>> year_arg_parser("-1990")
-    '&& art_year_int:[* TO 1990] '
+    '&& ( art_year_int:[* TO 1990] )'
     >>> year_arg_parser("1980-")
-    '&& art_year_int:[1980 TO *] '
+    '&& ( art_year_int:[1980 TO *] )'
     >>> year_arg_parser("1980-1980")
-    '&& art_year_int:[1980 TO 1980] '
+    '&& ( art_year_int:[1980 TO 1980] )'
     >>> year_arg_parser(">1977")
-    '&& art_year_int:[1977 TO *] '
+    '&& ( art_year_int:[1978 TO *] )'
     >>> year_arg_parser("<1990")
-    '&& art_year_int:[* TO 1990] '
+    '&& ( art_year_int:[* TO 1989] )'
     >>> year_arg_parser("1980-1990")
-    '&& art_year_int:[1980 TO 1990] '
+    '&& ( art_year_int:[1980 TO 1990] )'
     """
     ret_val = None
     #  see if it's bool claused
@@ -438,10 +580,10 @@ def get_term_list_spec(termlist):
             if q_term.synonyms:
                 use_field = use_field + q_term.synonyms_suffix
             
-            if use_field is not None and not_empty(q_term.words):
+            if use_field is not None and opasgenlib.not_empty(q_term.words):
                 sub_clause = f"{use_field}:({q_term.words})"
             else:
-                if not_empty(q_term.words):
+                if opasgenlib.not_empty(q_term.words):
                     sub_clause = f"({q_term.words})"
                 else:
                     sub_clause = ""
@@ -452,42 +594,122 @@ def get_term_list_spec(termlist):
 
     return ret_val        
 
-def dequote(fulltext1):
-    """
-    >>> test1='body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)'
-    >>> fulltext1 = 'text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:("basic || principles"~25)'
-    >>> dequote(test1)
-    """
-    quote_wrapper = '\s*(.*\:)?\(\"(.*)\"(~[1-9][0-9]*)\)|\s*(\&\&)?\s*(.*\:)?\((.*)\)'
+#def dequote(fulltext1):
+    #"""
+    #>>> test1='body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)'
+    #>>> dequote(test1)
+    #' && body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)'
     
-    clauses = fulltext1.split(" && ")
-    items = []
-    for clause in clauses:
-        print (f"Clause:{clause}")
-        m = re.findall(quote_wrapper, clause, flags=re.I)
-        for n in m:
-            items.append([x for x in n if len(x) > 0 and x != "&&"])
-        print (items)
+    #>>> test2 = 'text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:("basic || principles"~25)'
+    #>>> dequote(test2)
+    #' && text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:(basic || principles)'
     
-    new_search = ""
-    for item in items:
-        m = re.search("\&\&|\|\||\sAND\s|\sOR\s", item[1], flags=re.I)
-        if m is not None:
-            new_search += f' && {item[0]}({item[1]})'
-        else:
-            try:
-                new_search += f' && {item[0]}("{item[1]}"{item[2]})'
-            except:
-                print (item[1])
-                if item[1] != "go go go" and item[1] != '"go go go"':
-                    new_search += f' && {item[0]}({item[1]})'
-                
+    #>>> test3 = 'text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:("basic OR principles"~25)'
+    #>>> dequote(test3)
+    #' && text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:(basic || principles)'
+    
+    #"""
+    #quote_wrapper = '\s*(.*\:)?\(\"(.*)\"(~[1-9][0-9]*)\)|\s*(\&\&)?\s*(.*\:)?\((.*)\)'
+    
+    #clauses = fulltext1.split(" && ")
+    #items = []
+    #for clause in clauses:
+        ## print (f"Clause:{clause}")
+        #m = re.findall(quote_wrapper, clause, flags=re.I)
+        #for n in m:
+            #items.append([x for x in n if len(x) > 0 and x != "&&"])
+        ## print (items)
+    
+    #new_search = ""
+    #for item in items:
+        #m = re.search("\&\&|\|\||\sAND\s|\sOR\s", item[1], flags=re.I)
+        #if m is not None:
+            #new_search += f' && {item[0]}({item[1]})'
+        #else:
+            #try:
+                #new_search += f' && {item[0]}("{item[1]}"{item[2]})'
+            #except Exception as e:
+                #logger.warning (f"Dequote Exception {e}")               
 
-    print (f"New Search: {new_search[4:]}")
-    return new_search       
+    ## print (f"New Search: {new_search[4:]}")
+    #return new_search       
+
+def remove_proximity_around_booleans(query_str):
+    """
+    Clients like PEP-Web (Gavant) send fulltext1 as a proximity string.
+    This removes the proximity if there's a boolean inside.
+    We could have the client "not do that", but it's actually easier to
+    remove than to parse and add.
+    
+    >>> a = '(article_xml:"dog AND cat"~25 AND body:"quick fox"~25) OR title:fox'
+    >>> remove_proximity_around_booleans(a)
+    '(article_xml:(dog AND cat) AND body:"quick fox"~25) OR title:fox'
+
+    >>> a = 'body_xml:"Even and Attention"~25 && body_xml:tuckett'
+    >>> remove_proximity_around_booleans(a)
+    'body_xml:(Even and Attention) && body_xml:tuckett'
+    
+    """
+    srch_ptn = r'\"([A-z\s0-9\!\@\*\~\-\&\|\[\]]+)\"~25'
+    changes = False
+    while 1:
+        m = re.search(srch_ptn, query_str)
+        if m is not None:
+            # does it have a boolean, a quote, or a bracket (range)?
+            n = re.search(r"\s(AND|OR|NOT|\&\&|\|\|)\s|([\"\[\']])", m.group(1), flags=re.IGNORECASE)
+            # if it's not None, then this is not a proximity match
+            if n is not None:
+                query_str = re.subn(srch_ptn, r'(\1)', query_str, 1)[0]
+            else: # change it so it doesn't match next loop iter
+                query_str = re.subn(srch_ptn, r'"\1"~26', query_str, 1)[0]
+                changes = True
+        else:
+            if changes:
+                # change proximity ranges back
+                query_str = re.sub("~26", "~25", query_str)
+            break
+        
+    return query_str
+
+def are_brackets_balanced(expr):
+    """
+    Checks to see if there are parens or brackets that are unbalanced
+    
+    """
+    stack = [] 
+
+    # Traversing the Expression 
+    for char in expr: 
+        if char in ["(", "{", "["]: 
+            # Push the element in the stack 
+            stack.append(char) 
+        elif char in [")", "}", "]"]: 
+            # IF current character is not opening 
+            # bracket, then it must be closing. 
+            # So stack cannot be empty at this point. 
+            if not stack: 
+                return False
+            current_char = stack.pop() 
+            if current_char == '(': 
+                if char != ")": 
+                    return False
+            if current_char == '{': 
+                if char != "}": 
+                    return False
+            if current_char == '[': 
+                if char != "]": 
+                    return False
+
+    # Check Empty Stack 
+    if stack: 
+        return False
+    return True
+
 
 #---------------------------------------------------------------------------------------------------------
-# this function lets various endpoints like search, searchanalysis, and document, share this large parameter set.
+# function parse_search_query_parameters lets various endpoints like search, searchanalysis, and document, 
+#   share this large parameter set.
+# 
 # IMPORTANT: Parameter names here must match the endpoint parameters since they are mapped in main using
 # 
 #            argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
@@ -527,7 +749,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   startyear=None,          # can contain complete range syntax
                                   endyear=None,            # year only.
                                   citecount: str=None,     # can include both the count and the count period, e.g., 25 in 10 or 25 in ALL
-                                  viewcount=None,          # minimum view count
+                                  viewcount: str=None,     # can include both the count and the count period, e.g., 25 in last12months or 25 in ALL
                                   viewperiod=None,         # period to evaluate view count 0-4
                                   facetfields=None,        # facetfields to return
                                   # sort field and direction
@@ -587,7 +809,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     >>> search = parse_search_query_parameters(journal="IJP", vol=57, author="Tuckett")
     >>> search.solrQuery.analyzeThis
-    'art_authors_text:(Tuckett)'
+    '(art_authors_text:(Tuckett) || art_authors_citation:(Tuckett))'
     
     """
     artLevel = 1 # Doc query, sets to 2 if clauses indicate child query
@@ -688,7 +910,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         solr_query_spec.solrQueryOpts.hlFragsize = extra_context_len
            
     # v1 translation:
-    if not_empty(journal):
+    if opasgenlib.not_empty(journal):
         source_code = journal
 
     if similar_count > 0:
@@ -754,7 +976,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_result_explanation = search_dict[KEY_SEARCH_SMARTSEARCH]
         if schema_field is not None:
             schema_value = search_dict.get("schema_value")
-            if not_empty(schema_value):
+            if opasgenlib.not_empty(schema_value):
                 if "'" in schema_value or '"' in schema_value:
                     search_q += f"&& {schema_field}:{schema_value} "
                 else:
@@ -770,13 +992,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
                         limit = 1
             else:
                 doi = search_dict.get("doi")
-                if not_empty(doi):
+                if opasgenlib.not_empty(doi):
                     filter_q += f"&& art_doi:({doi}) "
                     limit = 1
                     
         if limit == 0: # not found special token
             art_id = search_dict.get("art_id")
-            if not_empty(art_id):
+            if opasgenlib.not_empty(art_id):
                 limit = 1
                 filter_q += f"&& art_id:({art_id}) "
             else:
@@ -786,7 +1008,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                         vol = art_vol.lstrip("0")
         
                 art_pgrg = search_dict.get("pgrg")
-                if not_empty(art_pgrg):
+                if opasgenlib.not_empty(art_pgrg):
                     # art_pgrg1 = art_pgrg.split("-")
                     if "-" in art_pgrg:
                         filter_q += f"&& art_pgrg:({art_pgrg}) "
@@ -815,28 +1037,41 @@ def parse_search_query_parameters(search=None,             # url based parameter
                         
                 word_search = search_dict.get("wordsearch")
                 if word_search is not None:
-                    if 0:
+                    if 0: # to turn on paragraph level 2 searches, but the simulation using proximity
+                          # 25 words is what GVPi did and that matches better.
                         if para_textsearch is None:
                             para_textsearch = word_search
                     else:
-                        m = re.match('([\"\'])(?P<q1>.*)([\"\'])', word_search)
-                        if m:
-                            q1 = m.group("q1")
+                        art_level = 1
+                        # if it already has a field name, it won't be a word search. so add body_xml as default
+                        field_name = "body_xml"
+                        if synonyms:
+                            field_name += "_syn"
+                        if 1:
+                            search_q += f'&& {field_name}:({word_search}) '
                         else:
-                            q1 = word_search
-                            
-                        if not_empty(q1):
-                            # unquoted string
-                            m = re.search('\|{2,2}|\&{2,2}|\sand\s|\sor\s', q1, flags=re.IGNORECASE)
-                            if m: # boolean, pass through
-                                search_q += f"&& {q1} "
+                            # is it in quotes?
+                            m = re.match('([\"\'])(?P<q1>.*)([\"\'])', word_search)
+                            if m:
+                                q1 = m.group("q1")
                             else:
-                                # terms
-                                field_name = "body_xml"
-                                if synonyms:
-                                    field_name += "_syn"
-                                search_q += f'&& {field_name}:"{q1}"~25 '
-                                art_level = 1
+                                q1 = word_search
+                                
+                            if opasgenlib.not_empty(q1):
+                                # unquoted string
+                                m = re.search('\|{2,2}|\&{2,2}|\sand\s|\sor\s', q1, flags=re.IGNORECASE)
+                                if m: # boolean, pass through
+    
+                                    search_q += f"&& {q1} "
+                                else:
+                                    # if it already has a field name, it won't be a word search. so add body_xml as default
+                                    field_name = "body_xml"
+                                    if synonyms:
+                                        field_name += "_syn"
+                                    if re.search("\"|\'", word_search):
+                                        search_q += f'&& {field_name}:({word_search}) '
+                                    else:
+                                        search_q += f'&& {field_name}:"{word_search}"~25 '
                                        
 
     if art_level is not None:
@@ -914,7 +1149,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 if query.synonyms:
                     use_field = use_field + query.synonyms_suffix
                 
-                if not_empty(query.words):
+                if opasgenlib.not_empty(query.words):
                     if use_field is not None:
                         sub_clause = f"{use_field}:({query.words})"
                     else:
@@ -925,7 +1160,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                     sub_clause = ""
     
                 if query_sub_clause != "":
-                    query_sub_clause += boolean_connector
+                    query_sub_clause += " " + boolean_connector
                     
                 if artLevel == 2 and solr_parent is not None:
                     query_sub_clause += f" (parent_tag:{solr_parent} AND {sub_clause}) "
@@ -998,14 +1233,14 @@ def parse_search_query_parameters(search=None,             # url based parameter
             search_analysis_term_list.append(analyze_this)  
             query_term_list.append(title)
 
-    if not_empty(source_name):
+    if opasgenlib.not_empty(source_name):
         # accepts a journal, book or video series name and optional wildcard.  No booleans.
         analyze_this = f"&& art_sourcetitlefull:({source_name}) "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
         query_term_list.append(f"art_sourcetitlefull:({source_name})")       
 
-    if not_empty(source_type):  # source_type = book, journal, video ... (maybe more later)
+    if opasgenlib.not_empty(source_type):  # source_type = book, journal, video ... (maybe more later)
         # accepts a source type or boolean combination of source types.
         source_type = qparse.markup(source_type, "art_sourcetype") # convert AND/OR/NOT, set up field
         analyze_this = f"&& {source_type} "
@@ -1013,7 +1248,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)  
         query_term_list.append(source_type)       
 
-    if not_empty(source_lang_code):  # source_language code, e.g., "EN" (added 2020-03, was omitted)
+    if opasgenlib.not_empty(source_lang_code):  # source_language code, e.g., "EN" (added 2020-03, was omitted)
         # accepts a source language code list (e.g., EN, DE, ...).  If a list of codes with boolean connectors, changes to simple OR list
         source_lang_code = source_lang_code.lower()
         if "," in source_lang_code:
@@ -1024,7 +1259,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
         
-    if not_empty(source_code):
+    if opasgenlib.not_empty(source_code):
         # accepts a journal or book code (no wildcards) or a list of journal or book codes (no wildcards)
         # ALSO can accept a single source name or partial name with an optional wildcard.  But
         #   that's really what argument source_name is for, so this is just extra and may be later removed.
@@ -1063,26 +1298,26 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # or it could be an abbreviation #TODO
         # or it counld be a complete name #TODO
 
-    if not_empty(cited_art_id):
+    if opasgenlib.not_empty(cited_art_id):
         cited_art_id = cited_art_id.upper()
         cited = qparse.markup(cited_art_id, "bib_rx") # convert AND/OR/NOT, set up field query
         analyze_this = f"&& {cited} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
     
-    if not_empty(vol):
+    if opasgenlib.not_empty(vol):
         vol = qparse.markup(vol, "art_vol") # convert AND/OR/NOT, set up field query
         analyze_this = f"&& {vol} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
-    if not_empty(issue):
+    if opasgenlib.not_empty(issue):
         issue = qparse.markup(issue, "art_iss") # convert AND/OR/NOT, set up field query
         analyze_this = f"&& {issue} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
-    if not_empty(author):
+    if opasgenlib.not_empty(author):
         author = author
         # if there's or and or not in lowercase, need to uppercase them
         # author = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", author)])
@@ -1096,7 +1331,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)  
         query_term_list.append(author)       
 
-    if not_empty(articletype):
+    if opasgenlib.not_empty(articletype):
         # articletype = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", articletype)])
         articletype = qparse.markup(articletype, "art_type") # convert AND/OR/NOT, set up field query
         analyze_this = f"&& {articletype} "   # search analysis
@@ -1104,7 +1339,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)
         query_term_list.append(articletype)       
         
-    if not_empty(datetype):
+    if opasgenlib.not_empty(datetype):
         #TODO for now, lets see if we need this. (We might not)
         pass
 
@@ -1136,24 +1371,36 @@ def parse_search_query_parameters(search=None,             # url based parameter
             filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)
 
-    if citecount is not None and citecount is not 0:
-        # This is the only citation query handled by GVPi and the current API.  But
-        # the Solr database is set up so this could be easily extended to
-        # the 10, 20, and "all" periods.  Here we add syntax to the 
-        # citecount field, to allow the user to say:
-        #  25 in 10 
-        # which means 25 citations in 10 years
+    if citecount is not None and citecount is not "0": #PEPSchemaSpecific
+        # The PEP Solr database is set up so citation count fields map to 
+        # 10, 20, and "all" year periods.
+        # The citecount parameter can specify an integer count and a period:
+        #  25 in 10                            (Solr/PEP schema mapping: art_cited_10:25)
+        # or a range and a period:
+        #  10 to 20 in 10                      (Solr/PEP schema mapping: art_cited_10:[10 TO 20])
         # or 
-        #  400 in ALL
-        # which means 400 in all years. 
-        # 'in' is required along with a space in front of it and after it
-        # when specifying the period.
-        # the default period is 5 years.
-        # citecount = citecount.strip()
+        #  10 to 20, 30 to 40 in 20            (Solr/PEP schema mapping: art_cited_20:([10 TO 20] OR [30 TO 40])
+        #    which means either between 10 and 20, or between 30 and 40, in the last 20 years with data.
+        #    'virtually' unlimited ranges can be specified.
+        # or equivalently 
+        #  10 to 20 OR 30 to 40 in 20            (Solr/PEP schema mapping: art_cited_20:([10 TO 20] OR [30 TO 40])
+        # or 
+        #  400 in ALL                          (Solr/PEP schema mapping: art_cited_all:25)
+        #    which means 400 in all years with data. 
+        # or
+        #  10 to 20, 30 to * in 20            (Solr/PEP schema mapping: art_cited_20:([10 TO 20] OR [30 TO 40])
+        #    which means 10 to 20 or 30 to the end of the range in 20 years
+        # or
+        #  * to 100 in 20            (Solr/PEP schema mapping: art_cited_20:([10 TO 20] OR [30 TO 40])
+        #    which means from the start of range to 100 in 20 years
+        # 
+        # 'IN' is required along with a space in front of it and after it when specifying the period.
+        # 
+        # The default period is 5 years.
+
         val = None
         cited_in_period = None
         val_end = "*"
-        
         match_ptn = "\s*(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?\s*"
         m = re.match(match_ptn, citecount, re.IGNORECASE)
         if m is not None:
@@ -1169,23 +1416,54 @@ def parse_search_query_parameters(search=None,             # url based parameter
         if cited_in_period is None:
             cited_in_period = '5'
 
-        analyze_this = f"&& art_cited_{cited_in_period.lower()}:[{val} TO {val_end}] "
+        range_list = opasgenlib.range_list(citecount)
+        if range_list != "":
+            analyze_this = f"&& art_cited_{cited_in_period.lower()}:({range_list})"
+        else:
+            analyze_this = f"&& art_cited_{cited_in_period.lower()}:[{val} TO {val_end}] "
+
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
         
     # if viewcount == 0, then it's not a criteria needed (same as None)
     # if user inputs text instead, also no criteria.
-    if viewperiod is not None and viewcount != 0:
-        try:
-            viewcount_int = int(viewcount)
-        except:
-            viewcount_int = 0
-
-        view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[viewperiod]
-        analyze_this = f"&& {view_count_field}:[{viewcount_int} TO *] "
-        filter_q += analyze_this
-        search_analysis_term_list.append(analyze_this)
-    
+    if viewperiod is not None and viewcount is not None:
+        val = None
+        viewed_in_period = None
+        val_end = "*"
+        match_ptn = "\s*((?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?\,?\s*)+(\s+IN\s+(?P<period>(lastweek|lastmonth|last6months|last12months|lastcalendaryear)))?\s*"
+        m = re.match(match_ptn, viewcount, re.IGNORECASE)
+        if m is not None:
+            val = m.group("nbr")
+            val_end = m.group("endnbr")
+            if val_end is None:
+                val_end = "*"
+            viewed_in_period = m.group("period")
+            
+            # 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months.
+            # VALS_VIEWPERIODDICT_SOLRFIELDS = {1: "art_views_lastweek", 2: "art_views_last1mos", 3: "art_views_last6mos", 4: "art_views_last12mos", 5: "art_views_lastcalyear", 0: "art_views_lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
+            if viewed_in_period == 'lastcalendaryear':
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[5]
+            elif viewed_in_period == 'lastweek':
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[1]
+            elif viewed_in_period == 'last12months':
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[4]
+            elif viewed_in_period == 'last6months':
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[3]
+            elif viewed_in_period == 'lastmonth':
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[2]
+            else:
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[viewperiod]
+                
+            range_list = opasgenlib.range_list(viewcount)
+            if range_list != "":
+                analyze_this = f"&& {view_count_field}:({range_list})"
+            else:
+                analyze_this = f"&& {view_count_field}:[{val} TO {val_end}] "
+                
+            filter_q += analyze_this
+            search_analysis_term_list.append(analyze_this)
+               
     # now clean up the final components.
     search_q = cleanup_solr_query(search_q)
     filter_q = cleanup_solr_query(filter_q)
@@ -1200,7 +1478,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list = [cleanup_solr_query(x) for x in search_analysis_term_list]  
 
     if search_q == "*:*" and filter_q == "*:*":
-        search_q = "art_level:1"
+        filter_q = "art_level:1"
 
     # Turn off highlighting if it's not needed, e.g, when there's no text search, e.g., a filter only, like mostcited and mostviewed calls
     # As of 2020-09-28, allow limit to be set here (via params)
@@ -1250,6 +1528,8 @@ def set_return_fields(solr_query_spec: models.SolrQuerySpec,
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
     elif solr_query_spec.returnFieldSet == "STAT":
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_STAT_FIELDS
+    elif solr_query_spec.returnFieldSet == "CONCORDANCE":
+        solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_CONCORDANCE_FIELDS
     else: #  true default!
         solr_query_spec.returnFieldSet = "DEFAULT"
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
@@ -1257,7 +1537,7 @@ def set_return_fields(solr_query_spec: models.SolrQuerySpec,
     if return_field_options is not None:
         solr_query_spec.return_field_options = return_field_options 
 
-    return    
+    return solr_query_spec   
     
 #================================================================================================================
 def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
@@ -1313,17 +1593,21 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     # Note that the larger fields, e.g., abstract, document, are added later based on other attributes
     # Need to check what fields they asked for, and make sure no document fields were specified!
     
-    set_return_fields(solr_query_spec, return_field_set=return_field_set)
+    solr_query_spec = set_return_fields(solr_query_spec, return_field_set=return_field_set)
     
     #Always add id and file_classification to return fields
     solr_query_spec.returnFields += ", id, file_classification" #  need to always return id
+
+    if full_text_requested is not None:
+        solr_query_spec.fullReturn = full_text_requested
+
+    if abstract_requested is not None:
+        solr_query_spec.abstractReturn = abstract_requested 
 
     # don't let them specify text fields to bring back full-text content in at least PEP schema fields in 
     #   docs or glossary.
     # however, we add it if they are authenticated, and then check by document.
     # Should we take away para?
-    solr_query_spec.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solr_query_spec.returnFields)
-
     #  try to reduce amount of data coming back based on needs...
     #  Set it to use the main structure returnFields; eventually delete the one in the query sub
     if solr_query_spec.abstractReturn:
@@ -1336,7 +1620,10 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     elif solr_query_spec.fullReturn: #and session_info.XXXauthenticated:
         # NOTE: we add this here, but in return data, access by document will be checked.
         if "text_xml" not in solr_query_spec.returnFields:
-            solr_query_spec.returnFields += ", text_xml, art_excerpt, art_excerpt_xml"
+            solr_query_spec.returnFields += ", text_xml, art_excerpt, art_excerpt_xml, para"
+    else: # remove fulltext fields
+        solr_query_spec.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solr_query_spec.returnFields)
+
 
     # parameters specified override QuerySpec
     
@@ -1351,12 +1638,6 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
 
     if req_url is not None:
         solr_query_spec.urlRequest = req_url
-
-    if full_text_requested is not None:
-        solr_query_spec.fullReturn = full_text_requested
-
-    if abstract_requested is not None:
-        solr_query_spec.abstractReturn = abstract_requested 
 
     if format_requested is not None:
         solr_query_spec.returnFormat = format_requested
@@ -1390,7 +1671,7 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
 
     # part of the query model
 
-    if not_empty(query):
+    if opasgenlib.not_empty(query):
         solr_query_spec.solrQuery.searchQ = query
         logger.debug(f"query: {query}. Request: {req_url}")
     else:
@@ -1401,7 +1682,7 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     if filter_query is not None:
         solr_query_spec.solrQuery.filterQ = filter_query
 
-    if not_empty(solr_query_spec.solrQuery.filterQ):
+    if opasgenlib.not_empty(solr_query_spec.solrQuery.filterQ):
         # for logging/debug
         solr_query_spec.solrQuery.filterQ = solr_query_spec.solrQuery.filterQ.replace("*:* && ", "")
         logger.debug("Solr FilterQ: %s", filter_query)
@@ -1409,10 +1690,13 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
         solr_query_spec.solrQuery.filterQ = "*:*"
         
     #  clean up spaces and cr's from in code readable formatting
-    if not_empty(solr_query_spec.returnFields):
+    if opasgenlib.not_empty(solr_query_spec.returnFields):
         solr_query_spec.returnFields = ", ".join(e.lstrip() for e in solr_query_spec.returnFields.split(","))
 
     if sort is not None:
+        if " asc" not in sort and " desc" not in sort:
+            sort = sort + " asc"
+            
         solr_query_spec.solrQuery.sort = sort
 
     #  part of the options model
@@ -1444,9 +1728,10 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
             solr_query_spec.solrQueryOpts.hlFragsize = max(solr_query_spec.solrQueryOpts.hlFragsize, opasConfig.DEFAULT_KWIC_CONTENT_LENGTH)
         except:
             solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
-            
-    if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is 0 or solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is None:
-        solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = solr_query_spec.solrQueryOpts.hlFragsize  
+
+    # taken care of later in search_text_qs        
+    #if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is 0 or solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars is None:
+        #solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = solr_query_spec.solrQueryOpts.hlFragsize  
         
     if highlightlimit is not None:
         solr_query_spec.solrQueryOpts.hlSnippets = highlightlimit # highlighting_max_snips 
@@ -1457,573 +1742,6 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
         logger.error("Parse to query spec should never return none.")
     
     return ret_val
-
-#================================================================================================================
-def search_text(query, 
-                filter_query = None,
-                query_debug = False,
-                similar_count = 0,
-                full_text_requested = False,
-                abstract_requested = False, 
-                format_requested = "HTML",
-                def_type = None, # edisMax, disMax, or None
-                # bring text_xml back in summary fields in case it's missing in highlights! I documented a case where this happens!
-                return_field_set=None, 
-                summary_fields=None, 
-                highlight_fields = 'text_xml',
-                facet_fields = None,
-                facet_mincount = 1, 
-                extra_context_len = None,
-                highlightlimit = opasConfig.DEFAULT_MAX_KWIC_RETURNS,
-                sort="score desc",
-                limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, 
-                offset = 0,
-                page_offset = None,
-                page_limit = None,
-                page = None,
-                req_url:str = None,
-                core = None,
-                #authenticated = None,
-                session_info = None, 
-                option_flags=0
-                ):
-    """
-    Full-text search, via the Solr server api.
-    
-    Mapped now (8/2020) to use search_text_qs which works with the query spec directly,
-      so this first calls and builds the querySpec, and then calls
-      search_text_qs.
-
-    Returns a pair of values: ret_val, ret_status.  The double return value is important in case the Solr server isn't running or it returns an HTTP error.  The 
-        ret_val = a DocumentList model object
-        ret_status = a status tuple, consisting of a HTTP status code and a status mesage. Default (HTTP_200_OK, "OK")
-
-    >>> resp, status = search_text(query="art_title_xml:'ego identity'", limit=10, offset=0, full_text_requested=False)
-    >>> resp.documentList.responseInfo.count >= 10
-    True
-    """
-
-    solr_query_spec = \
-            parse_to_query_spec(query = query,
-                                filter_query = filter_query,
-                                similar_count=similar_count, 
-                                full_text_requested=full_text_requested,
-                                abstract_requested=abstract_requested,
-                                format_requested=format_requested,
-                                def_type = def_type, # edisMax, disMax, or None
-                                return_field_set=return_field_set, 
-                                summary_fields = summary_fields,  # deprecate?
-                                highlight_fields = highlight_fields,
-                                facet_fields = facet_fields,
-                                facet_mincount=facet_mincount,
-                                extra_context_len=extra_context_len, 
-                                highlightlimit=highlightlimit,
-                                sort = sort,
-                                limit = limit,
-                                offset = offset,
-                                page_offset = page_offset,
-                                page_limit = page_limit,
-                                page = page,
-                                core=core, 
-                                req_url = req_url,
-                                option_flags=option_flags
-                                )
-
-    ret_val, ret_status = search_text_qs(solr_query_spec,
-                                         limit=limit,
-                                         offset=offset, 
-                                         req_url=req_url, 
-                                         #authenticated=authenticated,
-                                         session_info=session_info
-                                         )
-
-    return ret_val, ret_status
-
-#================================================================================================================
-def search_text_qs(solr_query_spec: models.SolrQuerySpec,
-                   extra_context_len=None,
-                   req_url: str=None,
-                   facet_limit=None,
-                   facet_offset=None, 
-                   limit=None,
-                   offset=None,
-                   mlt_count=None, # 0 turns off defaults for mlt, number overrides defaults, setting solr_query_spec is top priority
-                   sort=None, 
-                   session_info=None,
-                   solr_core="pepwebdocs"
-                   ):
-    """
-    Full-text search, via the Solr server api.
-
-    Returns a pair of values: ret_val, ret_status.  The double return value is important in case the Solr server isn't running or it returns an HTTP error.  The 
-       ret_val = a DocumentList model object
-       ret_status = a status tuple, consisting of a HTTP status code and a status mesage. Default (HTTP_200_OK, "OK")
-
-    """
-    ret_val = {}
-    ret_status = (200, "OK") # default is like HTTP_200_OK
-    global count_anchors
-    
-    if solr_query_spec.solrQueryOpts is None: # initialize a new model
-        solr_query_spec.solrQueryOpts = models.SolrQueryOpts()
-
-    if solr_query_spec.solrQuery is None: # initialize a new model
-        solr_query_spec.solrQuery = models.SolrQuery()
-
-    #if authenticated is None:
-        #authenticated = solr_query_spec.a
-
-    if extra_context_len is not None:
-        solr_query_spec.solrQueryOpts.hlFragsize = extra_context_len
-    elif solr_query_spec.solrQueryOpts.hlFragsize is None or solr_query_spec.solrQueryOpts.hlFragsize < opasConfig.DEFAULT_KWIC_CONTENT_LENGTH:
-        solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
-    #else: # for debug only
-        #print (f"Fragment Size: {solr_query_spec.solrQueryOpts.hlFragsize}")
-
-    if solr_query_spec.solrQueryOpts.moreLikeThisCount > 0: # this (arg based) is the priority value
-        mlt = "true"
-        mlt_count = solr_query_spec.solrQueryOpts.moreLikeThisCount
-        if solr_query_spec.solrQueryOpts.moreLikeThisFields is None:
-            mlt_fl = opasConfig.DEFAULT_MORE_LIKE_THIS_FIELDS # Later: solr_query_spec.solrQueryOpts.moreLikeThisFields
-        mlt_minwl = 4
-    elif mlt_count is not None and mlt_count > 0:
-        # mlt_count None means "don't care, use default", mlt_count > 0: override default
-        mlt = "true"
-        #  use default fields though
-        mlt_fl = opasConfig.DEFAULT_MORE_LIKE_THIS_FIELDS # Later: solr_query_spec.solrQueryOpts.moreLikeThisFields
-        mlt_minwl = 4
-    elif (opasConfig.DEFAULT_MORE_LIKE_THIS_COUNT > 0 and mlt_count is None): # if caller doesn't care (None) and default is on
-        # mlt_count None means "don't care, use default", mlt_count > 0: override default
-        mlt = "true"
-        if mlt_count is None: # otherwise it's more than 0 so overrides the default
-            mlt_count = opasConfig.DEFAULT_MORE_LIKE_THIS_COUNT
-        #  use default fields though
-        mlt_fl = opasConfig.DEFAULT_MORE_LIKE_THIS_FIELDS # Later: solr_query_spec.solrQueryOpts.moreLikeThisFields
-        mlt_minwl = 4
-    else: # otherwise no MLT, mlt_count may be intentionally set to 0, or default is off and caller didn't say
-        mlt_fl = None
-        mlt = "false"
-        mlt_minwl = None
-        mlt_count = 0
-
-    if solr_query_spec.facetFields is not None:
-        facet = "on"
-    else:
-        facet = "off"
-
-    try:
-        if solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars < 200: # let caller configure, but not 0!
-            solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = opasConfig.SOLR_HIGHLIGHT_RETURN_MIN_FRAGMENT_SIZE # opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE
-    except:
-        solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars = opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE
-    #else: OK, leave it be!
-
-    try: # must have value
-        if solr_query_spec.solrQueryOpts.hlFragsize < opasConfig.DEFAULT_KWIC_CONTENT_LENGTH:
-            solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
-    except:
-        solr_query_spec.solrQueryOpts.hlFragsize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH
-    else:
-        pass # else, it's ok
-
-    # let this be None, if no limit is set.
-    if limit is not None:
-        if limit < 0: # unlimited return, to bypass default
-            solr_query_spec.limit = opasConfig.MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE
-        else:
-            solr_query_spec.limit = limit
-
-    if offset is not None:
-        solr_query_spec.offset = offset
-
-    if sort is not None:
-        solr_query_spec.solrQuery.sort = sort
-
-    # q must be part of any query; this appears to be the cause of the many solr syntax errors seen. 
-    if solr_query_spec.solrQuery.searchQ is None or solr_query_spec.solrQuery.searchQ == "":
-        logger.error(f">>>>>> solr_query_spec.solrQuery.searchQ is {solr_query_spec.solrQuery.searchQ}.  Filter: {solr_query_spec.solrQuery.filterQ} The endpoint request was: {req_url}")
-        solr_query_spec.solrQuery.searchQ = "*.*"
-
-    solr_query_spec.solrQuery.searchQ = solr_query_spec.solrQuery.searchQ.replace(" && *:*", "")
-    solr_query_spec.solrQuery.filterQ = solr_query_spec.solrQuery.filterQ.replace(" && *:*", "")
-    try:
-        solr_param_dict = { 
-                            "q": solr_query_spec.solrQuery.searchQ,
-                            "fq": solr_query_spec.solrQuery.filterQ,
-                            "q_op": solr_query_spec.solrQueryOpts.qOper, 
-                            "debugQuery": solr_query_spec.solrQueryOpts.queryDebug or localsecrets.SOLR_DEBUG,
-                            # "defType" : solr_query_spec.solrQueryOpts.defType,
-                            "fl" : solr_query_spec.returnFields,         
-                            "hl" : solr_query_spec.solrQueryOpts.hl, 
-                            "hl_multiterm" : solr_query_spec.solrQueryOpts.hlMultiterm,
-                            "hl_fl" : solr_query_spec.solrQueryOpts.hlFields,
-                            "hl_usePhraseHighlighter" : solr_query_spec.solrQueryOpts.hlUsePhraseHighlighter, 
-                            "hl_snippets" : solr_query_spec.solrQueryOpts.hlMaxKWICReturns,
-                            "hl_fragsize" : solr_query_spec.solrQueryOpts.hlFragsize, 
-                            "hl_maxAnalyzedChars" : solr_query_spec.solrQueryOpts.hlMaxAnalyzedChars,
-                            "facet" : facet,
-                            "facet_field" : solr_query_spec.facetFields, #["art_lang", "art_authors"],
-                            "facet_mincount" : solr_query_spec.facetMinCount,
-                            #hl_method="unified",  # these don't work
-                            #hl_encoder="HTML",
-                            "mlt" : mlt,
-                            "mlt_fl" : mlt_fl,
-                            "mlt_count" : mlt_count,
-                            "mlt_minwl" : mlt_minwl,
-                            "mlt.interestingTerms" : "list",
-                            "rows" : solr_query_spec.limit,
-                            "start" : solr_query_spec.offset,
-                            "sort" : solr_query_spec.solrQuery.sort,
-                            "hl_simple_pre" : opasConfig.HITMARKERSTART,
-                            "hl_simple_post" : opasConfig.HITMARKEREND        
-        }
-    except Exception as e:
-        logger.error(f"Solr Param Assignment Error {e}")
-
-    # add additional facet parameters from faceSpec
-    for key, value in solr_query_spec.facetSpec.items():
-        if key[0:1] != "f":
-            continue
-        else:
-            solr_param_dict[key] = value
-    
-    # Solr sometimes returns an SAX Parse error because of Nones!
-    # just in case, get rid of all Nones
-    solr_param_dict = {k: v for k, v in solr_param_dict.items() if v is not None}
-
-    #allow core parameter here
-    if solr_core is None:
-        if solr_query_spec.core is not None:
-            try:
-                solr_core = EXTENDED_CORES.get(solr_query_spec.core, None)
-            except Exception as e:
-                detail=f"Bad Extended Request. Core Specification Error. {e}"
-                logger.error(detail)
-                ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
-            else:
-                if solr_core is None:
-                    detail=f"Bad Extended Request. Unknown core specified."
-                    logger.warning(detail)
-                    ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
-        else:
-            solr_query_spec.core = "pepwebdocs"
-            solr_core = solr_docs
-    else:
-        try:
-            solr_core = EXTENDED_CORES.get(solr_core, None)
-        except Exception as e:
-            detail=f"Bad Extended Request. Core Specification Error. {e}"
-            logger.error(detail)
-            ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
-        else:
-            if solr_core is None:
-                detail=f"Bad Extended Request. Unknown core specified."
-                logger.warning(detail)
-                ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
-
-    try:
-        results = solr_core.query(**solr_param_dict)
-
-    except solr.SolrException as e:
-        if e is None:
-            ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
-            ret_status = (e.httpcode, None) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
-            logger.error(f"Solr Runtime Search Error (a): {e.reason}")
-            logger.error(e.body)
-        elif e.reason is not None:
-            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
-            ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
-            logger.error(f"Solr Runtime Search Error (b): {e.reason}")
-            logger.error(e.body)
-        else:
-            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-            ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>,with useful elements of httpcode, reason, and body
-            logger.error(f"Solr Runtime Search Error (c): {e.httpcode}")
-            logger.error(e.body)
-        
-    except SAXParseException as e:
-        ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Search syntax error", error_description=f"{e.getMessage()}")
-        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-        logger.error(f"Solr Runtime Search Error (parse): {ret_val}. Params sent: {solr_param_dict}")
-                                
-    except AttributeError as e:
-        logger.error(f"Attribute Error: {e}")
-    except Exception as e:
-        ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-        logger.error(f"Solr Runtime Search Error (syntax): {e.httpcode}. Params sent: {solr_param_dict}")
-        logger.error(e.body)
-                                
-    else: #  search was ok
-        try:
-            logger.info(f"Search Ok. Result Size:{results._numFound}; Search:{solr_query_spec.solrQuery.searchQ}; Filter:{solr_query_spec.solrQuery.filterQ}")
-            scopeofquery = [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ]
-    
-            if ret_status[0] == 200: 
-                documentItemList = []
-                rowCount = 0
-                # rowOffset = 0
-                #if solr_query_spec.fullReturn:
-                    ## if we're not authenticated, then turn off the full-text request and behave as if we didn't try
-                    #if not authenticated: # and file_classification != opasConfig.DOCUMENT_ACCESS_FREE:
-                        ## can't bring back full-text
-                        #logger.warning("Fulltext requested--by API--but not authenticated.")
-                        #solr_query_spec.fullReturn = False
-                        
-                # try checking PaDS for authenticated; if false, no need to check permits
-                try:
-                    if session_info is not None:
-                        if session_info.authenticated == False:
-                            logger.debug("User is not authenticated.  Permit optimization enabled.")
-                        else:
-                            logger.debug("User is authenticated.  Permit optimization disabled.")
-                    else: # no session info provided.  Set it to defaults, non-authenticated
-                        logger.debug("No session info object provided.")
-                        
-                except Exception as e:
-                    #  no session info...what to do?
-                    logger.debug(f"No session info to perform optimizations {e}")
-                    
-                for result in results.results:
-                    # reset anchor counts for full-text markup re.sub
-                    count_anchors = 0
-                    record_count = len(results.results)
-                    # authorIDs = result.get("art_authors", None)
-                    documentListItem = models.DocumentListItem()
-                    documentListItem = get_base_article_info_from_search_result(result, documentListItem)
-                    documentID = documentListItem.documentID
-                    # sometimes, we don't need to check permissions
-                    # Always check if fullReturn is selected
-                    # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)
-                    if record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
-                        #print(f"Precheck: Session info archive access: {session_info.authorized_peparchive}")
-                        opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
-                                                            classification=documentListItem.accessClassification, 
-                                                            year=documentListItem.year,
-                                                            doi=documentListItem.doi, 
-                                                            session_info=session_info, 
-                                                            documentListItem=documentListItem,
-                                                            fulltext_request=solr_query_spec.fullReturn
-                                                           ) # will updated accessLimited fields in documentListItem
-                        #print(f"Postcheck: Session info archive access: {session_info.authorized_peparchive}")
-    
-                    documentListItem.score = result.get("score", None)               
-                    try:
-                        text_xml = results.highlighting[documentID].get("text_xml", None)
-                    except:
-                        text_xml = None
-    
-                    if text_xml is None: # try getting it from para
-                        try:
-                            text_xml = results.highlighting[documentID].get("para", None)
-                        except:
-                            try:
-                                text_xml = result["text_xml"]
-                            except:
-                                text_xml = result.get("para", None)
-    
-                    if text_xml is not None and type(text_xml) != list:
-                        text_xml = [text_xml]
-    
-                    # do this before we potentially clear text_xml if no full text requested below
-                    if solr_query_spec.abstractReturn:
-                        omit_abstract = False
-                        if opasConfig.ACCESS_ABSTRACT_RESTRICTION:
-                            if session_info is not None:
-                                if not session_info.authenticated:
-                                    # experimental - remove abstract if not authenticated, per DT's requirement
-                                    omit_abstract = True
-                            else: # no session info, omit abstract
-                                omit_abstract = True
-                        
-                        documentListItem = get_excerpt_from_search_result(result, documentListItem, solr_query_spec.returnFormat, omit_abstract=omit_abstract)
-    
-                    documentListItem.kwic = "" # need this, so it doesn't default to Nonw
-                    documentListItem.kwicList = []
-                    # no kwic list when full-text is requested.
-                    if text_xml is not None and not solr_query_spec.fullReturn and solr_query_spec.solrQueryOpts.hl == 'true':
-                        #kwicList = getKwicList(textXml, extraContextLen=extraContextLen)  # returning context matches as a list, making it easier for clients to work with
-                        kwic_list = []
-                        for n in text_xml:
-                            # strip all tags
-                            match = opasxmllib.xml_string_to_text(n)
-                            # change the tags the user told Solr to use to the final output tags they want
-                            #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
-                            match = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, match)
-                            match = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, match)
-                            kwic_list.append(match)
-    
-                        kwic = " . . . ".join(kwic_list)  # how its done at GVPi, for compatibility (as used by PEPEasy)
-                        # we don't need fulltext
-                        text_xml = None
-                        #print ("Document Length: {}; Matches to show: {}".format(len(textXml), len(kwicList)))
-                    else: # either fulltext requested, or no document, we don't need kwic
-                        kwic_list = []
-                        kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
-    
-                    if kwic != "": documentListItem.kwic = kwic
-                    if kwic_list != []: documentListItem.kwicList = kwic_list
-    
-                    # see if this article is an offsite article
-                    offsite = result.get("art_offsite", False)
-                    # ########################################################################
-                    # This is the room where where full-text return HAPPENS
-                    # ########################################################################
-                    if solr_query_spec.fullReturn and not documentListItem.accessLimited and not offsite:
-                        documentListItem = get_fulltext_from_search_results(result=result,
-                                                                            text_xml=text_xml,
-                                                                            format_requested=solr_query_spec.returnFormat,
-                                                                            return_options=solr_query_spec.returnOptions, 
-                                                                            page=solr_query_spec.page,
-                                                                            page_offset=solr_query_spec.page_offset,
-                                                                            page_limit=solr_query_spec.page_limit,
-                                                                            documentListItem=documentListItem)
-
-                        #  test remove glossary..for my tests, not for stage/production code.
-                        # Note: the question mark before the first field in search= matters
-                        #  e.g., http://development.org:9100/v2/Documents/Document/JCP.001.0246A/?return_format=XML&search=%27?fulltext1="Evenly%20Suspended%20Attention"~25&limit=10&facetmincount=1&facetlimit=15&sort=score%20desc%27
-                        # documentListItem.document = opasxmllib.xml_remove_tags_from_xmlstr(documentListItem.document,['impx']) 
-                        try:
-                            matches = re.findall(f"class='searchhit'|{opasConfig.HITMARKERSTART}", documentListItem.document)
-                            documentListItem.term = f"SearchHits({solr_query_spec.solrQuery.searchQ})"
-                            documentListItem.termCount = len(matches)
-                        except Exception as e:
-                            logger.warning(f"Exception.  Could not count matches. {e}")
-                        
-                    else: # by virtue of not calling that...
-                        # no full-text if accessLimited or offsite article
-                        # free up some memory, since it may be large
-                        result["text_xml"] = None                   
-    
-                    stat = {}
-                    count_all = result.get("art_cited_all", None)
-                    if count_all is not None:
-                        stat["art_cited_5"] = result.get("art_cited_5", None)
-                        stat["art_cited_10"] = result.get("art_cited_10", None)
-                        stat["art_cited_20"] = result.get("art_cited_20", None)
-                        stat["art_cited_all"] = count_all
-    
-                    count0 = result.get("art_views_lastcalyear", 0)
-                    count1 = result.get("art_views_lastweek", 0)
-                    count2 = result.get("art_views_last1mos", 0)
-                    count3 = result.get("art_views_last6mos", 0)
-                    count4 = result.get("art_views_last12mos", 0)
-    
-                    if count0 + count1 + count2 + count3+ count4 > 0:
-                        stat["art_views_lastcalyear"] = count0
-                        stat["art_views_lastweek"] = count1
-                        stat["art_views_last1mos"] = count2
-                        stat["art_views_last6mos"] = count3
-                        stat["art_views_last12mos"] = count4
-    
-                    if stat == {}:
-                        stat = None
-    
-                    documentListItem.stat = stat
-    
-                    similarityMatch = None
-                    if mlt_count > 0:
-                        if results.moreLikeThis[documentID] is not None:
-                            similarityMatch = {}
-                            # remove text
-                            similarityMatch["similarDocs"] = {}
-                            similarityMatch["similarDocs"][documentID] = []
-                            for n in results.moreLikeThis[documentID]:
-                                likeThisListItem = models.DocumentListItem()
-                                #n["text_xml"] = None
-                                n = get_base_article_info_from_search_result(n, likeThisListItem)                    
-                                similarityMatch["similarDocs"][documentID].append(n)
-    
-                            similarityMatch["similarMaxScore"] = results.moreLikeThis[documentID].maxScore
-                            similarityMatch["similarNumFound"] = results.moreLikeThis[documentID].numFound
-                            # documentListItem.moreLikeThis = results.moreLikeThis[documentID]
-    
-                    if similarityMatch is not None: documentListItem.similarityMatch = similarityMatch
-                    
-                    #parent_tag = result.get("parent_tag", None)
-                    #if parent_tag is not None:
-                        #documentListItem.docChild = {}
-                        #documentListItem.docChild["id"] = result.get("id", None)
-                        #documentListItem.docChild["parent_tag"] = parent_tag
-                        #documentListItem.docChild["para"] = result.get("para", None)
-                        #documentListItem.docChild["lang"] = result.get("lang", None)
-                        #documentListItem.docChild["para_art_id"] = result.get("para_art_id", None)
-                    #else:
-                        #documentListItem.docChild = None
-    
-                    sort_field = None
-                    if solr_query_spec.solrQuery.sort is not None:
-                        try:
-                            sortby = re.search("(?P<field>[a-z_]+[1-9][0-9]?)[ ]*?", solr_query_spec.solrQuery.sort)
-                        except Exception as e:
-                            sort_field = None
-                        else:
-                            if sortby is not None:
-                                sort_field = sortby.group("field")
-    
-                    documentListItem.score = result.get("score", None)
-                    documentListItem.rank = rowCount + 1
-                    if sort_field is not None:
-                        if sort_field == "art_cited_all":
-                            documentListItem.rank = result.get("art_cited_all", None) 
-                        elif sort_field == "score":
-                            documentListItem.rank = result.get("score", None)
-                        else:
-                            documentListItem.rank = result.get(sort_field, None)
-                            
-                            
-                    rowCount += 1
-                    # add it to the set!
-                    documentItemList.append(documentListItem)
-                    #TODO - we probably don't need this.
-                    if solr_query_spec.limit is not None:
-                        if rowCount > solr_query_spec.limit:
-                            break
-    
-                try:
-                    facet_counts = results.facet_counts
-                except:
-                    facet_counts = None
-    
-            if req_url is None:
-                req_url = solr_query_spec.urlRequest
-    
-            # Moved this down here, so we can fill in the Limit, Page and Offset fields based on whether there
-            #  was a full-text request with a page offset and limit
-            # Solr search was ok
-            responseInfo = models.ResponseInfo(count = len(results.results),
-                                               fullCount = results._numFound,
-                                               totalMatchCount = results._numFound,
-                                               description=solr_query_spec.solrQuery.semanticDescription, 
-                                               limit = solr_query_spec.limit,
-                                               offset = solr_query_spec.offset,
-                                               page = solr_query_spec.page, 
-                                               listType="documentlist",
-                                               scopeQuery=[scopeofquery], 
-                                               fullCountComplete = solr_query_spec.limit >= results._numFound,
-                                               solrParams = results._params,
-                                               facetCounts=facet_counts,
-                                               #authenticated=authenticated, 
-                                               request=f"{req_url}",
-                                               core=solr_query_spec.core, 
-                                               timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                               )
-   
-            # responseInfo.count = len(documentItemList)
-    
-            documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
-                                                            responseSet = documentItemList
-                                                            )
-    
-            documentList = models.DocumentList(documentList = documentListStruct)
-    
-            ret_val = documentList
-            
-        except Exception as e:
-            logger.error(f"Problem with query results processing {e}")
-            
-
-    return ret_val, ret_status
 
 #-----------------------------------------------------------------------------
 def get_parent_data(child_para_id, documentListItem=None):
@@ -2179,6 +1897,8 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             documentListItem.docChild["parent_tag"] = parent_tag
             documentListItem.docChild["para"] = result.get("para", None)
             documentListItem.docChild["lang"] = result.get("lang", None)
+            if isinstance(documentListItem.docChild["lang"], list):
+                documentListItem.docChild["lang"] = documentListItem.docChild["lang"][0]
             documentListItem.docChild["para_art_id"] = result.get("para_art_id", None)
         
         para_art_id = result.get("para_art_id", None)
@@ -2186,7 +1906,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             # this is part of a document, we should retrieve the parent info
             top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
             if top_level_doc is not None:
-                merge_documentListItems(documentListItem, top_level_doc)
+                documentListItem = merge_documentListItems(documentListItem, top_level_doc)
 
         # don't set the value, if it's None, so it's not included at all in the pydantic return
         # temp workaround for art_lang change
@@ -2272,7 +1992,10 @@ def get_fulltext_from_search_results(result,
         child_xml = documentListItem.docChild["para"]
     else:
         child_xml = None
-        
+    
+    if text_xml is None and child_xml is not None:
+        text_xml = child_xml
+
     if format_requested_ci == "html":
         # Convert to HTML
         heading = opasxmllib.get_running_head( source_title=documentListItem.sourceTitle,
@@ -2288,10 +2011,18 @@ def get_fulltext_from_search_results(result,
             logger.error(f"Could not convert to HTML {e}; returning native format")
             text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
         else:
-            text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-            text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
-            if child_xml is not None:
-                child_xml = opasxmllib.xml_str_to_html(child_xml)
+            try:
+                global count_anchors
+                count_anchors = 0
+                # print (f"Hitmarkers: {opasConfig.HITMARKERSTART}, {opasConfig.HITMARKEREND}, Count_Anchors: {count_anchors}")
+                text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
+            except Exception as e:
+                logger.error(f"Could not do substitution {e}")
+
+        if child_xml is not None:
+            child_xml = opasxmllib.xml_str_to_html(child_xml)
+                
     elif format_requested_ci == "textonly":
         # strip tags
         text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
@@ -2304,45 +2035,12 @@ def get_fulltext_from_search_results(result,
         # child_xml = child_xml
 
     documentListItem.document = text_xml
+                
     if child_xml is not None:
         # return child para in requested format
         documentListItem.docChild['para'] = child_xml
 
     return documentListItem
-
-#-----------------------------------------------------------------------------
-def get_base_article_info_by_id(art_id):
-    
-    documentList, ret_status = search_text(query=f"art_id:{art_id}", 
-                                               limit=1,
-                                               abstract_requested=False,
-                                               full_text_requested=False
-                                               )
-
-    try:
-        ret_val = documentListItem = documentList.documentList.responseSet[0]
-    except Exception as e:
-        logger.warning(f"Error getting article {art_id} by id: {e}")
-        ret_val = None
-        
-    return ret_val
-
-#-----------------------------------------------------------------------------
-def get_translated_article_info_by_origrx_id(art_id):
-    
-    documentList, ret_status = search_text(query=f"art_origrx:{art_id}", 
-                                               limit=10,
-                                               abstract_requested=False,
-                                               full_text_requested=False
-                                               )
-
-    try:
-        ret_val = documentListItem = documentList.documentList.responseSet[0]
-    except Exception as e:
-        logger.warning(f"Error getting article {art_id} by id: {e}")
-        ret_val = None
-        
-    return ret_val
 
 #-----------------------------------------------------------------------------
 def merge_documentListItems(old, new):     
@@ -2370,8 +2068,13 @@ def merge_documentListItems(old, new):
     if old.documentRefHTML is None: old.documentRefHTML = new.documentRefHTML  
     if old.updated is None: old.updated = new.updated 
     if old.accessClassification is None: old.accessClassification = new.accessClassification 
+    if old.accessLimited is None: old.accessLimited = new.accessLimited
+    if old.accessLimitedCurrentContent is None: old.accessLimitedCurrentContent = new.accessLimitedCurrentContent
+    if old.accessLimitedDescription is None: old.accessLimitedDescription = new.accessLimitedDescription 
+    if old.accessLimitedPubLink is None: old.accessLimitedPubLink = new.accessLimitedPubLink 
+    if old.accessLimitedReason is None: old.accessLimitedReason = new.accessLimitedReason
 
-    return old.accessClassification
+    return old
 
 #-----------------------------------------------------------------------------
 def quick_docmeta_docsearch(q_str,
@@ -2489,6 +2192,14 @@ if __name__ == "__main__":
     import sys
     print ("Running in Python %s" % sys.version_info[0])
 
+    ret = check_search_args(
+        smarttext="abcdefg",
+        fulltext1='body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)',
+        paratext="hij", author="klm", title="nop", startyear="1922", endyear="2020"
+    )
+    
+    print (ret)
+    
     import doctest
     doctest.testmod()
     print ("Fini. OpasQueryHelper Tests complete.")

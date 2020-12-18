@@ -18,7 +18,7 @@ class TestGetDocumentsTrySession(unittest.TestCase):
         # user will not be authenticated. Only abstract returned.
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/IJP.077.0217A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()

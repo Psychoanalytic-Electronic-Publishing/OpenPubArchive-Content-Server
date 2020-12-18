@@ -8,6 +8,19 @@ import requests
 from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestSearch(unittest.TestCase):
+    def test_search_fulltext1(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1="military"')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"]
+        kwiclist = r["documentList"]["responseSet"][0]["kwicList"]
+        assert(len(kwiclist) > 0)
+        assert(response_info["count"] >= 1)
+        print (response_set[0])
+
     def test_search_long_para(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=OPUS&paratext=physics%20science%20observations&abstract=True')
         response = requests.get(full_URL, headers=headers)

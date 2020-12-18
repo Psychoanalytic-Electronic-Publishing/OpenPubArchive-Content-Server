@@ -181,7 +181,7 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         assert (result['author_list'] == 'Rapaport, D. and Gill, M. M.')
         assert (result['yr'] == '1959')
 
-        assert (result[KEY_SEARCH_SMARTSEARCH] == 'SmartSearch recognized authors and years. Matched articles:')
+        assert (result[KEY_SEARCH_SMARTSEARCH][0:26] == 'Matched authors and years:')
         
     def test_2b_title_search(self):
         """
@@ -198,7 +198,7 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         """
         result =  smartsearch.smart_search("Psychoanalysis Treatment of headaches.")
         print (result)
-        assert ('result[KEY_SEARCH_SMARTSEARCH] == SmartSearch searched terms. Matched articles for (Psychoanalysis Treatment of headaches.):')
+        assert (result[KEY_SEARCH_SMARTSEARCH] == 'Matched paragraphs with terms: (Psychoanalysis Treatment of headaches.)')
 
     def test_3_references(self):
         """
@@ -206,11 +206,11 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         """
         result = smartsearch.smart_search("Goldberg, E.L. Myers, W.A. Zeifman, I. (1974). Some Observations on Three Interracial Analyses. Int. J. Psycho-Anal., 55:495-500.")
         print (result)
-        assert (result[KEY_SEARCH_SMARTSEARCH] == 'SmartSearch recognized a citation vol and pg. Matched articles:')
+        assert (result[KEY_SEARCH_SMARTSEARCH][:24] == 'Matched citation vol/pg:')
         
         result = smartsearch.smart_search("Rapaport, D. and Gill, M. M. ( 1959). The Points of View and Assumptions of Metapsychology. Int. J. Psycho-Anal. 40:153-162")
         print (result)
-        assert (result[KEY_SEARCH_SMARTSEARCH] == 'SmartSearch recognized a citation vol and pg. Matched articles:')
+        assert (result[KEY_SEARCH_SMARTSEARCH][:24] == 'Matched citation vol/pg:')
         
 if __name__ == '__main__':
     unittest.main()

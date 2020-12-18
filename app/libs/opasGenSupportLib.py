@@ -28,13 +28,8 @@ import localsecrets
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.02.29"
+__version__     = "2020.11.26"
 __status__      = "Development"
-
-# Python program to convert Roman Numerals 
-# to Numbers 
-  
-# This function returns value of each Roman symbol 
 
 class DocumentID(object):
     def __init__(self, document_id):
@@ -67,22 +62,6 @@ class FileInfo(object):
         self.timestamp_obj = datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
         self.fileSize = os.path.getsize(filename)
         self.buildDate = time.time()
-
-#def get_mod_date(file_path):
-    #"""
-    #Get the date that a file was last modified
-    #"""
-    #retVal = None
-    #try:
-        #retVal = os.path.getmtime(file_path)
-    #except IOError:
-        ## try where the script is running from instead.
-        #logger.info("%s not found.", file_path)
-    #except Exception as e:
-        #logger.fatal("%s.", e)
-
-    #return retVal
-  
 
 def year_grabber(year_str: str):
     """
@@ -269,6 +248,193 @@ def string_to_list(strlist: str, sep=","):
 
     return ret_val
 
+def not_empty(arg):
+    if arg is not None and arg != "":
+        return True
+    else:
+        return False
+
+def in_quotes(arg):
+    """
+    If string is quoted (must be at start and at end), return true
+    
+    >>> in_quotes('"animal or vegetable"')
+    True
+    >>> in_quotes('animal or vegetable')
+    False
+    >>> in_quotes("'animal or vegetable'")
+    True
+    
+    """
+    try:
+        if isinstance(arg, str):
+            if re.match(r"([\"\']).*?\1", arg):
+                return True
+            else:
+                return False
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"Exception {e}")
+        return False
+
+def in_brackets(arg):
+    """
+    If string is in brackets (must be at start and at end), return true
+    
+    >>> in_brackets('[("animal or vegetable")]')
+    True
+    >>> in_brackets('[(animal or vegetable)]')
+    True
+    >>> in_brackets("[('animal or vegetable')]")
+    True
+    >>> in_brackets("animal or vegetable")
+    False
+    >>> in_brackets("animal [(or)] vegetable")
+    False
+    >>> in_brackets("[animal (or)] vegetable")
+    False
+    
+    """
+    try:
+        if isinstance(arg, str):
+            if re.match(r"\[.*\]", arg):
+                return True
+            else:
+                return False
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"Exception {e}")
+        return False
+    
+def in_parens(arg):
+    """
+    If string is quoted (must be at start and at end), return true
+    
+    >>> in_parens('("animal or vegetable")')
+    True
+    >>> in_parens('(animal or vegetable)')
+    True
+    >>> in_parens("('animal or vegetable')")
+    True
+    >>> in_parens("animal or vegetable")
+    False
+    >>> in_parens("animal (or) vegetable")
+    False
+    
+    """
+    try:
+        if isinstance(arg, str):
+            if re.match(r"\(.*\)", arg):
+                return True
+            else:
+                return False
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"Exception {e}")
+        return False
+
+def one_term(arg):
+    """
+    >>> one_term("dog cat")
+    False
+    
+    >>> one_term("dog")
+    True
+    
+    >>> one_term("dog123rdd39--==")
+    True
+    """
+    ret_val = True
+    try:
+        if " " not in arg:
+            ret_val = True
+        else:
+            ret_val = False
+    except Exception as e:
+        logger.warning(f"Error checking one term {e}. Perhaps data type issue.")
+        
+    return ret_val
+
+def is_boolean(arg):
+    """
+    >>> is_boolean("a and b")
+    True
+    
+    >>> is_boolean("a or b")
+    True
+
+    >>> is_boolean("a || b && cc")
+    True
+
+    >>> is_boolean("aor b")
+    False
+    
+    """
+    try:
+        if isinstance(arg, str):
+            if re.search(r"\s(AND|OR|\&\&|\|\)\s)", arg, flags=re.IGNORECASE):
+                return True
+            else:
+                return False
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"Exception {e}")
+        return False
+
+def range_list(arg):
+    """
+    Take a list of Solr like ranges, and return a boolean list of them
+    The list can be embedded with almost any separator, e.g.:
+        10 TO 20, 30 TO 40
+        or
+        10 to 20 OR 30 to 40
+    
+    >>> range_list("10 TO 20, 20 TO 30, 50 to 60" )
+    '[10 TO 20] OR [20 TO 30] OR [50 TO 60]'
+
+    >>> range_list("10 TO 20 OR 20 TO 30 or 50 to 60" )
+    '[10 TO 20] OR [20 TO 30] OR [50 TO 60]'
+
+    >>> range_list("10 TO 20" )
+    '[10 TO 20]'
+    
+    >>> range_list("100 TO *" )
+    '[100 TO *]'
+    
+    >>> range_list("* TO 100" )
+    '[* TO 100]'
+    
+    >>> range_list("10 TO 20 OR 20 TO 30 or 50 to *" )
+    '[10 TO 20] OR [20 TO 30] OR [50 TO *]'
+
+    >>> range_list("10")
+    ''
+
+    """
+    ret_val = ""
+    mp2 = "(([0-9]+|\*) TO ([0-9]+|\*))"    
+    ranges = re.findall(mp2, arg, flags=re.I)
+    if len(ranges) > 0:
+        range_list = ""
+        for n in ranges:
+            if range_list != "":
+                range_list += " OR "
+            range_list += f"[{n[0].upper()}]"
+        ret_val = range_list
+        ret_val = ret_val.strip(" ")
+
+    return ret_val
+
+#-----------------------------------------------------------------------------
+def is_empty(arg):
+    if arg is None or arg == "":
+        return True
+    else:
+        return False
 
     
 # -------------------------------------------------------------------------------------------------------

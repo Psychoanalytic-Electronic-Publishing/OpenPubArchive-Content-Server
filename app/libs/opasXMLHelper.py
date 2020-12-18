@@ -76,6 +76,7 @@ import copy
 import urllib
 import urllib.request
 os.environ['XML_CATALOG_FILES'] = urllib.request.pathname2url(r"X:\_PEPA1\catalog.xml")
+import datetime
 
 import lxml
 from lxml import etree
@@ -89,6 +90,21 @@ from io import StringIO, BytesIO
 
 show_dbg_messages = False
 stop_on_exceptions = False
+
+#-----------------------------------------------------------------------------
+def convert_xml_to_html_file(xmltext_str, output_filename=None):
+    if output_filename is None:
+        basename = "opasDoc"
+        suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+        filename_base = "_".join([basename, suffix]) # e.g. 'mylogfile_120508_171442'        
+        output_filename = filename_base + ".html"
+
+    htmlString = xml_str_to_html(xmltext_str)
+    fo = open(output_filename, "w", encoding="utf-8")
+    fo.write(str(htmlString))
+    fo.close()
+
+    return output_filename
 
 #-----------------------------------------------------------------------------
 # at least for testing
@@ -446,12 +462,22 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
                 author_given_names = author_first_name
                 author_given_inits = author_first_initial + "."
     
-            if author_given_names != "":
-                author_name = author_last_name + ", " + author_given_names
-                author_name_inits = author_last_name + ", " + author_given_inits
+            if author_last_name != "":
+                if author_given_names != "":
+                    author_name = author_last_name + ", " + author_given_names
+                    author_name_inits = author_last_name + ", " + author_given_inits
+                else:
+                    author_name = author_last_name
+                    author_name_inits = ""
             else:
-                author_name = author_last_name
-                author_name_inits = ""
+                if author_given_names != "":
+                    author_name = author_given_names
+                    author_given_inits = author_first_initial + "."
+                    author_name_inits = author_given_inits
+                else:
+                    author_name = ""
+                    author_name_inits = ""
+                
     
             author_list.append(author_name)
             if authors_bib_style == "":

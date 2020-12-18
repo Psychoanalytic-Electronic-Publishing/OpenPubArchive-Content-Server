@@ -5,6 +5,9 @@ import tempfile
 import os
 import urllib.request
 from enum import Enum, EnumMeta, IntEnum
+
+# count_anchors = 0 # define here so it can be used globally across modules
+
 # Share httpCodes definition with all OPAS modules that need it.  Starlette provides the symbolic declarations for us.
 import starlette.status as httpCodes # HTTP_ codes, e.g.
                                      # HTTP_200_OK, \
@@ -64,7 +67,7 @@ API_URL_DOCUMENTURL = "/v2/Documents/"
 
 #logger = logging.getLogger(programNameShort)
 
-IMAGES = "images"
+IMAGES = "v2/Documents/Image" # from endpoint; was just images, e.g., "http://pep-web.rocks/images/bannerADPSALogo.gif
 HITMARKERSTART = "#@@@"  # using non html/xml default markers, so we can strip all tags but leave the hitmarkers!
 HITMARKEREND = "@@@#"
 HITMARKERSTART_OUTPUTHTML = "<span class='searchhit'>"  # to convert the non-markup HIT markers to HTML, supply values here.  These match the current PEPEasy stylesheet.
@@ -85,6 +88,7 @@ OPASACCESSTOKEN = "opasSessionInfo"
 OPASEXPIRES= "OpasExpiresTime"
 CLIENTID = "client-id" # also header param or qparam
 CLIENTSESSIONID = "client-session" # also header param or qparam
+X_FORWARDED_FOR = "X-Forwarded-For"
 
 AUTH_DOCUMENT_VIEW_REQUEST = "DocumentView"
 AUTH_ABSTRACT_VIEW_REQUEST = "AbstractView"
@@ -102,7 +106,7 @@ MAX_EXCERPT_PARAS = 10
 MAX_PARAS_FOR_SUMMARY = 10
 MAX_DOCUMENT_RECORDS_RETURNED_AT_ONCE = 500 # needs to be practical too, for time out
 
-DEFAULT_KWIC_CONTENT_LENGTH = 200  # On each side of match (so use 1/2 of the total you want)
+DEFAULT_KWIC_CONTENT_LENGTH = 50  # On each side of match (so use 1/2 of the total you want)
 DEFAULT_MAX_KWIC_RETURNS = 5
 DEFAULT_LIMIT_FOR_SOLR_RETURNS = 15
 DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS = 1
@@ -117,7 +121,11 @@ DEFAULT_CITED_MORE_THAN = 0
 DEFAULT_PAGE_LIMIT = 999
 DEFAULT_PUBLICATION_PERIOD = "ALL"
 
-SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 2520000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
+DB_ITEM_OF_INTEREST_WIDTH = 255 # database col for logging query/item of interest
+
+SOLR_KWIC_MAX_ANALYZED_CHARS = 25200000 # kwic (and highlighting) wont show any hits past this.
+SOLR_FULL_TEXT_MAX_ANALYZED_CHARS = 25200000 # full-text markup won't show matches beyond this.
+SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 25200000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
 SOLR_HIGHLIGHT_RETURN_MIN_FRAGMENT_SIZE = 2000 # Abstract size
 
 #Standard Values for parameters
@@ -213,6 +221,7 @@ DESCRIPTION_ISSUE = "The issue number if the source has one"
 DESCRIPTION_LIMIT = "Maximum number of items to return."
 DESCRIPTION_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 DESCRIPTION_MOREINFO = "Return statistics on the Archive holdings"
+DESCRIPTION_MORELIKETHIS = "Find similar documents"
 DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (years: {list_values(VALS_YEAROPTIONS)})"
 DESCRIPTION_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (periods: {list_values(VALS_VIEWPERIODDICT_SOLRFIELDS)})"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)."
@@ -250,7 +259,8 @@ DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field b
 DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification"
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
 DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
-DESCRIPTION_VIEWCOUNT = "Include documents viewed this many times or more within the view period. Does not include abstract views."    
+DESCRIPTION_VIEWCOUNT = "Include documents (not abstracts) viewed this many or more times (or X TO Y times). Optionally specify viewperiod, IN (lastweek|lastmonth|last6months|last12months|lastcalendaryear), or in parameter viewperiod"  
+DESCRIPTION_VIEWCOUNT_INT = "Include documents (not abstracts) viewed this many or more times. Must be an integer."  
 DESCRIPTION_VIEWPERIOD = "One of a few preset time frames for which to evaluate viewcount; 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months."
 DESCRIPTION_VOLUMENUMBER = "The volume number if the source has one"
 DESCRIPTION_WORD = "A word prefix to return a limited word index (word-wheel)."
@@ -283,6 +293,7 @@ TITLE_ISSUE = "Issue Number"
 TITLE_LIMIT = "Document return limit"
 TITLE_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 TITLE_MOREINFO = "Return extended information"
+TITLE_MORELIKETHIS = "Enter an article ID to Find similar documents"
 TITLE_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (years: {list_values(VALS_YEAROPTIONS)})"
 TITLE_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (periods: {list_values(VALS_VIEWPERIODDICT_SOLRFIELDS)})"
 TITLE_OFFSET = "Document return offset"
@@ -387,7 +398,7 @@ ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you
 ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access"
 
 # control whether abstracts can be viewed by non-logged-in users
-ACCESS_ABSTRACT_RESTRICTION = True
+ACCESS_ABSTRACT_RESTRICTION = False
 ACCESS_ABSTRACT_RESTRICTED_MESSAGE = "You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
 
 # temp directory used for generated downloads
@@ -463,6 +474,42 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_views_last12mos, 
  art_views_lastweek, 
  reference_count, 
+ file_last_modified, 
+ timestamp, 
+ score
+"""
+
+DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
+ art_id, 
+ art_title, 
+ art_title_xml, 
+ art_subtitle_xml, 
+ art_author_id, 
+ art_authors, 
+ art_citeas_xml, 
+ art_info_xml, 
+ art_sourcecode, 
+ art_sourcetitleabbr, 
+ art_sourcetitlefull, 
+ art_sourcetype, 
+ art_level,
+ para_art_id,
+ parent_tag, 
+ para,
+ lang,
+ art_vol, 
+ art_type, 
+ art_vol_title, 
+ art_year, 
+ art_iss, 
+ art_iss_title, 
+ art_pgrg, 
+ art_lang, 
+ art_doi, 
+ art_issn, 
+ art_origrx, 
+ art_qual, 
+ art_kwds, 
  file_last_modified, 
  timestamp, 
  score

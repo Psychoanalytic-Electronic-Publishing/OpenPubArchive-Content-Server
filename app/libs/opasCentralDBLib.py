@@ -477,6 +477,8 @@ class opasCentralDB(object):
 
             if viewcount is not None:
                 more_than_clause = f" AND {view_col_name} > {viewcount}"
+            else:
+                more_than_clause = ""
             
             # select_clause = "textref, lastweek, lastmonth, last6months, last12months, lastcalyear"
             # Note that WHERE 1 = 1 is used since clauses all start with AND

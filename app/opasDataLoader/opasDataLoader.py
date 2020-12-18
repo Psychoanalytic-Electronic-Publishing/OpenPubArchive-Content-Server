@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.11.12" 
+__version__     = "2020.12.08.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -71,6 +71,7 @@ import os.path
 import pathlib
 
 import time
+import datetime as dtime
 from datetime import datetime
 import logging
 logger = logging.getLogger(programNameShort)
@@ -340,6 +341,7 @@ def main():
     precommit_file_count = 0
     skipped_files = 0
     cumulative_file_time_start = time.time()
+    issue_updates = {}
     if files_found  > 0:
         if options.run_in_reverse:
             print ("-r option selected.  Running the files found in reverse order.")
@@ -351,6 +353,7 @@ def main():
         print (f"Load process started ({time.ctime()}).  Examining files.")
         for n in filenames:
             fileTimeStart = time.time()
+            file_updated = False
             if not options.forceRebuildAllFiles:                    
                 if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0:
                     print (f"Processed Files ...loaded {processed_files_count} out of {files_found} possible.")
@@ -363,6 +366,8 @@ def main():
                     if options.display_verbose:
                         print (f"Skipped - No refresh needed for {n.basename}")
                     continue
+                else:
+                    file_updated = True
             
             # get mod date/time, filesize, etc. for mysql database insert/update
             processed_files_count += 1
@@ -371,19 +376,20 @@ def main():
             # get file basename without build (which is in paren)
             base = n.basename
             artID = os.path.splitext(base)[0]
-            m = re.match(r"(.*)\(.*\)", artID)
-    
-            msg = "Processing file #%s of %s: %s (%s bytes)." % (processed_files_count, files_found, base, n.filesize)
-            logger.info(msg)
-            if options.display_verbose:
-                print (msg)
-    
+            # watch out for comments in file name, like:
+            #   JICAP.018.0307A updated but no page breaks (bEXP_ARCH1).XML
+            #   so skip data after a space
+            m = re.match(r"([^ ]*).*\(.*\)", artID)
             # Note: We could also get the artID from the XML, but since it's also important
             # the file names are correct, we'll do it here.  Also, it "could" have been left out
             # of the artinfo (attribute), whereas the filename is always there.
             artID = m.group(1)
             # all IDs to upper case.
             artID = artID.upper()
+            msg = "Processing file #%s of %s: %s (%s bytes). Art-ID:%s" % (processed_files_count, files_found, base, n.filesize, artID)
+            logger.info(msg)
+            if options.display_verbose:
+                print (msg)
     
             # import into lxml
             root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents))
@@ -394,6 +400,14 @@ def main():
             artInfo.filedatetime = n.timestamp_str
             artInfo.filename = base
             artInfo.file_size = n.filesize
+            artInfo.file_updated = file_updated
+            if file_updated: # keep track of src/vol/issue updates
+                art = f"<article id='{artInfo.art_id}'>{artInfo.art_citeas_xml}</article>"
+                try:
+                    issue_updates[artInfo.issue_id_str].append(art)
+                except Exception as e:
+                    issue_updates[artInfo.issue_id_str] = [art]
+
             try:
                 artInfo.file_classification = re.search("(?P<class>current|archive|future|free|offsite)", str(n.filespec), re.IGNORECASE).group("class")
                 # set it to lowercase for ease of matching later
@@ -470,6 +484,29 @@ def main():
                 print(("Exception: ", e))
 
     # end of docs, authors, and/or references Adds
+    
+    # write updated file
+    if issue_updates != {}:
+        try:
+            fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}.xml"
+            print(f"Issue updates.  Writing file {fname}")
+            with open(fname, 'w', encoding="utf8") as fo:
+                fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
+                fo.write('<issue_updates>\n')
+                for k, a in issue_updates.items():
+                    fo.write(f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
+                    for ref in a:
+                        try:
+                            ref = ref.replace(" & ", " &amp; ")
+                            fo.write(f"\t\t\t{ref}\n")
+                        except Exception as e:
+                            print(f"Issue Update Article Write Error: ({e})")
+                            
+                    fo.write("\t\t</articles>\n\t</issue>")
+                fo.write('\n</issue_updates>')
+
+        except Exception as e:
+            print(f"Issue Update File Write Error: ({e})")
 
     # ---------------------------------------------------------
     # Closing time

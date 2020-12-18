@@ -37,7 +37,7 @@ else:
 # force local
 # base_api = "http://development.org:9100" #  local server (Scilab)
 
-ALL_SOURCES_COUNT = 191
+ALL_SOURCES_COUNT = 190 # OFFSITE doesn't count
 # this must be set to the number of unique journals for testing to pass.
 JOURNALCOUNT = 77
 # this must be set to the exact number of unique books for testing to pass.
@@ -63,8 +63,8 @@ VOL_COUNT_VIDEOS = VIDEOSOURCECOUNT # no actual volumes for videos, just the sou
 VOL_COUNT_VIDEOS_PEPVS = 4
 VOL_COUNT_IJPSP = 11 #  source code ended, 11 should always be correct
 
-def base_plus_endpoint_encoded(endpoint):
-    ret_val = base_api + endpoint
+def base_plus_endpoint_encoded(endpoint, base=base_api):
+    ret_val = base + endpoint
     return ret_val
 
 UNIT_TEST_CLIENT_ID = "4"

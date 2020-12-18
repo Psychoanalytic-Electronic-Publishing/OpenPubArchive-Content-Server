@@ -22,7 +22,7 @@ class TestSecurityFunctions(unittest.TestCase):
             logger.error(f"PaDS Login error in test: {response}")
             assert(False)
         else:
-            full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=99')
+            full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=10')
             response = requests.get(full_URL, headers=headers)
             # Confirm that the request-response cycle completed successfully.
             r = response.json()

@@ -40,7 +40,7 @@ class TestSearchDates(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print(response_info["fullCount"])
-        assert(response_info["fullCount"] >= 966)
+        assert(response_info["fullCount"] >= 799)
         
     def test_3c2_search_year(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?startyear*&endyear=1908')
@@ -62,7 +62,7 @@ class TestSearchDates(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print(response_info["fullCount"])
-        assert(response_info["fullCount"] >= 2311)
+        assert(response_info["fullCount"] >= 750)
 
     def test_3d2_search_year(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?startyear=2019&endyear=*')

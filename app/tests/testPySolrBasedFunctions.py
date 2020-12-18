@@ -9,7 +9,11 @@ import opasCentralDBLib
 import opasPySolrLib
 import models
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+
+# Login!
+sessID, headers, session_info = test_login()
+
 ocd = opasCentralDBLib.opasCentralDB()
 
 class TestPySolrBasedFunctions(unittest.TestCase):
@@ -43,9 +47,39 @@ class TestPySolrBasedFunctions(unittest.TestCase):
         dataList = [d.PEPCode for d in data.sourceInfo.responseSet]
         assert ('ZBK075' in dataList)      
 
+    # ################################################################################
+    # The following tests are for functions not in PySolrLib, but they call important 
+    #    functions for searching there, e.g.,
+    #      search_stats_for_download
+    #      search_text_qs
+    # ################################################################################
+    
     def test_2_get_vols(self):
         data = opasPySolrLib.metadata_get_volumes(source_type="journal")
         assert(len(data.volumeList.responseSet) > 2400)
+
+    def test_3_get_most_viewed(self):
+        # not in PySolrLib, but calls important functions for searching there.
+        data, ret_status = opasAPISupportLib.database_get_most_viewed()
+        assert (ret_status == (200, 'OK'))
+        assert(data.documentList.responseInfo.fullCount > 1)
+        
+    def test_4_get_most_cited(self):
+        data, ret_status = opasAPISupportLib.database_get_most_cited()
+        assert (ret_status == (200, 'OK'))
+        assert(data.documentList.responseInfo.fullCount > 1)
+
+    def test_1_fetch_article(self):
+        print (f"Current Session: ")
+        data = opasAPISupportLib.documents_get_document("LU-AM.029B.0202A", session_info=session_info)
+        # Confirm that the request-response cycle completed successfully.
+        if data is None:
+            print ("Data not found")
+            assert ("doc not found" == True)
+        else:
+            assert (data.documents.responseInfo.fullCount == 1)
+            assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')
+            assert (len(data.documents.responseSet[0].abstract)) > 0
         
 if __name__ == '__main__':
     unittest.main()

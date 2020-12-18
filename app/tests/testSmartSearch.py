@@ -14,7 +14,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
-        print (response_info)
+        print (f'Smarttext: {response_info["description"]}')
         #response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 1)
 
@@ -24,7 +24,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
-        print (response_info)
+        print (f'Smarttext: {response_info["description"]}')
         #response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 1) # should be .  I confirmed all three papers above in test_search_long_para...not sure why this fails.
 
@@ -35,7 +35,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
-        print (response_info)
+        print (f'Smarttext: {response_info["description"]}')
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 19) 
         print (response_set)
@@ -46,8 +46,8 @@ class TestSmartSearch(unittest.TestCase):
         assert(response.ok == True) # rank is accepted, same as score
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
-        print (response_info)
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         assert(response_info["fullCount"] == 1)
         #print (response_set)
         for n in response_set:
@@ -62,6 +62,7 @@ class TestSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         print (response_info)
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         assert(response_info["fullCount"] == 1)
         #print (response_set)
         for n in response_set:
@@ -74,7 +75,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
-        print (response_info)
+        print (f'Smarttext: {response_info["description"]}')
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 3)
         print (response_set[0])
@@ -85,8 +86,8 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         assert(response.ok == True)
         response_info = r["documentList"]["responseInfo"]
-        print (response_info)
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 12)
         #print (response_set[0])
@@ -99,6 +100,7 @@ class TestSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         print (response_info)
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 2)
         #print (response_set[0])
@@ -111,6 +113,7 @@ class TestSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         print (response_info)
         response_set = r["documentList"]["responseSet"]
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         #print (response_set[0])
@@ -131,6 +134,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         #print (response_set[0])
@@ -144,6 +148,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 7)  # verified 7 matches 2020-07-26
         # print (response_set[0])
@@ -157,6 +162,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         # print (response_set[0])
@@ -170,6 +176,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
         assert(response_info["fullCount"] >= 627)
         # print (response_set[0])
@@ -180,6 +187,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
         assert(response_info["fullCount"] >= 37)
         print (response_set[0])
@@ -193,6 +201,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
         assert(response_info["fullCount"] >= 59)
         print (response_set[0])
@@ -206,6 +215,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         print (response_set[0])
@@ -216,6 +226,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         print (response_set[0])
@@ -230,6 +241,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         #print (response_set[0])
@@ -240,6 +252,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         #print (response_set[0])
@@ -250,6 +263,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         print (response_set[0])
@@ -260,6 +274,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         #print (response_set[0])
@@ -270,6 +285,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         #print (response_set[0])
@@ -280,22 +296,25 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         #print (response_set[0])
 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Rapaport, D. and Gill, M. M. (1959)')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         #print (response_set[0])
 
-    def test_12b_title_search(self):
+    def test_12b_phrase_search(self):
         """
+        This is a search for a phrase
         """
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Manualized Psychodynamic Psychotherapies"')
         response = requests.get(full_URL, headers=headers)
@@ -303,8 +322,9 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
-        assert(response_info["count"] >= 14)  
+        assert(response_info["count"] >= 3)  
         print (response_set[0]) 
 
     def test_12c_word_search(self):
@@ -316,6 +336,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
         assert(response_info["count"] >= 1)
         print (response_set[0])
@@ -330,6 +351,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         print (response_set[0])
@@ -340,21 +362,24 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["count"])
         assert(response_info["count"] == 1)
         print (response_set[0])
 
     def test_13a_dts_example_searches(self):
         """
+        Words anded
         """
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Evenly Suspended Attention')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
+        response_set = r["documentList"]["responseSet"]
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 650 and response_info["fullCount"] <= 710)
+        assert(response_info["fullCount"] >= 695 and response_info["fullCount"] <= 810)
 
     def test_13b_dts_example_searches(self):
         """
@@ -365,6 +390,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
         assert(response_info["fullCount"] >= 6500 and response_info["fullCount"] <= 7000)
 
@@ -377,6 +403,7 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
         assert(response_info["fullCount"] >= 133 and response_info["fullCount"] <= 170)
 
@@ -389,8 +416,87 @@ class TestSmartSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
         assert(response_info["fullCount"] >= 2331 and response_info["fullCount"] <= 2400)
+
+    def test_14_example_smart_search_classes(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Eitingon Model')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["fullCount"])
+        assert(response_info["fullCount"] >= 143)
+
+    def test_14a_example_smart_search_classes(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Eitingon Model"')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["fullCount"])
+        assert(response_info["fullCount"] >= 95 and response_info["fullCount"] <= 115) # range just to give it some upper slack for new data
+
+    def test_14b_example_smart_search_classes(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Eitingon and Model')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["fullCount"])
+        assert(response_info["fullCount"] >= 440 and response_info["fullCount"] <= 525) # range just to give it some upper slack for new data
+
+    def test_14c_example_smart_search_classes(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Eitingon or Model')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["fullCount"])
+        assert(response_info["fullCount"] >= 29913 and response_info["fullCount"] <= 34000) # range just to give it some upper slack for new data
+
+    def test_14d_example_smart_search_classes(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Eitingon and -Model')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["fullCount"])
+        assert(response_info["fullCount"] >= 1664 and response_info["fullCount"] <= 2200) # range just to give it some upper slack for new data
+
+    def test_14e_example_smart_search_classes(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Eitingon Model"~4')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["fullCount"])
+        assert(response_info["fullCount"] >= 114 and response_info["fullCount"] <= 144)
 
 if __name__ == '__main__':
     unittest.main()
