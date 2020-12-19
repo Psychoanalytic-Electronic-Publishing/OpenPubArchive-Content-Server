@@ -1371,7 +1371,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     return ret_val, ret_status
 
 #-----------------------------------------------------------------------------
-def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0):
+def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0, sort_field="art_citeas_xml"):
     """
     Fill out a sourceInfoDBList which can be used for a getSources return, but return individual 
       videos, as is done for books.  This provides more information than the 
@@ -1397,7 +1397,7 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
                    # 'q':'tuck*',
                    'rows':limit,
                    'start': offset,
-                   'sort':"art_citeas_xml asc",
+                   'sort':f"{sort_field} asc",
                    #'sort.order':'asc'
                }
 

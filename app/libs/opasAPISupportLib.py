@@ -1461,13 +1461,16 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
             raise Exception(err)
 
     if src_type == "videos":
-        total_count, source_info_dblist, ret_val, return_status = opasPySolrLib.metadata_get_videos(src_type=src_type, pep_code=src_code, limit=limit, offset=offset)
+        # sort by title like other media types
+        # IMPORTANT NOTE: Sort must be a string field to work!
+        total_count, source_info_dblist, ret_val, return_status = opasPySolrLib.metadata_get_videos(src_type=src_type, pep_code=src_code, limit=limit, offset=offset, sort_field="title_str")
         count = len(source_info_dblist)
         if return_status != (200, "OK"):
             raise Exception(return_status(1))
     else: # get from mySQL
         try:
             # print(src_type, src_code, src_name, limit, offset)
+            # note...this sorts by title as only current option
             total_count, source_info_dblist = ocd.get_sources(src_type = src_type, src_code=src_code, src_name=src_name, limit=limit, offset=offset)
             if source_info_dblist is not None:
                 count = len(source_info_dblist)
