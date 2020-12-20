@@ -718,21 +718,25 @@ def are_brackets_balanced(expr):
 # 
 # Example:
 #    http://development.org:9100/v2/Documents/Document/JCP.001.0246A/?return_format=HTML&search=?fulltext1=%22Evenly%20Suspended%20Attention%22~25&viewperiod=4&formatrequested=HTML&highlightlimit=5&facetmincount=1&facetlimit=15&sort=score%20desc&limit=15
-# 
+#
+# NOTE: 2020-12-20
+#       Since this is at least in one case called with **args from the caller, the args must match the callers args.
+#       See main.py:
+#           solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
 # 
 def parse_search_query_parameters(search=None,             # url based parameters, e.g., from previous search to be parsed
                                   # model based query specification, allows full specification 
                                   # of words/thes in request body, component at a time, per model
                                   solrQueryTermList=None,
                                   # parameter based options
-                                  para_textsearch=None,    # search paragraphs as child of scope
-                                  para_scope=None,         # parent_tag of the para, i.e., scope of the para ()
+                                  fulltext1=None,          # term, phrases, and boolean connectors with optional fields for full-text search
+                                  smarttext=None,          # experimental detection of search parameters
+                                  paratext=None,           # search paragraphs as child of scope
+                                  parascope=None,          # parent_tag of the para, i.e., scope of the para ()
+                                  art_level: int=None,     # Level of record (top or child, as artlevel)
                                   like_this_id=None,       # for morelikethis
                                   cited_art_id=None,       # for who cited this
                                   similar_count:int=0,     # Turn on morelikethis for the set
-                                  fulltext1=None,          # term, phrases, and boolean connectors with optional fields for full-text search
-                                  art_level: int=None,     # Level of record (top or child, as artlevel)
-                                  smarttext=None,          # experimental detection of search parameters
                                   #solrSearchQ=None,       # the standard solr (advanced) query, overrides other query specs
                                   synonyms=False,          # global field synonyn flag (for all applicable fields)
                                   # these are all going to the filter query
@@ -841,11 +845,11 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if abstract_requested is None:
         abstract_requested = False
 
-    if para_scope is None:
-        para_scope = "doc"
+    if parascope is None:
+        parascope = "doc"
         
     if isinstance(synonyms, str):
-        logger.warning("Synonyms parameter should be bool, not str")
+        logger.debug("Synonyms parameter should be bool, not str")
         if synonyms.lower() == "true":
             synonyms = True
         else:
@@ -1039,8 +1043,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 if word_search is not None:
                     if 0: # to turn on paragraph level 2 searches, but the simulation using proximity
                           # 25 words is what GVPi did and that matches better.
-                        if para_textsearch is None:
-                            para_textsearch = word_search
+                        if paratext is None:
+                            paratext = word_search
                     else:
                         art_level = 1
                         # if it already has a field name, it won't be a word search. so add body_xml as default
@@ -1077,15 +1081,15 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if art_level is not None:
         filter_q = f"&& art_level:{art_level} "  # for solr filter fq
         
-    if para_textsearch is not None:
+    if paratext is not None:
         # set up parameters as a solrQueryTermList to share that processing
         try:
             query_term_from_params = [
                                         models.SolrQueryTerm (
                                                               connector="AND", 
-                                                              parent = para_scope,
+                                                              parent = parascope,
                                                               field = "para",
-                                                              words = para_textsearch,
+                                                              words = paratext,
                                                               synonyms = synonyms,
                                                               synonyms_suffix = opasConfig.SYNONYM_SUFFIX
                                                             )
@@ -1099,7 +1103,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 solrQueryTermList.qt.extend(query_term_from_params)
                 solrQueryTermList.artLevel = 2;
         except Exception as e:
-            logger.error("Error setting up query term list from para_textsearch")
+            logger.error("Error setting up query term list from paratext (search)")
 
     if solrQueryTermList is not None:
         # used for a queryTermList structure which is typically sent via the API endpoint body.
@@ -1181,7 +1185,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 filter_q += analyze_this
                 search_analysis_term_list.append(analyze_this)
         except Exception as e:
-            logger.error("Error setting up query term list from para_textsearch")
+            logger.error("Error setting up query term list from paratext (search)")
             
             
     if facetfields is not None:

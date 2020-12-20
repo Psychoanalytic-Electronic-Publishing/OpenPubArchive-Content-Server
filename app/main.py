@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1219.1.Alpha"
+__version__     = "2020.1220.1.Alpha"
 __status__      = "Development"
 
 """
@@ -221,7 +221,7 @@ def get_client_id(response: Response,
 
 def get_client_session(response: Response,
                        request: Request,
-                       client_session: str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
+                       client_session: str=Header(None, title=opasConfig.TITLE_CLIENT_SESSION, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
                        client_id: int=Depends(get_client_id), 
                        ):
     """
@@ -262,7 +262,7 @@ def get_client_session(response: Response,
                 logger.info("Session_id is None, no cookie saved.")
 
     if session_id is None or len(session_id) < 12:
-        msg = f"Session ID not resolved {session_id}.  Raising Exception 424."
+        msg = f"Client:[{client_id}] session ID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
         logger.error(msg)
         raise HTTPException(
             status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
@@ -1980,8 +1980,8 @@ async def database_search_paragraphs(response: Response,
     # smaller set of solr oriented params (per pydantic model
     # SolrQueryParameters), ready to use
     solr_query_spec = \
-        opasQueryHelper.parse_search_query_parameters(para_textsearch=paratext,
-                                                      para_scope=parascope, 
+        opasQueryHelper.parse_search_query_parameters(paratext=paratext,
+                                                      parascope=parascope, 
                                                       #solrQueryTermList=termlist,
                                                       synonyms=synonyms,
                                                       similar_count=similarcount, 
@@ -2198,8 +2198,8 @@ async def database_search_v2b( response: Response,
                                                       source_code=sourcecode,
                                                       source_type=sourcetype,
                                                       source_lang_code=sourcelangcode,
-                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
-                                                      para_scope=parascope, # scope for par_search
+                                                      paratext=mod_args.get("paratext", None), # search within paragraphs
+                                                      parascope=parascope, # scope for par_search
                                                       similar_count=similarcount, # Turn on morelikethis for the search, return this many similar docs for each
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
@@ -2392,8 +2392,8 @@ async def database_search_v2(response: Response,
                                                       source_code=sourcecode,
                                                       source_type=sourcetype,
                                                       source_lang_code=sourcelangcode,
-                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
-                                                      para_scope=parascope, # scope for par_search
+                                                      paratext=mod_args.get("paratext", None), # search within paragraphs
+                                                      parascope=parascope, # scope for par_search
                                                       similar_count=similarcount, # Turn on morelikethis for the search, return this many similar docs for each
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
@@ -2572,8 +2572,8 @@ def database_searchanalysis_v2(response: Response,
                                                       source_name=sourcename,
                                                       source_code=sourcecode,
                                                       source_lang_code=sourcelangcode, 
-                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
-                                                      para_scope=parascope, # scope for par_search
+                                                      paratext=mod_args.get("paratext", None), # search within paragraphs
+                                                      parascope=parascope, # scope for par_search
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
@@ -2698,8 +2698,8 @@ def database_searchanalysis_v3(response: Response,
                                                       source_name=sourcename,
                                                       source_code=sourcecode,
                                                       source_lang_code=sourcelangcode, 
-                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
-                                                      para_scope=parascope, # scope for par_search
+                                                      paratext=mod_args.get("paratext", None), # search within paragraphs
+                                                      parascope=parascope, # scope for par_search
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
