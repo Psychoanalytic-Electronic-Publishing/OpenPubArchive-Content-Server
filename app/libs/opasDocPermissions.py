@@ -670,6 +670,7 @@ def get_pads_session_info(session_id=None,
         if user_ip is not None:
             headers = { opasConfig.X_FORWARDED_FOR:user_ip }
             pads_session_info = requests.get(full_URL, headers)
+            logger.info(f"X_FORWARDED_FOR from authenticateIP: {user_ip}")
         else:
             pads_session_info = requests.get(full_URL)
             
