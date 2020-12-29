@@ -29,10 +29,10 @@ base_api = APIURL
 # base_api = "http://stage.pep.gvpi.net/api"
 #base_api = "http://127.0.0.1:9100" # local server without naming
 # base_api = "http://api.psybrarian.com" # remote AWS server (one of them)
-if use_server == 0:
-    base_api = "http://development.org:9100" #  local server (Scilab)
-else:
-    base_api = "http://stage-api.pep-web.rocks" # remote AWS server (one of them)
+#if use_server == 0:
+    #base_api = "http://development.org:9100" #  local server (Scilab)
+#else:
+    #base_api = "http://stage-api.pep-web.rocks" # remote AWS server (one of them)
 
 # force local
 # base_api = "http://development.org:9100" #  local server (Scilab)
