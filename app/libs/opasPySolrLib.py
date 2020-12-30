@@ -1604,7 +1604,7 @@ def database_get_whats_new(days_back=14,
     >>> result = database_get_whats_new()
 
     """    
-    field_list = "art_id, title, art_vol, art_iss, art_sourcecode, art_sourcetitlefull, art_sourcetitleabbr, file_last_modified, timestamp, art_sourcetype"
+    field_list = "art_id, title, art_vol, art_iss, art_year, art_sourcecode, art_sourcetitlefull, art_sourcetitleabbr, file_last_modified, timestamp, art_sourcetype"
     sort_by = "file_last_modified desc"
     ret_val = None
 

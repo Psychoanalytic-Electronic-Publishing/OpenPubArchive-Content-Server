@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1229.1.Alpha"
+__version__     = "2020.1230.1.Alpha"
 __status__      = "Development"
 
 """
@@ -3317,7 +3317,7 @@ def database_whatsnew(response: Response,
                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                       client_id:int=Depends(get_client_id), 
-                            #client_session:str= Depends(get_client_session)
+                      #client_session:str= Depends(get_client_session)
                       ):  
     """
     ## Function
