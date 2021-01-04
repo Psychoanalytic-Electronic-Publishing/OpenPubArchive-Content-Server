@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1230.1.Alpha"
+__version__     = "2021.0104.1.Alpha"
 __status__      = "Development"
 
 """
@@ -4577,9 +4577,9 @@ def documents_concordance(response: Response,
         #solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
         #logger.debug("Concordance View Request: %s/%s/%s", solr_query_params, f"{paralangid} / {paralangrx}", return_format)
 
-        ret_val = opasAPISupportLib.documents_get_concordance_paras( paralangid,
-                                                                     paralangrx, 
-                                                                     #solr_query_params,
+        ret_val = opasAPISupportLib.documents_get_concordance_paras( para_lang_id=paralangid,
+                                                                     para_lang_rx=paralangrx, 
+                                                                     #solr_query_spec=solr_query_params,
                                                                      ret_format=return_format,
                                                                      req_url=request.url._url, 
                                                                      session_info=session_info

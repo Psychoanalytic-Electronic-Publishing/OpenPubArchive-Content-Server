@@ -2020,7 +2020,7 @@ def documents_get_concordance_paras(para_lang_id,
     ret_val = {}
     document_list = None
     if para_lang_rx is not None:
-        paraLangFilterQ = f'({re.sub(",[]*", " || ", para_lang_rx)})'
+        paraLangFilterQ = f'({re.sub(",", " || ", para_lang_rx)})'
     else:
         paraLangFilterQ = f"{para_lang_id}"
         
