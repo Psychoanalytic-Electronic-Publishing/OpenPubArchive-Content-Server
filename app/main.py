@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0104.1.Alpha"
+__version__     = "2021.0104.2.Alpha"
 __status__      = "Development"
 
 """
@@ -2407,8 +2407,8 @@ async def database_search_v2(response: Response,
                                                       endyear=endyear,
                                                       citecount=citecount,
                                                       viewcount=viewcount,
-                                                      highlightlimit=highlightlimit, 
                                                       viewperiod=viewperiod,
+                                                      highlightlimit=highlightlimit, 
                                                       facetfields=facetfields,
                                                       facetmincount=facetmincount,
                                                       facetlimit=facetlimit,
@@ -2992,8 +2992,7 @@ def database_mostviewed(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     if viewperiod < 0 or viewperiod > 4:
-        query_arg_error = f"Most Viewed: viewperiod: {viewperiod}.  Range should be 0-4 (int)."
-
+        query_arg_error = f"Most Viewed: viewperiod: {viewperiod}.  Range should be 0-4 (int), 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months"
     if sourcetype is not None: # none is ok
         sourcetype = opasConfig.normalize_val(sourcetype, opasConfig.VALS_SOURCE_TYPE, None)
         if sourcetype is None: # trap error on None, default
@@ -3015,14 +3014,14 @@ def database_mostviewed(response: Response,
         if limit == opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS:
             limit = None
 
-        views = ocd.most_viewed_generator( publication_period=pubperiod,
-                                           view_in_period=viewperiod,
-                                           viewcount=viewcount, 
+        views = ocd.most_viewed_generator( publication_period=pubperiod, # Number of publication years to include (counting back from current year, 0 means current year)
+                                           viewperiod=viewperiod,        # used here for sort and limiting viewcount results (more_than_clause)
+                                           viewcount=viewcount,          # cutoff at this minimum number of views for viewperiod column
                                            author=author,
                                            title=title,
                                            source_name=sourcename, 
                                            source_code=sourcecode,
-                                           source_type=sourcetype,  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                           source_type=sourcetype,       # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                            select_clause=opasConfig.VIEW_MOSTVIEWED_DOWNLOAD_COLUMNS, 
                                            limit=limit,
                                            offset=offset,
@@ -3049,13 +3048,13 @@ def database_mostviewed(response: Response,
         try:
             # we want the last year (default, per PEP-Web) of views, for all articles (journal articles)
             ret_val, ret_status = opasAPISupportLib.database_get_most_viewed( publication_period=pubperiod,
-                                                                              view_period=viewperiod, # limiting to 5, you'd get the 5 biggest values for this view period
+                                                                              view_period=viewperiod,   # 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
                                                                               view_count=viewcount, 
                                                                               author=author,
                                                                               title=title,
                                                                               source_name=sourcename, 
                                                                               source_code=sourcecode,
-                                                                              source_type=sourcetype, # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                                                              source_type=sourcetype,   # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                                                               abstract_requested=abstract, 
                                                                               req_url=request.url._url,
                                                                               stat=stat, 

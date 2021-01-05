@@ -337,14 +337,14 @@ class opasCentralDB(object):
         return ret_val
         
     def most_viewed_generator( self,
-                               publication_period: int=5,
-                               view_in_period: int=4,
-                               viewcount: int=None, 
+                               publication_period: int=5,  # Number of publication years to include (counting back from current year, 0 means current year)
+                               viewperiod: int=4,          # used here for sort and limiting viewcount results (more_than_clause)
+                               viewcount: int=None,        # cutoff at this minimum number of views for viewperiod column
                                author: str=None,
                                title: str=None,
                                source_name: str=None,
                                source_code: str=None, 
-                               source_type: str="journals",
+                               source_type: str="journals", # 'journal', 'book', 'videostream'} standard vals, can abbrev to 1 char or more
                                select_clause: str=opasConfig.VIEW_MOSTVIEWED_DOWNLOAD_COLUMNS, 
                                limit: int=None,
                                offset=0,
@@ -352,11 +352,10 @@ class opasCentralDB(object):
                                session_info=None
                                ):
         """
-        Return records which are the most viewed for the view_in_period
+        Return records which are the most viewed for the viewperiod
            restricted to documents published in the publication_period (prev years)
            
-        Reinstated because equivalent from Solr is too slow when fetching the
-          whole set.
+        Reinstated here because equivalent from Solr is too slow when fetching the whole set.
 
            ---------------------
            view_stat_most_viewed
@@ -419,7 +418,8 @@ class opasCentralDB(object):
          
         """
         self.open_connection(caller_name="get_most_viewed_table") # make sure connection is open
-        view_col_name = opasConfig.VALS_VIEWPERIODDICT_SQLFIELDS.get(view_in_period, "last12months")
+        # get selected view_col_name used for sort and limiting results (more_than_clause)
+        view_col_name = opasConfig.VALS_VIEWPERIODDICT_SQLFIELDS.get(viewperiod, "last12months")
 
         if limit is not None:
             limit_clause = f"LIMIT {offset}, {limit}"
@@ -435,9 +435,9 @@ class opasCentralDB(object):
                 sort_by_clause = f"ORDER BY {sort}"
             
             if publication_period is not None:
-                if publication_period == 0 or str(publication_period).upper() == "ALL" or str(publication_period).upper()=="ALLTIME":
-                    publication_period = 500 # 500 years should cover all time!
-                pub_year_clause = f" AND `pubyear` > YEAR(NOW()) - {view_in_period}"  # consider only the past viewPeriod years
+                if str(publication_period).upper() == "ALL" or str(publication_period).upper()=="ALLTIME":
+                    publication_period = 1000 # should cover most/all time of published writings!
+                pub_year_clause = f" AND `pubyear` >= YEAR(NOW()) - {publication_period}"  
             else:
                 pub_year_clause = ""
 
@@ -489,6 +489,7 @@ class opasCentralDB(object):
                       {author_clause}
                       {more_than_clause}
                       {title_clause}
+                      {source_code_clause}
                       {journal_clause}
                       {pub_year_clause}
                       {sort_by_clause}
@@ -514,10 +515,8 @@ class opasCentralDB(object):
         self.close_connection(caller_name="SQLSelectGenerator") # make sure connection is open
     
     def most_cited_generator( self,
-                              # Limit the considered pubs to only those published in these years
-                              publication_period = None,
-                              # Has to be cited more than this number of times, a large nbr speeds the query
-                              cited_in_period:str=None,   
+                              publication_period = None, # Limit the considered pubs to only those published in these years
+                              cited_in_period:str=None,  # Has to be cited more than this number of times, a large nbr speeds the query
                               citecount: int=None,              
                               author: str=None,
                               title: str=None,
@@ -530,7 +529,7 @@ class opasCentralDB(object):
                               sort=None #  can be None (default sort), False (no sort) or a column name + ASC || DESC
                               ):
         """
-        Return records which are the most viewed for the view_in_period
+        Return records which are the most cited for the cited_in_period
            restricted to documents published in the publication_period (prev years)
 
         Reinstated because downloading from Solr is too slow!
@@ -593,7 +592,7 @@ class opasCentralDB(object):
                 
             #TODO which one, before code, or after code?
             if publication_period is not None:
-                pub_year_clause = f" AND `year` > YEAR(NOW()) - {publication_period}"  # consider only the past viewPeriod years
+                pub_year_clause = f" AND `year` >= YEAR(NOW()) - {publication_period}"  # consider only the past viewPeriod years
             else:
                 pub_year_clause = ""
             

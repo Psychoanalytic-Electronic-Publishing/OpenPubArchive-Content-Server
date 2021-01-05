@@ -408,11 +408,11 @@ def database_get_most_viewed( publication_period: int=5,
                               source_code: str=None,
                               source_type: str="journal",
                               abstract_requested: bool=False, 
-                              view_period: int=4,      # 4=last12months default
-                              view_count: str="1",        # up this later
+                              view_period: int=4,               # 4=last12months default. 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
+                              view_count: str="1",              # up this later
                               req_url: str=None,
                               stat:bool=False, 
-                              limit: int=5,           # Get top 10 from the period
+                              limit: int=5,                     # Get top 10 from the period
                               offset=0,
                               mlt_count:int=None,
                               sort:str=None,
@@ -473,7 +473,7 @@ def database_get_most_viewed( publication_period: int=5,
         field_set = None
         
     solr_query_spec = \
-        opasQueryHelper.parse_search_query_parameters( viewperiod=view_period,
+        opasQueryHelper.parse_search_query_parameters( viewperiod=view_period,      # 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
                                                        viewcount=view_count, 
                                                        source_name=source_name,
                                                        source_code=source_code,
@@ -2036,7 +2036,7 @@ def documents_get_concordance_paras(para_lang_id,
                                                     return_field_set="CONCORDANCE", 
                                                     highlight_fields="para",
                                                     extra_context_len=opasConfig.SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE, 
-                                                    limit=1,
+                                                    #limit=10,
                                                     req_url=req_url
                                                     )
 
@@ -2045,29 +2045,28 @@ def documents_get_concordance_paras(para_lang_id,
                                                    request=request
                                                    )
 
-        matches = document_list.documentList.responseInfo.count
-        if matches == 1:
-            # get the first document item only
-            document_list_item = document_list.documentList.responseSet[0]
-            # is user authorized?
-            if document_list.documentList.responseSet[0].accessLimited and 0:
-                # Should we require it's authorized?
-                document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
-            #else:
-                ## All set
-        else:
-            logger.info(f"get_para_trans: No matches: {filterQ}")
+        #matches = document_list.documentList.responseInfo.count
+        #if matches >= 1:
+            #for count in range(0, matches-1):
+                #document_list_item = document_list.documentList.responseSet[count]
+                ## is user authorized?
+                #if document_list.documentList.responseSet[count].accessLimited and 0:
+                    ## Should we require it's authorized?
+                    #document_list.documentList.responseSet[count].document = document_list.documentList.responseSet[count].abstract
+                ##else:
+                    ### All set
+        #else:
+            #logger.info(f"get_para_trans: No matches: {filterQ}")
     except Exception as e:
         logger.error(f"get_para_trans: No matches or error: {e}")
     else:
-        if matches == 1:       
-            document_list_struct = models.DocumentListStruct( responseInfo = document_list.documentList.responseInfo, 
-                                                              responseSet = [document_list_item]
-                                                              )
+        document_list_struct = models.DocumentListStruct( responseInfo = document_list.documentList.responseInfo, 
+                                                          responseSet = document_list.documentList.responseSet
+                                                          )
 
-            documents = models.Documents(documents = document_list_struct)
+        documents = models.Documents(documents = document_list_struct)
 
-            ret_val = documents
+        ret_val = documents
 
     return ret_val
 

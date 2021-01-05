@@ -754,7 +754,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   endyear=None,            # year only.
                                   citecount: str=None,     # can include both the count and the count period, e.g., 25 in 10 or 25 in ALL
                                   viewcount: str=None,     # can include both the count and the count period, e.g., 25 in last12months or 25 in ALL
-                                  viewperiod=None,         # period to evaluate view count 0-4
+                                  viewperiod=None,         # period to evaluate view count 0-4, 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
                                   facetfields=None,        # facetfields to return
                                   # sort field and direction
                                   facetmincount=None,
@@ -1444,20 +1444,21 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 val_end = "*"
             viewed_in_period = m.group("period")
             
-            # 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months.
             # VALS_VIEWPERIODDICT_SOLRFIELDS = {1: "art_views_lastweek", 2: "art_views_last1mos", 3: "art_views_last6mos", 4: "art_views_last12mos", 5: "art_views_lastcalyear", 0: "art_views_lastcalyear" }  # not fond of zero, make both 5 and 0 lastcalyear
             if viewed_in_period == 'lastcalendaryear':
                 view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[5]
-            elif viewed_in_period == 'lastweek':
-                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[1]
             elif viewed_in_period == 'last12months':
                 view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[4]
             elif viewed_in_period == 'last6months':
                 view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[3]
             elif viewed_in_period == 'lastmonth':
                 view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[2]
+            elif viewed_in_period == 'lastweek':
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[1]
             else:
-                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS[viewperiod]
+                # use viewperiod, 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months (5=last cal year, just in case)
+                # default=last12months
+                view_count_field = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS.get(viewperiod, "art_views_last12mos")
                 
             range_list = opasgenlib.range_list(viewcount)
             if range_list != "":
