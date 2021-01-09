@@ -106,6 +106,21 @@ class TestGetDocuments(unittest.TestCase):
         assert(response_set[0]["accessLimited"] == False)
         print (response_set)
 
+    def test_1B_get_document_Without_Variant(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171/')
+        # local, this works...but fails in the response.py code trying to convert self.status to int.
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"] 
+        assert(response_info["count"] == 1)
+        # this document should be available
+        assert(response_set[0]["accessLimited"] == False)
+        print (response_set)
+
     def test_2_get_document_with_search_context(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/AJP.057.0360A/?search=?fulltext1=touch&sort=citeCount')
         # local, this works...but fails in the response.py code trying to convert self.status to int.

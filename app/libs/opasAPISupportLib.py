@@ -1884,13 +1884,15 @@ def documents_get_document(document_id,
         logger.warning("Bad argument {document_id} to documents_get_document(Error:{e})")
         return ret_val
     else:
-        m = re.match("(?P<docid>(?P<scode>[A-Z]+)\.(?P<svol>[0-9]{3,3})\.(?P<spage>[0-9]{4,4}[A-Z]))(\.P0{0,3}(?P<pagejump>[0-9]{1,4}))?", document_id)
-        if m is not None:
-            if m.group("pagejump") is not None:
-                document_id = m.group("docid")
-                # only if they haven't directly specified page
-                if page == None:
-                    page = m.group("pagejump")
+        document_id_obj = opasgenlib.DocumentID(document_id)
+        document_id = document_id_obj.document_id
+        #m = re.match("(?P<docid>(?P<scode>[A-Z]+)\.(?P<svol>[0-9]{3,3})\.(?P<spage>[0-9]{4,4}[A-Z]))(\.P0{0,3}(?P<pagejump>[0-9]{1,4}))?", document_id)
+        #if m is not None:
+            #if m.group("pagejump") is not None:
+                #document_id = m.group("docid")
+                ## only if they haven't directly specified page
+                #if page == None:
+                    #page = m.group("pagejump")
         # just to be sure
         query = "*:*"
         if solr_query_spec is not None:
