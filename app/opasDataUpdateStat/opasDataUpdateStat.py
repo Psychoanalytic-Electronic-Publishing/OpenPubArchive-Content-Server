@@ -3,7 +3,7 @@
 # To run:
 #     python3 updateSolrviewData
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 __version__     = "2020.1029.1"
 __status__      = "Testing"

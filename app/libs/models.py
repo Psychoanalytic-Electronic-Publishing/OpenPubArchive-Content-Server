@@ -3,7 +3,7 @@
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 __version__     = "2019.0617.1"
 __status__      = "Development"

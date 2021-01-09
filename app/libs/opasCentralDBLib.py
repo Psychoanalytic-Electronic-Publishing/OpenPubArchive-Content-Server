@@ -43,7 +43,7 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
 #2020.0530.1 - Fixed doc tests for termindex, they were looking at number of terms rather than term counts
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2020-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 __version__     = "2020.0530.1"
 __status__      = "Development"

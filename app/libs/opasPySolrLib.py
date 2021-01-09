@@ -9,7 +9,7 @@ This library is meant to support query to Solr
 
 """
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2020-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 __version__     = "2020.1118.1"
 __status__      = "Development"
@@ -19,7 +19,7 @@ import logging
 logger = logging.getLogger(__name__)
 import time
 from datetime import datetime
-import datetime as dtime
+# import datetime as dtime
 
 import sys
 sys.path.append('./solrpy')

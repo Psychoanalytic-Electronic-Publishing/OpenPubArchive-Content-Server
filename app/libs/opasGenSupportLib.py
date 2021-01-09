@@ -26,13 +26,33 @@ import email.utils
 import localsecrets
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.11.26"
+__version__     = "2021.01.09"
 __status__      = "Development"
 
 class DocumentID(object):
     """
+    Document ID and Volume ID recognition and normalization.
+    
+    Input Error Tolerance (new).  Hope it turns out to be a good idea
+      it is nice to have all callers use proper case and precision (leading zeros)
+      but mainly done to tolerate errors in the XML
+      
+      - Now case insensitive (all resulting IDs are uppercase)
+      - Tolerates missing leading zeros and corrects
+    
+    
+    >>> DocumentID('ZBK.074.R0007A')
+    ZBK.074.R0007A
+    >>> DocumentID('zbk.074.r0007a')
+    ZBK.074.R0007A
+    >>> DocumentID('ANIJP-FR.27.0001.PR0027')
+    ANIJP-FR.027.0001A.PR0027
+    >>> DocumentID('anijp-fr.27.0001.pr27')
+    ANIJP-FR.027.0001A.PR0027
+    >>> DocumentID('anijp-fr.27.01.pr27')
+    ANIJP-FR.027.0001A.PR0027
     >>> DocumentID('ANIJP-FR.27.0001.P0027')
     ANIJP-FR.027.0001A.P0027
     >>> DocumentID('ANIJP-FR.27.0001')
@@ -51,64 +71,90 @@ class DocumentID(object):
     IJP.027
     >>> DocumentID('IJP.7.7')
     IJP.007.0007A
+    >>> DocumentID('ijp.7.7')
+    IJP.007.0007A
     
 
     """
+    # document id regex
+    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?)\.(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
+    # vol id regex
+    rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z]{2,12})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?))", flags=re.I)
     def __init__(self, document_id):
         #  See https://docs.google.com/document/d/1QmRG6MnM1jJOEq9irqCyoEY6Bt4U3mm8FY6TtZSt3-Y/edit#heading=h.mv7bvgdg7i7h for document ID information
         self.document_id = None
         self.document_id_pagejump = None
         self.jrnlvol_id = None
-        m = re.match("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?)\.(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejump>[0-9]{1,4}))?", document_id)
+        self.volume_id = None
+        self.pagejump_id = None
+        
+        # m = re.match("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?)\.(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", document_id)
+        m = self.rxdocidc.match(document_id)
         if m is not None:
+            # use groupdict so we can set default for non participating groups
+            m_groups = m.groupdict(default="")
             # journal code, volume, and pagestart cannot be None if we get here.  It matches
-            self.docid_input = m.group("docid")
-            self.journal_code = m.group("journalcode")
-            self.vol_suffix = m.group("volsuffix")
-            if self.vol_suffix is None:
-                self.vol_suffix = ""
+            self.docid_input = m_groups.get("docid")
+            self.journal_code = m_groups.get("journalcode").upper()
+            self.vol_suffix = m_groups.get("volsuffix").upper()
                
-            self.volume = m.group("volume")
-            self.volume_int = int(self.volume)
+            self.volume = m_groups.get("volume")
+            if self.volume != '':
+                self.volume = f"{int(self.volume):03}"
+
             # self.volume can't be None and must be numeric or it wouldn't match pattern, so no worries
-            self.volume_id = f"{self.volume_int:03}{self.vol_suffix}"
+            self.volume_id = f"{self.volume}{self.vol_suffix}"
 
-            self.page_start = m.group("pagestart")
-            self.page_start_int = int(self.page_start)
-
+            self.page_start = m_groups.get("pagestart")
+            if self.page_start != '':
+                self.page_start = f"{int(self.page_start):04}"
+                
+            self.page_start_type_code = m_groups.get("pagestarttype").upper()
+            if self.page_start_type_code == "R":
+                self.page_start_type = "Roman"
+            else:
+                self.page_start_type = "Arabic"
+                self.page_start_type_code = ""
+                
+            self.page_jump_type_code = m_groups.get("pagejumptype").upper()
+            if self.page_jump_type_code == "R":
+                self.page_jump_type = "Roman"
+            else:
+                self.page_jump_type = "Arabic"
+                self.page_jump_type_code = ""
+                
             # if there's an optional page number to jump too (P prefixed page number, not part of document ID per se)
-            self.pagejump = m.group("pagejump")
-            if self.pagejump is not None:
-                self.pagejump_int = int(self.pagejump) 
-                self.pagejump_id  = f"P{self.pagejump_int:04}"
-                self.page_offset = self.pagejump_int - self.page_start_int
+            self.pagejump = m_groups.get("pagejump")
+            if self.pagejump != '':
+                self.pagejump = f"{int(self.pagejump):04}"
+                self.pagejump_id  = f"P{self.page_jump_type_code}{self.pagejump}"
 
-            self.page_variant = m.group("pagevariant")
+            self.page_variant = m_groups.get("pagevariant").upper()
             if self.page_variant == '':
                 self.page_variant = 'A'
 
             # self.page_start can't be None or it wouldn't match pattern, so no worries
-            self.page_start_id = f"{self.page_start_int:04}{self.page_variant}"
+            self.page_start_id = f"{self.page_start_type_code}{self.page_start}{self.page_variant}"
             
             # normalized documentID
             self.document_id = f"{self.journal_code}.{self.volume_id}.{self.page_start_id}"
             self.jrnlvol_id = f"{self.journal_code}.{self.volume_id}"
-            if self.pagejump is not None:
+            if self.pagejump != '':
                 self.document_id_pagejump = f"{self.document_id}.{self.pagejump_id}"
         else:
-            m = re.match("(?P<docid>(?P<journalcode>[A-Z]{2,12})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?))", document_id)
+            # m = re.match("(?P<docid>(?P<journalcode>[A-Z]{2,12})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?))", document_id)
+            m = self.rxvolc.match(document_id)
             if m is not None:
+                m_groups = m.groupdict(default="")
                 # this is a journal.vol id
-                self.docid_input = m.group("docid")
-                self.journal_code = m.group("journalcode")
-                self.vol_suffix = m.group("volsuffix")
-                if self.vol_suffix is None:
-                    self.vol_suffix = ""
-                self.volume = m.group("volume")
-                self.volume_int = int(self.volume)
-                # self.volume can't be None and must be numeric or it wouldn't match pattern, so no worries
-                self.volume_id = f"{self.volume_int:03}{self.vol_suffix}"
-                self.jrnlvol_id = f"{self.journal_code}.{self.volume_id}"
+                self.docid_input = m_groups.get("docid")
+                self.journal_code = m_groups.get("journalcode").upper()
+                self.vol_suffix = m_groups.get("volsuffix").upper()
+                self.volume = m_groups.get("volume")
+                if self.volume != '':
+                    # self.volume can't be None and must be numeric or it wouldn't match pattern, so no worries
+                    self.volume_id = f"{int(self.volume):03}{self.vol_suffix}"
+                    self.jrnlvol_id = f"{self.journal_code}.{self.volume_id}"
 
     def __repr__(self):
         if self.document_id_pagejump is not None:
@@ -121,11 +167,16 @@ class DocumentID(object):
             return "DocumentID Not recognized"
 
     def is_document_id(self):
-        if self.document_id_pagejump or self.document_id is not None:
+        if self.document_id_pagejump is not None or self.document_id is not None:
             return True
         else:
             return False
 
+    def is_jrnlvol_id(self):
+        if self.jrnlvol_id is not None:
+            return True
+        else:
+            return False
 
 class FileInfo(object):
     def __init__(self, filename): 
