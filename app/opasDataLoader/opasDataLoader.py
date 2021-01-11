@@ -488,7 +488,12 @@ def main():
     # write updated file
     if issue_updates != {}:
         try:
-            fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}.xml"
+            # temp exception block just until localsecrets has been updated with DATA_UPDATE_LOG_DIR
+            try:
+                fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}.xml"
+            except Exception as e:
+                fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}.xml"
+                
             print(f"Issue updates.  Writing file {fname}")
             with open(fname, 'w', encoding="utf8") as fo:
                 fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
