@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0109.1.Alpha"
+__version__     = "2021.0112.1.Alpha"
 __status__      = "Development"
 
 """
@@ -3961,7 +3961,7 @@ def documents_abstracts(response: Response,
 
     try:
         # authenticated = opasAPISupportLib.is_session_authenticated(request, response)
-        ret_val = opasAPISupportLib.documents_get_abstracts(documentID,
+        ret_val = opasAPISupportLib.documents_get_abstracts(document_id=documentID,
                                                             ret_format=return_format,
                                                             #authenticated=authenticated,
                                                             similar_count=similarcount, 

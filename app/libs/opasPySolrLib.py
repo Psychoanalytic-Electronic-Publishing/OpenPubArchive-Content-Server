@@ -949,10 +949,20 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
 
     try:
         query = solr_query_spec.solrQuery.searchQ
-        if solr_query_spec.fullReturn:
-            return_fields = solr_query_spec.returnFields + ",text_xml" #  in case no "highlightable search is included"
-        else:
-            return_fields = solr_query_spec.returnFields
+        # set up return fields including abstract and full-text if requested
+        return_fields = solr_query_spec.returnFields
+        if solr_query_spec.fullReturn: #and session_info.XXXauthenticated:
+            # NOTE: we add this here, but in return data, access by document will be checked.
+            if "text_xml" not in solr_query_spec.returnFields:
+                return_fields = return_fields + ", text_xml, para" #, art_excerpt, art_excerpt_xml
+        
+        if solr_query_spec.abstractReturn:
+            if "abstract_xml" not in solr_query_spec.returnFields:
+                return_fields = return_fields + ", abstract_xml"
+            if "art_excerpt" not in solr_query_spec.returnFields:
+                return_fields = return_fields + ", art_excerpt, art_excerpt_xml"
+            if "summaries_xml" not in solr_query_spec.returnFields:
+                return_fields = return_fields + ", summaries_xml"
 
         solr_param_dict = { 
                             # "q": solr_query_spec.solrQuery.searchQ,

@@ -1524,6 +1524,10 @@ def documents_get_abstracts(document_id,
         # new document ID object provides precision and case normalization
         document_id_obj = opasgenlib.DocumentID(document_id)
         document_id = document_id_obj.document_id
+        if document_id is None:
+            document_id = document_id_obj.jrnlvol_id
+            if document_id is None:
+                document_id = document_id_obj.journal_code          
 
         if sort is None:
             sort="art_citeas_xml asc"
