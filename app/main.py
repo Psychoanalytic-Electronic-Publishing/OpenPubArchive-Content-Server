@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0112.1.Alpha"
+__version__     = "2021.0112.2.Alpha"
 __status__      = "Development"
 
 """
@@ -4488,6 +4488,13 @@ def documents_document_fetch(response: Response,
                         status_message = f"{client_id}:{session_id}: Document (Abstract only) fetch (access: {access}; doc length: {doc_len}"
                     else:
                         status_message = f"{client_id}:{session_id}: Document fetch (access: {access}; doc length: {doc_len}"
+                        if search is not None:
+                            try:
+                                # remove nuisance stop words from matches
+                                ret_val.documents.responseSet[0].document =\
+                                    opasAPISupportLib.remove_nuisance_word_hits(ret_val.documents.responseSet[0].document)
+                            except Exception as e:
+                                print (f"Error removing nuisance hits: {e}")
 
                     logger.info(status_message)
 
