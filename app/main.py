@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0112.2.Alpha"
+__version__     = "2021.0113.2.Alpha"
 __status__      = "Development"
 
 """
@@ -4419,25 +4419,44 @@ def documents_document_fetch(response: Response,
         # file_classification = doc_info.get("file_classification", opasConfig.DOCUMENT_ACCESS_UNDEFINED)
         try:
             # documents_get_document handles the view authorization and returns abstract if not authenticated.
-            if search is not None:
-                argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
-                try:
-                    # if there's an abstract parameter, rename it to abstract_requested (used because that's clearer in code params, so that's what the underlying functions use)
-                    argdict["abstract_requested"] = argdict.pop("abstract")
-                    print ("Fulltext1:" + f'{argdict.get("fulltext1", "")}')
-                except KeyError:
-                    pass # no abstract param. skip.
-                
-                if documentID is not None:
-                    # make sure this is part of the last search set.
-                    j = argdict.get("journal")
-                    if j is not None:
-                        if j not in documentID:
-                            argdict["journal"] = None
-            else:
-                argdict = {}
+            req_url=urllib.parse.unquote(request.url._url)
+            req_url_params = dict(parse.parse_qsl(parse.urlsplit(req_url).query))
+            ft1 = req_url_params.get("fulltext1")
+            ft2 = req_url_params.get("smarttext")
+            if ft2 is not None:
+                search = f"&smarttext={ft2}"
+            if ft1 is not None:
+                search += f"&fulltext1={ft1}"
+            solr_query_params = opasQueryHelper.parse_search_query_parameters(fulltext1=ft1, smarttext=ft2)
+            
+            #if (search is not None and search != '') or ft1 is not None:
+                #if search is None or search == '':
+                    #search = ft1
+                    #ft1 = None
 
-            solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
+                #if search[0] == "'":
+                    #search = search[1:-1]
+                    
+                #argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
+                ##if ft1 is not None:
+                    ##argdict["fulltext1"] = ft1
+                    
+                ##try:
+                    ### if there's an abstract parameter, rename it to abstract_requested (used because that's clearer in code params, so that's what the underlying functions use)
+                    ##argdict["abstract_requested"] = argdict.pop("abstract")
+                ##except KeyError:
+                    ##pass # no abstract param. skip.
+                
+                ##if documentID is not None:
+                    ### make sure this is part of the last search set.
+                    ##j = argdict.get("journal")
+                    ##if j is not None:
+                        ##if j not in documentID:
+                            ##argdict["journal"] = None
+            #else:
+                #argdict = {}
+
+            # solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
             logger.debug("Document View Request: %s/%s/%s", solr_query_params, documentID, return_format)
 
             ret_val = opasAPISupportLib.documents_get_document( documentID, 
@@ -4447,7 +4466,7 @@ def documents_document_fetch(response: Response,
                                                                 page_offset=pageoffset, # starting page
                                                                 page_limit=pagelimit, # number of pages
                                                                 page=page, # specific page number request (rather than offset),
-                                                                req_url=request.url._url, 
+                                                                req_url=req_url, 
                                                                 session_info=session_info,
                                                                 option_flags=specialoptions,
                                                                 request=request
@@ -4488,14 +4507,20 @@ def documents_document_fetch(response: Response,
                         status_message = f"{client_id}:{session_id}: Document (Abstract only) fetch (access: {access}; doc length: {doc_len}"
                     else:
                         status_message = f"{client_id}:{session_id}: Document fetch (access: {access}; doc length: {doc_len}"
-                        if search is not None:
-                            try:
-                                # remove nuisance stop words from matches
-                                ret_val.documents.responseSet[0].document =\
-                                    opasAPISupportLib.remove_nuisance_word_hits(ret_val.documents.responseSet[0].document)
-                            except Exception as e:
-                                print (f"Error removing nuisance hits: {e}")
-
+                        #if search is not None:
+                            #try:
+                                #ret_val.documents.responseSet[0].hitCriteria = urllib.parse.unquote(search) 
+                                ## remove nuisance stop words from matches
+                                #ret_val.documents.responseSet[0].document =\
+                                    #opasAPISupportLib.remove_nuisance_word_hits(ret_val.documents.responseSet[0].document)
+                            #except Exception as e:
+                                #print (f"Error removing nuisance hits: {e}")
+                    #try:
+                        #ret_val.documents.responseSet[0].hitList = opasAPISupportLib.list_all_matches_with_loc(ret_val.documents.responseSet[0].document)
+                        #ret_val.documents.responseSet[0].hitCount = len(ret_val.documents.responseSet[0].hitList)
+                    #except Exception as e:
+                        #print (f"Error saving hits and count: {e}")
+                    
                     logger.info(status_message)
 
             else:
@@ -4507,7 +4532,7 @@ def documents_document_fetch(response: Response,
 
             ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
                                         session_info=session_info, 
-                                        params=request.url._url,
+                                        params=req_url,
                                         item_of_interest=documentID, 
                                         return_status_code = response.status_code,
                                         status_message=status_message
@@ -4519,7 +4544,7 @@ def documents_document_fetch(response: Response,
                     detail=status_message
                 )           
             else:
-                ret_val.documents.responseInfo.request = request.url._url
+                ret_val.documents.responseInfo.request = req_url
                 if access == False:
                     #  abstract returned...we don't count those currently.
                     logger.info(f"Document request for non-logged-in user (session: {session_info.session_id}). Abstract returned instead for {documentID}.")

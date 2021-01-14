@@ -79,7 +79,7 @@ class TestGetDocuments(unittest.TestCase):
         assert (term == "SearchHits(text:(Evenly Suspended Attention))")
 
     def test_002B_get_document_with_hits(self):
-        search = 'search=?fulltext1=%22Evenly%20Suspended%20Attention%22~25&viewperiod=4&formatrequested=HTML&highlightlimit=5&facetmincount=1&facetlimit=15&sort=score%20desc&limit=15'
+        search = 'search=&fulltext1=%22Evenly%20Suspended%20Attention%22~25&viewperiod=4&formatrequested=HTML&highlightlimit=5&facetmincount=1&facetlimit=15&sort=score%20desc&limit=15'
         # search = 'search=?fulltext1=%22Evenly%20Suspended%20Attention%22~25'
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171A?{search}')
         response = requests.get(full_URL, headers=headers)

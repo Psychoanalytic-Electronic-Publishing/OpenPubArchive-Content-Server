@@ -1918,134 +1918,281 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
 
     return documentListItem # return a partially filled document list item
 
-#-----------------------------------------------------------------------------
-def get_fulltext_from_search_results(result,
-                                     text_xml,
-                                     page,
-                                     page_offset,
-                                     page_limit,
-                                     documentListItem: models.DocumentListItem,
-                                     format_requested="HTML",
-                                     return_options=None):
-
-    child_xml = None
-    offset = 0
-    if documentListItem.sourceTitle is None:
-        documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+#def get_fulltext_new(documentListItem, solr_query_spec):
+    ## consolidated full-text handling.
+    
+    #child_xml = None
+    #offset = 0
+    ##if documentListItem.sourceTitle is None:
+        ##documentListItem = get_base_article_info_from_search_result(result, documentListItem)
         
-    #if page_limit is None:
-        #page_limit = opasConfig.DEFAULT_PAGE_LIMIT
+    ##if page_limit is None:
+        ##page_limit = opasConfig.DEFAULT_PAGE_LIMIT
 
-    documentListItem.docPagingInfo = {}    
-    documentListItem.docPagingInfo["page"] = page
-    documentListItem.docPagingInfo["page_limit"] = page_limit
-    documentListItem.docPagingInfo["page_offset"] = page_offset
+    #format_requested=solr_query_spec.returnFormat,
+    #return_options=solr_query_spec.returnOptions, 
+    #documentListItem.docPagingInfo = {}    
+    #documentListItem.docPagingInfo["page"] = solr_query_spec.page,
+    #documentListItem.docPagingInfo["page_limit"] = solr_query_spec.page_limit
+    #documentListItem.docPagingInfo["page_offset"] = page_offset=solr_query_spec.page_offset
 
-    fullText = result.get("text_xml", None)
-    text_xml = force_string_return_from_various_return_types(text_xml)
-    if text_xml is None:  # no highlights, so get it from the main area
-        try:
-            text_xml = fullText
-        except:
-            text_xml = None
+    #fullText = documentListItem.document # result.get("text_xml", None)
+    #text_xml = force_string_return_from_various_return_types(fullText)
+    #if fullText is not None:
+        #if len(fullText) > len(text_xml):
+            #logger.warning("Warning: text with highlighting is smaller than full-text area.  Returning without hit highlighting.")
+            #text_xml = fullText
 
-    elif fullText is not None:
-        if len(fullText) > len(text_xml):
-            logger.warning("Warning: text with highlighting is smaller than full-text area.  Returning without hit highlighting.")
-            text_xml = fullText
+    #if text_xml is not None:
+        #reduce = False
+        ## see if an excerpt was requested.
+        #if page is not None and page <= int(documentListItem.pgEnd) and page > int(documentListItem.pgStart):
+            ## use page to grab the starting page
+            ## we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
+            #offset = page - int(documentListItem.pgStart)
+            #reduce = True
+        ## Only use supplied offset if page parameter is out of range, or not supplied
+        #if reduce == False and page_offset is not None and page_offset != 0: 
+            #offset = page_offset
+            #reduce = True
 
-    if text_xml is not None:
-        reduce = False
-        # see if an excerpt was requested.
-        if page is not None and page <= int(documentListItem.pgEnd) and page > int(documentListItem.pgStart):
-            # use page to grab the starting page
-            # we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
-            offset = page - int(documentListItem.pgStart)
-            reduce = True
-        # Only use supplied offset if page parameter is out of range, or not supplied
-        if reduce == False and page_offset is not None and page_offset != 0: 
-            offset = page_offset
-            reduce = True
-
-        if reduce == True or page_limit is not None:
-            # extract the requested pages
-            try:
-                temp_xml = opasxmllib.xml_get_pages(xmlstr=text_xml,
-                                                    offset=offset,
-                                                    limit=page_limit,
-                                                    pagebrk="pb",
-                                                    inside="body",
-                                                    env="body")
-                temp_xml = temp_xml[0]
+        #if reduce == True or page_limit is not None:
+            ## extract the requested pages
+            #try:
+                #temp_xml = opasxmllib.xml_get_pages(xmlstr=text_xml,
+                                                    #offset=offset,
+                                                    #limit=page_limit,
+                                                    #pagebrk="pb",
+                                                    #inside="body",
+                                                    #env="body")
+                #temp_xml = temp_xml[0]
                 
-            except Exception as e:
-                logger.error(f"Page extraction from document failed. Error: {e}.  Keeping entire document.")
-            else: # ok
-                text_xml = temp_xml
+            #except Exception as e:
+                #logger.error(f"Page extraction from document failed. Error: {e}.  Keeping entire document.")
+            #else: # ok
+                #text_xml = temp_xml
     
-        if return_options is not None:
-            if return_options.get("Glossary", None) == False:
-                # remove glossary markup
-                text_xml = opasxmllib.remove_glossary_impx(text_xml)   
+        #if return_options is not None:
+            #if return_options.get("Glossary", None) == False:
+                ## remove glossary markup
+                #text_xml = opasxmllib.remove_glossary_impx(text_xml)   
     
-    try:
-        format_requested_ci = format_requested.lower() # just in case someone passes in a wrong type
-    except:
-        format_requested_ci = "html"
+    #try:
+        #format_requested_ci = format_requested.lower() # just in case someone passes in a wrong type
+    #except:
+        #format_requested_ci = "html"
 
-    if documentListItem.docChild != {} and documentListItem.docChild is not None:
-        child_xml = documentListItem.docChild["para"]
-    else:
-        child_xml = None
+    #if documentListItem.docChild != {} and documentListItem.docChild is not None:
+        #child_xml = documentListItem.docChild["para"]
+    #else:
+        #child_xml = None
     
-    if text_xml is None and child_xml is not None:
-        text_xml = child_xml
+    #if text_xml is None and child_xml is not None:
+        #text_xml = child_xml
 
-    if format_requested_ci == "html":
-        # Convert to HTML
-        heading = opasxmllib.get_running_head( source_title=documentListItem.sourceTitle,
-                                               pub_year=documentListItem.year,
-                                               vol=documentListItem.vol,
-                                               issue=documentListItem.issue,
-                                               pgrg=documentListItem.pgRg,
-                                               ret_format="HTML"
-                                               )
-        try:
-            text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
-        except Exception as e:
-            logger.error(f"Could not convert to HTML {e}; returning native format")
-            text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-        else:
-            try:
-                global count_anchors
-                count_anchors = 0
-                # print (f"Hitmarkers: {opasConfig.HITMARKERSTART}, {opasConfig.HITMARKEREND}, Count_Anchors: {count_anchors}")
-                text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-                text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
-            except Exception as e:
-                logger.error(f"Could not do substitution {e}")
+    ## ####################################
+    ## here's where we need to massage hit markup
+    ## ####################################
+    ## TBD
 
-        if child_xml is not None:
-            child_xml = opasxmllib.xml_str_to_html(child_xml)
+    #if format_requested_ci == "html":
+        ## Convert to HTML
+        #heading = opasxmllib.get_running_head( source_title=documentListItem.sourceTitle,
+                                               #pub_year=documentListItem.year,
+                                               #vol=documentListItem.vol,
+                                               #issue=documentListItem.issue,
+                                               #pgrg=documentListItem.pgRg,
+                                               #ret_format="HTML"
+                                               #)
+        #try:
+            #text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+        #except Exception as e:
+            #logger.error(f"Could not convert to HTML {e}; returning native format")
+            #text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+        #else:
+            #try:
+                #global count_anchors
+                #count_anchors = 0
+                ## print (f"Hitmarkers: {opasConfig.HITMARKERSTART}, {opasConfig.HITMARKEREND}, Count_Anchors: {count_anchors}")
+                #text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                #text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
+            #except Exception as e:
+                #logger.error(f"Could not do substitution {e}")
+
+        #if child_xml is not None:
+            #child_xml = opasxmllib.xml_str_to_html(child_xml)
                 
-    elif format_requested_ci == "textonly":
-        # strip tags
-        text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
-        if child_xml is not None:
-            child_xml = opasxmllib.xml_elem_or_str_to_text(child_xml, default_return=text_xml)
-    elif format_requested_ci == "xml":
-        # don't do this for XML
-        pass
-        # text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-        # child_xml = child_xml
+    #elif format_requested_ci == "textonly":
+        ## strip tags
+        #text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
+        #if child_xml is not None:
+            #child_xml = opasxmllib.xml_elem_or_str_to_text(child_xml, default_return=text_xml)
+    #elif format_requested_ci == "xml":
+        ## don't do this for XML
+        #pass
+        ## text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+        ## child_xml = child_xml
 
-    documentListItem.document = text_xml
+    #documentListItem.document = text_xml
                 
-    if child_xml is not None:
-        # return child para in requested format
-        documentListItem.docChild['para'] = child_xml
+    #if child_xml is not None:
+        ## return child para in requested format
+        #documentListItem.docChild['para'] = child_xml
 
-    return documentListItem
+    #if documentListItem.document == None:
+        #errmsg = f"Document fetch failed! ({solr_query_spec.solrQuery.searchQ}"
+        #logger.error(errmsg)
+        #documentListItem.term = f"SearchHits({solr_query_spec.solrQuery.searchQ})"
+        #documentListItem.termCount = 0
+    #else:
+        #try:
+            #matches = re.findall(f"class='searchhit'|{opasConfig.HITMARKERSTART}", documentListItem.document)
+        #except Exception as e:
+            #logger.warning(f"Exception.  Could not count matches. {e}")
+            #documentListItem.term = f"SearchHits({solr_query_spec.solrQuery.searchQ})"
+            #documentListItem.termCount = 0
+        #else:
+            #documentListItem.term = f"SearchHits({solr_query_spec.solrQuery.searchQ})"
+            #documentListItem.termCount = len(matches)
+
+    #return documentListItem
+
+    
+##-----------------------------------------------------------------------------
+#def get_fulltext_from_search_results(result,
+                                     #text_xml,
+                                     #page,
+                                     #page_offset,
+                                     #page_limit,
+                                     #documentListItem: models.DocumentListItem,
+                                     #format_requested="HTML",
+                                     #return_options=None):
+
+    #child_xml = None
+    #offset = 0
+    #if documentListItem.sourceTitle is None:
+        #documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+        
+    ##if page_limit is None:
+        ##page_limit = opasConfig.DEFAULT_PAGE_LIMIT
+
+    #documentListItem.docPagingInfo = {}    
+    #documentListItem.docPagingInfo["page"] = page
+    #documentListItem.docPagingInfo["page_limit"] = page_limit
+    #documentListItem.docPagingInfo["page_offset"] = page_offset
+
+    #fullText = result.get("text_xml", None)
+    #text_xml = force_string_return_from_various_return_types(text_xml)
+    #if text_xml is None:  # no highlights, so get it from the main area
+        #try:
+            #text_xml = fullText
+        #except:
+            #text_xml = None
+
+    #elif fullText is not None:
+        #if len(fullText) > len(text_xml):
+            #logger.warning("Warning: text with highlighting is smaller than full-text area.  Returning without hit highlighting.")
+            #text_xml = fullText
+
+    #if text_xml is not None:
+        #reduce = False
+        ## see if an excerpt was requested.
+        #if page is not None and page <= int(documentListItem.pgEnd) and page > int(documentListItem.pgStart):
+            ## use page to grab the starting page
+            ## we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
+            #offset = page - int(documentListItem.pgStart)
+            #reduce = True
+        ## Only use supplied offset if page parameter is out of range, or not supplied
+        #if reduce == False and page_offset is not None and page_offset != 0: 
+            #offset = page_offset
+            #reduce = True
+
+        #if reduce == True or page_limit is not None:
+            ## extract the requested pages
+            #try:
+                #temp_xml = opasxmllib.xml_get_pages(xmlstr=text_xml,
+                                                    #offset=offset,
+                                                    #limit=page_limit,
+                                                    #pagebrk="pb",
+                                                    #inside="body",
+                                                    #env="body")
+                #temp_xml = temp_xml[0]
+                
+            #except Exception as e:
+                #logger.error(f"Page extraction from document failed. Error: {e}.  Keeping entire document.")
+            #else: # ok
+                #text_xml = temp_xml
+    
+        #if return_options is not None:
+            #if return_options.get("Glossary", None) == False:
+                ## remove glossary markup
+                #text_xml = opasxmllib.remove_glossary_impx(text_xml)   
+    
+    #try:
+        #format_requested_ci = format_requested.lower() # just in case someone passes in a wrong type
+    #except:
+        #format_requested_ci = "html"
+
+    #if documentListItem.docChild != {} and documentListItem.docChild is not None:
+        #child_xml = documentListItem.docChild["para"]
+    #else:
+        #child_xml = None
+    
+    #if text_xml is None and child_xml is not None:
+        #text_xml = child_xml
+        
+    #try:
+        ##ret_val.documents.responseSet[0].hitCriteria = urllib.parse.unquote(search) 
+        ## remove nuisance stop words from matches
+        #text_xml = opasAPISupportLib.remove_nuisance_word_hits(text_xml)
+    #except Exception as e:
+        #print (f"Error removing nuisance hits: {e}")
+
+    #if format_requested_ci == "html":
+        ## Convert to HTML
+        #heading = opasxmllib.get_running_head( source_title=documentListItem.sourceTitle,
+                                               #pub_year=documentListItem.year,
+                                               #vol=documentListItem.vol,
+                                               #issue=documentListItem.issue,
+                                               #pgrg=documentListItem.pgRg,
+                                               #ret_format="HTML"
+                                               #)
+        #try:
+            #text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+        #except Exception as e:
+            #logger.error(f"Could not convert to HTML {e}; returning native format")
+            #text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+        #else:
+            #try:
+                #global count_anchors
+                #count_anchors = 0
+                ## print (f"Hitmarkers: {opasConfig.HITMARKERSTART}, {opasConfig.HITMARKEREND}, Count_Anchors: {count_anchors}")
+                #text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+                #text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
+            #except Exception as e:
+                #logger.error(f"Could not do substitution {e}")
+
+        #if child_xml is not None:
+            #child_xml = opasxmllib.xml_str_to_html(child_xml)
+                
+    #elif format_requested_ci == "textonly":
+        ## strip tags
+        #text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
+        #if child_xml is not None:
+            #child_xml = opasxmllib.xml_elem_or_str_to_text(child_xml, default_return=text_xml)
+    #elif format_requested_ci == "xml":
+        ## don't do this for XML
+        #pass
+        ## text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
+        ## child_xml = child_xml
+
+    #documentListItem.document = text_xml
+                
+    #if child_xml is not None:
+        ## return child para in requested format
+        #documentListItem.docChild['para'] = child_xml
+
+    #return documentListItem
 
 #-----------------------------------------------------------------------------
 def merge_documentListItems(old, new):     
@@ -2167,28 +2314,6 @@ def force_string_return_from_various_return_types(text_str, min_length=5):
             logger.error(err)
 
     return ret_val        
-
-#-----------------------------------------------------------------------------
-def numbered_anchors(matchobj):
-    """
-    Called by re.sub on replacing anchor placeholders for HTML output.  This allows them to be numbered as they are replaced.
-    """
-    global count_anchors
-    JUMPTOPREVHIT = f"""<a onclick='scrollToAnchor("hit{count_anchors}");event.preventDefault();'>🡄</a>"""
-    JUMPTONEXTHIT = f"""<a onclick='scrollToAnchor("hit{count_anchors+1}");event.preventDefault();'>🡆</a>"""
-
-    if matchobj.group(0) == opasConfig.HITMARKERSTART:
-        count_anchors += 1
-        if count_anchors > 1:
-            #return f"<a name='hit{count_anchors}'><a href='hit{count_anchors-1}'>🡄</a>{opasConfig.HITMARKERSTART_OUTPUTHTML}"
-            return f"<a name='hit{count_anchors}'>{JUMPTOPREVHIT}{opasConfig.HITMARKERSTART_OUTPUTHTML}"
-        elif count_anchors <= 1:
-            return f"<a name='hit{count_anchors}'> "
-    if matchobj.group(0) == opasConfig.HITMARKEREND:
-        return f"{opasConfig.HITMARKEREND_OUTPUTHTML}{JUMPTONEXTHIT}"
-
-    else:
-        return matchobj.group(0)
 
 # -------------------------------------------------------------------------------------------------------
 # run it!

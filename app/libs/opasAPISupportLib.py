@@ -136,22 +136,7 @@ from opasPySolrLib import search_text, search_text_qs
 
 # count_anchors = 0
 
-rx_nuisance_words = f"""{opasConfig.HITMARKERSTART}(?P<word>i\.e|e\.g|a|am|an|are|as|at|be|because|been|before|but|by|can|cannot|could|did|do|does|doing|down|each|for|from|further|had|has|have|having|he|her|here|hers
-|herself|him|himself|his|how|i|if|in|into|is|it|its|itself|me|more|most|my|myself|no|nor|not|of|off|on|once|only|or|other|ought
-|our|ours|ourselves|out|over|own|same|she|should|so|some|such|than|that|the|their|theirs|them|then|there|these|they|this|those|to|too|under|until|up|very
-|was|we|were|what|when|where|which|while|who|whom|why|with|would|you|your|yours|yourself|yourselves){opasConfig.HITMARKEREND}"""
 
-rcx_remove_nuisance_words = re.compile(rx_nuisance_words, flags=re.IGNORECASE)
-
-def remove_nuisance_word_hits(result_str):
-    """
-    >>> a = '#@@@the@@@# cat #@@@in@@@# #@@@the@@@# hat #@@@is@@@# #@@@so@@@# smart'
-    >>> remove_nuisance_word_hits(a)
-    
-    """
-    ret_val = rcx_remove_nuisance_words.sub("\g<word>", result_str)
-    print (ret_val)
-    return ret_val 
 
 def has_data(str):
     ret_val = True
