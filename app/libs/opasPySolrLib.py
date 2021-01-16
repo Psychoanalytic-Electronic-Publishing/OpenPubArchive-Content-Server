@@ -1210,6 +1210,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     documentListItem.score = result.get("score", None)               
                     try:
                         text_xml = results.highlighting[documentID].get("text_xml", None)
+                        if text_xml == []:
+                            text_xml = None
                     except:
                         text_xml = None
     
@@ -1247,7 +1249,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     documentListItem.kwic = "" # need this, so it doesn't default to Nonw
                     documentListItem.kwicList = []
                     # no kwic list when full-text is requested.
-                    if text_xml is not None and not solr_query_spec.fullReturn and solr_query_spec.solrQueryOpts.hl == 'true':
+                    kwic_list = []
+                    kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.                      if text_xml is not None and not solr_query_spec.fullReturn and solr_query_spec.solrQueryOpts.hl == 'true':
                         #kwicList = getKwicList(textXml, extraContextLen=extraContextLen)  # returning context matches as a list, making it easier for clients to work with
                         kwic_list = []
                         for n in text_xml:
@@ -1264,9 +1267,9 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         # we don't need fulltext
                         text_xml = None
                         #print ("Document Length: {}; Matches to show: {}".format(len(textXml), len(kwicList)))
-                    else: # either fulltext requested, or no document, we don't need kwic
-                        kwic_list = []
-                        kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
+                    #else: # either fulltext requested, or no document, we don't need kwic
+                        #kwic_list = []
+                        #kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
     
                     if kwic != "": documentListItem.kwic = kwic
                     if kwic_list != []: documentListItem.kwicList = kwic_list
@@ -2545,7 +2548,7 @@ def get_fulltext_from_search_results(result,
     child_xml = None
     offset = 0
     if documentListItem.sourceTitle is None:
-        documentListItem = get_base_article_info_from_search_result(result, documentListItem)
+        documentListItem = opasQueryHelper.get_base_article_info_from_search_result(result, documentListItem)
         
     #if page_limit is None:
         #page_limit = opasConfig.DEFAULT_PAGE_LIMIT

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0113.2.Alpha"
+__version__     = "2021.0115.1.Alpha"
 __status__      = "Development"
 
 """
@@ -4421,8 +4421,12 @@ def documents_document_fetch(response: Response,
             # documents_get_document handles the view authorization and returns abstract if not authenticated.
             req_url=urllib.parse.unquote(request.url._url)
             req_url_params = dict(parse.parse_qsl(parse.urlsplit(req_url).query))
+            # param_search = req_url_params.get("search", None)
+            
             ft1 = req_url_params.get("fulltext1")
             ft2 = req_url_params.get("smarttext")
+            # search_old = search
+            search = ""
             if ft2 is not None:
                 search = f"&smarttext={ft2}"
             if ft1 is not None:
