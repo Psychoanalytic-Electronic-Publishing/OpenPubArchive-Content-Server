@@ -25,7 +25,10 @@ import re
 import urllib.request, urllib.parse, urllib.error
 import random
 
+import lxml
 from lxml import etree
+parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
+
 import pymysql
 
 import localsecrets
@@ -972,7 +975,7 @@ class doc_children(object):
                 self.tag_counts[parent_tag] = 1
             
             # special attr handling.  Later look and see if this is slowing us down...
-            currelem = etree.fromstring(n)
+            currelem = etree.fromstring(n, parser=parser)
             lang = currelem.attrib.get("lang", default_lang)
             para_lgrid = currelem.attrib.get("lgrid", None)
             para_lgrx = currelem.attrib.get("lgrx", None)

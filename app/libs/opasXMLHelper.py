@@ -81,6 +81,7 @@ import datetime
 import lxml
 from lxml import etree
 import lxml.html as lhtml
+parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 
 import opasConfig
 from localsecrets import APIURL, IMAGE_API_LINK
@@ -353,7 +354,7 @@ def author_mast_from_xmlstr(author_xmlstr, listed=True):
     ('Ghislaine Boulanger', ['Ghislaine Boulanger'])
     """
     ret_val = ("", [])
-    pepxml = etree.parse(StringIO(author_xmlstr))
+    pepxml = etree.parse(StringIO(author_xmlstr), parser=parser)
     
     if author_xmlstr[0:4] == "<aut":
         rootFlag = "/"
@@ -426,8 +427,8 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
     
         if isinstance(author_xmlstr, bytes):
             author_xmlstr = author_xmlstr.decode("utf-8")
-            
-        pepxml = etree.parse(StringIO(author_xmlstr))
+        
+        pepxml = etree.parse(StringIO(author_xmlstr), parser=parser)
         if author_xmlstr[0:4] == "<aut":
             rootFlag = "/"
         else:

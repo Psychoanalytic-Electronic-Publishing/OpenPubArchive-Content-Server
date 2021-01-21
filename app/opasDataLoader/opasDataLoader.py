@@ -7,10 +7,11 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.12.08.1" 
+__version__     = "2021.01.21.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
+import lxml
 
 print(
     f""" 
@@ -392,7 +393,8 @@ def main():
                 print (msg)
     
             # import into lxml
-            root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents))
+            parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
+            root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
             pepxml = root
     
             # save common document (article) field values into artInfo instance for both databases
