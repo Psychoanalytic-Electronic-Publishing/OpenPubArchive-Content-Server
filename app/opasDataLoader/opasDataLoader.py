@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.01.21.1" 
+__version__     = "2021.01.21.2" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -393,7 +393,7 @@ def main():
                 print (msg)
     
             # import into lxml
-            parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
+            parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
             root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
             pepxml = root
     
