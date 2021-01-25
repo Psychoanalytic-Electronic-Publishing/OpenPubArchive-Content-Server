@@ -142,10 +142,10 @@ class TestFileSystemFunctions(unittest.TestCase):
                                             root=localsecrets.XML_ORIGINALS_PATH)
 
         root = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
-        testsubpath = "_PEPCurrent/IJP/098.2017"
+        testsubpath = "_PEPCurrent/IJP/"
         testfullpath = root / testsubpath
 
-        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, revised_after_date="2020-09-04")
+        matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, revised_after_date="2022-09-04")
         print (len(matchlist))
         assert (len(matchlist) == 0)
 

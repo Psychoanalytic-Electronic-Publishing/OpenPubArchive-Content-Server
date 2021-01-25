@@ -1195,7 +1195,7 @@ def metadata_get_database_statistics(session_info=None):
     # data = metadata_get_volumes(source_code="IJPSP")
     documentList, ret_status = search_text(query=f"art_id:*", 
                                                limit=1,
-                                               facet_fields="art_year,art_pgcount,art_figcount,art_sourcetitleabbr", 
+                                               facet_fields="art_year,art_pgcount,art_figcount,art_sourcetitleabbr,art_sourcecode", 
                                                abstract_requested=False,
                                                full_text_requested=False,
                                                session_info=session_info
@@ -1221,10 +1221,13 @@ def metadata_get_database_statistics(session_info=None):
     facet_counts = documentList.documentList.responseInfo.facetCounts
     facet_fields = facet_counts["facet_fields"]
     src_counts = facet_fields["art_sourcetitleabbr"]
+    src_code_counts = facet_fields["art_sourcecode"]
     fig_counts = facet_fields["art_figcount"]
-    content.figure_count = sum([int(y) for x,y in fig_counts.items() if x != '0'])
+    # figure count is how many figures shown in all articles (possible some are in more than one, not likely.  But one article could present a graphic multiple times.)
+    #  so not the same as the number of graphics in the g folder. (And a figure could be a chart or table)
+    content.figure_count = sum([int(y) * int(x) for x,y in fig_counts.items() if x != '0'])
     journals_plus_videos = [x for x,y in src_counts.items() if x not in ("ZBK", "IPL", "NLP", "SE", "GW")]
-    journals = [x for x in journals_plus_videos if re.match(".*VS", x) is None]
+    journals = [x for x in src_code_counts if re.match(".*VS|OFFSITE|SE|GW|IPL|NLP|ZBK", x) is None]
     content.journal_count = len(journals)
     content.video_count = videoList.documentList.responseInfo.fullCount
     book_facet_counts = bookList.documentList.responseInfo.facetCounts
@@ -1262,7 +1265,7 @@ There are over
 {content.article_count} articles and almost
 {content.figure_count} figures and illustrations that originally resided on
 {content.vol_count} volumes with over
-{content.page_count/100000:.2f} million printed pages. In hard copy, the PEP Archive represents a stack of paper more than
+{content.page_count/1000000:.2f} million printed pages. In hard copy, the PEP Archive represents a stack of paper more than
 {content.page_height_feet} feet high and weighing over
 {content.page_weight_tons} tons!
 </p>

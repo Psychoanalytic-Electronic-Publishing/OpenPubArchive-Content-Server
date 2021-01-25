@@ -423,6 +423,7 @@ class SessionInfo(BaseModel):
     session_id: str = Schema(None, title="A generated session Identifier number the client passes in the header to identify the session")
     user_id: int = Schema(opasConfig.USER_NOT_LOGGED_IN_ID, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
     username: str = Schema(opasConfig.USER_NOT_LOGGED_IN_NAME, title="Registered user name, for convenience here")
+    user_type: str = Schema("Unknown", title="User type, e.g., Admin or Individual")
     is_valid_login: bool = Schema(False, title="")
     has_subscription: bool = Schema(False, title="")
     is_valid_username: bool = Schema(False, title="")
@@ -434,7 +435,6 @@ class SessionInfo(BaseModel):
     session_start: datetime = Schema(None, title="The datetime when the user started the session")
     session_end: datetime = Schema(None, title="The datetime when the user ended the session")
     session_expires_time: datetime = Schema(None, title="The limit on the user's session information without renewing")
-    user_type: str = Schema("Unknown", title="User type, e.g., Admin or Individual")
     admin: bool = Schema(False, title="True if the user has been authenticated as admin.")
     api_client_id: int = Schema(0, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
     # temporary, for debug
