@@ -1,0 +1,115 @@
+(absence)    9
+(act)    5
+(affect)    8
+(affects)    9
+(aim)    5
+(analysis)    10
+(awe)    5
+(babies)    8
+(behavior)    10
+(being)    7
+(body)    6
+(boy)    5
+(breast)    8
+(care)    6
+(cause)    7
+(chance)    8
+(child)    7
+(comedy)    8
+(complex)    9
+(concern)    9
+(conflict)    10
+(containing)    12  (AI here would be to find within ?5 words of Bion)
+(contempt)    10
+(deficit)    9
+(demand)    8
+(desire)    8  (a pity and a priority for AI consideration but is used in numerous contexts beyond the technical)
+(division)    10
+(dream)    7
+(energy)    8 (- a pity and a priority candidate for AI – near words like libidinal, free, psychic, cathexis, narcissistic, instinctual
+(error)    7
+(father)    8
+(flight)    8
+(forgetting)    12
+(fright)    8
+
+(fusion)    8 XXX
+
+(gap)    5
+(girl)    6
+(greed)    7
+(grid)    6 a pity and a priority for AI consideration close to Bion
+(group)    7
+(groups)    8
+(hate)    6
+(history)    9
+(holding)    9
+(idea)    6
+(ideal)    7 8  (a pity and a priority for AI consideration close to ego or object (Glossary Ego Ideal))
+(illness)    9
+(illusion)    10
+(image)    7 a pity and a priority for AI consideration close to representation or dream etc  
+(infancy)    9
+(insight)    9
+(judgement)    11
+(knot)    6
+(lack)    6
+(language)    10
+(law)    5
+(link)    6  a pity and a priority for AI consideration close to Bion
+(linking)    9
+(look)    6
+(loss)    6 a pity and a priority for AI consideration close to mourning, working through or attachment or grief or object, love, penis,
+(love)    6
+(man)    5
+(mania)    7
+(master)    8
+(memory)    8
+(merging)    9
+(model)    7
+(moment)    8
+(mother)    8
+(naming)    8
+(need)    6
+(object)    8 XXX
+(objects)    9 XXXX (AI might look for “transitional objects”, “internalized objects”, “parental objects” etc but use glossary definition for object.
+(other)    7
+(pairing)    9
+(panic)    7
+(picture)    9
+(play)    6
+(playing)    9
+(position)    10
+(presence)    10
+(pressure)    10
+(privacy)    9
+(privilege)    11
+(real)    6
+(reality)    9
+(register)    10
+(self)    6 a pity and a priority for AI consideration close to Winnicott, Mahler, Kohut
+(shadow)    8
+(shame)    7
+(sign)    6
+(skin)    6
+
+(slip)    6 XXX
+
+(society)    9
+(speech)    8
+(splitting)    11  XXX
+(structure)    11
+(subject)    9
+(symbol)    8
+(third)    7
+(training)    10
+(truth)    7
+(uncanny)    9 XXX   (AI might look for “the uncanny”)
+(undoing)    9
+(voice)    7
+(war)    5
+(wish)    6 XXX
+(wit)    5
+(woman)    7
+(word)    6
+(writing)    9
