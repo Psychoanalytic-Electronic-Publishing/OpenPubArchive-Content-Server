@@ -41,7 +41,7 @@ class TestDownload(unittest.TestCase):
             print (f"file {filename} exists")
 
         assert(filename is not None)
-        assert(opasFileSupport.file_exists(document_id, year="2001"))
+        assert(opasFileSupport.file_exists(document_id, year="2001", ext=".PDF") == True)
         
         document_id = "RPSA.047.0605B"
         filename = flex_fs.get_download_filename(filespec=document_id, path=localsecrets.PDF_ORIGINALS_PATH, year="2001", ext=".PDF")
@@ -51,7 +51,7 @@ class TestDownload(unittest.TestCase):
             print (f"file {filename} exists")
 
         assert(filename is None)
-        assert(opasFileSupport.file_exists(document_id, year="2001") == False)
+        assert(opasFileSupport.file_exists(document_id, year="2001", ext=".PDF") == False)
             
     
     def test_1_Download(self):
