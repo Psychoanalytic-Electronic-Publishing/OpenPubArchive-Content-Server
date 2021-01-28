@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0125.1.Alpha"
+__version__     = "2021.0127.1.Alpha"
 __status__      = "Development"
 
 """
@@ -4208,6 +4208,7 @@ def documents_glossary_term(response: Response,
                             termidtype: models.TermTypeIDEnum=Query(models.TermTypeIDEnum.termid, title="Type of term descriptor supplied", description=opasConfig.DESCRIPTION_TERMIDTYPE),
                             #search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
                             similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                            recordperterm: bool=Query(False, title="Return a record per term in a group", description=opasConfig.DESCRIPTION_RETURNFORMATS),
                             return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                             client_id:int=Depends(get_client_id), 
                             client_session:str= Depends(get_client_session)
@@ -4265,6 +4266,7 @@ def documents_glossary_term(response: Response,
 
         ret_val = opasAPISupportLib.documents_get_glossary_entry(term_id=termIdentifier,
                                                                  term_id_type=termidtype,
+                                                                 record_per_term=recordperterm,
                                                                  retFormat=return_format,
                                                                  session_info=session_info,
                                                                  req_url=request.url._url
@@ -4288,17 +4290,24 @@ def documents_glossary_term(response: Response,
             detail=status_message
         )
     else:
-        status_message = opasCentralDBLib.API_STATUS_SUCCESS
-
-        response.status_code = httpCodes.HTTP_200_OK
-        ret_val.documents.responseInfo.request = request.url._url
-        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
-                                    session_info=session_info, 
-                                    params=request.url._url,
-                                    item_of_interest=termIdentifier, 
-                                    return_status_code = response.status_code,
-                                    status_message=status_message
-                                    )
+        if ret_val.documents.responseInfo.count == 0:
+            status_message = opasCentralDBLib.API_STATUS_SUCCESS
+            response.status_code = httpCodes.HTTP_404_NOT_FOUND
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=status_message
+            )
+        else:
+            status_message = opasCentralDBLib.API_STATUS_SUCCESS
+            response.status_code = httpCodes.HTTP_200_OK
+            ret_val.documents.responseInfo.request = request.url._url
+            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
+                                        session_info=session_info, 
+                                        params=request.url._url,
+                                        item_of_interest=termIdentifier, 
+                                        return_status_code = response.status_code,
+                                        status_message=status_message
+                                        )
     return ret_val
 
 #-----------------------------------------------------------------------------

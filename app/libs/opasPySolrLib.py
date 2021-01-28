@@ -631,6 +631,22 @@ def get_term_index(term_partial,
 
     return ret_val
 
+def get_match_count(solrcore, query="*:*", qf="*:*"):
+    """
+    Return a count of matching records.
+    """
+    try:
+        results = solrcore.search(query, fl="art_id, file_name, file_last_modified, timestamp", rows=1)
+    except Exception as e:
+        msg = f"Solr Query Error {e}"
+        logger.error(msg)
+        # let me know whatever the logging is!
+        print (msg)
+    else:
+        ret_val = results.hits
+    
+    return ret_val
+
 def search(query, summaryField, highlightFields='art_authors_xml, art_title_xml, text_xml', returnStartAt=0, returnLimit=10):
     args = {
                # 'fl':summaryField,

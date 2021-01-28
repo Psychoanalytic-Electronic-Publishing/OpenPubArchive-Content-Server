@@ -98,6 +98,7 @@ from modelsOpasCentralPydantic import User, UserInDB
 
 DEFAULTSESSIONLENGTH = 1800 # seconds (timeout)
 API_STATUS_SUCCESS = "Success"
+API_STATUS_ERROR = "Error"
 API_ENDPOINT_METHOD_GET = "get"
 API_ENDPOINT_METHOD_PUT = "put"
 API_ENDPOINT_METHOD_POST = "post"

@@ -1587,6 +1587,7 @@ def documents_get_document(document_id,
     """
     ret_val = None
     document_list = None
+    ext = ".pdf" #  PDF originals extension
     # search_text_qs handles the authentication verification
 
     # new document ID object provides precision and case normalization
@@ -1650,6 +1651,18 @@ def documents_get_document(document_id,
         if matches > 0:
             # get the first document item only
             document_list_item = document_list.documentList.responseSet[0]
+            # is user authorized?
+            if document_list_item.accessLimited:
+                document_list_item.document = document_list_item.abstract
+            else:
+                if opasFileSupport.file_exists(document_id=document_list_item.documentID, 
+                                               year=document_list_item.year,
+                                               ext=ext, 
+                                               path=localsecrets.PDF_ORIGINALS_PATH):
+                    document_list_item.pdfOriginalAvailable = True
+                else:
+                    document_list_item.pdfOriginalAvailable = False
+
         elif search_context is not None:
             # failed to retrieve, get it without the search qualifier from last time.
             solr_query_spec.solrQuery.searchQ = "*:*"
@@ -1662,8 +1675,17 @@ def documents_get_document(document_id,
                 # get the first document item only
                 document_list_item = document_list.documentList.responseSet[0]
                 # is user authorized?
-                if document_list.documentList.responseSet[0].accessLimited:
-                    document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
+                if document_list_item.accessLimited:
+                    document_list_item.document = document_list_item.abstract
+                else:
+                    if opasFileSupport.file_exists(document_id=document_list_item.documentID, 
+                                                   year=document_list_item.year,
+                                                   ext=ext, 
+                                                   path=localsecrets.PDF_ORIGINALS_PATH):
+                        document_list_item.pdfOriginalAvailable = True
+                    else:
+                        document_list_item.pdfOriginalAvailable = False
+                        
                 document_list.documentList.responseSet[0].term = f'SearchHits({search_context})'
                 document_list.documentList.responseSet[0].termCount = 0
 
@@ -1781,7 +1803,8 @@ def documents_get_concordance_paras(para_lang_id,
 
 #-----------------------------------------------------------------------------
 def documents_get_glossary_entry(term_id,
-                                 term_id_type=None, 
+                                 term_id_type=None,
+                                 record_per_term=False, # new 20210127, if false, collapse groups to one return record.
                                  retFormat="XML",
                                  req_url: str=None,
                                  session_info=None,
@@ -1816,8 +1839,17 @@ def documents_get_glossary_entry(term_id,
         # qstr = f'term:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
     elif term_id_type == "Group":
         # 2020-11-11 use text field instead
-        qstr = f'group_name_terms:("{term_id}")'
-        # qstr = f'group_name:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
+        # qstr = f'group_name_terms:("{term_id}")'
+        # trying hybrid 2021-01-27
+        #qstr = f'group_name:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
+        # hybrid search both if needed! 2021-01-27
+        qstr = f'group_name:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
+        count = opasPySolrLib.get_match_count(solr_gloss2, query=qstr)
+        if count == 0:
+            # no match, look in the group terms for a match
+            qstr = f'group_name_terms:("{term_id}")'
+            count = opasPySolrLib.get_match_count(solr_gloss2, query=qstr)
+        
     else: # default is term ID
         term_id = term_id.upper()
         qstr = f"term_id:{term_id} || group_id:{term_id}"
@@ -1856,10 +1888,11 @@ def documents_get_glossary_entry(term_id,
            
     document_item_list = []
     count = 0
+    last_group = None
     try:
         for result in results.docs:
             document = result.get("text", None)
-            documentListItem = copy.copy(gloss_template)
+            documentListItem = copy.deepcopy(gloss_template)
             if not documentListItem.accessLimited:
                 try:
                     if retFormat == "HTML":
@@ -1885,19 +1918,31 @@ def documents_get_glossary_entry(term_id,
                     logger.warning(warning)
                     document = warning
                 
-            documentListItem.term = result.get("term", None)
-            documentListItem.document = document 
-            documentListItem.groupName = result.get("group_name", None)
-            documentListItem.groupTermCount = result.get("group_term_count", None)
             documentListItem.groupID = result.get("group_id", None)
-            documentListItem.termSource = result.get("term_source", None)
-            documentListItem.termType = result.get("term_type", None)
-            # note, the rest of the document info is from the TOC instance, but we're changing the name here
-            documentListItem.documentID = result.get("art_id", None)
-            documentListItem.score = result.get("score", None)
-            document_item_list.append(documentListItem)
-            count = len(document_item_list)
+            # if using document, getting the individual items in a group is redundant.
+            #  so in that case, don't add them.  Only return unique groups.
+            if last_group != documentListItem.groupID or record_per_term:
+                last_group = documentListItem.groupID
+                documentListItem.term = result.get("term", None)
+                documentListItem.termID = result.get("term_id")
+                # documentListItem.document = document 
+                documentListItem.document = result.get("text")
+                documentListItem.groupName = result.get("group_name", None)
+                documentListItem.groupTermCount = result.get("group_term_count", None)
+                documentListItem.termSource = result.get("term_source", None)
+                documentListItem.termType = result.get("term_type", None)
+                documentListItem.termDefPartXML = result.get("term_def_xml")
+                documentListItem.termDefRestXML = result.get("term_def_rest_xml")
+                # note, the rest of the document info is from the TOC instance, but we're changing the name here
+                documentListItem.documentID = result.get("art_id", None)
+                documentListItem.score = result.get("score", None)
+                document_item_list.append(documentListItem)
 
+        count = len(document_item_list)
+        if count == 0:
+            documentListItem = copy.deepcopy(gloss_template)
+            documentListItem.document = documentListItem.term = "No matching glossary entry."
+            # raise Exception(KeyError("No matching glossary entry"))
     except IndexError as e:
         logger.warning("No matching glossary entry for %s.  Error: %s", (term_id, e))
     except KeyError as e:

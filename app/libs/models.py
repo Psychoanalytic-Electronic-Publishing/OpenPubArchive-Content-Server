@@ -283,7 +283,8 @@ class DocumentListItem(BaseModel):
     termType: str = Schema(None, title="", description="")
     termSource: str = Schema(None, title="", description="")
     termDefPartXML: str = Schema(None, title="", description="")
-    termDefRefXML: str = Schema(None, title="", description="")
+    termDefRestXML: str = Schema(None, title="", description="")
+    pdfOriginalAvailable: bool = Schema(False, title="", description="")
     # these are not all currently used
     accessClassification: str = Schema(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
     accessLimited: bool = Schema(True, title="Access is limited, preventing full-text return")

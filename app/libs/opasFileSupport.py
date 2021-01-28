@@ -27,6 +27,18 @@ import pathlib
 
 logger = logging.getLogger(__name__)
 
+def file_exists(document_id, year, ext, path=localsecrets.PDF_ORIGINALS_PATH):
+    flex_fs = FlexFileSystem(key=localsecrets.S3_KEY,
+                             secret=localsecrets.S3_SECRET,
+                             root=path) 
+    filename = flex_fs.get_download_filename(filespec=document_id, path=path, year=year, ext=ext)
+    if filename is None:
+        ret_val = False
+    else:
+        ret_val = True
+
+    return ret_val
+
 class FileInfo(object):
     def __init__(self): 
         self.build_date = time.time()
@@ -268,6 +280,7 @@ class FlexFileSystem(object):
             
         if not self.exists(ret_val):
             logger.warning(f"Download file does not exist: {ret_val}")
+            ret_val = None
             
         return ret_val   
     #-----------------------------------------------------------------------------

@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import unittest
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PDF_ORIGINALS_PATH
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 
 # Login!
@@ -25,7 +25,35 @@ class TestDownload(unittest.TestCase):
     
     Note: tests are performed in alphabetical order, hence the function naming
           with forced order in the names.   
-    """   
+    """
+    
+    def test_0_fileexists(self):
+        import opasFileSupport
+        import localsecrets
+        flex_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                                 secret=localsecrets.S3_SECRET,
+                                                 root=localsecrets.PDF_ORIGINALS_PATH) # important to use this path, not the XML one!
+        document_id = "RPSA.047.0605A"
+        filename = flex_fs.get_download_filename(filespec=document_id, path=localsecrets.PDF_ORIGINALS_PATH, year="2001", ext=".PDF")
+        if filename is None:
+            print (f"file {document_id} doesn't exist")
+        else:
+            print (f"file {filename} exists")
+
+        assert(filename is not None)
+        assert(opasFileSupport.file_exists(document_id, year="2001"))
+        
+        document_id = "RPSA.047.0605B"
+        filename = flex_fs.get_download_filename(filespec=document_id, path=localsecrets.PDF_ORIGINALS_PATH, year="2001", ext=".PDF")
+        if filename is None:
+            print (f"file {document_id} doesn't exist")
+        else:
+            print (f"file {filename} exists")
+
+        assert(filename is None)
+        assert(opasFileSupport.file_exists(document_id, year="2001") == False)
+            
+    
     def test_1_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/IJP.077.0217A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
