@@ -34,8 +34,8 @@ from starlette.requests import Request
 import starlette.status as httpCodes
 
 # import localsecrets
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
-base = "https://padstest.zedra.net/PEPSecure/api"
+from localsecrets import PADS_BASE_URL, PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
+base = PADS_BASE_URL
 # base = "http://development.org:9300"
 import opasCentralDBLib
 

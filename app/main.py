@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0127.1.Alpha"
+__version__     = "2021.0129.1.Alpha"
 __status__      = "Development"
 
 """
@@ -3997,6 +3997,18 @@ def documents_abstracts(response: Response,
             ocd.record_document_view(document_id=documentID,
                                      session_info=session_info,
                                      view_type="Abstract")
+            
+            if ret_val.documents.responseInfo.count == 1:
+                if ret_val.documents.responseSet[0].accessLimited == False:
+                    document_list_item = ret_val.documents.responseSet[0]
+                    if opasFileSupport.file_exists(document_id=document_list_item.documentID, 
+                                                   year=document_list_item.year,
+                                                   ext=localsecrets.PDF_ORIGINALS_EXTENSION, 
+                                                   path=localsecrets.PDF_ORIGINALS_PATH):
+                        document_list_item.pdfOriginalAvailable = True
+                    else:
+                        document_list_item.pdfOriginalAvailable = False
+            
         else:
             # make sure we specify an error in the session log
             #  not sure this is the best return code, but for now...
