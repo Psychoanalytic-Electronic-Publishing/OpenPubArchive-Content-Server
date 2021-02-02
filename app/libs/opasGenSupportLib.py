@@ -369,7 +369,7 @@ def string_to_list(strlist: str, sep=","):
                 ret_val = ret_val.split(sep)
             else:
                 # cleanup whitespace around str
-                ret_val = [re.sub("\s*(?P<field>\S*)\s*", "\g<field>", strlist)]
+                ret_val = [re.sub("\s*(?P<field>[\S ]*)\s*", "\g<field>", strlist)]
         except Exception as e:
             logger.error(f"Error in string_to_list - {e}")
 
