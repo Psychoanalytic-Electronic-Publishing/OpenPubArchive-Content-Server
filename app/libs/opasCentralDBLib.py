@@ -1648,7 +1648,14 @@ class opasCentralDB(object):
         ret_val = False
             
         return ret_val   
-       
+
+    def delete_all_article_data(self):
+        """
+        >>> delete_all_article_data()
+        """
+        self.do_action_query(querytxt="DELETE FROM api_biblioxml", queryparams=None)
+        self.do_action_query(querytxt="DELETE FROM api_articles", queryparams=None)
+        
     #----------------------------------------------------------------------------------------
     def do_action_query(self, querytxt, queryparams, contextStr=None):
     

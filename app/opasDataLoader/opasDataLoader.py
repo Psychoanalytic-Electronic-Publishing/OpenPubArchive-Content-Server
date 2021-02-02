@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.01.21.2" 
+__version__     = "2021.02.01.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -236,6 +236,10 @@ def main():
                 msg = "Forced Rebuild - All files added, regardless of whether they are the same as in Solr."
                 logger.info(msg)
                 print (msg)
+                msg2 = "Biblio and Articles table contents will be reset"
+                logger.info(msg2)
+                print (msg2)
+                
             print(80*"*")
             print(f"Database will be updated. Location: {localsecrets.DBHOST}")
             if not options.glossary_only: # options.fulltext_core_update:
@@ -272,13 +276,16 @@ def main():
     # Reset core's data if requested (mainly for early development)
     if options.resetCoreData:
         if not options.glossary_only: # options.fulltext_core_update:
-            msg = "*** Deleting all data from the docs and author cores ***"
+            msg = "*** Deleting all data from the docs and author cores and database tables ***"
             logger.warning(msg)
             print (msg)
+            print ("Clearing database tables...")
+            ocd.delete_all_article_data()
             solr_docs2.delete(q='*:*')
             solr_docs2.commit()
             solr_authors.delete_query("*:*")
             solr_authors.commit()
+            
         if 1: # options.glossary_core_update:
             msg = "*** Deleting all data from the Glossary core ***"
             logger.warning(msg)
@@ -331,13 +338,16 @@ def main():
     print((80*"-"))
     files_found = len(filenames)
     if options.forceRebuildAllFiles:
+        #maybe do this only during core resets?
+        #print ("Clearing database tables...")
+        #ocd.delete_all_article_data()
         print(f"Ready to import records from {files_found} files at path {start_folder}")
     else:
         print(f"Ready to import {files_found} files *if modified* at path: {start_folder}")
 
     timeStart = time.time()
     print (f"Processing started at ({time.ctime()}).")
-    
+
     print((80*"-"))
     precommit_file_count = 0
     skipped_files = 0
