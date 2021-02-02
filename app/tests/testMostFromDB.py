@@ -159,6 +159,7 @@ class TestMostFromDb(unittest.TestCase):
                                           offset=0
                                           )            
         countAll4 = len(list(views))
+        print (f"Count4Period All: {countAll4}")
         assert (countAll4 > 1000)
         
     def test_2_most_cited_direct_period3(self):

@@ -378,7 +378,7 @@ def smart_search(smart_search_text):
             ret_val = {"art_id": loc_corrected}
 
     # journal and issue and wildcard
-    m = re.match("(?P<journal>[A-Z\-]{2,9})\.(?P<vol>([0-9]{3,3}[A-Z]?)|(\*))\.(?P<page>\*)", smart_search_text, flags=re.IGNORECASE)
+    m = re.match("(?P<journal>[A-Z\-]{2,12})\.(?P<vol>([0-9]{3,3}[A-Z]?)|(\*))\.(?P<page>\*)", smart_search_text, flags=re.IGNORECASE)
     if m is not None:
         src_code = m.group("journal")
         if src_code is not None:

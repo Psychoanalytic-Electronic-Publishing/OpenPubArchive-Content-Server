@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0129.1.Alpha"
+__version__     = "2021.0201.1.Alpha"
 __status__      = "Development"
 
 """
@@ -3751,10 +3751,12 @@ def metadata_by_sourcetype_sourcecode(response: Response,
        models.SourceInfoList
 
     ## Status
-       This endpoint is working.
+       This endpoint is working.  This is v1 only.  Deprecated as of v2, but still active.
+       
+       Use param in v2 for sourcecode rather than path variable.
 
     ## Sample Call
-         http://localhost:9100/v2/Metadata/Books/IPL
+         http://localhost:9100/v1/Metadata/Books/IPL
 
     ## Notes
        Depends on:
