@@ -28,13 +28,14 @@ import random
 import lxml
 from lxml import etree
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
+import html
 
 import pymysql
 
 import localsecrets
 # import config
 import opasConfig
-import configLib.opasCoreConfig
+# import configLib.opasCoreConfig
 import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
 
@@ -429,7 +430,7 @@ class ArticleInfo(object):
         self.art_citeas_xml = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="sourcetitle">%s</span> <span class="pgrg">%s</span>:<span class="pgrg">%s</span></p>""" \
             %                   (self.authors_bibliographic,
                                  self.art_year,
-                                 self.art_title,
+                                 html.escape(self.art_title),
                                  self.src_title_full,
                                  self.art_vol_int,
                                  self.art_pgrg)
@@ -1263,3 +1264,73 @@ def add_article_to_api_articles_table(ocd, art_info, verbose=None):
     
     return ret_val  # return True for success
 
+#------------------------------------------------------------------------------------------------------
+def add_to_tracker_table(ocd, art_id, verbose=None):
+    """
+    Adds the article data from a single document to the tracker table in mysql database opascentral.
+    
+    If the article is added successfully, that means it's a new article...never seen before.
+    Return True so it can be logged.
+    Else return False, and it will not be logged as database update.
+
+    >>> import opasCentralDBLib
+    >>> ocd =  opasCentralDBLib.opasCentralDB()
+    >>> add_to_tracker_table(ocd, "AI.001.0001A") # already in table so should return false
+    False
+    """
+    ret_val = False
+    caller_name = "add_to_tracker_table"
+    ocd.open_connection(caller_name=caller_name)
+    insert_if_not_exists = r"""INSERT
+                               INTO article_tracker (art_id)
+                               values (
+                                        %(art_id)s
+                                      );
+                            """
+
+    # string entries above must match an attr of the art_info instance.
+    query_param_dict = {}
+    # the element objects in the author_xml_list cause an error in the action query 
+    # even though that dict entry is not used.  So removed in a copy.
+    query_param_dict["art_id"] = art_id
+        
+    try:
+        res = ocd.do_action_query_silent(querytxt=insert_if_not_exists, queryparams=query_param_dict)
+    except Exception as e:
+        pass # normal
+    else:
+        ret_val = True
+        
+    try:
+        ocd.db.commit()
+        ocd.close_connection(caller_name=caller_name)
+    except pymysql.Error as e:
+        errStr = f"SQL Database -- Commit failed! {e}"
+        logger.error(errStr)
+        print (errStr)
+        ret_val = False
+    
+    return ret_val  # return True for success
+
+if __name__ == "__main__":
+    sys.path.append('./config') 
+
+    print (40*"*", "opasLoadSupportLib Tests", 40*"*")
+    print ("Running in Python %s" % sys.version_info[0])
+    logger = logging.getLogger(__name__)
+    # extra logging for standalong mode 
+    logger.setLevel(logging.WARN)
+    # create console handler and set level to debug
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.WARN)
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s')    
+    # add formatter to ch
+    ch.setFormatter(formatter)
+    # add ch to logger
+    logger.addHandler(ch)
+
+    import doctest
+    doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
+    print ("All tests complete!")
+    print ("Fini")

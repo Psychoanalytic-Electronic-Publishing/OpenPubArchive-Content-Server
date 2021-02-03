@@ -1701,6 +1701,31 @@ class opasCentralDB(object):
         
         return ret_val
 
+    #----------------------------------------------------------------------------------------
+    def do_action_query_silent(self, querytxt, queryparams, contextStr=None):
+    
+        ret_val = None
+        localDisconnectNeeded = False
+        if self.connected != True:
+            self.open_connection(caller_name="action_query") # make sure connection is open
+            localDisconnectNeeded = True
+            
+        dbc = self.db.cursor(pymysql.cursors.DictCursor)
+        try:
+            ret_val = dbc.execute(querytxt, queryparams)
+        except Exception as e:
+            raise Exception(e)
+    
+        # close cursor
+        dbc.close()
+        
+        if localDisconnectNeeded == True:
+            # if so, commit any changesand close.  Otherwise, it's up to caller.
+            self.db.commit()
+            self.close_connection(caller_name="action_query") # make sure connection is open
+        
+        return ret_val
+
 #================================================================================================================================
 
 if __name__ == "__main__":

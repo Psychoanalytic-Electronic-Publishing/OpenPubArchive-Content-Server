@@ -76,6 +76,7 @@ import datetime as dtime
 from datetime import datetime
 import logging
 logger = logging.getLogger(programNameShort)
+import html
 
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.
@@ -236,9 +237,6 @@ def main():
                 msg = "Forced Rebuild - All files added, regardless of whether they are the same as in Solr."
                 logger.info(msg)
                 print (msg)
-                msg2 = "Biblio and Articles table contents will be reset"
-                logger.info(msg2)
-                print (msg2)
                 
             print(80*"*")
             print(f"Database will be updated. Location: {localsecrets.DBHOST}")
@@ -279,7 +277,9 @@ def main():
             msg = "*** Deleting all data from the docs and author cores and database tables ***"
             logger.warning(msg)
             print (msg)
-            print ("Clearing database tables...")
+            msg2 = "Biblio and Articles table contents will be reset"
+            logger.info(msg2)
+            print (msg2)
             ocd.delete_all_article_data()
             solr_docs2.delete(q='*:*')
             solr_docs2.commit()
@@ -351,9 +351,14 @@ def main():
     print((80*"-"))
     precommit_file_count = 0
     skipped_files = 0
+    stop_after = 0
     cumulative_file_time_start = time.time()
     issue_updates = {}
-    if files_found  > 0:
+    if files_found > 0:
+        if options.halfway:
+            print ("halfway option selected.  Processing approximately one-half of the files that match.")
+            stop_after = round(files_found / 2) + 1
+            
         if options.run_in_reverse:
             print ("-r option selected.  Running the files found in reverse order.")
             filenames.reverse()
@@ -382,6 +387,11 @@ def main():
             
             # get mod date/time, filesize, etc. for mysql database insert/update
             processed_files_count += 1
+            if stop_after > 0:
+                if processed_files_count > stop_after:
+                    print (f"Halfway mark reached on file list ({stop_after})...file processing stopped per halfway option")
+                    break
+
             fileXMLContents = fs.get_file_contents(n.filespec)
             
             # get file basename without build (which is in paren)
@@ -413,7 +423,7 @@ def main():
             artInfo.filename = base
             artInfo.file_size = n.filesize
             artInfo.file_updated = file_updated
-            if file_updated: # keep track of src/vol/issue updates
+            if opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
                 art = f"<article id='{artInfo.art_id}'>{artInfo.art_citeas_xml}</article>"
                 try:
                     issue_updates[artInfo.issue_id_str].append(art)
@@ -514,7 +524,7 @@ def main():
                     fo.write(f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
                     for ref in a:
                         try:
-                            ref = ref.replace(" & ", " &amp; ")
+                            #ref = re.sub(ref, "([Q ])&([ A])", r"\1&amp;\2", flags=re.IGNORECASE)
                             fo.write(f"\t\t\t{ref}\n")
                         except Exception as e:
                             print(f"Issue Update Article Write Error: ({e})")
@@ -582,6 +592,8 @@ if __name__ == "__main__":
                       #help="Logfile name with full path where events should be logged")
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
                       help="Don't check whether to proceed.")
+    parser.add_option("--halfway", action="store_true", dest="halfway", default=False,
+                      help="Only process halfway through (e.g., when running forward and reverse.")
     parser.add_option("--glossaryonly", action="store_true", dest="glossary_only", default=False,
                       help="Only process the glossary (quicker).")
     parser.add_option("--pw", dest="httpPassword", default=None,
