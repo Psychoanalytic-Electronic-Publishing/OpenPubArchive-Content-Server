@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0203.1" 
+__version__     = "2021.0203.2" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -247,6 +247,24 @@ def main():
                 print("Solr Glossary Core will be updated: ", solrurl_glossary)
 
             print(80*"*")
+            if options.include_paras:
+                print ("--includeparas option selected. Each paragraph will also be stored individually for *Docs* core. Increases core size markedly!")
+            else:
+                try:
+                    print (f"Paragraphs only stored for sources indicated in loaderConfig. Currently: [{', '.join(loaderConfig.src_codes_to_include_paras)}]")
+                except:
+                    print ("Paragraphs only stored for sources indicated in loaderConfig.")
+    
+            if options.halfway:
+                print ("--halfway option selected.  Processing approximately one-half of the files that match.")
+                
+            if options.run_in_reverse:
+                print ("--reverse option selected.  Running the files found in reverse order.")
+
+            if options.file_key:
+                print (f"--key supplied.  Running for files matching the article id {options.file_key}")
+
+            print(80*"*")
             if not options.no_check:
                 cont = input ("The above databases will be updated.  Do you want to continue (y/n)?")
                 if cont.lower() == "n":
@@ -310,7 +328,7 @@ def main():
     
     print (f"Locating files for processing at {start_folder} with pattern {loaderConfig.file_match_pattern}. Started at ({time.ctime()}).")
     if options.file_key is not None:  
-        print (f"File Key Specified: {options.file_key}")
+        # print (f"File Key Specified: {options.file_key}")
         pat = fr"({options.file_key}.*){loaderConfig.file_match_pattern}"
         filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1000)
         if len(filenames) is None:
@@ -356,11 +374,9 @@ def main():
     issue_updates = {}
     if files_found > 0:
         if options.halfway:
-            print ("halfway option selected.  Processing approximately one-half of the files that match.")
-            stop_after = round(files_found / 2) + 1
+            stop_after = round(files_found / 2) + 5 # go a bit further
             
         if options.run_in_reverse:
-            print ("-r option selected.  Running the files found in reverse order.")
             filenames.reverse()
         
         # ----------------------------------------------------------------------
@@ -454,7 +470,7 @@ def main():
             # input to the full-text and authors cores
             if not options.glossary_only: # options.fulltext_core_update:
                 # load the docs (pepwebdocs) core
-                opasSolrLoadSupport.process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents, verbose=options.display_verbose)
+                opasSolrLoadSupport.process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents, include_paras=options.include_paras, verbose=options.display_verbose)
                 # load the authors (pepwebauthors) core.
                 opasSolrLoadSupport.process_info_for_author_core(pepxml, artInfo, solr_authors, verbose=options.display_verbose)
                 # load the database
@@ -592,6 +608,8 @@ if __name__ == "__main__":
                       #help="Logfile name with full path where events should be logged")
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
                       help="Don't check whether to proceed.")
+    parser.add_option("--includeparas", action="store_true", dest="include_paras", default=False,
+                      help="Don't separately store paragraphs except for sources using concordance (GW/SE).")
     parser.add_option("--halfway", action="store_true", dest="halfway", default=False,
                       help="Only process halfway through (e.g., when running forward and reverse.")
     parser.add_option("--glossaryonly", action="store_true", dest="glossary_only", default=False,
