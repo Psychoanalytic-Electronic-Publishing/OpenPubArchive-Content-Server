@@ -5,8 +5,8 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1029.1"
-__status__      = "Testing"
+__version__     = "2021.0204.1"
+__status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
 
@@ -310,16 +310,23 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
     """
     Use in-place updates to update the views data
     """
-    print (f"Loading records into Solr table.")
     update_count = 0
     skipped_as_update_error = 0
     skipped_as_missing = 0
+    item_count = len(unified_article_stat.items())
+    remaining_count = item_count
+    print (f"Merging up to {item_count} stat records into Solr Docs core records.")
     
     for key, art_stat in unified_article_stat.items():
+        remaining_count -= 1
+            
         if all_records==False:
             if not art_stat.art_views_update:
                 continue
 
+        if remaining_count % 1000 == 0:
+            print (f"...{remaining_count} records to go")
+            
         # set only includes those with the desired update value > 0 
         #   (see RDS vw_stat_to_update_solr_docviews to change criteria)
         doc_id = key
@@ -333,8 +340,35 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             skipped_as_missing += 1
         else:
             if found:
-                logger.info(f"...Found document {doc_id} in Solr...updating stat.")
-                if doc_id is not None:
+                update_rec = False
+                try:
+                    result = results.raw_response["response"]["docs"][0]
+                    if result["art_cited_5"] != art_stat.art_cited_5 or \
+                       result["art_cited_10"] != art_stat.art_cited_10 or \
+                       result["art_cited_20"] != art_stat.art_cited_20 or \
+                       result["art_cited_all"] != art_stat.art_cited_all or \
+                       result["art_views_lastcalyear"] != art_stat.art_views_lastcalyear or \
+                       result["art_views_last12mos"] != art_stat.art_views_last12mos or \
+                       result["art_views_last6mos"] != art_stat.art_views_last6mos or \
+                       result["art_views_last1mos"] != art_stat.art_views_last1mos or \
+                       result["art_views_lastweek"] != art_stat.art_views_lastweek:
+                        update_rec = True
+
+                except Exception as e:
+                    print (f"...No data for document {doc_id}.")
+                    if 0 != art_stat.art_cited_5 or \
+                       0 != art_stat.art_cited_10 or \
+                       0 != art_stat.art_cited_20 or \
+                       0 != art_stat.art_cited_all or \
+                       0 != art_stat.art_views_lastcalyear or \
+                       0 != art_stat.art_views_last12mos or \
+                       0 != art_stat.art_views_last6mos or \
+                       0 != art_stat.art_views_last1mos or \
+                       0 != art_stat.art_views_lastweek:
+                        update_rec = True
+                    
+                if doc_id is not None and update_rec:
+                    print(f"...Updating stat for {doc_id} in Solr...{remaining_count} more to check.")
                     upd_rec = {
                                 "id":doc_id,
                                 "art_cited_5": art_stat.art_cited_5, 
@@ -411,7 +445,7 @@ if __name__ == "__main__":
     load_unified_article_stat()
     updates = update_solr_stat_data(solr_docs2, args.all_records)
     total_time = time.time() - start_time
-    final_stat = f"{time.ctime()} Updated {updates} Solr records in {total_time} secs)."
+    final_stat = f"{time.ctime()} Updated {updates} Solr records in {total_time} secs ({total_time/60} minutes))."
     print (final_stat)
         
 
