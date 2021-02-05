@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0204.1"
+__version__     = "2021.0205.1"
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -336,7 +336,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
         except Exception as e:
-            logger.info(f"Document {doc_id} not in Solr...skipping")
+            logger.warning(f"Document {doc_id} not in Solr...skipping")
             skipped_as_missing += 1
         else:
             if found:
@@ -355,7 +355,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                         update_rec = True
 
                 except Exception as e:
-                    print (f"...No data for document {doc_id}.")
+                    logger.info(f"...No data for document {doc_id}.")
                     if 0 != art_stat.art_cited_5 or \
                        0 != art_stat.art_cited_10 or \
                        0 != art_stat.art_cited_20 or \
@@ -368,7 +368,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                         update_rec = True
                     
                 if doc_id is not None and update_rec:
-                    print(f"...Updating stat for {doc_id} in Solr...{remaining_count} more to check.")
+                    logger.info(f"...Updating stat for {doc_id} in Solr...{remaining_count} more to check.")
                     upd_rec = {
                                 "id":doc_id,
                                 "art_cited_5": art_stat.art_cited_5, 

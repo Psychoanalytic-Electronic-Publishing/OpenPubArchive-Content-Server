@@ -462,7 +462,7 @@ def main():
 
             # input to the glossary
             if 1: # options.glossary_core_update:
-                # load the docs (pepwebdocs) core
+                # load the glossary core if this is a glossary item
                 glossary_file_pattern=r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
                 if re.match(glossary_file_pattern, n.basename):
                     opasSolrLoadSupport.process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLContents, verbose=options.display_verbose)
