@@ -58,6 +58,43 @@ class TestConcordance(unittest.TestCase):
         print (para)
         assert (len(para) > 0)
         # check to make sure a known value is among the data returned
+
+    def test3_concordance_both_args(self):
+        """
+        """
+        ts = datetime.datetime.now()
+        full_URL = base_plus_endpoint_encoded('/v2/Documents/Concordance?paralangid=SEA3a24&paralangrx=GWS31a30')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        r = response.json()
+        para_cordance = r['documents']['responseSet'][0]['docChild']
+        # Confirm that the request-response cycle completed successfully.
+        para = para_cordance['para']
+        print (f"Time: {datetime.datetime.now()-ts}")
+        print (para)
+        assert (len(para) > 0)
+        full_URL = base_plus_endpoint_encoded('/v2/Documents/Concordance?paralangrx=GWS31a30')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        r = response.json()
+        para_cordance = r['documents']['responseSet'][0]['docChild']
+        # Confirm that the request-response cycle completed successfully.
+        para = para_cordance['para']
+        print (f"Time: {datetime.datetime.now()-ts}")
+        print (para)
+        assert (len(para) > 0)
+
+    def test4_concordance_list(self):
+        """
+        """
+        ts = datetime.datetime.now()
+        full_URL = base_plus_endpoint_encoded('/v2/Documents/Concordance?paralangrx=GWS387a3, GWS387a4, GWS480a2')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        r = response.json()
+        assert (len(r['documents']['responseSet']) >= 4)
+
+
         
 if __name__ == '__main__':
     unittest.main()

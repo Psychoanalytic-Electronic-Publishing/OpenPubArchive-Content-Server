@@ -5,12 +5,13 @@
 # yes, in my Solr code I'm caught between two worlds of snake_case and camelCase.
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.12.08.1" 
+__version__     = "2021.0203.2" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
+import lxml
 
 print(
     f""" 
@@ -75,6 +76,7 @@ import datetime as dtime
 from datetime import datetime
 import logging
 logger = logging.getLogger(programNameShort)
+import html
 
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.
@@ -235,6 +237,7 @@ def main():
                 msg = "Forced Rebuild - All files added, regardless of whether they are the same as in Solr."
                 logger.info(msg)
                 print (msg)
+                
             print(80*"*")
             print(f"Database will be updated. Location: {localsecrets.DBHOST}")
             if not options.glossary_only: # options.fulltext_core_update:
@@ -242,6 +245,24 @@ def main():
                 print("Solr Authors Core will be updated: ", solrurl_authors)
             if 1: # options.glossary_core_update:
                 print("Solr Glossary Core will be updated: ", solrurl_glossary)
+
+            print(80*"*")
+            if options.include_paras:
+                print ("--includeparas option selected. Each paragraph will also be stored individually for *Docs* core. Increases core size markedly!")
+            else:
+                try:
+                    print (f"Paragraphs only stored for sources indicated in loaderConfig. Currently: [{', '.join(loaderConfig.src_codes_to_include_paras)}]")
+                except:
+                    print ("Paragraphs only stored for sources indicated in loaderConfig.")
+    
+            if options.halfway:
+                print ("--halfway option selected.  Processing approximately one-half of the files that match.")
+                
+            if options.run_in_reverse:
+                print ("--reverse option selected.  Running the files found in reverse order.")
+
+            if options.file_key:
+                print (f"--key supplied.  Running for files matching the article id {options.file_key}")
 
             print(80*"*")
             if not options.no_check:
@@ -271,13 +292,18 @@ def main():
     # Reset core's data if requested (mainly for early development)
     if options.resetCoreData:
         if not options.glossary_only: # options.fulltext_core_update:
-            msg = "*** Deleting all data from the docs and author cores ***"
+            msg = "*** Deleting all data from the docs and author cores and database tables ***"
             logger.warning(msg)
             print (msg)
+            msg2 = "Biblio and Articles table contents will be reset"
+            logger.info(msg2)
+            print (msg2)
+            ocd.delete_all_article_data()
             solr_docs2.delete(q='*:*')
             solr_docs2.commit()
             solr_authors.delete_query("*:*")
             solr_authors.commit()
+            
         if 1: # options.glossary_core_update:
             msg = "*** Deleting all data from the Glossary core ***"
             logger.warning(msg)
@@ -302,7 +328,7 @@ def main():
     
     print (f"Locating files for processing at {start_folder} with pattern {loaderConfig.file_match_pattern}. Started at ({time.ctime()}).")
     if options.file_key is not None:  
-        print (f"File Key Specified: {options.file_key}")
+        # print (f"File Key Specified: {options.file_key}")
         pat = fr"({options.file_key}.*){loaderConfig.file_match_pattern}"
         filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1000)
         if len(filenames) is None:
@@ -330,21 +356,27 @@ def main():
     print((80*"-"))
     files_found = len(filenames)
     if options.forceRebuildAllFiles:
+        #maybe do this only during core resets?
+        #print ("Clearing database tables...")
+        #ocd.delete_all_article_data()
         print(f"Ready to import records from {files_found} files at path {start_folder}")
     else:
         print(f"Ready to import {files_found} files *if modified* at path: {start_folder}")
 
     timeStart = time.time()
     print (f"Processing started at ({time.ctime()}).")
-    
+
     print((80*"-"))
     precommit_file_count = 0
     skipped_files = 0
+    stop_after = 0
     cumulative_file_time_start = time.time()
     issue_updates = {}
-    if files_found  > 0:
+    if files_found > 0:
+        if options.halfway:
+            stop_after = round(files_found / 2) + 5 # go a bit further
+            
         if options.run_in_reverse:
-            print ("-r option selected.  Running the files found in reverse order.")
             filenames.reverse()
         
         # ----------------------------------------------------------------------
@@ -371,6 +403,11 @@ def main():
             
             # get mod date/time, filesize, etc. for mysql database insert/update
             processed_files_count += 1
+            if stop_after > 0:
+                if processed_files_count > stop_after:
+                    print (f"Halfway mark reached on file list ({stop_after})...file processing stopped per halfway option")
+                    break
+
             fileXMLContents = fs.get_file_contents(n.filespec)
             
             # get file basename without build (which is in paren)
@@ -392,7 +429,8 @@ def main():
                 print (msg)
     
             # import into lxml
-            root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents))
+            parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+            root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
             pepxml = root
     
             # save common document (article) field values into artInfo instance for both databases
@@ -401,7 +439,7 @@ def main():
             artInfo.filename = base
             artInfo.file_size = n.filesize
             artInfo.file_updated = file_updated
-            if file_updated: # keep track of src/vol/issue updates
+            if opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
                 art = f"<article id='{artInfo.art_id}'>{artInfo.art_citeas_xml}</article>"
                 try:
                     issue_updates[artInfo.issue_id_str].append(art)
@@ -424,7 +462,7 @@ def main():
 
             # input to the glossary
             if 1: # options.glossary_core_update:
-                # load the docs (pepwebdocs) core
+                # load the glossary core if this is a glossary item
                 glossary_file_pattern=r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
                 if re.match(glossary_file_pattern, n.basename):
                     opasSolrLoadSupport.process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLContents, verbose=options.display_verbose)
@@ -432,7 +470,7 @@ def main():
             # input to the full-text and authors cores
             if not options.glossary_only: # options.fulltext_core_update:
                 # load the docs (pepwebdocs) core
-                opasSolrLoadSupport.process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents, verbose=options.display_verbose)
+                opasSolrLoadSupport.process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents, include_paras=options.include_paras, verbose=options.display_verbose)
                 # load the authors (pepwebauthors) core.
                 opasSolrLoadSupport.process_info_for_author_core(pepxml, artInfo, solr_authors, verbose=options.display_verbose)
                 # load the database
@@ -488,7 +526,12 @@ def main():
     # write updated file
     if issue_updates != {}:
         try:
-            fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}.xml"
+            # temp exception block just until localsecrets has been updated with DATA_UPDATE_LOG_DIR
+            try:
+                fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}.xml"
+            except Exception as e:
+                fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}.xml"
+                
             print(f"Issue updates.  Writing file {fname}")
             with open(fname, 'w', encoding="utf8") as fo:
                 fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
@@ -497,7 +540,7 @@ def main():
                     fo.write(f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
                     for ref in a:
                         try:
-                            ref = ref.replace(" & ", " &amp; ")
+                            #ref = re.sub(ref, "([Q ])&([ A])", r"\1&amp;\2", flags=re.IGNORECASE)
                             fo.write(f"\t\t\t{ref}\n")
                         except Exception as e:
                             print(f"Issue Update Article Write Error: ({e})")
@@ -565,6 +608,10 @@ if __name__ == "__main__":
                       #help="Logfile name with full path where events should be logged")
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
                       help="Don't check whether to proceed.")
+    parser.add_option("--includeparas", action="store_true", dest="include_paras", default=False,
+                      help="Don't separately store paragraphs except for sources using concordance (GW/SE).")
+    parser.add_option("--halfway", action="store_true", dest="halfway", default=False,
+                      help="Only process halfway through (e.g., when running forward and reverse.")
     parser.add_option("--glossaryonly", action="store_true", dest="glossary_only", default=False,
                       help="Only process the glossary (quicker).")
     parser.add_option("--pw", dest="httpPassword", default=None,

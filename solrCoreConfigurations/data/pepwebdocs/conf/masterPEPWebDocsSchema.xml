@@ -452,6 +452,12 @@
         <tokenizer class="solr.KeywordTokenizerFactory"/>
         <filter class="solr.LowerCaseFilterFactory"/>
     </analyzer>
+    <!--Try to add this same config as an index analyzer, solve issues with conjoined words 
+        in facet data for glossary_group_terms and glossary_terms 2021-01-28-->
+    <analyzer type="index">
+        <tokenizer class="solr.KeywordTokenizerFactory"/>
+        <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>    
   </fieldType>  
 
   <!-- A basic text field that has reasonable, generic

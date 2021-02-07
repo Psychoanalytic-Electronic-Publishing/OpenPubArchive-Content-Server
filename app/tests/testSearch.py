@@ -8,6 +8,21 @@ import requests
 from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestSearch(unittest.TestCase):
+    
+    
+    def test_search_fulltext0(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?abstract=true&facetfields=art_year_int%2Cart_views_last12mos%2Cart_cited_5%2Cart_authors%2Cart_lang%2Cart_type%2Cart_sourcetype%2Cart_sourcetitleabbr%2Cglossary_group_terms%2Cart_kwds_str&facetlimit=15&facetmincount=1&formatrequested=XML&fulltext1=text%3A(%22anxiety+hysteria%22~25)&highlightlimit=5&limit=20&offset=0&sort=author&synonyms=false')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"]
+        kwiclist = r["documentList"]["responseSet"][0]["kwicList"]
+        assert(len(kwiclist) > 0)
+        assert(response_info["count"] >= 1)
+        print (response_set[0])
+
     def test_search_fulltext1(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1="military"')
         response = requests.get(full_URL, headers=headers)
@@ -153,7 +168,7 @@ class TestSearch(unittest.TestCase):
         print (response_set[0])
 
     def test_search_author_and_journalcode_and_citecount(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Bollas&sourcecode=AOP&citecount=1')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Bollas&sourcecode=AOP&citecount=1 IN 10')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -228,6 +243,29 @@ class TestSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 3)
         print (response_set[0])
+
+    def test_video_list_search(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?abstract=false&formatrequested=XML&limit=20&offset=0&source=PEPGRANTVS&sort=bibliographic&synonyms=false')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['documentList']['responseInfo']['count'] >= 10)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?abstract=false&formatrequested=XML&limit=20&offset=0&smarttext=PEPGRANTVS.*.*&sort=bibliographic&synonyms=false')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['documentList']['responseInfo']['count'] >= 10)
+
+        #  test longest (current) sourcecode
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?abstract=false&formatrequested=XML&limit=20&offset=0&smarttext=PEPTOPAUTHVS.*.*&sort=bibliographic&synonyms=false')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['documentList']['responseInfo']['count'] >= 10)
 
     def test_search_almost_all_params(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?paratext=transference&parascope=doc&sourcecode=aop&sourcetype=journal&sourcelangcode=EN&volume=10&author=blum&startyear=1982&facetfields=art_sourcetype')

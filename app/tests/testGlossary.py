@@ -61,7 +61,7 @@ class TestGlossary(unittest.TestCase):
         print (response_set)
 
     def test_1b_get_glossary_endpoint_GROUP(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Glossary/ANXIETY/?termidtype=Group')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Glossary/ANXIETY/?termidtype=Group&recordperterm=True')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
@@ -70,7 +70,7 @@ class TestGlossary(unittest.TestCase):
         print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
-        assert(response_info["count"] == 10) # chg from 7 to 10, since expanded group search to also search names
+        assert(response_info["count"] >= 7) # chg from 7 to 10, since expanded group search to also search names
         print (response_set)
         
     def test_1c_get_glossary_endpoint_NAME(self):

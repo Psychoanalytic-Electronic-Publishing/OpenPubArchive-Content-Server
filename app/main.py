@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1216.2.Alpha"
+__version__     = "2021.0201.1.Alpha"
 __status__      = "Development"
 
 """
@@ -221,7 +221,7 @@ def get_client_id(response: Response,
 
 def get_client_session(response: Response,
                        request: Request,
-                       client_session: str=Header(None, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
+                       client_session: str=Header(None, title=opasConfig.TITLE_CLIENT_SESSION, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
                        client_id: int=Depends(get_client_id), 
                        ):
     """
@@ -262,7 +262,7 @@ def get_client_session(response: Response,
                 logger.info("Session_id is None, no cookie saved.")
 
     if session_id is None or len(session_id) < 12:
-        msg = f"Session ID not resolved {session_id}.  Raising Exception 424."
+        msg = f"Client:[{client_id}] session ID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
         logger.error(msg)
         raise HTTPException(
             status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
@@ -1980,8 +1980,8 @@ async def database_search_paragraphs(response: Response,
     # smaller set of solr oriented params (per pydantic model
     # SolrQueryParameters), ready to use
     solr_query_spec = \
-        opasQueryHelper.parse_search_query_parameters(para_textsearch=paratext,
-                                                      para_scope=parascope, 
+        opasQueryHelper.parse_search_query_parameters(paratext=paratext,
+                                                      parascope=parascope, 
                                                       #solrQueryTermList=termlist,
                                                       synonyms=synonyms,
                                                       similar_count=similarcount, 
@@ -2198,8 +2198,8 @@ async def database_search_v2b( response: Response,
                                                       source_code=sourcecode,
                                                       source_type=sourcetype,
                                                       source_lang_code=sourcelangcode,
-                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
-                                                      para_scope=parascope, # scope for par_search
+                                                      paratext=mod_args.get("paratext", None), # search within paragraphs
+                                                      parascope=parascope, # scope for par_search
                                                       similar_count=similarcount, # Turn on morelikethis for the search, return this many similar docs for each
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
@@ -2392,8 +2392,8 @@ async def database_search_v2(response: Response,
                                                       source_code=sourcecode,
                                                       source_type=sourcetype,
                                                       source_lang_code=sourcelangcode,
-                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
-                                                      para_scope=parascope, # scope for par_search
+                                                      paratext=mod_args.get("paratext", None), # search within paragraphs
+                                                      parascope=parascope, # scope for par_search
                                                       similar_count=similarcount, # Turn on morelikethis for the search, return this many similar docs for each
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
@@ -2407,8 +2407,8 @@ async def database_search_v2(response: Response,
                                                       endyear=endyear,
                                                       citecount=citecount,
                                                       viewcount=viewcount,
-                                                      highlightlimit=highlightlimit, 
                                                       viewperiod=viewperiod,
+                                                      highlightlimit=highlightlimit, 
                                                       facetfields=facetfields,
                                                       facetmincount=facetmincount,
                                                       facetlimit=facetlimit,
@@ -2572,8 +2572,8 @@ def database_searchanalysis_v2(response: Response,
                                                       source_name=sourcename,
                                                       source_code=sourcecode,
                                                       source_lang_code=sourcelangcode, 
-                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
-                                                      para_scope=parascope, # scope for par_search
+                                                      paratext=mod_args.get("paratext", None), # search within paragraphs
+                                                      parascope=parascope, # scope for par_search
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
@@ -2698,8 +2698,8 @@ def database_searchanalysis_v3(response: Response,
                                                       source_name=sourcename,
                                                       source_code=sourcecode,
                                                       source_lang_code=sourcelangcode, 
-                                                      para_textsearch=mod_args.get("paratext", None), # search within paragraphs
-                                                      para_scope=parascope, # scope for par_search
+                                                      paratext=mod_args.get("paratext", None), # search within paragraphs
+                                                      parascope=parascope, # scope for par_search
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
@@ -2992,8 +2992,7 @@ def database_mostviewed(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     if viewperiod < 0 or viewperiod > 4:
-        query_arg_error = f"Most Viewed: viewperiod: {viewperiod}.  Range should be 0-4 (int)."
-
+        query_arg_error = f"Most Viewed: viewperiod: {viewperiod}.  Range should be 0-4 (int), 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months"
     if sourcetype is not None: # none is ok
         sourcetype = opasConfig.normalize_val(sourcetype, opasConfig.VALS_SOURCE_TYPE, None)
         if sourcetype is None: # trap error on None, default
@@ -3015,14 +3014,14 @@ def database_mostviewed(response: Response,
         if limit == opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS:
             limit = None
 
-        views = ocd.most_viewed_generator( publication_period=pubperiod,
-                                           view_in_period=viewperiod,
-                                           viewcount=viewcount, 
+        views = ocd.most_viewed_generator( publication_period=pubperiod, # Number of publication years to include (counting back from current year, 0 means current year)
+                                           viewperiod=viewperiod,        # used here for sort and limiting viewcount results (more_than_clause)
+                                           viewcount=viewcount,          # cutoff at this minimum number of views for viewperiod column
                                            author=author,
                                            title=title,
                                            source_name=sourcename, 
                                            source_code=sourcecode,
-                                           source_type=sourcetype,  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                           source_type=sourcetype,       # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                            select_clause=opasConfig.VIEW_MOSTVIEWED_DOWNLOAD_COLUMNS, 
                                            limit=limit,
                                            offset=offset,
@@ -3049,13 +3048,13 @@ def database_mostviewed(response: Response,
         try:
             # we want the last year (default, per PEP-Web) of views, for all articles (journal articles)
             ret_val, ret_status = opasAPISupportLib.database_get_most_viewed( publication_period=pubperiod,
-                                                                              view_period=viewperiod, # limiting to 5, you'd get the 5 biggest values for this view period
+                                                                              view_period=viewperiod,   # 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
                                                                               view_count=viewcount, 
                                                                               author=author,
                                                                               title=title,
                                                                               source_name=sourcename, 
                                                                               source_code=sourcecode,
-                                                                              source_type=sourcetype, # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                                                              source_type=sourcetype,   # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
                                                                               abstract_requested=abstract, 
                                                                               req_url=request.url._url,
                                                                               stat=stat, 
@@ -3317,7 +3316,7 @@ def database_whatsnew(response: Response,
                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                       client_id:int=Depends(get_client_id), 
-                            #client_session:str= Depends(get_client_session)
+                      #client_session:str= Depends(get_client_session)
                       ):  
     """
     ## Function
@@ -3752,10 +3751,12 @@ def metadata_by_sourcetype_sourcecode(response: Response,
        models.SourceInfoList
 
     ## Status
-       This endpoint is working.
+       This endpoint is working.  This is v1 only.  Deprecated as of v2, but still active.
+       
+       Use param in v2 for sourcecode rather than path variable.
 
     ## Sample Call
-         http://localhost:9100/v2/Metadata/Books/IPL
+         http://localhost:9100/v1/Metadata/Books/IPL
 
     ## Notes
        Depends on:
@@ -3962,7 +3963,7 @@ def documents_abstracts(response: Response,
 
     try:
         # authenticated = opasAPISupportLib.is_session_authenticated(request, response)
-        ret_val = opasAPISupportLib.documents_get_abstracts(documentID,
+        ret_val = opasAPISupportLib.documents_get_abstracts(document_id=documentID,
                                                             ret_format=return_format,
                                                             #authenticated=authenticated,
                                                             similar_count=similarcount, 
@@ -3998,6 +3999,18 @@ def documents_abstracts(response: Response,
             ocd.record_document_view(document_id=documentID,
                                      session_info=session_info,
                                      view_type="Abstract")
+            
+            if ret_val.documents.responseInfo.count == 1:
+                if ret_val.documents.responseSet[0].accessLimited == False:
+                    document_list_item = ret_val.documents.responseSet[0]
+                    if opasFileSupport.file_exists(document_id=document_list_item.documentID, 
+                                                   year=document_list_item.year,
+                                                   ext=localsecrets.PDF_ORIGINALS_EXTENSION, 
+                                                   path=localsecrets.PDF_ORIGINALS_PATH):
+                        document_list_item.pdfOriginalAvailable = True
+                    else:
+                        document_list_item.pdfOriginalAvailable = False
+            
         else:
             # make sure we specify an error in the session log
             #  not sure this is the best return code, but for now...
@@ -4209,6 +4222,7 @@ def documents_glossary_term(response: Response,
                             termidtype: models.TermTypeIDEnum=Query(models.TermTypeIDEnum.termid, title="Type of term descriptor supplied", description=opasConfig.DESCRIPTION_TERMIDTYPE),
                             #search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
                             similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                            recordperterm: bool=Query(False, title="Return a record per term in a group", description=opasConfig.DESCRIPTION_RETURNFORMATS),
                             return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                             client_id:int=Depends(get_client_id), 
                             client_session:str= Depends(get_client_session)
@@ -4266,6 +4280,7 @@ def documents_glossary_term(response: Response,
 
         ret_val = opasAPISupportLib.documents_get_glossary_entry(term_id=termIdentifier,
                                                                  term_id_type=termidtype,
+                                                                 record_per_term=recordperterm,
                                                                  retFormat=return_format,
                                                                  session_info=session_info,
                                                                  req_url=request.url._url
@@ -4289,17 +4304,24 @@ def documents_glossary_term(response: Response,
             detail=status_message
         )
     else:
-        status_message = opasCentralDBLib.API_STATUS_SUCCESS
-
-        response.status_code = httpCodes.HTTP_200_OK
-        ret_val.documents.responseInfo.request = request.url._url
-        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
-                                    session_info=session_info, 
-                                    params=request.url._url,
-                                    item_of_interest=termIdentifier, 
-                                    return_status_code = response.status_code,
-                                    status_message=status_message
-                                    )
+        if ret_val.documents.responseInfo.count == 0:
+            status_message = opasCentralDBLib.API_STATUS_SUCCESS
+            response.status_code = httpCodes.HTTP_404_NOT_FOUND
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=status_message
+            )
+        else:
+            status_message = opasCentralDBLib.API_STATUS_SUCCESS
+            response.status_code = httpCodes.HTTP_200_OK
+            ret_val.documents.responseInfo.request = request.url._url
+            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
+                                        session_info=session_info, 
+                                        params=request.url._url,
+                                        item_of_interest=termIdentifier, 
+                                        return_status_code = response.status_code,
+                                        status_message=status_message
+                                        )
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -4420,25 +4442,48 @@ def documents_document_fetch(response: Response,
         # file_classification = doc_info.get("file_classification", opasConfig.DOCUMENT_ACCESS_UNDEFINED)
         try:
             # documents_get_document handles the view authorization and returns abstract if not authenticated.
-            if search is not None:
-                argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
-                try:
-                    # if there's an abstract parameter, rename it to abstract_requested (used because that's clearer in code params, so that's what the underlying functions use)
-                    argdict["abstract_requested"] = argdict.pop("abstract")
-                    print ("Fulltext1:" + f'{argdict.get("fulltext1", "")}')
-                except KeyError:
-                    pass # no abstract param. skip.
-                
-                if documentID is not None:
-                    # make sure this is part of the last search set.
-                    j = argdict.get("journal")
-                    if j is not None:
-                        if j not in documentID:
-                            argdict["journal"] = None
-            else:
-                argdict = {}
+            req_url=urllib.parse.unquote(request.url._url)
+            req_url_params = dict(parse.parse_qsl(parse.urlsplit(req_url).query))
+            # param_search = req_url_params.get("search", None)
+            
+            ft1 = req_url_params.get("fulltext1")
+            ft2 = req_url_params.get("smarttext")
+            # search_old = search
+            search = ""
+            if ft2 is not None:
+                search = f"&smarttext={ft2}"
+            if ft1 is not None:
+                search += f"&fulltext1={ft1}"
+            solr_query_params = opasQueryHelper.parse_search_query_parameters(fulltext1=ft1, smarttext=ft2)
+            
+            #if (search is not None and search != '') or ft1 is not None:
+                #if search is None or search == '':
+                    #search = ft1
+                    #ft1 = None
 
-            solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
+                #if search[0] == "'":
+                    #search = search[1:-1]
+                    
+                #argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
+                ##if ft1 is not None:
+                    ##argdict["fulltext1"] = ft1
+                    
+                ##try:
+                    ### if there's an abstract parameter, rename it to abstract_requested (used because that's clearer in code params, so that's what the underlying functions use)
+                    ##argdict["abstract_requested"] = argdict.pop("abstract")
+                ##except KeyError:
+                    ##pass # no abstract param. skip.
+                
+                ##if documentID is not None:
+                    ### make sure this is part of the last search set.
+                    ##j = argdict.get("journal")
+                    ##if j is not None:
+                        ##if j not in documentID:
+                            ##argdict["journal"] = None
+            #else:
+                #argdict = {}
+
+            # solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
             logger.debug("Document View Request: %s/%s/%s", solr_query_params, documentID, return_format)
 
             ret_val = opasAPISupportLib.documents_get_document( documentID, 
@@ -4448,7 +4493,7 @@ def documents_document_fetch(response: Response,
                                                                 page_offset=pageoffset, # starting page
                                                                 page_limit=pagelimit, # number of pages
                                                                 page=page, # specific page number request (rather than offset),
-                                                                req_url=request.url._url, 
+                                                                req_url=req_url, 
                                                                 session_info=session_info,
                                                                 option_flags=specialoptions,
                                                                 request=request
@@ -4489,7 +4534,20 @@ def documents_document_fetch(response: Response,
                         status_message = f"{client_id}:{session_id}: Document (Abstract only) fetch (access: {access}; doc length: {doc_len}"
                     else:
                         status_message = f"{client_id}:{session_id}: Document fetch (access: {access}; doc length: {doc_len}"
-
+                        #if search is not None:
+                            #try:
+                                #ret_val.documents.responseSet[0].hitCriteria = urllib.parse.unquote(search) 
+                                ## remove nuisance stop words from matches
+                                #ret_val.documents.responseSet[0].document =\
+                                    #opasAPISupportLib.remove_nuisance_word_hits(ret_val.documents.responseSet[0].document)
+                            #except Exception as e:
+                                #print (f"Error removing nuisance hits: {e}")
+                    #try:
+                        #ret_val.documents.responseSet[0].hitList = opasAPISupportLib.list_all_matches_with_loc(ret_val.documents.responseSet[0].document)
+                        #ret_val.documents.responseSet[0].hitCount = len(ret_val.documents.responseSet[0].hitList)
+                    #except Exception as e:
+                        #print (f"Error saving hits and count: {e}")
+                    
                     logger.info(status_message)
 
             else:
@@ -4501,7 +4559,7 @@ def documents_document_fetch(response: Response,
 
             ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
                                         session_info=session_info, 
-                                        params=request.url._url,
+                                        params=req_url,
                                         item_of_interest=documentID, 
                                         return_status_code = response.status_code,
                                         status_message=status_message
@@ -4513,7 +4571,7 @@ def documents_document_fetch(response: Response,
                     detail=status_message
                 )           
             else:
-                ret_val.documents.responseInfo.request = request.url._url
+                ret_val.documents.responseInfo.request = req_url
                 if access == False:
                     #  abstract returned...we don't count those currently.
                     logger.info(f"Document request for non-logged-in user (session: {session_info.session_id}). Abstract returned instead for {documentID}.")
@@ -4577,9 +4635,9 @@ def documents_concordance(response: Response,
         #solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
         #logger.debug("Concordance View Request: %s/%s/%s", solr_query_params, f"{paralangid} / {paralangrx}", return_format)
 
-        ret_val = opasAPISupportLib.documents_get_concordance_paras( paralangid,
-                                                                     paralangrx, 
-                                                                     #solr_query_params,
+        ret_val = opasAPISupportLib.documents_get_concordance_paras( para_lang_id=paralangid,
+                                                                     para_lang_rx=paralangrx, 
+                                                                     #solr_query_spec=solr_query_params,
                                                                      ret_format=return_format,
                                                                      req_url=request.url._url, 
                                                                      session_info=session_info

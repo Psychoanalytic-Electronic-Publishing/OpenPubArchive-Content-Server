@@ -44,7 +44,7 @@ class TestMostFromDb(unittest.TestCase):
        
                
     def test_0_most_viewed_direct_source_type(self):
-        rows = ocd.most_viewed_generator( view_in_period=4,
+        rows = ocd.most_viewed_generator( viewperiod=4, 
                                           viewcount=0, 
                                           publication_period=5,
                                           author=None,
@@ -130,7 +130,7 @@ class TestMostFromDb(unittest.TestCase):
         assert (countAll5 > 0)
 
         
-    def test_2_most_cited_direct_period1(self):
+    def test_2_most_cited_direct_period5(self):
         views = ocd.most_cited_generator( cited_in_period="All",
                                           citecount=0,
                                           author=None,
@@ -146,7 +146,7 @@ class TestMostFromDb(unittest.TestCase):
         countAll5 = len(list(views))
         assert (countAll5 > 1400)
 
-    def test_2_most_cited_direct_period2(self):
+    def test_2_most_cited_direct_period4(self):
         views = ocd.most_cited_generator( cited_in_period="All",
                                           citecount=0,
                                           author=None,
@@ -159,6 +159,7 @@ class TestMostFromDb(unittest.TestCase):
                                           offset=0
                                           )            
         countAll4 = len(list(views))
+        print (f"Count4Period All: {countAll4}")
         assert (countAll4 > 1000)
         
     def test_2_most_cited_direct_period3(self):
@@ -176,7 +177,7 @@ class TestMostFromDb(unittest.TestCase):
         countAll3 = len(list(views))
         assert (countAll3 > 500)
         
-    def test_2_most_cited_direct_period4(self):
+    def test_2_most_cited_direct_period2(self):
         views = ocd.most_cited_generator( cited_in_period="All",
                                           citecount=0,
                                           author=None,
@@ -191,7 +192,7 @@ class TestMostFromDb(unittest.TestCase):
         countAll2 = len(list(views))
         assert (countAll2 > 175)
         
-    def test_2_most_cited_direct_period5(self):
+    def test_2_most_cited_direct_period1(self):
         views = ocd.most_cited_generator( cited_in_period="All",
                                           citecount=0,
                                           author=None,

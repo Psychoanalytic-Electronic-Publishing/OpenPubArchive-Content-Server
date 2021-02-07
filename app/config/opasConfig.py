@@ -1,10 +1,10 @@
 # import sys
 import logging
-import datetime
+#import datetime
 import tempfile
 import os
-import urllib.request
-from enum import Enum, EnumMeta, IntEnum
+#import urllib.request
+# from enum import Enum, EnumMeta, IntEnum
 
 # count_anchors = 0 # define here so it can be used globally across modules
 
@@ -52,8 +52,8 @@ MAX_RECORDS_FOR_ACCESS_INFO_RETURN = 100
 # Special xpaths and attributes for data handling in solrXMLPEPWebLoad
 ARTINFO_ARTTYPE_TOC_INSTANCE = "TOC" # the whole instance is a TOC ()
 GLOSSARY_TOC_INSTANCE = "ZBK.069.0000A" # Main TOC entry
-XML_XPATH_SUMMARIES = "//summaries"
-XML_XPATH_ABSTRACT = "//abs"
+# XML_XPATH_SUMMARIES = "//summaries"
+# XML_XPATH_ABSTRACT = "//abs"
 
 # XPaths for special data handling
 # HTML Paths
@@ -222,7 +222,7 @@ DESCRIPTION_LIMIT = "Maximum number of items to return."
 DESCRIPTION_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 DESCRIPTION_MOREINFO = "Return statistics on the Archive holdings"
 DESCRIPTION_MORELIKETHIS = "Find similar documents"
-DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (years: {list_values(VALS_YEAROPTIONS)})"
+DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (in full years: {list_values(VALS_YEAROPTIONS)})"
 DESCRIPTION_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (periods: {list_values(VALS_VIEWPERIODDICT_SOLRFIELDS)})"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)."
 DESCRIPTION_PAGELIMIT = "Number of pages of a document to return"
@@ -232,7 +232,7 @@ DESCRIPTION_PAGEREQUEST = "The page or page range (from the document's numbering
 DESCRIPTION_PARAM_SOURCETYPE = f"Source type (One of: {list_values(VALS_SOURCE_TYPE)})"
 DESCRIPTION_PARASCOPE = "scope: doc, dreams, dialogs, biblios, per the schema (all the p_ prefixed scopes are also recognized without the p_ here)"
 DESCRIPTION_PARATEXT = "Words or phrases (in quotes) in a paragraph in the document"
-DESCRIPTION_PARAZONE_V1 = "scope: doc, dreams, dialogs, biblios, per the schema (all the p_ prefixed scopes are also recognized without the p_ here)"
+#DESCRIPTION_PARAZONE_V1 = "scope: doc, dreams, dialogs, biblios, per the schema (all the p_ prefixed scopes are also recognized without the p_ here)"
 DESCRIPTION_PATH_SOURCETYPE = f"Source type.  One of: {list_values(VALS_SOURCE_TYPE)})"
 DESCRIPTION_PUBLICATION_PERIOD = "Number of publication years to include (counting back from current year, 0 means current year)"
 DESCRIPTION_REQUEST = "The request object, passed in automatically by FastAPI"
@@ -386,13 +386,13 @@ ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the speci
 ACCESS_SUMMARY_DESCRIPTION = "This is a summary excerpt from the full text of the document. "
 ACCESS_SUMMARY_FORSUBSCRIBERS = "The full-text content of the document is available to subscribers. "
 ACCESS_SUMMARY_EMBARGOED = "The full-text content of the document is embargoed per an agreement with the publisher. "
-ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
+# ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
 ACCESS_SUMMARY_PUBLISHER_INFO = "The full-text content of the document may be available on the publisher's website. "
 ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = "<a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>."
-ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."
+# ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."
 
 ACCESSLIMITED_DESCRIPTION_OFFSITE = "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
-ACCESSLIMITED_DESCRIPTION_LIMITED = "This is a summary excerpt from the full text of the article. The full text of the document may be available on the publisher's website"
+# ACCESSLIMITED_DESCRIPTION_LIMITED = "This is a summary excerpt from the full text of the article. The full text of the document may be available on the publisher's website"
 ACCESSLIMITED_DESCRIPTION_FREE = "This content is currently free to all users."
 ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access"
 ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access"
@@ -407,23 +407,23 @@ TEMPDIRECTORY = tempfile.gettempdir()
 VIEW_MOSTVIEWED_DOWNLOAD_COLUMNS = "textref, lastweek, lastmonth, last6months, last12months, lastcalyear"
 VIEW_MOSTCITED_DOWNLOAD_COLUMNS = "art_citeas_text, count5, count10, count20, countAll"
 
-VIEW_PERIOD_LASTWEEK = "lastweek"
-VIEW_PERIOD_LASTMONTH = "lastmonth"
-VIEW_PERIOD_LAST6MONTHS = "last6months"
-VIEW_PERIOD_LAST12MONTHS = "last12months"
-VIEW_PERIOD_LASTCALYEAR = "lastcalendaryear"
+# VIEW_PERIOD_LASTWEEK = "lastweek"
+# VIEW_PERIOD_LASTMONTH = "lastmonth"
+# VIEW_PERIOD_LAST6MONTHS = "last6months"
+# VIEW_PERIOD_LAST12MONTHS = "last12months"
+# VIEW_PERIOD_LASTCALYEAR = "lastcalendaryear"
 
-VIEW_DBNAME_LASTWEEK = "vw_stat_docviews_lastweek"
-VIEW_DBNAME_LASTMONTH = "vw_stat_docviews_lastmonth"
-VIEW_DBNAME_LAST6MONTHS = "vw_stat_docviews_lastsixmonths"
-VIEW_DBNAME_LAST12MONTHS = "vw_stat_docviews_last12months"
-VIEW_DBNAME_LASTCALYEAR = "vw_stat_docviews_lastcalyear"
+# VIEW_DBNAME_LASTWEEK = "vw_stat_docviews_lastweek"
+# VIEW_DBNAME_LASTMONTH = "vw_stat_docviews_lastmonth"
+# VIEW_DBNAME_LAST6MONTHS = "vw_stat_docviews_lastsixmonths"
+# VIEW_DBNAME_LAST12MONTHS = "vw_stat_docviews_last12months"
+# VIEW_DBNAME_LASTCALYEAR = "vw_stat_docviews_lastcalyear"
 
 #Schema Field Name Suffix for Synonym Searching
 SYNONYM_SUFFIX = "_syn"
 # Must not have spaces
 DOCUMENT_VIEW_FACET_LIST = "glossary_group_terms,terms_highlighted,art_kwds_str"
-GLOSSARY_VIEW_FACET_LIST = "glossary_group_terms,terms_highlighted,art_kwds_str"
+# GLOSSARY_VIEW_FACET_LIST = "glossary_group_terms,terms_highlighted,art_kwds_str"
 DEFAULT_MORE_LIKE_THIS_FIELDS = "art_kwds, title, text_xml"
 DEFAULT_MORE_LIKE_THIS_COUNT = 0
 
@@ -642,8 +642,8 @@ PREDEFINED_SORTS = {
     "rank":(SORT_SCORE, "desc"), 
     }
 
-PEPWEB_ABSTRACT_MSG1 = """
-This is a summary or excerpt from the full text of the article. PEP-Web provides full-text search of the complete articles for
-current and archive content, but only the abstracts are displayed for current content, due to contractual obligations with the
-journal publishers. For details on how to read the full text of 2017 and more current articles see the publishers official website 
-"""
+#PEPWEB_ABSTRACT_MSG1 = """
+#This is a summary or excerpt from the full text of the article. PEP-Web provides full-text search of the complete articles for
+#current and archive content, but only the abstracts are displayed for current content, due to contractual obligations with the
+#journal publishers. For details on how to read the full text of 2017 and more current articles see the publishers official website 
+#"""

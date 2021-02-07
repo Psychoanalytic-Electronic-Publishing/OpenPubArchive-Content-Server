@@ -56,7 +56,7 @@ Various support functions having to do with XML conversion (e.g., to HTML, ePub,
 
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 __version__     = "2020.0812.1"
 __status__      = "Development"
@@ -81,6 +81,7 @@ import datetime
 import lxml
 from lxml import etree
 import lxml.html as lhtml
+parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 
 import opasConfig
 from localsecrets import APIURL, IMAGE_API_LINK
@@ -353,7 +354,7 @@ def author_mast_from_xmlstr(author_xmlstr, listed=True):
     ('Ghislaine Boulanger', ['Ghislaine Boulanger'])
     """
     ret_val = ("", [])
-    pepxml = etree.parse(StringIO(author_xmlstr))
+    pepxml = etree.parse(StringIO(author_xmlstr), parser=parser)
     
     if author_xmlstr[0:4] == "<aut":
         rootFlag = "/"
@@ -426,8 +427,8 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
     
         if isinstance(author_xmlstr, bytes):
             author_xmlstr = author_xmlstr.decode("utf-8")
-            
-        pepxml = etree.parse(StringIO(author_xmlstr))
+        
+        pepxml = etree.parse(StringIO(author_xmlstr), parser=parser)
         if author_xmlstr[0:4] == "<aut":
             rootFlag = "/"
         else:
@@ -1181,8 +1182,13 @@ def get_first_page_excerpt_from_doc_root(elem_or_xmlstr, ret_format="HTML"):
         logger.error(err)
         ret_val = None
         
-    parser = etree.XMLParser(target = FirstPageCollector(skip_tags=["impx"]), resolve_entities=False)
-    ret_val = etree.XML(xmlstr, parser=parser)        # doctest: +ELLIPSIS
+    parser = etree.XMLParser(target = FirstPageCollector(skip_tags=["impx"]), recover=True, resolve_entities=False)
+    try:
+        ret_val = etree.XML(xmlstr, parser=parser)        # doctest: +ELLIPSIS
+    except Exception as e:
+        msg = f"Error extracting summary or abstract. {e}"
+        logger.error(msg)
+        ret_val = msg
     
     return ret_val
 
@@ -1503,7 +1509,7 @@ def xml_file_to_xmlstr(xml_file, remove_encoding=False, resolve_entities=True, d
     Read XML file and convert it to an XML string, expanding all entities
     
     """
-    parser = etree.XMLParser(resolve_entities=resolve_entities, dtd_validation=dtd_validations)
+    parser = etree.XMLParser(resolve_entities=resolve_entities, recover=True, dtd_validation=dtd_validations)
     try:
         doc_DOM = etree.parse(xml_file, parser=parser)
     except Exception as e:
@@ -1550,7 +1556,7 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
         if xml_text is not None and xml_text != "[]":
             try:
                 xml_text = remove_encoding_string(xml_text)
-                parser = etree.XMLParser(resolve_entities=False)
+                parser = etree.XMLParser(resolve_entities=False, recover=True)
                 sourceFile = etree.XML(xml_text, parser=parser)
                 #sourceFile = etree.fromstring(xml_text, remove_entities=False)
             except Exception as e:

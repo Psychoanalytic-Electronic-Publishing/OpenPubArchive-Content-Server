@@ -3,7 +3,7 @@
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 __version__     = "2019.0617.1"
 __status__      = "Development"
@@ -258,6 +258,9 @@ class DocumentListItem(BaseModel):
     #    --para: str = Schema(None, title="The nested/sub field para, when searching children directly")
     updated: datetime = Schema(None, title="Source file update date and time", description="The date and time the source file was updated last")
     score: float = Schema(None, title="The match score", description="Solr's score for the match in the search")
+    hitList: list = Schema(None, title="List of hits", description="List of search matches in document, if requested")
+    hitCount: int = Schema(None, title="Count of hits", description="Count of search matches in documents (counts matchcodes)")
+    hitCriteria: str = Schema(None, title="Criteria for markup", description="Search criteria for hit markup")
     rank: float = Schema(None, title="Document's Search Rank")
     rankfield: str = Schema(None, title="Field in rank", description="Which field is in rank")
     referenceCount: str = Schema(None, title="Number of references", description="The number of references listed in the document bibliography")
@@ -280,7 +283,8 @@ class DocumentListItem(BaseModel):
     termType: str = Schema(None, title="", description="")
     termSource: str = Schema(None, title="", description="")
     termDefPartXML: str = Schema(None, title="", description="")
-    termDefRefXML: str = Schema(None, title="", description="")
+    termDefRestXML: str = Schema(None, title="", description="")
+    pdfOriginalAvailable: bool = Schema(False, title="", description="")
     # these are not all currently used
     accessClassification: str = Schema(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
     accessLimited: bool = Schema(True, title="Access is limited, preventing full-text return")
@@ -420,6 +424,7 @@ class SessionInfo(BaseModel):
     session_id: str = Schema(None, title="A generated session Identifier number the client passes in the header to identify the session")
     user_id: int = Schema(opasConfig.USER_NOT_LOGGED_IN_ID, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
     username: str = Schema(opasConfig.USER_NOT_LOGGED_IN_NAME, title="Registered user name, for convenience here")
+    user_type: str = Schema("Unknown", title="User type, e.g., Admin or Individual")
     is_valid_login: bool = Schema(False, title="")
     has_subscription: bool = Schema(False, title="")
     is_valid_username: bool = Schema(False, title="")
@@ -431,7 +436,6 @@ class SessionInfo(BaseModel):
     session_start: datetime = Schema(None, title="The datetime when the user started the session")
     session_end: datetime = Schema(None, title="The datetime when the user ended the session")
     session_expires_time: datetime = Schema(None, title="The limit on the user's session information without renewing")
-    user_type: str = Schema("Unknown", title="User type, e.g., Admin or Individual")
     admin: bool = Schema(False, title="True if the user has been authenticated as admin.")
     api_client_id: int = Schema(0, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
     # temporary, for debug

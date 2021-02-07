@@ -7,7 +7,7 @@ OpasCentral DB Pydantic Models
 
 """
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 __version__     = "2019.0620.1"
 __status__      = "Development"

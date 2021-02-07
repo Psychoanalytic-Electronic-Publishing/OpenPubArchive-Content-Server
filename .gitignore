@@ -75,3 +75,5 @@ app/updateSolrViewData.zip
 !*/schemas/*.pdf
 *.odt#
 app/opasDataLoader/updated_issues_*
+solrCoreConfigurations/data/pepwebdocs/conf/old_stopwords.txt
+images/PEP Session Flow.png

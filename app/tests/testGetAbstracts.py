@@ -15,7 +15,34 @@ class TestGetAbstracts(unittest.TestCase):
     
     """
     
-    def test_1a_get_abstract_html(self):
+    def test_1a_get_abstract_html_not_logged_in(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"] 
+        assert(response_info["count"] == 1)
+        abstract = response_set[0]["abstract"]
+        print (abstract)
+       
+    def test_1a_get_abstract_logged_in(self):
+        # login
+        from localsecrets import PADS_TEST_ID, PADS_TEST_PW
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={"test1"}&password={PADS_TEST_PW}')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        headers["client-session"] = r["session_id"]
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"] 
+        assert(response_info["count"] == 1)
+        abstract = response_set[0]["abstract"]
+        assert(response_set[0]["pdfOriginalAvailable"] == True)
+        print (abstract)
+
+    def test_1a_get_abstract_html_not_logged_in(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
@@ -78,6 +105,7 @@ class TestGetAbstracts(unittest.TestCase):
         doc_of_interest = r2["documents"]["responseSet"][0]
         accessLimited = doc_of_interest["accessLimited"]
         assert (accessLimited == False)
+        assert(response_set[0]["pdfOriginalAvailable"] == True)
 
 if __name__ == '__main__':
     unittest.main()    

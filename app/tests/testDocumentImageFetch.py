@@ -39,6 +39,13 @@ class TestDocumentImageFetch(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
+    def test_0_Image2(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Image/bannerPEPGRANTVSLogo.gif/')
+        # local, this works...but fails in the response.py code trying to convert self.status to int.
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
     def test_1_Image(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Image/infoicon.gif/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.

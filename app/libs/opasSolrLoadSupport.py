@@ -9,7 +9,7 @@ OPAS - opasSolrLoadSupport
 
 """
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 
 import sys
@@ -25,15 +25,20 @@ import re
 import urllib.request, urllib.parse, urllib.error
 import random
 
+import lxml
 from lxml import etree
+parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
+import html
+
 import pymysql
 
 import localsecrets
 # import config
 import opasConfig
-import configLib.opasCoreConfig
+# import configLib.opasCoreConfig
 import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
+import loaderConfig
 
 import logging
 logger = logging.getLogger(__name__)
@@ -426,7 +431,7 @@ class ArticleInfo(object):
         self.art_citeas_xml = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="sourcetitle">%s</span> <span class="pgrg">%s</span>:<span class="pgrg">%s</span></p>""" \
             %                   (self.authors_bibliographic,
                                  self.art_year,
-                                 self.art_title,
+                                 html.escape(self.art_title),
                                  self.src_title_full,
                                  self.art_vol_int,
                                  self.art_pgrg)
@@ -624,7 +629,7 @@ def process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLConten
 
     return ret_val    
 #------------------------------------------------------------------------------------------------------
-def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, verbose=None):
+def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, include_paras=False, verbose=None):
     """
     Extract and load data for the full-text core.  Whereas in the Refs core each
       Solr document is a reference, here each Solr document is a PEP Article.
@@ -702,64 +707,70 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
                 
     excerpt_xml = opasxmllib.xml_elem_or_str_to_xmlstring(excerpt_xml, None)
     
-    #art_authors_unlisted = pepxml.xpath(r'//artinfo/artauth/aut[@listed="false"]/@authindexid') 
-    children = doc_children() # new instance, reset child counter suffix
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//body//p|//body//p2", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_body",
-                          default_lang=art_lang[0])
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//h1|//h2|//h3|//h4|//h5|//h6", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_heading",
-                          default_lang=art_lang[0])
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//quote//p|//quote//p2", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_quote",
-                          default_lang=art_lang[0])
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//dream//p|//dream//p2", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_dream",
-                          default_lang=art_lang[0])
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//poem//p|//poem//p2", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_poem",
-                          default_lang=art_lang[0])
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//note//p|//note//p2", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_note",
-                          default_lang=art_lang[0])
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//dialog//p|//dialog//p2", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_dialog",
-                          default_lang=art_lang[0])
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//panel//p|//panel//p2", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_panel",
-                          default_lang=art_lang)
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//caption//p", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_caption",
-                          default_lang=art_lang[0])
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//bib//be|//binc", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_bib",
-                          default_lang=art_lang[0])
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//appxs//p|//appxs//p2", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_appxs",
-                          default_lang=art_lang[0])
-    # summaries and abstracts
-    children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//summaries//p|//summaries//p2|//abs//p|//abs//p2", attr_to_find="lang"),
-                          parent_id=artInfo.art_id,
-                          parent_tag="p_summaries",
-                          default_lang=art_lang[0])
+    # include_paras is now False by default...only include for special source codes.
+    # this of course affects the ability for the server to search by "true" paragraphs.  To enable this feature
+    # you must load with command line option includeparas=True
+    if include_paras == True or artInfo.src_code in loaderConfig.src_codes_to_include_paras:
+        children = doc_children() # new instance, reset child counter suffix
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//body//p|//body//p2", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_body",
+                              default_lang=art_lang[0])
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//h1|//h2|//h3|//h4|//h5|//h6", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_heading",
+                              default_lang=art_lang[0])
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//quote//p|//quote//p2", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_quote",
+                              default_lang=art_lang[0])
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//dream//p|//dream//p2", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_dream",
+                              default_lang=art_lang[0])
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//poem//p|//poem//p2", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_poem",
+                              default_lang=art_lang[0])
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//note//p|//note//p2", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_note",
+                              default_lang=art_lang[0])
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//dialog//p|//dialog//p2", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_dialog",
+                              default_lang=art_lang[0])
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//panel//p|//panel//p2", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_panel",
+                              default_lang=art_lang)
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//caption//p", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_caption",
+                              default_lang=art_lang[0])
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//bib//be|//binc", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_bib",
+                              default_lang=art_lang[0])
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//appxs//p|//appxs//p2", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_appxs",
+                              default_lang=art_lang[0])
+        # summaries and abstracts
+        children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//summaries//p|//summaries//p2|//abs//p|//abs//p2", attr_to_find="lang"),
+                              parent_id=artInfo.art_id,
+                              parent_tag="p_summaries",
+                              default_lang=art_lang[0])
 
-    # indented status
-    msg = f"      -->Adding children, tags/counts: {children.tag_counts}"
-    logger.info(msg)
-    if verbose:
-        print (msg)
-    
+        child_list = children.child_list
+        # indented status
+        msg = f"      -->Adding children, tags/counts: {children.tag_counts}"
+        logger.info(msg)
+        if verbose:
+            print (msg)
+    else:
+        child_list = None
+        
     art_kwds_str = opasgenlib.string_to_list(artInfo.art_kwds)
     terms_highlighted = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/b|//body/*/i|//body/*/bi|//body/*/bui")
                         #opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body/*/i") 
@@ -925,7 +936,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, ve
                 "art_level" : 1,
                 "meta_marked_corrections" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//cgrp[contains(@type,'era')]", default_return=None), # multi,
                 #"art_para" : parasxml, 
-                "_doc" : children.child_list
+                "_doc" : child_list  # children.child_list
               }
 
     #experimental paras save
@@ -972,7 +983,7 @@ class doc_children(object):
                 self.tag_counts[parent_tag] = 1
             
             # special attr handling.  Later look and see if this is slowing us down...
-            currelem = etree.fromstring(n)
+            currelem = etree.fromstring(n, parser=parser)
             lang = currelem.attrib.get("lang", default_lang)
             para_lgrid = currelem.attrib.get("lgrid", None)
             para_lgrx = currelem.attrib.get("lgrx", None)
@@ -1260,3 +1271,73 @@ def add_article_to_api_articles_table(ocd, art_info, verbose=None):
     
     return ret_val  # return True for success
 
+#------------------------------------------------------------------------------------------------------
+def add_to_tracker_table(ocd, art_id, verbose=None):
+    """
+    Adds the article data from a single document to the tracker table in mysql database opascentral.
+    
+    If the article is added successfully, that means it's a new article...never seen before.
+    Return True so it can be logged.
+    Else return False, and it will not be logged as database update.
+
+    >>> import opasCentralDBLib
+    >>> ocd =  opasCentralDBLib.opasCentralDB()
+    >>> add_to_tracker_table(ocd, "AI.001.0001A") # already in table so should return false
+    False
+    """
+    ret_val = False
+    caller_name = "add_to_tracker_table"
+    ocd.open_connection(caller_name=caller_name)
+    insert_if_not_exists = r"""INSERT
+                               INTO article_tracker (art_id)
+                               values (
+                                        %(art_id)s
+                                      );
+                            """
+
+    # string entries above must match an attr of the art_info instance.
+    query_param_dict = {}
+    # the element objects in the author_xml_list cause an error in the action query 
+    # even though that dict entry is not used.  So removed in a copy.
+    query_param_dict["art_id"] = art_id
+        
+    try:
+        res = ocd.do_action_query_silent(querytxt=insert_if_not_exists, queryparams=query_param_dict)
+    except Exception as e:
+        pass # normal
+    else:
+        ret_val = True
+        
+    try:
+        ocd.db.commit()
+        ocd.close_connection(caller_name=caller_name)
+    except pymysql.Error as e:
+        errStr = f"SQL Database -- Commit failed! {e}"
+        logger.error(errStr)
+        print (errStr)
+        ret_val = False
+    
+    return ret_val  # return True for success
+
+if __name__ == "__main__":
+    sys.path.append('./config') 
+
+    print (40*"*", "opasLoadSupportLib Tests", 40*"*")
+    print ("Running in Python %s" % sys.version_info[0])
+    logger = logging.getLogger(__name__)
+    # extra logging for standalong mode 
+    logger.setLevel(logging.WARN)
+    # create console handler and set level to debug
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.WARN)
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s %(name)s %(lineno)d - %(levelname)s %(message)s')    
+    # add formatter to ch
+    ch.setFormatter(formatter)
+    # add ch to logger
+    logger.addHandler(ch)
+
+    import doctest
+    doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
+    print ("All tests complete!")
+    print ("Fini")

@@ -34,8 +34,8 @@ from starlette.requests import Request
 import starlette.status as httpCodes
 
 # import localsecrets
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
-base = "https://padstest.zedra.net/PEPSecure/api"
+from localsecrets import PADS_BASE_URL, PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
+base = PADS_BASE_URL
 # base = "http://development.org:9300"
 import opasCentralDBLib
 
@@ -238,8 +238,14 @@ def get_authserver_session_info(session_id,
             session_info.authorized_pepcurrent = pads_user_info.HasCurrentAccess
             logger.info("PaDS returned user info.  Saving to DB")
             unused_val = save_session_info_to_db(session_info)
+    
+    if session_info.user_type is None:
+        session_info.user_type = "Unknown"
+    if session_info.username is None:
+        session_info.username = opasConfig.USER_NOT_LOGGED_IN_NAME
             
     # print (f"SessInfo: {session_info}")
+    
     logger.info(f"***authent: {session_info.authenticated} - get_full_session_info total time: {time.time() - ts}***")
     return session_info
 
@@ -670,6 +676,7 @@ def get_pads_session_info(session_id=None,
         if user_ip is not None:
             headers = { opasConfig.X_FORWARDED_FOR:user_ip }
             pads_session_info = requests.get(full_URL, headers)
+            logger.info(f"X_FORWARDED_FOR from authenticateIP: {user_ip}")
         else:
             pads_session_info = requests.get(full_URL)
             

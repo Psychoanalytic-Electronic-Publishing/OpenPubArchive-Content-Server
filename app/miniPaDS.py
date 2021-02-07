@@ -5,7 +5,7 @@
 # -*- coding: utf-8 -*-
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2020, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 __version__     = "2020.1106.0.Stub"
 __status__      = "Development"
