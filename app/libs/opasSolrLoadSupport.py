@@ -710,7 +710,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     # include_paras is now False by default...only include for special source codes.
     # this of course affects the ability for the server to search by "true" paragraphs.  To enable this feature
     # you must load with command line option includeparas=True
-    if include_paras == True or artInfo.src_code in loaderConfig.src_codes_to_include_paras:
+    if include_paras == True or artInfo.src_code in loaderConfig.SRC_CODES_TO_INCLUDE_PARAS:
         children = doc_children() # new instance, reset child counter suffix
         children.add_children(stringlist=opasxmllib.xml_xpath_return_xmlstringlist_withinheritance(pepxml, "//body//p|//body//p2", attr_to_find="lang"),
                               parent_id=artInfo.art_id,

@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0203.2" 
+__version__     = "2021.0211.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -439,12 +439,15 @@ def main():
             artInfo.filename = base
             artInfo.file_size = n.filesize
             artInfo.file_updated = file_updated
+            # not a new journal, see if it's a new article.
             if opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
-                art = f"<article id='{artInfo.art_id}'>{artInfo.art_citeas_xml}</article>"
-                try:
-                    issue_updates[artInfo.issue_id_str].append(art)
-                except Exception as e:
-                    issue_updates[artInfo.issue_id_str] = [art]
+                # don't log to issue updates for journals that are new sources added during the annual update
+                if artInfo.src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
+                    art = f"<article id='{artInfo.art_id}'>{artInfo.art_citeas_xml}</article>"
+                    try:
+                        issue_updates[artInfo.issue_id_str].append(art)
+                    except Exception as e:
+                        issue_updates[artInfo.issue_id_str] = [art]
 
             try:
                 artInfo.file_classification = re.search("(?P<class>current|archive|future|free|offsite)", str(n.filespec), re.IGNORECASE).group("class")
