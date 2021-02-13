@@ -6,5 +6,8 @@ file_match_pattern = "\((bEXP_ARCH1|bSeriesTOC)\)\.(xml|XML)$"
 options = None
 
 # Source codes (books/journals) which should store paragraphs
-src_codes_to_include_paras = ["GW", "SE"]
+SRC_CODES_TO_INCLUDE_PARAS = ["GW", "SE"]
+
+# for these codes, do not create update notifications
+DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE = ["EGG", "NODO"] # examples, no update notifications for these codes.
 
