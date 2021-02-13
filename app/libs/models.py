@@ -199,12 +199,15 @@ class AuthorIndex(BaseModel):
     authorIndex: AuthorIndexStruct
     
 #-------------------------------------------------------
-class ClientConfig(BaseModel):
+class ClientConfigItem(BaseModel):
     """
     Dictionary to hold client configuration settings as set by the client administrator
     """
     configName: str = Schema(None, title="Unique name (within client ID) to save and retrieve configuration")
     configSettings: dict = Schema({}, title="Dictionary with all configuration settings")
+
+class ClientConfigList(BaseModel):
+    configList: List[ClientConfigItem]
 
 #-------------------------------------------------------
 class MoreLikeThisItem(BaseModel):
