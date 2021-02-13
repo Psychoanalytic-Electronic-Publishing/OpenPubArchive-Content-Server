@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0201.1.Alpha"
+__version__     = "2021.0213.1.Alpha"
 __status__      = "Development"
 
 """
@@ -688,10 +688,10 @@ async def reports(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.post("/v2/Client/Configuration/", response_model=models.ClientConfig, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_SAVE_CONFIGURATION, status_code=201)
+@app.post("/v2/Client/Configuration/", response_model=models.ClientConfigList, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_SAVE_CONFIGURATION, status_code=201)
 async def client_save_configuration(response: Response, 
                                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                                    configuration:models.ClientConfig=Body(None, embed=False, title=opasConfig.TITLE_ADMINCONFIG, decription=opasConfig.DESCRIPTION_ADMINCONFIG), # allows full specification
+                                    configuration:models.ClientConfigList=Body(None, embed=False, title=opasConfig.TITLE_ADMINCONFIG, decription=opasConfig.DESCRIPTION_ADMINCONFIG), # allows full specification
                                     client_id:int=Depends(get_client_id), 
                                     client_session:str= Depends(get_client_session), 
                                     api_key: APIKey = Depends(get_api_key)
@@ -699,20 +699,54 @@ async def client_save_configuration(response: Response,
 
     """
     ## Function
-       <b>Save global configuration settings for the client.  If the configname already exists for that client app,
-           an error 409 is returned.</b>
+       <b>Persistently store any "global" (not tied to a specific user) settings for the client app.</b>
 
-       Client-specific Administrative function to store the global settings for the client app.  A client can store multiple settings under different names.      
+       A client can store multiple settings under different names. As of the 2021.02.13.Alpha, a client
+       can save multiple settings in a single call.  The list of settings, when converted to JSON, look like this:
 
-       Requires API key and client_id in the header (use 'client-id' in call header).
+       Since the function allows a list of settings, the configName and configSettings must be a member
+       of a configList, even if there's only one set of configSettings being saved, e.g.,
+       
+        {
+          "configList": [{
+                            "configName": "test_client_test_0",
+                            "configSettings": {
+                                               "a": 1,
+                                               "b": 2,
+                                               "c": 8
+                                               }
+                         }]
+        }
 
-       TODO: Consider whether to require logging in as an admin to use this feature.
-        (first need to consider whether the app would also be logged into the central auth (e.g., PaDS)
-        is made, since the only admin login is local login!)
+        Likewise, to save multiple settings, add to the list:
+       
+        {
+          "configList": [{
+                            "configName": "test_client_test_0",
+                            "configSettings": {
+                                               "a": 1,
+                                               "b": 2,
+                                               "c": 8
+                                               }
+                         },
+                         {
+                            "configName": "test_client_test_1",
+                            "configSettings": {
+                                               "a": 2,
+                                               "b": 4,
+                                               "c": 8
+                                               }
+                         }]
+        }
 
+       It's important to note that each of the settings are stored separately in the underlying database
+       under the configName specified.  They are not stored as a set, and can be retrieved individually,
+       or in other combinations.
+        
+       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
 
     ## Return Type
-       models.ClientConfig
+       models.ClientConfigList
 
     ## Status
        This endpoint is working.
@@ -724,7 +758,8 @@ async def client_save_configuration(response: Response,
          NA
 
     ## Potential Errors
-       NA
+       If one of the configNames already exists for that client app (based on that client_id),
+       an error 409 is returned.
 
     """
     #  api_key needs to be supplied, e.g., in the header
@@ -740,7 +775,8 @@ async def client_save_configuration(response: Response,
     # ensure user is admin
     ret_val = None
 
-    #if 1: # for now, just use API_KEY as the requirement.  Later admin?  if ocd.verify_admin(session_info):
+    # for now, just use API_KEY as the requirement.  
+    #TODO Later admin?  if ocd.verify_admin(session_info):
     ret_val, msg = ocd.save_client_config(session_id=client_session,
                                           client_id=client_id, 
                                           client_configuration=configuration,
@@ -764,10 +800,10 @@ async def client_save_configuration(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.put("/v2/Client/Configuration/", response_model=models.ClientConfig, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_SAVEORREPLACE_CONFIGURATION, status_code=201)
+@app.put("/v2/Client/Configuration/", response_model=models.ClientConfigList, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_SAVEORREPLACE_CONFIGURATION, status_code=201)
 async def client_update_configuration(response: Response, 
                                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                                      configuration:models.ClientConfig=Body(None, embed=False, title=opasConfig.TITLE_ADMINCONFIG, decription=opasConfig.DESCRIPTION_ADMINCONFIG), # allows full specification
+                                      configuration:models.ClientConfigList=Body(None, embed=False, title=opasConfig.TITLE_ADMINCONFIG, decription=opasConfig.DESCRIPTION_ADMINCONFIG), # allows full specification
                                       client_id:int=Depends(get_client_id), 
                                       client_session:str= Depends(get_client_session), 
                                       api_key: APIKey = Depends(get_api_key)
@@ -775,21 +811,14 @@ async def client_update_configuration(response: Response,
 
     """
     ## Function
-       <b>Update global configuration settings for the client.  If the configname already exists
-          for that client app, the previous settings are overwritten.</b>
+       <b>Update global configuration settings for the client.  Identical in all other ways to the POST call,
+       in this case, if the configname already exists for that client app, the previous settings
+       are overwritten.</b>
 
-       Client-specific Administrative function to store the global settings for the client app.
-       A client can store multiple settings under different names.      
-
-       Requires API key and client_id in the header (use 'client-id' in call header).
-
-       TODO: Consider whether to require logging in as an admin to use this feature.
-        (first need to consider whether the app would also be logged into the central auth (e.g., PaDS)
-        is made, since the only admin login is local login!)
-
+       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
 
     ## Return Type
-       models.ClientConfig
+       models.ClientConfigList (one or more configs)
 
     ## Status
        This endpoint is working.
@@ -844,7 +873,7 @@ async def client_update_configuration(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Client/Configuration/", response_model=models.ClientConfig, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_GET_CONFIGURATION)
+@app.get("/v2/Client/Configuration/", response_model=models.ClientConfigList, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_GET_CONFIGURATION)
 async def client_get_configuration(response: Response, 
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                    configname:str=Query(..., title=opasConfig.TITLE_ADMINCONFIGNAME, description=opasConfig.DESCRIPTION_ADMINCONFIGNAME, min_length=4),
@@ -860,20 +889,24 @@ async def client_get_configuration(response: Response,
        Client-specific Administrative function to store the global settings for the client app.
        A client can store multiple settings under different names.
 
-       Requires API key and client_id in the header (use 'client-id' in call header).
+       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
 
        TODO: Consider whether to require logging in as an admin to use this feature.
         (first need to consider whether the app would also be logged into the central auth (e.g., PaDS)
         is made, since the only admin login is local login!)
 
     ## Return Type
-       models.ClientConfig
+       models.ClientConfigList (one or more configs)
 
     ## Status
        This endpoint is working.
 
-    ## Sample Call
-         /v2/Client/Configuration/?configname="pepweb2021"
+    ## Sample Calls
+        Return a single config
+         /v2/Client/Configuration/?configname="test_client_test_1"
+
+        Return multiple configs
+         /v2/Client/Configuration/?configname="test_client_test_1, test_client_test_2"
 
     ## Notes
          NA
@@ -914,7 +947,7 @@ async def client_get_configuration(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.delete("/v2/Client/Configuration/", response_model=models.ClientConfig, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_DELETE_CONFIGURATION, status_code=200)
+@app.delete("/v2/Client/Configuration/", response_model=models.ClientConfigList, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_DELETE_CONFIGURATION, status_code=200)
 async def client_del_configuration(response: Response, 
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                    configname:str=Query(..., title=opasConfig.TITLE_ADMINCONFIGNAME, description=opasConfig.DESCRIPTION_ADMINCONFIGNAME, min_length=4),
@@ -925,19 +958,22 @@ async def client_del_configuration(response: Response,
 
     """
     ## Function
-       <b>Delete a specific configuration set (settings) for the specific client_id</b>
+       <b>Delete the specified configuration or configurations (settings) for the specified client_id</b>
 
-       Requires API key and client_id in the header (use 'client-id' in call header).
-       clientID should also be in the configuration body parameter (as a good practice).
+       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
 
     ## Return Type
-       models.ClientConfig
+       models.ClientConfigList (one or more configs, the ones deleted) 
 
     ## Status
        This endpoint is working.
 
     ## Sample Call
-         /v2/Client/Configuration/?configname="pepweb2021"
+        Delete a single config
+         /v2/Client/Configuration/?configname="test_client_test_1"
+
+        Delete multiple configs
+         /v2/Client/Configuration/?configname="test_client_test_1, test_client_test_2"
 
     ## Notes
          NA
