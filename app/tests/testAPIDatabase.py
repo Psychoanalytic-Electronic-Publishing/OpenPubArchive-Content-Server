@@ -70,7 +70,7 @@ class TestDatabaseSearch(unittest.TestCase):
         assert(r['documentList']['responseInfo']['fullCountComplete'] == False)
 
     def test_v2_database_search_citedcount(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?citecount=6 TO 10 IN 10&sourcecode=IJP OR APA&startyear=1990&endyear=2010&paratext=theoretical underpinnings&sort=citeCount&limit=10&offset=0')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?citecount=6 TO 10 IN 10&sourcecode=IJP OR APA&startyear=1990&endyear=2010&fulltext1="theoretical underpinnings"&sort=citeCount&limit=10&offset=0')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)

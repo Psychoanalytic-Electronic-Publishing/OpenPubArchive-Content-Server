@@ -42,7 +42,7 @@ class TestSearchAnalysis(unittest.TestCase):
         assert(r["termIndex"]["responseSet"][1]["termCount"] >= 59)
 
     def test_v2_searchanalysis_author_and_journalcode_and_paratext(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?sourcecode=BAP&paratext=freud%20psychoanalysis')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?sourcecode=BAP&fulltext1="freud psychoanalysis"~25')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         assert(response.ok == True)
@@ -52,7 +52,7 @@ class TestSearchAnalysis(unittest.TestCase):
         print (f"Term: {response_set[0]['term']} Count: {response_set[0]['termCount']}")
         print (f"Term: {response_set[1]['term']} Count: {response_set[1]['termCount']}")
         term0 = r["termIndex"]["responseSet"][0]["term"]
-        assert(term0 == 'freud psychoanalysis')
+        assert(term0 == '"freud psychoanalysis"~25 (in text)')
         assert(r["termIndex"]["responseSet"][0]["termCount"] >= 19000)
         term1 = r["termIndex"]["responseSet"][1]["term"]
         assert(term1 == '(BAP) (in source)')

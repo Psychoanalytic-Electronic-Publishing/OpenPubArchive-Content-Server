@@ -20,14 +20,15 @@ headers = {f"client-session":f"{sessID}",
 
 class TestSearchLoggedIn(unittest.TestCase):
     def test_search_long_para(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=OPUS&paratext=physics%20science%20observations&abstract=True')
+        # only Freud SE and GW have paratext search
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?paratext=ego id superego&abstract=True')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] == 1)
+        assert(response_info["count"] == 6)
         print (response_set)
 
     def test_search_long_para_alt_seems_to_show_solr_misses_one(self):
@@ -228,7 +229,7 @@ class TestSearchLoggedIn(unittest.TestCase):
         print (response_set[0])
 
     def test_search_almost_all_params(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?paratext=transference&parascope=doc&sourcecode=aop&sourcetype=journal&sourcelangcode=EN&volume=10&author=blum&startyear=1982&facetfields=art_sourcetype')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=transference&parascope=doc&sourcecode=aop&sourcetype=journal&sourcelangcode=EN&volume=10&author=blum&startyear=1982&facetfields=art_sourcetype')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()

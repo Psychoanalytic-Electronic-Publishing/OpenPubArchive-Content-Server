@@ -37,7 +37,7 @@ class TestSearch(unittest.TestCase):
         print (response_set[0])
 
     def test_search_long_para(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=OPUS&paratext=physics%20science%20observations&abstract=True')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=OPUS&fulltext1="physics science observations"~25&abstract=True')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -268,7 +268,7 @@ class TestSearch(unittest.TestCase):
         assert(r['documentList']['responseInfo']['count'] >= 10)
 
     def test_search_almost_all_params(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?paratext=transference&parascope=doc&sourcecode=aop&sourcetype=journal&sourcelangcode=EN&volume=10&author=blum&startyear=1982&facetfields=art_sourcetype')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=transference&sourcecode=aop&sourcetype=journal&sourcelangcode=EN&volume=10&author=blum&startyear=1982&facetfields=art_sourcetype')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
