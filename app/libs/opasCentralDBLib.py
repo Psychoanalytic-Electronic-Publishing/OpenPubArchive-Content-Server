@@ -1067,29 +1067,41 @@ class opasCentralDB(object):
                     # now insert the session
                     sql = """REPLACE INTO api_sessions(session_id,
                                                        user_id, 
-                                                       username,
-                                                       session_start, 
-                                                       session_expires_time,
-                                                       authenticated,
                                                        admin,
                                                        api_client_id,
+                                                       authenticated,
                                                        authorized_peparchive,
-                                                       authorized_pepcurrent
+                                                       authorized_pepcurrent,
+                                                       confirmed_unauthenticated,
+                                                       has_subscription,
+                                                       is_valid_login,
+                                                       is_valid_username,
+                                                       username,
+                                                       user_type,
+                                                       session_start,
+                                                       session_end,
+                                                       session_expires_time
             )
             VALUES 
-              (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s ) """
+              (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
                     try:
                         success = cursor.execute(sql, 
                                                  (session_info.session_id, 
                                                   session_info.user_id, 
-                                                  session_info.username,
-                                                  session_info.session_start, 
-                                                  session_info.session_expires_time,
-                                                  session_info.authenticated,
                                                   session_info.admin, 
                                                   session_info.api_client_id,
+                                                  session_info.authenticated,
                                                   session_info.authorized_peparchive,
-                                                  session_info.authorized_pepcurrent
+                                                  session_info.authorized_pepcurrent, 
+                                                  session_info.confirmed_unauthenticated, 
+                                                  session_info.has_subscription, 
+                                                  session_info.is_valid_login, 
+                                                  session_info.is_valid_username, 
+                                                  session_info.username,
+                                                  session_info.user_type, 
+                                                  session_info.session_start, 
+                                                  session_info.session_end, 
+                                                  session_info.session_expires_time
                                                   )
                                                  )
                     except pymysql.IntegrityError as e:

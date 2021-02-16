@@ -277,6 +277,7 @@ def get_session_info(request: Request,
             session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
                                                                    client_id=client_id,
                                                                    request=request)
+            #session_info = ocd.save_session(session_id, session_info)
         else:
             logger.debug(f"Session {session_id} found in DB.  Checking if already marked authenticated.")
             if session_info.authenticated == 0: # not logged in
@@ -285,6 +286,7 @@ def get_session_info(request: Request,
                 session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
                                                                        client_id=client_id, 
                                                                        request=request)
+                #session_info = ocd.save_session(session_id, session_info)
             else:
                 logger.debug(f"User was logged in.  No further checks needed.")
 

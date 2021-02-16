@@ -29,9 +29,12 @@ rx_author_connector = "(and|,)"
 rx_front_junk = "(\[|\()?[0-9]+(\]|\))?"
 # rx_author_and_year = rx_space_start_opt + rx_author_name + rx_space_req + rx_year + rx_space_end_opt
 # rx_author_year_pgrg = rx_author_and_year + ".*?" + rx_pgrg
-rx_author_name_list = "(?P<author_list>([A-Z][A-z]+\,?\s+?(([A-Z]\.?\s?){0,2})((\,\s+)|(\s*and\s+))?)+)"
+rx_author_name_list = "(?P<author_list>([A-Z][A-z]+\,?\s+?(([A-Z]\.?\s?){0,2})((\,\s+)|(\s*(and|\&)\s+))?)+)"
 # rx_author_name_list_year = rx_author_name_list + rx_space_req + rx_year
-rx_author_list_and_year = "(?P<author_list>[A-Z][A-z\s\,\.\-]+?)" + rx_space_req + rx_year
+rx_amp_opt = "(\&\s+)?"
+# replaced 2021-02-15 with def that follows it:
+#     rx_author_list_and_year = "(?P<author_list>[A-Z][A-z\s\,\.\-]+?)" + rx_space_req + rx_year
+rx_author_list_and_year = rx_author_name_list + rx_year
 rx_series_of_author_last_names = "(?P<author_list>([A-Z][a-z]+((\,\s+)|(\s*and\s+))?)+)"
 rx_doi = "((h.*?://)?(.*?/))?(?P<doi>(10\.[0-9]{4,4}/[A-z0-9\.\-/]+)|(doi.org/[A-z0-9\-\./]+))"
 # schema fields must have a _ in them to use.  A - at the beginning is allowed, for negation
@@ -45,7 +48,7 @@ class SearchEvaluation(object):
         self.score = score
         self.field = field
         self.found = found
-        self.isfound = found == True
+        self.isfound = found > 0
 
 
 def cleanup_solr_query(solrquery):
@@ -160,16 +163,16 @@ def presearch_field(value,
         True if the value is in the specified field
 
     Docstring Tests:    
-        >>> presearch_field("Object Relations Theories and the Developmental Tilt", "title").found
-        
-        >>> presearch_field("Contemporary Psychoanalysis", "art_sourcetitlefull").found
-
-        >>> presearch_field("Contemporary Psych", "art_sourcetitlefull").found
-
-        >>> presearch_field("Contemp. Psychoanal.", "art_sourcetitleabbr").found
-
-        >>> presearch_field("Tuckett, D", "title").found
-        
+        >>> presearch_field("Object Relations Theories and the Developmental Tilt", "title").isfound
+        True
+        >>> presearch_field("Contemporary Psychoanalysis", "art_sourcetitlefull").isfound
+        True
+        >>> presearch_field("Contemporary Psych", "art_sourcetitlefull").isfound
+        False
+        >>> presearch_field("Contemp. Psychoanal.", "art_sourcetitleabbr").isfound
+        True
+        >>> presearch_field("Tuckett, D", "title").isfound
+        False
     """
     ret_val = SearchEvaluation()
 
@@ -337,7 +340,7 @@ def smart_search(smart_search_text):
             Tuckett and Fonagy (1972)
             
     >>> smart_search("Kohut, H. & Wolf, E. S. (1978)")
-    {'schema_field': 'art_authors_citation', 'schema_value': "'Kohut, H.' && 'Wolf, E.'"}
+    {'author_list': 'Kohut, H. & Wolf, E. S.', 'yr': '1978', 'smart_search': 'Matched authors and year: Kohut, H. & Wolf, E. S. (1978)'}
     
     >>> smart_search("authors:Tuckett, D.")
     {'schema_field': 'authors', 'schema_value': 'Tuckett, D.'}
@@ -393,9 +396,9 @@ def smart_search(smart_search_text):
     if ret_val == {}:
         # Smartpatterns:        
         patterns1 = {
-                    rx_author_list_and_year : "authors and years",
-                    rx_year_pgrg : "a page range",
                     ".*?" + rx_vol_pgrg : "citation vol/pg",
+                    rx_author_list_and_year : "authors and year",
+                    rx_year_pgrg : "a page range",
                     rx_doi : "an article DOI",
                     rx_solr_field: "article fields", 
                     rx_syntax: "advanced query syntax",
@@ -412,6 +415,7 @@ def smart_search(smart_search_text):
             if m is not None:
                 ret_val = {**ret_val, **m.groupdict()}
                 ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched {label}: {smart_search_text}"
+                break
                 
         #for rx_str, label in patterns2.items():
             #m = re.match(rx_str, smart_search_text)

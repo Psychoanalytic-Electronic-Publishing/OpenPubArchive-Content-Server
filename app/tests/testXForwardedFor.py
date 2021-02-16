@@ -29,7 +29,7 @@ class TestXForwardedFor(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         # this document should be available
-        assert(response_set[0]["accessLimited"] == True)
+        assert(response_set[0]["accessLimited"] == False)
         print (response_set)
 
        
