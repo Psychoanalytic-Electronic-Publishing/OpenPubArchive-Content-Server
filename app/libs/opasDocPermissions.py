@@ -153,6 +153,21 @@ def find_client_id(request: Request,
 
     return ret_val
 
+def fix_userinfo_invalid_nones(response_data):
+    try:
+        if response_data["UserName"] is None:
+            response_data["UserName"] = "NotLoggedIn"
+    except Exception as e:
+        logger.error(f"PaDS UserName Data Exception: {e}")
+
+    try:
+        if response_data["UserType"] is None:
+            response_data["UserType"] = "Unknown"
+    except Exception as e:
+        logger.error(f"PaDS UserType Data Exception: {e}")
+
+    return response_data
+
 def fix_pydantic_invalid_nones(response_data):
     try:
         if response_data["ReasonStr"] is None:
@@ -268,6 +283,7 @@ def get_authserver_session_userinfo(session_id, client_id):
             status_code = response.status_code
             padsinfo = response.json()
             if response.ok:
+                padsinfo = fix_userinfo_invalid_nones(padsinfo)
                 ret_val = models.PadsUserInfo(**padsinfo)
             else:
                 logger.info(f"Non-logged in user for client-id {client_id} sessionId: {session_id}. Info from PaDS: {padsinfo}")
