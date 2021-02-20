@@ -20,7 +20,7 @@ class TestReports(unittest.TestCase):
     
     def test01_session_log_report_daterange(self):
         # note api_key is required, but already in headers
-        full_URL = base_plus_endpoint_encoded(f'/v2/Reports/Session-Log?limit=10&startdate=2020-10-01&enddate=2020-10-03')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Reports/Session-Log?limit=10&startdate=2020-10-01&enddate=2021-02-18')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # these don't get affected by the level.

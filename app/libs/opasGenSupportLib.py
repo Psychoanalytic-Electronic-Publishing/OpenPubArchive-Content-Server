@@ -77,9 +77,9 @@ class DocumentID(object):
 
     """
     # document id regex
-    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?)\.(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
+    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]|S?)\.(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
     # vol id regex
-    rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z]{2,12})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?))", flags=re.I)
+    rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z]{2,12})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]|S?))", flags=re.I)
     def __init__(self, document_id):
         #  See https://docs.google.com/document/d/1QmRG6MnM1jJOEq9irqCyoEY6Bt4U3mm8FY6TtZSt3-Y/edit#heading=h.mv7bvgdg7i7h for document ID information
         self.document_id = None

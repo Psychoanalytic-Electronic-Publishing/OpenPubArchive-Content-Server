@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0216.1.Alpha"
+__version__     = "2021.0219.1.Alpha"
 __status__      = "Development"
 
 """
@@ -14,9 +14,8 @@ This API server is based on the existing PEP-Web API 1.0.  The data returned
 may have additional fields but should be otherwise compatible with PEP API clients
 such as PEP-Easy.
 
-It's an initial version of the Opas Solr Server (API); it's not yet "generic", it's
-schema and functionality dependent on PEP's needs (who is funding development).  But
-it would be a start, that could be genericized for a general purpose OPAS.
+It's an initial version of the Opas Solr Server (API); it's not "generic", it's
+schema and functionality dependent on PEP's needs (who is funding development).  
 
 To Install (at least in windows)
   rem python 3.7 required
@@ -172,7 +171,36 @@ if r.status_code == 200:
 app = FastAPI(
     debug=False,
     title="OpenPubArchive Server (OPAS) API for PEP-Web",
-    description = "Open Publications Archive Server API for PEP-Web by Psychoanalytic Electronic Publishing (PEP)",
+    description = """
+    
+<b>An Open Source Full-Text Journal and Book Server and API by Psychoanalytic Electronic Publishing (PEP)</b>
+
+This API server is an initial version of the OPAS Solr-based Server (API); it's not "fully generic"--its
+schema and functionality were developed around PEP's search needs, and its newer, full-functionality API Client meant
+to replace PEP's full-text psychoanalytic journal, book, and video database, PEP-Web.  But
+PEP has developed it as open source, so it could be a start for an extended or general purpose server.
+
+While Solr already provides an API that is generic, the OPAS API wraps a higher level API on top of that, which based on
+PEP's experience, provides functionality that should simplify client development significantly.  This is in fact
+the second version of such a high level API (the first was written around DTSearch). That it simplifies development was shown by PEP-Easy, which was
+a very simple client written in javascript to the V1.0 version of the API. Having a higher level API also simplifies porting
+as PEP did when the underlying full-text indexing software changed from DTSearch to Solr.
+
+One key feature of this API is true paragraph level search...something not easily implemented in Solr in a straightforward way. That
+functionality requires a schema design where paragraphs are separately indexed using Solr's advanced nested indexing.  The PEP-Web Docs schema implements this.  
+
+***
+*IMPORTANT UPDATE REGARDING THE PEP SCHEMA*: The current PEP Docs Schema does not index all documents by paragraphs,
+since to provide search results more compatible with PEP's original DTSearch based implementation, term proximity search
+is instead approximated by a preset word distance value, as was done in DTSearch.  However, SE and GW are indexed by
+paragraph as well, and thus the paratext (true paragraph search) feature of the API works for those book series. Thus, all searches
+using the "paratext" parameter will only currently search these two book series.  This of course only applies to the current PEPWebDocs core, and for other databases (cores), the
+paragraph level indexing and searches may still be fully utilized.  The PEP loader program, which are specific to the PEP-Schema, can be used to turn on and off paragraph level
+indexing for other documents. This is controlled in a simple manner by the SRC_CODES_TO_INCLUDE_PARAS list constant
+in the loaderConfig.py file.
+***
+    
+    """,
         version = f"{__version__}",
         static_directory=r"./docs",
         swagger_static={
@@ -205,19 +233,6 @@ def get_client_id(response: Response,
     """
     ret_val = opasDocPermissions.find_client_id(request, response)
     return ret_val
-
-#def get_user_ip(response: Response,
-                #request: Request
-                #):
-    #"""
-    #Dependency for client id: see find_client_id
-    #"""
-    #ret_val = opasDocPermissions.find_user_ip(request, response)
-    #if ret_val is not None:
-        #msg = f"forward-for from header: {ret_val} "
-        #logger.info(msg)
-        
-    #return ret_val
 
 def get_client_session(response: Response,
                        request: Request,
@@ -363,19 +378,44 @@ async def api_openapi_spec(api_key: APIKey = Depends(get_api_key),
     return response
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Admin/LogLevel/", tags=["Admin"], summary="Admin function to change logging level")
+@app.put("/v2/Admin/LogLevel/", tags=["Admin"], summary="Admin function to change logging level")
 async def admin_set_loglevel(response: Response, 
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                              api_key: APIKey = Depends(get_api_key), 
                              client_id:int=Depends(get_client_id),
+                             sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
                              level:str=Query("WARNING", title="Log Level", description="DEBUG, INFO, WARNING, or ERROR"),
-                            ): 
-    # TODO: Make this an admin only function
+                            ):
+    
+    """
+    ## Function
+       <b>Change the logging level of the server to DEBUG, INFO, WARNING, or ERROR.</b>
+
+       <b>Requires</b> API key, sessionID and client_id in the header (use 'client-id' in call header).
+
+    ## Return Type
+       Returns a string confirming the new logger level, or an error message.  
+
+    ## Status
+       This endpoint is working.
+
+    ## Notes
+       The input string is case insensitive.
+       
+    ## Potential Errors
+       NA
+    
+    """
+    levels = {10: "DEBUG", 20: "INFO", 30: "WARNING", 40: "ERROR", 50: "CRITICAL"}
+    logger = logging.getLogger() # Get root logger
+    curr_level = levels.get(logger.level, str(logger.level))
+    
     try:
         # not necessary, since setLevel accepts the same strings
         # but this protects from name input errors
         # (as does the Exception)
         # At this point there's no reason I see to accept numeric levels
+        err = ""
         level = level.upper()
         if level == "DEBUG":
             lev_int = logging.DEBUG
@@ -385,14 +425,20 @@ async def admin_set_loglevel(response: Response,
             lev_int = logging.WARNING
         elif level == "ERROR":
             lev_int = logging.ERROR
+        else:
+            err = f"Specified log level {level} not recognized. Log level still set to: {curr_level}"
         
-        logger = logging.getLogger() # Get root logger
-        logger.setLevel(lev_int)
+        if err == "":
+            logger.setLevel(lev_int)
+        else:
+            raise HTTPException(404, detail=err)
+
     except Exception as e:
-        logger.error(f"Error setting log level {e}.  Current level {logger.level}")
-    
-    levels = {10: "DEBUG", 20: "INFO", 30: "WARNING", 40: "ERROR", 50: "CRITICAL"}
-    ret_val = levels.get(logger.level, str(logger.level))
+        logger.error(f"Error: {e}. {err}")
+        ret_val = err
+    else:
+        ret_val = f"Log level set to: {levels.get(logger.level, str(logger.level))}" 
+
     return ret_val
 #-----------------------------------------------------------------------------
 @app.get("/v2/Api/LiveDoc", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENTATION)
@@ -479,11 +525,10 @@ async def reports(response: Response,
       Requires API key.
       
     ### Return Type
-
       models.Report
 
     ### Status
-       In Development
+       This endpoint is working.
 
     ### Sample Call
          #/v2/Reports/
@@ -696,7 +741,6 @@ async def client_save_configuration(response: Response,
                                     client_session:str= Depends(get_client_session), 
                                     api_key: APIKey = Depends(get_api_key)
                                     ):
-
     """
     ## Function
        <b>Persistently store any "global" (not tied to a specific user) settings for the client app.</b>
@@ -1477,7 +1521,7 @@ async def database_term_counts(response: Response,
     return term_index
 
 #-----------------------------------------------------------------------------
-@app.post("/v2/Database/AdvancedSearch/", response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ADVANCED)  #  removed for now: response_model=models.DocumentList, 
+@app.post("/v2/Database/AdvancedSearch/", response_model_exclude_unset=True, response_model_exclude_none=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ADVANCED)  #  removed for now: response_model=models.DocumentList, 
 async def database_advanced_search(response: Response, 
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                    apimode: str=Header(None, title="API mode", description="Set the api mode to 'debug' or 'production' (default)"), 
@@ -1610,6 +1654,42 @@ async def database_advanced_search(response: Response,
            }
            ]
        ```
+
+    ### Full Control using the Post Body
+    
+    The Post body can be used instead of query paramaters, and uses structures that give you more control over the search and results.
+    
+    The full body structure is shown by default in the body area of the interactive docs for the API.  Of course, in many fields the data
+    structure shows data types in the value area rather than the values you might use, so you will need to replace those with
+    your own data.
+    
+    #### Simple Examples of the post body-based query spec
+    
+    {
+       "solrqueryspec": {
+            "returnFormat": "HTML",
+            "facetMinCount": 1,
+            "solrQuery": {
+                "searchQ": "{!parent which='art_level:1'} art_level:2 AND parent_tag:p_dream AND para:mother"
+            },
+            "solrQueryOpts": {
+                 "qOper": "AND",
+                 "defType": "edismax",
+                 "hl": "true",
+                 "hlFields": "text_xml",
+                 "hlMethod": "unified",
+                 "hlFragsize": "0",
+                 "hlMaxAnalyzedChars": 2520000,
+                 "hlMaxKWICReturns": 5,
+                 "hlMultiterm": "true",
+                 "hlTagPost": "@@@@#",
+                 "hlTagPre": "#@@@@",
+                 "hlUsePhraseHighlighter": "true",
+                 "queryDebug": "on",
+                 "moreLikeThisCount": 5
+            }
+        }
+    }
 
     ### Thesaurus matching
 
