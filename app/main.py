@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0219.1.Alpha"
+__version__     = "2021.0220.1.Alpha"
 __status__      = "Development"
 
 """
@@ -187,7 +187,10 @@ a very simple client written in javascript to the V1.0 version of the API. Havin
 as PEP did when the underlying full-text indexing software changed from DTSearch to Solr.
 
 One key feature of this API is true paragraph level search...something not easily implemented in Solr in a straightforward way. That
-functionality requires a schema design where paragraphs are separately indexed using Solr's advanced nested indexing.  The PEP-Web Docs schema implements this.  
+functionality requires a schema design where paragraphs are separately indexed using Solr's advanced nested indexing.  The PEP-Web Docs schema implements this.
+
+Note that a few of the endpoints require an API key.  If so, it is listed in the description of the function (not in the query parameter list).
+If a function requiring one is called  without the API key, you will get an authentication error.
 
 ***
 *IMPORTANT UPDATE REGARDING THE PEP SCHEMA*: The current PEP Docs Schema does not index all documents by paragraphs,
@@ -475,10 +478,11 @@ async def api_status(response: Response,
                     ):
     """
     ## Function
-       <b>Return the status of the API to check if it's available.</b>
+       <b>Return the status of the API to check if it's online/available.
+       This is a low overhead function and suitable as a heartbeat check.</b>
 
     ## Return Type
-       models.ServerStatusItem
+       models.APIStatusItem
 
     ## Status
        Status: Working
@@ -502,6 +506,7 @@ async def api_status(response: Response,
     return api_status_item
 
 #-----------------------------------------------------------------------------
+@app.get("/v2/Admin/Reports/{report}", response_model=models.Report, tags=["Admin"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
 @app.get("/v2/Reports/{report}", response_model=models.Report, tags=["Reports"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
 async def reports(response: Response, 
                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
@@ -1218,7 +1223,7 @@ def session_login(response: Response,
        Supply username and password.
     
     ## Return Type
-       models.LoginReturnItem
+       models.SessionInfo
     
     ## Status
        This endpoint is working.
@@ -1305,7 +1310,7 @@ def session_login_basic(response: Response,
        Supply username and password in the header which is secure in https.
 
     ## Return Type
-       models.LoginReturnItem
+       models.SessionInfo
 
     ## Status
        This endpoint is working.
@@ -1354,8 +1359,9 @@ def session_logout_user(response: Response,
     """
     ## Function
        <b>Close the user's session, and log them out.</b>
+       
     ## Return Type
-       models.LicenseInfoStruct
+       models.SessionInfo
 
     ## Status
        This endpoint is working.
@@ -1385,7 +1391,7 @@ def session_logout_user(response: Response,
     return session_info
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Database/TermCounts/", response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_TERM_COUNTS)  #  removed for now: response_model=models.DocumentList, 
+@app.get("/v2/Database/TermCounts/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_TERM_COUNTS)  #  removed for now: response_model=models.DocumentList, 
 async def database_term_counts(response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                termlist: str=Query(None, title=opasConfig.TITLE_TERMLIST, description=opasConfig.DESCRIPTION_TERMLIST),
@@ -1521,7 +1527,7 @@ async def database_term_counts(response: Response,
     return term_index
 
 #-----------------------------------------------------------------------------
-@app.post("/v2/Database/AdvancedSearch/", response_model_exclude_unset=True, response_model_exclude_none=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ADVANCED)  #  removed for now: response_model=models.DocumentList, 
+@app.post("/v2/Database/AdvancedSearch/", response_model=models.DocumentList, response_model_exclude_unset=True, response_model_exclude_none=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ADVANCED)  #  removed for now: response_model=models.DocumentList, 
 async def database_advanced_search(response: Response, 
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                    apimode: str=Header(None, title="API mode", description="Set the api mode to 'debug' or 'production' (default)"), 
@@ -1818,7 +1824,7 @@ async def database_extendedsearch(response: Response,
     to other endpoints.  PEP-Easy functionality only requires what was present in the v1 API (and not the expanded v2 API).
 
     ## Return Type
-       SolrReturnList - flexible field solr results in the responseSet of an otherwise OPAS standard structure 
+       models.SolrReturnList - flexible field solr results in the responseSet of an otherwise OPAS standard structure 
 
     #### Sample queries
 
@@ -2000,7 +2006,7 @@ async def database_extendedsearch(response: Response,
     return solr_ret_list
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/SearchParagraphs/", tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_PARAGRAPHS)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, 
+@app.get("/v2/Database/SearchParagraphs/", tags=["Database"], response_model=models.DocumentList, response_model_exclude_unset=True, summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_PARAGRAPHS)  
 async def database_search_paragraphs(response: Response, 
                                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                      # request body parameters
@@ -2853,7 +2859,7 @@ def database_searchanalysis_v3(response: Response,
     log_endpoint_time(request, ts=ts)
     return ret_val  # models.Termindex (for v2)
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/SmartSearch/", response_model_exclude_unset=True, tags=["Database", "In Development"]) 
+@app.get("/v2/Database/SmartSearch/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"]) 
 async def database_smartsearch(response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
@@ -2977,7 +2983,7 @@ async def database_smartsearch(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/MoreLikeThis/", response_model_exclude_unset=True, tags=["Database", "In Development"]) 
+@app.get("/v2/Database/MoreLikeThis/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"]) 
 async def database_morelikethis(response: Response, 
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 morelikethis: str=Query(None, title=opasConfig.TITLE_MORELIKETHIS, description=opasConfig.DESCRIPTION_MORELIKETHIS),
@@ -3735,7 +3741,7 @@ def metadata_volumes(response: Response,
        <b>Return a list of volumes for a SourceCode (aka, PEPCode (e.g., IJP)) per the limit and offset parameters</b> 
 
     ## Return Type
-       models.JournalInfoList
+       models.VolumeList
 
     ## Status
        This endpoint is working.
@@ -4165,7 +4171,7 @@ async def database_glossary_search_v2(response: Response,
        This is just a convenience function to search a specific book, the glossary (ZBK.069), in the doc core (pepwebdoc).
 
     ## Return Type
-       models.Documents
+       models.DocumentList
 
     ## Status
        This endpoint is working.
@@ -4261,7 +4267,7 @@ async def database_glossary_search_v3(response: Response,
        This is just a convenience function to search a specific book, the glossary (ZBK.069), in the doc core (pepwebdoc).
 
     ## Return Type
-       models.Documents
+       models.DocumentList
 
     ## Status
        This endpoint is working.
@@ -5116,7 +5122,7 @@ def database_word_wheel(response: Response,
 
 
     ## Return Type
-       models.termIndex
+       models.TermIndex
 
     ## Status
        This endpoint is working.
