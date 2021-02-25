@@ -2,6 +2,11 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2020-12-08 Changed art_graphic_list to indexed, so client can find an instance by a graphic id contained within.
+
+    2020-11-17 Added art_iss_seqnbr for journals like FA which really work by number more than issue.  See FA.014A.0001A 
+               for an example.
+
     2020-10-02 Added schema fields for sort issue with Solr.  Solr doesn't properly sort fields
                that are tokenized for full-text search.  So added string_lc, which uses a solr.KeywordTokenizerFactory
                tokenizer (as described on the internet), which actually works better than a plain string
@@ -176,6 +181,8 @@
   <field name="art_iss" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_iss_title" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <field name="art_iss_title_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
+  <!--Added 2020-11-17 for certain journals that we keep number for like FA-->
+  <field name="art_iss_seqnbr" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--<copyField source="art_iss_title" dest="art_iss_title_str"/> -->
   <field name="art_year" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_year_int" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
@@ -327,7 +334,7 @@
   <!--Added 2020-09-22-->
   <field name="art_figcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
   <field name="art_tblcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_graphic_list" type="string" indexed="false" stored="true" multiValued="true" docValues="false"/>
+  <field name="art_graphic_list" type="string_ci" indexed="true" stored="true" multiValued="true" docValues="false"/>
 
   <!-- 2020-09-23
        added art_product_key, a non-unique code that Opas can send to the auth server to verify access 
@@ -445,6 +452,12 @@
         <tokenizer class="solr.KeywordTokenizerFactory"/>
         <filter class="solr.LowerCaseFilterFactory"/>
     </analyzer>
+    <!--Try to add this same config as an index analyzer, solve issues with conjoined words 
+        in facet data for glossary_group_terms and glossary_terms 2021-01-28-->
+    <analyzer type="index">
+        <tokenizer class="solr.KeywordTokenizerFactory"/>
+        <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>    
   </fieldType>  
 
   <!-- A basic text field that has reasonable, generic

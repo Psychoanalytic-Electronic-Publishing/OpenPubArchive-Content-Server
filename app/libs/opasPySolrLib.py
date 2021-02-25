@@ -1128,7 +1128,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
 
         # SEARCH!
         results = solr_docs2.search(query, **solr_param_dict)
-        
+       
 
     except solr.SolrException as e:
         # TODO not sure if this exception model applies to pysolr, and no documentation on exceptions I can find.  So need to watch it.

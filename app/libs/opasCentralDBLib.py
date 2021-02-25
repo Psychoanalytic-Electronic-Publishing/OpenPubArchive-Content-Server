@@ -144,8 +144,7 @@ API_DATABASE_GLOSSARY_SEARCH = 48	#/Database/Search/
 API_DATABASE_EXTENDEDSEARCH = 49
 API_DATABASE_SEARCHTERMLIST = 50
 API_DATABASE_CLIENT_CONFIGURATION = 51 # /Client/Configuration
-
-
+API_DATABASE_OPENURL = 52	#/Database/OpenURL/
 
 #def verifyAccessToken(session_id, username, access_token):
     #return pwd_context.verify(session_id+username, access_token)
