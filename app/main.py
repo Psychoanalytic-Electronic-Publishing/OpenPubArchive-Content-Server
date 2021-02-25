@@ -41,8 +41,6 @@ Endpoint and model documentation automatically available when server is running 
 
   (base URL + "/docs")
   e.g.,
-  http://api.pep-web.rocks/docs
-  http://api.pep-web.org/docs
   http://localhost:8000/docs
   etc.
 
