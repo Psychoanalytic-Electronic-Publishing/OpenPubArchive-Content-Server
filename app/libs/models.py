@@ -271,7 +271,7 @@ class DocumentListItem(BaseModel):
     # |- new v2 field, but removed during cleanup, better ata is in stat.
     stat: dict = Schema(None, title="Statistics", description="Reusable field to return counts requested")
     similarityMatch: dict = Schema(None, title="Information about similarity matches")
-    translationSet: dict = Schema(None, title="Information about document translations and the original")
+    translationSet: list = Schema(None, title="Information about document translations and the original")
     # Search Analysis fields (and shared Glossary term)
     term: str = Schema(None, title="Search Analysis Term", description="For search analysis, the clause or term being reported")
     termCount: int = Schema(None, title="Search Analysis Term Count", description="For search analysis, the count of occurences of the clause or term being reported")

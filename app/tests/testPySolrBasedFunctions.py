@@ -60,7 +60,8 @@ class TestPySolrBasedFunctions(unittest.TestCase):
 
     def test_3_get_most_viewed(self):
         # not in PySolrLib, but calls important functions for searching there.
-        data, ret_status = opasAPISupportLib.database_get_most_viewed()
+        # make sure to look back a lot of years, because for testing, we just need data
+        data, ret_status = opasAPISupportLib.database_get_most_viewed(publication_period=100)
         assert (ret_status == (200, 'OK'))
         assert(data.documentList.responseInfo.fullCount > 1)
         

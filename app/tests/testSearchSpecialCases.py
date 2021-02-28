@@ -170,7 +170,7 @@ class TestSearch(unittest.TestCase):
         print (response_set)
 
     def test_search_viewed_count_3b_ranges(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=20 TO 30')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=5 TO 30&pubperiod=100')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -181,7 +181,7 @@ class TestSearch(unittest.TestCase):
         print (response_set)
 
     def test_search_viewed_count_3c_ranges_last6months(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=20 TO 30 IN last6months')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=5 TO 30 IN last6months&pubperiod=100')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -214,7 +214,7 @@ class TestSearch(unittest.TestCase):
         print (response_set)
 
     def test_search_viewed_count_3f_ranges_with_viewperiod(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=20 TO 30&viewperiod=4')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=5 TO 30&viewperiod=4')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()

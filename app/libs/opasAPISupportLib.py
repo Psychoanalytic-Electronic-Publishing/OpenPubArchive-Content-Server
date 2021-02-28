@@ -11,24 +11,7 @@ functions to keep the FastAPI definitions smaller, easier to read, and more mana
 
 Also, some of these functions are reused in different API calls.
 
-#TODO: Should switch back to using pysolr, rather than solrpy.  solrpy is not being maintained
-       and pysolr has leapfrogged it (and now works for secured Solr installs).
-
 """
-#Revision Notes:
-    #2019.0614.1 - Python 3.7 compatible.  Work in progress.
-    #2019.1203.1 - fixed authentication value error in show abstract call
-    #2019.1222.1 - Finished term_count_list function for endpoint termcounts
-    #2020.0224.1 - Added biblioxml
-    #2020.0226.1 - Support TOC instance as exception for abstracting extraction (extract_abstract_from_html)
-                # Python 3 only now
-    #2020.0401.1 - Set it so user-agent is optional in session settings, in case client doesn't supply it (as PaDS didn't)
-    #2020.0423.1 - database_get_most_cited fixes, confusion between publication_period, and period, sorted.
-    #2020.0426.1 - Doc level testing of functions and doctest cleanup...
-                # setting doctests so they pass even though the data varies in the DB
-                # all tests now pass at least with a full database load.
-                # Note: ellipses in doctest now working, see configuration in main and in doctests, 
-                # e.g., document_get_info (line 417) and database_get_most_viewed (line 525)
     #2020.0505.1 Removed redundant param document_type from database_get_most_viewed (source_type already there)
 
     #2020.0530.1 Updated getmostviewed routine and all support for it to use the new in place updated art_view count fields in Solr
@@ -89,7 +72,6 @@ from datetime import datetime
 
 import opasConfig
 import localsecrets
-from localsecrets import CLIENT_DB
 
 import opasFileSupport
 # opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
@@ -99,8 +81,6 @@ from localsecrets import TIME_FORMAT_STR
 
 # from opasConfig import OPASSESSIONID
 # import configLib.opasCoreConfig as opasCoreConfig
-from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
-from configLib.opasCoreConfig import solr_docs, solr_authors, solr_gloss, solr_docs_term_search, solr_authors_term_search
 from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
 
 from configLib.opasCoreConfig import EXTENDED_CORES
@@ -109,18 +89,12 @@ from configLib.opasCoreConfig import EXTENDED_CORES
 
 # Removed support for Py2, only Py3 supported now
 pyVer = 3
-from io import StringIO
-import solrpy as solr
-import lxml
 import logging
 logger = logging.getLogger(__name__)
 
 from lxml import etree
 # from pydantic import BaseModel
 from pydantic import ValidationError
-
-# from ebooklib import epub              # for HTML 2 EPUB conversion
-from xhtml2pdf import pisa             # for HTML 2 PDF conversion
 
 # note: documents and documentList share the same internals, except the first level json label (documents vs documentlist)
 import models
@@ -129,14 +103,11 @@ import opasXMLHelper as opasxmllib
 import opasQueryHelper
 import opasGenSupportLib as opasgenlib
 import opasCentralDBLib
-import schemaMap
 import opasDocPermissions as opasDocPerm
 import opasPySolrLib
 from opasPySolrLib import search_text, search_text_qs
 
 # count_anchors = 0
-
-
 
 def has_data(str):
     ret_val = True
@@ -334,32 +305,6 @@ def extract_abstract_from_html(html_str, xpath_to_extract=opasConfig.HTML_XPATH_
 def get_expiration_time(request):
     ret_val = request.cookies.get(opasConfig.OPASEXPIRES, None)
     return ret_val
-#-----------------------------------------------------------------------------
-def check_solr_docs_connection():
-    """
-    Queries the solrDocs core (i.e., pepwebdocs) to see if the server is up and running.
-    Solr also supports a ping, at the corename + "/ping", but that doesn't work through pysolr as far as I can tell,
-    so it was more straightforward to just query the Core. 
-
-    Note that this only checks one core, since it's only checking if the Solr server is running.
-
-    >>> check_solr_docs_connection()
-    True
-
-    """
-    if solr_docs is None:
-        return False
-    else:
-        try:
-            results = solr_docs.query(q = "art_id:{}".format("APA.009.0331A"),  fields = "art_id, art_vol, art_year")
-        except Exception as e:
-            logger.error("Solr Connection Error: {}".format(e))
-            return False
-        else:
-            if len(results.results) == 0:
-                return False
-        return True
-
 #-----------------------------------------------------------------------------
 def database_get_most_viewed( publication_period: int=5,
                               author: str=None,
@@ -633,37 +578,6 @@ def database_who_cited( publication_period: int=None,   # Limit the considered p
         
     return ret_val, ret_status   
 
-# REMOVED COMMENTED CODE 20210220 (Functions moved to opasPySolrLib)
-#-----------------------------------------------------------------------------
-#def database_get_whats_new(days_back=7,
-                           #limit=opasConfig.DEFAULT_LIMIT_FOR_WHATS_NEW,
-                           #req_url:str=None,
-                           #source_type="journal",
-                           #offset=0,
-                           #session_info=None):
-
-#def metadata_get_volumes(source_code=None,
-                         #source_type=None,
-                         #req_url: str=None 
-                        #):
-
-#def metadata_get_next_and_prev_articles(art_id=None, 
-                                        #req_url: str=None 
-                                       #):
-
-#def metadata_get_next_and_prev_vols(source_code=None,
-                                    #source_vol=None,
-                                    #req_url: str=None 
-                                   #):
-
-#-----------------------------------------------------------------------------
-#def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
-                          #year="*",
-                          #vol="*",
-                          #req_url: str=None,
-                          #extra_info:int=0, # since this requires an extra query of the DB
-                          #limit=opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS,
-                          #offset=0):
 #-----------------------------------------------------------------------------
 def metadata_get_database_statistics(session_info=None):
     """
@@ -763,15 +677,6 @@ There are over
         
     ret_val = content
     return ret_val
-
-#-----------------------------------------------------------------------------
-# REMOVED COMMENTED CODE 20210109
-#def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, offset=0):
-    #"""
-    #Fill out a sourceInfoDBList which can be used for a getSources return, but return individual 
-      #videos, as is done for books.  This provides more information than the 
-      #original API which returned video "journals" names.
-    #return total_count, source_info_dblist, ret_val, return_status
 
 #-----------------------------------------------------------------------------
 def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
@@ -957,25 +862,6 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
     ret_val = source_info_list
 
     return ret_val
-
-##-----------------------------------------------------------------------------
-# REMOVED COMMENTED CODE 20210109
-#def authors_get_author_info(author_partial,
-                            #req_url:str=None, 
-                            #limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, author_order="index"):
-    #"""
-    #ret_val = author_index
-    #return ret_val
-
-##-----------------------------------------------------------------------------
-# REMOVED COMMENTED CODE 20210109
-#def authors_get_author_publications(author_partial,
-                                    #req_url:str=None, 
-                                    #limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
-                                    #offset=0):
-    #"""
-    #Returns a list of publications (per authors partial name), and the number of articles by that author.
-    #return ret_val
 
 #-----------------------------------------------------------------------------
 def documents_get_abstracts(document_id,
@@ -1194,8 +1080,9 @@ def documents_get_document(document_id,
                 if option_flags & opasConfig.OPTION_2_RETURN_TRANSLATION_SET:
                     # get document translations of the first document (note this also includes the original)
                     if document_list_item.origrx is not None:
-                        translationSet, count = opasQueryHelper.quick_docmeta_docsearch(q_str=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
+                        translationSet, count = opasPySolrLib.quick_docmeta_docsearch(q_str=f"art_origrx:{document_list_item.origrx}", req_url=req_url)
                         if translationSet is not None:
+                            # set translationSet to a list, just like 
                             document_list_item.translationSet = translationSet
             
             # is user authorized?
@@ -1451,125 +1338,6 @@ def documents_get_glossary_entry(term_id,
 
     return ret_val
 
-##-----------------------------------------------------------------------------
-# REMOVED COMMENTED CODE 20210109
-#def prep_document_download(document_id,
-    #return ret_val, status
-##-----------------------------------------------------------------------------
-# REMOVED COMMENTED CODE 20210109
-#def get_kwic_list( marked_up_text, 
-    #return ret_val    
-##-----------------------------------------------------------------------------
-# REMOVED COMMENTED OUT CODE 20210109
-#def search_analysis( query_list, 
-    #return ret_val
-#-----------------------------------------------------------------------------
-def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, term_order="index", wildcard_match_limit=4):
-    """
-    Returns a list of matching terms, and the number of articles with that term.
-
-    Args:
-        term (str): Term or comma separated list of terms to return data on.
-        term_field (str): the text field to look in
-        limit (int, optional): Paging mechanism, return is limited to this number of items.
-        offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
-        term_order (str, optional): Return the list in this order, per Solr documentation.  Defaults to "index", which is the Solr determined indexing order.
-
-    Returns:
-        list of dicts with term, count and status var ret_status
-
-        return ret_val, ret_status
-
-    Docstring Tests:    
-        >>> resp = get_term_count_list("Jealousy")
-
-    """
-    ret_val = {}
-    ret_status = (200, "OK", "") # default is like HTTP_200_OK
-
-    #  see if there is a wildcard
-    if "," in term: 
-        # It's a comma separated list!
-        try:
-            results = solr_docs_term_search( terms_fl=term_field,
-                                             terms_list=term.lower(),
-                                             terms_sort=term_order,  # index or count
-                                             terms_mincount="1",
-                                             #terms_ttf=True, 
-                                             terms_limit=limit
-                                             )
-        except Exception as e:
-            # ret_status = (e.httpcode, e.reason, e.body) # default is like HTTP_200_OK
-            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error (Solr)", error_description=f"There's an error in your search input.")
-        else:
-            try:
-                ret_val = results.terms.get(term_field, {})
-            except Exception as e:
-                logger.debug(f"get_term_count_list error: {e}")
-
-    elif isinstance(term, list):
-        for term_list_component in term:
-            try:
-                ret_val.update(get_term_count_list(term_list_component))
-            except Exception as e:
-                logger.debug(f"get_term_count_list error: {e}")
-
-    elif re.match(".*[\*\?\.].*", term):
-        # make sure legit
-        # do subs to make wildcard * into zero or more regex character, and ? to zero or one
-        term = re.sub("(?P<lead>[^\.])(?P<wildc>[\*\?])", "\g<lead>.\g<wildc>", term)
-        try:
-            re.compile(term)
-            is_valid = True
-        except:
-            is_valid = False
-
-        # #TODO test is_valid below
-        try:
-            results = solr_docs_term_search(terms_fl=term_field,
-                                            terms_limit=wildcard_match_limit,
-                                            terms_regex=term.lower(), # + ".*",
-                                            terms_mincount="1",
-                                            terms_sort="count"  # wildcard, pick highest
-                                            )
-        except solr.SolrException as e:
-            # ret_status = (e.httpcode, e.reason, e.body) # default is like HTTP_200_OK
-            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error (Solr)", error_description=f"There's an error in your search input.")
-
-        try:
-            ret_val = results.terms.get(term_field, {})
-            term_wild = term.replace(".", "")
-            ret_val = {f"{key}({term_wild})": value for (key, value) in ret_val.items()}
-            ret_val.update({f"Total({term_wild})>=":sum(x for x in ret_val.values())})
-
-        except Exception as e:
-            logger.debug(f"get_term_count_list error: {e}")
-    else:
-        # Note: we need an exact match here.
-        try:
-            results = solr_docs_term_search( terms_fl=term_field,
-                                             terms_prefix=term.lower(),
-                                             terms_sort=term_order,  # index or count
-                                             terms_mincount="1",
-                                             #terms_ttf=True, 
-                                             terms_limit=1 # only one response needed
-                                             )
-        except solr.SolrException as e:
-            # ret_status = (e.httpcode, e.reason, e.body) # default is like HTTP_200_OK
-            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error (Solr)", error_description=f"There's an error in your search input.")
-        else:
-            try:
-                ret_val = results.terms.get(term_field, {})
-            except Exception as e:
-                logger.debug(f"get_term_count_list error: {e}")
-
-    return ret_val
-
-##-----------------------------------------------------------------------------
-# REMOVED COMMENTED CODE 20210109
-#def get_term_index(term_partial,
-    #return ret_val
-
 #================================================================================================================
 def save_opas_session_cookie(request: Request, response: Response, session_id):
     ret_val = False
@@ -1597,20 +1365,6 @@ def save_opas_session_cookie(request: Request, response: Response, session_id):
             
     return ret_val
     
-# Moved to OpasPySolrLib.py with library transition
-#def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
-                              #limit=None,
-                              #offset=None,
-                              #sort=None, 
-                              #session_info=None,
-                              #solr_core="pepwebdocs"
-                              #):
-
-##================================================================================================================
-# REMOVED COMMENTED CODE 2020-0000?
-#def submit_file(submit_token: bytes, xml_data: bytes, pdf_data: bytes): 
-    #pass
-
 # -------------------------------------------------------------------------------------------------------
 # run it (tests)!
 

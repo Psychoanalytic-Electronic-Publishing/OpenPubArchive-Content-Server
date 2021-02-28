@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0224.1.Alpha"
+__version__     = "2021.0226.1.Alpha"
 __status__      = "Development"
 
 """
@@ -145,6 +145,7 @@ import opasSchemaHelper
 import opasDocPermissions
 import opasPySolrLib
 from opasPySolrLib import search_text, search_text_qs
+import opasSolrPyLib
 
 # Check text server version
 text_server_ver = None
@@ -1280,7 +1281,7 @@ async def session_status(response: Response,
         ocd = opasCentralDBLib.opasCentralDB()
         
     db_ok = ocd.open_connection()
-    solr_ok = opasAPISupportLib.check_solr_docs_connection()
+    solr_ok = opasPySolrLib.check_solr_docs_connection()
     config_name = None
     mysql_ver = None
     hierarchical_server_ver = f"{text_server_ver}/{__version__}"
@@ -1773,35 +1774,35 @@ async def database_extendedsearch(response: Response,
 
             try:
                 if hl:
-                    results = solr_core.query(q = solrQuery.searchQ,  
-                                              fq = solrQuery.filterQ,
-                                              q_op = solrQueryOpts.qOper.upper(), 
-                                              fields = solrQuerySpec.returnFields, 
-                                              # highlighting parameters
-                                              hl = "true",
-                                              hl_method = solrQueryOpts.hlMethod.lower(),
-                                              hl_bs_type="SENTENCE", 
-                                              hl_fl = solrQueryOpts.hlFields,
-                                              hl_fragsize = fragSize,  # from above
-                                              hl_maxAnalyzedChars=solrQueryOpts.hlMaxAnalyzedChars if solrQueryOpts.hlMaxAnalyzedChars>0 else opasConfig.SOLR_FULL_TEXT_MAX_ANALYZED_CHARS, 
-                                              hl_multiterm = solrQueryOpts.hlMultiterm, # def "true", # only if highlighting is on
-                                              hl_multitermQuery="true",
-                                              hl_highlightMultiTerm="true",
-                                              hl_weightMatches="true", 
-                                              hl_tag_post = solrQueryOpts.hlTagPost,
-                                              hl_tag_pre = solrQueryOpts.hlTagPre,
-                                              hl_snippets = solrQueryOpts.hlSnippets,
-                                              #hl_encoder = "html", # (doesn't work for standard, doesn't do anything we want in unified)
-                                              hl_usePhraseHighlighter = solrQueryOpts.hlUsePhraseHighlighter, # only if highlighting is on
-                                              #hl_q = solrQueryOpts.hlQ, # doesn't help with phrases; searches for None if it's none!
-                                              # morelikethis parameters
-                                              mlt = solrQueryOpts.moreLikeThisCount > 0, # if >0 turns on morelike this
-                                              mlt_fl = solrQueryOpts.moreLikeThisFields, 
-                                              mlt_count = solrQueryOpts.moreLikeThisCount,
-                                              # paging parameters
-                                              rows = solrQuerySpec.limit,
-                                              start = solrQuerySpec.offset
-                                              )
+                    results = solr_core2.search(q = solrQuery.searchQ,  
+                                                fq = solrQuery.filterQ,
+                                                q_op = solrQueryOpts.qOper.upper(), 
+                                                fields = solrQuerySpec.returnFields, 
+                                                # highlighting parameters
+                                                hl = "true",
+                                                hl_method = solrQueryOpts.hlMethod.lower(),
+                                                hl_bs_type="SENTENCE", 
+                                                hl_fl = solrQueryOpts.hlFields,
+                                                hl_fragsize = fragSize,  # from above
+                                                hl_maxAnalyzedChars=solrQueryOpts.hlMaxAnalyzedChars if solrQueryOpts.hlMaxAnalyzedChars>0 else opasConfig.SOLR_FULL_TEXT_MAX_ANALYZED_CHARS, 
+                                                hl_multiterm = solrQueryOpts.hlMultiterm, # def "true", # only if highlighting is on
+                                                hl_multitermQuery="true",
+                                                hl_highlightMultiTerm="true",
+                                                hl_weightMatches="true", 
+                                                hl_tag_post = solrQueryOpts.hlTagPost,
+                                                hl_tag_pre = solrQueryOpts.hlTagPre,
+                                                hl_snippets = solrQueryOpts.hlSnippets,
+                                                #hl_encoder = "html", # (doesn't work for standard, doesn't do anything we want in unified)
+                                                hl_usePhraseHighlighter = solrQueryOpts.hlUsePhraseHighlighter, # only if highlighting is on
+                                                #hl_q = solrQueryOpts.hlQ, # doesn't help with phrases; searches for None if it's none!
+                                                # morelikethis parameters
+                                                mlt = solrQueryOpts.moreLikeThisCount > 0, # if >0 turns on morelike this
+                                                mlt_fl = solrQueryOpts.moreLikeThisFields, 
+                                                mlt_count = solrQueryOpts.moreLikeThisCount,
+                                                # paging parameters
+                                                rows = solrQuerySpec.limit,
+                                                start = solrQuerySpec.offset
+                                                )
                     solr_ret_list_items = []
                     for n in results.results:
                         rid = n["id"]
@@ -1809,18 +1810,18 @@ async def database_extendedsearch(response: Response,
                         item = models.SolrReturnItem(solrRet=n)
                         solr_ret_list_items.append(item)
                 else:
-                    results = solr_core.query(q = solrQuery.searchQ,  
-                                              fq = solrQuery.filterQ,
-                                              q_op = "AND", 
-                                              fields = solrQuerySpec.returnFields,
-                                              # morelikethis parameters
-                                              mlt = solrQueryOpts.moreLikeThisCount > 0, # if >0 turns on morelike this
-                                              mlt_fl = solrQueryOpts.moreLikeThisFields, 
-                                              mlt_count = solrQueryOpts.moreLikeThisCount,
-                                              # paging parameters
-                                              rows = solrQuerySpec.limit,
-                                              start = solrQuerySpec.offset
-                                              )
+                    results = solr_core2.search(q = solrQuery.searchQ,  
+                                               fq = solrQuery.filterQ,
+                                               q_op = "AND", 
+                                               fields = solrQuerySpec.returnFields,
+                                               # morelikethis parameters
+                                               mlt = solrQueryOpts.moreLikeThisCount > 0, # if >0 turns on morelike this
+                                               mlt_fl = solrQueryOpts.moreLikeThisFields, 
+                                               mlt_count = solrQueryOpts.moreLikeThisCount,
+                                               # paging parameters
+                                               rows = solrQuerySpec.limit,
+                                               start = solrQuerySpec.offset
+                                               )
                     solr_ret_list_items = []
                     for n in results.results:
                         item = models.SolrReturnItem(solrRet=n)
@@ -3398,6 +3399,7 @@ async def database_term_counts(response: Response,
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                termlist: str=Query(None, title=opasConfig.TITLE_TERMLIST, description=opasConfig.DESCRIPTION_TERMLIST),
                                termfield: str=Query("text", title=opasConfig.TITLE_TERMFIELD, description=opasConfig.DESCRIPTION_TERMFIELD),
+                               method: int=Query(0, title=opasConfig.TITLE_TERMCOUNT_METHOD, description=opasConfig.DESCRIPTION_TERMCOUNT_METHOD),
                                #client_id:int=Depends(get_client_id), 
                                #client_session:str= Depends(get_client_session)
                                ):
@@ -3449,7 +3451,7 @@ async def database_term_counts(response: Response,
 
     if param_error == False:
         results = {}  # results = {field1:{term:value, term:value, term:value}, field2:{term:value, term:value, term:value}}
-        terms = shlex.split(termlist)
+        terms = [x.strip() for x in termlist.split(",")]
         for n in terms:
             try:
                 # If specified as field:term
@@ -3459,11 +3461,14 @@ async def database_term_counts(response: Response,
                 # just list of terms, use against termfield parameter
                 nterms = n.strip("', ")
                 try:
-                    result = opasAPISupportLib.get_term_count_list(nterms, term_field = termfield)
+                    if method != 0:
+                        result = opasSolrPyLib.get_term_count_list(nterms, term_field = termfield)
+                    else: # default
+                        result = opasPySolrLib.get_term_count_list(nterms, term_field = termfield)
                     for key, value in result.items():
                         try:
                             results[termfield][key] = value
-                        except:
+                        except Exception as e:
                             results[termfield] = {}
                             results[termfield][key] = value
                 except Exception as e:
@@ -4525,6 +4530,7 @@ def documents_document_fetch(response: Response,
                              page:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
                              return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                              similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                             translations: bool=Query(False, title=opasConfig.TITLE_TRANSLATIONS, description=opasConfig.DESCRIPTION_TRANSLATIONS),
                              search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
                              pagelimit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
                              pageoffset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),
@@ -4677,11 +4683,14 @@ def documents_document_fetch(response: Response,
 
             # solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
             logger.debug("Document View Request: %s/%s/%s", solr_query_params, documentID, return_format)
+            
+            if translations == True:
+                specialoptions = specialoptions | 2 # add flag to return translations
 
             ret_val = opasAPISupportLib.documents_get_document( documentID, 
                                                                 solr_query_params,
                                                                 ret_format=return_format,
-                                                                similar_count=similarcount, 
+                                                                similar_count=similarcount,
                                                                 page_offset=pageoffset, # starting page
                                                                 page_limit=pagelimit, # number of pages
                                                                 page=page, # specific page number request (rather than offset),
