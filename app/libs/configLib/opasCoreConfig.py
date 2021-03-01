@@ -11,12 +11,10 @@
 #from solrq import Q
 import solrpy as solr
 import pysolr
-# import opasConfig
 from localsecrets import SOLRUSER, SOLRPW, SOLRURL
 
 # These are the solr database names used
 SOLR_DOCS = "pepwebdocs"
-# SOLR_DOCPARAS = "pepwebdocparas"  # For testing workaround for paragraph search
 # SOLR_REFS = "pepwebrefs"
 SOLR_AUTHORS = "pepwebauthors"
 SOLR_GLOSSARY = "pepwebglossary"
@@ -24,26 +22,14 @@ SOLR_GLOSSARY = "pepwebglossary"
 # constants
 COMMITLIMIT = 1000  # commit the load to Solr every X articles
 
-## for solrpy, used only for /v2/Database/TermCounts/ and function: get_term_count_list in opasAPISupportLib
-#if SOLRUSER is not None:
-    #solr_docsx = solr.SolrConnection(SOLRURL + SOLR_DOCS, http_user=SOLRUSER, http_pass=SOLRPW)
-    #solr_docs_term_search = solr.SearchHandler(solr_docsx, "/terms")
-    #solr_authorsx = solr.SolrConnection(SOLRURL + SOLR_AUTHORS, http_user=SOLRUSER, http_pass=SOLRPW)
-    #solr_authors_term_search = solr.SearchHandler(solr_authorsx, "/terms")
-#else:
-    #solr_docsx = solr.SolrConnection(SOLRURL + SOLR_DOCS)
-    #solr_docs_term_search = solr.SearchHandler(solr_docsx, "/terms")
-    #solr_authorsx = solr.SolrConnection(SOLRURL + SOLR_AUTHORS, http_user=SOLRUSER, http_pass=SOLRPW)
-    #solr_authors_term_search = solr.SearchHandler(solr_authorsx, "/terms")
-
-# for pysolr!
+# for pysolr! (solrpy is now limited to a variant of term search and used only in opasSolrPyLib.py)
 if SOLRUSER is not None and SOLRPW is not None:
     solr_docs2 = pysolr.Solr(SOLRURL + SOLR_DOCS, auth=(SOLRUSER, SOLRPW))
     #solr_docs_term_search = pysolr.Solr(SOLRURL + SOLR_DOCS, "/terms", auth=(SOLRUSER, SOLRPW))
     solr_gloss2 = pysolr.Solr(SOLRURL + SOLR_GLOSSARY, auth=(SOLRUSER, SOLRPW))
     solr_authors2 = pysolr.Solr(SOLRURL + SOLR_AUTHORS, auth=(SOLRUSER, SOLRPW))
     #solr_authors_term_search2 = pysolr.Solr(solr_authors, "/terms", auth=(SOLRUSER, SOLRPW))
-    solr_like_this2 = pysolr.Solr(solr_authors, "/mlt", auth=(SOLRUSER, SOLRPW))
+    solr_like_this2 = pysolr.Solr(solr_authors2, "/mlt", auth=(SOLRUSER, SOLRPW))
 else: #  no user and password needed
     solr_docs2 = pysolr.Solr(SOLRURL + SOLR_DOCS)
     #solr_docs_term_search = solr_docs2  # term_index = solr_docs2.suggest_terms(term_field, term_partial.lower())
@@ -51,7 +37,6 @@ else: #  no user and password needed
     solr_authors2 = pysolr.Solr(SOLRURL + SOLR_AUTHORS)
     #solr_authors_term_search2 = pysolr.Solr(solr_authors2, "/terms")
     solr_like_this2 = pysolr.Solr(solr_authors2, "/mlt")
-
 
 # define cores for ExtendedSearch
 EXTENDED_CORES = {

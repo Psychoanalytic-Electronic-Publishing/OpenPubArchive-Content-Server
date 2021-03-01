@@ -24,7 +24,7 @@ __version__     = "2021.0109.1"
 __status__      = "Development"
 
 import sys
-import string
+# import string
 
 sys.path.append('./solrpy')
 sys.path.append('./configLib')
@@ -36,7 +36,7 @@ import re
 import opasConfig
 import localsecrets
 
-import opasFileSupport
+# import opasFileSupport
 from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
 from localsecrets import TIME_FORMAT_STR
 
@@ -45,11 +45,8 @@ pyVer = 3
 from io import StringIO
 
 import solrpy as solr
-#from opasCoreConfig import SOLR_DOCS, SOLR_AUTHORS
 from configLib.opasCoreConfig import SOLR_DOCS, SOLR_AUTHORS
 
-#from configLib.opasCoreConfig import solr_authors_term_search, solr_docs_term_search
-# from fastapi import HTTPException
 # for solrpy, used only for /v2/Database/TermCounts/ and function: get_term_count_list in opasAPISupportLib
 if SOLRUSER is not None:
     solr_docsx = solr.SolrConnection(SOLRURL + SOLR_DOCS, http_user=SOLRUSER, http_pass=SOLRPW)
@@ -66,7 +63,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # from pydantic import BaseModel
-from pydantic import ValidationError
+#from pydantic import ValidationError
 
 # note: documents and documentList share the same internals, except the first level json label (documents vs documentlist)
 import models
@@ -93,7 +90,7 @@ def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LI
 
     """
     ret_val = {}
-    ret_status = (200, "OK", "") # default is like HTTP_200_OK
+    #ret_status = (200, "OK", "") # default is like HTTP_200_OK
 
     #  see if there is a wildcard
     if "," in term: 
@@ -132,7 +129,10 @@ def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LI
         except:
             is_valid = False
 
-        # #TODO test is_valid below
+        #test is_valid
+        if not is_valid:
+            logger.warning(f"term regex is not valid: {term}")
+            
         try:
             results = solr_docs_term_search(terms_fl=term_field,
                                             terms_limit=wildcard_match_limit,
