@@ -28,7 +28,7 @@ import string
 
 sys.path.append('./solrpy')
 sys.path.append('./configLib')
-sys.path.append('../libs/configLib')
+#sys.path.append('../libs/configLib')
 
 # print(os.getcwd())
 import re
@@ -45,7 +45,8 @@ pyVer = 3
 from io import StringIO
 
 import solrpy as solr
-from opasCoreConfig import SOLR_DOCS, SOLR_AUTHORS
+#from opasCoreConfig import SOLR_DOCS, SOLR_AUTHORS
+from configLib.opasCoreConfig import SOLR_DOCS, SOLR_AUTHORS
 
 #from configLib.opasCoreConfig import solr_authors_term_search, solr_docs_term_search
 # from fastapi import HTTPException
