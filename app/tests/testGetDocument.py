@@ -218,7 +218,25 @@ class TestGetDocuments(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         print (response_set)
+        
+    def test_5_get_special_document(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/APA.064E.NP0001A/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"] 
+        assert(response_info["count"] == 1)
+        print (response_set)
 
+    def test_6_nonexistent_document(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/APA.064E.6666A/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.status_code == 404)
+        assert(response.reason == "Not Found")
 
 if __name__ == '__main__':
     unittest.main()    
