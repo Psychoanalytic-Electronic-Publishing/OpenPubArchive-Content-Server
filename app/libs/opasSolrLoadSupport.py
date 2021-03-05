@@ -618,7 +618,7 @@ def process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLConten
 
     # We collected all the dictentries for the group.  Now lets save the whole shebang
     try:
-        response_update = solr_gloss.add_many(all_dict_entries)  # lets hold off on the , _commit=True)
+        response_update = solr_gloss2.add_many(all_dict_entries)  # lets hold off on the , _commit=True)
 
         if not re.search('"status">0</int>', response_update):
             logger.info(response_update)
@@ -1043,30 +1043,35 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
                 authorAffil = None  # see if the add still takes!
             else:
                 authorAffil = pepxml.xpath('//artinfo/artauth/autaff[@affid="%s"]' % authorAffID)
-                authorAffil = etree.tostring(authorAffil[0])
+                authorAffil = etree.tostring(authorAffil[0]).decode("utf-8")
+
+            adoc = []
+            adoc.append({
+                "id": authorDocid,         # important =  note this is unique id for every author + artid
+                "art_id": artInfo.art_id,
+                "title": artInfo.art_title,
+                "authors": artInfo.art_author_id_list,
+                "art_author_id": authorID,
+                "art_author_listed": authorListed,
+                "art_author_pos_int": authorPos,
+                "art_author_role": authorRole,
+                "art_author_bio": authorBio,
+                "art_author_affil_xml": authorAffil,
+                "art_year_int": artInfo.art_year_int,
+                "art_sourcetype": artInfo.src_type,
+                "art_sourcetitlefull": artInfo.src_title_full,
+                "art_citeas_xml": artInfo.art_citeas_xml,
+                "art_author_xml": authorXML,
+                "file_last_modified": artInfo.filedatetime,
+                "file_classification": artInfo.file_classification,
+                "file_name": artInfo.filename,
+                "timestamp": artInfo.processed_datetime  # When batch was entered into core
+            })
                
             try:  
-                response_update = solrAuthor.add(id = authorDocid,         # important =  note this is unique id for every author + artid
-                                                 art_id = artInfo.art_id,
-                                                 title = artInfo.art_title,
-                                                 authors = artInfo.art_author_id_list,
-                                                 art_author_id = authorID,
-                                                 art_author_listed = authorListed,
-                                                 art_author_pos_int = authorPos,
-                                                 art_author_role = authorRole,
-                                                 art_author_bio = authorBio,
-                                                 art_author_affil_xml = authorAffil,
-                                                 art_year_int = artInfo.art_year_int,
-                                                 art_sourcetype = artInfo.src_type,
-                                                 art_sourcetitlefull = artInfo.src_title_full,
-                                                 art_citeas_xml = artInfo.art_citeas_xml,
-                                                 art_author_xml = authorXML,
-                                                 file_last_modified = artInfo.filedatetime,
-                                                 file_classification = artInfo.file_classification,
-                                                 file_name = artInfo.filename,
-                                                 timestamp = artInfo.processed_datetime  # When batch was entered into core
-                                                )
-                if not re.search('"status">0</int>', response_update):
+                response_update = solrAuthor.add(adoc)
+                
+                if not re.search('"status":0', response_update):
                     msg = "Solr save error for author core for %s: %s (%s)" % (artInfo.art_id, err, response_update)
                     logger.error(msg)
                     print (msg)

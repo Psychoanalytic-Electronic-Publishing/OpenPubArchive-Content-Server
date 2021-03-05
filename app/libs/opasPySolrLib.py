@@ -711,14 +711,22 @@ def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LI
 
     return ret_val
 
-def search(query, summaryField, highlightFields='art_authors_xml, art_title_xml, text_xml', returnStartAt=0, returnLimit=10):
+def search(query,
+           summaryField,
+           highlightFields='art_authors_xml, art_title_xml, text_xml',
+           returnStartAt=0,
+           returnLimit=10,
+           sort="id ASC"):
+
     args = {
                # 'fl':summaryField,
                # 'q':'tuck*',
                'hl': 'true',
                'hl.fragsize': 125,
                'hl.fl':highlightFields,
+               'start': returnStartAt, 
                'rows':returnLimit,
+               "sort": f"{sort}", 
                'hl.simple.pre': opasConfig.HITMARKERSTART, # '<em>',
                'hl.simple.post': opasConfig.HITMARKEREND # '</em>'
            }

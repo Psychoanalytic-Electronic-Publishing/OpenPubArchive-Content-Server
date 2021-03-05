@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0301.2.Alpha"
+__version__     = "2021.0305.1.Alpha"
 __status__      = "Development"
 
 """
@@ -703,6 +703,56 @@ async def api_openapi_spec(api_key: APIKey = Depends(get_api_key),
 
     response = JSONResponse(get_openapi(title="FastAPI", version=1, routes=app.routes))
     return response
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Admin/Sitemap/", tags=["Admin"], summary="Admin function to change logging level")
+async def admin_sitemap(response: Response, 
+                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                        api_key: APIKey = Depends(get_api_key), 
+                        client_id:int=Depends(get_client_id),
+                        #client_session:str= Depends(get_client_session),
+                       ):
+    
+    """
+    ## Function
+       <b>Change the logging level of the server to DEBUG, INFO, WARNING, or ERROR.</b>
+
+       <b>Requires</b> API key, sessionID and client_id in the header (use 'client-id' in call header).
+
+    ## Return Type
+       Returns a string confirming the new logger level, or an error message.  
+
+    ## Status
+       This endpoint is working.
+
+    ## Notes
+       The input string is case insensitive.
+       
+    ## Potential Errors
+       NA
+    
+    """
+    import opasSiteMap
+    # Need to move these to localsecrets
+    SITEMAP_OUTPUT_FILE = "../sitemap" # don't include xml extension here, it's added
+    SITEMAP_INDEX_FILE = "../sitemapindex.xml"
+    max_records = 150000
+    records_per_file = 8000
+    
+    try:
+        # returns a list of the sitemap files (since split)
+        sitemap_list = opasSiteMap.metadata_export(SITEMAP_OUTPUT_FILE, total_records=max_records, records_per_file=records_per_file)
+        sitemap_index = opasSiteMap.opas_sitemap_index(output_file=SITEMAP_INDEX_FILE, sitemap_list=sitemap_list)
+        ret_val = sitemap_index
+    except Exception as e:
+        ret_val=f"Sitemap Error: {e}"
+        logger.error(ret_val)
+        raise HTTPException(
+            status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=ret_val
+        )
+
+    return ret_val
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Api/Status/", response_model=models.APIStatusItem, response_model_exclude_unset=True, tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_API_STATUS)
@@ -4767,6 +4817,7 @@ def documents_document_fetch(response: Response,
                                         )
 
             if ret_val is None or ret_val == {}:
+                logger.warning(f"No document returned for request: {documentID} during session {session_info.session_id}")
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=status_message

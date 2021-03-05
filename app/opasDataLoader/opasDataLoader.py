@@ -92,7 +92,7 @@ import pymysql
 # import opasConfig
 # import opasCoreConfig
 import configLib.opasCoreConfig
-from configLib.opasCoreConfig import solr_authors, solr_gloss
+from configLib.opasCoreConfig import solr_authors2, solr_gloss2
 import loaderConfig
 import opasSolrLoadSupport
 
@@ -301,15 +301,15 @@ def main():
             ocd.delete_all_article_data()
             solr_docs2.delete(q='*:*')
             solr_docs2.commit()
-            solr_authors.delete_query("*:*")
-            solr_authors.commit()
+            solr_authors2.delete_query("*:*")
+            solr_authors2.commit()
             
         if 1: # options.glossary_core_update:
             msg = "*** Deleting all data from the Glossary core ***"
             logger.warning(msg)
             print (msg)
-            solr_gloss.delete_query("*:*")
-            solr_gloss.commit()
+            solr_gloss2.delete_query("*:*")
+            solr_gloss2.commit()
     else:
         # check for missing files and delete them from the core, since we didn't empty the core above
         pass
@@ -468,21 +468,21 @@ def main():
                 # load the glossary core if this is a glossary item
                 glossary_file_pattern=r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
                 if re.match(glossary_file_pattern, n.basename):
-                    opasSolrLoadSupport.process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLContents, verbose=options.display_verbose)
+                    opasSolrLoadSupport.process_article_for_glossary_core(pepxml, artInfo, solr_gloss2, fileXMLContents, verbose=options.display_verbose)
                 
             # input to the full-text and authors cores
             if not options.glossary_only: # options.fulltext_core_update:
                 # load the docs (pepwebdocs) core
                 opasSolrLoadSupport.process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents, include_paras=options.include_paras, verbose=options.display_verbose)
                 # load the authors (pepwebauthors) core.
-                opasSolrLoadSupport.process_info_for_author_core(pepxml, artInfo, solr_authors, verbose=options.display_verbose)
+                opasSolrLoadSupport.process_info_for_author_core(pepxml, artInfo, solr_authors2, verbose=options.display_verbose)
                 # load the database
                 opasSolrLoadSupport.add_article_to_api_articles_table(ocd, artInfo, verbose=options.display_verbose)
                 
                 if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
                     precommit_file_count = 0
                     solr_docs2.commit()
-                    solr_authors.commit()
+                    solr_authors2.commit()
     
             # input to the references core
             if 1: # options.biblio_update:
@@ -516,10 +516,10 @@ def main():
                 print ("Performing final commit.")
                 if not options.glossary_only: # options.fulltext_core_update:
                     solr_docs2.commit()
-                    solr_authors.commit()
+                    solr_authors2.commit()
                     # fileTracker.commit()
                 if 1: # options.glossary_core_update:
-                    solr_gloss.commit()
+                    solr_gloss2.commit()
                     
             except Exception as e:
                 print(("Exception: ", e))

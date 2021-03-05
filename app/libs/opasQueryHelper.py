@@ -35,7 +35,6 @@ from localsecrets import TIME_FORMAT_STR
 
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 import starlette.status as httpCodes
-# from configLib.opasCoreConfig import solr_docs, solr_authors, solr_gloss, solr_docs_term_search, solr_authors_term_search
 import opasConfig 
 from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
 from configLib.opasCoreConfig import EXTENDED_CORES
