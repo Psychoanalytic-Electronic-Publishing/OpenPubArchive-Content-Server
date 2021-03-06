@@ -204,12 +204,16 @@ class opasCentralDB(object):
       
     Therefore, keeping session info in the object is ok,
     
-    >>> import secrets
-    >>> ocd = opasCentralDB()
-    >>> random_session_id = secrets.token_urlsafe(16)
-    >>> success, session_info = ocd.save_session(session_id=random_session_id)
-    >>> session_info.authenticated
-    False
+    >> random_session_id = secrets.token_urlsafe(16)
+    >>> import opasDocPermissions
+    >>> UNIT_TEST_CLIENT_ID = "4"
+    >>> session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=UNIT_TEST_CLIENT_ID)
+    >>> session_id = session_info.session_id
+    >>> session_id
+    '...'
+    >>> success, session_info = ocd.save_session(session_id=session_id, session_info=session_info)
+    >>> None if session_info is None else session_info.authenticated
+    True
     >>> ocd.record_session_endpoint(session_info=session_info, api_endpoint_id=API_AUTHORS_INDEX, item_of_interest="IJP.001.0001A", status_message="Testing")
     1
     >>> ocd.end_session(session_info.session_id)
@@ -222,10 +226,7 @@ class opasCentralDB(object):
     def __init__(self, session_id=None, access_token=None, token_expires_time=None, username=opasConfig.USER_NOT_LOGGED_IN_NAME, user=None):
         self.db = None
         self.connected = False
-        # self.authenticated = False
         self.session_id = session_id # deprecate?
-        # self.user = None
-        # self.sessionInfo = None
         
     def open_connection(self, caller_name=""):
         """
@@ -774,7 +775,7 @@ class opasCentralDB(object):
         Generic retrieval from database, just the count
         
         >>> ocd = opasCentralDB()
-        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches WHERE global_uid = 'nrs';")
+        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches;")
         >>> count > 1000
         True
         
@@ -804,7 +805,7 @@ class opasCentralDB(object):
         Generic retrieval from database, into dict
         
         >>> ocd = opasCentralDB()
-        >>> records = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity WHERE global_uid = 'nrs';")
+        >>> records = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity;")
         >>> len(records) > 1
         True
 
@@ -855,7 +856,7 @@ class opasCentralDB(object):
         Generic retrieval from database, into dict
         
         >>> ocd = opasCentralDB()
-        >>> records = ocd.get_select_as_list(sqlSelect="SELECT * from vw_reports_session_activity WHERE global_uid = 'nrs';")
+        >>> records = ocd.get_select_as_list(sqlSelect="SELECT * from vw_reports_session_activity;")
         >>> len(records) > 1
         True
 
@@ -1205,8 +1206,9 @@ class opasCentralDB(object):
         Close any sessions past the set expiration time set in the record
         
         >>> ocd = opasCentralDB()
-        >>> session_count = ocd.close_expired_sessions()
-        Closed ... expired sessions
+        >>> numb = ocd.close_expired_sessions()
+        >>> numb >= 0
+        True
         """
         ret_val = 0
         self.open_connection(caller_name="close_expired_sessions") # make sure connection is open
@@ -1326,23 +1328,23 @@ class opasCentralDB(object):
 
         >>> ocd = opasCentralDB()
         >>> count, resp = ocd.get_sources(src_type='book')
-        >>> count
-        140
+        >>> count > 98
+        True
 
         # test normalize src_type (req len of input=4, expands to full, standard value)
         >>> ocd = opasCentralDB()
-        >>> count, resp = ocd.get_sources(src_type='vide') 
-        >>> count
-        12
+        >>> count, resp = ocd.get_sources(src_type='videos')
+        >>> count >= 11
+        True
 
         >>> count, resp = ocd.get_sources(src_name='Psychoanalysis')
-        >>> count > 34
+        >>> count > 30
         True
         >>> resp[0]["basecode"]
         'AJP'
 
         >>> count, resp = ocd.get_sources(src_name='Psychoan.*')
-        >>> count > 34
+        >>> count >= 33
         True
         >>> resp[0]["basecode"]
         'ADPSA'
@@ -1354,8 +1356,9 @@ class opasCentralDB(object):
         1
 
         >>> count, resp = ocd.get_sources()
-        >>> count
-        235
+        >>> count > 188
+        True
+        
         """
         self.open_connection(caller_name="get_sources") # make sure connection is open
         total_count = 0
@@ -1516,11 +1519,18 @@ class opasCentralDB(object):
         """
         
         >>> ocd = opasCentralDB()
+        >>> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="demo", configSettings={"A":"123", "B":"1234"})])
+        >>> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
+        (200, 'OK')
         >>> ocd.get_client_config("123", "test")
         ClientConfigList(configList=[ClientConfigItem(configName='test', configSettings={'A': '123', 'B': '1234'})])
         >>> ocd.get_client_config("123", "test, test2")
         ClientConfigList(configList=[ClientConfigItem(configName='test', configSettings={'A': '123', 'B': '1234'}), ClientConfigItem(configName='test2', configSettings={'C': '456', 'D': '5678'})])
-
+        >>> ocd.get_client_config("123", "doesntexist")
+        
+        Last case get used to return"
+        ClientConfigList(configList=[])
+        
         """
         ret_val = None
         if "," in client_config_name:
@@ -1556,9 +1566,9 @@ class opasCentralDB(object):
                                                                     configSettings=json.loads(ret_val.config_settings)
                                                                     )
                                            )
-
-                # convert to final return model
-                ret_val = models.ClientConfigList(configList = ret_val_list)
+                if ret_val is not None:
+                    # convert to final return model, a list of ClientConfigItems
+                    ret_val = models.ClientConfigList(configList = ret_val_list)
 
             self.close_connection(caller_name="get_client_config") # make sure connection is closed
     
@@ -1677,10 +1687,6 @@ class opasCentralDB(object):
         """
         Find if this is an admin, and return user info for them.
         Returns a user object
-        
-        >>> ocd = opasCentralDB()
-        >>> ocd.verify_admin(ocd.sessionInfo)
-        False
         """
         #TODO - Use PaDS to verify admin status!
         ret_val = False
@@ -1689,7 +1695,10 @@ class opasCentralDB(object):
 
     def delete_all_article_data(self):
         """
-        >>> delete_all_article_data()
+        We need this data, so don't test!
+        Disabled:
+        > ocd = opasCentralDB()
+        > ocd.delete_all_article_data()
         """
         self.do_action_query(querytxt="DELETE FROM api_biblioxml", queryparams=None)
         self.do_action_query(querytxt="DELETE FROM api_articles", queryparams=None)

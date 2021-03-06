@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0305.1.Alpha"
+__version__     = "2021.0306.1.Alpha"
 __status__      = "Development"
 
 """
@@ -888,6 +888,7 @@ async def client_save_configuration(response: Response,
             detail=msg
         )
     else:
+        status_code = 200
         ret_val = configuration
         
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_CLIENT_CONFIGURATION,
@@ -944,6 +945,11 @@ async def client_update_configuration(response: Response,
 
     # ensure user is admin
     ret_val = None
+    # see if it exists
+    configName = configuration.configList[0].configName
+    curr_config = ocd.get_client_config(client_id=client_id, 
+                                        client_config_name=configName
+                                       )    
 
     #if 1: # for now, just use API_KEY as the requirement.  Later admin?  if ocd.verify_admin(session_info):
     try:
@@ -961,6 +967,12 @@ async def client_update_configuration(response: Response,
             detail=msg
         )
     else:
+        if curr_config is None: # == ClientConfigList(configList=[])
+            # didn't exist, so return 201
+            response.status_code = 201
+        else:
+            response.status_code = 200 # already there, updated, return 200
+            
         ret_val = configuration
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_CLIENT_CONFIGURATION,
