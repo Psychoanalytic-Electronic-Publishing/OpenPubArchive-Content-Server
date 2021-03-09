@@ -2211,8 +2211,8 @@ def metadata_get_next_and_prev_vols(source_code=None,
 #-----------------------------------------------------------------------------
 def metadata_get_volumes(source_code=None,
                          source_type=None,
-                         req_url: str=None 
-                         #limit=1,
+                         req_url: str=None, 
+                         limit: int=1000,
                          #offset=0
                         ):
     """
@@ -2235,7 +2235,8 @@ def metadata_get_volumes(source_code=None,
                                 #)
     
     distinct_return = "art_sourcecode, art_vol, art_year, art_sourcetype"
-    limit = 6
+    row_limit = 6 # small number, since we don't care about the rows, we care about the facet limit.
+    facet_limit = limit, 
     count = 0
     ret_val = None
     # normalize source type
@@ -2258,8 +2259,9 @@ def metadata_get_volumes(source_code=None,
                 "facet.fields" : facet_fields, 
                 "facet.pivot" : facet_pivot,
                 "facet.mincount":1,
-                "facet.sort":"art_year asc", 
-                "rows":limit, 
+                "facet.sort":"art_year asc",
+                "facet.limit": facet_limit,
+                "rows":row_limit, 
                 #"start":offset
               }
 
