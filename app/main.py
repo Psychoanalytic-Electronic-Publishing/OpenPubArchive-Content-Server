@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0308.1.Alpha"
+__version__     = "2021.0311.1.Alpha"
 __status__      = "Development"
 
 """
@@ -146,6 +146,7 @@ import opasDocPermissions
 import opasPySolrLib
 from opasPySolrLib import search_text, search_text_qs
 import opasSolrPyLib
+import opasPDFStampCpyrght
 
 # Check text server version
 text_server_ver = None
@@ -4939,8 +4940,9 @@ def documents_downloads(response: Response,
                                            media_type=media_type)
                 else:
                     fileurl = filename
+                    stamped_file = opasPDFStampCpyrght.stampcopyright("Neil Shapiro", input_file=filename)
                     response.status_code = httpCodes.HTTP_200_OK
-                    ret_val = FileResponse(path=fileurl,
+                    ret_val = FileResponse(path=stamped_file,
                                            status_code=response.status_code,
                                            filename=os.path.split(filename)[1], 
                                            media_type=media_type)
