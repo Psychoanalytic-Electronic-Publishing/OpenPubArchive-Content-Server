@@ -624,7 +624,7 @@ def get_access_limitations(doc_id,
                                 # let's make sure we know about this user.
                                 if session_info.user_id == opasConfig.USER_NOT_LOGGED_IN_NAME:
                                     # We got this far, We need to find out who this is
-                                    pads_user_info = get_authserver_session_userinfo(session_info.session_id, session_info.api_client_id)
+                                    pads_user_info, status_code = get_authserver_session_userinfo(session_info.session_id, session_info.api_client_id)
                                     if pads_user_info is not None:
                                         session_info.user_id = pads_user_info.UserId
                                         session_info.username = pads_user_info.UserName

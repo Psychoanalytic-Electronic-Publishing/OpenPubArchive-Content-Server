@@ -52,7 +52,8 @@ def get_append_page(new_page_filename):
 def stampcopyright(username, input_file):
     # generate 'watermark' merge file
     try:
-        headerfooterfile = next(tempfile._get_candidate_names()) + ".pdf"
+        headerfooterfile_base = next(tempfile._get_candidate_names()) + ".pdf"
+        headerfooterfile = os.path.join(tempfile.gettempdir(), headerfooterfile_base)
         pdf = PDF()
         pdf.username_to_set = username
         pdf.alias_nb_pages("{nb}")

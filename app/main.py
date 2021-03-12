@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0311.1.Alpha"
+__version__     = "2021.0311.2.Alpha"
 __status__      = "Development"
 
 """
@@ -4888,6 +4888,7 @@ def documents_downloads(response: Response,
     opasDocPermissions.verify_header(request, "documents_downloads") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    user_name = session_info.username
 
     if retFormat.upper() == "EPUB":
         file_format = 'EPUB'
@@ -4929,43 +4930,46 @@ def documents_downloads(response: Response,
                             detail=status_message)
     else:
         if file_format == 'PDFORIG':
-            try:
-                if flex_fs.key is not None:
-                    fileurl = flex_fs.fs.url(filename)
-                    fname = wget.download(fileurl)
-                    response.status_code = httpCodes.HTTP_200_OK
-                    ret_val = FileResponse(path=fname,
-                                           status_code=response.status_code,
-                                           filename=os.path.split(fname)[1], 
-                                           media_type=media_type)
-                else:
-                    fileurl = filename
-                    stamped_file = opasPDFStampCpyrght.stampcopyright("Neil Shapiro", input_file=filename)
-                    response.status_code = httpCodes.HTTP_200_OK
-                    ret_val = FileResponse(path=stamped_file,
-                                           status_code=response.status_code,
-                                           filename=os.path.split(filename)[1], 
-                                           media_type=media_type)
-            except Exception as e:
+            # We need users name
+            # user needs to have a name!
+            if user_name is None or len(user_name) == 0:
+                error_status_message = "Username must be assigned for download of originals"
+                logger.error(error_status_message)
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
                 raise HTTPException(status_code=response.status_code,
                                     detail=error_status_message)
             else:
-                status_message = opasCentralDBLib.API_STATUS_SUCCESS
-
-                logger.info(status_message)
-                ocd.record_document_view(document_id=documentID,
-                                         session_info=session_info,
-                                         view_type=file_format)
-
-                ocd.record_session_endpoint(api_endpoint_id=endpoint,
-                                            session_info=session_info, 
-                                            params=request.url._url,
-                                            item_of_interest=f"{documentID}", 
-                                            return_status_code = response.status_code,
-                                            status_message=status_message
-                                            )
-
+                try:
+                    if flex_fs.key is not None:                    # S3
+                        fileurl = flex_fs.fs.url(filename)
+                        filename = wget.download(fileurl)
+    
+                    stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename)
+                    response.status_code = httpCodes.HTTP_200_OK
+                    ret_val = FileResponse(path=stamped_file,
+                                           status_code=response.status_code,
+                                           filename=os.path.split(stamped_file)[1], 
+                                           media_type=media_type)
+    
+                except Exception as e:
+                    response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
+                    raise HTTPException(status_code=response.status_code,
+                                        detail=error_status_message)
+                else:
+                    status_message = opasCentralDBLib.API_STATUS_SUCCESS
+    
+                    logger.info(status_message)
+                    ocd.record_document_view(document_id=documentID,
+                                             session_info=session_info,
+                                             view_type=file_format)
+    
+                    ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                                session_info=session_info, 
+                                                params=request.url._url,
+                                                item_of_interest=f"{documentID}", 
+                                                return_status_code = response.status_code,
+                                                status_message=status_message
+                                                )
         else:
             try:
                 response.status_code = httpCodes.HTTP_200_OK
