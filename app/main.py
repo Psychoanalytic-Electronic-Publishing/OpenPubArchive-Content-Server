@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0312.1.Beta"
+__version__     = "2021.0314.1.Beta"
 __status__      = "Development"
 
 """
@@ -1719,7 +1719,7 @@ async def database_advanced_search(response: Response,
 @app.post("/v2/Database/ExtendedSearch/", tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_EXTENDED_SEARCH)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, response_model=models.SolrReturnList, 
 async def database_extendedsearch(response: Response,
                                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                                  solrquerycore: str=Body(None, embed=True),
+                                  solrcore: str=Body("pepwebdocs", embed=True),
                                   solrquery: str=Body(None, embed=True),
                                   solrargs: dict=Body(None, embed=True),
                                   api_key: APIKey = Depends(get_api_key),
@@ -1729,31 +1729,190 @@ async def database_extendedsearch(response: Response,
     """
     ## Function
     
-{
-   "solrqueryspec": {
-    "core" : "pepwebauthors",
-    "returnFormat": "HTML",
-    "facetMinCount": 1,
-    "solrQuery": {
-      "searchQ": "*"
-    },
-    "solrQueryOpts": {
-      "qOper": "AND",
-      "hl": "true",
-      "hlFields": "text_xml",
-      "hlMethod": "unified",
-      "hlFragsize": "0",
-      "hlMaxAnalyzedChars": 2520000,
-      "hlMaxKWICReturns": 5,
-      "hlMultiterm": "true",
-      "hlTagPost": "@@@@#",
-      "hlTagPre": "#@@@@",
-      "hlUsePhraseHighlighter": "true",
-      "queryDebug": "on",
-      "moreLikeThisCount": 5
-    }
-  }
-}    
+    EXPERIMENTAL.  Previously, extended had many enforced limitations, but this version
+      allows the client to access any Solr feature as long as it's one of the configured
+      cores.
+      
+      Since this goes directly to Solr, to protect the full-text data, the return of
+      data in field text_xml is not permitted.
+      
+    Takes three body parameters:
+      solrcore: the name of the core
+      solrquery: the "q" query from the solrapi
+      solrargs: a dictionary of solr args, as accepted by pysolr.
+
+    ## Return Type
+      Returns a solr results record.
+
+    ## Status
+       This endpoint is working.  But its existance is experimental.
+
+    ## Sample Call
+         /v2/Database/ExtendedSearch/
+         
+           with body parameters:
+           
+           {
+             "solrcore":"pepwebdocs",
+             "solrquery": "art_level:1",
+             "solrargs": {
+                "fl":"art_id, art_authors, art_authors_id,text_xml",
+                "rows":10,
+                "facet":"on",
+                "facet.field":"art_authors_ids"
+             }
+           }
+           
+           or, for a different core:
+           
+           {
+             "solrcore":"pepwebauthors",
+             "solrquery": "*",
+             "solrargs": {
+                "fl":"art_id, art_author_id, art_author_listed",
+                "rows":5,
+                "facet":"on",
+                "facet.field":"art_author_role"
+             }
+           }
+           
+           This last example, for example, returns:
+           
+           {
+           "responseHeader": {
+             "status": 0,
+             "QTime": 47,
+             "params": {
+               "q": "*",
+               "facet.field": "art_author_role",
+               "fl": "art_id, art_author_id, art_author_listed",
+               "rows": "5",
+               "facet": "on",
+               "wt": "json"
+             }
+           },
+           "response": {
+             "numFound": 138591,
+             "start": 0,
+             "numFoundExact": true,
+             "docs": [
+               {
+                 "art_id": "TVPA.004.0238A",
+                 "art_author_id": "Thys, Michel",
+                 "art_author_listed": "true"
+               },
+               {
+                 "art_id": "TVPA.004.0235A",
+                 "art_author_id": "Thys, Michel",
+                 "art_author_listed": "true"
+               },
+               {
+                 "art_id": "ANRP.007.0199A",
+                 "art_author_id": "Petrelli, Diomira",
+                 "art_author_listed": "true"
+               },
+               {
+                 "art_id": "TVPA.004.0232A",
+                 "art_author_id": "Schalkwijk, Frans",
+                 "art_author_listed": "true"
+               },
+               {
+                 "art_id": "ANRP.008.0009A",
+                 "art_author_id": "Bezoari, Michele",
+                 "art_author_listed": "true"
+               }
+             ]
+           },
+           "facet_counts": {
+             "facet_queries": {},
+             "facet_fields": {
+               "art_author_role": [
+                 "author",
+                 100464,
+                 "reviewer",
+                 33545,
+                 "edited-by",
+                 1792,
+                 "translator",
+                 1506,
+                 "in-collaboration",
+                 278,
+                 "reporter",
+                 183,
+                 "interviewee",
+                 141,
+                 "moderator",
+                 111,
+                 "panelist",
+                 109,
+                 "other",
+                 91,
+                 "assisted-by",
+                 69,
+                 "produced-by",
+                 56,
+                 "issue-editor",
+                 47,
+                 "interviewer",
+                 32,
+                 "compiled-by",
+                 26,
+                 "director",
+                 18,
+                 "published-by",
+                 16,
+                 "presenter",
+                 14,
+                 "chaired-by",
+                 13,
+                 "intro",
+                 13,
+                 "commentary-by",
+                 9,
+                 "editorial-assistant",
+                 7,
+                 "executive-producer",
+                 7,
+                 "director-assistant",
+                 6,
+                 "series-editor",
+                 6,
+                 "additional-cinematography-by",
+                 5,
+                 "transcribed-by",
+                 5,
+                 "preface",
+                 3,
+                 "cinematography-by",
+                 2,
+                 "coordinator",
+                 2,
+                 "director-and-producer",
+                 2,
+                 "associate-producer",
+                 1,
+                 "line-producer",
+                 1,
+                 "narrated-by",
+                 1,
+                 "under-supervision-of",
+                 1
+               ]
+             },
+             "facet_ranges": {},
+             "facet_intervals": {},
+             "facet_heatmaps": {}
+           }
+         }
+           
+           
+
+    ## Notes
+
+    ## Potential Errors
+       APP NEEDS TO BE AUTHENTICATED with API_KEY for access.
+       Otherwise, returns error.
+
     """
     opasDocPermissions.verify_header(request, "ExtendedSearch") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
@@ -1761,10 +1920,11 @@ async def database_extendedsearch(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     # session_id = session_info.session_id 
     logger.debug("Solr Search Request: %s", request.url._url)
-    if solrquerycore is not None:
+    
+    if solrcore is not None:
         try:
             from configLib.opasCoreConfig import EXTENDED_CORES
-            solr_core2 = EXTENDED_CORES.get(solrquerycore.lower(), None)
+            solr_core2 = EXTENDED_CORES.get(solrcore.lower(), None)
         except Exception as e:
             detail=ERR_MSG_CORE_SPEC_ERROR + f" {e}"
             logger.error(detail)
@@ -1783,16 +1943,21 @@ async def database_extendedsearch(response: Response,
 
         # get default args
         if solrargs is None or solrargs == {}:
-            solr_param_dict = EXTENDED_CORES_DEFAULTS[solrquerycore.lower()]
+            solr_param_dict = EXTENDED_CORES_DEFAULTS[solrcore.lower()]
         else:
             solr_param_dict = solrargs
     else:
         #solrqueryspec.core = SOLR_DEFAULT_CORE
-        solr_core2 = solr.SolrConnection(localsecrets.SOLRURL + solrquerycore.lower(), http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+        solr_core2 = solr.SolrConnection(localsecrets.SOLRURL + solrcore.lower(), http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
         
     try:
         # PySolr does not like None's, so clean them
         solr_param_dict = opasPySolrLib.cleanNullTerms(solr_param_dict)
+        for key, val in solr_param_dict.items():
+            if key == "fl":
+                solr_param_dict[key] = val.replace("text_xml", "art_excerpt_xml")
+                break
+            
         results = solr_core2.search(solrquery, **solr_param_dict)
         
     except solr.SolrException as e:
@@ -1802,26 +1967,15 @@ async def database_extendedsearch(response: Response,
             detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
         )
     except Exception as e:
-        try:
-            tb = sys.exc_info()[2]
-            raise ValueError(...).with_traceback(tb)
-        except Exception as e:
-            ret_status = (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, e)
-            raise HTTPException(
-                status_code=ret_status[0], 
-                detail=f"Bad Solr Search Request. {e} - {ret_status[1].reason}:{ret_status[1].body}"
-            )
-        else:
-            ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-            raise HTTPException(
-                status_code=ret_status[0], 
-                detail=f"Bad Request. {e} - {ret_status[1].reason}:{ret_status[1].body}"
-            )
+        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+        raise HTTPException(
+            status_code=ret_status[0], 
+            detail=f"Bad Request. {e}"
+        )
                                 
     else: #  search was ok
         ret_status = 200
-        ret_val = results
-        solr_ret_list_items = results.docs
+        ret_val = results.raw_response
         numfound = len(results.docs)
         statusMsg = f"RAW Q:{solrquery} / F:{solr_param_dict} N: {numfound}"
         # client_host = request.client.host
@@ -1833,243 +1987,6 @@ async def database_extendedsearch(response: Response,
                                     )
 
     return ret_val # solr_ret_list
-
-#---------------------------------------------------------------------------------------------------------
-@app.post("/v2/Database/ExtendedSearch/", tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_EXTENDED_SEARCH)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, response_model=models.SolrReturnList, 
-async def database_extendedsearch2(response: Response,
-                                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                  solrqueryspec: models.SolrQuerySpec=Body(None, embed=True),
-                                  api_key: APIKey = Depends(get_api_key),
-                                  client_id:int=Depends(get_client_id), 
-                                  client_session:str= Depends(get_client_session)
-                                  ):
-    """
-    ## Function
-    <b>Search_extended Solr style</b>
-
-    Perform a solr query using solr parameter definitions with any server core.
-
-    API_KEY required.
-
-    #TODO: For security, the endpoint is configured not to allow the return of PEP text_xml. Now there's an API_KEY requirement,
-           consider removing constraint
-
-    IMPORTANT NOTE: This endpoint is intended for client (user interface) developers to take advantage of the
-    full Solr query functionality beyond what the current endpoints allow, without directly connecting to Solr.
-    It provides a flexible Solr return set, but offers a bit of a hand by integrating highlighted (match) data with
-    return data, which are returned in separate lists in the normal Solr return structure.  For flexibility and expandability,
-    this endpoint requires parameters in the REST call body, according to the models.SolrQuerySpec structure
-    rather than as URL arguments.  To test, call with an REST API test tool like Postman. Postman
-    also provides a nice 'pretty printed' data return.
-
-    The API user must be logged in to a valid account currently to use this for full-text return (return size is limited).
-
-    The documentation on how to use the advanced query is intimately tied to the schemas (data structure based on the PEP DTDs).
-    But it's not possible to provide query examples and sample data returns without tying them to a schema.
-
-    This endpoint is not used in PEP-Easy because it isn't needed to provide any of the PEP-Easy functionality, all of which are built in
-    to other endpoints.  PEP-Easy functionality only requires what was present in the v1 API (and not the expanded v2 API).
-
-    ## Return Type
-       models.SolrReturnList - flexible field solr results in the responseSet of an otherwise OPAS standard structure 
-
-    #### Sample queries
-
-    ##### <b>Find documents with paragraphs which contain Othogenic school, returning art_id, title, and art_citeas_xml:</b>
-
-    ###### Request Body
-    ```
-    { 
-        "core" : "pepwebdocs",
-        "solrQuery" : {
-                        "searchQ" : "Orthogenic\u0020school",
-                        "fullReturn": false
-        },
-        "solrQueryOpts" : {
-            "returnFields": "art_id, title, art_citeas_xml",
-            "hlFields": "text_xml",
-            "hlFragsize": 100,
-            "hlSnippets" : 10,
-            "hlUsePhraseHighlighter" : "true"
-        }
-    }
-    ```
-
-
-    ## Status
-       Status: New, created 2020-01-03 and now in development and testing 
-
-    ## Notes
-       See also /v2/Database/AdvancedSearch/ for an alternative endpoint which returns data
-       in OPAS DocumentList format.
-
-    ## Potential Errors
-
-    """
-    opasDocPermissions.verify_header(request, "ExtendedSearch") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
-
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
-    # session_id = session_info.session_id 
-    logger.debug("Solr Search Request: %s", request.url._url)
-    solr_ret_list = None
-
-    if solrqueryspec is not None:
-        solrQuery = solrqueryspec.solrQuery
-        if solrQuery is None:
-            detail = "SolrQuery is required"
-            raise HTTPException(
-                detail=detail, 
-                status_code=httpCodes.HTTP_400_BAD_REQUEST
-            )            
-        else:
-
-            #TODO allow core parameter here
-            if solrqueryspec.core is not None:
-                try:
-                    from configLib.opasCoreConfig import EXTENDED_CORES
-                    solr_core2 = EXTENDED_CORES.get(solrqueryspec.core, None)
-                except Exception as e:
-                    detail=ERR_MSG_CORE_SPEC_ERROR + f" {e}"
-                    logger.error(detail)
-                    raise HTTPException(
-                        status_code=httpCodes.HTTP_400_BAD_REQUEST, 
-                        detail=detail
-                    )
-                else:
-                    if solr_core2 is None:
-                        detail=f"Bad Extended Request. Core not specified."
-                        logger.warning(detail)
-                        raise HTTPException(
-                            status_code=httpCodes.HTTP_400_BAD_REQUEST, 
-                            detail=detail
-                        )
-            else:
-                solrqueryspec.core = SOLR_DEFAULT_CORE
-                solr_core2 = solr.SolrConnection(localsecrets.SOLRURL + solrqueryspec.core, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
-                
-            # get default args
-            args = EXTENDED_CORES_DEFAULTS[solrqueryspec.core]
-
-            #if solrqueryspec.solrQueryOpts is None:
-                ## minimum default options
-                #solrQueryOpts = {
-                    #"returnFields": "*",
-                #}
-            #else:
-            
-            solrQueryOpts = solrqueryspec.solrQueryOpts
-            solr_query_spec = \
-                opasQueryHelper.parse_to_query_spec(solr_query_spec=solrqueryspec, 
-                                                    req_url=request.url._url
-                                                    )
-                
-            if solrqueryspec.returnFields is None:
-                solrqueryspec.returnFields = "id, file_classification" #  need to always return id
-            else:
-                solrqueryspec.returnFields += ", id, file_classification"
-
-            # don't let them bring back full-text content in at least PEP schema fields in docs or glossary
-            solrqueryspec.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solrqueryspec.returnFields)
-            # limited return, no full-text, EVER (because it could be used to bypass the embargo.)
-            fragSize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH 
-
-            # these may be redundant, clear up later
-            if solrqueryspec.solrQueryOpts.hlMaxKWICReturns is not None:
-                snippets =  solrQueryOpts.hlMaxKWICReturns
-            else:
-                snippets =  solrQueryOpts.hlSnippets
-            query = solrQuery.searchQ
-            if solrQuery.sort is None:
-                solrQuery.sort = ""
-
-            solr_param_dict = {
-                "fl": solrqueryspec.returnFields,
-                "fq": solrQuery.filterQ,
-                "sort": solrQuery.sort, 
-                "q.op": solrQueryOpts.qOper.upper(),
-                "defType": solrQueryOpts.defType,
-                "hl" : solrQueryOpts.hl.lower(),
-                "hl.weightMatches" : "true",
-                "hl.multiterm" : solrQueryOpts.hlMultiterm,
-                "hl.fl" : solrQueryOpts.hlFields,
-                "hl.tag.pre" : solrQueryOpts.hlTagPre,
-                "hl.tag.post" : solrQueryOpts.hlTagPost,
-                "hl.usePhraseHighlighter" : solrQueryOpts.hlUsePhraseHighlighter, 
-                "hl.snippets" : snippets,
-                "hl.fragsize" : solrQueryOpts.hlFragsize, 
-                "hl.maxAnalyzedChars" : solrQueryOpts.hlMaxAnalyzedChars,
-                'hl.method': solrQueryOpts.hlMethod.lower(),
-                'hl.fragsize': solrQueryOpts.hlFragsize,
-                "facet": "on" if solrqueryspec.facetFields is not None else "off", 
-                "facet.field" : solrqueryspec.facetFields, #["art_lang", "art_authors"],
-                "facet.mincount" : solrqueryspec.facetMinCount,
-                "facet.pivot" : solrqueryspec.facetPivotFields,
-                "facet.sort" : solrqueryspec.facetSort, 
-                'rows':solrqueryspec.limit,
-                'start': solrqueryspec.offset
-            }
-
-        try:
-            # PySolr does not like None's, so clean them
-            solr_param_dict = opasPySolrLib.cleanNullTerms(solr_param_dict)
-            
-            results = solr_core2.search(query, **solr_param_dict)
-        except solr.SolrException as e:
-            #if e.httpcode == 400:
-                #ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input {e.reason}")
-            #else:
-                #ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
-            # statusMsg = f"Solr Runtime Search Error: {e.reason}"
-            ret_status = (e.httpcode, e)
-            raise HTTPException(
-                status_code=ret_status[0], 
-                detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
-            )
-        except Exception as e:
-            try:
-                tb = sys.exc_info()[2]
-                raise ValueError(...).with_traceback(tb)
-            except Exception as e2:
-                error_code = 500
-                ret_status = (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, None)
-            else:
-                ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-            finally:
-                ret_val = models.ErrorReturn(httpcode=error_code, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-                logger.error(f"Solr Runtime Search Error (syntax): {ret_status}. Params sent: {solr_param_dict}")
-                                    
-        else: #  search was ok
-            ret_status = 200
-            solr_ret_list_items = results.docs
-            numfound = len(results.docs)
-            statusMsg = f"RAW Q:{solrQuery.searchQ} / F:{solrQuery.filterQ} N: {numfound}"
-            #logger.debug(statusMsg)
-            response_info = models.ResponseInfo( count = len(solr_ret_list_items),
-                                                 fullCount = numfound,
-                                                 limit = solrqueryspec.limit,
-                                                 offset = solrqueryspec.offset,
-                                                 listType="advancedsearchlist",
-                                                 fullCountComplete = solrqueryspec.limit >= numfound,  
-                                                 dataSource = localsecrets.DATA_SOURCE, 
-                                                 timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                                 )
-            solr_list_struct = models.SolrReturnStruct( responseInfo = response_info, 
-                                                        responseSet = solr_ret_list_items
-                                                        )
-
-            solr_ret_list = models.SolrReturnList(solrRetList = solr_list_struct)
-
-
-            # client_host = request.client.host
-            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
-                                        session_info=session_info, 
-                                        params=request.url._url,
-                                        return_status_code = ret_status, 
-                                        status_message=statusMsg
-                                        )
-
-    return results # solr_ret_list
 
 @app.get("/v2/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH)
 async def database_glossary_search_v2(response: Response, 
