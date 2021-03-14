@@ -134,7 +134,7 @@ logger = logging.getLogger(__name__)
 # import jwt
 import localsecrets
 import libs.opasAPISupportLib as opasAPISupportLib
-from configLib.opasCoreConfig import EXTENDED_CORES, SOLR_DOCS
+from configLib.opasCoreConfig import EXTENDED_CORES, EXTENDED_CORES_DEFAULTS, SOLR_DOCS, SOLR_AUTHORS, SOLR_GLOSSARY, SOLR_DEFAULT_CORE 
 
 from errorMessages import *
 import models
@@ -1716,10 +1716,129 @@ async def database_advanced_search(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.post("/v2/Database/ExtendedSearch/", response_model=models.SolrReturnList, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_EXTENDED_SEARCH)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, 
+@app.post("/v2/Database/ExtendedSearch/", tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_EXTENDED_SEARCH)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, response_model=models.SolrReturnList, 
 async def database_extendedsearch(response: Response,
+                                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                                  solrquerycore: str=Body(None, embed=True),
+                                  solrquery: str=Body(None, embed=True),
+                                  solrargs: dict=Body(None, embed=True),
+                                  api_key: APIKey = Depends(get_api_key),
+                                  client_id:int=Depends(get_client_id), 
+                                  client_session:str= Depends(get_client_session)
+                                  ):
+    """
+    ## Function
+    
+{
+   "solrqueryspec": {
+    "core" : "pepwebauthors",
+    "returnFormat": "HTML",
+    "facetMinCount": 1,
+    "solrQuery": {
+      "searchQ": "*"
+    },
+    "solrQueryOpts": {
+      "qOper": "AND",
+      "hl": "true",
+      "hlFields": "text_xml",
+      "hlMethod": "unified",
+      "hlFragsize": "0",
+      "hlMaxAnalyzedChars": 2520000,
+      "hlMaxKWICReturns": 5,
+      "hlMultiterm": "true",
+      "hlTagPost": "@@@@#",
+      "hlTagPre": "#@@@@",
+      "hlUsePhraseHighlighter": "true",
+      "queryDebug": "on",
+      "moreLikeThisCount": 5
+    }
+  }
+}    
+    """
+    opasDocPermissions.verify_header(request, "ExtendedSearch") # for debugging client call
+    log_endpoint(request, client_id=client_id, session_id=client_session)
+
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    # session_id = session_info.session_id 
+    logger.debug("Solr Search Request: %s", request.url._url)
+    if solrquerycore is not None:
+        try:
+            from configLib.opasCoreConfig import EXTENDED_CORES
+            solr_core2 = EXTENDED_CORES.get(solrquerycore.lower(), None)
+        except Exception as e:
+            detail=ERR_MSG_CORE_SPEC_ERROR + f" {e}"
+            logger.error(detail)
+            raise HTTPException(
+                status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                detail=detail
+            )
+        else:
+            if solr_core2 is None:
+                detail=f"Bad Extended Request. Core not specified."
+                logger.warning(detail)
+                raise HTTPException(
+                    status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                    detail=detail
+                )
+
+        # get default args
+        if solrargs is None or solrargs == {}:
+            solr_param_dict = EXTENDED_CORES_DEFAULTS[solrquerycore.lower()]
+        else:
+            solr_param_dict = solrargs
+    else:
+        #solrqueryspec.core = SOLR_DEFAULT_CORE
+        solr_core2 = solr.SolrConnection(localsecrets.SOLRURL + solrquerycore.lower(), http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+        
+    try:
+        # PySolr does not like None's, so clean them
+        solr_param_dict = opasPySolrLib.cleanNullTerms(solr_param_dict)
+        results = solr_core2.search(solrquery, **solr_param_dict)
+        
+    except solr.SolrException as e:
+        ret_status = (e.httpcode, e)
+        raise HTTPException(
+            status_code=ret_status[0], 
+            detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+        )
+    except Exception as e:
+        try:
+            tb = sys.exc_info()[2]
+            raise ValueError(...).with_traceback(tb)
+        except Exception as e:
+            ret_status = (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, e)
+            raise HTTPException(
+                status_code=ret_status[0], 
+                detail=f"Bad Solr Search Request. {e} - {ret_status[1].reason}:{ret_status[1].body}"
+            )
+        else:
+            ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+            raise HTTPException(
+                status_code=ret_status[0], 
+                detail=f"Bad Request. {e} - {ret_status[1].reason}:{ret_status[1].body}"
+            )
+                                
+    else: #  search was ok
+        ret_status = 200
+        ret_val = results
+        solr_ret_list_items = results.docs
+        numfound = len(results.docs)
+        statusMsg = f"RAW Q:{solrquery} / F:{solr_param_dict} N: {numfound}"
+        # client_host = request.client.host
+        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
+                                    session_info=session_info, 
+                                    params=request.url._url,
+                                    return_status_code = ret_status, 
+                                    status_message=statusMsg
+                                    )
+
+    return ret_val # solr_ret_list
+
+#---------------------------------------------------------------------------------------------------------
+@app.post("/v2/Database/ExtendedSearch/", tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_EXTENDED_SEARCH)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, response_model=models.SolrReturnList, 
+async def database_extendedsearch2(response: Response,
                                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                  solrQuerySpec: models.SolrQuerySpec=None, # allows full specification of parameters in the body
+                                  solrqueryspec: models.SolrQuerySpec=Body(None, embed=True),
                                   api_key: APIKey = Depends(get_api_key),
                                   client_id:int=Depends(get_client_id), 
                                   client_session:str= Depends(get_client_session)
@@ -1795,25 +1914,21 @@ async def database_extendedsearch(response: Response,
     logger.debug("Solr Search Request: %s", request.url._url)
     solr_ret_list = None
 
-    if solrQuerySpec is not None:
-        solrQuery = solrQuerySpec.solrQuery
-        if solrQuery is not None:
-            solrQueryOpts = solrQuerySpec.solrQueryOpts
-            if solrQuerySpec.returnFields is None:
-                solrQuerySpec.returnFields = "id, file_classification" #  need to always return id
-            else:
-                solrQuerySpec.returnFields += ", id, file_classification"
-
-            # don't let them bring back full-text content in at least PEP schema fields in docs or glossary
-            solrQuerySpec.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solrQuerySpec.returnFields)
-            # limited return, no full-text, EVER (because it could be used to bypass the embargo.)
-            fragSize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH 
+    if solrqueryspec is not None:
+        solrQuery = solrqueryspec.solrQuery
+        if solrQuery is None:
+            detail = "SolrQuery is required"
+            raise HTTPException(
+                detail=detail, 
+                status_code=httpCodes.HTTP_400_BAD_REQUEST
+            )            
+        else:
 
             #TODO allow core parameter here
-            if solrQuerySpec.core is not None:
+            if solrqueryspec.core is not None:
                 try:
                     from configLib.opasCoreConfig import EXTENDED_CORES
-                    solr_core = EXTENDED_CORES.get(solrQuerySpec.core, None)
+                    solr_core2 = EXTENDED_CORES.get(solrqueryspec.core, None)
                 except Exception as e:
                     detail=ERR_MSG_CORE_SPEC_ERROR + f" {e}"
                     logger.error(detail)
@@ -1822,7 +1937,7 @@ async def database_extendedsearch(response: Response,
                         detail=detail
                     )
                 else:
-                    if solr_core is None:
+                    if solr_core2 is None:
                         detail=f"Bad Extended Request. Core not specified."
                         logger.warning(detail)
                         raise HTTPException(
@@ -1830,89 +1945,112 @@ async def database_extendedsearch(response: Response,
                             detail=detail
                         )
             else:
-                solr_core = solr.SolrConnection(localsecrets.SOLRURL + solrQuerySpec.core, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+                solrqueryspec.core = SOLR_DEFAULT_CORE
+                solr_core2 = solr.SolrConnection(localsecrets.SOLRURL + solrqueryspec.core, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+                
+            # get default args
+            args = EXTENDED_CORES_DEFAULTS[solrqueryspec.core]
 
-            # see if highlight fields are selected
-            hl = solrQueryOpts.hlFields is not None
+            #if solrqueryspec.solrQueryOpts is None:
+                ## minimum default options
+                #solrQueryOpts = {
+                    #"returnFields": "*",
+                #}
+            #else:
+            
+            solrQueryOpts = solrqueryspec.solrQueryOpts
+            solr_query_spec = \
+                opasQueryHelper.parse_to_query_spec(solr_query_spec=solrqueryspec, 
+                                                    req_url=request.url._url
+                                                    )
+                
+            if solrqueryspec.returnFields is None:
+                solrqueryspec.returnFields = "id, file_classification" #  need to always return id
+            else:
+                solrqueryspec.returnFields += ", id, file_classification"
 
+            # don't let them bring back full-text content in at least PEP schema fields in docs or glossary
+            solrqueryspec.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solrqueryspec.returnFields)
+            # limited return, no full-text, EVER (because it could be used to bypass the embargo.)
+            fragSize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH 
+
+            # these may be redundant, clear up later
+            if solrqueryspec.solrQueryOpts.hlMaxKWICReturns is not None:
+                snippets =  solrQueryOpts.hlMaxKWICReturns
+            else:
+                snippets =  solrQueryOpts.hlSnippets
+            query = solrQuery.searchQ
+            if solrQuery.sort is None:
+                solrQuery.sort = ""
+
+            solr_param_dict = {
+                "fl": solrqueryspec.returnFields,
+                "fq": solrQuery.filterQ,
+                "sort": solrQuery.sort, 
+                "q.op": solrQueryOpts.qOper.upper(),
+                "defType": solrQueryOpts.defType,
+                "hl" : solrQueryOpts.hl.lower(),
+                "hl.weightMatches" : "true",
+                "hl.multiterm" : solrQueryOpts.hlMultiterm,
+                "hl.fl" : solrQueryOpts.hlFields,
+                "hl.tag.pre" : solrQueryOpts.hlTagPre,
+                "hl.tag.post" : solrQueryOpts.hlTagPost,
+                "hl.usePhraseHighlighter" : solrQueryOpts.hlUsePhraseHighlighter, 
+                "hl.snippets" : snippets,
+                "hl.fragsize" : solrQueryOpts.hlFragsize, 
+                "hl.maxAnalyzedChars" : solrQueryOpts.hlMaxAnalyzedChars,
+                'hl.method': solrQueryOpts.hlMethod.lower(),
+                'hl.fragsize': solrQueryOpts.hlFragsize,
+                "facet": "on" if solrqueryspec.facetFields is not None else "off", 
+                "facet.field" : solrqueryspec.facetFields, #["art_lang", "art_authors"],
+                "facet.mincount" : solrqueryspec.facetMinCount,
+                "facet.pivot" : solrqueryspec.facetPivotFields,
+                "facet.sort" : solrqueryspec.facetSort, 
+                'rows':solrqueryspec.limit,
+                'start': solrqueryspec.offset
+            }
+
+        try:
+            # PySolr does not like None's, so clean them
+            solr_param_dict = opasPySolrLib.cleanNullTerms(solr_param_dict)
+            
+            results = solr_core2.search(query, **solr_param_dict)
+        except solr.SolrException as e:
+            #if e.httpcode == 400:
+                #ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input {e.reason}")
+            #else:
+                #ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
+            # statusMsg = f"Solr Runtime Search Error: {e.reason}"
+            ret_status = (e.httpcode, e)
+            raise HTTPException(
+                status_code=ret_status[0], 
+                detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+            )
+        except Exception as e:
             try:
-                if hl:
-                    results = solr_core2.search(q = solrQuery.searchQ,  
-                                                fq = solrQuery.filterQ,
-                                                q_op = solrQueryOpts.qOper.upper(), 
-                                                fields = solrQuerySpec.returnFields, 
-                                                # highlighting parameters
-                                                hl = "true",
-                                                hl_method = solrQueryOpts.hlMethod.lower(),
-                                                hl_bs_type="SENTENCE", 
-                                                hl_fl = solrQueryOpts.hlFields,
-                                                hl_fragsize = fragSize,  # from above
-                                                hl_maxAnalyzedChars=solrQueryOpts.hlMaxAnalyzedChars if solrQueryOpts.hlMaxAnalyzedChars>0 else opasConfig.SOLR_FULL_TEXT_MAX_ANALYZED_CHARS, 
-                                                hl_multiterm = solrQueryOpts.hlMultiterm, # def "true", # only if highlighting is on
-                                                hl_multitermQuery="true",
-                                                hl_highlightMultiTerm="true",
-                                                hl_weightMatches="true", 
-                                                hl_tag_post = solrQueryOpts.hlTagPost,
-                                                hl_tag_pre = solrQueryOpts.hlTagPre,
-                                                hl_snippets = solrQueryOpts.hlSnippets,
-                                                #hl_encoder = "html", # (doesn't work for standard, doesn't do anything we want in unified)
-                                                hl_usePhraseHighlighter = solrQueryOpts.hlUsePhraseHighlighter, # only if highlighting is on
-                                                #hl_q = solrQueryOpts.hlQ, # doesn't help with phrases; searches for None if it's none!
-                                                # morelikethis parameters
-                                                mlt = solrQueryOpts.moreLikeThisCount > 0, # if >0 turns on morelike this
-                                                mlt_fl = solrQueryOpts.moreLikeThisFields, 
-                                                mlt_count = solrQueryOpts.moreLikeThisCount,
-                                                # paging parameters
-                                                rows = solrQuerySpec.limit,
-                                                start = solrQuerySpec.offset
-                                                )
-                    solr_ret_list_items = []
-                    for n in results.results:
-                        rid = n["id"]
-                        n["highlighting"] = results.highlighting[rid]  
-                        item = models.SolrReturnItem(solrRet=n)
-                        solr_ret_list_items.append(item)
-                else:
-                    results = solr_core2.search(q = solrQuery.searchQ,  
-                                               fq = solrQuery.filterQ,
-                                               q_op = "AND", 
-                                               fields = solrQuerySpec.returnFields,
-                                               # morelikethis parameters
-                                               mlt = solrQueryOpts.moreLikeThisCount > 0, # if >0 turns on morelike this
-                                               mlt_fl = solrQueryOpts.moreLikeThisFields, 
-                                               mlt_count = solrQueryOpts.moreLikeThisCount,
-                                               # paging parameters
-                                               rows = solrQuerySpec.limit,
-                                               start = solrQuerySpec.offset
-                                               )
-                    solr_ret_list_items = []
-                    for n in results.results:
-                        item = models.SolrReturnItem(solrRet=n)
-                        solr_ret_list_items.append(item)
-
-                    ret_status = httpCodes.HTTP_200_OK
-
-            except solr.SolrException as e:
-                #if e.httpcode == 400:
-                    #ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input {e.reason}")
-                #else:
-                    #ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
-                # statusMsg = f"Solr Runtime Search Error: {e.reason}"
-                ret_status = (e.httpcode, e)
-                raise HTTPException(
-                    status_code=ret_status[0], 
-                    detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
-                )
-
-            statusMsg = f"RAW Q:{solrQuery.searchQ} / F:{solrQuery.filterQ} N: {results._numFound}"
-            logger.debug(statusMsg)
-
+                tb = sys.exc_info()[2]
+                raise ValueError(...).with_traceback(tb)
+            except Exception as e2:
+                error_code = 500
+                ret_status = (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, None)
+            else:
+                ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+            finally:
+                ret_val = models.ErrorReturn(httpcode=error_code, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
+                logger.error(f"Solr Runtime Search Error (syntax): {ret_status}. Params sent: {solr_param_dict}")
+                                    
+        else: #  search was ok
+            ret_status = 200
+            solr_ret_list_items = results.docs
+            numfound = len(results.docs)
+            statusMsg = f"RAW Q:{solrQuery.searchQ} / F:{solrQuery.filterQ} N: {numfound}"
+            #logger.debug(statusMsg)
             response_info = models.ResponseInfo( count = len(solr_ret_list_items),
-                                                 fullCount = results._numFound,
-                                                 limit = solrQuerySpec.limit,
-                                                 offset = solrQuerySpec.offset,
+                                                 fullCount = numfound,
+                                                 limit = solrqueryspec.limit,
+                                                 offset = solrqueryspec.offset,
                                                  listType="advancedsearchlist",
-                                                 fullCountComplete = solrQuerySpec.limit >= results._numFound,  
+                                                 fullCountComplete = solrqueryspec.limit >= numfound,  
                                                  dataSource = localsecrets.DATA_SOURCE, 
                                                  timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
                                                  )
@@ -1931,7 +2069,7 @@ async def database_extendedsearch(response: Response,
                                         status_message=statusMsg
                                         )
 
-    return solr_ret_list
+    return results # solr_ret_list
 
 @app.get("/v2/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH)
 async def database_glossary_search_v2(response: Response, 

@@ -12,12 +12,15 @@
 import solrpy as solr
 import pysolr
 from localsecrets import SOLRUSER, SOLRPW, SOLRURL
+import opasConfig
 
 # These are the solr database names used
 SOLR_DOCS = "pepwebdocs"
 # SOLR_REFS = "pepwebrefs"
 SOLR_AUTHORS = "pepwebauthors"
 SOLR_GLOSSARY = "pepwebglossary"
+
+SOLR_DEFAULT_CORE = SOLR_DOCS
 
 # constants
 COMMITLIMIT = 1000  # commit the load to Solr every X articles
@@ -44,6 +47,24 @@ EXTENDED_CORES = {
     "pepwebgloss": solr_gloss2,
     "pepwebauthors": solr_authors2,
     # "pepwebauthors_terms": solr_authors_term_search,
+}
+
+EXTENDED_DOCS_DEFAULTS = {
+    "fl" : opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
+}
+
+EXTENDED_GLOSSARY_DEFAULTS = {
+    "fl" : opasConfig.GLOSSARY_ITEM_DEFAULT_FIELDS,    
+}
+
+EXTENDED_AUTHOR_DEFAULTS = {
+    "fl" : opasConfig.AUTHOR_ITEM_DEFAULT_FIELDS, 
+}
+
+EXTENDED_CORES_DEFAULTS = {
+    "pepwebdocs": EXTENDED_DOCS_DEFAULTS,
+    "pepwebgloss": EXTENDED_GLOSSARY_DEFAULTS,
+    "pepwebauthors": EXTENDED_AUTHOR_DEFAULTS,
 }
 
 CORES = {

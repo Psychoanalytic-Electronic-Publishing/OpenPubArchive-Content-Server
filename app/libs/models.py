@@ -19,6 +19,7 @@ import datetime
 from datetime import datetime
 from typing import List, Generic, TypeVar, Optional
 import opasConfig
+from pysolr import Results
 
 from enum import Enum
 
@@ -546,13 +547,14 @@ class SolrQueryOpts(BaseModel):
     hl: str = Schema('true', title="Highlighting (KWIC)", description="Turns on highlighting if specified.")
     hlFields: str = Schema('text_xml', title="highlight fields (KWIC)", description="Specific fields to highlight.")
     hlMethod: str = Schema("unified", title="Highlighter method", description="Use either unified (fastest) or original.")
-    hlFragsize: str = Schema(0, title="highlight fragment size", description="KWIC segment lengths")
+    hlFragsize: str = Schema(opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, title="highlight fragment size", description="KWIC segment lengths")
     hlMaxAnalyzedChars: int = Schema(2520000, title="The character limit to look for highlights, after which no highlighting will be done. This is mostly only a performance concern")
     hlMaxKWICReturns: int = Schema(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title="The character limit to look for highlights, after which no highlighting will be done. This is mostly only a performance concern")
-    hlMultiterm: str = Schema('true', title="If set to true, Solr will highlight wildcard queries (and other MultiTermQuery subclasses). If false, they won’t be highlighted at all.")
-    hlTagPost: str = Schema('@@@@#', title="Markup (tag) after hit term")
-    hlTagPre: str = Schema('#@@@@', title="Markup (tag) before hit term")
+    # I think this is redundant with hlMaxKWICReturns - verify
     hlSnippets: str = Schema(None, title="Max KWIC Returns", description="Max number of highlights permitted per field")
+    hlMultiterm: str = Schema('true', title="If set to true, Solr will highlight wildcard queries (and other MultiTermQuery subclasses). If false, they won’t be highlighted at all.")
+    hlTagPost: str = Schema(opasConfig.HITMARKEREND, title="Markup (tag) after hit term")
+    hlTagPre: str = Schema(opasConfig.HITMARKERSTART, title="Markup (tag) before hit term")
     hlUsePhraseHighlighter: str = Schema('true', title="Solr will highlight phrase queries (and other advanced position-sensitive queries) accurately – as phrases. If false, the parts of the phrase will be highlighted everywhere instead of only when it forms the given phrase.")
     queryDebug: str = Schema("off", title="Turn Solr debug info 'on' or 'off' (default=off)")
     # facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
@@ -595,6 +597,8 @@ class SolrQuerySpec(BaseModel):
     page_offset: int = Schema(0, title="Page offset in return set")
     facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
     facetMinCount: int = Schema(1, title="Minimum count to return a facet")
+    facetSort: str = Schema(None, title="Fields on which to sort facets")
+    facetPivotFields: str = Schema(None, title="Fields to pivot on in Faceting (comma separated list)", description="Comma separated list of pivots, NO SPACES.")
     # TODO: facetRanges not yet implemented
     facetRanges: str = Schema(None, title="Faceting range list (comma separated list)", description="Returns faceting ranges if specified.")
     # facetSpec can include any Solr facet options, except any that are listed above.
@@ -654,7 +658,7 @@ class SolrReturnItem(BaseModel):
         
 class SolrReturnStruct(BaseModel):
     responseInfo: ResponseInfo
-    responseSet: List[SolrReturnItem] = []
+    responseSet: list # pysolr.results
 
 class SolrReturnList(BaseModel):
     solrRetList: SolrReturnStruct
