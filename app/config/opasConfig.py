@@ -614,6 +614,24 @@ GLOSSARY_ITEM_DEFAULT_FIELDS = """
  text
 """
 
+AUTHOR_ITEM_DEFAULT_FIELDS ="""
+ id,
+ art_id,
+ art_year_int,
+ title, 
+ art_title_xml, 
+ art_author_id, 
+ art_author_listed,
+ art_author_pos_int,
+ art_author_role,
+ art_sourcetype,
+ art_sourcetitlefull,
+ file_last_modified,
+ file_classification,
+ timestamp, 
+ score
+"""
+
 running_head_fmts = {
     'xml': "<p><cgrp name='pub_year'>({pub_year})</cgrp>. <cgrp name='source_title'>{source_title}</cgrp><cgrp name='vol'>{vol}</cgrp><cgrp name='issue'>{issue}</cgrp><cgrp name='pgrg'>{pgrg}</cgrp></p>", 
     'html': "<span class='pub_year'>({pub_year})</span>. <span class='source_title'>{source_title}</span><span class='vol'>{vol}</span><span class='issue'>{issue}</span><span class='pgrg'>{pgrg}</span>",
