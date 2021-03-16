@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0314.1.Beta"
+__version__     = "2021.0316.1.Beta"
 __status__      = "Development"
 
 """
@@ -3574,8 +3574,8 @@ async def database_term_counts(response: Response,
             try:
                 # If specified as field:term
                 nfield, nterms = n.split(":")
-                result = opasAPISupportLib.get_term_count_list(nterms, nfield)
-            except:
+                result = opasSolrPyLib.get_term_count_list(nterms, term_field = nfield)
+            except Exception as e:
                 # just list of terms, use against termfield parameter
                 nterms = n.strip("', ")
                 try:
