@@ -1,10 +1,12 @@
 # Updated 2021-03-11 to for pdfrw
-
+# Updated 2021-03-18 requests-2.25.1 urllib3-1.26.4 botocore-1.20.31 boto3-1.17.31 
+#      many more need updating, but postponing for later.  Pillow was needed due to security bug
+#
 aiofiles==0.5.0
 #
 bcrypt==3.1.7
-boto3==1.14.43
-botocore==1.17.43
+boto3==1.17.31        # updated 2021-03-18
+botocore==1.20.31     # updated 2021-03-18
 certifi==2020.6.20
 cffi==1.14.1
 chardet==3.0.4
@@ -41,7 +43,7 @@ pandas==1.1.1
 pytz==2020.1
 #
 passlib==1.7.2
-Pillow==7.2.0
+Pillow==8.1.2
 #
 pycparser==2.20
 pydantic==1.6.1
