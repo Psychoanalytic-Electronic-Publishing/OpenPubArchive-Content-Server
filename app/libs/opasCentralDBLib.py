@@ -1491,7 +1491,8 @@ class opasCentralDB(object):
                                 configSettings = item.configSettings
                                 
                                 try:
-                                    config_json = json.dumps(configSettings)
+                                    config_json = json.dumps(configSettings, indent=2)  # expand json in table! 2021-03-21
+
                                 except Exception as e:
                                     logger.warning(f"Error converting configuration to json {e}.")
                                     return ret_val

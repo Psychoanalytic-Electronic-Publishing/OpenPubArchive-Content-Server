@@ -13,7 +13,7 @@ print( f"""
         {programNameShort} - Open Publications-Archive Server (OPAS) - Push Settings to Production
     
         Settings in the database are created under the Admin on Stage.
-        This program copies them from the Stage database to Production
+        This program copies them from the Stage database to the Production database
         
         """
 )
@@ -22,23 +22,16 @@ import sys
 sys.path.append('../libs')
 sys.path.append('../config')
 sys.path.append('../libs/configLib')
+from fastapi import HTTPException
+import starlette.status as httpCodes
 
-#import re
-#import os
 import logging
 logger = logging.getLogger(__name__)
-#import json
 from optparse import OptionParser
 
 import localsecrets
 import opasCentralDBLib
 from opasConfig import CLIENT_CONFIGS
-
-
-# import pymysql
-# import starlette.status as httpCodes
-
-# from errorMessages import *
 
 # until it's in localsecrets on AWS, check here
 try:
@@ -49,12 +42,12 @@ try:
     STAGE_PW = localsecrets.STAGE2PROD_PW[0]
     PROD_PW = localsecrets.STAGE2PROD_PW[1]
 except:
-    STAGE_DB_HOST = "staging.c6re6qczl2ae.us-east-1.rds.amazonaws.com"
-    PRODUCTION_DB_HOST = "production.c6re6qczl2ae.us-east-1.rds.amazonaws.com"
-    # use dev server for testing!
-    # PRODUCTION_DB_HOST = "development.c6re6qczl2ae.us-east-1.rds.amazonaws.com"
-    STAGE_PW = localsecrets.STAGE2PROD_PW[0]
-    PROD_PW = localsecrets.STAGE2PROD_PW[1]
+    msg = f"DB addresses need to be defined."
+    logger.error(msg)
+    raise HTTPException(
+        status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
+        detail=msg
+    )
 
 def main():
     #  open databases
@@ -95,6 +88,7 @@ def main():
      
         stage_ocd.close_connection(caller_name="opasPushSettings")
         production_ocd.close_connection(caller_name="opasPushSettings")
+
     print ("Run terminating")
 
 # -------------------------------------------------------------------------------------------------------
@@ -108,12 +102,8 @@ if __name__ == "__main__":
                       help="Option to preview copy action, without actually copying.")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
                       help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
-    parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
-                      help="Don't check whether to proceed.")
     parser.add_option("--test", dest="testmode", action="store_true", default=False,
                       help="Run Doctests")
-    parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
-                      help="Display status and operational timing info as load progresses.")
 
     (options, args) = parser.parse_args()
     
@@ -124,3 +114,4 @@ if __name__ == "__main__":
         sys.exit()
     
     main()
+    
