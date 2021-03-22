@@ -41,11 +41,12 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
 #2019.1110.1 - Updates for database view/table naming cleanup
 #2020.0426.1 - Updates to ensure doc tests working, a couple of parameters changed names
 #2020.0530.1 - Fixed doc tests for termindex, they were looking at number of terms rather than term counts
+#2021.0321.1 - Set up to allow connection to multiple databases to allow copying from stage to production dbs
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0530.1"
+__version__     = "2021.0321.1"
 __status__      = "Development"
 
 import sys
@@ -86,7 +87,7 @@ import json
 #import opasAuthBasic
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-import requests
+# import requests
 import xml.etree.ElementTree as ET
 
 import models
@@ -223,9 +224,21 @@ class opasCentralDB(object):
     > ocd.delete_session(session_id=random_session_id)
     True
     """
-    def __init__(self, session_id=None, access_token=None, token_expires_time=None, username=opasConfig.USER_NOT_LOGGED_IN_NAME, user=None):
+    def __init__(self, session_id=None,
+                 host=localsecrets.DBHOST,
+                 port=localsecrets.DBPORT,
+                 user=localsecrets.DBUSER,
+                 password=localsecrets.DBPW,
+                 database=localsecrets.DBNAME):
+
         self.db = None
         self.connected = False
+        self.host = host
+        self.port = port
+        self.user = user
+        self.password = password
+        self.database = database
+        
         self.session_id = session_id # deprecate?
         
     def open_connection(self, caller_name=""):
@@ -245,8 +258,8 @@ class opasCentralDB(object):
         except:
             # not open reopen it.
             try:
-                self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
-                logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT}")
+                self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
+                logger.debug(f"Database opened by ({caller_name}) Specs: {self.database} for host {self.host},  user {self.user} port {self.port}")
                 self.connected = True
             except Exception as e:
                 logger.warning(f"Database connection not opened ({caller_name}) ({e})")
@@ -1515,6 +1528,96 @@ class opasCentralDB(object):
     
         return (ret_val, msg)
 
+    def save_client_config_item(self, client_id:str, client_configuration_item: models.ClientConfigItem, session_id, replace=False, backup=True):
+        """
+        Save a client configuration item (config row).  Data format is up to the client.
+        
+        Returns True of False
+
+        """
+        msg = "OK"
+        # convert client id to int
+        try:
+            client_id_int = int(client_id)
+        except Exception as e:
+            msg = f"Client ID should be a string containing an int {e}"
+            logger.error(msg)
+            ret_val = httpCodes.HTTP_400_BAD_REQUEST
+        else:
+            if client_configuration_item is None:
+                msg = "No client configuration item model provided to save."
+                logger.error(msg)
+                ret_val = httpCodes.HTTP_400_BAD_REQUEST
+            else:
+                if replace:
+                    sql_action = "REPLACE"
+                    ret_val = httpCodes.HTTP_200_OK
+                else:
+                    sql_action = "INSERT"
+                    ret_val = httpCodes.HTTP_201_CREATED
+                try:
+                    session_id = session_id
+                except Exception as e:
+                    # no session open!
+                    msg = "No session is open / Not authorized"
+                    logger.error(msg)
+                    ret_val = 401 # not authorized
+                else:
+                    self.open_connection(caller_name="record_client_config") # make sure connection is open
+                    try:
+                        with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                            configName = client_configuration_item.configName
+                            configSettings = client_configuration_item.configSettings
+                            
+                            try:
+                                config_json = json.dumps(configSettings, indent=2)  # expand json in table! 2021-03-21
+                            except Exception as e:
+                                logger.warning(f"Error converting configuration to json {e}.")
+                                return ret_val
+                
+                            sql = f"""{sql_action} INTO 
+                                        api_client_configs(client_id,
+                                                           config_name, 
+                                                           config_settings, 
+                                                           session_id
+                                                          )
+                                                          VALUES 
+                                                           (%s, %s, %s, %s)"""
+                            if backup and sql_action == "REPLACE":
+                                configNameBack = configName + "." + ".bak." + datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+                                logger.info(f"Saving Backup {configNameBack} of config before writing over it.")
+                                succ = curs.execute(sql,
+                                                    (client_id_int,
+                                                     configNameBack,
+                                                     config_json, 
+                                                     session_id
+                                                    )
+                                                   )
+
+                            # now save
+                            succ = curs.execute(sql,
+                                                (client_id_int,
+                                                 configName,
+                                                 config_json, 
+                                                 session_id
+                                                )
+                                               )
+                            self.db.commit()
+            
+                    except Exception as e:
+                        if sql_action == "REPLACE":
+                            msg = f"Error updating (replacing) client config: {e}"
+                            logger.error(msg)
+                            ret_val = 400
+                        else: # insert
+                            msg = f"Error saving client config: {e}"
+                            logger.error(msg)
+                            ret_val = 409
+            
+                    self.close_connection(caller_name="record_client_config") # make sure connection is closed
+    
+        return (ret_val, msg)
+
     def get_client_config(self, client_id: str, client_config_name: str):
         """
         
@@ -1563,8 +1666,10 @@ class opasCentralDB(object):
                 
                     if ret_val is not None:
                         ret_val_list.append(models.ClientConfigItem(configName = ret_val.config_name,
-                                                                    configSettings=json.loads(ret_val.config_settings)
-                                                                    )
+                                                                    configSettings=json.loads(ret_val.config_settings),
+                                                                    api_client_id=ret_val.client_id, 
+                                                                    session_id=ret_val.session_id
+                                                                   )
                                            )
                 if ret_val is not None:
                     # convert to final return model, a list of ClientConfigItems

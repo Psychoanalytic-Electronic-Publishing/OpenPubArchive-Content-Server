@@ -204,6 +204,8 @@ class ClientConfigItem(BaseModel):
     """
     Dictionary to hold client configuration settings as set by the client administrator
     """
+    api_client_id: int = Schema(0, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
+    session_id: str = Schema(None, title="A generated session Identifier number the client passes in the header to identify the session")
     configName: str = Schema(None, title="Unique name (within client ID) to save and retrieve configuration")
     configSettings: dict = Schema({}, title="Dictionary with all configuration settings")
 

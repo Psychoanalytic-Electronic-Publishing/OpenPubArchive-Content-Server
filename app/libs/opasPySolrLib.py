@@ -15,6 +15,8 @@ __version__     = "2020.1118.1"
 __status__      = "Development"
 
 import re
+import os
+import tempfile
 import logging
 logger = logging.getLogger(__name__)
 import time
@@ -2432,7 +2434,8 @@ def prep_document_download(document_id,
                             html_string = re.sub("</html>", f"{COPYRIGHT_PAGE_HTML}</html>", html_string, count=1)                        
                             # open output file for writing (truncated binary)
                             filename = document_id + ".PDF" 
-                            result_file = open(filename, "w+b")
+                            output_filename = os.path.join(tempfile.gettempdir(), filename)
+                            result_file = open(output_filename, "w+b")
                             # convert HTML to PDF
                             # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
                             pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
@@ -2440,7 +2443,7 @@ def prep_document_download(document_id,
                             # close output file
                             result_file.close()                 # close output file
                             # return True on success and False on errors
-                            ret_val = filename
+                            ret_val = output_filename
                         elif ret_format.upper() == "EPUB":
                             doc = opasxmllib.remove_encoding_string(doc)
                             html_string = opasxmllib.xml_str_to_html(doc)

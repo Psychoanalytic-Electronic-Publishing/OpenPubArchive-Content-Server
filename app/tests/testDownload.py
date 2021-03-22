@@ -99,5 +99,16 @@ class TestDownload(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
+    def test_7_Download(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/ANIJP-DE.001.0107A/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/ANIJP-CHI.001.0018A/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+
+
 if __name__ == '__main__':
     unittest.main()    

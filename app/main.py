@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0316.1.Beta"
+__version__     = "2021.0321.1.Beta"
 __status__      = "Development"
 
 """
@@ -5025,6 +5025,39 @@ def documents_downloads(response: Response,
                                                 return_status_code = response.status_code,
                                                 status_message=status_message
                                                 )
+        elif file_format == 'PDF':
+            try:
+                response.status_code = httpCodes.HTTP_200_OK
+                stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename)
+                ret_val = FileResponse(path=stamped_file,
+                                       status_code=response.status_code,
+                                       filename=os.path.split(stamped_file)[1], 
+                                       media_type=media_type)
+                #ret_val = FileResponse(path=filename,
+                                       #status_code=response.status_code,
+                                       #filename=os.path.split(filename)[1], 
+                                       #media_type=media_type)
+
+            except Exception as e:
+                response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
+                status_message = f" The requested document {filename} could not be returned {e}"
+                raise HTTPException(status_code=response.status_code,
+                                    detail=status_message)
+
+            else:
+                status_message = opasCentralDBLib.API_STATUS_SUCCESS
+
+                logger.info(status_message)
+                ocd.record_document_view(document_id=documentID,
+                                         session_info=session_info,
+                                         view_type=file_format)
+                ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                            session_info=session_info, 
+                                            params=request.url._url,
+                                            item_of_interest=f"{documentID}", 
+                                            return_status_code = response.status_code,
+                                            status_message=status_message
+                                            )
         else:
             try:
                 response.status_code = httpCodes.HTTP_200_OK

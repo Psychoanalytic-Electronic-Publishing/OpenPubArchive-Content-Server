@@ -51,7 +51,7 @@ def get_append_page(new_page_filename):
     new_page = PdfReader(new_page_filename)
     return new_page.pages[0]
 
-def stampcopyright(username, input_file):
+def stampcopyright(username, input_file, top=True, bottom=True):
     # generate 'watermark' merge file
     try:
         headerfooterfile_base = next(tempfile._get_candidate_names()) + ".pdf"
@@ -99,7 +99,8 @@ def stampcopyright(username, input_file):
         # final write
         #writer.write(output_file)
     except Exception as e:
-        logger.error(f"Could not add copyright info for user {username} to Original PDF")
+        logger.error(f"Could not add copyright info for user {username} to Original PDF; returning without marks")
+        output_file = input_file
     else:
         logger.info(f"Copyright info added for user {username} to Original PDF")
         

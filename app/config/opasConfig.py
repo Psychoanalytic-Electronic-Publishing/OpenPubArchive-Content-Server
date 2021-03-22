@@ -33,6 +33,7 @@ ALL_EXCEPT_JOURNAL_CODES = BOOK_CODES_ALL + VIDEOSTREAM_CODES_ALL
 
 # Note: language symbols to be lower case (will be converted to lowercase if not)
 DEFAULT_DATA_LANGUAGE_ENCODING = "en"
+CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr")
 
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.

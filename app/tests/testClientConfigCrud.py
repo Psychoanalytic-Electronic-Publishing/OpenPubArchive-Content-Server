@@ -79,7 +79,9 @@ class TestClientConfig(unittest.TestCase):
         assert(response.ok == True)
         #print(headers["client-session"])
         r = response.json()
-        assert (r == {'configList': [{'configName': test_config_name_1, 'configSettings': config_settings_1}]})
+        assert (r["configList"][0]["configSettings"] == {'a': 1, 'b': 2, 'c': 8})
+        #assert (r == {'configList': [{'api_client_id': 4, 'session_id': 'bf1181e6-cf7a-4a6d-8df1-c8c213d2555a', 'configName': 'test_client_test_1', 'configSettings': {'a': 1, 'b': 2, 'c': 8}}]})
+
         print ("Get OK: ", r)
 
         # fetch both of the settings
@@ -91,7 +93,9 @@ class TestClientConfig(unittest.TestCase):
         #print(headers["client-session"])
         r = response.json()
         #assert (r == {'configList': [{'configName': 'test_client_test_1', 'configSettings': {'a': 1, 'b': 2, 'c': 8}}, {'configName': 'test_client_test_2', 'configSettings': {'a': 2, 'b': 4, 'c': 8}}]})
-        assert (r == {'configList': [{'configName': test_config_name_1, 'configSettings': config_settings_1}, {'configName': test_config_name_2, 'configSettings': config_settings_2}]})
+        #assert (r == {'configList': [{'configName': test_config_name_1, 'configSettings': config_settings_1}, {'configName': test_config_name_2, 'configSettings': config_settings_2}]})
+        assert (r["configList"][0]["configSettings"] == config_settings_1)
+        assert (r["configList"][1]["configSettings"] == config_settings_2)
         print ("Get OK: ", r)
 
     def test_0_post(self):
@@ -200,7 +204,8 @@ class TestClientConfig(unittest.TestCase):
                                 params={'configname': f"{test_config_name_1}"})
         assert(response.ok == True)
         r = response.json()
-        assert (r == {'configList': [{'configName': test_config_name_1, 'configSettings': config_settings_1}]})
+        #assert (r == {'configList': [{'configName': test_config_name_1, 'configSettings': config_settings_1}]})
+        assert (r["configList"][0]["configSettings"] == config_settings_1)
         print ("Get updated config1 from list OK: ", r)
 
         # get the other settings
@@ -211,7 +216,8 @@ class TestClientConfig(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (r)
-        assert (r == {'configList': [{'configName': test_config_name_2, 'configSettings': config_settings_2}]})
+        #assert (r == {'configList': [{'configName': test_config_name_2, 'configSettings': config_settings_2}]})
+        assert (r["configList"][0]["configSettings"] == config_settings_2)
         print ("Get updated config2 from list OK: ", r)
 
         # get both of the settings
@@ -221,7 +227,9 @@ class TestClientConfig(unittest.TestCase):
                                 params={'configname': f"{test_config_name_1}, {test_config_name_2}"})
         assert(response.ok == True)
         r = response.json()
-        assert (r == {'configList': [{'configName': test_config_name_1, 'configSettings': config_settings_1}, {'configName': test_config_name_2, 'configSettings': config_settings_2}]})
+        #assert (r == {'configList': [{'configName': test_config_name_1, 'configSettings': config_settings_1}, {'configName': test_config_name_2, 'configSettings': config_settings_2}]})
+        assert (r["configList"][0]["configSettings"] == config_settings_1)
+        assert (r["configList"][1]["configSettings"] == config_settings_2)
         print ("Get updated both configs from list OK: ", r)
 
     def test_3_post_fail(self):
@@ -247,14 +255,14 @@ class TestClientConfig(unittest.TestCase):
                                    params={'configname': test_config_name_1})
         assert(response.ok == True)
         r = response.json()
-        #print (r)
-        assert (r == {'configList': [{'configName': test_config_name_1, 'configSettings': config_settings_1}]})
+        assert (r["configList"][0]["configSettings"] == config_settings_1)
         response = requests.delete(full_URL,
                                    headers=headers,
                                    params={'configname': test_config_name_2})
         assert(response.ok == True)
         r = response.json()
-        assert (r == {'configList': [{'configName': test_config_name_2, 'configSettings': config_settings_2}]})
+        assert (r["configList"][0]["configSettings"] == config_settings_2)
+        #assert (r == {'configList': [{'configName': test_config_name_2, 'configSettings': config_settings_2}]})
 
         # First create, then delete both at once
         response = requests.put(full_URL,
@@ -270,8 +278,8 @@ class TestClientConfig(unittest.TestCase):
                                   )
         assert(response.ok == True)
         r = response.json()
-        #print (r)
-        assert (r == {'configList': [{'configName': test_config_name_1, 'configSettings': config_settings_1}, {'configName': test_config_name_2, 'configSettings': config_settings_2}]})
+        assert (r["configList"][0]["configSettings"] == config_settings_1)
+        assert (r["configList"][1]["configSettings"] == config_settings_2)
         print ("Update list Del OK: ", r)
 
 
