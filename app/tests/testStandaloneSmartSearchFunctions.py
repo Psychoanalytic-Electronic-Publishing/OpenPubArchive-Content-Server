@@ -152,36 +152,36 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         
         """
         result = smartsearch.smart_search("Tuckett and Fonagy (2012)")
-        print (result)
-        assert (result['author_list'] == 'Tuckett and Fonagy')
-        assert (result['yr'] == '2012')
+        #print (result)
+        assert (result['author_list'] == 'Tuckett and Fonagy'), result['author_list']
+        assert (result['yr'] == '2012'), result['yr'] 
         
         result = smartsearch.smart_search("Tuckett and Fonagy 2012")
-        print (result)
-        assert (result['author_list'] == 'Tuckett and Fonagy')
-        assert (result['yr'] == '2012')
+        #print (result)
+        assert (result['author_list'] == 'Tuckett and Fonagy'), result['author_list'] 
+        assert (result['yr'] == '2012'), result['yr'] 
         
         result = smartsearch.smart_search("Tuckett, D. and Fonagy, P. 2012")
-        print (result)
-        assert (result['author_list'] == 'Tuckett, D. and Fonagy, P.')
-        assert (result['yr'] == '2012')
+        #print (result)
+        assert (result['author_list'] == 'Tuckett, D. and Fonagy, P.'), result['author_list'] 
+        assert (result['yr'] == '2012'), result['yr'] 
         
         result = smartsearch.smart_search("Tuckett, D. and Fonagy, P. (2012)")
-        print (result)
-        assert (result['author_list'] == 'Tuckett, D. and Fonagy, P.')
-        assert (result['yr'] == '2012')
+        #print (result)
+        assert (result['author_list'] == 'Tuckett, D. and Fonagy, P.'), result['author_list'] 
+        assert (result['yr'] == '2012'), result['yr'] 
         
         result = smartsearch.smart_search("Eugene L. Goldberg, Wayne A. Myers and Israel Zeifman (1974)")
-        print (result)
-        assert (result['author_list'] == 'Eugene L. Goldberg, Wayne A. Myers and Israel Zeifman')
-        assert (result['yr'] == '1974')
+        #print (result)
+        assert result['author_list'] == 'Eugene L. Goldberg, Wayne A. Myers and Israel Zeifman', result['author_list']
+        assert result['yr'] == '1974', result['yr']
         
         result = smartsearch.smart_search("Rapaport, D. and Gill, M. M. (1959)")
-        print (result)
-        assert (result['author_list'] == 'Rapaport, D. and Gill, M. M.')
-        assert (result['yr'] == '1959')
+        #print (result)
+        assert result['author_list'] == 'Rapaport, D. and Gill, M. M.', result['author_list']
+        assert result['yr'] == '1959', result['yr']
 
-        assert (result[KEY_SEARCH_SMARTSEARCH][0:26] == 'Matched authors and years:')
+        assert result[KEY_SEARCH_SMARTSEARCH][0:25] == 'Matched authors and year:', result[KEY_SEARCH_SMARTSEARCH][0:25]
         
     def test_2b_title_search(self):
         """
@@ -190,7 +190,7 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         print (result)
         #Title Search in Smart Search is currently "neutered" per David's request.
         # assert (result == {'title': 'Psychoanalysis of Developmental Arrests\\: Theory and Treatment.'})
-        assert (result[KEY_SEARCH_WORDSEARCH] == 'Psychoanalysis of Developmental Arrests\\: Theory and Treatment.')
+        assert result[KEY_SEARCH_WORDSEARCH] == 'Psychoanalysis of Developmental Arrests\\: Theory and Treatment.',  result[KEY_SEARCH_WORDSEARCH]
         
     def test_2c_word_search(self):
         """

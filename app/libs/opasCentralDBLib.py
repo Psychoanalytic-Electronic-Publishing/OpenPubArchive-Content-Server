@@ -41,11 +41,12 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
 #2019.1110.1 - Updates for database view/table naming cleanup
 #2020.0426.1 - Updates to ensure doc tests working, a couple of parameters changed names
 #2020.0530.1 - Fixed doc tests for termindex, they were looking at number of terms rather than term counts
+#2021.0321.1 - Set up to allow connection to multiple databases to allow copying from stage to production dbs
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0530.1"
+__version__     = "2021.0321.1"
 __status__      = "Development"
 
 import sys
@@ -86,7 +87,7 @@ import json
 #import opasAuthBasic
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-import requests
+# import requests
 import xml.etree.ElementTree as ET
 
 import models
@@ -144,8 +145,7 @@ API_DATABASE_GLOSSARY_SEARCH = 48	#/Database/Search/
 API_DATABASE_EXTENDEDSEARCH = 49
 API_DATABASE_SEARCHTERMLIST = 50
 API_DATABASE_CLIENT_CONFIGURATION = 51 # /Client/Configuration
-
-
+API_DATABASE_OPENURL = 52	#/Database/OpenURL/
 
 #def verifyAccessToken(session_id, username, access_token):
     #return pwd_context.verify(session_id+username, access_token)
@@ -205,12 +205,16 @@ class opasCentralDB(object):
       
     Therefore, keeping session info in the object is ok,
     
-    >>> import secrets
-    >>> ocd = opasCentralDB()
-    >>> random_session_id = secrets.token_urlsafe(16)
-    >>> success, session_info = ocd.save_session(session_id=random_session_id)
-    >>> session_info.authenticated
-    False
+    >> random_session_id = secrets.token_urlsafe(16)
+    >>> import opasDocPermissions
+    >>> UNIT_TEST_CLIENT_ID = "4"
+    >>> session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=UNIT_TEST_CLIENT_ID)
+    >>> session_id = session_info.session_id
+    >>> session_id
+    '...'
+    >>> success, session_info = ocd.save_session(session_id=session_id, session_info=session_info)
+    >>> None if session_info is None else session_info.authenticated
+    True
     >>> ocd.record_session_endpoint(session_info=session_info, api_endpoint_id=API_AUTHORS_INDEX, item_of_interest="IJP.001.0001A", status_message="Testing")
     1
     >>> ocd.end_session(session_info.session_id)
@@ -220,13 +224,22 @@ class opasCentralDB(object):
     > ocd.delete_session(session_id=random_session_id)
     True
     """
-    def __init__(self, session_id=None, access_token=None, token_expires_time=None, username=opasConfig.USER_NOT_LOGGED_IN_NAME, user=None):
+    def __init__(self, session_id=None,
+                 host=localsecrets.DBHOST,
+                 port=localsecrets.DBPORT,
+                 user=localsecrets.DBUSER,
+                 password=localsecrets.DBPW,
+                 database=localsecrets.DBNAME):
+
         self.db = None
         self.connected = False
-        # self.authenticated = False
+        self.host = host
+        self.port = port
+        self.user = user
+        self.password = password
+        self.database = database
+        
         self.session_id = session_id # deprecate?
-        # self.user = None
-        # self.sessionInfo = None
         
     def open_connection(self, caller_name=""):
         """
@@ -245,8 +258,8 @@ class opasCentralDB(object):
         except:
             # not open reopen it.
             try:
-                self.db = pymysql.connect(host=localsecrets.DBHOST, port=localsecrets.DBPORT, user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME)
-                logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT}")
+                self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
+                logger.debug(f"Database opened by ({caller_name}) Specs: {self.database} for host {self.host},  user {self.user} port {self.port}")
                 self.connected = True
             except Exception as e:
                 logger.warning(f"Database connection not opened ({caller_name}) ({e})")
@@ -775,7 +788,7 @@ class opasCentralDB(object):
         Generic retrieval from database, just the count
         
         >>> ocd = opasCentralDB()
-        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches WHERE global_uid = 'nrs';")
+        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches;")
         >>> count > 1000
         True
         
@@ -805,7 +818,7 @@ class opasCentralDB(object):
         Generic retrieval from database, into dict
         
         >>> ocd = opasCentralDB()
-        >>> records = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity WHERE global_uid = 'nrs';")
+        >>> records = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity;")
         >>> len(records) > 1
         True
 
@@ -856,7 +869,7 @@ class opasCentralDB(object):
         Generic retrieval from database, into dict
         
         >>> ocd = opasCentralDB()
-        >>> records = ocd.get_select_as_list(sqlSelect="SELECT * from vw_reports_session_activity WHERE global_uid = 'nrs';")
+        >>> records = ocd.get_select_as_list(sqlSelect="SELECT * from vw_reports_session_activity;")
         >>> len(records) > 1
         True
 
@@ -1067,29 +1080,41 @@ class opasCentralDB(object):
                     # now insert the session
                     sql = """REPLACE INTO api_sessions(session_id,
                                                        user_id, 
-                                                       username,
-                                                       session_start, 
-                                                       session_expires_time,
-                                                       authenticated,
                                                        admin,
                                                        api_client_id,
+                                                       authenticated,
                                                        authorized_peparchive,
-                                                       authorized_pepcurrent
+                                                       authorized_pepcurrent,
+                                                       confirmed_unauthenticated,
+                                                       has_subscription,
+                                                       is_valid_login,
+                                                       is_valid_username,
+                                                       username,
+                                                       user_type,
+                                                       session_start,
+                                                       session_end,
+                                                       session_expires_time
             )
             VALUES 
-              (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s ) """
+              (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
                     try:
                         success = cursor.execute(sql, 
                                                  (session_info.session_id, 
                                                   session_info.user_id, 
-                                                  session_info.username,
-                                                  session_info.session_start, 
-                                                  session_info.session_expires_time,
-                                                  session_info.authenticated,
                                                   session_info.admin, 
                                                   session_info.api_client_id,
+                                                  session_info.authenticated,
                                                   session_info.authorized_peparchive,
-                                                  session_info.authorized_pepcurrent
+                                                  session_info.authorized_pepcurrent, 
+                                                  session_info.confirmed_unauthenticated, 
+                                                  session_info.has_subscription, 
+                                                  session_info.is_valid_login, 
+                                                  session_info.is_valid_username, 
+                                                  session_info.username,
+                                                  session_info.user_type, 
+                                                  session_info.session_start, 
+                                                  session_info.session_end, 
+                                                  session_info.session_expires_time
                                                   )
                                                  )
                     except pymysql.IntegrityError as e:
@@ -1194,8 +1219,9 @@ class opasCentralDB(object):
         Close any sessions past the set expiration time set in the record
         
         >>> ocd = opasCentralDB()
-        >>> session_count = ocd.close_expired_sessions()
-        Closed ... expired sessions
+        >>> numb = ocd.close_expired_sessions()
+        >>> numb >= 0
+        True
         """
         ret_val = 0
         self.open_connection(caller_name="close_expired_sessions") # make sure connection is open
@@ -1315,23 +1341,23 @@ class opasCentralDB(object):
 
         >>> ocd = opasCentralDB()
         >>> count, resp = ocd.get_sources(src_type='book')
-        >>> count
-        140
+        >>> count > 98
+        True
 
         # test normalize src_type (req len of input=4, expands to full, standard value)
         >>> ocd = opasCentralDB()
-        >>> count, resp = ocd.get_sources(src_type='vide') 
-        >>> count
-        12
+        >>> count, resp = ocd.get_sources(src_type='videos')
+        >>> count >= 11
+        True
 
         >>> count, resp = ocd.get_sources(src_name='Psychoanalysis')
-        >>> count > 34
+        >>> count > 30
         True
         >>> resp[0]["basecode"]
         'AJP'
 
         >>> count, resp = ocd.get_sources(src_name='Psychoan.*')
-        >>> count > 34
+        >>> count >= 33
         True
         >>> resp[0]["basecode"]
         'ADPSA'
@@ -1343,8 +1369,9 @@ class opasCentralDB(object):
         1
 
         >>> count, resp = ocd.get_sources()
-        >>> count
-        235
+        >>> count > 188
+        True
+        
         """
         self.open_connection(caller_name="get_sources") # make sure connection is open
         total_count = 0
@@ -1414,15 +1441,18 @@ class opasCentralDB(object):
         # return session model object
         return total_count, ret_val # None or Session Object
 
-    def save_client_config(self, client_id:str, client_configuration: models.ClientConfig, session_id, replace=False):
+    def save_client_config(self, client_id:str, client_configuration: models.ClientConfigList, session_id, replace=False):
         """
         Save a client configuration.  Data format is up to the client.
         
         Returns True of False
 
         >>> ocd = opasCentralDB()
-        >>> model = models.ClientConfig(configName="test", configSettings={"A":"123", "B":"1234"})
-        >>> ocd.save_client_config(client_id="test", client_configuration=model, session_id="test123", replace=True)
+        >>> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="demo", configSettings={"A":"123", "B":"1234"})])
+        >>> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
+        (200, 'OK')
+        >>> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="test", configSettings={"A":"123", "B":"1234"}), models.ClientConfigItem(configName="test2", configSettings={"C":"456", "D":"5678"})])
+        >>> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
         (200, 'OK')
         """
         msg = "OK"
@@ -1455,13 +1485,97 @@ class opasCentralDB(object):
                 else:
                     self.open_connection(caller_name="record_client_config") # make sure connection is open
                     try:
-                        try:
-                            config_json = json.dumps(client_configuration.configSettings)
-                        except Exception as e:
-                            logger.warning(f"Error converting configuration to json {e}.")
-                            return ret_val
-            
                         with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                            for item in client_configuration.configList:
+                                configName = item.configName
+                                configSettings = item.configSettings
+                                
+                                try:
+                                    config_json = json.dumps(configSettings, indent=2)  # expand json in table! 2021-03-21
+
+                                except Exception as e:
+                                    logger.warning(f"Error converting configuration to json {e}.")
+                                    return ret_val
+                    
+                                sql = f"""{sql_action} INTO 
+                                            api_client_configs(client_id,
+                                                               config_name, 
+                                                               config_settings, 
+                                                               session_id
+                                                              )
+                                                              VALUES 
+                                                               (%s, %s, %s, %s)"""
+                                
+                                succ = curs.execute(sql,
+                                                    (client_id_int,
+                                                     configName,
+                                                     config_json, 
+                                                     session_id
+                                                    )
+                                                   )
+                            self.db.commit()
+            
+                    except Exception as e:
+                        if sql_action == "REPLACE":
+                            msg = f"Error updating (replacing) client config: {e}"
+                            logger.error(msg)
+                            ret_val = 400
+                        else: # insert
+                            msg = f"Error saving client config: {e}"
+                            logger.error(msg)
+                            ret_val = 409
+            
+                    self.close_connection(caller_name="record_client_config") # make sure connection is closed
+    
+        return (ret_val, msg)
+
+    def save_client_config_item(self, client_id:str, client_configuration_item: models.ClientConfigItem, session_id, replace=False, backup=True):
+        """
+        Save a client configuration item (config row).  Data format is up to the client.
+        
+        Returns True of False
+
+        """
+        msg = "OK"
+        # convert client id to int
+        try:
+            client_id_int = int(client_id)
+        except Exception as e:
+            msg = f"Client ID should be a string containing an int {e}"
+            logger.error(msg)
+            ret_val = httpCodes.HTTP_400_BAD_REQUEST
+        else:
+            if client_configuration_item is None:
+                msg = "No client configuration item model provided to save."
+                logger.error(msg)
+                ret_val = httpCodes.HTTP_400_BAD_REQUEST
+            else:
+                if replace:
+                    sql_action = "REPLACE"
+                    ret_val = httpCodes.HTTP_200_OK
+                else:
+                    sql_action = "INSERT"
+                    ret_val = httpCodes.HTTP_201_CREATED
+                try:
+                    session_id = session_id
+                except Exception as e:
+                    # no session open!
+                    msg = "No session is open / Not authorized"
+                    logger.error(msg)
+                    ret_val = 401 # not authorized
+                else:
+                    self.open_connection(caller_name="record_client_config") # make sure connection is open
+                    try:
+                        with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                            configName = client_configuration_item.configName
+                            configSettings = client_configuration_item.configSettings
+                            
+                            try:
+                                config_json = json.dumps(configSettings, indent=2)  # expand json in table! 2021-03-21
+                            except Exception as e:
+                                logger.warning(f"Error converting configuration to json {e}.")
+                                return ret_val
+                
                             sql = f"""{sql_action} INTO 
                                         api_client_configs(client_id,
                                                            config_name, 
@@ -1470,10 +1584,21 @@ class opasCentralDB(object):
                                                           )
                                                           VALUES 
                                                            (%s, %s, %s, %s)"""
-                            
+                            if backup and sql_action == "REPLACE":
+                                configNameBack = configName + "." + ".bak." + datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+                                logger.info(f"Saving Backup {configNameBack} of config before writing over it.")
+                                succ = curs.execute(sql,
+                                                    (client_id_int,
+                                                     configNameBack,
+                                                     config_json, 
+                                                     session_id
+                                                    )
+                                                   )
+
+                            # now save
                             succ = curs.execute(sql,
                                                 (client_id_int,
-                                                 client_configuration.configName,
+                                                 configName,
                                                  config_json, 
                                                  session_id
                                                 )
@@ -1498,10 +1623,25 @@ class opasCentralDB(object):
         """
         
         >>> ocd = opasCentralDB()
-        >>> ocd.get_client_config(2, "demo")
+        >>> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="demo", configSettings={"A":"123", "B":"1234"})])
+        >>> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
+        (200, 'OK')
+        >>> ocd.get_client_config("123", "test")
+        ClientConfigList(configList=[ClientConfigItem(configName='test', configSettings={'A': '123', 'B': '1234'})])
+        >>> ocd.get_client_config("123", "test, test2")
+        ClientConfigList(configList=[ClientConfigItem(configName='test', configSettings={'A': '123', 'B': '1234'}), ClientConfigItem(configName='test2', configSettings={'C': '456', 'D': '5678'})])
+        >>> ocd.get_client_config("123", "doesntexist")
+        
+        Last case get used to return"
+        ClientConfigList(configList=[])
         
         """
         ret_val = None
+        if "," in client_config_name:
+            client_config_name_list = [x.strip() for x in client_config_name.split(',')]
+        else:
+            client_config_name_list = [client_config_name.strip()]
+            
         self.open_connection(caller_name="get_client_config") # make sure connection is open
         try:
             client_id_int = int(client_id)
@@ -1511,24 +1651,32 @@ class opasCentralDB(object):
             ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
             with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
-                sql = f"""SELECT *
-                          FROM api_client_configs
-                          WHERE client_id = {client_id_int}
-                          AND config_name = '{client_config_name}'"""
-    
-                res = curs.execute(sql)
-                if res >= 1:
-                    clientConfig = curs.fetchone()
-                    ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
-                else:
-                    ret_val = None
-    
+                ret_val_list = []
+                for client_config_name in client_config_name_list:
+                    sql = f"""SELECT *
+                              FROM api_client_configs
+                              WHERE client_id = {client_id_int}
+                              AND config_name = '{client_config_name}'"""
+        
+                    res = curs.execute(sql)
+                    if res >= 1:
+                        clientConfig = curs.fetchone()
+                        ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
+                    else:
+                        ret_val = None
+                
+                    if ret_val is not None:
+                        ret_val_list.append(models.ClientConfigItem(configName = ret_val.config_name,
+                                                                    configSettings=json.loads(ret_val.config_settings),
+                                                                    api_client_id=ret_val.client_id, 
+                                                                    session_id=ret_val.session_id
+                                                                   )
+                                           )
+                if ret_val is not None:
+                    # convert to final return model, a list of ClientConfigItems
+                    ret_val = models.ClientConfigList(configList = ret_val_list)
+
             self.close_connection(caller_name="get_client_config") # make sure connection is closed
-            if ret_val is not None:
-                # convert to return model
-                ret_val = models.ClientConfig(clientID = ret_val.client_id,
-                                              configName = ret_val.config_name,
-                                              configSettings=json.loads(ret_val.config_settings))
     
         return ret_val
 
@@ -1541,6 +1689,11 @@ class opasCentralDB(object):
         """
         ret_val = None
         saved = self.get_client_config(client_id, client_config_name)
+        if "," in client_config_name:
+            client_config_name_list = [x.strip() for x in client_config_name.split(',')]
+        else:
+            client_config_name_list = [client_config_name.strip()]
+
         # open after fetching, since db is closed by call.
         self.open_connection(caller_name="del_client_config") # make sure connection is open
         try:
@@ -1551,17 +1704,18 @@ class opasCentralDB(object):
             ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
             if saved is not None:
-                sql = f"""DELETE FROM api_client_configs
-                          WHERE client_id = {client_id_int}
-                          AND config_name = '{client_config_name}'"""
-        
-                with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
-                    res = curs.execute(sql)
-                    if res >= 1:
-                        ret_val = saved
-                        self.db.commit()
-                    else:
-                        ret_val = None
+                for client_config_name in client_config_name_list:
+                    sql = f"""DELETE FROM api_client_configs
+                              WHERE client_id = {client_id_int}
+                              AND config_name = '{client_config_name}'"""
+            
+                    with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                        res = curs.execute(sql)
+                        if res >= 1:
+                            ret_val = saved
+                            self.db.commit()
+                        else:
+                            ret_val = None
                 
             self.close_connection(caller_name="del_client_config") # make sure connection is closed
 
@@ -1639,10 +1793,6 @@ class opasCentralDB(object):
         """
         Find if this is an admin, and return user info for them.
         Returns a user object
-        
-        >>> ocd = opasCentralDB()
-        >>> ocd.verify_admin(ocd.sessionInfo)
-        False
         """
         #TODO - Use PaDS to verify admin status!
         ret_val = False
@@ -1651,7 +1801,10 @@ class opasCentralDB(object):
 
     def delete_all_article_data(self):
         """
-        >>> delete_all_article_data()
+        We need this data, so don't test!
+        Disabled:
+        > ocd = opasCentralDB()
+        > ocd.delete_all_article_data()
         """
         self.do_action_query(querytxt="DELETE FROM api_biblioxml", queryparams=None)
         self.do_action_query(querytxt="DELETE FROM api_articles", queryparams=None)

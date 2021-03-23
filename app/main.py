@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0201.1.Alpha"
+__version__     = "2021.0322.1.Beta"
 __status__      = "Development"
 
 """
@@ -14,9 +14,8 @@ This API server is based on the existing PEP-Web API 1.0.  The data returned
 may have additional fields but should be otherwise compatible with PEP API clients
 such as PEP-Easy.
 
-It's an initial version of the Opas Solr Server (API); it's not yet "generic", it's
-schema and functionality dependent on PEP's needs (who is funding development).  But
-it would be a start, that could be genericized for a general purpose OPAS.
+It's an initial version of the Opas Solr Server (API); it's not "generic", it's
+schema and functionality dependent on PEP's needs (who is funding development).  
 
 To Install (at least in windows)
   rem python 3.7 required
@@ -42,8 +41,6 @@ Endpoint and model documentation automatically available when server is running 
 
   (base URL + "/docs")
   e.g.,
-  http://api.pep-web.rocks/docs
-  http://api.pep-web.org/docs
   http://localhost:8000/docs
   etc.
 
@@ -117,6 +114,7 @@ from starlette.middleware.cors import CORSMiddleware
 import starlette.status as httpCodes
 #from starlette.middleware.sessions import SessionMiddleware
 #from typing import Optional
+from typing import Union
 import pandas as pd
 
 import requests
@@ -136,7 +134,7 @@ logger = logging.getLogger(__name__)
 # import jwt
 import localsecrets
 import libs.opasAPISupportLib as opasAPISupportLib
-from configLib.opasCoreConfig import EXTENDED_CORES, SOLR_DOCS
+from configLib.opasCoreConfig import EXTENDED_CORES, EXTENDED_CORES_DEFAULTS, SOLR_DOCS, SOLR_AUTHORS, SOLR_GLOSSARY, SOLR_DEFAULT_CORE 
 
 from errorMessages import *
 import models
@@ -147,6 +145,8 @@ import opasSchemaHelper
 import opasDocPermissions
 import opasPySolrLib
 from opasPySolrLib import search_text, search_text_qs
+import opasSolrPyLib
+import opasPDFStampCpyrght
 
 # Check text server version
 text_server_ver = None
@@ -172,7 +172,39 @@ if r.status_code == 200:
 app = FastAPI(
     debug=False,
     title="OpenPubArchive Server (OPAS) API for PEP-Web",
-    description = "Open Publications Archive Server API for PEP-Web by Psychoanalytic Electronic Publishing (PEP)",
+    description = """
+    
+<b>An Open Source Full-Text Journal and Book Server and API by Psychoanalytic Electronic Publishing (PEP)</b>
+
+This API server is an initial version of the OPAS Solr-based Server (API); it's not "fully generic", the
+schema and functionality were developed around the new full-functionality API Client meant
+to replace PEP's full-text journal, book, and video database, PEP-Web.  But
+PEP has developed it as open source, so it could be a start for an extended or general purpose server.
+
+While Solr already provides an API that is generic, the OPAS API wraps a higher level API on top of that, which based on
+PEP's experience, provides functionality that should simplify client development significantly.  This is in fact
+the second version of such a high level API (the first was written around DTSearch). That it simplifies development was shown by PEP-Easy, which was
+a very simple client written in javascript to the V1.0 version of the API. Having a higher level API also simplifies porting
+as PEP did when the underlying full-text indexing software changed from DTSearch to Solr.
+
+One key feature of this API is true paragraph level search...something not easily implemented in Solr in a straightforward way. That
+functionality requires a schema design where paragraphs are separately indexed using Solr's advanced nested indexing.  The PEP-Web Docs schema implements this.
+
+Note that a few of the endpoints require an API key.  If so, it is listed in the description of the function (not in the query parameter list).
+If a function requiring one is called  without the API key, you will get an authentication error.
+
+***
+*IMPORTANT UPDATE REGARDING THE PEP SCHEMA*: The current PEP Docs Schema does not index all documents by paragraphs,
+since to provide search results more compatible with PEP's original DTSearch based implementation, term proximity search
+is instead approximated by a preset word distance value, as was done in DTSearch.  However, SE and GW are indexed by
+paragraph as well, and thus the paratext (true paragraph search) feature of the API works for those book series. Thus, all searches
+using the "paratext" parameter will only currently search these two book series.  This of course only applies to the current PEPWebDocs core, and for other databases (cores), the
+paragraph level indexing and searches may still be fully utilized.  The PEP loader program, which are specific to the PEP-Schema, can be used to turn on and off paragraph level
+indexing for other documents. This is controlled in a simple manner by the SRC_CODES_TO_INCLUDE_PARAS list constant
+in the loaderConfig.py file.
+***
+    
+    """,
         version = f"{__version__}",
         static_directory=r"./docs",
         swagger_static={
@@ -205,19 +237,6 @@ def get_client_id(response: Response,
     """
     ret_val = opasDocPermissions.find_client_id(request, response)
     return ret_val
-
-#def get_user_ip(response: Response,
-                #request: Request
-                #):
-    #"""
-    #Dependency for client id: see find_client_id
-    #"""
-    #ret_val = opasDocPermissions.find_user_ip(request, response)
-    #if ret_val is not None:
-        #msg = f"forward-for from header: {ret_val} "
-        #logger.info(msg)
-        
-    #return ret_val
 
 def get_client_session(response: Response,
                        request: Request,
@@ -345,37 +364,44 @@ def log_endpoint_time(request, ts):
 # EndPoints
 # ############################################################################
 #-----------------------------------------------------------------------------
-@app.get("/v2/Api/OpenapiSpec", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_OPEN_API)
-async def api_openapi_spec(api_key: APIKey = Depends(get_api_key), 
-                           ):
-    """
-    This returns openapi documentation in json that can be loaded to Swagger
-
-    Requires API key.
-
-    """
-    #Also a good demo of the simplicity to add APIKey to any endpoint. The APIKey
-    #can be added to the header (see postman example), in the interactive documentation
-    #it's just a matter of pressing the lock icon and filling out the form.  It can also
-    #be supplied as a query parameter in the endpoint call.
-
-    response = JSONResponse(get_openapi(title="FastAPI", version=1, routes=app.routes))
-    return response
-
-#-----------------------------------------------------------------------------
-@app.get("/v2/Admin/LogLevel/", tags=["Admin"], summary="Admin function to change logging level")
+@app.put("/v2/Admin/LogLevel/", tags=["Admin"], summary="Admin function to change logging level")
 async def admin_set_loglevel(response: Response, 
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                              api_key: APIKey = Depends(get_api_key), 
                              client_id:int=Depends(get_client_id),
+                             sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
                              level:str=Query("WARNING", title="Log Level", description="DEBUG, INFO, WARNING, or ERROR"),
-                            ): 
-    # TODO: Make this an admin only function
+                            ):
+    
+    """
+    ## Function
+       <b>Change the logging level of the server to DEBUG, INFO, WARNING, or ERROR.</b>
+
+       <b>Requires</b> API key, sessionID and client_id in the header (use 'client-id' in call header).
+
+    ## Return Type
+       Returns a string confirming the new logger level, or an error message.  
+
+    ## Status
+       This endpoint is working.
+
+    ## Notes
+       The input string is case insensitive.
+       
+    ## Potential Errors
+       NA
+    
+    """
+    levels = {10: "DEBUG", 20: "INFO", 30: "WARNING", 40: "ERROR", 50: "CRITICAL"}
+    logger = logging.getLogger() # Get root logger
+    curr_level = levels.get(logger.level, str(logger.level))
+    
     try:
         # not necessary, since setLevel accepts the same strings
         # but this protects from name input errors
         # (as does the Exception)
         # At this point there's no reason I see to accept numeric levels
+        err = ""
         level = level.upper()
         if level == "DEBUG":
             lev_int = logging.DEBUG
@@ -385,78 +411,25 @@ async def admin_set_loglevel(response: Response,
             lev_int = logging.WARNING
         elif level == "ERROR":
             lev_int = logging.ERROR
+        else:
+            err = f"Specified log level {level} not recognized. Log level still set to: {curr_level}"
         
-        logger = logging.getLogger() # Get root logger
-        logger.setLevel(lev_int)
+        if err == "":
+            logger.setLevel(lev_int)
+        else:
+            raise HTTPException(404, detail=err)
+
     except Exception as e:
-        logger.error(f"Error setting log level {e}.  Current level {logger.level}")
-    
-    levels = {10: "DEBUG", 20: "INFO", 30: "WARNING", 40: "ERROR", 50: "CRITICAL"}
-    ret_val = levels.get(logger.level, str(logger.level))
+        logger.error(f"Error: {e}. {err}")
+        ret_val = err
+    else:
+        ret_val = f"Log level set to: {levels.get(logger.level, str(logger.level))}" 
+
     return ret_val
-#-----------------------------------------------------------------------------
-@app.get("/v2/Api/LiveDoc", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENTATION)
-async def api_live_doc(api_key: APIKey = Depends(get_api_key),
-                       ):
-    """
-    This returns an HTML page of interactive api documentation.
-
-    Requires API key.
-
-    """
-    #It's really only useful if/when we turn off the free documentation
-    #changing the app call to:
-
-        #app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-
-    response = get_swagger_ui_html(openapi_url="/v2/Api/OpenapiSpec", title="docs")
-
-    #TODO: should we set this wherever the key is required?
-    response.set_cookie(
-        localsecrets.API_KEY_NAME,
-        value=api_key,
-        domain=localsecrets.COOKIE_DOMAIN,
-        httponly=True,
-        max_age=1800,
-        expires=1800,
-    )
-    return response
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Api/Status/", response_model=models.APIStatusItem, response_model_exclude_unset=True, tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_API_STATUS)
-async def api_status(response: Response, 
-                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                    ):
-    """
-    ## Function
-       <b>Return the status of the API to check if it's available.</b>
-
-    ## Return Type
-       models.ServerStatusItem
-
-    ## Status
-       Status: Working
-
-    ## Sample Call
-         /v2/Api/Status/
-
-    """
-    try:
-        api_status_item = models.APIStatusItem(timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
-                                               opas_version = __version__, 
-                                              )
-
-    except ValidationError as e:
-        logger.warning("ValidationError", e.json())
-        raise HTTPException(
-            status_code=httpCodes.HTTP_400_BAD_REQUEST,
-            detail=ERR_MSG_STATUS_DATA_ISSUE
-        )
-
-    return api_status_item
-
-#-----------------------------------------------------------------------------
-@app.get("/v2/Reports/{report}", response_model=models.Report, tags=["Reports"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
+@app.get("/v2/Admin/Reports/{report}", response_model=models.Report, tags=["Admin"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
+@app.get("/v2/Reports/{report}", response_model=models.Report, tags=["Admin", "Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
 async def reports(response: Response, 
                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                   report: models.ReportTypeEnum=Path(..., title="Report Requested", description="One of the predefined report names"),
@@ -479,11 +452,10 @@ async def reports(response: Response,
       Requires API key.
       
     ### Return Type
-
       models.Report
 
     ### Status
-       In Development
+       This endpoint is working.
 
     ### Sample Call
          #/v2/Reports/
@@ -688,31 +660,194 @@ async def reports(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.post("/v2/Client/Configuration/", response_model=models.ClientConfig, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_SAVE_CONFIGURATION, status_code=201)
+@app.get("/v2/Api/LiveDoc", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENTATION)
+async def api_live_doc(api_key: APIKey = Depends(get_api_key),
+                       ):
+    """
+    This returns an HTML page of interactive api documentation.
+
+    Requires API key.
+
+    """
+    #It's really only useful if/when we turn off the free documentation
+    #changing the app call to:
+
+        #app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+    response = get_swagger_ui_html(openapi_url="/v2/Api/OpenapiSpec", title="docs")
+
+    #TODO: should we set this wherever the key is required?
+    response.set_cookie(
+        localsecrets.API_KEY_NAME,
+        value=api_key,
+        domain=localsecrets.COOKIE_DOMAIN,
+        httponly=True,
+        max_age=1800,
+        expires=1800,
+    )
+    return response
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Api/OpenapiSpec", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_OPEN_API)
+async def api_openapi_spec(api_key: APIKey = Depends(get_api_key), 
+                           ):
+    """
+    This returns openapi documentation in json that can be loaded to Swagger
+
+    Requires API key.
+
+    """
+    #Also a good demo of the simplicity to add APIKey to any endpoint. The APIKey
+    #can be added to the header (see postman example), in the interactive documentation
+    #it's just a matter of pressing the lock icon and filling out the form.  It can also
+    #be supplied as a query parameter in the endpoint call.
+
+    response = JSONResponse(get_openapi(title="FastAPI", version=1, routes=app.routes))
+    return response
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Admin/Sitemap/", tags=["Admin"], summary="Admin function to change logging level")
+async def admin_sitemap(response: Response, 
+                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                        api_key: APIKey = Depends(get_api_key), 
+                        client_id:int=Depends(get_client_id),
+                        #client_session:str= Depends(get_client_session),
+                       ):
+    
+    """
+    ## Function
+       <b>Change the logging level of the server to DEBUG, INFO, WARNING, or ERROR.</b>
+
+       <b>Requires</b> API key, sessionID and client_id in the header (use 'client-id' in call header).
+
+    ## Return Type
+       Returns a string confirming the new logger level, or an error message.  
+
+    ## Status
+       This endpoint is working.
+
+    ## Notes
+       The input string is case insensitive.
+       
+    ## Potential Errors
+       NA
+    
+    """
+    import opasSiteMap
+    # Need to move these to localsecrets
+    SITEMAP_OUTPUT_FILE = "../sitemap" # don't include xml extension here, it's added
+    SITEMAP_INDEX_FILE = "../sitemapindex.xml"
+    max_records = 150000
+    records_per_file = 8000
+    
+    try:
+        # returns a list of the sitemap files (since split)
+        sitemap_list = opasSiteMap.metadata_export(SITEMAP_OUTPUT_FILE, total_records=max_records, records_per_file=records_per_file)
+        sitemap_index = opasSiteMap.opas_sitemap_index(output_file=SITEMAP_INDEX_FILE, sitemap_list=sitemap_list)
+        ret_val = sitemap_index
+    except Exception as e:
+        ret_val=f"Sitemap Error: {e}"
+        logger.error(ret_val)
+        raise HTTPException(
+            status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=ret_val
+        )
+
+    return ret_val
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Api/Status/", response_model=models.APIStatusItem, response_model_exclude_unset=True, tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_API_STATUS)
+async def api_status(response: Response, 
+                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                    ):
+    """
+    ## Function
+       <b>Return the status of the API to check if it's online/available.
+       This is a low overhead function and suitable as a heartbeat check.</b>
+
+    ## Return Type
+       models.APIStatusItem
+
+    ## Status
+       Status: Working
+
+    ## Sample Call
+         /v2/Api/Status/
+
+    """
+    try:
+        api_status_item = models.APIStatusItem(timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
+                                               opas_version = __version__, 
+                                              )
+
+    except ValidationError as e:
+        logger.warning("ValidationError", e.json())
+        raise HTTPException(
+            status_code=httpCodes.HTTP_400_BAD_REQUEST,
+            detail=ERR_MSG_STATUS_DATA_ISSUE
+        )
+
+    return api_status_item
+
+#-----------------------------------------------------------------------------
+@app.post("/v2/Client/Configuration/", response_model=models.ClientConfigList, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_SAVE_CONFIGURATION, status_code=201)
 async def client_save_configuration(response: Response, 
                                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                                    configuration:models.ClientConfig=Body(None, embed=False, title=opasConfig.TITLE_ADMINCONFIG, decription=opasConfig.DESCRIPTION_ADMINCONFIG), # allows full specification
+                                    configuration:models.ClientConfigList=Body(None, embed=False, title=opasConfig.TITLE_ADMINCONFIG, decription=opasConfig.DESCRIPTION_ADMINCONFIG), # allows full specification
                                     client_id:int=Depends(get_client_id), 
                                     client_session:str= Depends(get_client_session), 
                                     api_key: APIKey = Depends(get_api_key)
                                     ):
-
     """
     ## Function
-       <b>Save global configuration settings for the client.  If the configname already exists for that client app,
-           an error 409 is returned.</b>
+       <b>Persistently store any "global" (not tied to a specific user) settings for the client app.</b>
 
-       Client-specific Administrative function to store the global settings for the client app.  A client can store multiple settings under different names.      
+       A client can store multiple settings under different names. As of the 2021.02.13.Alpha, a client
+       can save multiple settings in a single call.  The list of settings, when converted to JSON, look like this:
 
-       Requires API key and client_id in the header (use 'client-id' in call header).
+       Since the function allows a list of settings, the configName and configSettings must be a member
+       of a configList, even if there's only one set of configSettings being saved, e.g.,
+       
+        {
+          "configList": [{
+                            "configName": "test_client_test_0",
+                            "configSettings": {
+                                               "a": 1,
+                                               "b": 2,
+                                               "c": 8
+                                               }
+                         }]
+        }
 
-       TODO: Consider whether to require logging in as an admin to use this feature.
-        (first need to consider whether the app would also be logged into the central auth (e.g., PaDS)
-        is made, since the only admin login is local login!)
+        Likewise, to save multiple settings, add to the list:
+       
+        {
+          "configList": [{
+                            "configName": "test_client_test_0",
+                            "configSettings": {
+                                               "a": 1,
+                                               "b": 2,
+                                               "c": 8
+                                               }
+                         },
+                         {
+                            "configName": "test_client_test_1",
+                            "configSettings": {
+                                               "a": 2,
+                                               "b": 4,
+                                               "c": 8
+                                               }
+                         }]
+        }
 
+       It's important to note that each of the settings are stored separately in the underlying database
+       under the configName specified.  They are not stored as a set, and can be retrieved individually,
+       or in other combinations.
+        
+       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
 
     ## Return Type
-       models.ClientConfig
+       models.ClientConfigList
 
     ## Status
        This endpoint is working.
@@ -724,7 +859,8 @@ async def client_save_configuration(response: Response,
          NA
 
     ## Potential Errors
-       NA
+       If one of the configNames already exists for that client app (based on that client_id),
+       an error 409 is returned.
 
     """
     #  api_key needs to be supplied, e.g., in the header
@@ -740,7 +876,8 @@ async def client_save_configuration(response: Response,
     # ensure user is admin
     ret_val = None
 
-    #if 1: # for now, just use API_KEY as the requirement.  Later admin?  if ocd.verify_admin(session_info):
+    # for now, just use API_KEY as the requirement.  
+    #TODO Later admin?  if ocd.verify_admin(session_info):
     ret_val, msg = ocd.save_client_config(session_id=client_session,
                                           client_id=client_id, 
                                           client_configuration=configuration,
@@ -752,6 +889,7 @@ async def client_save_configuration(response: Response,
             detail=msg
         )
     else:
+        status_code = 200
         ret_val = configuration
         
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_CLIENT_CONFIGURATION,
@@ -764,10 +902,10 @@ async def client_save_configuration(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.put("/v2/Client/Configuration/", response_model=models.ClientConfig, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_SAVEORREPLACE_CONFIGURATION, status_code=201)
+@app.put("/v2/Client/Configuration/", response_model=models.ClientConfigList, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_SAVEORREPLACE_CONFIGURATION, status_code=201)
 async def client_update_configuration(response: Response, 
                                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                                      configuration:models.ClientConfig=Body(None, embed=False, title=opasConfig.TITLE_ADMINCONFIG, decription=opasConfig.DESCRIPTION_ADMINCONFIG), # allows full specification
+                                      configuration:models.ClientConfigList=Body(None, embed=False, title=opasConfig.TITLE_ADMINCONFIG, decription=opasConfig.DESCRIPTION_ADMINCONFIG), # allows full specification
                                       client_id:int=Depends(get_client_id), 
                                       client_session:str= Depends(get_client_session), 
                                       api_key: APIKey = Depends(get_api_key)
@@ -775,21 +913,14 @@ async def client_update_configuration(response: Response,
 
     """
     ## Function
-       <b>Update global configuration settings for the client.  If the configname already exists
-          for that client app, the previous settings are overwritten.</b>
+       <b>Update global configuration settings for the client.  Identical in all other ways to the POST call,
+       in this case, if the configname already exists for that client app, the previous settings
+       are overwritten.</b>
 
-       Client-specific Administrative function to store the global settings for the client app.
-       A client can store multiple settings under different names.      
-
-       Requires API key and client_id in the header (use 'client-id' in call header).
-
-       TODO: Consider whether to require logging in as an admin to use this feature.
-        (first need to consider whether the app would also be logged into the central auth (e.g., PaDS)
-        is made, since the only admin login is local login!)
-
+       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
 
     ## Return Type
-       models.ClientConfig
+       models.ClientConfigList (one or more configs)
 
     ## Status
        This endpoint is working.
@@ -815,6 +946,11 @@ async def client_update_configuration(response: Response,
 
     # ensure user is admin
     ret_val = None
+    # see if it exists
+    configName = configuration.configList[0].configName
+    curr_config = ocd.get_client_config(client_id=client_id, 
+                                        client_config_name=configName
+                                       )    
 
     #if 1: # for now, just use API_KEY as the requirement.  Later admin?  if ocd.verify_admin(session_info):
     try:
@@ -832,6 +968,12 @@ async def client_update_configuration(response: Response,
             detail=msg
         )
     else:
+        if curr_config is None: # == ClientConfigList(configList=[])
+            # didn't exist, so return 201
+            response.status_code = 201
+        else:
+            response.status_code = 200 # already there, updated, return 200
+            
         ret_val = configuration
 
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_CLIENT_CONFIGURATION,
@@ -844,7 +986,7 @@ async def client_update_configuration(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Client/Configuration/", response_model=models.ClientConfig, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_GET_CONFIGURATION)
+@app.get("/v2/Client/Configuration/", response_model=models.ClientConfigList, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_GET_CONFIGURATION)
 async def client_get_configuration(response: Response, 
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                    configname:str=Query(..., title=opasConfig.TITLE_ADMINCONFIGNAME, description=opasConfig.DESCRIPTION_ADMINCONFIGNAME, min_length=4),
@@ -860,20 +1002,24 @@ async def client_get_configuration(response: Response,
        Client-specific Administrative function to store the global settings for the client app.
        A client can store multiple settings under different names.
 
-       Requires API key and client_id in the header (use 'client-id' in call header).
+       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
 
        TODO: Consider whether to require logging in as an admin to use this feature.
         (first need to consider whether the app would also be logged into the central auth (e.g., PaDS)
         is made, since the only admin login is local login!)
 
     ## Return Type
-       models.ClientConfig
+       models.ClientConfigList (one or more configs)
 
     ## Status
        This endpoint is working.
 
-    ## Sample Call
-         /v2/Client/Configuration/?configname="pepweb2021"
+    ## Sample Calls
+        Return a single config
+         /v2/Client/Configuration/?configname="test_client_test_1"
+
+        Return multiple configs
+         /v2/Client/Configuration/?configname="test_client_test_1, test_client_test_2"
 
     ## Notes
          NA
@@ -914,7 +1060,7 @@ async def client_get_configuration(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.delete("/v2/Client/Configuration/", response_model=models.ClientConfig, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_DELETE_CONFIGURATION, status_code=200)
+@app.delete("/v2/Client/Configuration/", response_model=models.ClientConfigList, response_model_exclude_unset=True, tags=["Client"], summary=opasConfig.ENDPOINT_SUMMARY_DELETE_CONFIGURATION, status_code=200)
 async def client_del_configuration(response: Response, 
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                    configname:str=Query(..., title=opasConfig.TITLE_ADMINCONFIGNAME, description=opasConfig.DESCRIPTION_ADMINCONFIGNAME, min_length=4),
@@ -925,19 +1071,22 @@ async def client_del_configuration(response: Response,
 
     """
     ## Function
-       <b>Delete a specific configuration set (settings) for the specific client_id</b>
+       <b>Delete the specified configuration or configurations (settings) for the specified client_id</b>
 
-       Requires API key and client_id in the header (use 'client-id' in call header).
-       clientID should also be in the configuration body parameter (as a good practice).
+       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
 
     ## Return Type
-       models.ClientConfig
+       models.ClientConfigList (one or more configs, the ones deleted) 
 
     ## Status
        This endpoint is working.
 
     ## Sample Call
-         /v2/Client/Configuration/?configname="pepweb2021"
+        Delete a single config
+         /v2/Client/Configuration/?configname="test_client_test_1"
+
+        Delete multiple configs
+         /v2/Client/Configuration/?configname="test_client_test_1, test_client_test_2"
 
     ## Notes
          NA
@@ -972,20 +1121,17 @@ async def client_del_configuration(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_AM_I)
-async def session_whoami(response: Response,
-                         request: Request,
-                         client_id:int=Depends(get_client_id), 
-                         client_session:str= Depends(get_client_session)
-                         ):
+@app.get("/v2/Session/BasicLogin/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_LOGIN_BASIC)
+def session_login_basic(response: Response, 
+                        request: Request,
+                        client_id:int=Depends(get_client_id),
+                        session_info=Depends(login_via_pads)
+                        ):
     """
     ## Function
-       <b>Temporary endpoint for debugging purposes</b>
+       <b>Basic login Authentication.</b>
 
-       This is only a stopgap for development
-       All authentication processing is to be done in PaDS as planned
-       (though it may be this stays conditionally for future iteration of local development TBD)
-
+       Supply username and password in the header which is secure in https.
 
     ## Return Type
        models.SessionInfo
@@ -994,132 +1140,38 @@ async def session_whoami(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Session/WhoAmI/
+         /v2/Session/BasicLogin/
 
     ## Notes
-       NA
 
     ## Potential Errors
-       NA
 
     """
-    opasDocPermissions.verify_header(request, "WhoAmI") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    session_id = session_info.session_id
 
-    if client_session is not None:
-        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    if session_info is not None:
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=session_id, client_id=client_id)
+        # Save it for later; most importantly, overwrite any existing cookie!
+        if session_info.authenticated:
+            logger.info("Successful basic login - saved OpasSessionID Cookie")
+            opasAPISupportLib.save_opas_session_cookie(request, response, session_id)
+            
+        #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
+        if session_info.is_valid_login:
+            response.set_cookie(
+                OPASSESSIONID,
+                value=f"{session_id}",
+                domain=localsecrets.COOKIE_DOMAIN
+            )
+            
     else:
-        logger.error(f"Bad Request: Client-Session ID not provided")
+        logger.error(f"Bad login")
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST,
             detail=ERR_MSG_SESSION_ID_ERROR
         )
-        
-    return(session_info)
 
-#-----------------------------------------------------------------------------
-@app.get("/v2/Session/Status/", response_model=models.ServerStatusItem, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_SERVER_STATUS)
-async def session_status(response: Response, 
-                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                         moreinfo: bool=Query(False, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO),
-                         client_id:int=Depends(get_client_id), 
-                         client_session:str= Depends(get_client_session)
-                         ):
-    """
-    ## Function
-       <b>Return the status of the database and text server.  Some field returns depend on the user's security level.</b>
-
-    ## Return Type
-       models.ServerStatusItem (includes extra fields for admins)
-
-    ## Status
-       Status: Working
-
-    ## Sample Call
-         /v2/Session/Status/
-
-    ## Notes
-       2020-09-09 - client-session (id) is not longer needed except if extended admin information is required
-
-    ## Potential Errors
-       NA
-
-    """
-    global text_server_ver # solr ver
-    admin = False
-
-    # see if user is an admin
-    if client_session is not None:
-        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
-        if ocd.verify_admin(session_info):
-            admin = True
-    else:
-        ocd = opasCentralDBLib.opasCentralDB()
-        
-    db_ok = ocd.open_connection()
-    solr_ok = opasAPISupportLib.check_solr_docs_connection()
-    config_name = None
-    mysql_ver = None
-    hierarchical_server_ver = f"{text_server_ver}/{__version__}"
-    
-    if admin:
-        config_name = localsecrets.CONFIG
-        mysql_ver = ocd.get_mysql_version()
-        try:
-            server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
-                                                         db_server_ok = db_ok,
-                                                         dataSource = localsecrets.DATA_SOURCE, 
-                                                         user_ip = request.client.host,
-                                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
-                                                         text_server_version = hierarchical_server_ver,
-                                                         serverContent=opasAPISupportLib.metadata_get_database_statistics(session_info), 
-                                                         # admin only fields
-                                                         text_server_url = localsecrets.SOLRURL,
-                                                         opas_version = __version__, 
-                                                         db_server_url = localsecrets.DBHOST,
-                                                         db_server_version = mysql_ver,
-                                                         cors_regex=localsecrets.CORS_REGEX, 
-                                                         config_name = config_name,
-                                                         user_count = 0
-                                                         )
-
-        except ValidationError as e:
-            logger.warning("ValidationError", e.json())
-            raise HTTPException(
-                status_code=httpCodes.HTTP_400_BAD_REQUEST,
-                detail=ERR_MSG_STATUS_DATA_ISSUE
-            )
-    else:
-        try:
-            if moreinfo:
-                server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
-                                                             db_server_ok = db_ok,
-                                                             dataSource = localsecrets.DATA_SOURCE, 
-                                                             text_server_version = hierarchical_server_ver,
-                                                             opas_version = __version__, 
-                                                             serverContent=opasAPISupportLib.metadata_get_database_statistics(session_info), 
-                                                             user_ip = request.client.host,
-                                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
-                                                             )
-            else:
-                server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
-                                                             db_server_ok = db_ok,
-                                                             dataSource = localsecrets.DATA_SOURCE, 
-                                                             text_server_version = hierarchical_server_ver,
-                                                             opas_version = __version__, 
-                                                             user_ip = request.client.host,
-                                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
-                                                             )
-                
-        except ValidationError as e:
-            logger.warning("ValidationError", e.json())
-            raise HTTPException(
-                status_code=httpCodes.HTTP_400_BAD_REQUEST,
-                detail=ERR_MSG_STATUS_DATA_ISSUE
-            )
-
-    ocd.close_connection()
-    return server_status_item
+    return session_info
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Session/Login/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_LOGIN) # I like it under Users so I did them both.
@@ -1138,7 +1190,7 @@ def session_login(response: Response,
        Supply username and password.
     
     ## Return Type
-       models.LoginReturnItem
+       models.SessionInfo
     
     ## Status
        This endpoint is working.
@@ -1212,59 +1264,6 @@ def session_login(response: Response,
     return login_return_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Session/BasicLogin/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_LOGIN_BASIC)
-def session_login_basic(response: Response, 
-                        request: Request,
-                        client_id:int=Depends(get_client_id),
-                        session_info=Depends(login_via_pads)
-                        ):
-    """
-    ## Function
-       <b>Basic login Authentication.</b>
-
-       Supply username and password in the header which is secure in https.
-
-    ## Return Type
-       models.LoginReturnItem
-
-    ## Status
-       This endpoint is working.
-
-    ## Sample Call
-         /v2/Session/BasicLogin/
-
-    ## Notes
-
-    ## Potential Errors
-
-    """
-    session_id = session_info.session_id
-
-    if session_info is not None:
-        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=session_id, client_id=client_id)
-        # Save it for later; most importantly, overwrite any existing cookie!
-        if session_info.authenticated:
-            logger.info("Successful basic login - saved OpasSessionID Cookie")
-            opasAPISupportLib.save_opas_session_cookie(request, response, session_id)
-            
-        #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
-        if session_info.is_valid_login:
-            response.set_cookie(
-                OPASSESSIONID,
-                value=f"{session_id}",
-                domain=localsecrets.COOKIE_DOMAIN
-            )
-            
-    else:
-        logger.error(f"Bad login")
-        raise HTTPException(
-            status_code=httpCodes.HTTP_400_BAD_REQUEST,
-            detail=ERR_MSG_SESSION_ID_ERROR
-        )
-
-    return session_info
-
-#-----------------------------------------------------------------------------
 @app.get("/v2/Session/Logout/", response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_LOGOUT) # I like it under Users so I did them both.
 def session_logout_user(response: Response, 
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST), 
@@ -1274,8 +1273,9 @@ def session_logout_user(response: Response,
     """
     ## Function
        <b>Close the user's session, and log them out.</b>
+       
     ## Return Type
-       models.LicenseInfoStruct
+       models.SessionInfo
 
     ## Status
        This endpoint is working.
@@ -1305,143 +1305,157 @@ def session_logout_user(response: Response,
     return session_info
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Database/TermCounts/", response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_TERM_COUNTS)  #  removed for now: response_model=models.DocumentList, 
-async def database_term_counts(response: Response, 
-                               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                               termlist: str=Query(None, title=opasConfig.TITLE_TERMLIST, description=opasConfig.DESCRIPTION_TERMLIST),
-                               termfield: str=Query("text", title=opasConfig.TITLE_TERMFIELD, description=opasConfig.DESCRIPTION_TERMFIELD),
-                               #client_id:int=Depends(get_client_id), 
-                               #client_session:str= Depends(get_client_session)
-                               ):
+@app.get("/v2/Session/Status/", response_model=models.ServerStatusItem, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_SERVER_STATUS)
+async def session_status(response: Response, 
+                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                         moreinfo: bool=Query(False, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO),
+                         client_id:int=Depends(get_client_id), 
+                         client_session:str= Depends(get_client_session)
+                         ):
     """
     ## Function
-    <b>Get a list of term frequency counts (# of times term occurs across documents)</b>
-
-    Can specify a field per the schema to limit it. e.g.,
-
-       - text - all text
-       - title - within titles
-       - author -
-       - author_bio_xml - in author bio
-       - art_kwds - in keyword lists
-       - art_lang - can look at frequency of en, fr, ... at article level
-       - lang - can look at frequency of en, fr, ... at paragraph level
-       - meta_xml - meta document data, including description of fixes, edits to documents
-
-       Note: The field must be listed as stored, not just indexed.
+       <b>Return the status of the database and text server.  Some field returns depend on the user's security level.</b>
 
     ## Return Type
-       models.TermIndex
+       models.ServerStatusItem (includes extra fields for admins)
 
     ## Status
-       Status: Working as described above
+       Status: Working
 
     ## Sample Call
+         /v2/Session/Status/
 
     ## Notes
-
-    See also: /v2/Database/TermCounts/
+       2020-09-09 - client-session (id) is not longer needed except if extended admin information is required
 
     ## Potential Errors
-
-    ## Example Calls
+       NA
 
     """
-    ts = time.time()
-    # no logging, no session info for this call...speed, speed, speed
-    term_index_items = []
-    param_error = False
-    if termfield is None:
-        termfield = "text"
+    global text_server_ver # solr ver
+    admin = False
+
+    # see if user is an admin
+    if client_session is not None:
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+        if ocd.verify_admin(session_info):
+            admin = True
     else:
-        field_ok, field_info = opasSchemaHelper.solr_field_check(SOLR_DOCS, termfield)
-        if field_ok == False:
-            param_error = True
-            statusMsg = f"Bad Request: Field {termfield} underfined"
+        ocd = opasCentralDBLib.opasCentralDB()
+        
+    db_ok = ocd.open_connection()
+    solr_ok = opasPySolrLib.check_solr_docs_connection()
+    config_name = None
+    mysql_ver = None
+    hierarchical_server_ver = f"{text_server_ver}/{__version__}"
+    
+    if admin:
+        config_name = localsecrets.CONFIG
+        mysql_ver = ocd.get_mysql_version()
+        try:
+            server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
+                                                         db_server_ok = db_ok,
+                                                         dataSource = localsecrets.DATA_SOURCE, 
+                                                         user_ip = request.client.host,
+                                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
+                                                         text_server_version = hierarchical_server_ver,
+                                                         serverContent=opasAPISupportLib.metadata_get_database_statistics(session_info), 
+                                                         # admin only fields
+                                                         text_server_url = localsecrets.SOLRURL,
+                                                         opas_version = __version__, 
+                                                         db_server_url = localsecrets.DBHOST,
+                                                         db_server_version = mysql_ver,
+                                                         cors_regex=localsecrets.CORS_REGEX, 
+                                                         config_name = config_name,
+                                                         user_count = 0
+                                                         )
 
-    if param_error == False:
-        results = {}  # results = {field1:{term:value, term:value, term:value}, field2:{term:value, term:value, term:value}}
-        terms = shlex.split(termlist)
-        for n in terms:
-            try:
-                # If specified as field:term
-                nfield, nterms = n.split(":")
-                result = opasAPISupportLib.get_term_count_list(nterms, nfield)
-            except:
-                # just list of terms, use against termfield parameter
-                nterms = n.strip("', ")
-                try:
-                    result = opasAPISupportLib.get_term_count_list(nterms, term_field = termfield)
-                    for key, value in result.items():
-                        try:
-                            results[termfield][key] = value
-                        except:
-                            results[termfield] = {}
-                            results[termfield][key] = value
-                except Exception as e:
-                    detail = f"{e} - {result.error}. {result.error_description}"
-                    logger.warning(detail)
-                    # Solr Error
-                    raise HTTPException(
-                        status_code=result.httpcode, 
-                        detail=detail 
-                    )
+        except ValidationError as e:
+            logger.warning("ValidationError", e.json())
+            raise HTTPException(
+                status_code=httpCodes.HTTP_400_BAD_REQUEST,
+                detail=ERR_MSG_STATUS_DATA_ISSUE
+            )
+    else:
+        try:
+            if moreinfo:
+                server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
+                                                             db_server_ok = db_ok,
+                                                             dataSource = localsecrets.DATA_SOURCE, 
+                                                             text_server_version = hierarchical_server_ver,
+                                                             opas_version = __version__, 
+                                                             serverContent=opasAPISupportLib.metadata_get_database_statistics(session_info), 
+                                                             user_ip = request.client.host,
+                                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
+                                                             )
             else:
-                try:
-                    a = results[nfield]
-                    # exists, if we get here, so add it to the existing dict
-                    for key, value in result.items():
-                        results[nfield][key] = value
-                except: #  new dict entry
-                    results[nfield] = result
+                server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
+                                                             db_server_ok = db_ok,
+                                                             dataSource = localsecrets.DATA_SOURCE, 
+                                                             text_server_version = hierarchical_server_ver,
+                                                             opas_version = __version__, 
+                                                             user_ip = request.client.host,
+                                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
+                                                             )
+                
+        except ValidationError as e:
+            logger.warning("ValidationError", e.json())
+            raise HTTPException(
+                status_code=httpCodes.HTTP_400_BAD_REQUEST,
+                detail=ERR_MSG_STATUS_DATA_ISSUE
+            )
 
-        response_info = models.ResponseInfo( listType="termindex", # this is a mistake in the GVPi API, should be termIndex
-                                             scopeQuery=[f"Terms: {termlist}"],
-                                             dataSource = localsecrets.DATA_SOURCE, 
-                                             timestamp=datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
-                                             )
-
-        response_info.count = 0
-        if results != {}:
-            for field, termdict in results.items():
-                for term, value in termdict.items():
-                    if value > 0:
-                        item = models.TermIndexItem(field = field, 
-                                                    term = term, 
-                                                    termCount = value,
-                                                    ) 
-                        term_index_items.append(item)
-                        logger.debug("termIndexGetInfo: %s", item)
-
-        response_info.count = len(term_index_items)
-        response_info.fullCountComplete = True
-        term_index_struct = models.TermIndexStruct( responseInfo = response_info, 
-                                                    responseSet = term_index_items
-                                                    )
-
-        term_index = models.TermIndex(termIndex = term_index_struct)
-
-        if response_info.count > 0:
-            matches = response_info.count
-            term_index.termIndex.responseInfo.request = request.url._url
-        else:
-            matches = 0
-
-        statusMsg = f"{matches} hits"
-        logger.debug(statusMsg)
-
-    if param_error:
-        logging.warning(statusMsg)
-        raise HTTPException(
-            status_code=httpCodes.HTTP_400_BAD_REQUEST, 
-            detail=statusMsg
-        )
-
-    log_endpoint_time(request, ts=ts)                  
-    return term_index
+    ocd.close_connection()
+    return server_status_item
 
 #-----------------------------------------------------------------------------
-@app.post("/v2/Database/AdvancedSearch/", response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ADVANCED)  #  removed for now: response_model=models.DocumentList, 
+@app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_AM_I)
+async def session_whoami(response: Response,
+                         request: Request,
+                         client_id:int=Depends(get_client_id), 
+                         client_session:str= Depends(get_client_session)
+                         ):
+    """
+    ## Function
+       <b>Temporary endpoint for debugging purposes</b>
+
+       This is only a stopgap for development
+       All authentication processing is to be done in PaDS as planned
+       (though it may be this stays conditionally for future iteration of local development TBD)
+
+
+    ## Return Type
+       models.SessionInfo
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+         /v2/Session/WhoAmI/
+
+    ## Notes
+       NA
+
+    ## Potential Errors
+       NA
+
+    """
+    opasDocPermissions.verify_header(request, "WhoAmI") # for debugging client call
+    log_endpoint(request, client_id=client_id, session_id=client_session)
+
+    if client_session is not None:
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    else:
+        logger.error(f"Bad Request: Client-Session ID not provided")
+        raise HTTPException(
+            status_code=httpCodes.HTTP_400_BAD_REQUEST,
+            detail=ERR_MSG_SESSION_ID_ERROR
+        )
+        
+    return(session_info)
+
+#-----------------------------------------------------------------------------
+@app.post("/v2/Database/AdvancedSearch/", response_model=Union[models.DocumentList, models.ErrorReturn], response_model_exclude_unset=True, response_model_exclude_none=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ADVANCED)  #  removed for now: response_model=models.DocumentList, 
 async def database_advanced_search(response: Response, 
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                    apimode: str=Header(None, title="API mode", description="Set the api mode to 'debug' or 'production' (default)"), 
@@ -1575,6 +1589,42 @@ async def database_advanced_search(response: Response,
            ]
        ```
 
+    ### Full Control using the Post Body
+    
+    The Post body can be used instead of query paramaters, and uses structures that give you more control over the search and results.
+    
+    The full body structure is shown by default in the body area of the interactive docs for the API.  Of course, in many fields the data
+    structure shows data types in the value area rather than the values you might use, so you will need to replace those with
+    your own data.
+    
+    #### Simple Examples of the post body-based query spec
+    
+    {
+       "solrqueryspec": {
+            "returnFormat": "HTML",
+            "facetMinCount": 1,
+            "solrQuery": {
+                "searchQ": "{!parent which='art_level:1'} art_level:2 AND parent_tag:p_dream AND para:mother"
+            },
+            "solrQueryOpts": {
+                 "qOper": "AND",
+                 "defType": "edismax",
+                 "hl": "true",
+                 "hlFields": "text_xml",
+                 "hlMethod": "unified",
+                 "hlFragsize": "0",
+                 "hlMaxAnalyzedChars": 2520000,
+                 "hlMaxKWICReturns": 5,
+                 "hlMultiterm": "true",
+                 "hlTagPost": "@@@@#",
+                 "hlTagPre": "#@@@@",
+                 "hlUsePhraseHighlighter": "true",
+                 "queryDebug": "on",
+                 "moreLikeThisCount": 5
+            }
+        }
+    }
+
     ### Thesaurus matching
 
     Solr thesaurus matching is either on or off for a field, it's not something you can specify as a query parameter to Solr.
@@ -1591,7 +1641,7 @@ async def database_advanced_search(response: Response,
        * important to understand the applicable schema to query (unless you only search the default field text)
 
     ## Return Type
-       models.DocumentList
+       models.DocumentList or models.ErrorReturn
 
     ## Status
        Status: Still in Development and testing
@@ -1666,75 +1716,202 @@ async def database_advanced_search(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.post("/v2/Database/ExtendedSearch/", response_model=models.SolrReturnList, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_EXTENDED_SEARCH)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, 
+@app.post("/v2/Database/ExtendedSearch/", tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_EXTENDED_SEARCH)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, response_model=models.SolrReturnList, 
 async def database_extendedsearch(response: Response,
-                                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                  solrQuerySpec: models.SolrQuerySpec=None, # allows full specification of parameters in the body
+                                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                                  solrcore: str=Body("pepwebdocs", embed=True),
+                                  solrquery: str=Body(None, embed=True),
+                                  solrargs: dict=Body(None, embed=True),
                                   api_key: APIKey = Depends(get_api_key),
                                   client_id:int=Depends(get_client_id), 
                                   client_session:str= Depends(get_client_session)
                                   ):
     """
     ## Function
-    <b>Search_extended Solr style</b>
-
-    Perform a solr query using solr parameter definitions with any server core.
-
-    API_KEY required.
-
-    #TODO: For security, the endpoint is configured not to allow the return of PEP text_xml. Now there's an API_KEY requirement,
-           consider removing constraint
-
-    IMPORTANT NOTE: This endpoint is intended for client (user interface) developers to take advantage of the
-    full Solr query functionality beyond what the current endpoints allow, without directly connecting to Solr.
-    It provides a flexible Solr return set, but offers a bit of a hand by integrating highlighted (match) data with
-    return data, which are returned in separate lists in the normal Solr return structure.  For flexibility and expandability,
-    this endpoint requires parameters in the REST call body, according to the models.SolrQuerySpec structure
-    rather than as URL arguments.  To test, call with an REST API test tool like Postman. Postman
-    also provides a nice 'pretty printed' data return.
-
-    The API user must be logged in to a valid account currently to use this for full-text return (return size is limited).
-
-    The documentation on how to use the advanced query is intimately tied to the schemas (data structure based on the PEP DTDs).
-    But it's not possible to provide query examples and sample data returns without tying them to a schema.
-
-    This endpoint is not used in PEP-Easy because it isn't needed to provide any of the PEP-Easy functionality, all of which are built in
-    to other endpoints.  PEP-Easy functionality only requires what was present in the v1 API (and not the expanded v2 API).
+    
+    EXPERIMENTAL.  Previously, extended had many enforced limitations, but this version
+      allows the client to access any Solr feature as long as it's one of the configured
+      cores.
+      
+      Since this goes directly to Solr, to protect the full-text data, the return of
+      data in field text_xml is not permitted.
+      
+    Takes three body parameters:
+      solrcore: the name of the core
+      solrquery: the "q" query from the solrapi
+      solrargs: a dictionary of solr args, as accepted by pysolr.
 
     ## Return Type
-       SolrReturnList - flexible field solr results in the responseSet of an otherwise OPAS standard structure 
-
-    #### Sample queries
-
-    ##### <b>Find documents with paragraphs which contain Othogenic school, returning art_id, title, and art_citeas_xml:</b>
-
-    ###### Request Body
-    ```
-    { 
-        "core" : "pepwebdocs",
-        "solrQuery" : {
-                        "searchQ" : "Orthogenic\u0020school",
-                        "fullReturn": false
-        },
-        "solrQueryOpts" : {
-            "returnFields": "art_id, title, art_citeas_xml",
-            "hlFields": "text_xml",
-            "hlFragsize": 100,
-            "hlSnippets" : 10,
-            "hlUsePhraseHighlighter" : "true"
-        }
-    }
-    ```
-
+      Returns a solr results record.
 
     ## Status
-       Status: New, created 2020-01-03 and now in development and testing 
+       This endpoint is working.  But its existance is experimental.
+
+    ## Sample Call
+         /v2/Database/ExtendedSearch/
+         
+           with body parameters:
+           
+           {
+             "solrcore":"pepwebdocs",
+             "solrquery": "art_level:1",
+             "solrargs": {
+                "fl":"art_id, art_authors, art_authors_id,text_xml",
+                "rows":10,
+                "facet":"on",
+                "facet.field":"art_authors_ids"
+             }
+           }
+           
+           or, for a different core:
+           
+           {
+             "solrcore":"pepwebauthors",
+             "solrquery": "*",
+             "solrargs": {
+                "fl":"art_id, art_author_id, art_author_listed",
+                "rows":5,
+                "facet":"on",
+                "facet.field":"art_author_role"
+             }
+           }
+           
+           This last example, for example, returns:
+           
+           {
+           "responseHeader": {
+             "status": 0,
+             "QTime": 47,
+             "params": {
+               "q": "*",
+               "facet.field": "art_author_role",
+               "fl": "art_id, art_author_id, art_author_listed",
+               "rows": "5",
+               "facet": "on",
+               "wt": "json"
+             }
+           },
+           "response": {
+             "numFound": 138591,
+             "start": 0,
+             "numFoundExact": true,
+             "docs": [
+               {
+                 "art_id": "TVPA.004.0238A",
+                 "art_author_id": "Thys, Michel",
+                 "art_author_listed": "true"
+               },
+               {
+                 "art_id": "TVPA.004.0235A",
+                 "art_author_id": "Thys, Michel",
+                 "art_author_listed": "true"
+               },
+               {
+                 "art_id": "ANRP.007.0199A",
+                 "art_author_id": "Petrelli, Diomira",
+                 "art_author_listed": "true"
+               },
+               {
+                 "art_id": "TVPA.004.0232A",
+                 "art_author_id": "Schalkwijk, Frans",
+                 "art_author_listed": "true"
+               },
+               {
+                 "art_id": "ANRP.008.0009A",
+                 "art_author_id": "Bezoari, Michele",
+                 "art_author_listed": "true"
+               }
+             ]
+           },
+           "facet_counts": {
+             "facet_queries": {},
+             "facet_fields": {
+               "art_author_role": [
+                 "author",
+                 100464,
+                 "reviewer",
+                 33545,
+                 "edited-by",
+                 1792,
+                 "translator",
+                 1506,
+                 "in-collaboration",
+                 278,
+                 "reporter",
+                 183,
+                 "interviewee",
+                 141,
+                 "moderator",
+                 111,
+                 "panelist",
+                 109,
+                 "other",
+                 91,
+                 "assisted-by",
+                 69,
+                 "produced-by",
+                 56,
+                 "issue-editor",
+                 47,
+                 "interviewer",
+                 32,
+                 "compiled-by",
+                 26,
+                 "director",
+                 18,
+                 "published-by",
+                 16,
+                 "presenter",
+                 14,
+                 "chaired-by",
+                 13,
+                 "intro",
+                 13,
+                 "commentary-by",
+                 9,
+                 "editorial-assistant",
+                 7,
+                 "executive-producer",
+                 7,
+                 "director-assistant",
+                 6,
+                 "series-editor",
+                 6,
+                 "additional-cinematography-by",
+                 5,
+                 "transcribed-by",
+                 5,
+                 "preface",
+                 3,
+                 "cinematography-by",
+                 2,
+                 "coordinator",
+                 2,
+                 "director-and-producer",
+                 2,
+                 "associate-producer",
+                 1,
+                 "line-producer",
+                 1,
+                 "narrated-by",
+                 1,
+                 "under-supervision-of",
+                 1
+               ]
+             },
+             "facet_ranges": {},
+             "facet_intervals": {},
+             "facet_heatmaps": {}
+           }
+         }
+           
+           
 
     ## Notes
-       See also /v2/Database/AdvancedSearch/ for an alternative endpoint which returns data
-       in OPAS DocumentList format.
 
     ## Potential Errors
+       APP NEEDS TO BE AUTHENTICATED with API_KEY for access.
+       Otherwise, returns error.
 
     """
     opasDocPermissions.verify_header(request, "ExtendedSearch") # for debugging client call
@@ -1743,299 +1920,150 @@ async def database_extendedsearch(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     # session_id = session_info.session_id 
     logger.debug("Solr Search Request: %s", request.url._url)
-    solr_ret_list = None
-
-    if solrQuerySpec is not None:
-        solrQuery = solrQuerySpec.solrQuery
-        if solrQuery is not None:
-            solrQueryOpts = solrQuerySpec.solrQueryOpts
-            if solrQuerySpec.returnFields is None:
-                solrQuerySpec.returnFields = "id, file_classification" #  need to always return id
-            else:
-                solrQuerySpec.returnFields += ", id, file_classification"
-
-            # don't let them bring back full-text content in at least PEP schema fields in docs or glossary
-            solrQuerySpec.returnFields = re.sub("(,\s*?)?[^A-z0-9](text_xml|para|term_def_rest_xml)[^A-z0-9]", "", solrQuerySpec.returnFields)
-            # limited return, no full-text, EVER (because it could be used to bypass the embargo.)
-            fragSize = opasConfig.DEFAULT_KWIC_CONTENT_LENGTH 
-
-            #TODO allow core parameter here
-            if solrQuerySpec.core is not None:
-                try:
-                    from configLib.opasCoreConfig import EXTENDED_CORES
-                    solr_core = EXTENDED_CORES.get(solrQuerySpec.core, None)
-                except Exception as e:
-                    detail=ERR_MSG_CORE_SPEC_ERROR + f" {e}"
-                    logger.error(detail)
-                    raise HTTPException(
-                        status_code=httpCodes.HTTP_400_BAD_REQUEST, 
-                        detail=detail
-                    )
-                else:
-                    if solr_core is None:
-                        detail=f"Bad Extended Request. Core not specified."
-                        logger.warning(detail)
-                        raise HTTPException(
-                            status_code=httpCodes.HTTP_400_BAD_REQUEST, 
-                            detail=detail
-                        )
-            else:
-                solr_core = solr.SolrConnection(localsecrets.SOLRURL + solrQuerySpec.core, http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
-
-            # see if highlight fields are selected
-            hl = solrQueryOpts.hlFields is not None
-
-            try:
-                if hl:
-                    results = solr_core.query(q = solrQuery.searchQ,  
-                                              fq = solrQuery.filterQ,
-                                              q_op = solrQueryOpts.qOper.upper(), 
-                                              fields = solrQuerySpec.returnFields, 
-                                              # highlighting parameters
-                                              hl = "true",
-                                              hl_method = solrQueryOpts.hlMethod.lower(),
-                                              hl_bs_type="SENTENCE", 
-                                              hl_fl = solrQueryOpts.hlFields,
-                                              hl_fragsize = fragSize,  # from above
-                                              hl_maxAnalyzedChars=solrQueryOpts.hlMaxAnalyzedChars if solrQueryOpts.hlMaxAnalyzedChars>0 else opasConfig.SOLR_FULL_TEXT_MAX_ANALYZED_CHARS, 
-                                              hl_multiterm = solrQueryOpts.hlMultiterm, # def "true", # only if highlighting is on
-                                              hl_multitermQuery="true",
-                                              hl_highlightMultiTerm="true",
-                                              hl_weightMatches="true", 
-                                              hl_tag_post = solrQueryOpts.hlTagPost,
-                                              hl_tag_pre = solrQueryOpts.hlTagPre,
-                                              hl_snippets = solrQueryOpts.hlSnippets,
-                                              #hl_encoder = "html", # (doesn't work for standard, doesn't do anything we want in unified)
-                                              hl_usePhraseHighlighter = solrQueryOpts.hlUsePhraseHighlighter, # only if highlighting is on
-                                              #hl_q = solrQueryOpts.hlQ, # doesn't help with phrases; searches for None if it's none!
-                                              # morelikethis parameters
-                                              mlt = solrQueryOpts.moreLikeThisCount > 0, # if >0 turns on morelike this
-                                              mlt_fl = solrQueryOpts.moreLikeThisFields, 
-                                              mlt_count = solrQueryOpts.moreLikeThisCount,
-                                              # paging parameters
-                                              rows = solrQuerySpec.limit,
-                                              start = solrQuerySpec.offset
-                                              )
-                    solr_ret_list_items = []
-                    for n in results.results:
-                        rid = n["id"]
-                        n["highlighting"] = results.highlighting[rid]  
-                        item = models.SolrReturnItem(solrRet=n)
-                        solr_ret_list_items.append(item)
-                else:
-                    results = solr_core.query(q = solrQuery.searchQ,  
-                                              fq = solrQuery.filterQ,
-                                              q_op = "AND", 
-                                              fields = solrQuerySpec.returnFields,
-                                              # morelikethis parameters
-                                              mlt = solrQueryOpts.moreLikeThisCount > 0, # if >0 turns on morelike this
-                                              mlt_fl = solrQueryOpts.moreLikeThisFields, 
-                                              mlt_count = solrQueryOpts.moreLikeThisCount,
-                                              # paging parameters
-                                              rows = solrQuerySpec.limit,
-                                              start = solrQuerySpec.offset
-                                              )
-                    solr_ret_list_items = []
-                    for n in results.results:
-                        item = models.SolrReturnItem(solrRet=n)
-                        solr_ret_list_items.append(item)
-
-                    ret_status = httpCodes.HTTP_200_OK
-
-            except solr.SolrException as e:
-                #if e.httpcode == 400:
-                    #ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input {e.reason}")
-                #else:
-                    #ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
-                # statusMsg = f"Solr Runtime Search Error: {e.reason}"
-                ret_status = (e.httpcode, e)
+    
+    if solrcore is not None:
+        try:
+            from configLib.opasCoreConfig import EXTENDED_CORES
+            solr_core2 = EXTENDED_CORES.get(solrcore.lower(), None)
+        except Exception as e:
+            detail=ERR_MSG_CORE_SPEC_ERROR + f" {e}"
+            logger.error(detail)
+            raise HTTPException(
+                status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                detail=detail
+            )
+        else:
+            if solr_core2 is None:
+                detail=f"Bad Extended Request. Core not specified."
+                logger.warning(detail)
                 raise HTTPException(
-                    status_code=ret_status[0], 
-                    detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+                    status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                    detail=detail
                 )
 
-            statusMsg = f"RAW Q:{solrQuery.searchQ} / F:{solrQuery.filterQ} N: {results._numFound}"
-            logger.debug(statusMsg)
+        # get default args
+        if solrargs is None or solrargs == {}:
+            solr_param_dict = EXTENDED_CORES_DEFAULTS[solrcore.lower()]
+        else:
+            solr_param_dict = solrargs
+    else:
+        #solrqueryspec.core = SOLR_DEFAULT_CORE
+        solr_core2 = solr.SolrConnection(localsecrets.SOLRURL + solrcore.lower(), http_user=localsecrets.SOLRUSER, http_pass=localsecrets.SOLRPW)
+        
+    try:
+        # PySolr does not like None's, so clean them
+        solr_param_dict = opasPySolrLib.cleanNullTerms(solr_param_dict)
+        for key, val in solr_param_dict.items():
+            if key == "fl":
+                solr_param_dict[key] = val.replace("text_xml", "art_excerpt_xml")
+                break
+            
+        results = solr_core2.search(solrquery, **solr_param_dict)
+        
+    except solr.SolrException as e:
+        ret_status = (e.httpcode, e)
+        raise HTTPException(
+            status_code=ret_status[0], 
+            detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+        )
+    except Exception as e:
+        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+        raise HTTPException(
+            status_code=ret_status[0], 
+            detail=f"Bad Request. {e}"
+        )
+                                
+    else: #  search was ok
+        ret_status = 200
+        ret_val = results.raw_response
+        numfound = len(results.docs)
+        statusMsg = f"RAW Q:{solrquery} / F:{solr_param_dict} N: {numfound}"
+        # client_host = request.client.host
+        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
+                                    session_info=session_info, 
+                                    params=request.url._url,
+                                    return_status_code = ret_status, 
+                                    status_message=statusMsg
+                                    )
 
-            response_info = models.ResponseInfo( count = len(solr_ret_list_items),
-                                                 fullCount = results._numFound,
-                                                 limit = solrQuerySpec.limit,
-                                                 offset = solrQuerySpec.offset,
-                                                 listType="advancedsearchlist",
-                                                 fullCountComplete = solrQuerySpec.limit >= results._numFound,  
-                                                 dataSource = localsecrets.DATA_SOURCE, 
-                                                 timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                                 )
-            solr_list_struct = models.SolrReturnStruct( responseInfo = response_info, 
-                                                        responseSet = solr_ret_list_items
-                                                        )
+    return ret_val # solr_ret_list
 
-            solr_ret_list = models.SolrReturnList(solrRetList = solr_list_struct)
-
-
-            # client_host = request.client.host
-            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
-                                        session_info=session_info, 
-                                        params=request.url._url,
-                                        return_status_code = ret_status, 
-                                        status_message=statusMsg
-                                        )
-
-    return solr_ret_list
-
-#---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/SearchParagraphs/", tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_PARAGRAPHS)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, 
-async def database_search_paragraphs(response: Response, 
-                                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                     # request body parameters
-                                     #termlist: models.SolrQueryTermList=None, # experimental, allows full specification in body per models.QuerySpecification
-                                     # query parameters
-                                     paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
-                                     parascope: str=Query("doc", title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
-                                     synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
-                                     # query parameters that get mapped to filters (Solr query filter)
-                                     sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
-                                     sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
-                                     sourcetype: str=Query(None, title=opasConfig.TITLE_SOURCETYPE, description=opasConfig.DESCRIPTION_PARAM_SOURCETYPE),
-                                     sourcelangcode: str=Query(None, min_length=2, title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE),
-                                     volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
-                                     author: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
-                                     title: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
-                                     articletype: str=Query(None, title=opasConfig.TITLE_ARTICLETYPE, description=opasConfig.DESCRIPTION_ARTICLETYPE),
-                                     startyear: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
-                                     endyear: str=Query(None, title=opasConfig.TITLE_ENDYEAR, description=opasConfig.DESCRIPTION_ENDYEAR), 
-                                     citecount: str=Query(None, title=opasConfig.TITLE_CITECOUNT, description=opasConfig.DESCRIPTION_CITECOUNT),   
-                                     viewcount: str=Query(None, title=opasConfig.TITLE_VIEWCOUNT, description=opasConfig.DESCRIPTION_VIEWCOUNT),
-                                     viewperiod: int=Query(4, title=opasConfig.TITLE_VIEWPERIOD, description=opasConfig.DESCRIPTION_VIEWPERIOD),     
-                                     # return set control
-                                     #returnfields: str=Query(None, title="Fields to return (see limitations)", description="Comma separated list of field names"),
-                                     abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
-                                     similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
-                                     highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
-                                     facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
-                                     facetmincount: int=Query(1, title="Minimum count to return a facet"),
-                                     facetlimit: int=Query(10, title="Maximum number of facet values to return"),
-                                     facetoffset: int=Query(0, title="Offset that can be used for paging through a facet"),
-                                     sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                                     limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                                     offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                                     client_id:int=Depends(get_client_id), 
-                                     client_session:str= Depends(get_client_session)
-                                     ):
+@app.get("/v2/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH)
+async def database_glossary_search_v2(response: Response, 
+                                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                                      fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
+                                      sourcelangcode: str=Query("EN", title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE), 
+                                      paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
+                                      parascope: str=Query("doc", title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
+                                      synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
+                                      sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                                      facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
+                                      formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                      highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
+                                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                                      client_id:int=Depends(get_client_id), 
+                                      client_session:str= Depends(get_client_session)
+                                      ):
     """
     ## Function
-       <b>Convenience function to search the database by basic criteria (as exemplified in PEP-Easy).</b>
+       <b>Search the glossary records in the doc core (not the glossary core -- it doesn't support sub paras important for full-text search).</b>
 
-       Multiple word search is within markup terminals, namely a paragraph.  The scope is the parent of the paragraph
-       and this currently supports:
-        - doc
-        - dreams
-        - dialogs
-        - quotes
-        - poems
-        - references (each reference is the equivalent of paragraph)
+       This is just a convenience function to search a specific book, the glossary (ZBK.069), in the doc core (pepwebdoc).
 
     ## Return Type
        models.DocumentList
 
     ## Status
-       Status: In Development
+       This endpoint is working.
 
     ## Sample Call
+         /v2/Database/Glossary/Search/
 
     ## Notes
-       6/2020 - The returnfields parameter was removed as not useful here.
 
-    ## Limitations
+       Termlist in the body is not supported by the GET function: to include a termlist, use PUT.
 
     ## Potential Errors
+       USER NEEDS TO BE AUTHENTICATED for glossary access at the term level.  Otherwise, returns error.
 
+       Client apps should disable the glossary links when not authenticated.
     """
-
-    # for debugging client call
-    opasDocPermissions.verify_header(request, "SearchParas")
+    opasDocPermissions.verify_header(request, "database_glossary_search_v2") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
-
-    errors, mod_args = opasQueryHelper.check_search_args(
-                                             paratext=paratext,
-                                             author=author,
-                                             title=title,
-                                             startyear=startyear,
-                                             endyear=endyear
-                                           )
-    if errors:
-        detail = "Error 425: Too few characters or unbalanced."
-        print(detail)
-        raise HTTPException(
-            status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
-            detail=detail
-        )
-
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
-    # session_id = session_info.session_id 
-    logger.debug("Search Request: %s", request.url._url)
-
-    # this does intelligent processing of the query parameters and returns a
-    # smaller set of solr oriented params (per pydantic model
-    # SolrQueryParameters), ready to use
-    solr_query_spec = \
-        opasQueryHelper.parse_search_query_parameters(paratext=paratext,
-                                                      parascope=parascope, 
-                                                      #solrQueryTermList=termlist,
-                                                      synonyms=synonyms,
-                                                      similar_count=similarcount, 
-                                                      source_name=sourcename,
-                                                      source_code=sourcecode,
-                                                      source_lang_code=sourcelangcode,
-                                                      vol=volume,
-                                                      author=author,
-                                                      title=title,
-                                                      startyear=startyear,
-                                                      endyear=endyear, 
-                                                      #references=references,
-                                                      articletype=articletype, 
-                                                      citecount=citecount,
-                                                      viewcount=viewcount,
-                                                      viewperiod=viewperiod,
-                                                      highlightlimit=highlightlimit, 
-                                                      facetfields=facetfields, 
-                                                      facetmincount=facetmincount,
-                                                      facetlimit=facetlimit,
-                                                      facetoffset=facetoffset,
-                                                      abstract_requested=abstract, 
-                                                      limit=limit,
-                                                      offset=offset,
-                                                      sort=sort,
-                                                      req_url = request.url._url
-                                                      )
-
-    solr_query_params = solr_query_spec.solrQuery
-    # solr_query_opts = solr_query_spec.solrQueryOpts
-
-    ret_val, ret_status = search_text_qs(solr_query_spec,
-                                         extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
-                                         limit=limit,
-                                         offset=offset,
-                                         req_url=request.url._url, 
-                                         #authenticated=session_info.authenticated
-                                         session_info=session_info,
-                                         request=request
-                                         )
-
-    #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
-    if ret_status[0] != httpCodes.HTTP_200_OK:
-        #  throw an exception rather than return an object (which will fail)
-        try:
-            detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
-        except:
-            detail = "Bad Solr Search Request"
-            
-        raise HTTPException(
-            status_code=ret_status[0],
-            detail=detail
-        )
-
+    ret_val = await database_search_v2( response,
+                                        request,
+                                        fulltext1=fulltext1,
+                                        smarttext=None, 
+                                        paratext=paratext, #  no advanced search. Only words, phrases, prox ~ op, and booleans allowed
+                                        parascope=parascope,
+                                        similarcount=0, 
+                                        synonyms=synonyms,
+                                        sourcename=None, 
+                                        sourcecode="ZBK",
+                                        volume="69",
+                                        sourcetype=None, 
+                                        sourcelangcode=sourcelangcode,
+                                        articletype=None, 
+                                        issue=None, 
+                                        author=None, 
+                                        title=None,
+                                        startyear=None,
+                                        endyear=None,
+                                        citecount=None,
+                                        viewcount=None,
+                                        viewperiod=None,
+                                        formatrequested=formatrequested, 
+                                        highlightlimit=highlightlimit, 
+                                        facetfields=facetfields, 
+                                        sort=sort,
+                                        limit=limit,
+                                        offset=offset,
+                                        client_session=client_session,
+                                        client_id=client_id
+                                        )
     if ret_val != {}:
         matches = len(ret_val.documentList.responseSet)
     else:
@@ -2044,18 +2072,110 @@ async def database_search_paragraphs(response: Response,
     statusMsg = f"{matches} hits"
     logger.debug(statusMsg)
 
-    # client_host = request.client.host
     ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
                                 session_info=session_info, 
                                 params=request.url._url,
-                                return_status_code = ret_status[0], 
+                                status_message=statusMsg
+                                )
+
+    return ret_val
+
+@app.post("/v2/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH)
+async def database_glossary_search_v3(response: Response, 
+                                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                                      qtermlist: models.SolrQueryTermList=None, # allows full specification
+                                      fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
+                                      sourcelangcode: str=Query("EN", title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE), 
+                                      paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
+                                      parascope: str=Query("doc", title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
+                                      synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
+                                      sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                                      facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
+                                      formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                                      highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
+                                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                                      client_id:int=Depends(get_client_id), 
+                                      client_session:str= Depends(get_client_session)
+                                      ):
+    """
+    ## Function
+       <b>Search the glossary records in the doc core (not the glossary core -- it doesn't support sub paras important for full-text search).</b>
+
+       This is just a convenience function to search a specific book, the glossary (ZBK.069), in the doc core (pepwebdoc).
+
+    ## Return Type
+       models.DocumentList
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+         /v2/Documents/Glossary/Search/
+
+    ## Notes
+
+    ## Potential Errors
+       USER NEEDS TO BE AUTHENTICATED for glossary access at the term level.  Otherwise, returns error.
+
+       Client apps should disable the glossary links when not authenticated.
+    """
+    opasDocPermissions.verify_header(request, "database_glossary_search_v3") # for debugging client call
+    log_endpoint(request, client_id=client_id, session_id=client_session)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    # session_id = session_info.session_id
+
+    ret_val = await database_search_v2b(response,
+                                        request,
+                                        qtermlist=qtermlist,
+                                        fulltext1=fulltext1,
+                                        smarttext=None, 
+                                        paratext=paratext, #  no advanced search. Only words, phrases, prox ~ op, and booleans allowed
+                                        parascope=parascope,
+                                        similarcount=0, 
+                                        synonyms=synonyms,
+                                        sourcename=None, 
+                                        sourcecode="ZBK",
+                                        volume="69",
+                                        sourcetype=None, 
+                                        sourcelangcode=None,
+                                        articletype=None, 
+                                        issue=None, 
+                                        author=None, 
+                                        title=None,
+                                        startyear=None,
+                                        endyear=None,
+                                        citecount=None,
+                                        viewcount=None,
+                                        viewperiod=None,
+                                        highlightlimit=highlightlimit, 
+                                        formatrequested=formatrequested, 
+                                        facetfields=facetfields, 
+                                        sort=sort,
+                                        limit=limit,
+                                        offset=offset, 
+                                        client_session=client_session,
+                                        client_id=client_id
+                                        )
+    if ret_val != {}:
+        matches = len(ret_val.documentList.responseSet)
+    else:
+        matches = 0
+
+    statusMsg = f"{matches} hits"
+    logger.debug(statusMsg)
+
+    ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
+                                api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_POST, 
+                                session_info=session_info, 
+                                params=request.url._url,
                                 status_message=statusMsg
                                 )
 
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.post("/v2/Database/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_V3)
+@app.post("/v2/Database/Search/", response_model=Union[models.DocumentList, models.ErrorReturn], response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_V3)
 async def database_search_v2b( response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                qtermlist: models.SolrQueryTermList=Body(None, embed=True, title=opasConfig.TITLE_QTERMLIST, decription=opasConfig.DESCRIPTION_QTERMLIST), # allows full specification
@@ -2104,7 +2224,7 @@ async def database_search_v2b( response: Response,
          (where v2 is really the current version))
 
     ## Return Type
-       models.DocumentList
+       models.DocumentList or models.ErrorReturn
 
     ## Status
        Status: In Development
@@ -2273,7 +2393,7 @@ async def database_search_v2b( response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_V2)
+@app.get("/v2/Database/Search/", response_model=Union[models.DocumentList, models.ErrorReturn], response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_V2)
 async def database_search_v2(response: Response, 
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                              fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
@@ -2322,7 +2442,7 @@ async def database_search_v2(response: Response,
        journal is also configured to take anything that would have otherwise been entered in sourcename
 
     ## Return Type
-       models.DocumentList
+       models.DocumentList or models.ErrorReturn
 
     ## Status
        Status: Working; [potentially this will be deprecated in favor of the post version in the Release Ver.]
@@ -2493,7 +2613,7 @@ async def database_search_v2(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/SearchAnalysis/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ANALYSIS)  #  remove validation response_model=models.DocumentList, 
+@app.get("/v2/Database/SearchAnalysis/", response_model=Union[models.TermIndex, models.ErrorReturn], response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ANALYSIS)  #  remove validation response_model=models.DocumentList, 
 def database_searchanalysis_v2(response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
@@ -2612,7 +2732,7 @@ def database_searchanalysis_v2(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.post("/v2/Database/SearchAnalysis/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ANALYSIS)  #  remove validation response_model=models.DocumentList, 
+@app.post("/v2/Database/SearchAnalysis/", response_model=Union[models.TermIndex, models.ErrorReturn], response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ANALYSIS)  #  remove validation response_model=models.DocumentList, 
 def database_searchanalysis_v3(response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                qtermlist: models.SolrQueryTermList=Body(None, embed=True, title=opasConfig.TITLE_QTERMLIST, decription=opasConfig.DESCRIPTION_QTERMLIST), # allows full specification
@@ -2737,7 +2857,7 @@ def database_searchanalysis_v3(response: Response,
     log_endpoint_time(request, ts=ts)
     return ret_val  # models.Termindex (for v2)
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/SmartSearch/", response_model_exclude_unset=True, tags=["Database", "In Development"]) 
+@app.get("/v2/Database/SmartSearch/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"]) 
 async def database_smartsearch(response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
@@ -2861,7 +2981,7 @@ async def database_smartsearch(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/MoreLikeThis/", response_model_exclude_unset=True, tags=["Database", "In Development"]) 
+@app.get("/v2/Database/MoreLikeThis/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"]) 
 async def database_morelikethis(response: Response, 
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 morelikethis: str=Query(None, title=opasConfig.TITLE_MORELIKETHIS, description=opasConfig.DESCRIPTION_MORELIKETHIS),
@@ -2933,7 +3053,6 @@ async def database_morelikethis(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-#@app.get("/v1/Database/MostDownloaded/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_MOST_VIEWED)
 @app.get("/v2/Database/MostViewed/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_MOST_VIEWED)
 def database_mostviewed(response: Response,
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
@@ -3227,6 +3346,311 @@ def database_mostcited(response: Response,
     log_endpoint_time(request, ts=ts)
     return ret_val
 
+#-----------------------------------------------------------------------------
+@app.get("/v2/Database/OpenURL/", response_model=Union[models.DocumentList, models.ErrorReturn], response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_OPENURL)
+async def open_url(response: Response, 
+                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                   #moreinfo: bool=Query(False, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO),
+                   client_id:int=Depends(get_client_id), 
+                   client_session:str= Depends(get_client_session), 
+                   issn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_ISSN), 
+                   eissn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_ISSN), 
+                   isbn: str=Query(None, title=opasConfig.TITLE_ISBN, description=opasConfig.DESCRIPTION_ISBN), 
+                   title: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
+                   stitle: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
+                   atitle: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
+                   aufirst: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
+                   aulast: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
+                   volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
+                   issue: str=Query(None, title=opasConfig.TITLE_ISSUE, description=opasConfig.DESCRIPTION_ISSUE),
+                   spage:int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_FIRST_PAGE),
+                   # this var name may be an error in the GVPi URL implementation, should it just be spage?
+                   pages:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
+                   date: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
+                   sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                   limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                   ):
+    """
+    ## Function
+       <b>Search the database per OpenURL 0.1 paramaters.</b>
+
+    ## Return Type
+       models.DocumentList
+
+    ## Status
+       Status: In Development
+
+    ## Sample Call
+         /v2/Database/OpenURL/
+
+    ## Notes
+
+    ## Potential Errors
+
+    """
+    ts = time.time()
+
+    if aufirst is not None and aulast is not None:
+        author = aufirst + " , " + aulast
+    elif aufirst is not None:
+        author = aufirst
+    elif aulast is not None:
+        author = aulast
+    else:
+        author = None
+    
+    sourcetype = "journal"
+    if issn is not None:
+        smarttext = f"art_issn:{issn}"
+    elif eissn is not None:
+        smarttext = f"art_issn:{eissn}"
+    elif isbn is not None:
+        smarttext = f"art_isbn:{isbn}"
+        sourcetype = "book"
+    else:
+        smarttext = None
+        sourcetype = None
+        
+    if title is not None:
+        sourcename = title
+    elif stitle is not None:
+        sourcename = stitle
+    else:
+        sourcename = None
+        
+    if atitle is not None:
+        title = atitle
+    else:
+        title = None
+
+    if date is not None:
+        startyear = date
+    else:
+        startyear = None
+        
+    if spage is not None:
+        if smarttext is None:
+            smarttext += f"artpgrg:[{spage} TO *]"
+        else:
+            smarttext += f" && artpgrg:[{spage} TO *]"
+        
+    opasDocPermissions.verify_header(request, "OpenURL") # for debugging client call
+    log_endpoint(request, client_id=client_id, session_id=client_session)
+    errors, mod_args = opasQueryHelper.check_search_args( author=author,
+                                                          title=title,
+                                                          startyear=startyear
+                                                        )
+    if errors:
+        detail = "Error 425: Too few characters or unbalanced."
+        print(detail)
+        raise HTTPException(
+            status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
+            detail=detail
+        )
+    
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+
+    solr_query_spec = \
+        opasQueryHelper.parse_search_query_parameters(solrQueryTermList=None,
+                                                      source_name=sourcename,
+                                                      source_type=sourcetype,
+                                                      smarttext=smarttext, 
+                                                      vol=volume,
+                                                      issue=issue,
+                                                      author=author,
+                                                      title=title,
+                                                      startyear=startyear,
+                                                      limit=limit,
+                                                      offset=offset,
+                                                      sort=sort,
+                                                      req_url = request.url._url
+                                                      )
+
+    ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                         extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                         limit=limit,
+                                         offset=offset,
+                                         session_info=session_info, 
+                                         request=request
+                                         )
+
+    #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
+    if ret_status[0] != httpCodes.HTTP_200_OK:
+        #  throw an exception rather than return an object (which will fail)
+        try:
+            detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+        except:
+            detail = "Bad Solr Search Request"
+            
+        raise HTTPException(
+            status_code=ret_status[0],
+            detail=detail
+        )
+
+    if ret_val != {}:
+        matches = len(ret_val.documentList.responseSet)
+        # ret_val.documentList.responseInfo.request = request.url._url
+    else:
+        matches = 0
+
+    logger.debug(f"....matches = {matches}")
+    # fill in additional return structure status info
+    statusMsg = f"{matches} hits"
+    logger.debug("Done with search.")
+    item_of_interest = opasAPISupportLib.get_query_item_of_interest(solrQuery=solr_query_spec.solrQuery)
+    
+    ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_OPENURL,
+                                session_info=session_info,
+                                item_of_interest=item_of_interest, 
+                                params=request.url._url,
+                                return_status_code = ret_status[0], 
+                                status_message=statusMsg
+                                )
+
+    log_endpoint_time(request, ts=ts)
+    return ret_val
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Database/TermCounts/", response_model=Union[models.TermIndex, models.ErrorReturn], response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_TERM_COUNTS)  #  removed for now: response_model=models.DocumentList, 
+async def database_term_counts(response: Response, 
+                               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                               termlist: str=Query(None, title=opasConfig.TITLE_TERMLIST, description=opasConfig.DESCRIPTION_TERMLIST),
+                               termfield: str=Query("text", title=opasConfig.TITLE_TERMFIELD, description=opasConfig.DESCRIPTION_TERMFIELD),
+                               method: int=Query(0, title=opasConfig.TITLE_TERMCOUNT_METHOD, description=opasConfig.DESCRIPTION_TERMCOUNT_METHOD),
+                               #client_id:int=Depends(get_client_id), 
+                               #client_session:str= Depends(get_client_session)
+                               ):
+    """
+    ## Function
+    <b>Get a list of term frequency counts (# of times term occurs across documents)</b>
+
+    Can specify a field per the schema to limit it. e.g.,
+
+       - text - all text
+       - title - within titles
+       - author -
+       - author_bio_xml - in author bio
+       - art_kwds - in keyword lists
+       - art_lang - can look at frequency of en, fr, ... at article level
+       - lang - can look at frequency of en, fr, ... at paragraph level
+       - meta_xml - meta document data, including description of fixes, edits to documents
+
+       Note: The field must be listed as stored, not just indexed.
+
+    ## Return Type
+       models.TermIndex
+
+    ## Status
+       Status: Working as described above
+
+    ## Sample Call
+
+    ## Notes
+
+    See also: /v2/Database/TermCounts/
+
+    ## Potential Errors
+
+    ## Example Calls
+
+    """
+    ts = time.time()
+    # no logging, no session info for this call...speed, speed, speed
+    term_index_items = []
+    param_error = False
+    if termfield is None:
+        termfield = "text"
+    else:
+        field_ok, field_info = opasSchemaHelper.solr_field_check(SOLR_DOCS, termfield)
+        if field_ok == False:
+            param_error = True
+            statusMsg = f"Bad Request: Field {termfield} underfined"
+
+    if param_error == False:
+        results = {}  # results = {field1:{term:value, term:value, term:value}, field2:{term:value, term:value, term:value}}
+        terms = [x.strip() for x in termlist.split(",")]
+        for n in terms:
+            try:
+                # If specified as field:term
+                nfield, nterms = n.split(":")
+                result = opasSolrPyLib.get_term_count_list(nterms, term_field = nfield)
+            except Exception as e:
+                # just list of terms, use against termfield parameter
+                nterms = n.strip("', ")
+                try:
+                    if method != 0:
+                        result = opasSolrPyLib.get_term_count_list(nterms, term_field = termfield)
+                    else: # default
+                        result = opasPySolrLib.get_term_count_list(nterms, term_field = termfield)
+                    for key, value in result.items():
+                        try:
+                            results[termfield][key] = value
+                        except Exception as e:
+                            results[termfield] = {}
+                            results[termfield][key] = value
+                except Exception as e:
+                    detail = f"{e} - {result.error}. {result.error_description}"
+                    logger.warning(detail)
+                    # Solr Error
+                    raise HTTPException(
+                        status_code=result.httpcode, 
+                        detail=detail 
+                    )
+            else:
+                try:
+                    a = results[nfield]
+                    # exists, if we get here, so add it to the existing dict
+                    for key, value in result.items():
+                        results[nfield][key] = value
+                except: #  new dict entry
+                    results[nfield] = result
+
+        response_info = models.ResponseInfo( listType="termindex", # this is a mistake in the GVPi API, should be termIndex
+                                             scopeQuery=[f"Terms: {termlist}"],
+                                             dataSource = localsecrets.DATA_SOURCE, 
+                                             timestamp=datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
+                                             )
+
+        response_info.count = 0
+        if results != {}:
+            for field, termdict in results.items():
+                for term, value in termdict.items():
+                    if value > 0:
+                        item = models.TermIndexItem(field = field, 
+                                                    term = term, 
+                                                    termCount = value,
+                                                    ) 
+                        term_index_items.append(item)
+                        logger.debug("termIndexGetInfo: %s", item)
+
+        response_info.count = len(term_index_items)
+        response_info.fullCountComplete = True
+        term_index_struct = models.TermIndexStruct( responseInfo = response_info, 
+                                                    responseSet = term_index_items
+                                                    )
+
+        term_index = models.TermIndex(termIndex = term_index_struct)
+
+        if response_info.count > 0:
+            matches = response_info.count
+            term_index.termIndex.responseInfo.request = request.url._url
+        else:
+            matches = 0
+
+        statusMsg = f"{matches} hits"
+        logger.debug(statusMsg)
+
+    if param_error:
+        logging.warning(statusMsg)
+        raise HTTPException(
+            status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+            detail=statusMsg
+        )
+
+    log_endpoint_time(request, ts=ts)                  
+    return term_index
+
 #---------------------------------------------------------------------------------------------------------
 @app.get("/v2/Database/WhoCitedThis/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_CITED)
 def database_who_cited_this(response: Response,
@@ -3308,7 +3732,6 @@ def database_who_cited_this(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-#@app.get("/v1/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_WHATS_NEW)
 @app.get("/v2/Database/WhatsNew/", response_model=models.WhatsNewList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WHATS_NEW)
 def database_whatsnew(response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -3367,8 +3790,162 @@ def database_whatsnew(response: Response,
     log_endpoint_time(request, ts=ts)
     return ret_val
 
+@app.get("/v2/Database/WordWheel/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WORD_WHEEL)
+def database_word_wheel(response: Response,
+                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                        word: str=Query(None, title=opasConfig.TITLE_WORD, description=opasConfig.DESCRIPTION_WORD),
+                        field: str=Query("text", title=opasConfig.TITLE_WORDFIELD, description=opasConfig.DESCRIPTION_WORDFIELD),
+                        core: str=Query("docs", title=opasConfig.TITLE_CORE, description=opasConfig.DESCRIPTION_CORE),
+                        limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                        #offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                        startat:str=Query(None, title="Start at this term/prefix (inconsistent at best)."), 
+                        client_id:int=Depends(get_client_id), 
+                         #client_session:str= Depends(get_client_session)
+                        ):
+    """
+    ## Function
+       <b>Return a list (termIndex) of words for the field matching the prefix.</b>
+
+       Implement a word wheel function in the calling app.
+
+       The field must be a derivative of class solr.TextField. In the PEP implementation,  that includes:
+            text, text_general, text_simple, text_general_syn
+            string_ci (case insensitive string, TextField based)
+
+       The field does not need to be one that's actually "stored".
+
+       Examples of applicable fields from solr core docs for PEP:
+             text - full-text document search
+             para or art_para - full-text, all paragraphs (para is level 2, art_para is level 1)
+             art_authors - string_ci, returns matching full names (authors is string, so it cannot be used)
+             art_authors_xml - text, returns matching components of names
+             quotes_spkr
+             headings_xml - text
+             capt
+             authors - string_ci, full names
+             terms_xml
+             glossary_terms, glossary_group_terms - string_ci
+             art_kwds - text
+             art_kwds_str - string_ci 
+
+       The default field text is in the docs core; currently docs and authors are the only cores supported.
+
+       This endpoint return word counts for the words returned; it can also be used to check the number of instances of a search
+       term, to determine if it's going to be effective by itself in limiting the results.
+
+
+    ## Return Type
+       models.TermIndex
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+       http://localhost:9100/v2/WordWheel?phleb
+
+    ## Notes
+
+    ## Potential Errors
+
+    """
+    ret_val = None
+    # print (f"Called WordWheel: {word}")
+    # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+
+    if core in ["docs", "authors"] and word is not None:
+        try:
+            # returns models.TermIndex
+            term_to_check = word.lower()  # work with lower case only, since Solr is case sensitive.
+            ret_val = opasPySolrLib.get_term_index(term_to_check,
+                                                   term_field=field,
+                                                   core=core,
+                                                   req_url=request.url, 
+                                                   limit=limit,
+                                                   start_at=startat)
+        except ConnectionRefusedError as e:
+            status_message = f"The server is not running or is currently not accepting connections: {e}"
+            logger.error(status_message)
+            raise HTTPException(
+                status_code=httpCodes.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=status_message
+            )
+        except Exception as e:
+            status_message = f"Internal Server Error: {e}"
+            logger.error(status_message)
+            raise HTTPException(
+                status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=status_message
+            )
+        else:
+            status_message = opasCentralDBLib.API_STATUS_SUCCESS
+            response.status_code = httpCodes.HTTP_200_OK
+    else:
+        if word is not None:
+            status_message = f"Unsupported Core: {core}"
+        else:
+            status_message = f"No word supplied."
+        logger.error(status_message)
+        raise HTTPException(
+            status_code=httpCodes.HTTP_400_BAD_REQUEST,
+            detail=status_message
+        )
+
+    # for maximum speed since this is used for word_wheels, don't log the endpoint occurrences
+    return ret_val  # Return author information or error
+
 #-----------------------------------------------------------------------------
-#@app.get("/v1/Metadata/Contents/{SourceCode}/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_CONTENTS_SOURCE)
+@app.get("/v2/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
+def metadata_books(response: Response,
+                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                   sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE_METADATA_BOOKS), 
+                   sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
+                   limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                   client_id:int=Depends(get_client_id), 
+                         #client_session:str= Depends(get_client_session)
+                   ):
+    """
+    ## Function
+       <b>Get a list of Book names equivalent to what is displayed on the original PEP-Web in the books tab.</b>
+
+       The data is pulled from the database ISSN table.  Subvolumes of a book series (e.g., GW, SE) are not returned, nor is any volume
+       marked with multivolumesubbok in the src_type_qualifier column.  This is exactly what's currently in PEP-Web's
+       presentation today.
+       
+       To get metadata for a specific book of a series or subvolume of a multivolume book like GW, SE, NLP, IPL, or ZBK,
+       use the first two parts of the source document ID (series and series volume) without the period separator used in
+       the document ID. For example, to request metadata for SE volume 6, use SE006 in the sourcecode API parameter.
+       Similarly, use NLP014 to get metadata on the book published as volume 14 of the NLP series.  While ZBK is a general
+       series ID for classic books, the same is true...use ZBK047 to return metadata on that specific book.
+
+    ## Return Type
+       models.SourceInfoList (return label sourceInfo)
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+         {url}/v2/Metadata/Books/?sourcecode=SE
+
+    ## Notes
+
+    ## Potential Errors
+
+    """
+
+    ret_val = metadata_by_sourcetype_sourcecode(response,
+                                                request,
+                                                SourceType="Book",
+                                                SourceCode=sourcecode,
+                                                sourcename=sourcename, 
+                                                limit=limit,
+                                                offset=offset,
+                                                client_id=client_id 
+                                                #client_session=client_session
+                                                )
+    return ret_val
+
+#-----------------------------------------------------------------------------
 @app.get("/v2/Metadata/Contents/{SourceCode}/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_CONTENTS_SOURCE)
 def metadata_contents_sourcecode(response: Response,
                                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -3434,7 +4011,6 @@ def metadata_contents_sourcecode(response: Response,
     return ret_val # document_list
 
 #-----------------------------------------------------------------------------
-#@app.get("/v1/Metadata/Contents/{SourceCode}/{SourceVolume}/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_CONTENTS_SOURCE_VOLUME)
 @app.get("/v2/Metadata/Contents/{SourceCode}/{SourceVolume}/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_CONTENTS_SOURCE_VOLUME)
 def metadata_contents(SourceCode: str, 
                       SourceVolume: str, 
@@ -3503,7 +4079,52 @@ def metadata_contents(SourceCode: str,
     return ret_val
 
 #-----------------------------------------------------------------------------
-#@app.get("/v1/Metadata/Videos/", response_model=models.VideoInfoList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_VIDEOS)
+@app.get("/v2/Metadata/Journals/", response_model=models.JournalInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_JOURNALS)
+def metadata_journals(response: Response,
+                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                      #this param changed to sourcecode in v2 from journal in v1 (sourcecode is more accurately descriptive since this includes book series and video series)
+                      sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE_METADATA_JOURNALS), 
+                      sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
+                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                      client_id:int=Depends(get_client_id), 
+                      client_session:str= Depends(get_client_session)
+                      ):
+    """
+    ## Function
+    <b>Get a list of of journal names and metadata equivalent to what is displayed on the original PEP-Web in the journals tab.</b>
+    
+    To get information on a specific journal, set the sourcecode query parameter to one of the standard PEP journal
+    codes (the first part of the three part document ID for articles (e.g., AJRPP, IJP, PAQ).  Case is not treated signficantly.
+    
+    ## Return Type
+       models.JournalInfoList (return label sourceInfo)
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+       /v2/Metadata/Journals/
+
+    ## Notes
+
+    ## Potential Errors
+
+    """
+    log_endpoint(request, client_id=client_id)
+    ret_val = metadata_by_sourcetype_sourcecode(response,
+                                                request,
+                                                SourceType="Journal",
+                                                SourceCode=sourcecode,
+                                                sourcename=sourcename, 
+                                                limit=limit,
+                                                offset=offset,
+                                                client_id=client_id
+                                                #client_session= client_session
+                                                )
+    return ret_val
+
+#-----------------------------------------------------------------------------
 @app.get("/v2/Metadata/Videos/", response_model=models.VideoInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_VIDEOS)
 def metadata_videos(response: Response,
                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
@@ -3558,52 +4179,6 @@ def metadata_videos(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Metadata/Journals/", response_model=models.JournalInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_JOURNALS)
-def metadata_journals(response: Response,
-                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                      #this param changed to sourcecode in v2 from journal in v1 (sourcecode is more accurately descriptive since this includes book series and video series)
-                      sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE_METADATA_JOURNALS), 
-                      sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
-                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                      client_id:int=Depends(get_client_id), 
-                      client_session:str= Depends(get_client_session)
-                      ):
-    """
-    ## Function
-    <b>Get a list of of journal names and metadata equivalent to what is displayed on the original PEP-Web in the journals tab.</b>
-    
-    To get information on a specific journal, set the sourcecode query parameter to one of the standard PEP journal
-    codes (the first part of the three part document ID for articles (e.g., AJRPP, IJP, PAQ).  Case is not treated signficantly.
-    
-    ## Return Type
-       models.JournalInfoList (return label sourceInfo)
-
-    ## Status
-       This endpoint is working.
-
-    ## Sample Call
-       /v2/Metadata/Journals/
-
-    ## Notes
-
-    ## Potential Errors
-
-    """
-    log_endpoint(request, client_id=client_id)
-    ret_val = metadata_by_sourcetype_sourcecode(response,
-                                                request,
-                                                SourceType="Journal",
-                                                SourceCode=sourcecode,
-                                                sourcename=sourcename, 
-                                                limit=limit,
-                                                offset=offset,
-                                                client_id=client_id
-                                                #client_session= client_session
-                                                )
-    return ret_val
-
-#-----------------------------------------------------------------------------
 @app.get("/v2/Metadata/Volumes/", response_model=models.VolumeList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_VOLUMES)
 def metadata_volumes(response: Response,
                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -3619,7 +4194,7 @@ def metadata_volumes(response: Response,
        <b>Return a list of volumes for a SourceCode (aka, PEPCode (e.g., IJP)) per the limit and offset parameters</b> 
 
     ## Return Type
-       models.JournalInfoList
+       models.VolumeList
 
     ## Status
        This endpoint is working.
@@ -3673,60 +4248,6 @@ def metadata_volumes(response: Response,
     return ret_val # returns volumeList
 
 #-----------------------------------------------------------------------------
-#@app.get("/v1/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
-@app.get("/v2/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
-def metadata_books(response: Response,
-                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                   sourcecode: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE_METADATA_BOOKS), 
-                   sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME),  
-                   limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                   client_id:int=Depends(get_client_id), 
-                         #client_session:str= Depends(get_client_session)
-                   ):
-    """
-    ## Function
-       <b>Get a list of Book names equivalent to what is displayed on the original PEP-Web in the books tab.</b>
-
-       The data is pulled from the database ISSN table.  Subvolumes of a book series (e.g., GW, SE) are not returned, nor is any volume
-       marked with multivolumesubbok in the src_type_qualifier column.  This is exactly what's currently in PEP-Web's
-       presentation today.
-       
-       To get metadata for a specific book of a series or subvolume of a multivolume book like GW, SE, NLP, IPL, or ZBK,
-       use the first two parts of the source document ID (series and series volume) without the period separator used in
-       the document ID. For example, to request metadata for SE volume 6, use SE006 in the sourcecode API parameter.
-       Similarly, use NLP014 to get metadata on the book published as volume 14 of the NLP series.  While ZBK is a general
-       series ID for classic books, the same is true...use ZBK047 to return metadata on that specific book.
-
-    ## Return Type
-       models.SourceInfoList (return label sourceInfo)
-
-    ## Status
-       This endpoint is working.
-
-    ## Sample Call
-         {url}/v2/Metadata/Books/?sourcecode=SE
-
-    ## Notes
-
-    ## Potential Errors
-
-    """
-
-    ret_val = metadata_by_sourcetype_sourcecode(response,
-                                                request,
-                                                SourceType="Book",
-                                                SourceCode=sourcecode,
-                                                sourcename=sourcename, 
-                                                limit=limit,
-                                                offset=offset,
-                                                client_id=client_id 
-                                                #client_session=client_session
-                                                )
-    return ret_val
-
-#-----------------------------------------------------------------------------
-#@app.get("/v1/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_SOURCE_NAMES)
 @app.get("/v1/Metadata/{SourceType}/{SourceCode}/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_SOURCE_NAMES)
 def metadata_by_sourcetype_sourcecode(response: Response,
                                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -3796,7 +4317,6 @@ def metadata_by_sourcetype_sourcecode(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-#@app.get("/v1/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_AUTHOR_INDEX)
 @app.get("/v2/Authors/Index/{authorNamePartial}/", response_model=models.AuthorIndex, response_model_exclude_unset=True, tags=["Authors"], summary=opasConfig.ENDPOINT_SUMMARY_AUTHOR_INDEX)
 def authors_index(response: Response,
                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -3864,7 +4384,6 @@ def authors_index(response: Response,
     return ret_val  # Return author information or error
 
 #-----------------------------------------------------------------------------
-#@app.get("/v1/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_AUTHOR_PUBLICATIONS)
 @app.get("/v2/Authors/Publications/{authorNamePartial}/", response_model=models.AuthorPubList, response_model_exclude_unset=True, tags=["Authors"], summary=opasConfig.ENDPOINT_SUMMARY_AUTHOR_PUBLICATIONS)
 def authors_publications(response: Response,
                          request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -3923,7 +4442,6 @@ def authors_publications(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-#@app.get("/v1/Documents/Abstracts/{documentID}/", response_model=models.Documents, response_model_exclude_unset=True, tags=["Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_ABSTRACT_VIEW)
 @app.get("/v2/Documents/Abstracts/{documentID}/", response_model=models.Documents, response_model_exclude_unset=True, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_ABSTRACT_VIEW)
 def documents_abstracts(response: Response,
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -4025,28 +4543,20 @@ def documents_abstracts(response: Response,
                                     )
     return ret_val
 
-@app.get("/v2/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH)
-async def database_glossary_search_v2(response: Response, 
-                                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                      fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
-                                      sourcelangcode: str=Query("EN", title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE), 
-                                      paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
-                                      parascope: str=Query("doc", title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
-                                      synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
-                                      sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                                      facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
-                                      formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                                      highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
-                                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                                      client_id:int=Depends(get_client_id), 
-                                      client_session:str= Depends(get_client_session)
-                                      ):
+#-----------------------------------------------------------------------------
+@app.get("/v2/Documents/Concordance", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_CONCORDANCE, response_model_exclude_unset=True)  # the current PEP API
+def documents_concordance(response: Response,
+                          request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                          paralangid: str=Query(None, title=opasConfig.TITLE_DOCUMENT_CONCORDANCE_ID, description=opasConfig.DESCRIPTION_DOCUMENT_CONCORDANCE_ID), # return controls 
+                          paralangrx: str=Query(None, title=opasConfig.TITLE_DOCUMENT_CONCORDANCE_RX, description=opasConfig.DESCRIPTION_DOCUMENT_CONCORDANCE_RX), # return controls 
+                          return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                          search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
+                          client_id:int=Depends(get_client_id), 
+                          client_session:str= Depends(get_client_session)
+                          ):
     """
     ## Function
-       <b>Search the glossary records in the doc core (not the glossary core -- it doesn't support sub paras important for full-text search).</b>
-
-       This is just a convenience function to search a specific book, the glossary (ZBK.069), in the doc core (pepwebdoc).
+        <b>Returns the translation paragraph identified by the unique para ID(s) .</b>
 
     ## Return Type
        models.Documents
@@ -4055,247 +4565,48 @@ async def database_glossary_search_v2(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Database/Glossary/Search/
-
-    ## Notes
-
-       Termlist in the body is not supported by the GET function: to include a termlist, use PUT.
-
-    ## Potential Errors
-       USER NEEDS TO BE AUTHENTICATED for glossary access at the term level.  Otherwise, returns error.
-
-       Client apps should disable the glossary links when not authenticated.
-    """
-    opasDocPermissions.verify_header(request, "database_glossary_search_v2") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
-
-    ret_val = await database_search_v2( response,
-                                        request,
-                                        fulltext1=fulltext1,
-                                        smarttext=None, 
-                                        paratext=paratext, #  no advanced search. Only words, phrases, prox ~ op, and booleans allowed
-                                        parascope=parascope,
-                                        similarcount=0, 
-                                        synonyms=synonyms,
-                                        sourcename=None, 
-                                        sourcecode="ZBK",
-                                        volume="69",
-                                        sourcetype=None, 
-                                        sourcelangcode=sourcelangcode,
-                                        articletype=None, 
-                                        issue=None, 
-                                        author=None, 
-                                        title=None,
-                                        startyear=None,
-                                        endyear=None,
-                                        citecount=None,
-                                        viewcount=None,
-                                        viewperiod=None,
-                                        formatrequested=formatrequested, 
-                                        highlightlimit=highlightlimit, 
-                                        facetfields=facetfields, 
-                                        sort=sort,
-                                        limit=limit,
-                                        offset=offset,
-                                        client_session=client_session,
-                                        client_id=client_id
-                                        )
-    if ret_val != {}:
-        matches = len(ret_val.documentList.responseSet)
-    else:
-        matches = 0
-
-    statusMsg = f"{matches} hits"
-    logger.debug(statusMsg)
-
-    ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
-                                session_info=session_info, 
-                                params=request.url._url,
-                                status_message=statusMsg
-                                )
-
-    return ret_val
-
-#-----------------------------------------------------------------------------
-# MIRROR VERSION WITH POST
-#-----------------------------------------------------------------------------
-@app.post("/v2/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH)
-async def database_glossary_search_v3(response: Response, 
-                                      request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                                      qtermlist: models.SolrQueryTermList=None, # allows full specification
-                                      fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
-                                      sourcelangcode: str=Query("EN", title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE), 
-                                      paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
-                                      parascope: str=Query("doc", title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
-                                      synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
-                                      sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                                      facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
-                                      formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                                      highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
-                                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                                      offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                                      client_id:int=Depends(get_client_id), 
-                                      client_session:str= Depends(get_client_session)
-                                      ):
-    """
-    ## Function
-       <b>Search the glossary records in the doc core (not the glossary core -- it doesn't support sub paras important for full-text search).</b>
-
-       This is just a convenience function to search a specific book, the glossary (ZBK.069), in the doc core (pepwebdoc).
-
-    ## Return Type
-       models.Documents
-
-    ## Status
-       This endpoint is working.
-
-    ## Sample Call
-         /v2/Documents/Glossary/Search/
+         http://localhost:9100/v2/Documents/Document/IJP.077.0217A/
 
     ## Notes
 
     ## Potential Errors
-       USER NEEDS TO BE AUTHENTICATED for glossary access at the term level.  Otherwise, returns error.
+       THE USER NEEDS TO BE AUTHENTICATED to return a para.
 
-       Client apps should disable the glossary links when not authenticated.
     """
-    opasDocPermissions.verify_header(request, "database_glossary_search_v3") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
-    # session_id = session_info.session_id
+    # NOTE: Calls the code for the Glossary endpoint via function view_a_glossary_entry)
 
-    ret_val = await database_search_v2b(response,
-                                        request,
-                                        qtermlist=qtermlist,
-                                        fulltext1=fulltext1,
-                                        smarttext=None, 
-                                        paratext=paratext, #  no advanced search. Only words, phrases, prox ~ op, and booleans allowed
-                                        parascope=parascope,
-                                        similarcount=0, 
-                                        synonyms=synonyms,
-                                        sourcename=None, 
-                                        sourcecode="ZBK",
-                                        volume="69",
-                                        sourcetype=None, 
-                                        sourcelangcode=None,
-                                        articletype=None, 
-                                        issue=None, 
-                                        author=None, 
-                                        title=None,
-                                        startyear=None,
-                                        endyear=None,
-                                        citecount=None,
-                                        viewcount=None,
-                                        viewperiod=None,
-                                        highlightlimit=highlightlimit, 
-                                        formatrequested=formatrequested, 
-                                        facetfields=facetfields, 
-                                        sort=sort,
-                                        limit=limit,
-                                        offset=offset, 
-                                        client_session=client_session,
-                                        client_id=client_id
-                                        )
-    if ret_val != {}:
-        matches = len(ret_val.documentList.responseSet)
-    else:
-        matches = 0
-
-    statusMsg = f"{matches} hits"
-    logger.debug(statusMsg)
-
-    ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
-                                api_endpoint_method=opasCentralDBLib.API_ENDPOINT_METHOD_POST, 
-                                session_info=session_info, 
-                                params=request.url._url,
-                                status_message=statusMsg
-                                )
-
-    return ret_val
-
-#-----------------------------------------------------------------------------
-@app.get("/v2/Documents/Glossary/{termIdentifier}/", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_VIEW, response_model_exclude_unset=True)  # the current PEP API
-def documents_glossary_term(response: Response,
-                            request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                            termIdentifier: str=Path(..., title="Glossary Term ID or Partial ID", description=opasConfig.DESCRIPTION_GLOSSARYID),
-                            termidtype: models.TermTypeIDEnum=Query(models.TermTypeIDEnum.termid, title="Type of term descriptor supplied", description=opasConfig.DESCRIPTION_TERMIDTYPE),
-                            #search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
-                            similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
-                            recordperterm: bool=Query(False, title="Return a record per term in a group", description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                            return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                            client_id:int=Depends(get_client_id), 
-                            client_session:str= Depends(get_client_session)
-                            ): # Note this is called by the Document endpoint if it detects a term_id in the DocumentID
-    """
-    ## Function
-       <b>Return a glossary entry for the specified {termIdentifier} if authenticated with permission.  If not, returns error.</b>
-
-    ## Return Type
-       models.Documents
-
-    ## Status
-       This endpoint is working.
-
-    ## Sample Call
-         /v2/Documents/Glossary/{termIdentifier}
-
-    ## Notes
-         In V1 (and PEP-Easy 1.0), glossary entries are fetched via the /v1/Documents endpoint rather than here.
-
-    ## Potential Errors
-       USER NEEDS TO BE AUTHENTICATED for glossary access at the term level.  Otherwise, returns error.
-
-       Client apps should disable the glossary links when not authenticated.
-    """
     ret_val = None
+    item_of_interest = f"{paralangid}/{paralangrx}"
 
-    opasDocPermissions.verify_header(request, "documents_glossary_term") # for debugging client call
+    opasDocPermissions.verify_header(request, "documents_concordance") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     try:
-        # handle default passthrough, when the value becomes query.
-        if not isinstance(termidtype, models.TermTypeIDEnum):
-            termidtype = termidtype.default
-        #  ok now look at the value
-        if termidtype == "ID":
-            try:
-                term_parts = termIdentifier.split(".")
-                if len(term_parts) == 4:
-                    termIdentifier = term_parts[-2]
-                elif len(term_parts) == 3:
-                    termIdentifier = term_parts[-1]
-                else:
-                    pass
-                logger.debug("Glossary View Request (termIdentifier/return_format): %s/%s", termIdentifier, return_format)
-            except Exception as e:
-                status_message = f"View Glossary Error: Error splitting term: {e}"
-                response.status_code = httpCodes.HTTP_400_BAD_REQUEST
-                logger.error(status_message)
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=status_message
-                )
+        ##  this may not be useful...if so, remove and remove parameter.
+        #if search is not None:
+            #argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
+        #else:
+            #argdict = {}
+        #solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
+        #logger.debug("Concordance View Request: %s/%s/%s", solr_query_params, f"{paralangid} / {paralangrx}", return_format)
 
-        ret_val = opasAPISupportLib.documents_get_glossary_entry(term_id=termIdentifier,
-                                                                 term_id_type=termidtype,
-                                                                 record_per_term=recordperterm,
-                                                                 retFormat=return_format,
-                                                                 session_info=session_info,
-                                                                 req_url=request.url._url
-                                                                 )
-
-        ret_val.documents.responseInfo.request = request.url._url
-
+        ret_val = opasAPISupportLib.documents_get_concordance_paras( para_lang_id=paralangid,
+                                                                     para_lang_rx=paralangrx, 
+                                                                     #solr_query_spec=solr_query_params,
+                                                                     ret_format=return_format,
+                                                                     req_url=request.url._url, 
+                                                                     session_info=session_info
+                                                                     )
     except Exception as e:
-        response.status_code = httpCodes.HTTP_400_BAD_REQUEST
-        status_message = f"View Glossary Error: {e}"
+        response.status_code=httpCodes.HTTP_400_BAD_REQUEST
+        status_message = f"Para Fetch Error: {e}"
         logger.error(status_message)
+        ret_val = None
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
                                     session_info=session_info, 
                                     params=request.url._url,
-                                    item_of_interest=termIdentifier, 
+                                    item_of_interest=item_of_interest, 
                                     return_status_code = response.status_code,
                                     status_message=status_message
                                     )
@@ -4304,28 +4615,32 @@ def documents_glossary_term(response: Response,
             detail=status_message
         )
     else:
-        if ret_val.documents.responseInfo.count == 0:
+        if ret_val != {}:
+            response.status_code = httpCodes.HTTP_200_OK
             status_message = opasCentralDBLib.API_STATUS_SUCCESS
+        else:
+            # make sure we specify an error in the session log
+            # not sure this is the best return code, but for now...
+            status_message = "Not Found"
             response.status_code = httpCodes.HTTP_404_NOT_FOUND
+
+        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
+                                    session_info=session_info, 
+                                    params=request.url._url,
+                                    item_of_interest=item_of_interest, 
+                                    return_status_code = response.status_code,
+                                    status_message=status_message
+                                    )
+
+        if ret_val == {}:
             raise HTTPException(
                 status_code=response.status_code,
                 detail=status_message
-            )
-        else:
-            status_message = opasCentralDBLib.API_STATUS_SUCCESS
-            response.status_code = httpCodes.HTTP_200_OK
-            ret_val.documents.responseInfo.request = request.url._url
-            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
-                                        session_info=session_info, 
-                                        params=request.url._url,
-                                        item_of_interest=termIdentifier, 
-                                        return_status_code = response.status_code,
-                                        status_message=status_message
-                                        )
+            )           
+
     return ret_val
 
 #-----------------------------------------------------------------------------
-#@app.get("/v1/Documents/{documentID}/", response_model=models.Documents, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_VIEW, response_model_exclude_unset=True)  # the current PEP API
 @app.get("/v2/Documents/Document/{documentID}/", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_VIEW, response_model_exclude_unset=True) # more consistent with the model grouping
 def documents_document_fetch(response: Response,
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
@@ -4333,6 +4648,7 @@ def documents_document_fetch(response: Response,
                              page:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
                              return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                              similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                             translations: bool=Query(False, title=opasConfig.TITLE_TRANSLATIONS, description=opasConfig.DESCRIPTION_TRANSLATIONS),
                              search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
                              pagelimit: int=Query(None,title=opasConfig.TITLE_PAGELIMIT, description=opasConfig.DESCRIPTION_PAGELIMIT),
                              pageoffset: int=Query(None, title=opasConfig.TITLE_PAGEOFFSET,description=opasConfig.DESCRIPTION_PAGEOFFSET),
@@ -4485,11 +4801,14 @@ def documents_document_fetch(response: Response,
 
             # solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
             logger.debug("Document View Request: %s/%s/%s", solr_query_params, documentID, return_format)
+            
+            if translations == True:
+                specialoptions = specialoptions | 2 # add flag to return translations
 
             ret_val = opasAPISupportLib.documents_get_document( documentID, 
                                                                 solr_query_params,
                                                                 ret_format=return_format,
-                                                                similar_count=similarcount, 
+                                                                similar_count=similarcount,
                                                                 page_offset=pageoffset, # starting page
                                                                 page_limit=pagelimit, # number of pages
                                                                 page=page, # specific page number request (rather than offset),
@@ -4566,6 +4885,7 @@ def documents_document_fetch(response: Response,
                                         )
 
             if ret_val is None or ret_val == {}:
+                logger.warning(f"No document returned for request: {documentID} during session {session_info.session_id}")
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=status_message
@@ -4588,19 +4908,204 @@ def documents_document_fetch(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Documents/Concordance", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_CONCORDANCE, response_model_exclude_unset=True)  # the current PEP API
-def documents_concordance(response: Response,
-                          request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                          paralangid: str=Query(None, title=opasConfig.TITLE_DOCUMENT_CONCORDANCE_ID, description=opasConfig.DESCRIPTION_DOCUMENT_CONCORDANCE_ID), # return controls 
-                          paralangrx: str=Query(None, title=opasConfig.TITLE_DOCUMENT_CONCORDANCE_RX, description=opasConfig.DESCRIPTION_DOCUMENT_CONCORDANCE_RX), # return controls 
-                          return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
-                          search: str=Query(None, title=opasConfig.TITLE_SEARCHPARAM, description=opasConfig.DESCRIPTION_SEARCHPARAM),
-                          client_id:int=Depends(get_client_id), 
-                          client_session:str= Depends(get_client_session)
-                          ):
+@app.get("/v2/Documents/Downloads/{retFormat}/{documentID}/", response_model_exclude_unset=True, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_DOWNLOAD)
+def documents_downloads(response: Response,
+                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                        documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
+                        retFormat=Path(..., title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_DOCDOWNLOADFORMAT),
+                        client_id:int=Depends(get_client_id), 
+                        client_session:str= Depends(get_client_session)
+                        ):
     """
     ## Function
-        <b>Returns the translation paragraph identified by the unique para ID(s) .</b>
+       <b>Initiates download of the document in EPUB or PDF format (if authenticated)</b>
+
+    ## Return Type
+       initiates a download of the requested document type
+
+    ## Status
+       This endpoint is working.
+       There may be more work needed on the conversions:
+          ePub conversion (links go nowhere in the tests I did' need to compare to GVPi version)
+          PDF conversion (formatting is not great)
+
+    ## Sample Call
+         http://localhost:9100/v2/Documents/Downloads/EPUB/IJP.077.0217A/
+         http://localhost:9100/v2/Documents/Downloads/PDF/IJP.077.0217A/
+         http://localhost:9100/v2/Documents/Downloads/PDFORIG/IJP.077.0217A/
+
+    ## Notes
+
+    ## Potential Errors
+       USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
+    """
+    ts = time.time()
+    opasDocPermissions.verify_header(request, "documents_downloads") # for debugging client call
+    log_endpoint(request, client_id=client_id, session_id=client_session)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    user_name = session_info.username
+
+    if retFormat.upper() == "EPUB":
+        file_format = 'EPUB'
+        media_type='application/epub+zip'
+        endpoint = opasCentralDBLib.API_DOCUMENTS_EPUB
+    elif retFormat.upper() == "PDF":
+        file_format = 'PDF'
+        media_type='application/pdf'
+        endpoint = opasCentralDBLib.API_DOCUMENTS_PDF
+    elif retFormat.upper() == "PDFORIG":  # not yet implemented.
+        file_format = 'PDFORIG'
+        media_type='application/pdf'
+        endpoint = opasCentralDBLib.API_DOCUMENTS_PDFORIG
+    else:
+        file_format = 'HTML'
+        media_type='application/xhtml+xml'
+        endpoint = opasCentralDBLib.API_DOCUMENTS_HTML
+
+    #prep_document_download will check permissions for this user, and return abstract based file
+    #if there's no permission
+    flex_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                             secret=localsecrets.S3_SECRET,
+                                             root=localsecrets.PDF_ORIGINALS_PATH) # important to use this path, not the XML one!
+
+    filename, status = opasPySolrLib.prep_document_download( documentID,
+                                                             ret_format=file_format,
+                                                             base_filename="opasDoc",
+                                                             session_info=session_info, 
+                                                             flex_fs=flex_fs,
+                                                            )    
+
+    error_status_message = f" The requested document {documentID} could not be returned."
+
+    if filename is None:
+        response.status_code = status.httpcode
+        status_message = status.error_description + error_status_message
+        logger.error(status_message)
+        raise HTTPException(status_code=response.status_code,
+                            detail=status_message)
+    else:
+        if file_format == 'PDFORIG':
+            # We need users name
+            # user needs to have a name!
+            if user_name is None or len(user_name) == 0:
+                error_status_message = "Username must be assigned for download of originals"
+                logger.error(error_status_message)
+                response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
+                raise HTTPException(status_code=response.status_code,
+                                    detail=error_status_message)
+            else:
+                try:
+                    if flex_fs.key is not None:                    # S3
+                        fileurl = flex_fs.fs.url(filename)
+                        filename = wget.download(fileurl)
+    
+                    stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename)
+                    response.status_code = httpCodes.HTTP_200_OK
+                    ret_val = FileResponse(path=stamped_file,
+                                           status_code=response.status_code,
+                                           filename=os.path.split(stamped_file)[1], 
+                                           media_type=media_type)
+    
+                except Exception as e:
+                    response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
+                    raise HTTPException(status_code=response.status_code,
+                                        detail=error_status_message)
+                else:
+                    status_message = opasCentralDBLib.API_STATUS_SUCCESS
+    
+                    logger.info(status_message)
+                    ocd.record_document_view(document_id=documentID,
+                                             session_info=session_info,
+                                             view_type=file_format)
+    
+                    ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                                session_info=session_info, 
+                                                params=request.url._url,
+                                                item_of_interest=f"{documentID}", 
+                                                return_status_code = response.status_code,
+                                                status_message=status_message
+                                                )
+        elif file_format == 'PDF':
+            try:
+                response.status_code = httpCodes.HTTP_200_OK
+                stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename)
+                ret_val = FileResponse(path=stamped_file,
+                                       status_code=response.status_code,
+                                       filename=os.path.split(stamped_file)[1], 
+                                       media_type=media_type)
+                #ret_val = FileResponse(path=filename,
+                                       #status_code=response.status_code,
+                                       #filename=os.path.split(filename)[1], 
+                                       #media_type=media_type)
+
+            except Exception as e:
+                response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
+                status_message = f" The requested document {filename} could not be returned {e}"
+                raise HTTPException(status_code=response.status_code,
+                                    detail=status_message)
+
+            else:
+                status_message = opasCentralDBLib.API_STATUS_SUCCESS
+
+                logger.info(status_message)
+                ocd.record_document_view(document_id=documentID,
+                                         session_info=session_info,
+                                         view_type=file_format)
+                ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                            session_info=session_info, 
+                                            params=request.url._url,
+                                            item_of_interest=f"{documentID}", 
+                                            return_status_code = response.status_code,
+                                            status_message=status_message
+                                            )
+        else:
+            try:
+                response.status_code = httpCodes.HTTP_200_OK
+                ret_val = FileResponse(path=filename,
+                                       status_code=response.status_code,
+                                       filename=os.path.split(filename)[1], 
+                                       media_type=media_type)
+
+            except Exception as e:
+                response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
+                status_message = f" The requested document {filename} could not be returned {e}"
+                raise HTTPException(status_code=response.status_code,
+                                    detail=status_message)
+
+            else:
+                status_message = opasCentralDBLib.API_STATUS_SUCCESS
+
+                logger.info(status_message)
+                ocd.record_document_view(document_id=documentID,
+                                         session_info=session_info,
+                                         view_type=file_format)
+                ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                            session_info=session_info, 
+                                            params=request.url._url,
+                                            item_of_interest=f"{documentID}", 
+                                            return_status_code = response.status_code,
+                                            status_message=status_message
+                                            )
+
+    log_endpoint_time(request, ts=ts)
+    return ret_val
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Documents/Glossary/{termIdentifier}/", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_VIEW, response_model_exclude_unset=True)  # the current PEP API
+def documents_glossary_term(response: Response,
+                            request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                            termIdentifier: str=Path(..., title="Glossary Term ID or Partial ID", description=opasConfig.DESCRIPTION_GLOSSARYID),
+                            termidtype: models.TermTypeIDEnum=Query(models.TermTypeIDEnum.termid, title="Type of term descriptor supplied", description=opasConfig.DESCRIPTION_TERMIDTYPE),
+                            #search: str=Query(None, title="Document request from search results", description="This is a document request, including search parameters, to show hits"),
+                            similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
+                            recordperterm: bool=Query(False, title="Return a record per term in a group", description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                            return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                            client_id:int=Depends(get_client_id), 
+                            client_session:str= Depends(get_client_session)
+                            ): # Note this is called by the Document endpoint if it detects a term_id in the DocumentID
+    """
+    ## Function
+       <b>Return a glossary entry for the specified {termIdentifier} if authenticated with permission.  If not, returns error.</b>
 
     ## Return Type
        models.Documents
@@ -4609,48 +5114,64 @@ def documents_concordance(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         http://localhost:9100/v2/Documents/Document/IJP.077.0217A/
+         /v2/Documents/Glossary/{termIdentifier}
 
     ## Notes
+         In V1 (and PEP-Easy 1.0), glossary entries are fetched via the /v1/Documents endpoint rather than here.
 
     ## Potential Errors
-       THE USER NEEDS TO BE AUTHENTICATED to return a para.
+       USER NEEDS TO BE AUTHENTICATED for glossary access at the term level.  Otherwise, returns error.
 
+       Client apps should disable the glossary links when not authenticated.
     """
-    # NOTE: Calls the code for the Glossary endpoint via function view_a_glossary_entry)
-
     ret_val = None
-    item_of_interest = f"{paralangid}/{paralangrx}"
 
-    opasDocPermissions.verify_header(request, "documents_concordance") # for debugging client call
+    opasDocPermissions.verify_header(request, "documents_glossary_term") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     try:
-        ##  this may not be useful...if so, remove and remove parameter.
-        #if search is not None:
-            #argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
-        #else:
-            #argdict = {}
-        #solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
-        #logger.debug("Concordance View Request: %s/%s/%s", solr_query_params, f"{paralangid} / {paralangrx}", return_format)
+        # handle default passthrough, when the value becomes query.
+        if not isinstance(termidtype, models.TermTypeIDEnum):
+            termidtype = termidtype.default
+        #  ok now look at the value
+        if termidtype == "ID":
+            try:
+                term_parts = termIdentifier.split(".")
+                if len(term_parts) == 4:
+                    termIdentifier = term_parts[-2]
+                elif len(term_parts) == 3:
+                    termIdentifier = term_parts[-1]
+                else:
+                    pass
+                logger.debug("Glossary View Request (termIdentifier/return_format): %s/%s", termIdentifier, return_format)
+            except Exception as e:
+                status_message = f"View Glossary Error: Error splitting term: {e}"
+                response.status_code = httpCodes.HTTP_400_BAD_REQUEST
+                logger.error(status_message)
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=status_message
+                )
 
-        ret_val = opasAPISupportLib.documents_get_concordance_paras( para_lang_id=paralangid,
-                                                                     para_lang_rx=paralangrx, 
-                                                                     #solr_query_spec=solr_query_params,
-                                                                     ret_format=return_format,
-                                                                     req_url=request.url._url, 
-                                                                     session_info=session_info
-                                                                     )
+        ret_val = opasAPISupportLib.documents_get_glossary_entry(term_id=termIdentifier,
+                                                                 term_id_type=termidtype,
+                                                                 record_per_term=recordperterm,
+                                                                 retFormat=return_format,
+                                                                 session_info=session_info,
+                                                                 req_url=request.url._url
+                                                                 )
+
+        ret_val.documents.responseInfo.request = request.url._url
+
     except Exception as e:
-        response.status_code=httpCodes.HTTP_400_BAD_REQUEST
-        status_message = f"Para Fetch Error: {e}"
+        response.status_code = httpCodes.HTTP_400_BAD_REQUEST
+        status_message = f"View Glossary Error: {e}"
         logger.error(status_message)
-        ret_val = None
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
                                     session_info=session_info, 
                                     params=request.url._url,
-                                    item_of_interest=item_of_interest, 
+                                    item_of_interest=termIdentifier, 
                                     return_status_code = response.status_code,
                                     status_message=status_message
                                     )
@@ -4659,33 +5180,27 @@ def documents_concordance(response: Response,
             detail=status_message
         )
     else:
-        if ret_val != {}:
-            response.status_code = httpCodes.HTTP_200_OK
+        if ret_val.documents.responseInfo.count == 0:
             status_message = opasCentralDBLib.API_STATUS_SUCCESS
-        else:
-            # make sure we specify an error in the session log
-            # not sure this is the best return code, but for now...
-            status_message = "Not Found"
             response.status_code = httpCodes.HTTP_404_NOT_FOUND
-
-        ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
-                                    session_info=session_info, 
-                                    params=request.url._url,
-                                    item_of_interest=item_of_interest, 
-                                    return_status_code = response.status_code,
-                                    status_message=status_message
-                                    )
-
-        if ret_val == {}:
             raise HTTPException(
                 status_code=response.status_code,
                 detail=status_message
-            )           
-
+            )
+        else:
+            status_message = opasCentralDBLib.API_STATUS_SUCCESS
+            response.status_code = httpCodes.HTTP_200_OK
+            ret_val.documents.responseInfo.request = request.url._url
+            ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
+                                        session_info=session_info, 
+                                        params=request.url._url,
+                                        item_of_interest=termIdentifier, 
+                                        return_status_code = response.status_code,
+                                        status_message=status_message
+                                        )
     return ret_val
 
 #-----------------------------------------------------------------------------
-#@app.get("/v1/Documents/Downloads/Images/{imageID}/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_IMAGE_DOWNLOAD)
 @app.get("/v2/Documents/Image/{imageID}/", response_model_exclude_unset=True, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_IMAGE_DOWNLOAD)
 async def documents_image_fetch(response: Response,
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -4808,255 +5323,6 @@ async def documents_image_fetch(response: Response,
                                         )
 
     return ret_val
-
-#-----------------------------------------------------------------------------
-#@app.get("/v1/Documents/Downloads/{retFormat}/{documentID}/", response_model_exclude_unset=True, tags=["PEPEasy1 (Deprecated)"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_DOWNLOAD)
-@app.get("/v2/Documents/Downloads/{retFormat}/{documentID}/", response_model_exclude_unset=True, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENT_DOWNLOAD)
-def documents_downloads(response: Response,
-                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
-                        documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
-                        retFormat=Path(..., title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_DOCDOWNLOADFORMAT),
-                        client_id:int=Depends(get_client_id), 
-                        client_session:str= Depends(get_client_session)
-                        ):
-    """
-    ## Function
-       <b>Initiates download of the document in EPUB or PDF format (if authenticated)</b>
-
-    ## Return Type
-       initiates a download of the requested document type
-
-    ## Status
-       This endpoint is working.
-       There may be more work needed on the conversions:
-          ePub conversion (links go nowhere in the tests I did' need to compare to GVPi version)
-          PDF conversion (formatting is not great)
-
-    ## Sample Call
-         http://localhost:9100/v2/Documents/Downloads/EPUB/IJP.077.0217A/
-         http://localhost:9100/v2/Documents/Downloads/PDF/IJP.077.0217A/
-         http://localhost:9100/v2/Documents/Downloads/PDFORIG/IJP.077.0217A/
-
-    ## Notes
-
-    ## Potential Errors
-       USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
-    """
-    ts = time.time()
-    opasDocPermissions.verify_header(request, "documents_downloads") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
-
-    if retFormat.upper() == "EPUB":
-        file_format = 'EPUB'
-        media_type='application/epub+zip'
-        endpoint = opasCentralDBLib.API_DOCUMENTS_EPUB
-    elif retFormat.upper() == "PDF":
-        file_format = 'PDF'
-        media_type='application/pdf'
-        endpoint = opasCentralDBLib.API_DOCUMENTS_PDF
-    elif retFormat.upper() == "PDFORIG":  # not yet implemented.
-        file_format = 'PDFORIG'
-        media_type='application/pdf'
-        endpoint = opasCentralDBLib.API_DOCUMENTS_PDFORIG
-    else:
-        file_format = 'HTML'
-        media_type='application/xhtml+xml'
-        endpoint = opasCentralDBLib.API_DOCUMENTS_HTML
-
-    #prep_document_download will check permissions for this user, and return abstract based file
-    #if there's no permission
-    flex_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
-                                             secret=localsecrets.S3_SECRET,
-                                             root=localsecrets.PDF_ORIGINALS_PATH) # important to use this path, not the XML one!
-
-    filename, status = opasPySolrLib.prep_document_download( documentID,
-                                                             ret_format=file_format,
-                                                             base_filename="opasDoc",
-                                                             session_info=session_info, 
-                                                             flex_fs=flex_fs,
-                                                            )    
-
-    error_status_message = f" The requested document {documentID} could not be returned."
-
-    if filename is None:
-        response.status_code = status.httpcode
-        status_message = status.error_description + error_status_message
-        logger.error(status_message)
-        raise HTTPException(status_code=response.status_code,
-                            detail=status_message)
-    else:
-        if file_format == 'PDFORIG':
-            try:
-                if flex_fs.key is not None:
-                    fileurl = flex_fs.fs.url(filename)
-                    fname = wget.download(fileurl)
-                    response.status_code = httpCodes.HTTP_200_OK
-                    ret_val = FileResponse(path=fname,
-                                           status_code=response.status_code,
-                                           filename=os.path.split(fname)[1], 
-                                           media_type=media_type)
-                else:
-                    fileurl = filename
-                    response.status_code = httpCodes.HTTP_200_OK
-                    ret_val = FileResponse(path=fileurl,
-                                           status_code=response.status_code,
-                                           filename=os.path.split(filename)[1], 
-                                           media_type=media_type)
-            except Exception as e:
-                response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                raise HTTPException(status_code=response.status_code,
-                                    detail=error_status_message)
-            else:
-                status_message = opasCentralDBLib.API_STATUS_SUCCESS
-
-                logger.info(status_message)
-                ocd.record_document_view(document_id=documentID,
-                                         session_info=session_info,
-                                         view_type=file_format)
-
-                ocd.record_session_endpoint(api_endpoint_id=endpoint,
-                                            session_info=session_info, 
-                                            params=request.url._url,
-                                            item_of_interest=f"{documentID}", 
-                                            return_status_code = response.status_code,
-                                            status_message=status_message
-                                            )
-
-        else:
-            try:
-                response.status_code = httpCodes.HTTP_200_OK
-                ret_val = FileResponse(path=filename,
-                                       status_code=response.status_code,
-                                       filename=os.path.split(filename)[1], 
-                                       media_type=media_type)
-
-            except Exception as e:
-                response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = f" The requested document {filename} could not be returned {e}"
-                raise HTTPException(status_code=response.status_code,
-                                    detail=status_message)
-
-            else:
-                status_message = opasCentralDBLib.API_STATUS_SUCCESS
-
-                logger.info(status_message)
-                ocd.record_document_view(document_id=documentID,
-                                         session_info=session_info,
-                                         view_type=file_format)
-                ocd.record_session_endpoint(api_endpoint_id=endpoint,
-                                            session_info=session_info, 
-                                            params=request.url._url,
-                                            item_of_interest=f"{documentID}", 
-                                            return_status_code = response.status_code,
-                                            status_message=status_message
-                                            )
-
-    log_endpoint_time(request, ts=ts)
-    return ret_val
-
-@app.get("/v2/Database/WordWheel/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WORD_WHEEL)
-def database_word_wheel(response: Response,
-                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                        word: str=Query(None, title=opasConfig.TITLE_WORD, description=opasConfig.DESCRIPTION_WORD),
-                        field: str=Query("text", title=opasConfig.TITLE_WORDFIELD, description=opasConfig.DESCRIPTION_WORDFIELD),
-                        core: str=Query("docs", title=opasConfig.TITLE_CORE, description=opasConfig.DESCRIPTION_CORE),
-                        limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                        #offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                        startat:str=Query(None, title="Start at this term/prefix (inconsistent at best)."), 
-                        client_id:int=Depends(get_client_id), 
-                         #client_session:str= Depends(get_client_session)
-                        ):
-    """
-    ## Function
-       <b>Return a list (termIndex) of words for the field matching the prefix.</b>
-
-       Implement a word wheel function in the calling app.
-
-       The field must be a derivative of class solr.TextField. In the PEP implementation,  that includes:
-            text, text_general, text_simple, text_general_syn
-            string_ci (case insensitive string, TextField based)
-
-       The field does not need to be one that's actually "stored".
-
-       Examples of applicable fields from solr core docs for PEP:
-             text - full-text document search
-             para or art_para - full-text, all paragraphs (para is level 2, art_para is level 1)
-             art_authors - string_ci, returns matching full names (authors is string, so it cannot be used)
-             art_authors_xml - text, returns matching components of names
-             quotes_spkr
-             headings_xml - text
-             capt
-             authors - string_ci, full names
-             terms_xml
-             glossary_terms, glossary_group_terms - string_ci
-             art_kwds - text
-             art_kwds_str - string_ci 
-
-       The default field text is in the docs core; currently docs and authors are the only cores supported.
-
-       This endpoint return word counts for the words returned; it can also be used to check the number of instances of a search
-       term, to determine if it's going to be effective by itself in limiting the results.
-
-
-    ## Return Type
-       models.termIndex
-
-    ## Status
-       This endpoint is working.
-
-    ## Sample Call
-       http://localhost:9100/v2/WordWheel?phleb
-
-    ## Notes
-
-    ## Potential Errors
-
-    """
-    ret_val = None
-    # print (f"Called WordWheel: {word}")
-    # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
-
-    if core in ["docs", "authors"] and word is not None:
-        try:
-            # returns models.TermIndex
-            term_to_check = word.lower()  # work with lower case only, since Solr is case sensitive.
-            ret_val = opasPySolrLib.get_term_index(term_to_check,
-                                                   term_field=field,
-                                                   core=core,
-                                                   req_url=request.url, 
-                                                   limit=limit,
-                                                   start_at=startat)
-        except ConnectionRefusedError as e:
-            status_message = f"The server is not running or is currently not accepting connections: {e}"
-            logger.error(status_message)
-            raise HTTPException(
-                status_code=httpCodes.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=status_message
-            )
-        except Exception as e:
-            status_message = f"Internal Server Error: {e}"
-            logger.error(status_message)
-            raise HTTPException(
-                status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=status_message
-            )
-        else:
-            status_message = opasCentralDBLib.API_STATUS_SUCCESS
-            response.status_code = httpCodes.HTTP_200_OK
-    else:
-        if word is not None:
-            status_message = f"Unsupported Core: {core}"
-        else:
-            status_message = f"No word supplied."
-        logger.error(status_message)
-        raise HTTPException(
-            status_code=httpCodes.HTTP_400_BAD_REQUEST,
-            detail=status_message
-        )
-
-    # for maximum speed since this is used for word_wheels, don't log the endpoint occurrences
-    return ret_val  # Return author information or error
 
 
 if __name__ == "__main__":

@@ -38,6 +38,8 @@ class TestStatus(unittest.TestCase):
 
     def test_v2_session_whoami(self):
         # Send a request to the API server and store the response.
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Logout')
+        response = requests.get(full_URL, headers=headers)
         full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
@@ -45,7 +47,11 @@ class TestStatus(unittest.TestCase):
         r = response.json()
         print (r)
         # assert(r["user_id"] == 0)
-        assert(r["is_valid_login"] == False)
+        if r["user_type"] != "Group": # when ip login is enabled
+            assert(r["authenticated"] == False) # was not ip authenticated
+        else:
+            assert(r["authenticated"] == True) # was ip authenticated
+            
         # logout
         full_URL = base_plus_endpoint_encoded(f'/v2/Session/Logout')
         response = requests.get(full_URL, headers=headers)

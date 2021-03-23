@@ -15,6 +15,8 @@ __version__     = "2020.1118.1"
 __status__      = "Development"
 
 import re
+import os
+import tempfile
 import logging
 logger = logging.getLogger(__name__)
 import time
@@ -647,14 +649,86 @@ def get_match_count(solrcore, query="*:*", qf="*:*"):
     
     return ret_val
 
-def search(query, summaryField, highlightFields='art_authors_xml, art_title_xml, text_xml', returnStartAt=0, returnLimit=10):
+def get_term_count_list(term, term_field="text_xml", limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, offset=0, term_order="index", wildcard_match_limit=4):
+    """
+    Returns a list of matching terms, and the number of articles with that term.
+
+    Args:
+        term (str): Term or comma separated list of terms to return data on.
+        term_field (str): the text field to look in
+        limit (int, optional): Paging mechanism, return is limited to this number of items.
+        offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
+        term_order (str, optional): Return the list in this order, per Solr documentation.  Defaults to "index", which is the Solr determined indexing order.
+
+    Returns:
+        list of dicts with term, count and status var ret_status
+
+        return ret_val, ret_status
+
+    Docstring Tests:    
+        >>> resp = get_term_count_list("Jealousy")
+
+    """
+    ret_val = {}
+
+    # make sure it's a list (if string, convert to list)
+    if not isinstance(term, list):
+        terms = term.split(', ')
+    else:
+        terms = term
+    
+    for term in terms:
+        regexp = False
+        if term[-1] == "*":
+            org_term = term
+            term = term[:-2]
+            regexp = True
+
+        termindex = get_term_index(term,
+                                   term_field=term_field,
+                                   offset=offset,
+                                   limit=limit, 
+                                   core="docs", 
+                                   order=term_order)
+
+        tindexlist = termindex.termIndex.responseSet
+
+        # Note: we need an exact match here.
+        if len(tindexlist) > 1:
+            total = 0
+            for n in tindexlist:
+                if regexp:
+                    if re.match(term, n.term, flags=re.I):
+                        mt = f'{n.term}({org_term})'
+                        ret_val[mt] = n.termCount
+                        total += n.termCount
+                else:
+                    # find matching term
+                    if n.term == term:
+                        ret_val[term] = n.termCount
+                        break
+
+            if regexp:
+                ret_val[f"Total({org_term})="] = total
+
+    return ret_val
+
+def search(query,
+           summaryField,
+           highlightFields='art_authors_xml, art_title_xml, text_xml',
+           returnStartAt=0,
+           returnLimit=10,
+           sort="id ASC"):
+
     args = {
                # 'fl':summaryField,
                # 'q':'tuck*',
                'hl': 'true',
                'hl.fragsize': 125,
                'hl.fl':highlightFields,
+               'start': returnStartAt, 
                'rows':returnLimit,
+               "sort": f"{sort}", 
                'hl.simple.pre': opasConfig.HITMARKERSTART, # '<em>',
                'hl.simple.post': opasConfig.HITMARKEREND # '</em>'
            }
@@ -792,22 +866,6 @@ def search_analysis( query_list,
                        )
         return_item_list.append(item)
         rowCount += 1
-
-    #if rowCount > 0:
-        #results = solr_docs.query(query_list,
-                                    #defType = def_type,
-                                    #q_op="AND", 
-                                    #queryAnalysis = True,
-                                    #fields = summary_fields,
-                                    #rows = 1,
-                                    #start = 0)
-
-        #item = models.DocumentListItem(term = "(combined)",
-                                        #termCount = results._numFound
-                                        #)
-        #document_item_list.append(item)
-        #rowCount += 1
-        #print ("Analysis: Term %s, matches %s" % ("combined: ", results._numFound))
 
     response_info = models.ResponseInfo(count = rowCount,
                                         fullCount = rowCount,
@@ -1128,7 +1186,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
 
         # SEARCH!
         results = solr_docs2.search(query, **solr_param_dict)
-        
+       
 
     except solr.SolrException as e:
         # TODO not sure if this exception model applies to pysolr, and no documentation on exceptions I can find.  So need to watch it.
@@ -2155,8 +2213,8 @@ def metadata_get_next_and_prev_vols(source_code=None,
 #-----------------------------------------------------------------------------
 def metadata_get_volumes(source_code=None,
                          source_type=None,
-                         req_url: str=None 
-                         #limit=1,
+                         req_url: str=None, 
+                         limit: int=1000,
                          #offset=0
                         ):
     """
@@ -2179,7 +2237,8 @@ def metadata_get_volumes(source_code=None,
                                 #)
     
     distinct_return = "art_sourcecode, art_vol, art_year, art_sourcetype"
-    limit = 6
+    row_limit = 6 # small number, since we don't care about the rows, we care about the facet limit.
+    facet_limit = limit, 
     count = 0
     ret_val = None
     # normalize source type
@@ -2202,8 +2261,9 @@ def metadata_get_volumes(source_code=None,
                 "facet.fields" : facet_fields, 
                 "facet.pivot" : facet_pivot,
                 "facet.mincount":1,
-                "facet.sort":"art_year asc", 
-                "rows":limit, 
+                "facet.sort":"art_year asc",
+                "facet.limit": facet_limit,
+                "rows":row_limit, 
                 #"start":offset
               }
 
@@ -2374,7 +2434,8 @@ def prep_document_download(document_id,
                             html_string = re.sub("</html>", f"{COPYRIGHT_PAGE_HTML}</html>", html_string, count=1)                        
                             # open output file for writing (truncated binary)
                             filename = document_id + ".PDF" 
-                            result_file = open(filename, "w+b")
+                            output_filename = os.path.join(tempfile.gettempdir(), filename)
+                            result_file = open(output_filename, "w+b")
                             # convert HTML to PDF
                             # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
                             pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
@@ -2382,7 +2443,7 @@ def prep_document_download(document_id,
                             # close output file
                             result_file.close()                 # close output file
                             # return True on success and False on errors
-                            ret_val = filename
+                            ret_val = output_filename
                         elif ret_format.upper() == "EPUB":
                             doc = opasxmllib.remove_encoding_string(doc)
                             html_string = opasxmllib.xml_str_to_html(doc)
@@ -2413,7 +2474,9 @@ def prep_document_download(document_id,
     return ret_val, status
 
 def get_fulltext_new(documentListItem, solr_query_spec):
-    # consolidated full-text handling.
+    # Note: Started 2021-01-14? (actually moved in from opasAPISupport.py, abandon?)
+    # to do work on return data other than conversion first, then convert later.
+    #   but currently untested/unused.
     
     child_xml = None
     offset = 0
@@ -2701,7 +2764,45 @@ def get_fulltext_from_search_results(result,
 
     return documentListItem
 
+#-----------------------------------------------------------------------------
+def quick_docmeta_docsearch(q_str,
+                            fields=None,
+                            req_url=None, 
+                            limit=10,
+                            offset=0):
+    """
+    Searches per query string and returns a document List
+    """
+    ret_val = None
+    count = 0
+    if fields is None:
+        fields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
+        
+    args = {
+               'fl':fields,
+               'rows':limit,
+               'start': offset,
+               'sort':"art_id asc",
+           }
+    
+    results = solr_docs2.search(q=q_str, **args)
+    document_item_list = []
+    count = len(results)
+    try:
+        for result in results:
+            documentListItem = models.DocumentListItem()
+            documentListItem = opasQueryHelper.get_base_article_info_from_search_result(result, documentListItem)
+            document_item_list.append(documentListItem)
+    except IndexError as e:
+        logger.warning("No matching entry for %s.  Error: %s", (q_str, e))
+    except KeyError as e:
+        logger.warning("No content found for %s.  Error: %s", (q_str, e))
+    else:
+        ret_val = document_item_list
 
+    return ret_val, count
+
+#-----------------------------------------------------------------------------
 if __name__ == "__main__":
     sys.path.append('./config') 
 

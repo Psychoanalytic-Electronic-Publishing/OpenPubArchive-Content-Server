@@ -6,7 +6,7 @@ import requests
 
 from unitTestConfig import base_plus_endpoint_encoded, headers
 #import opasAPISupportLib
-from opasPySolrLib import get_term_index
+from opasPySolrLib import get_term_index, get_term_count_list
 import timeit
 
 class TestWordWheel(unittest.TestCase):
@@ -44,7 +44,6 @@ class TestWordWheel(unittest.TestCase):
         response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 3)
         print (response_set)
-       
 
 if __name__ == '__main__':
     unittest.main()

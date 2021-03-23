@@ -5,7 +5,7 @@ from optparse import OptionParser
 import logging
 import opasGenSupportLib as opasgenlib
 
-from configLib.opasCoreConfig import solr_docs, solr_authors, solr_gloss, solr_docs_term_search, solr_authors_term_search
+from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2, CORES # , solr_docs_term_search, solr_authors_term_search
 from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
 
 logger = logging.getLogger(__name__)
@@ -29,9 +29,12 @@ rx_author_connector = "(and|,)"
 rx_front_junk = "(\[|\()?[0-9]+(\]|\))?"
 # rx_author_and_year = rx_space_start_opt + rx_author_name + rx_space_req + rx_year + rx_space_end_opt
 # rx_author_year_pgrg = rx_author_and_year + ".*?" + rx_pgrg
-rx_author_name_list = "(?P<author_list>([A-Z][A-z]+\,?\s+?(([A-Z]\.?\s?){0,2})((\,\s+)|(\s*and\s+))?)+)"
+rx_author_name_list = "(?P<author_list>([A-Z][A-z]+\,?\s+?(([A-Z]\.?\s?){0,2})((\,\s+)|(\s*(and|\&)\s+))?)+)"
 # rx_author_name_list_year = rx_author_name_list + rx_space_req + rx_year
-rx_author_list_and_year = "(?P<author_list>[A-Z][A-z\s\,\.\-]+?)" + rx_space_req + rx_year
+rx_amp_opt = "(\&\s+)?"
+# replaced 2021-02-15 with def that follows it:
+#     rx_author_list_and_year = "(?P<author_list>[A-Z][A-z\s\,\.\-]+?)" + rx_space_req + rx_year
+rx_author_list_and_year = rx_author_name_list + rx_year
 rx_series_of_author_last_names = "(?P<author_list>([A-Z][a-z]+((\,\s+)|(\s*and\s+))?)+)"
 rx_doi = "((h.*?://)?(.*?/))?(?P<doi>(10\.[0-9]{4,4}/[A-z0-9\.\-/]+)|(doi.org/[A-z0-9\-\./]+))"
 # schema fields must have a _ in them to use.  A - at the beginning is allowed, for negation
@@ -40,12 +43,14 @@ rx_syntax = "(?P<syntax>^[a-z]{3,9})\:\:(?P<query>.+$)"
 rx_pepdoi = "(?P<prefix>PEP\/\.)(?P<locator>[A-Z\-]{2,10}\.[0-9]{3,3}\.[0-9]{4,4}([PN]{1,2}[0-9]{4,4})?"
 pat_prefix_amps = re.compile("^\s*&& ")
 
+cores = CORES
+
 class SearchEvaluation(object):
     def __init__(self, field=None, found=0, score=0): 
         self.score = score
         self.field = field
         self.found = found
-        self.isfound = found == True
+        self.isfound = found > 0
 
 
 def cleanup_solr_query(solrquery):
@@ -105,17 +110,12 @@ def is_value_in_field(value,
         
     """
     ret_val = 0
-
-    cores  = {
-        "docs": solr_docs,
-        "authors": solr_authors,
-    }
     
     try:
         solr_core = cores[core]
     except Exception as e:
         logger.debug(f"Core selection: {core}. 'docs' is default {e}")
-        solr_core  = solr_docs    
+        solr_core  = solr_docs2    
 
     if match_type == "exact":
         q = f'{field}:"{value}"'
@@ -128,10 +128,10 @@ def is_value_in_field(value,
 
     
     try:
-        results = solr_core.query(q=q,  
-                                  fields = f"{field}", 
-                                  rows = limit,
-                                  )
+        results = solr_core.search(q=q,  
+                                   fields = f"{field}", 
+                                   rows = limit,
+                                   )
     except Exception as e:
         logger.warning(f"Solr query: {q} fields {field} {e}")
         results = []
@@ -141,149 +141,149 @@ def is_value_in_field(value,
 
     return ret_val
 
-#-----------------------------------------------------------------------------
-def presearch_field(value,
-                    field="title",
-                    core="docs",
-                    match_type="exact", # exact, ordered, proximate, or bool
-                    limit=10):
-    """
-    Returns True if the value is found in the field specified in the docs core.
+##-----------------------------------------------------------------------------
+#def presearch_field(value,
+                    #field="title",
+                    #core="docs",
+                    #match_type="exact", # exact, ordered, proximate, or bool
+                    #limit=10):
+    #"""
+    #Returns True if the value is found in the field specified in the docs core.
     
-    Args:
-        value (str): String prefix of term to check.
-        field (str): Where to look for term
-        match_type (str): exact, ordered, or bool
-        limit (int, optional): Paging mechanism, return is limited to this number of items.
+    #Args:
+        #value (str): String prefix of term to check.
+        #field (str): Where to look for term
+        #match_type (str): exact, ordered, or bool
+        #limit (int, optional): Paging mechanism, return is limited to this number of items.
 
-    Returns:
-        True if the value is in the specified field
+    #Returns:
+        #True if the value is in the specified field
 
-    Docstring Tests:    
-        >>> presearch_field("Object Relations Theories and the Developmental Tilt", "title").found
-        
-        >>> presearch_field("Contemporary Psychoanalysis", "art_sourcetitlefull").found
+    #Docstring Tests:    
+        #>>> presearch_field("Object Relations Theories and the Developmental Tilt", "title").isfound
+        #True
+        #>>> presearch_field("Contemporary Psychoanalysis", "art_sourcetitlefull").isfound
+        #True
+        #>>> presearch_field("Contemporary Psych", "art_sourcetitlefull").isfound
+        #False
+        #>>> presearch_field("Contemp. Psychoanal.", "art_sourcetitleabbr").isfound
+        #True
+        #>>> presearch_field("Tuckett, D", "title").isfound
+        #False
+    #"""
+    #ret_val = SearchEvaluation()
 
-        >>> presearch_field("Contemporary Psych", "art_sourcetitlefull").found
-
-        >>> presearch_field("Contemp. Psychoanal.", "art_sourcetitleabbr").found
-
-        >>> presearch_field("Tuckett, D", "title").found
-        
-    """
-    ret_val = SearchEvaluation()
-
-    cores  = {
-        "docs": solr_docs,
-        "authors": solr_authors,
-    }
+    #cores  = {
+        #"docs": solr_docs,
+        #"authors": solr_authors,
+    #}
     
-    try:
-        solr_core = cores[core]
-    except Exception as e:
-        logger.debug(f"Core selection: {core}. 'docs' is default {e}")
-        solr_core  = solr_docs    
+    #try:
+        #solr_core = cores[core]
+    #except Exception as e:
+        #logger.debug(f"Core selection: {core}. 'docs' is default {e}")
+        #solr_core  = solr_docs    
 
-    if match_type == "exact":
-        q = f'{field}:"{value}"'
-    elif match_type == "ordered":
-        q = f'{field}:"{value}"~10'
-    elif match_type == "proximate":
-        q = f'{field}:"{value}"~25'
-    else:
-        q = f'{field}:({value})'
+    #if match_type == "exact":
+        #q = f'{field}:"{value}"'
+    #elif match_type == "ordered":
+        #q = f'{field}:"{value}"~10'
+    #elif match_type == "proximate":
+        #q = f'{field}:"{value}"~25'
+    #else:
+        #q = f'{field}:({value})'
         
-    try:
-        results = solr_core.query(q=q,  
-                                  fields = f"{field}", 
-                                  rows = limit,
-                                  )
-    except Exception as e:
-        logger.warning(f"Solr query: {q} fields {field} {e}")
-        ret_val = SearchEvaluation(field=field, score=0, found=0)
+    #try:
+        #results = solr_core.query(q=q,  
+                                  #fields = f"{field}", 
+                                  #rows = limit,
+                                  #)
+    #except Exception as e:
+        #logger.warning(f"Solr query: {q} fields {field} {e}")
+        #ret_val = SearchEvaluation(field=field, score=0, found=0)
        
-    if len(results) > 0:
-        ret_val = SearchEvaluation(field=field, score=results.results[0]["score"], found=results.numFound)
-    else:
-        ret_val = SearchEvaluation(field=field, score=0, found=0)
+    #if len(results) > 0:
+        #ret_val = SearchEvaluation(field=field, score=results.results[0]["score"], found=results.numFound)
+    #else:
+        #ret_val = SearchEvaluation(field=field, score=0, found=0)
 
-    return ret_val
+    #return ret_val
 
-def is_term_in_index(term_partial,
-                     term_field="art_authors",
-                     core="docs",
-                     limit=10, 
-                     order="index"):
-    """
-    Returns True if the term_partial matches the index specified
+#def is_term_in_index(term_partial,
+                     #term_field="art_authors",
+                     #core="docs",
+                     #limit=10, 
+                     #order="index"):
+    #"""
+    #Returns True if the term_partial matches the index specified
     
-    Args:
-        term_partial (str): String prefix of term to check.
-        term_field (str): Where to look for term
-        limit (int, optional): Paging mechanism, return is limited to this number of items.
-        offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
-        order (str, optional): Return the list in this order, per Solr documentation.  Defaults to "index", which is the Solr determined indexing order.
+    #Args:
+        #term_partial (str): String prefix of term to check.
+        #term_field (str): Where to look for term
+        #limit (int, optional): Paging mechanism, return is limited to this number of items.
+        #offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
+        #order (str, optional): Return the list in this order, per Solr documentation.  Defaults to "index", which is the Solr determined indexing order.
 
-    Returns:
-        True if the term is in the specified field
+    #Returns:
+        #True if the term is in the specified field
 
-    Docstring Tests:    
-        >>> is_term_in_index("Tuckett, David", term_field="art_author_id", core="authors")
-        True
+    #Docstring Tests:    
+        #>>> is_term_in_index("Tuckett, David", term_field="art_author_id", core="authors")
+        #True
         
-        >>> is_term_in_index("Tuckett", term_field="art_author_id", core="authors")
-        True
+        #>>> is_term_in_index("Tuckett", term_field="art_author_id", core="authors")
+        #True
         
-        >>> is_term_in_index("Tuckett", limit=5)
-        True
+        #>>> is_term_in_index("Tuckett", limit=5)
+        #True
         
-        >>> is_term_in_index("Tucke*")
-        True
+        #>>> is_term_in_index("Tucke*")
+        #True
         
-    """
-    ret_val = False
+    #"""
+    #ret_val = False
     
-    core_term_indexers = {
-        "docs": solr_docs_term_search,
-        "authors": solr_authors_term_search,
-    }
+    #core_term_indexers = {
+        #"docs": solr_docs_term_search,
+        #"authors": solr_authors_term_search,
+    #}
     
-    try:
-        term_index = core_term_indexers[core]
-    except:
-        # error
-        logger.error("Specified core does not have a term index configured")
-    else:
-        if "*" in term_partial or "?" in term_partial: # or "." in term_partial:
-            # Wildcard expected, not RE
-            term_partial = term_partial.lower().replace("*", ".*")
-            results = term_index( terms_fl=term_field,
-                                  terms_regex=term_partial,
-                                  terms_limit=limit,  
-                                  terms_sort=order  # index or count
-                                 )           
+    #try:
+        #term_index = core_term_indexers[core]
+    #except:
+        ## error
+        #logger.error("Specified core does not have a term index configured")
+    #else:
+        #if "*" in term_partial or "?" in term_partial: # or "." in term_partial:
+            ## Wildcard expected, not RE
+            #term_partial = term_partial.lower().replace("*", ".*")
+            #results = term_index( terms_fl=term_field,
+                                  #terms_regex=term_partial,
+                                  #terms_limit=limit,  
+                                  #terms_sort=order  # index or count
+                                 #)           
 
-            for n in results.terms[term_field].keys():
-                m = re.match(term_partial, n)
-                if m is not None:
-                    ret_val = True
-                    break
-        else:
-            results = term_index( terms_fl=term_field,
-                                  terms_prefix=term_partial.lower(),
-                                  terms_sort=order,  # index or count
-                                  terms_limit=limit
-                                 )
+            #for n in results.terms[term_field].keys():
+                #m = re.match(term_partial, n)
+                #if m is not None:
+                    #ret_val = True
+                    #break
+        #else:
+            #results = term_index( terms_fl=term_field,
+                                  #terms_prefix=term_partial.lower(),
+                                  #terms_sort=order,  # index or count
+                                  #terms_limit=limit
+                                 #)
         
-            for n in results.terms[term_field].keys():
-                n_partial = re.split("[\s,]+", n)
-                term_adj = term_partial.lower()
-                if term_adj == n or term_adj == n_partial[0]:
-                    ret_val = True
-                    break
+            #for n in results.terms[term_field].keys():
+                #n_partial = re.split("[\s,]+", n)
+                #term_adj = term_partial.lower()
+                #if term_adj == n or term_adj == n_partial[0]:
+                    #ret_val = True
+                    #break
             
 
-    return ret_val
+    #return ret_val
 
 def name_id_list(names_mess):
     ret_val = []
@@ -337,7 +337,7 @@ def smart_search(smart_search_text):
             Tuckett and Fonagy (1972)
             
     >>> smart_search("Kohut, H. & Wolf, E. S. (1978)")
-    {'schema_field': 'art_authors_citation', 'schema_value': "'Kohut, H.' && 'Wolf, E.'"}
+    {'author_list': 'Kohut, H. & Wolf, E. S.', 'yr': '1978', 'smart_search': 'Matched authors and year: Kohut, H. & Wolf, E. S. (1978)'}
     
     >>> smart_search("authors:Tuckett, D.")
     {'schema_field': 'authors', 'schema_value': 'Tuckett, D.'}
@@ -393,9 +393,9 @@ def smart_search(smart_search_text):
     if ret_val == {}:
         # Smartpatterns:        
         patterns1 = {
-                    rx_author_list_and_year : "authors and years",
-                    rx_year_pgrg : "a page range",
                     ".*?" + rx_vol_pgrg : "citation vol/pg",
+                    rx_author_list_and_year : "authors and year",
+                    rx_year_pgrg : "a page range",
                     rx_doi : "an article DOI",
                     rx_solr_field: "article fields", 
                     rx_syntax: "advanced query syntax",
@@ -412,6 +412,7 @@ def smart_search(smart_search_text):
             if m is not None:
                 ret_val = {**ret_val, **m.groupdict()}
                 ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched {label}: {smart_search_text}"
+                break
                 
         #for rx_str, label in patterns2.items():
             #m = re.match(rx_str, smart_search_text)
@@ -436,9 +437,9 @@ def smart_search(smart_search_text):
 
             #v2 for later...integrate below instead of is_value_in_field
             #title_search = presearch_field(words, "title", match_type="ordered")
-            #text_search = presearch_field(words, core="doc", field="text", match_type="proximate")
+            #text_search = presearch_field(words, core="docs", field="text", match_type="proximate")
             #authors_search = presearch_field(words, core="authors", field="authors")
-            #authors_citation_search = presearch_field(words, core="doc", field="art_authors_citation")
+            #authors_citation_search = presearch_field(words, core="docs", field="art_authors_citation")
             #e.g.,
             #elif authors_citation_search.found:
             #elif word_count > 4 and title_search.found and text_search.found:
@@ -452,12 +453,12 @@ def smart_search(smart_search_text):
                     ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched articles for author: {words}"            elif word_count > 4 and is_value_in_field(words, "title", match_type="ordered") == 1: # unique match only
                 ret_val["title"] = words
                 ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {words}"
-            elif is_value_in_field(words, core="doc", field="art_authors_citation") and words[0].isupper():
+            elif is_value_in_field(words, core="docs", field="art_authors_citation") and words[0].isupper():
                 # see if it's a list of names
                 ret_val[KEY_SEARCH_FIELD] = "art_authors_citation" 
                 ret_val[KEY_SEARCH_VALUE] = f"{words}"
                 ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched articles for authors: ({words})"
-            elif is_value_in_field(words, core="doc", field="text", match_type="proximate"):
+            elif is_value_in_field(words, core="docs", field="text", match_type="proximate"):
                 orig_smart_search_text = smart_search_text
                 if not opasgenlib.in_quotes(smart_search_text):
                     if not opasgenlib.is_boolean(smart_search_text):
@@ -477,7 +478,7 @@ def smart_search(smart_search_text):
                 names = name_id_list(smart_search_text)
                 for name in names:
                     try:
-                        if is_value_in_field(name, core="doc", field="authors"):
+                        if is_value_in_field(name, core="docs", field="authors"):
                             # ok, this is a list of names
                             if new_q != "":
                                 new_q += f" && '{name}'"
@@ -492,7 +493,7 @@ def smart_search(smart_search_text):
                 else:
                     #  join the names
                     name_conjunction = " && ".join(names)
-                    if is_value_in_field(name_conjunction, core="doc", field="art_authors_citation", match_type="bool"):
+                    if is_value_in_field(name_conjunction, core="docs", field="art_authors_citation", match_type="bool"):
                         ret_val[KEY_SEARCH_FIELD] = "art_authors_citation" 
                         ret_val[KEY_SEARCH_VALUE] = f"{name_conjunction}"
                         ret_val[KEY_SEARCH_SMARTSEARCH] = f"Matched articles for authors: {name_conjunction} "

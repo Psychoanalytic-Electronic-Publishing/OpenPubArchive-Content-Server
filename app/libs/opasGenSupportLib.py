@@ -77,9 +77,9 @@ class DocumentID(object):
 
     """
     # document id regex
-    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?)\.(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
+    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]|S?)\.(?P<pageextratype>(NP)?)(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
     # vol id regex
-    rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z]{2,12})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?))", flags=re.I)
+    rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z]{2,12})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]|S?))", flags=re.I)
     def __init__(self, document_id):
         #  See https://docs.google.com/document/d/1QmRG6MnM1jJOEq9irqCyoEY6Bt4U3mm8FY6TtZSt3-Y/edit#heading=h.mv7bvgdg7i7h for document ID information
         self.document_id = None
@@ -122,6 +122,10 @@ class DocumentID(object):
             else:
                 self.page_jump_type = "Arabic"
                 self.page_jump_type_code = ""
+
+            self.page_extra_type = m_groups.get("pageextratype").upper()
+            if self.page_extra_type != "NP":
+                self.page_extra_type = ""
                 
             # if there's an optional page number to jump too (P prefixed page number, not part of document ID per se)
             self.pagejump = m_groups.get("pagejump")
@@ -137,7 +141,7 @@ class DocumentID(object):
             self.page_start_id = f"{self.page_start_type_code}{self.page_start}{self.page_variant}"
             
             # normalized documentID
-            self.document_id = f"{self.journal_code}.{self.volume_id}.{self.page_start_id}"
+            self.document_id = f"{self.journal_code}.{self.volume_id}.{self.page_extra_type}{self.page_start_id}"
             self.jrnlvol_id = f"{self.journal_code}.{self.volume_id}"
             if self.pagejump != '':
                 self.document_id_pagejump = f"{self.document_id}.{self.pagejump_id}"

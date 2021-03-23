@@ -33,6 +33,7 @@ ALL_EXCEPT_JOURNAL_CODES = BOOK_CODES_ALL + VIDEOSTREAM_CODES_ALL
 
 # Note: language symbols to be lower case (will be converted to lowercase if not)
 DEFAULT_DATA_LANGUAGE_ENCODING = "en"
+CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr")
 
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.
@@ -213,10 +214,13 @@ DESCRIPTION_DOCUMENT_CONCORDANCE_RX = "String with single or list of Paragraph l
 DESCRIPTION_ENDDATE = "Find records on or before this date (input date as 2020-08-10 or 20200810)"
 DESCRIPTION_ENDYEAR = "Find documents published on or before this year (e.g, 2001)" 
 DESCRIPTION_FACETFIELDS = "List of fields for which to return facet info. Field art_sourcetype, for example, will give results counts by type (journal, book, videostream)."
+DESCRIPTION_FIRST_PAGE = "Document's first page"
 DESCRIPTION_FULLTEXT1 = "Words or phrases (in quotes) across the document (booleans search is not paragraph level). Field specifications are allowed."
 DESCRIPTION_FULLTEXT1_V1 = "Words or phrases (in quotes) in a paragraph in the document."
 DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to return the document. Specify which type of identifier using query param termidtype."
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
+DESCRIPTION_ISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals of all kinds and on all media–print and electronic."
+DESCRIPTION_ISBN = "International Standard Book Number. 10 digits up to the end of 2006, now always consist of 13 digits"
 DESCRIPTION_ISSUE = "The issue number if the source has one"
 DESCRIPTION_LIMIT = "Maximum number of items to return."
 DESCRIPTION_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
@@ -254,10 +258,12 @@ DESCRIPTION_STARTDATE = "Find records on or after this date (input date as 2020-
 DESCRIPTION_STARTYEAR = "Find documents published on or after this year, or in this range of years (e.g, 1999, Between range: 1999-2010. After: >1999 Before: <1999" 
 DESCRIPTION_SYNONYMS_BOOLEAN = "Expand search to include specially declared synonyms (True/False)"
 DESCRIPTION_SIMILARCOUNT = "Return this many similar documents for each document in the return set (0 = none)" 
+DESCRIPTION_TERMCOUNT_METHOD = '1=Alternate method for termcounts, allows full wildcards (requires solrpy installed). Default (=0) only supports wildcard at end of string "*"' 
 DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)."
 DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."
 DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification"
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
+DESCRIPTION_TRANSLATIONS = "Return a list of documents which are translations of this document in field translationSet"
 DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
 DESCRIPTION_VIEWCOUNT = "Include documents (not abstracts) viewed this many or more times (or X TO Y times). Optionally specify viewperiod, IN (lastweek|lastmonth|last6months|last12months|lastcalendaryear), or in parameter viewperiod"  
 DESCRIPTION_VIEWCOUNT_INT = "Include documents (not abstracts) viewed this many or more times. Must be an integer."  
@@ -299,7 +305,7 @@ TITLE_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'vie
 TITLE_OFFSET = "Document return offset"
 TITLE_PAGELIMIT = "Number pages to return"
 TITLE_PAGEOFFSET = "Relative page number (1 is the first) to return"
-TITLE_PAGEREQUEST = "Document's Page or page range"
+TITLE_PAGEREQUEST = "Document's first page or page range"
 TITLE_PARASCOPE = "Scope for paragraph search"
 TITLE_PARATEXT = "Paragraph based search"
 TITLE_SMARTSEARCH = "Search input parser"
@@ -315,14 +321,19 @@ TITLE_SORT = "Field names to sort by"
 TITLE_SOURCECODE = "Series code"
 TITLE_SOURCELANGCODE = "Source language code"
 TITLE_SOURCENAME = "Series name"
+TITLE_ISSN = "Standardized code for non-books"
+TITLE_ISBN = "Standardized code for books"
 TITLE_SOURCETYPE = "Source type"
+TITLE_FIRST_PAGE = "Document's first page"
 TITLE_STATONLY = "Minimal return items"
 TITLE_STARTYEAR = "Start year or range"
 TITLE_STARTDATE = "Start date"
 TITLE_SYNONYMS_BOOLEAN = "Synonym expansion switch (True/False)"
 TITLE_SIMILARCOUNT = "Return this many similar documents for each match"
+TITLE_TERMCOUNT_METHOD = '1=Alternate method for termcounts (req. solrpy lib installed)' 
 TITLE_TERMFIELD = "Default field for which to get term counts"
 TITLE_TERMLIST = "List of terms"
+TITLE_TRANSLATIONS = "If true, return a list of documents which are translations"
 TITLE_QTERMLIST = "Opas Model SolrQeryTermList"
 TITLE_TITLE = "Document Title"
 TITLE_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
@@ -371,6 +382,7 @@ ENDPOINT_SUMMARY_SEARCH_PARAGRAPHS = "Search at the paragraph (lowest) level by 
 ENDPOINT_SUMMARY_SEARCH_V1 = "Search at the paragraph level by document zone (API v1 backwards compatible)"
 ENDPOINT_SUMMARY_SEARCH_V2 = "Full search implementation, at the document or paragraph level"
 ENDPOINT_SUMMARY_SEARCH_V3 = "Full search implementation, at the document or paragraph level with body (termlist)"
+ENDPOINT_SUMMARY_OPENURL = "Search implementation using openURL .1 parameters"
 ENDPOINT_SUMMARY_API_STATUS = "Return the API version and status"
 ENDPOINT_SUMMARY_SERVER_STATUS = "Return the server status and more"
 ENDPOINT_SUMMARY_SOURCE_NAMES = "Return a list of available sources"
@@ -601,6 +613,24 @@ GLOSSARY_ITEM_DEFAULT_FIELDS = """
  group_name,
  group_term_count,
  text
+"""
+
+AUTHOR_ITEM_DEFAULT_FIELDS ="""
+ id,
+ art_id,
+ art_year_int,
+ title, 
+ art_title_xml, 
+ art_author_id, 
+ art_author_listed,
+ art_author_pos_int,
+ art_author_role,
+ art_sourcetype,
+ art_sourcetitlefull,
+ file_last_modified,
+ file_classification,
+ timestamp, 
+ score
 """
 
 running_head_fmts = {

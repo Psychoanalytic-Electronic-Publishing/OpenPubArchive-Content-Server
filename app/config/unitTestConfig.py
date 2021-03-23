@@ -37,7 +37,7 @@ base_api = APIURL
 # force local
 # base_api = "http://development.org:9100" #  local server (Scilab)
 
-ALL_SOURCES_COUNT = 190 # OFFSITE doesn't count
+ALL_SOURCES_COUNT = 189 # OFFSITE doesn't count
 # this must be set to the number of unique journals for testing to pass.
 JOURNALCOUNT = 77
 # this must be set to the exact number of unique books for testing to pass.

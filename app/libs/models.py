@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2019.0617.1"
+__version__     = "2021.0213.1" # per changes pushed earlier today to project
 __status__      = "Development"
 
 import sys
@@ -19,6 +19,7 @@ import datetime
 from datetime import datetime
 from typing import List, Generic, TypeVar, Optional
 import opasConfig
+from pysolr import Results
 
 from enum import Enum
 
@@ -199,12 +200,17 @@ class AuthorIndex(BaseModel):
     authorIndex: AuthorIndexStruct
     
 #-------------------------------------------------------
-class ClientConfig(BaseModel):
+class ClientConfigItem(BaseModel):
     """
     Dictionary to hold client configuration settings as set by the client administrator
     """
+    api_client_id: int = Schema(0, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
+    session_id: str = Schema(None, title="A generated session Identifier number the client passes in the header to identify the session")
     configName: str = Schema(None, title="Unique name (within client ID) to save and retrieve configuration")
     configSettings: dict = Schema({}, title="Dictionary with all configuration settings")
+
+class ClientConfigList(BaseModel):
+    configList: List[ClientConfigItem]
 
 #-------------------------------------------------------
 class MoreLikeThisItem(BaseModel):
@@ -268,7 +274,7 @@ class DocumentListItem(BaseModel):
     # |- new v2 field, but removed during cleanup, better ata is in stat.
     stat: dict = Schema(None, title="Statistics", description="Reusable field to return counts requested")
     similarityMatch: dict = Schema(None, title="Information about similarity matches")
-    translationSet: dict = Schema(None, title="Information about document translations and the original")
+    translationSet: list = Schema(None, title="Information about document translations and the original")
     # Search Analysis fields (and shared Glossary term)
     term: str = Schema(None, title="Search Analysis Term", description="For search analysis, the clause or term being reported")
     termCount: int = Schema(None, title="Search Analysis Term Count", description="For search analysis, the count of occurences of the clause or term being reported")
@@ -543,13 +549,14 @@ class SolrQueryOpts(BaseModel):
     hl: str = Schema('true', title="Highlighting (KWIC)", description="Turns on highlighting if specified.")
     hlFields: str = Schema('text_xml', title="highlight fields (KWIC)", description="Specific fields to highlight.")
     hlMethod: str = Schema("unified", title="Highlighter method", description="Use either unified (fastest) or original.")
-    hlFragsize: str = Schema(0, title="highlight fragment size", description="KWIC segment lengths")
+    hlFragsize: str = Schema(opasConfig.DEFAULT_KWIC_CONTENT_LENGTH, title="highlight fragment size", description="KWIC segment lengths")
     hlMaxAnalyzedChars: int = Schema(2520000, title="The character limit to look for highlights, after which no highlighting will be done. This is mostly only a performance concern")
     hlMaxKWICReturns: int = Schema(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title="The character limit to look for highlights, after which no highlighting will be done. This is mostly only a performance concern")
-    hlMultiterm: str = Schema('true', title="If set to true, Solr will highlight wildcard queries (and other MultiTermQuery subclasses). If false, they won’t be highlighted at all.")
-    hlTagPost: str = Schema('@@@@#', title="Markup (tag) after hit term")
-    hlTagPre: str = Schema('#@@@@', title="Markup (tag) before hit term")
+    # I think this is redundant with hlMaxKWICReturns - verify
     hlSnippets: str = Schema(None, title="Max KWIC Returns", description="Max number of highlights permitted per field")
+    hlMultiterm: str = Schema('true', title="If set to true, Solr will highlight wildcard queries (and other MultiTermQuery subclasses). If false, they won’t be highlighted at all.")
+    hlTagPost: str = Schema(opasConfig.HITMARKEREND, title="Markup (tag) after hit term")
+    hlTagPre: str = Schema(opasConfig.HITMARKERSTART, title="Markup (tag) before hit term")
     hlUsePhraseHighlighter: str = Schema('true', title="Solr will highlight phrase queries (and other advanced position-sensitive queries) accurately – as phrases. If false, the parts of the phrase will be highlighted everywhere instead of only when it forms the given phrase.")
     queryDebug: str = Schema("off", title="Turn Solr debug info 'on' or 'off' (default=off)")
     # facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
@@ -592,6 +599,8 @@ class SolrQuerySpec(BaseModel):
     page_offset: int = Schema(0, title="Page offset in return set")
     facetFields: str = Schema(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
     facetMinCount: int = Schema(1, title="Minimum count to return a facet")
+    facetSort: str = Schema(None, title="Fields on which to sort facets")
+    facetPivotFields: str = Schema(None, title="Fields to pivot on in Faceting (comma separated list)", description="Comma separated list of pivots, NO SPACES.")
     # TODO: facetRanges not yet implemented
     facetRanges: str = Schema(None, title="Faceting range list (comma separated list)", description="Returns faceting ranges if specified.")
     # facetSpec can include any Solr facet options, except any that are listed above.
@@ -651,7 +660,7 @@ class SolrReturnItem(BaseModel):
         
 class SolrReturnStruct(BaseModel):
     responseInfo: ResponseInfo
-    responseSet: List[SolrReturnItem] = []
+    responseSet: list # pysolr.results
 
 class SolrReturnList(BaseModel):
     solrRetList: SolrReturnStruct

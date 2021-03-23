@@ -27,10 +27,16 @@ class TestGetDocumentsTrySession(unittest.TestCase):
         assert(response_info["count"] == 1)
         document = response_set[0]["document"]
         abstr = response_set[0]["abstract"]
+        accessLimited = response_set[0]["accessLimited"]
         dlen = len(document)
         alen = len(abstr)
-        print (f"Abstract size: {alen}; Doc size: {dlen}; Document only returned abstract (indicates no user permissions): {alen==dlen}")
-        assert(alen == dlen)
+        if accessLimited == True: # when not logged in or otherwise not permitted
+            print (f"Abstract size: {alen}; Doc size: {dlen}; Document only returned abstract (indicates no user permissions): {alen==dlen}")
+            assert(alen == dlen)
+        else:
+            print (f"Abstract size: {alen}; Doc size: {dlen}; Document only document: {alen==dlen}")
+            assert(alen != dlen)
+            
         
     def test_2_get_document_another_user(self):
         # login

@@ -11,62 +11,67 @@
 #from solrq import Q
 import solrpy as solr
 import pysolr
-# import opasConfig
 from localsecrets import SOLRUSER, SOLRPW, SOLRURL
+import opasConfig
 
 # These are the solr database names used
 SOLR_DOCS = "pepwebdocs"
-# SOLR_DOCPARAS = "pepwebdocparas"  # For testing workaround for paragraph search
 # SOLR_REFS = "pepwebrefs"
 SOLR_AUTHORS = "pepwebauthors"
 SOLR_GLOSSARY = "pepwebglossary"
 
+SOLR_DEFAULT_CORE = SOLR_DOCS
+
 # constants
 COMMITLIMIT = 1000  # commit the load to Solr every X articles
 
-if SOLRUSER is not None:
-    solr_docs = solr.SolrConnection(SOLRURL + SOLR_DOCS, http_user=SOLRUSER, http_pass=SOLRPW)
-    solr_docs_term_search = solr.SearchHandler(solr_docs, "/terms")
-    #not used anymore
-    #solr_refs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_REFS, http_user=SOLRUSER, http_pass=SOLRPW)
-    solr_gloss = solr.SolrConnection(SOLRURL + SOLR_GLOSSARY, http_user=SOLRUSER, http_pass=SOLRPW)
-    solr_authors = solr.SolrConnection(SOLRURL + SOLR_AUTHORS, http_user=SOLRUSER, http_pass=SOLRPW)
-    solr_authors_term_search = solr.SearchHandler(solr_authors, "/terms")
-    solr_like_this = solr.SearchHandler(solr_authors, "/mlt")
-else:
-    solr_docs = solr.SolrConnection(SOLRURL + SOLR_DOCS)
-    solr_docs_term_search = solr.SearchHandler(solr_docs, "/terms")
-    
-    #not used anymore
-    #solr_refs = solr.SolrConnection(SOLRURL + opasConfig.SOLR_REFS)
-    solr_gloss = solr.SolrConnection(SOLRURL + SOLR_GLOSSARY, http_user=SOLRUSER, http_pass=SOLRPW)
-    solr_authors = solr.SolrConnection(SOLRURL + SOLR_AUTHORS, http_user=SOLRUSER, http_pass=SOLRPW)
-    solr_authors_term_search = solr.SearchHandler(solr_authors, "/terms")
-    solr_like_this = solr.SearchHandler(solr_authors, "/mlt")
-
-# for eventual transition to pysolr!
+# for pysolr! (solrpy is now limited to a variant of term search and used only in opasSolrPyLib.py)
 if SOLRUSER is not None and SOLRPW is not None:
     solr_docs2 = pysolr.Solr(SOLRURL + SOLR_DOCS, auth=(SOLRUSER, SOLRPW))
-    #solr_docs_term_search2 = pysolr.Solr(SOLRURL + SOLR_DOCS, "/terms", auth=(SOLRUSER, SOLRPW))
+    #solr_docs_term_search = pysolr.Solr(SOLRURL + SOLR_DOCS, "/terms", auth=(SOLRUSER, SOLRPW))
     solr_gloss2 = pysolr.Solr(SOLRURL + SOLR_GLOSSARY, auth=(SOLRUSER, SOLRPW))
     solr_authors2 = pysolr.Solr(SOLRURL + SOLR_AUTHORS, auth=(SOLRUSER, SOLRPW))
     #solr_authors_term_search2 = pysolr.Solr(solr_authors, "/terms", auth=(SOLRUSER, SOLRPW))
-    solr_like_this2 = pysolr.Solr(solr_authors, "/mlt", auth=(SOLRUSER, SOLRPW))
+    solr_like_this2 = pysolr.Solr(solr_authors2, "/mlt", auth=(SOLRUSER, SOLRPW))
 else: #  no user and password needed
     solr_docs2 = pysolr.Solr(SOLRURL + SOLR_DOCS)
-    #solr_docs_term_search2 = solr_docs2  # term_index = solr_docs2.suggest_terms(term_field, term_partial.lower())
+    #solr_docs_term_search = solr_docs2  # term_index = solr_docs2.suggest_terms(term_field, term_partial.lower())
     solr_gloss2 = pysolr.Solr(SOLRURL + SOLR_GLOSSARY)
     solr_authors2 = pysolr.Solr(SOLRURL + SOLR_AUTHORS)
     #solr_authors_term_search2 = pysolr.Solr(solr_authors2, "/terms")
     solr_like_this2 = pysolr.Solr(solr_authors2, "/mlt")
 
-
 # define cores for ExtendedSearch
 EXTENDED_CORES = {
-    "pepwebdocs": solr_docs,
-    "pepwebgloss": solr_gloss,
-    "pepwebauthors": solr_authors,
-    "pepwebauthors_terms": solr_authors_term_search,
+    "pepwebdocs": solr_docs2,
+    "pepwebgloss": solr_gloss2,
+    "pepwebauthors": solr_authors2,
+    # "pepwebauthors_terms": solr_authors_term_search,
+}
+
+EXTENDED_DOCS_DEFAULTS = {
+    "fl" : opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
+}
+
+EXTENDED_GLOSSARY_DEFAULTS = {
+    "fl" : opasConfig.GLOSSARY_ITEM_DEFAULT_FIELDS,    
+}
+
+EXTENDED_AUTHOR_DEFAULTS = {
+    "fl" : opasConfig.AUTHOR_ITEM_DEFAULT_FIELDS, 
+}
+
+EXTENDED_CORES_DEFAULTS = {
+    "pepwebdocs": EXTENDED_DOCS_DEFAULTS,
+    "pepwebgloss": EXTENDED_GLOSSARY_DEFAULTS,
+    "pepwebauthors": EXTENDED_AUTHOR_DEFAULTS,
+}
+
+CORES = {
+    "docs": solr_docs2,
+    "gloss": solr_gloss2,
+    "authors": solr_authors2,
+    # "authors_terms": solr_authors_term_search,
 }
 
 def direct_endpoint_call(endpoint, base_api=None):

@@ -21,60 +21,34 @@ class TestAdminLogLevel(unittest.TestCase):
     
     def test00_loglevel_warning(self):
         full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?Level=WARN')
-        response = requests.get(full_URL, headers=headers)
+        response = requests.put(full_URL, headers=headers)
         assert(response.ok == True)
         # these don't get affected by the level.
         r = response.json()
-        print (f"Loglevel: {r}")
-        assert (r == "WARNING") # WARNING
-        # set client log level now!
-        logger.setLevel(r)
-        logger.debug("This should not be logged/displayed since it's debug")
-        logger.info("This should not be logged/displayed since it's info")
-        logger.warning("This should be logged/displayed since it's warning")
-        logger.error("This should be logged/displayed since it's error")
+        assert ("WARNING" in r) # WARNING
 
     def test01_loglevel_error(self):
         full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?level=ERROR')
-        response = requests.get(full_URL, headers=headers)
+        response = requests.put(full_URL, headers=headers)
         assert(response.ok == True)      
         r = response.json()
-        assert (r == "ERROR")
-        # set client log level now!
-        logger.setLevel(r)
-        logger.debug("This should not be logged/displayed since it's debug")
-        logger.info("This should not be logged/displayed since it's info")
-        logger.warning("This should not be logged/displayed since it's warning")
-        logger.error("This should be logged/displayed since it's error")
+        assert ("ERROR" in r)
 
     def test02_loglevel_debug(self):
         full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?level=DEBUG')
-        response = requests.get(full_URL, headers=headers)
+        response = requests.put(full_URL, headers=headers)
         assert(response.ok == True)      
         r = response.json()
-        print (f"Loglevel: {r}")
-        assert (r == "DEBUG")
+        assert ("DEBUG" in r)
         # set client log level now!
-        logger.setLevel(r)
-        logger.debug("This should be logged/displayed since it's debug")
-        logger.info("This should be logged/displayed since it's info")
-        logger.warning("This should be logged/displayed since it's warning")
-        logger.error("This should be logged/displayed since it's error")
 
     # last test--leave it on info
     def test03_loglevel_info(self):
         full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?level=INFO')
-        response = requests.get(full_URL, headers=headers)
+        response = requests.put(full_URL, headers=headers)
         assert(response.ok == True)      
         r = response.json()
-        print (f"Loglevel: {r}")
-        assert (r == "INFO") 
-        # set client log level now!
-        logger.setLevel(r)
-        logger.debug("This should not be logged/displayed since it's debug")
-        logger.info("This should be logged/displayed since it's info")
-        logger.warning("This should be logged/displayed since it's warning")
-        logger.error("This should be logged/displayed since it's error")
+        assert ("INFO" in r) 
         
 
 if __name__ == '__main__':
