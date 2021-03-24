@@ -38,14 +38,15 @@ def opas_sitemap_index(output_file="../sitemapindex", sitemap_list=[]):
    Create the index of the returned file names
 
    >>> sitemap_list = metadata_export(outputFileName="../sitemap", total_records=1000, records_per_file=200)
-   >>> opas_sitemap_index(output_file="../sitemapindex", sitemap_list=sitemap_list)
+   >>> list = opas_sitemap_index(output_file="../sitemapindex", sitemap_list=sitemap_list)
+   >>> len(list) > 0
    True
    
    """
    dtformat = '%Y-%m-%dT%H:%M:%S%Z'
    
    try:
-      ret_val = True
+      ret_val = ""
       enf = codecs.open(output_file,'w','utf-8')
       sm_index_head = f'''
          <?xml version="1.0" encoding="UTF-8"?>\n
@@ -63,12 +64,13 @@ def opas_sitemap_index(output_file="../sitemapindex", sitemap_list=[]):
             </sitemap>\n
          '''
          enf.write(record)
+         ret_val += record
    
       enf.write("</sitemapindex>\n")
       enf.close()
    except Exception as err:
-      ret_val = False
-      print (f"Error: {err}")
+      ret_val = f"Error: {err}"
+      logger.error(ret_val)
       
    return ret_val
      

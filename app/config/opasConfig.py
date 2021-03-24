@@ -33,7 +33,8 @@ ALL_EXCEPT_JOURNAL_CODES = BOOK_CODES_ALL + VIDEOSTREAM_CODES_ALL
 
 # Note: language symbols to be lower case (will be converted to lowercase if not)
 DEFAULT_DATA_LANGUAGE_ENCODING = "en"
-CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr")
+CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr", "de-de", "it-it")
+EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT = 13000 # lower numbers are faster, but don't read the last n files before making a random selection
 
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0322.1.Beta"
+__version__     = "2021.0323.1.Beta"
 __status__      = "Development"
 
 """
@@ -97,6 +97,8 @@ import shlex
 import io
 import pathlib
 import urllib.parse
+import random
+# import glob
 
 # import json
 
@@ -147,6 +149,8 @@ import opasPySolrLib
 from opasPySolrLib import search_text, search_text_qs
 import opasSolrPyLib
 import opasPDFStampCpyrght
+
+expert_pick_image = ["", ""]
 
 # Check text server version
 text_server_ver = None
@@ -706,7 +710,7 @@ async def api_openapi_spec(api_key: APIKey = Depends(get_api_key),
     return response
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Admin/Sitemap/", tags=["Admin"], summary="Admin function to change logging level")
+@app.get("/v2/Admin/Sitemap/", tags=["Admin"], summary="Admin function to generate sitemap")
 async def admin_sitemap(response: Response, 
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                         api_key: APIKey = Depends(get_api_key), 
@@ -716,27 +720,32 @@ async def admin_sitemap(response: Response,
     
     """
     ## Function
-       <b>Change the logging level of the server to DEBUG, INFO, WARNING, or ERROR.</b>
+       <b>Generate a Sitemap for Google.</b>
 
-       <b>Requires</b> API key, sessionID and client_id in the header (use 'client-id' in call header).
+       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
 
     ## Return Type
-       Returns a string confirming the new logger level, or an error message.  
+       saves a sitemap to the location 
 
     ## Status
        This endpoint is working.
 
     ## Notes
-       The input string is case insensitive.
        
     ## Potential Errors
        NA
     
     """
     import opasSiteMap
-    # Need to move these to localsecrets
-    SITEMAP_OUTPUT_FILE = "../sitemap" # don't include xml extension here, it's added
-    SITEMAP_INDEX_FILE = "../sitemapindex.xml"
+
+    # Need to move these to localsecrets on AWS, then remove this
+    try:
+        SITEMAP_OUTPUT_FILE = localsecrets.SITEMAP_OUTPUT_FILE # don't include xml extension here, it's added
+        SITEMAP_INDEX_FILE = localsecrets.SITEMAP_INDEX_FILE
+    except Exception as e:
+        SITEMAP_OUTPUT_FILE = "../sitemap" # don't include xml extension here, it's added
+        SITEMAP_INDEX_FILE = "../sitemapindex.xml"
+
     max_records = 150000
     records_per_file = 8000
     
@@ -5206,7 +5215,8 @@ async def documents_image_fetch(response: Response,
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 imageID: str=Path(..., title=opasConfig.TITLE_IMAGEID, description=opasConfig.DESCRIPTION_IMAGEID),
                                 download: int=Query(0, title="Return or download", description="0 to return the image to the browser, 1 to download"),
-                                client_id:int=Depends(get_client_id), 
+                                client_id:int=Depends(get_client_id),
+                                seed:str=Query(None, title="Seed String to help randomize daily expert pick", description="Use the date, for example, to avoid caching from a prev. date. "), 
                                 #client_session:str= Depends(get_client_session)
                                 ):
     """
@@ -5215,6 +5225,9 @@ async def documents_image_fetch(response: Response,
        if download == 1 then the file is returned as a downloadable file to the client/browser.
        Otherwise, it's returned as binary data, and displays in the browser.  This is in fact
           how it works to display images in articles.
+          
+       Use * to return a random image each day.  The first fetch may take 7 or so seconds.  The rest of the day
+         it will be instantaneous.
 
     ## Return Type
        Binary data
@@ -5260,6 +5273,21 @@ async def documents_image_fetch(response: Response,
     filename = fs.get_image_filename(filespec=imageID) # IMAGE_SOURCE_PATH set as root above, all that we need
     media_type='image/jpeg'
     if download == 0:
+        if imageID == "*":
+            #  load a random image.  Load a new one each day
+            today = datetime.today().strftime("%Y%m%d")
+            if expert_pick_image[0] != today:
+                flex_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                                         secret=localsecrets.S3_SECRET,
+                                                         root=localsecrets.S3_IMAGE_EXPERT_PICKS_PATH) 
+                filenames = flex_fs.get_matching_filelist(path=localsecrets.S3_IMAGE_EXPERT_PICKS_PATH, filespec_regex=".*\.jpg", max_items=opasConfig.EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT)
+                filename = random.choice(filenames)
+                filename = filename.basename
+                expert_pick_image[0] = today
+                expert_pick_image[1] = filename
+            else:
+                filename = expert_pick_image[1] 
+            
         if filename is None:
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
             status_message = f"Error: {imageID} not found or no filename specified"
