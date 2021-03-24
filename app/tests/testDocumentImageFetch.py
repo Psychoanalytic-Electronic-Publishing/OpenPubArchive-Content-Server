@@ -53,6 +53,11 @@ class TestDocumentImageFetch(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
+    def test_2_Image_of_the_day(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Image/*/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
 
 if __name__ == '__main__':
     unittest.main()    

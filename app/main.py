@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0323.2.Beta"
+__version__     = "2021.0324.1.Beta"
 __status__      = "Development"
 
 """
@@ -142,6 +142,7 @@ from errorMessages import *
 import models
 import opasCentralDBLib
 import opasFileSupport
+import opasGenSupportLib
 import opasQueryHelper
 import opasSchemaHelper
 import opasDocPermissions
@@ -5214,9 +5215,10 @@ def documents_glossary_term(response: Response,
 async def documents_image_fetch(response: Response,
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 imageID: str=Path(..., title=opasConfig.TITLE_IMAGEID, description=opasConfig.DESCRIPTION_IMAGEID),
-                                download: int=Query(0, title="Return or download", description="0 to return the image to the browser, 1 to download"),
+                                download: int=Query(0, title="Return or download", description="0 returns the binary image, 1 downloads, 2 returns the article ID"),
                                 client_id:int=Depends(get_client_id),
-                                seed:str=Query(None, title="Seed String to help randomize daily expert pick", description="Use the date, for example, to avoid caching from a prev. date. "), 
+                                #seed:str=Query(None, title="Seed String to help randomize daily expert pick", description="Use the date, for example, to avoid caching from a prev. date. "),
+                                reselect:bool=Query(False, title="Force a new random image selection")  
                                 #client_session:str= Depends(get_client_session)
                                 ):
     """
@@ -5258,7 +5260,7 @@ async def documents_image_fetch(response: Response,
     log_endpoint(request, client_id=client_id)
 
     endpoint = opasCentralDBLib.API_DOCUMENTS_IMAGE
-    if download != 0:
+    if download != 0 and download != 2:
         client_session = get_client_session(response, request, 
                                             client_id=client_id) 
         # this is when we need a session id
@@ -5278,11 +5280,11 @@ async def documents_image_fetch(response: Response,
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
     filename = fs.get_image_filename(filespec=imageID) # IMAGE_SOURCE_PATH set as root above, all that we need
     media_type='image/jpeg'
-    if download == 0:
+    if download == 0 or download == 2:
         if imageID == "*":
             #  load a random image.  Load a new one each day
             today = datetime.today().strftime("%Y%m%d")
-            if expert_pick_image[0] != today:
+            if expert_pick_image[0] != today or reselect:
                 flex_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                                          secret=localsecrets.S3_SECRET,
                                                          root=expert_picks_path) 
@@ -5301,20 +5303,30 @@ async def documents_image_fetch(response: Response,
             raise HTTPException(status_code=response.status_code,
                                 detail=status_message)
         else:
-            file_content = fs.get_image_binary(filename)
-            try:
-                ret_val = response = Response(file_content, media_type=media_type)
-
-            except Exception as e:
-                response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = f" The requested document {filename} could not be returned {e}"
-                logger.warning(status_message)
-                raise HTTPException(status_code=response.status_code,
-                                    detail=status_message)
-
-            else:
-                status_message = opasCentralDBLib.API_STATUS_SUCCESS
-                logger.debug(status_message)
+            if download == 0:
+                file_content = fs.get_image_binary(filename)
+                try:
+                    ret_val = response = Response(file_content, media_type=media_type)
+    
+                except Exception as e:
+                    response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
+                    status_message = f" The requested document {filename} could not be returned {e}"
+                    logger.warning(status_message)
+                    raise HTTPException(status_code=response.status_code,
+                                        detail=status_message)
+                else:
+                    status_message = opasCentralDBLib.API_STATUS_SUCCESS
+                    logger.debug(status_message)
+            elif download == 2:
+                # TODO - get article ID instead of filename (otherwise will need to remove those that aren't articleID based)
+                try:
+                    ret_val = response = opasGenSupportLib.DocumentID(filename).document_id
+                except Exception as e:
+                    response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
+                    status_message = f" The requested document {filename} could not be returned {e}"
+                    raise HTTPException(status_code=response.status_code,
+                                        detail=status_message)
+                    
 
     else: # download == 1
         try:
