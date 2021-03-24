@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0323.1.Beta"
+__version__     = "2021.0323.2.Beta"
 __status__      = "Development"
 
 """
@@ -740,8 +740,8 @@ async def admin_sitemap(response: Response,
 
     # Need to move these to localsecrets on AWS, then remove this
     try:
-        SITEMAP_OUTPUT_FILE = localsecrets.SITEMAP_OUTPUT_FILE # don't include xml extension here, it's added
-        SITEMAP_INDEX_FILE = localsecrets.SITEMAP_INDEX_FILE
+        SITEMAP_OUTPUT_FILE = localsecrets.SITEMAP_PATH + "/sitemap"
+        SITEMAP_INDEX_FILE = localsecrets.SITEMAP_PATH + "/sitemapindex.xml"
     except Exception as e:
         SITEMAP_OUTPUT_FILE = "../sitemap" # don't include xml extension here, it's added
         SITEMAP_INDEX_FILE = "../sitemapindex.xml"
@@ -5245,10 +5245,16 @@ async def documents_image_fetch(response: Response,
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
     """
+    # temporary until in localsecrets on AWS
+    try:
+        expert_picks_path = localsecrets.S3_IMAGE_EXPERT_PICKS_PATH
+    except:
+        expert_picks_path = "pep-web-expert-pick-images"
+
     ret_val = None
     if imageID is not None:
         imageID = imageID.replace("+", " ")
-
+        
     log_endpoint(request, client_id=client_id)
 
     endpoint = opasCentralDBLib.API_DOCUMENTS_IMAGE
@@ -5279,8 +5285,8 @@ async def documents_image_fetch(response: Response,
             if expert_pick_image[0] != today:
                 flex_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
                                                          secret=localsecrets.S3_SECRET,
-                                                         root=localsecrets.S3_IMAGE_EXPERT_PICKS_PATH) 
-                filenames = flex_fs.get_matching_filelist(path=localsecrets.S3_IMAGE_EXPERT_PICKS_PATH, filespec_regex=".*\.jpg", max_items=opasConfig.EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT)
+                                                         root=expert_picks_path) 
+                filenames = flex_fs.get_matching_filelist(path=expert_picks_path, filespec_regex=".*\.jpg", max_items=opasConfig.EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT)
                 filename = random.choice(filenames)
                 filename = filename.basename
                 expert_pick_image[0] = today
