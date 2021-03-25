@@ -5252,10 +5252,14 @@ async def documents_image_fetch(response: Response,
     # temporary until in localsecrets on AWS
     try:
         expert_picks_path = localsecrets.S3_IMAGE_EXPERT_PICKS_PATH
+        status_message = f"Expert Picks Path is: {expert_picks_path}"
+        logger.warning(status_message)
     except:
         expert_picks_path = "pep-web-expert-pick-images"
 
     ret_val = None
+    filename = None
+    
     if imageID is not None:
         imageID = imageID.replace("+", " ")
         
@@ -5280,8 +5284,9 @@ async def documents_image_fetch(response: Response,
             )    
 
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
-    filename = fs.get_image_filename(filespec=imageID) # IMAGE_SOURCE_PATH set as root above, all that we need
     media_type='image/jpeg'
+    if imageID != "*":
+        filename = fs.get_image_filename(filespec=imageID) # IMAGE_SOURCE_PATH set as root above, all that we need
     if download == 0 or download == 2:
         if imageID == "*":
             #  load a random image.  Load a new one each day
@@ -5291,6 +5296,8 @@ async def documents_image_fetch(response: Response,
                                                          secret=localsecrets.S3_SECRET,
                                                          root=expert_picks_path) 
                 filenames = flex_fs.get_matching_filelist(path=expert_picks_path, filespec_regex=".*\.jpg", max_items=opasConfig.EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT)
+                status_message = f"Expert Picks Image Count: {len(filenames)}"
+                logger.warning(status_message)
                 filename = random.choice(filenames)
                 filename = filename.basename
                 expert_pick_image[0] = today
