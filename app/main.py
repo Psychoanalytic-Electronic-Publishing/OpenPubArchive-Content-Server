@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0324.1.Beta"
+__version__     = "2021.0325.1.Beta"
 __status__      = "Development"
 
 """
@@ -5232,7 +5232,9 @@ async def documents_image_fetch(response: Response,
          it will be instantaneous.
 
     ## Return Type
-       Binary data
+       Binary data if download=0
+       a downloaded image if download=1,
+       or a pair of IDs "articleID", "figureID" if download=2
 
     ## Status
        This endpoint is working.
@@ -5320,7 +5322,10 @@ async def documents_image_fetch(response: Response,
             elif download == 2:
                 # TODO - get article ID instead of filename (otherwise will need to remove those that aren't articleID based)
                 try:
-                    ret_val = response = opasGenSupportLib.DocumentID(filename).document_id
+                    graphic_item = models.GraphicItem(documentID = opasGenSupportLib.DocumentID(filename).document_id,
+                                                      graphic = filename)
+                    ret_val = response = graphic_item
+                    
                 except Exception as e:
                     response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
                     status_message = f" The requested document {filename} could not be returned {e}"

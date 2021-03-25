@@ -345,6 +345,11 @@ class FileItemList(BaseModel):
     fileItemList: FileItemListStruct
     
 #-------------------------------------------------------
+class GraphicItem(BaseModel):
+    documentID: str = Schema(None, title="ID of document containing graphic")
+    graphic: str = Schema(None, title="Graphic filename, or ID, no path")
+
+#-------------------------------------------------------
 class ImageURLListItem(BaseModel):    
     PEPCode: str
     imageURL: str
