@@ -8,6 +8,7 @@
 
 import opasDocPermissions
 import requests
+import re
 
 import logging
 logger = logging.getLogger(__name__)
@@ -58,6 +59,15 @@ class TestDocumentImageFetch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
+
+    def test_3_Image_of_the_day_article_id(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Image/*/?download=2')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        assert (re.match("[A-Z]{1,12}\.[0-9]{3,3}[A-Z]\.[0-9]{4,4}[A-Z]", r) is not None)
 
 if __name__ == '__main__':
     unittest.main()    
