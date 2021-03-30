@@ -42,7 +42,19 @@ class DocumentID(object):
       - Now case insensitive (all resulting IDs are uppercase)
       - Tolerates missing leading zeros and corrects
     
-    
+    >>> DocumentID('LU-AM.005I.0025A.FIG001.jpg')
+    LU-AM.005I.0025A
+    >>> DocumentID('LU-AM.005I.0025A.FIG001')
+    LU-AM.005I.0025A
+    >>> DocumentID('LU-AM.005I.0025A.FIG 1')
+    LU-AM.005I.0025A
+    >>> DocumentID('AOP.001.0138.jpg')
+    AOP.001.0138A
+    >>> DocumentID('APA.01.00590.FIG 1.jpg')
+    APA.001.0059A
+    >>> DocumentID('APA.05.00050.FIG 12.jpg')
+    APA.005.0005A
+
     >>> DocumentID('ZBK.074.R0007A')
     ZBK.074.R0007A
     >>> DocumentID('zbk.074.r0007a')
@@ -73,13 +85,12 @@ class DocumentID(object):
     IJP.007.0007A
     >>> DocumentID('ijp.7.7')
     IJP.007.0007A
-    
 
     """
     # document id regex
-    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]|S?)\.(?P<pageextratype>(NP)?)(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
+    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-M]|S?)\.(?P<pageextratype>(NP)?)(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
     # vol id regex
-    rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z]{2,12})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]|S?))", flags=re.I)
+    rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-M]|S?))", flags=re.I)
     def __init__(self, document_id):
         #  See https://docs.google.com/document/d/1QmRG6MnM1jJOEq9irqCyoEY6Bt4U3mm8FY6TtZSt3-Y/edit#heading=h.mv7bvgdg7i7h for document ID information
         self.document_id = None
