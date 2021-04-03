@@ -410,7 +410,7 @@ def in_quotes(arg):
     """
     try:
         if isinstance(arg, str):
-            if re.match(r"([\"\']).*?\1", arg):
+            if re.match(r"\s*([\"\']).*?\1\s*", arg):
                 return True
             else:
                 return False
@@ -517,7 +517,7 @@ def is_boolean(arg):
     """
     try:
         if isinstance(arg, str):
-            if re.search(r"\s(AND|OR|\&\&|\|\)\s)", arg, flags=re.IGNORECASE):
+            if re.search(r"\s(AND|OR|\&\&|\|\)\s)", arg, flags=re.IGNORECASE): 
                 return True
             else:
                 return False

@@ -651,11 +651,39 @@ SORT_VIEWS = "art_views_last6mos {0}"
 SORT_TOC = "art_sourcetitlefull_str {0}, art_year {0}, art_iss {0}, art_pgrg {0}"
 SORT_SCORE = "score {0}"
 
+MAX_SOURCE_LEN = 14
 # search description fields to communicate about the search
-KEY_SEARCH_SMARTSEARCH = "smart_search"
+KEY_SEARCH_TYPE = "search_type"
 KEY_SEARCH_FIELD = "schema_field"
 KEY_SEARCH_VALUE = "schema_value"
-KEY_SEARCH_WORDSEARCH = "wordsearch"
+KEY_SEARCH_CLAUSE = "search_clause"
+KEY_SEARCH_SMARTSEARCH = "smart_search"
+KEY_SEARCH_FIELD_COUNT = "field_count"
+# KEY_MATCH_DICT = "match_dict"
+# KEY_SEARCH_WORDSEARCH = "word_search"
+
+SEARCH_TYPE_AUTHOR_CITATION = "author citation"
+SEARCH_TYPE_AUTHORS = "authors"
+# SEARCH_TYPE_AUTHORS_AND_YEARS = "pattern authors year"
+SEARCH_TYPE_WORDSEARCH = "wordsearch"
+SEARCH_TYPE_BOOLEAN = "boolean"
+SEARCH_TYPE_LITERAL = "literal"
+SEARCH_TYPE_TITLE = "title"
+SEARCH_TYPE_PARAGRAPH = "paragraph search"
+SEARCH_TYPE_ID = "locator"
+SEARCH_TYPE_ARTICLE_FIELDS = "article fields"
+SEARCH_TYPE_ADVANCED = "solradvanced"
+SEARCH_TYPE_FIELDED = "solrfield"
+SEARCH_TYPE_DOI = "doi"
+
+SEARCH_FIELD_LOCATOR = "art_id"
+SEARCH_FIELD_AUTHOR_CITATION = "art_authors_citation"
+SEARCH_FIELD_AUTHORS = "authors"
+SEARCH_FIELD_TITLE = "title"
+SEARCH_FIELD_TEXT = "text"
+SEARCH_FIELD_DOI = "art_doi"
+SEARCH_FIELD_PGRG = "art_pgrg"
+
 
 # Dict = sort key to use, fields, default direction if one is not specified.
 PREDEFINED_SORTS = {

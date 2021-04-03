@@ -160,10 +160,11 @@ def cleanup_solr_query(solrquery):
         ret_val = ret_val.replace("*:* {", "{")  # Remove if it's before a solr join for level 2 queries
         ret_val = pat_prefix_amps.sub("", ret_val)
 
-    ret_val = re.sub("\s+(AND)\s+", " && ", ret_val, flags=re.IGNORECASE)
-    ret_val = re.sub("\s+(OR)\s+", " || ", ret_val, flags=re.IGNORECASE)
-    ret_val = re.sub("\s+(NOT)\s+", " NOT ", ret_val, flags=re.IGNORECASE)
-    ret_val = remove_proximity_around_booleans(ret_val)
+    if re.match('\".*\"', ret_val) is None: # not literal
+        ret_val = re.sub("\s+(AND)\s+", " && ", ret_val) # flags=re.IGNORECASE)  2021-04-01 AND/OR/NOT must be uppercase now
+        ret_val = re.sub("\s+(OR)\s+", " || ", ret_val) # , flags=re.IGNORECASE)
+        ret_val = re.sub("\s+(NOT)\s+", " NOT ", ret_val) # , flags=re.IGNORECASE)
+        ret_val = remove_proximity_around_booleans(ret_val)
 
     # one last cleaning, watch for && *:*
     ret_val = ret_val.replace(" && *:*", "")
@@ -655,7 +656,9 @@ def remove_proximity_around_booleans(query_str):
         m = re.search(srch_ptn, query_str)
         if m is not None:
             # does it have a boolean, a quote, or a bracket (range)?
-            n = re.search(r"\s(AND|OR|NOT|\&\&|\|\|)\s|([\"\[\']])", m.group(1), flags=re.IGNORECASE)
+            # n = re.search(r"\s(AND|OR|NOT|\&\&|\|\|)\s|([\"\[\']])", m.group(1), flags=re.IGNORECASE)
+            # 2021-04-01 Booleans must be UPPERCASE now
+            n = re.search(r"\s(AND|OR|NOT|\&\&|\|\|)\s|([\"\[\']])", m.group(1))
             # if it's not None, then this is not a proximity match
             if n is not None:
                 query_str = re.subn(srch_ptn, r'(\1)', query_str, 1)[0]
@@ -974,11 +977,11 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_dict = smartsearch.smart_search(smarttext)
         # set up parameters as a solrQueryTermList to share that processing
         # solr_query_spec.solrQueryOpts.qOper = "OR"
-        schema_field = search_dict.get("schema_field")
+        schema_field = search_dict.get(opasConfig.KEY_SEARCH_FIELD)
         limit = 0
-        search_result_explanation = search_dict[KEY_SEARCH_SMARTSEARCH]
+        search_result_explanation = search_dict[opasConfig.KEY_SEARCH_SMARTSEARCH]
         if schema_field is not None:
-            schema_value = search_dict.get("schema_value")
+            schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
             if opasgenlib.not_empty(schema_value):
                 if "'" in schema_value or '"' in schema_value:
                     search_q += f"&& {schema_field}:{schema_value} "
@@ -1033,7 +1036,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                     if author is None:
                         author = f'"{art_author}"'
     
-                title_search = search_dict.get("title")
+                title_search = search_dict.get(opasConfig.SEARCH_FIELD_TITLE)
                 if title_search is not None:
                     if title is None:
                         title = title_search
@@ -1075,7 +1078,20 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                         search_q += f'&& {field_name}:({word_search}) '
                                     else:
                                         search_q += f'&& {field_name}:"{word_search}"~25 '
-                                       
+
+                search_type = search_dict.get(opasConfig.KEY_SEARCH_TYPE)
+                if search_type == opasConfig.SEARCH_TYPE_LITERAL:
+                    literal_str = re.sub("'", '"', search_dict.get(opasConfig.KEY_SEARCH_VALUE))
+                    search_q += f'&& {literal_str}'
+                elif search_type == opasConfig.SEARCH_TYPE_BOOLEAN:
+                    boolean_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                    search_q += f'&& {boolean_str}'
+                elif search_type == opasConfig.SEARCH_TYPE_PARAGRAPH:
+                    search_q += f'&& {search_dict.get(KEY_SEARCH_VALUE)}'
+                #else:
+                    ## not sure what to search
+                    #search_q += f'&& {smarttext}'
+                    
 
     if art_level is not None:
         filter_q = f"&& art_level:{art_level} "  # for solr filter fq

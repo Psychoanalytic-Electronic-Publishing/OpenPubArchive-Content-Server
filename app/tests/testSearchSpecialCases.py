@@ -102,12 +102,12 @@ class TestSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 475 and response_info["fullCount"] <= 525) # range just to give it some upper slack for new data
+        assert(response_info["fullCount"] >= 134 and response_info["fullCount"] <= 199) # range just to give it some upper slack for new data
 
     def test_2c_example_fulltext1_search_types(self):
         """
         """
-        # this is interpreted as an OR boolean
+        # this is interpreted as proximity search now (2021-04-01)
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1="Eitingon or Model"~25')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -115,7 +115,7 @@ class TestSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         v1_count = response_info["fullCount"]
         print (f'v1 Count (fulltext1="Eitingon or Model"~25): {v1_count}')
-        assert(response_info["fullCount"] >= 31379 and response_info["fullCount"] <= 34000) # range just to give it some upper slack for new data
+        assert(response_info["fullCount"] >= 31 and response_info["fullCount"] <= 34) # range just to give it some upper slack for new data
         # this is interpreted as a phrase
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=body_xml:"Eitingon or Model"')
         response = requests.get(full_URL, headers=headers)
@@ -131,7 +131,7 @@ class TestSearch(unittest.TestCase):
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         v3_count = response_info["fullCount"]
-        print (response_info["description"], f'v3 Count (smarttext="Eitingon or Model"): {v3_count}')
+        print (response_info["description"], f'v3 Count (smarttext=Eitingon or Model): {v3_count}')
         assert(v3_count == v2_count)
         
 

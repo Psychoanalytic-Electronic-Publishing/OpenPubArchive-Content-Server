@@ -1009,6 +1009,8 @@ class opasCentralDB(object):
                 except pymysql.InternalError as error:
                     code, message = error.args
                     logger.error(code, message)
+                except pymysql.Error as error:
+                    logger.error(code, message)
                 else:
                     self.db.commit()
                 
@@ -1017,8 +1019,8 @@ class opasCentralDB(object):
                     ret_val = True
                     logger.debug(f"Updated session record for session: {session_id}")
                 else:
-                    ret_val = False
-                    logger.warning(f"Could not record close session per sessionID {session_id} in DB")
+                    ret_val = False # seems to be false if the record update is the same, so change to just debug notice
+                    logger.debug(f"Could not record close session per sessionID {session_id} in DB")
 
         self.close_connection(caller_name="update_session") # make sure connection is closed
         return ret_val
