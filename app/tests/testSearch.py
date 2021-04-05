@@ -278,6 +278,16 @@ class TestSearch(unittest.TestCase):
         assert(response_info["count"] == 1)
         print (response_set[0])
 
+    def test_search_facets(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=cooper AND cooper, steven h. OR cooper, steven')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 70)
+
 if __name__ == '__main__':
     unittest.main()
     

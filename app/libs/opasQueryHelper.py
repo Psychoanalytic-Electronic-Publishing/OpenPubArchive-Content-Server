@@ -404,7 +404,7 @@ class QueryTextToSolr():
         
     def markup(self, str_input, field_label=None, field_thesaurus=None, quoted=False):
         
-        bordered = opasgenlib.in_parens(str_input) or opasgenlib.in_quotes(str_input) or opasgenlib.one_term(str_input) or opasgenlib.in_brackets(str_input)
+        bordered = opasgenlib.parens_outer(str_input) or opasgenlib.in_quotes(str_input) or opasgenlib.one_term(str_input) or opasgenlib.in_brackets(str_input)
 
         if quoted == False:
             str_input_mod = self.boolConnectorsToSymbols(str_input)

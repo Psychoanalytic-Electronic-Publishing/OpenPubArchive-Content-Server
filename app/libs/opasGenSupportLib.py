@@ -449,7 +449,84 @@ def in_brackets(arg):
     except Exception as e:
         logger.error(f"Exception {e}")
         return False
+
+def groups_balanced(arg):
+    """
+    Match [, {, and ( for balance
     
+    >>> groups_balanced("(a) and (b)")
+    True
+    >>> groups_balanced("((a) and (b))")
+    True
+    >>> groups_balanced("((a) and (b)")
+    False
+    >>> groups_balanced(" [a] and [b]   ")
+    True
+    >>> groups_balanced("((a) and [(b)])")
+    True
+    >>> groups_balanced("((a) and [(b))]")
+    False
+    
+    """
+    arg = arg.strip()
+    open_list = ["(", "[", "{"]
+    close_list = [")", "]", "}"]    
+    stack = []
+    for i in arg:
+        if i in open_list:
+            stack.append(i)
+        elif i in close_list:
+            pos = close_list.index(i)
+            if ((len(stack) > 0) and
+                (open_list[pos] == stack[len(stack)-1])):
+                stack.pop()
+            else:
+                return False
+
+    if len(stack) == 0:
+        return True
+    else:
+        return False
+
+def parens_balanced(arg):
+    arg = arg.strip()
+    open_list = ["("]
+    close_list = [")"]    
+    stack = []
+    for i in arg:
+        if i in open_list:
+            stack.append(i)
+        elif i in close_list:
+            pos = close_list.index(i)
+            if ((len(stack) > 0) and
+                (open_list[pos] == stack[len(stack)-1])):
+                stack.pop()
+            else:
+                return False
+            
+    if len(stack) == 0:
+        return True
+    else:
+        return False
+
+def parens_outer(arg):
+    """
+    >>> parens_outer("(a) and (b)")
+    False
+    >>> parens_outer("((a) and (b))")
+    True
+    >>> parens_outer(" (a) and (b)   ")
+    False
+    >>> parens_outer("   ((a) and (b))    ")
+    True
+    """
+    arg_stripped = arg.strip()
+    if arg_stripped[0] == "(" and arg_stripped[-1] == ")":
+        # should not be balanced now if there are outer ()
+        return parens_balanced(arg_stripped[1:-1])
+    else:
+        return False
+        
 def in_parens(arg):
     """
     If string is in parens (must be at start and at end), return true
