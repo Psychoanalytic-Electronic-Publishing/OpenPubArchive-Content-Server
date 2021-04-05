@@ -1329,13 +1329,20 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         kwic_list = []
                         for n in text_xml:
                             # strip all tags
-                            match = opasxmllib.xml_string_to_text(n)
-                            # change the tags the user told Solr to use to the final output tags they want
-                            #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
-                            # this function changes variable count_anchors with the count of changes
-                            match = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, match)
-                            match = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, match)
-                            kwic_list.append(match)
+                            try:
+                                match = opasxmllib.xml_string_to_text(n)
+                                # change the tags the user told Solr to use to the final output tags they want
+                                #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
+                                # this function changes variable count_anchors with the count of changes
+                                match = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, match)
+                                match = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, match)
+                                # watch for Doctype which isn't removed if partial (2021-04-05)
+                                match = re.sub("(\<?DOCTYPE[^>]+?\>)|(^[^\<]*?>)", "", match)
+                                match = match.lstrip(". ")
+                            except Exception as e:
+                                logger.warn(f"Error in processing hitlist entry: {e}")
+                            else:
+                                kwic_list.append(match)
     
                         kwic = " . . . ".join(kwic_list)  # how its done at GVPi, for compatibility (as used by PEPEasy)
                         # we don't need fulltext
