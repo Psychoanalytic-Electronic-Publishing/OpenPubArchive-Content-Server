@@ -1336,8 +1336,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                 # this function changes variable count_anchors with the count of changes
                                 match = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, match)
                                 match = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, match)
-                                # watch for Doctype which isn't removed if partial (2021-04-05)
-                                match = re.sub("(\<?DOCTYPE[^>]+?\>)|(^[^\<]*?>)", "", match)
+                                # watch for Doctype which isn't removed if partial or part of a tag (2021-04-05)
+                                match = re.sub("(\<?DOCTYPE[^>]+?\>)|(^[^\<]{0,25}?>)", "", match)
                                 match = match.lstrip(". ")
                             except Exception as e:
                                 logger.warn(f"Error in processing hitlist entry: {e}")

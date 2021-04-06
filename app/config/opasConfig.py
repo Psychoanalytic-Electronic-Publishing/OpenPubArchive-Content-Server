@@ -90,7 +90,7 @@ OPASACCESSTOKEN = "opasSessionInfo"
 OPASEXPIRES= "OpasExpiresTime"
 CLIENTID = "client-id" # also header param or qparam
 CLIENTSESSIONID = "client-session" # also header param or qparam
-X_FORWARDED_FOR = "X-Forwarded-For"
+X_FORWARDED_FOR = "X-Forwarded-For-PEP"
 
 AUTH_DOCUMENT_VIEW_REQUEST = "DocumentView"
 AUTH_ABSTRACT_VIEW_REQUEST = "AbstractView"

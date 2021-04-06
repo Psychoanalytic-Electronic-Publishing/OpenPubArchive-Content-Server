@@ -4,6 +4,8 @@
 import unittest
 import requests
 import logging
+import localsecrets
+
 logger = logging.getLogger(__name__)
 
 import opasConfig
@@ -19,8 +21,8 @@ class TestXForwardedFor(unittest.TestCase):
     def test_1_get_document(self):
         # sessID, headers, session_info = unitTestConfig.test_login()
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171A/')
-        # local, this works...but fails in the response.py code trying to convert self.status to int.
-        headers[opasConfig.X_FORWARDED_FOR] = "69.207.4.46"
+        # this has to be a group account and an IP that's allowed in a group acct.
+        headers[opasConfig.X_FORWARDED_FOR] = localsecrets.MYIP
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
