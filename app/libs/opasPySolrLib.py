@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 import time
 from datetime import datetime
 # import datetime as dtime
+from operator import itemgetter
 
 import sys
 sys.path.append('./solrpy')
@@ -1755,6 +1756,7 @@ def database_get_whats_new(days_back=14,
     field_list = "art_id, title, art_vol, art_iss, art_year, art_sourcecode, art_sourcetitlefull, art_sourcetitleabbr, file_last_modified, timestamp, art_sourcetype"
     sort_by = "file_last_modified desc"
     ret_val = None
+    new_articles = ocd.get_articles_newer_than(days_back)
 
     # two ways to get date, slightly different meaning: timestamp:[NOW-{days_back}DAYS TO NOW] AND file_last_modified:[NOW-{days_back}DAYS TO NOW]
     try:
@@ -1765,7 +1767,7 @@ def database_get_whats_new(days_back=14,
             "fl": field_list,
             "fq": "{!collapse field=art_sourcecode max=art_year_int}",
             "sort": sort_by,
-            "rows": limit,
+            "rows": 1000,
             "start": offset
         }
 
@@ -1784,6 +1786,7 @@ def database_get_whats_new(days_back=14,
                                              )
         response_info.count = 0
         whats_new_list_items = []
+        
         whats_new_list_struct = models.WhatsNewListStruct( responseInfo = response_info, 
                                                            responseSet = whats_new_list_items
                                                            )
@@ -1794,12 +1797,22 @@ def database_get_whats_new(days_back=14,
         row_count = 0
         already_seen = []
         for result in results.docs:
+            document_id = result.get("art_id", None)
+            updated = result.get("file_last_modified", None)
+            updated = datetime.strptime(updated,'%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d')
+            if document_id not in new_articles:
+                print (f"File {document_id} updated {updated}")
+                continue
+            
             PEPCode = result.get("art_sourcecode", None)
             #if PEPCode is None or PEPCode in ["SE", "GW", "ZBK", "IPL"]:  # no books
                 #continue
             src_type = result.get("art_sourcetype", None)
             if src_type != "journal":
                 continue
+            
+            # see if this is already been in the article tracker
+            
     
             volume = result.get("art_vol", None)
             issue = result.get("art_iss", "")
@@ -1807,8 +1820,6 @@ def database_get_whats_new(days_back=14,
             abbrev = result.get("art_sourcetitleabbr", None)
             src_title = result.get("art_sourcetitlefull", None)
             
-            updated = result.get("file_last_modified", None)
-            updated = datetime.strptime(updated,'%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d')
             if abbrev is None:
                 abbrev = src_title
             display_title = abbrev + " v%s.%s (%s) " % (volume, issue, year)
@@ -1828,12 +1839,23 @@ def database_get_whats_new(days_back=14,
                                             srcTitle = src_title,
                                             volumeURL = volume_url,
                                             updated = updated
-                                            ) 
+                                            )
+
             whats_new_list_items.append(item)
+            
             row_count += 1
-            if row_count > limit:
-                break
+            #if row_count > limit:
+                #break
     
+        whats_new_list_items = sorted(whats_new_list_items, key=lambda x: x.displayTitle, reverse = False)    
+
+        if limit != None:
+            if offset is None:
+                offset = 0
+            limited_whats_new_list = whats_new_list_items[offset:offset+limit]
+        else:
+            limited_whats_new_list = whats_new_list_items
+        
         response_info = models.ResponseInfo( count = len(results.docs),
                                              fullCount = num_found,
                                              limit = limit,
@@ -1847,7 +1869,7 @@ def database_get_whats_new(days_back=14,
         response_info.count = len(whats_new_list_items)
     
         whats_new_list_struct = models.WhatsNewListStruct( responseInfo = response_info, 
-                                                           responseSet = whats_new_list_items
+                                                           responseSet = limited_whats_new_list
                                                            )
     
         ret_val = models.WhatsNewList(whatsNew = whats_new_list_struct)

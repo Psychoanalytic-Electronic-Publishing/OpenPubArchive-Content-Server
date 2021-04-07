@@ -812,25 +812,66 @@ class opasCentralDB(object):
         # return session model object
         return ret_val # None or Session Object
 
-               
-    def get_select_as_list_of_dicts(self, sqlSelect: str):
+    def get_select_count(self, sqlSelect: str):
         """
-        Generic retrieval from database, into dict
+        Generic retrieval from database, just the count
         
         >>> ocd = opasCentralDB()
-        >>> records = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity;")
-        >>> len(records) > 1
+        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches;")
+        >>> count > 1000
+        True
+        
+        """
+        self.open_connection(caller_name="get_select_count") # make sure connection is open
+        ret_val = None
+
+        sqlSelect = re.sub("SELECT .+? FROM", "SELECT COUNT(*) FROM", sqlSelect, count=1, flags=re.IGNORECASE)
+        try:
+            if self.db is not None:
+                curs = self.db.cursor(pymysql.cursors.Cursor)
+                curs.execute(sqlSelect)
+                row = curs.fetchall()
+                ret_val = row[0][0]
+        except Exception as e:
+            logger.warning("Can't retrieve count.")
+            ret_val = 0
+            
+        self.close_connection(caller_name="get_select_count") # make sure connection is closed
+
+        # return session model object
+        return ret_val # None or Session Object
+               
+    def get_articles_newer_than(self, days_back=7):
+        
+        """
+        Check if article is newer than a given date
+       
+        >>> ocd = opasCentralDB()
+        >>> articles = ocd.get_articles_newer_than(days_back=14) 
+        >>> len(articles) > 1
         True
 
         """
-        self.open_connection(caller_name="get_selection_as_list_of_dicts") # make sure connection is open
+        self.open_connection(caller_name="get_articles_newer_than") # make sure connection is open
         ret_val = None
+        # newer_than = datetime.utcfromtimestamp(newer_than_date).strftime(localsecrets.TIME_FORMAT_STR)
+        def_date = datetime.now() - dtime.timedelta(days=days_back)
+        newer_than_date = def_date.strftime('%Y-%m-%d %H:%M:%S')
+        sqlSelect = """
+                        SELECT art_id FROM article_tracker
+                        WHERE date_inserted > %s
+        """
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.DictCursor)
-            curs.execute(sqlSelect)
-            ret_val = [models.ReportListItem(row=row) for row in curs.fetchall()]
+            try:
+                curs = self.db.cursor(pymysql.cursors.DictCursor)
+                curs.execute(sqlSelect, (newer_than_date))
+            except Exception as e:
+                logger.error(f"DB Error getting articles newer than: {e}")
+            else:
+                records = curs.fetchall()
+                ret_val = [a['art_id'] for a in records]
             
-        self.close_connection(caller_name="get_selection_as_list_of_dicts") # make sure connection is closed
+        self.close_connection(caller_name="get_articles_newer_than") # make sure connection is closed
 
         # return session model object
         return ret_val # None or Session Object
@@ -863,6 +904,52 @@ class opasCentralDB(object):
             ret_val = None
             
         return ret_val
+
+    def get_select_as_list_of_dicts(self, sqlSelect: str):
+        """
+        Generic retrieval from database, into dict
+        
+        >>> ocd = opasCentralDB()
+        >>> records = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity;")
+        >>> len(records) > 1
+        True
+        >>> type(records[0]) == dict
+        True
+        """
+        self.open_connection(caller_name="get_selection_as_list_of_dicts") # make sure connection is open
+        ret_val = None
+        if self.db is not None:
+            curs = self.db.cursor(pymysql.cursors.DictCursor)
+            curs.execute(sqlSelect)
+            ret_val = curs.fetchall()
+            
+        self.close_connection(caller_name="get_selection_as_list_of_dicts") # make sure connection is closed
+
+        # return session model object
+        return ret_val # None or Session Object
+        
+    def get_select_as_list_of_models(self, sqlSelect: str, model):
+        """
+        Generic retrieval from database, into dict
+        
+        >>> ocd = opasCentralDB()
+        >>> records = ocd.get_select_as_list_of_models(sqlSelect="SELECT * from vw_reports_session_activity;", model=models.ReportListItem)
+        >>> len(records) > 1
+        True
+        >>> type(records[0]) == models.ReportListItem
+        True
+        """
+        self.open_connection(caller_name="get_selection_as_list_of_dicts") # make sure connection is open
+        ret_val = None
+        if self.db is not None:
+            curs = self.db.cursor(pymysql.cursors.DictCursor)
+            curs.execute(sqlSelect)
+            ret_val = [model(row=row) for row in curs.fetchall()]
+            
+        self.close_connection(caller_name="get_selection_as_list_of_dicts") # make sure connection is closed
+
+        # return session model object
+        return ret_val # None or Session Object
         
     def get_select_as_list(self, sqlSelect: str):
         """
@@ -872,7 +959,8 @@ class opasCentralDB(object):
         >>> records = ocd.get_select_as_list(sqlSelect="SELECT * from vw_reports_session_activity;")
         >>> len(records) > 1
         True
-
+        >>> type(records[0]) == tuple
+        True
         """
         self.open_connection(caller_name="get_selection_as_list") # make sure connection is open
         ret_val = None
@@ -1629,9 +1717,9 @@ class opasCentralDB(object):
         >>> ocd.save_client_config(client_id="123", client_configuration=model, session_id="test123", replace=True)
         (200, 'OK')
         >>> ocd.get_client_config("123", "test")
-        ClientConfigList(configList=[ClientConfigItem(configName='test', configSettings={'A': '123', 'B': '1234'})])
+        ClientConfigList(configList=[ClientConfigItem(api_client_id=123, session_id='test123', configName='test', configSettings={'A': '123', 'B': '1234'})])
         >>> ocd.get_client_config("123", "test, test2")
-        ClientConfigList(configList=[ClientConfigItem(configName='test', configSettings={'A': '123', 'B': '1234'}), ClientConfigItem(configName='test2', configSettings={'C': '456', 'D': '5678'})])
+        ClientConfigList(configList=[ClientConfigItem(api_client_id=123, session_id='test123', configName='test', configSettings={'A': '123', 'B': '1234'}), ClientConfigItem(api_client_id=123, session_id='test123', configName='test2', configSettings={'C': '456', 'D': '5678'})])
         >>> ocd.get_client_config("123", "doesntexist")
         
         Last case get used to return"

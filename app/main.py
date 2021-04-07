@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0405.2.Beta"
+__version__     = "2021.0407.1.Beta"
 __status__      = "Development"
 
 """
@@ -626,7 +626,8 @@ async def reports(response: Response,
             response.headers["Content-Disposition"] = f"attachment; filename={report_view}.csv"
             ret_val = response
         else:
-            results = ocd.get_select_as_list_of_dicts(select)
+            # this comes back as a list of ReportListItems
+            results = ocd.get_select_as_list_of_models(select, model=models.ReportListItem)
             limited_count = len(results)
 
             response_info = models.ResponseInfo(count = limited_count,
