@@ -69,6 +69,8 @@ API_URL_DOCUMENTURL = "/v2/Documents/"
 
 #logger = logging.getLogger(programNameShort)
 
+MAX_WHATSNEW_ARTICLES_TO_CONSIDER = 1000
+
 IMAGES = "v2/Documents/Image" # from endpoint; was just images, e.g., "http://pep-web.rocks/images/bannerADPSALogo.gif
 HITMARKERSTART = "#@@@"  # using non html/xml default markers, so we can strip all tags but leave the hitmarkers!
 HITMARKEREND = "@@@#"

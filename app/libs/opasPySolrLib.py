@@ -1767,7 +1767,7 @@ def database_get_whats_new(days_back=14,
             "fl": field_list,
             "fq": "{!collapse field=art_sourcecode max=art_year_int}",
             "sort": sort_by,
-            "rows": 1000,
+            "rows": opasConfig.MAX_WHATSNEW_ARTICLES_TO_CONSIDER,
             "start": offset
         }
 
@@ -1801,7 +1801,7 @@ def database_get_whats_new(days_back=14,
             updated = result.get("file_last_modified", None)
             updated = datetime.strptime(updated,'%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d')
             if document_id not in new_articles:
-                print (f"File {document_id} updated {updated}")
+                logger.debug(f"File {document_id} updated {updated}")
                 continue
             
             PEPCode = result.get("art_sourcecode", None)
