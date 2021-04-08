@@ -263,6 +263,7 @@ class opasCentralDB(object):
                 self.connected = True
             except Exception as e:
                 logger.warning(f"Database connection not opened ({caller_name}) ({e})")
+                self.connected = False
                 # status = False
         
         return self.connected

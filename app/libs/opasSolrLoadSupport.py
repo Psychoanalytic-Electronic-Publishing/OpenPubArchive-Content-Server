@@ -432,9 +432,10 @@ class ArticleInfo(object):
             %                   (self.authors_bibliographic,
                                  self.art_year,
                                  html.escape(self.art_title),
-                                 self.src_title_full,
+                                 html.escape(self.src_title_full),
                                  self.art_vol_int,
-                                 self.art_pgrg)
+                                 html.escape(self.art_pgrg)
+                                )
         
         self.art_citeas_text = opasxmllib.xml_elem_or_str_to_text(self.art_citeas_xml)
         art_qual_node = pepxml.xpath("//artinfo/artqual")
