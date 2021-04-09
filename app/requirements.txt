@@ -49,7 +49,7 @@ PyMySQL==0.10.0
 #
 fpdf2==2.3.1
 pdfrw==0.4
-#PyPDF2==1.26.0               # may not be needed anymore
+PyPDF2==1.26.0               # needed by Pisa, apparently
 pysolr==3.9.0
 python-dateutil==2.8.1
 #

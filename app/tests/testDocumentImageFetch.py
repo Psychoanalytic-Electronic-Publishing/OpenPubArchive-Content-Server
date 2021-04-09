@@ -68,7 +68,7 @@ class TestDocumentImageFetch(unittest.TestCase):
         r = response.json()
         doc = r["documentID"]
         print (doc)
-        assert (re.match("[A-Z]{1,12}\.[0-9]{3,3}[A-Z]?\.[0-9]{4,4}[A-Z]", doc) is not None)
+        assert (re.match("[A-Z\-]{1,12}\.[0-9]{3,3}[A-Z]?\.[0-9]{4,4}[A-Z]", doc) is not None)
 
 if __name__ == '__main__':
     unittest.main()    

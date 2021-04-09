@@ -2406,9 +2406,9 @@ def prep_document_download(document_id,
             art_info = results.docs[0]
             docs = art_info.get("text_xml", art_info.get("art_excerpt", None))
         except IndexError as e:
-            logger.warning("No matching document for %s.  Error: %s", document_id, e)
+            logger.warning("Download Request: No matching document for %s.  Error: %s", document_id, e)
         except KeyError as e:
-            logger.warning("No full-text content found for %s.  Error: %s", document_id, e)
+            logger.warning("Download Request: No full-text content found for %s.  Error: %s", document_id, e)
         else:
             try:    
                 if isinstance(docs, list):
@@ -2416,7 +2416,7 @@ def prep_document_download(document_id,
                 else:
                     doc = docs
             except Exception as e:
-                logger.warning("Empty return: %s", e)
+                logger.error("Download Request: Empty return: %s", e)
             else:
                 doi = art_info.get("art_doi", None)
                 pub_year = art_info.get("art_year", None)
@@ -2450,7 +2450,8 @@ def prep_document_download(document_id,
                                 filename = flex_fs.get_download_filename(filespec=document_id, path=localsecrets.PDF_ORIGINALS_PATH, year=pub_year, ext=".pdf")    
                                 ret_val = filename
                             else:
-                                err_msg = "File path error."
+                                err_msg = "Prep for Download: File system setup error."
+                                logger.error(err_msg)
                                 status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
                                                              error_description=err_msg
                                                            )
@@ -2489,14 +2490,16 @@ def prep_document_download(document_id,
                                                        )
         
                     except Exception as e:
-                        logger.warning("Can't convert data: %s", e)
+                        logger.error("Prep for Download: Can't convert data: %s", e)
                         ret_val = None
                         status = models.ErrorReturn( httpcode=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
                                                      error_description="Can't convert document data"
                                                    )
-                else:
+                else: # access is limited
+                    err_msg = f"No permission to download document {document_id} for user"
+                    logger.warning(err_msg)
                     status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
-                                                 error_description="No permission for document"
+                                                 error_description=err_msg
                                                )
                     ret_val = None
     

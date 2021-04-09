@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0409.1.Beta"
+__version__     = "2021.0409.2.Beta"
 __status__      = "Development"
 
 """
@@ -4991,7 +4991,14 @@ def documents_downloads(response: Response,
     if filename is None:
         response.status_code = status.httpcode
         status_message = status.error_description + error_status_message
-        logger.error(status_message)
+        logger.error(status_message + f"More Info -- Session: {session_info}")
+        ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                    session_info=session_info, 
+                                    params=request.url._url,
+                                    item_of_interest=f"{documentID}", 
+                                    return_status_code = response.status_code,
+                                    status_message=status_message
+                                    )
         raise HTTPException(status_code=response.status_code,
                             detail=status_message)
     else:
