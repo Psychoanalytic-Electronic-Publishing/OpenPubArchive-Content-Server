@@ -5019,11 +5019,19 @@ def documents_downloads(response: Response,
     
                 except Exception as e:
                     response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
+                    status_message = f" The requested original document {filename} could not be returned"
+                    logger.error(f"{status_message}:{e}")
+                    ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                                session_info=session_info, 
+                                                params=request.url._url,
+                                                item_of_interest=f"{documentID}", 
+                                                return_status_code = response.status_code,
+                                                status_message=status_message
+                                                )
                     raise HTTPException(status_code=response.status_code,
                                         detail=error_status_message)
                 else:
                     status_message = opasCentralDBLib.API_STATUS_SUCCESS
-    
                     logger.info(status_message)
                     ocd.record_document_view(document_id=documentID,
                                              session_info=session_info,
@@ -5044,14 +5052,18 @@ def documents_downloads(response: Response,
                                        status_code=response.status_code,
                                        filename=os.path.split(stamped_file)[1], 
                                        media_type=media_type)
-                #ret_val = FileResponse(path=filename,
-                                       #status_code=response.status_code,
-                                       #filename=os.path.split(filename)[1], 
-                                       #media_type=media_type)
 
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
                 status_message = f" The requested document {filename} could not be returned {e}"
+                logger.error(status_message)
+                ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                            session_info=session_info, 
+                                            params=request.url._url,
+                                            item_of_interest=f"{documentID}", 
+                                            return_status_code = response.status_code,
+                                            status_message=status_message
+                                            )
                 raise HTTPException(status_code=response.status_code,
                                     detail=status_message)
 
@@ -5080,12 +5092,19 @@ def documents_downloads(response: Response,
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
                 status_message = f" The requested document {filename} could not be returned {e}"
+                logger.error(status_message)
+                ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                            session_info=session_info, 
+                                            params=request.url._url,
+                                            item_of_interest=f"{documentID}", 
+                                            return_status_code = response.status_code,
+                                            status_message=status_message
+                                            )
                 raise HTTPException(status_code=response.status_code,
                                     detail=status_message)
 
             else:
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
-
                 logger.info(status_message)
                 ocd.record_document_view(document_id=documentID,
                                          session_info=session_info,
