@@ -274,14 +274,14 @@ def smart_search(smart_search_text):
         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_LITERAL
         ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{smart_search_text}"
         
-    if re.match("[A-Z\-]{2,9}\.[0-9]{3,3}[A-Z]?\.[0-9]{4,4}[A-Z]?", smart_search_text, flags=re.IGNORECASE):
+    if re.match("[A-Z\-]{2," + f"{opasConfig.MAX_JOURNALCODE_LEN}" + "}\.[0-9]{3,3}[A-Z]?\.[0-9]{4,4}[A-Z]?", smart_search_text, flags=re.IGNORECASE):
         # locator (articleID)
         loc_corrected = smart_search_text.upper()
         if is_value_in_field(loc_corrected, opasConfig.SEARCH_FIELD_LOCATOR):
             ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: loc_corrected}
 
     # journal and issue and wildcard
-    m = re.match("(?P<journal>[A-Z\-]{2,12})\.(?P<vol>([0-9]{3,3}[A-Z]?)|(\*))\.(?P<page>\*)", smart_search_text, flags=re.IGNORECASE)
+    m = re.match("(?P<journal>[A-Z\-]{2," + f"{opasConfig.MAX_JOURNALCODE_LEN}" + "})\.(?P<vol>([0-9]{3,3}[A-Z]?)|(\*))\.(?P<page>\*)", smart_search_text, flags=re.IGNORECASE)
     if m is not None:
         src_code = m.group("journal")
         if src_code is not None:

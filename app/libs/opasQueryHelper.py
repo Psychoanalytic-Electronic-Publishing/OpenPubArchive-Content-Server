@@ -727,10 +727,8 @@ def are_brackets_balanced(expr):
 #           solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
 # 
 def parse_search_query_parameters(search=None,             # url based parameters, e.g., from previous search to be parsed
-                                  # model based query specification, allows full specification 
-                                  # of words/thes in request body, component at a time, per model
-                                  solrQueryTermList=None,
-                                  # parameter based options
+                                  solrQueryTermList=None,  # model based query specification, allows full specification of words/thes in request body, component at a time, per model
+                                  # parameter based options follow
                                   fulltext1=None,          # term, phrases, and boolean connectors with optional fields for full-text search
                                   smarttext=None,          # experimental detection of search parameters
                                   paratext=None,           # search paragraphs as child of scope
@@ -758,7 +756,6 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   viewcount: str=None,     # can include both the count and the count period, e.g., 25 in last12months or 25 in ALL
                                   viewperiod=None,         # period to evaluate view count 0-4, 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
                                   facetfields=None,        # facetfields to return
-                                  # sort field and direction
                                   facetmincount=None,
                                   facetlimit=None,
                                   facetoffset=0,
@@ -767,8 +764,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   formatrequested:str=None,
                                   return_field_set=None,
                                   return_field_options=None, 
-                                  sort=None,
-                                  highlightlimit:int=None, # same as highlighting_max_snips, but matches params (REQUIRED TO MATCH!)
+                                  sort=None,                # sort field and direction
+                                  highlightlimit:int=None,  # same as highlighting_max_snips, but matches params (REQUIRED TO MATCH!)
                                   extra_context_len=None,
                                   limit=None,
                                   offset=None, 
