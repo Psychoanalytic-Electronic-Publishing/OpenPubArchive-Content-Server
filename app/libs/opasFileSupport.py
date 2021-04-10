@@ -357,7 +357,9 @@ class FlexFileSystem(object):
             ret_val = ret_val + ext  
             
         if not self.exists(ret_val):
-            logger.warning(f"Download file does not exist: {ret_val}")
+            # note: this could be called, just to check whether to offer it to the caller who is looking at the html
+            #       so this info may be "superfluous"
+            logger.debug(f"Download file does not exist: {ret_val}")
             ret_val = None
             
         return ret_val   

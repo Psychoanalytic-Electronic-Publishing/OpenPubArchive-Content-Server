@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0409.2.Beta"
+__version__     = "2021.0410.1.Test"
 __status__      = "Development"
 
 """
@@ -1039,8 +1039,8 @@ async def client_get_configuration(response: Response,
        NA
 
     """
-    
-    opasDocPermissions.verify_header(request, "ClientGetConfig") # for debugging client call
+    # maybe no session id when they get this, so don't check here
+    # opasDocPermissions.verify_header(request, "ClientGetConfig") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
@@ -4956,6 +4956,9 @@ def documents_downloads(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     user_name = session_info.username
 
+    if client_id is None or client_session is None:
+        print ("Error")
+
     if retFormat.upper() == "EPUB":
         file_format = 'EPUB'
         media_type='application/epub+zip'
@@ -4964,7 +4967,7 @@ def documents_downloads(response: Response,
         file_format = 'PDF'
         media_type='application/pdf'
         endpoint = opasCentralDBLib.API_DOCUMENTS_PDF
-    elif retFormat.upper() == "PDFORIG":  # not yet implemented.
+    elif retFormat.upper() == "PDFORIG":  
         file_format = 'PDFORIG'
         media_type='application/pdf'
         endpoint = opasCentralDBLib.API_DOCUMENTS_PDFORIG
@@ -4991,7 +4994,7 @@ def documents_downloads(response: Response,
     if filename is None:
         response.status_code = status.httpcode
         status_message = status.error_description + error_status_message
-        logger.error(status_message + f"More Info -- Session: {session_info}")
+        logger.error(status_message + f"Doc Prep failed, returning no file name, Session: {session_info}.")
         ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                     session_info=session_info, 
                                     params=request.url._url,
@@ -5027,18 +5030,21 @@ def documents_downloads(response: Response,
                 except Exception as e:
                     response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
                     status_message = f" The requested original document {filename} could not be returned"
-                    logger.error(f"{status_message}:{e}")
+                    extended_status_message = f"{status_message}:{e}"
+                    logger.error(extended_status_message)
                     ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                                 session_info=session_info, 
                                                 params=request.url._url,
                                                 item_of_interest=f"{documentID}", 
                                                 return_status_code = response.status_code,
-                                                status_message=status_message
+                                                status_message=extended_status_message
                                                 )
                     raise HTTPException(status_code=response.status_code,
                                         detail=error_status_message)
                 else:
                     status_message = opasCentralDBLib.API_STATUS_SUCCESS
+                    # temp
+                    status_message = "Successful Download of PDFOrig" # opasCentralDBLib.API_STATUS_SUCCESS
                     logger.info(status_message)
                     ocd.record_document_view(document_id=documentID,
                                              session_info=session_info,
@@ -5053,8 +5059,8 @@ def documents_downloads(response: Response,
                                                 )
         elif file_format == 'PDF':
             try:
-                response.status_code = httpCodes.HTTP_200_OK
                 stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename)
+                response.status_code = httpCodes.HTTP_200_OK
                 ret_val = FileResponse(path=stamped_file,
                                        status_code=response.status_code,
                                        filename=os.path.split(stamped_file)[1], 
@@ -5062,21 +5068,24 @@ def documents_downloads(response: Response,
 
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = f" The requested document {filename} could not be returned {e}"
-                logger.error(status_message)
+                status_message = f" The requested document {filename} could not be returned."
+                extended_status_message = f"{status_message}:{e}"
+                logger.error(extended_status_message)
                 ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                             session_info=session_info, 
                                             params=request.url._url,
                                             item_of_interest=f"{documentID}", 
                                             return_status_code = response.status_code,
-                                            status_message=status_message
+                                            status_message=extended_status_message
                                             )
                 raise HTTPException(status_code=response.status_code,
                                     detail=status_message)
 
-            else:
+            else: # success
+                response.status_code = httpCodes.HTTP_200_OK
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
-
+                # temp
+                status_message = "Successful Download of PDF" # opasCentralDBLib.API_STATUS_SUCCESS
                 logger.info(status_message)
                 ocd.record_document_view(document_id=documentID,
                                          session_info=session_info,
@@ -5098,20 +5107,24 @@ def documents_downloads(response: Response,
 
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = f" The requested document {filename} could not be returned {e}"
-                logger.error(status_message)
+                status_message = f" The requested document {filename} could not be returned."
+                extended_status_message = f"{status_message}:{e}"
+                logger.error(extended_status_message)
                 ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                             session_info=session_info, 
                                             params=request.url._url,
                                             item_of_interest=f"{documentID}", 
                                             return_status_code = response.status_code,
-                                            status_message=status_message
+                                            status_message=extended_status_message
                                             )
                 raise HTTPException(status_code=response.status_code,
                                     detail=status_message)
 
-            else:
+            else: # success
+                response.status_code = httpCodes.HTTP_200_OK
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
+                # temp
+                status_message = "Successful Download of ePub" # opasCentralDBLib.API_STATUS_SUCCESS
                 logger.info(status_message)
                 ocd.record_document_view(document_id=documentID,
                                          session_info=session_info,
@@ -5280,7 +5293,7 @@ async def documents_image_fetch(response: Response,
     try:
         expert_picks_path = localsecrets.S3_IMAGE_EXPERT_PICKS_PATH
         status_message = f"Expert Picks Path is: {expert_picks_path}"
-        logger.warning(status_message)
+        logger.info(status_message)
     except:
         expert_picks_path = "pep-web-expert-pick-images"
 

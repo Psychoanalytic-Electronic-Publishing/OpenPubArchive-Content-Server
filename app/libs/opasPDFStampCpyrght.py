@@ -99,7 +99,7 @@ def stampcopyright(username, input_file, top=True, bottom=True):
         # final write
         #writer.write(output_file)
     except Exception as e:
-        logger.error(f"Could not add copyright info for user {username} to Original PDF; returning without marks")
+        logger.error(f"Could not add copyright info for user {username} to Original PDF; returning without marks (error:{e})")
         output_file = input_file
     else:
         logger.info(f"Copyright info added for user {username} to Original PDF")

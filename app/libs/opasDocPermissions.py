@@ -44,7 +44,10 @@ def verify_header(request, caller_name):
     client_session_from_header = request.headers.get(opasConfig.CLIENTSESSIONID, None)
     client_id_from_header = request.headers.get(opasConfig.CLIENTID, None)
     if client_session_from_header == None:
-        logger.error(f"***{caller_name}*** - No client-session supplied. Client-id (from header): {client_id_from_header}.")
+        logger.debug(f"***{caller_name}*** - No client-session supplied. Client-id (from header): {client_id_from_header}.")
+    else:
+        logger.info(f"***{caller_name}*** - Client-session found. Client-id (from header): {client_id_from_header}.")
+        
 
 def find_client_session_id(request: Request,
                            response: Response,
