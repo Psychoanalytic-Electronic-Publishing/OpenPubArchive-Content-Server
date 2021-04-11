@@ -46,7 +46,7 @@ def verify_header(request, caller_name):
     if client_session_from_header == None:
         logger.debug(f"***{caller_name}*** - No client-session supplied. Client-id (from header): {client_id_from_header}.")
     else:
-        logger.info(f"***{caller_name}*** - Client-session found. Client-id (from header): {client_id_from_header}.")
+        logger.debug(f"***{caller_name}*** - Client-session found. Client-id (from header): {client_id_from_header}.")
         
 
 def find_client_session_id(request: Request,
@@ -114,7 +114,7 @@ def get_user_ip(request: Request):
         ret_val = request.headers.get(opasConfig.X_FORWARDED_FOR, None)
         if ret_val is not None:
             msg = f"X-Forwarded-For from header: {ret_val} "
-            logger.info(msg)
+            logger.debug(msg)
 
     return ret_val
     
@@ -254,7 +254,7 @@ def get_authserver_session_info(session_id,
             session_info.admin = pads_user_info.UserType=="Admin"
             session_info.authorized_peparchive = pads_user_info.HasArchiveAccess
             session_info.authorized_pepcurrent = pads_user_info.HasCurrentAccess
-            logger.info("PaDS returned user info.  Saving to DB")
+            logger.debug("PaDS returned user info.  Saving to DB")
             unused_val = save_session_info_to_db(session_info)
     
     if session_info.user_type is None:
@@ -300,15 +300,15 @@ def save_session_info_to_db(session_info):
     db_session_info = ocd.get_session_from_db(session_id)
     if db_session_info is None:
         ret_val, saved_session_info = ocd.save_session(session_id, session_info)
-        logger.info(f"Saving session info {session_id}")
+        logger.debug(f"Saving session info {session_id}")
     else:
-        logger.info(f"Session {session_id} already found in db. Updating...")
+        logger.debug(f"Session {session_id} already found in db. Updating...")
         if session_info.username != db_session_info.username and db_session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
             msg = f"MISMATCH! Two Usernames with same session_id. OLD(DB): {db_session_info}; NEW(SESSION): {session_info}"
             print (msg)
             logger.error(msg)
         
-        logger.info(f"Updating session info {session_id}")
+        logger.debug(f"Updating session info {session_id}")
         ret_val = ocd.update_session(session_id,
                                      userID=session_info.user_id,
                                      username=session_info.username, 

@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0410.1.Test"
+__version__     = "2021.0411.1.Test"
 __status__      = "Development"
 
 """
@@ -265,7 +265,7 @@ def get_client_session(response: Response,
     if session_id is None:
         # get one from PaDS, without login info
         # session_info, pads_session_info = opasDocPermissions.pads_get_session(client_id=client_id)
-        logger.info(f"Client {client_id} request w/o sessionID: {request.url._url}'")
+        logger.debug(f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID")
         session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id,
                                                                       client_id=client_id,
                                                                       request=request)
@@ -273,7 +273,7 @@ def get_client_session(response: Response,
             session_id = session_info.session_id
         except Exception as e:
             # We didn't get a session id
-            msg = f"Session ID not received from authserver for client id {client_id} and session {client_session}.  Raising Exception 424 ({e})."
+            msg = f"SessionID not received from authserver for client {client_id} and session {client_session}.  Raising Exception 424 ({e})."
             logger.error(msg)
             raise HTTPException(
                 status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
@@ -283,11 +283,13 @@ def get_client_session(response: Response,
             if session_id is not None:
                 opasAPISupportLib.save_opas_session_cookie(request, response, session_id)
             else:
-                logger.info("Session_id is None, no cookie saved.")
+                logger.debug("SessionID is None, no cookie saved.")
 
     if session_id is None or len(session_id) < 12:
-        msg = f"Client:[{client_id}] session ID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
-        logger.error(msg)
+        # don't report these errors
+        if re.search("GW\.000|SE\.000", request.url._url) is None:
+            msg = f"Client:[{client_id}] sessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
+            logger.error(msg)
         raise HTTPException(
             status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
             detail=ERR_MSG_PASSWORD + f" {msg}", 
@@ -5293,7 +5295,7 @@ async def documents_image_fetch(response: Response,
     try:
         expert_picks_path = localsecrets.S3_IMAGE_EXPERT_PICKS_PATH
         status_message = f"Expert Picks Path is: {expert_picks_path}"
-        logger.info(status_message)
+        logger.debug(status_message)
     except:
         expert_picks_path = "pep-web-expert-pick-images"
 

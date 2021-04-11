@@ -64,7 +64,7 @@ def stampcopyright(username, input_file, top=True, bottom=True):
     except Exception as e:
         logger.error(f"Error writing PDF HeaderFooter File: {e}")
     else:
-        logger.info(f"Wrote PDF HeaderFooter File: {headerfooterfile}")
+        logger.debug(f"Wrote PDF HeaderFooter File: {headerfooterfile}")
         
     # now merge with download file
     #pisa.showLogging() # debug only
@@ -77,7 +77,7 @@ def stampcopyright(username, input_file, top=True, bottom=True):
     output_file = None
     try:
         output_file = os.path.join(tempfile.gettempdir(), input_file_basename + "-pepweb.pdf")
-        logger.info(output_file)
+        logger.debug(f"Writing Stamped Copyright Output File: {output_file}")
         watermark_file = headerfooterfile
         
         # define the reader and writer objects
@@ -102,7 +102,7 @@ def stampcopyright(username, input_file, top=True, bottom=True):
         logger.error(f"Could not add copyright info for user {username} to Original PDF; returning without marks (error:{e})")
         output_file = input_file
     else:
-        logger.info(f"Copyright info added for user {username} to Original PDF")
+        logger.debug(f"Copyright info added for user {username} to Original PDF")
         
     return output_file
     

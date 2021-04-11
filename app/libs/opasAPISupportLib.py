@@ -253,10 +253,10 @@ def get_session_info(request: Request,
             logger.debug(f"Session {session_id} found in DB.  Checking if already marked authenticated.")
             if session_info.authenticated == 0: # not logged in
                 # better check if now they are logged in
-                logger.info(f"User was not logged in; checking to see if they are now.")
                 session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
                                                                        client_id=client_id, 
                                                                        request=request)
+                logger.debug(f"User was not logged in; checked to see if they are now. Session Info returned from PaDS: {session_info}")
                 #session_info = ocd.save_session(session_id, session_info)
             else:
                 logger.debug(f"User was logged in.  No further checks needed.")
