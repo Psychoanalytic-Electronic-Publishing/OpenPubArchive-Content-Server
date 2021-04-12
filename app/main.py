@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0411.1.Test"
+__version__     = "2021.0412.1.Beta"
 __status__      = "Development"
 
 """
@@ -4957,7 +4957,7 @@ def documents_downloads(response: Response,
     log_endpoint(request, client_id=client_id, session_id=client_session)
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     user_name = session_info.username
-
+    
     if client_id is None or client_session is None:
         print ("Error")
 

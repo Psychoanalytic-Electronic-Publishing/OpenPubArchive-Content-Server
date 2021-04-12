@@ -7,6 +7,7 @@ opasQueryHelper
 
 This library is meant to hold parsing and other functions which support query translation to Solr
 
+2021.0412.1 - Fixed / Changed source_code parameter, now only accepts PEP source codes (not source names) and allows boolean or lists
 2020.0530.1 - Doc Test updates
 2020.0416.1 - Sort fixes, new viewcount options
 2019.1205.1 - First version
@@ -15,7 +16,7 @@ This library is meant to hold parsing and other functions which support query tr
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1013.1"
+__version__     = "2021.0412.1"
 __status__      = "Development"
 
 import re
@@ -1276,43 +1277,28 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)
         
     if opasgenlib.not_empty(source_code):
-        # accepts a journal or book code (no wildcards) or a list of journal or book codes (no wildcards)
-        # ALSO can accept a single source name or partial name with an optional wildcard.  But
-        #   that's really what argument source_name is for, so this is just extra and may be later removed.
+        # accepts a journal or book code (no wildcards) or a boolean list of journal or book codes (no wildcards), or a simple string list "CPS, IJP, BAP"
         code_for_query = ""
         analyze_this = ""
-        # journal_code_list_pattern = "((?P<namelist>[A-z0-9]*[ ]*\+or\+[ ]*)+|(?P<namelist>[A-z0-9]))"
-        journal_wildcard_pattern = r".*\*[ ]*"  # see if it ends in a * (wildcard)
-        if re.match(journal_wildcard_pattern, source_code):
-            # it's a wildcard pattern, it's a full source name
-            code_for_query = source_code
-            analyze_this = f"&& art_sourcetitlefull:({code_for_query}) "
-            filter_q += analyze_this
-        else:
-            journal_code_list = source_code.upper().split(" OR ")
-            if len(journal_code_list) > 1:
-                journal_code_list = " OR ".join(journal_code_list)
-                # convert to upper case
-                code_for_query = f"art_sourcecode:({journal_code_list})"
-                # it was a list.
-                analyze_this = f"&& {code_for_query} "
-                filter_q += analyze_this
+        code_for_query = source_code.upper()
+        if re.search("[,]", code_for_query):
+            try:
+                code_for_query = re.sub("[\(\)\[\]]", "", code_for_query)
+                codelist = code_for_query.split(",")
+                new_query = ""
+                for code in codelist:
+                    if new_query == "":
+                        new_query = code
+                    else:
+                        new_query = new_query + f" OR {code}"
+            except Exception as e:
+                pass
             else:
-                sourceInfo = sourceDB.lookupSourceCode(source_code.upper())
-                if sourceInfo is not None or source_code.upper().strip('0123456789') == opasConfig.BOOKSOURCECODE:
-                    # it's a single source code
-                    code_for_query = source_code.upper()
-                    analyze_this = f"&& art_sourcecode:({code_for_query}) "
-                    filter_q += analyze_this
-                else: # not a pattern, or a code, or a list of codes.
-                    # must be a name
-                    code_for_query = source_code
-                    analyze_this = f"&& art_sourcetitlefull:({code_for_query}) "
-                    filter_q += analyze_this
-
+                code_for_query = new_query
+                
+        analyze_this = f"&& art_sourcecode:({code_for_query}) "
+        filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
-        # or it could be an abbreviation #TODO
-        # or it counld be a complete name #TODO
 
     if opasgenlib.not_empty(cited_art_id):
         cited_art_id = cited_art_id.upper()

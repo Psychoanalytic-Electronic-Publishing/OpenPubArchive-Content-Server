@@ -52,6 +52,7 @@ import opasQueryHelper
 from xhtml2pdf import pisa             # for HTML 2 PDF conversion
 
 import pysolr
+# logging.getLogger('pysolr').setLevel(logging.INFO)
 
 sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
