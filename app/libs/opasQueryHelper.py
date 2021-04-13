@@ -1292,7 +1292,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                     else:
                         new_query = new_query + f" OR {code}"
             except Exception as e:
-                pass
+                logger.warning(f"Error trying to convert source_code {code_for_query} to list: {e}")
             else:
                 code_for_query = new_query
                 

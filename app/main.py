@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0412.1.Beta"
+__version__     = "2021.0413.1.Beta"
 __status__      = "Development"
 
 """
@@ -93,9 +93,9 @@ from datetime import datetime
 import re
 # import secrets
 import wget
-import shlex
+# import shlex
 import io
-import pathlib
+# import pathlib
 import urllib.parse
 import random
 # import glob
@@ -105,7 +105,7 @@ import random
 from urllib import parse
 
 import uvicorn
-from fastapi import FastAPI, Query, Body, Path, Header, Security, Depends, HTTPException, File, Form #, UploadFile, Cookie
+from fastapi import FastAPI, Query, Body, Path, Header, Security, Depends, HTTPException, File #Form, UploadFile, Cookie
 from fastapi.openapi.utils import get_openapi
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.security.api_key import APIKeyQuery, APIKeyCookie, APIKeyHeader, APIKey
@@ -128,7 +128,7 @@ TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 
 from pydantic import ValidationError
 import solrpy as solr # needed for extended search
-from config.opasConfig import OPASSESSIONID, OPASACCESSTOKEN, OPASEXPIRES
+from config.opasConfig import OPASSESSIONID #, OPASACCESSTOKEN, OPASEXPIRES
 import config.opasConfig as opasConfig
 import logging
 logger = logging.getLogger(__name__)
@@ -136,7 +136,7 @@ logger = logging.getLogger(__name__)
 # import jwt
 import localsecrets
 import libs.opasAPISupportLib as opasAPISupportLib
-from configLib.opasCoreConfig import EXTENDED_CORES, EXTENDED_CORES_DEFAULTS, SOLR_DOCS, SOLR_AUTHORS, SOLR_GLOSSARY, SOLR_DEFAULT_CORE 
+from configLib.opasCoreConfig import EXTENDED_CORES_DEFAULTS, SOLR_DOCS # , EXTENDED_CORES, SOLR_AUTHORS, SOLR_GLOSSARY, SOLR_DEFAULT_CORE 
 
 from errorMessages import *
 import models
@@ -147,7 +147,7 @@ import opasQueryHelper
 import opasSchemaHelper
 import opasDocPermissions
 import opasPySolrLib
-from opasPySolrLib import search_text, search_text_qs
+from opasPySolrLib import search_text_qs # , search_text
 import opasSolrPyLib
 import opasPDFStampCpyrght
 
@@ -277,7 +277,7 @@ def get_client_session(response: Response,
             logger.error(msg)
             raise HTTPException(
                 status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
-                detail=ERR_MSG_PASSWORD + f" ({e})", 
+                detail=ERR_MSG_PASSWORD + f" ({msg} - {e})", 
             )
         else:
             if session_id is not None:
@@ -287,8 +287,8 @@ def get_client_session(response: Response,
 
     if session_id is None or len(session_id) < 12:
         # don't report these errors
+        msg = f"Client:[{client_id}] sessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
         if re.search("GW\.000|SE\.000", request.url._url) is None:
-            msg = f"Client:[{client_id}] sessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
             logger.error(msg)
         raise HTTPException(
             status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
@@ -592,7 +592,7 @@ async def reports(response: Response,
     if report_view is None:
         raise HTTPException(
             status_code=httpCodes.HTTP_404_NOT_FOUND, 
-            detail=ERR_MSG_REPORT_NOT_FOUND
+            detail=f"Report {report}: " + ERR_MSG_REPORT_NOT_FOUND
         )        
 
     # Get report
@@ -797,7 +797,7 @@ async def api_status(response: Response,
         logger.warning("ValidationError", e.json())
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST,
-            detail=ERR_MSG_STATUS_DATA_ISSUE
+            detail=ERR_MSG_STATUS_DATA_ISSUE + f": {e}"
         )
 
     return api_status_item
@@ -954,6 +954,7 @@ async def client_update_configuration(response: Response,
 
     opasDocPermissions.verify_header(request, "ClientUpdateConfig") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
+    msg = ""
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
@@ -975,7 +976,7 @@ async def client_update_configuration(response: Response,
         logger.error(f"Trapped error saving client config: {e}")
 
     if status_code not in (200, 201):
-        logger.error(f"HTTPException Called: {status_code}")
+        logger.error(f"HTTPException Called: {status_code}: {msg}")
         raise HTTPException(
             status_code=status_code, # HTTP_xxx
             detail=msg
@@ -1056,7 +1057,7 @@ async def client_get_configuration(response: Response,
         status_code = httpCodes.HTTP_404_NOT_FOUND
         raise HTTPException(
             status_code=httpCodes.HTTP_404_NOT_FOUND, 
-            detail=ERR_MSG_CONFIG_NOT_FOUND
+            detail=f"Configname {configname} Not found"
         )
     else:
         status_code = httpCodes.HTTP_200_OK
@@ -1235,7 +1236,8 @@ def session_login(response: Response,
         if pads_session_info.pads_disposition is not None:
             detail = f"{pads_session_info.pads_disposition}"
         else:
-            detail = f"Login credential error. {pads_session_info.pads_status_response}"
+            detail = ERR_MSG_BAD_LOGIN_CREDENTIALS + f" {pads_session_info.pads_status_response}"
+
         raise HTTPException(
             status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
             detail=detail 
@@ -1255,8 +1257,7 @@ def session_login(response: Response,
                 value=f"{session_id}",
                 domain=localsecrets.COOKIE_DOMAIN
             )
-            logger.info("Successful login - saved OpasSessionID Cookie")
-        # already should be in response per get_client_session
+            logger.debug("Successful login - saved OpasSessionID Cookie")
 
     try:
         login_return_item = models.LoginReturnItem(token_type = "bearer", 
@@ -1267,7 +1268,7 @@ def session_login(response: Response,
                                                    )
     except ValidationError as e:
         logger.error(e.json())             
-        detail = f"Validation Error {e}"
+        detail = ERR_MSG_VALIDATION_ERROR + f" {e}"
         # Solr Error
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST, 
@@ -1311,7 +1312,7 @@ def session_logout_user(response: Response,
         ret_val = opasDocPermissions.authserver_logout(session_id, request=request, response=response)
         if ret_val:
             # logged out
-           session_info = models.SessionInfo(session_id=session_id)
+            session_info = models.SessionInfo(session_id=session_id)
 
         #ocd, session_info = opasAPISupportLib.get_session_info(request, response,
                                                                #session_id=session_id, client_id=client_id)
@@ -1459,7 +1460,7 @@ async def session_whoami(response: Response,
     if client_session is not None:
         ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     else:
-        logger.error(f"Bad Request: Client-Session ID not provided")
+        logger.error(f"WhoAmI Bad Request: Client-Session ID not provided")
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST,
             detail=ERR_MSG_SESSION_ID_ERROR
@@ -1947,7 +1948,7 @@ async def database_extendedsearch(response: Response,
             )
         else:
             if solr_core2 is None:
-                detail=f"Bad Extended Request. Core not specified."
+                detail="Bad Extended Request. Core not specified."
                 logger.warning(detail)
                 raise HTTPException(
                     status_code=httpCodes.HTTP_400_BAD_REQUEST, 
@@ -2296,8 +2297,8 @@ async def database_search_v2b( response: Response,
                                              endyear=endyear
                                            )
     if errors:
-        detail = "Error 425: Too few characters or unbalanced."
-        print(detail)
+        detail = ERR_MSG_QUERY_FRAGMENT # "Query had too few characters or was unbalanced."
+        logger.error(detail)
         raise HTTPException(
             status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
             detail=detail
@@ -2372,9 +2373,9 @@ async def database_search_v2b( response: Response,
     if ret_status[0] != httpCodes.HTTP_200_OK:
         #  throw an exception rather than return an object (which will fail)
         try:
-            detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+            detail = ERR_MSG_BAD_SEARCH_REQUEST + f" {ret_status[1].reason}:{ret_status[1].body}"
         except:
-            detail = "Bad Solr Search Request"
+            detail = ERR_MSG_BAD_SEARCH_REQUEST # "Bad Search Request"
             
         raise HTTPException(
             status_code=ret_status[0],
@@ -2490,8 +2491,8 @@ async def database_search_v2(response: Response,
                                                           endyear=endyear
                                                         )
     if errors:
-        detail = "Error 425: Too few characters or unbalanced."
-        print(detail)
+        detail = ERR_MSG_QUERY_FRAGMENT # "Query had too few characters or was unbalanced."
+        logger.error(detail)
         raise HTTPException(
             status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
             detail=detail
@@ -2566,9 +2567,9 @@ async def database_search_v2(response: Response,
     if ret_status[0] != httpCodes.HTTP_200_OK:
         #  throw an exception rather than return an object (which will fail)
         try:
-            detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+            detail = ERR_MSG_BAD_SEARCH_REQUEST + f" {ret_status[1].reason}:{ret_status[1].body}"
         except:
-            detail = "Bad Solr Search Request"
+            detail = ERR_MSG_BAD_SEARCH_REQUEST # "Bad Search Request"
             
         raise HTTPException(
             status_code=ret_status[0],
@@ -2691,8 +2692,9 @@ def database_searchanalysis_v2(response: Response,
                                              endyear=endyear
                                            )
     if errors:
-        detail = "Error 425: Too few characters or unbalanced."
-        print(detail)
+        detail = ERR_MSG_QUERY_FRAGMENT # "Query had too few characters or was unbalanced."
+        logger.error(detail)
+        
         raise HTTPException(
             status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
             detail=detail
@@ -2817,8 +2819,9 @@ def database_searchanalysis_v3(response: Response,
                                              endyear=endyear
                                            )
     if errors:
-        detail = "Error 425: Too few characters or unbalanced."
-        print(detail)
+        detail = ERR_MSG_QUERY_FRAGMENT # "Query had too few characters or was unbalanced."
+        logger.error(detail)
+        
         raise HTTPException(
             status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
             detail=detail
@@ -3207,7 +3210,7 @@ def database_mostviewed(response: Response,
                 
         except Exception as e:
             ret_val = None
-            status_message = f"Error: {e}"
+            status_message = f" {e}"
             logger.error(status_message)
             raise HTTPException(
                 status_code=httpCodes.HTTP_400_BAD_REQUEST, 
@@ -3215,10 +3218,11 @@ def database_mostviewed(response: Response,
             )        
         else:
             if isinstance(ret_val, models.ErrorReturn):
-                logger.error("Getmostviewed error return. Raising exception")
+                detail = ret_val.error + " - " + ret_val.error_description                
+                logger.error(f"{detail}")
                 raise HTTPException(
                     status_code=ret_val.httpcode, 
-                    detail = ret_val.error + " - " + ret_val.error_description
+                    detail = detail
                 )
         
     log_endpoint_time(request, ts=ts)
@@ -3341,17 +3345,19 @@ def database_mostcited(response: Response,
                                                                          )
 
         if isinstance(ret_val, models.ErrorReturn): 
-            logger.error("GetmostCited error return. Raising exception")
+            detail = ret_val.error + " - " + ret_val.error_description                
+            logger.error(f"{detail}")
             raise HTTPException(
                 status_code=ret_val.httpcode, 
-                detail = ret_val.error + " - " + ret_val.error_description
+                detail = detail
             )
 
         if ret_val is None:
-            logger.error("GetmostCited error return. Raising exception")
+            detail = ERR_MSG_SEARCH_RETURNED_NONE + f" Status: {ret_status}"
+            logger.error(detail)
             raise HTTPException(
                 status_code=httpCodes.HTTP_400_BAD_REQUEST, 
-                detail = f"Search for MostCited returned None.  Status: {ret_status}"
+                detail = detail
             )
             
         # Don't record in final build - (ok for now during testing)
@@ -3455,8 +3461,8 @@ async def open_url(response: Response,
                                                           startyear=startyear
                                                         )
     if errors:
-        detail = "Error 425: Too few characters or unbalanced."
-        print(detail)
+        detail = ERR_MSG_QUERY_FRAGMENT # "Query had too few characters or was unbalanced."
+        logger.error(detail)
         raise HTTPException(
             status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
             detail=detail
@@ -3492,9 +3498,9 @@ async def open_url(response: Response,
     if ret_status[0] != httpCodes.HTTP_200_OK:
         #  throw an exception rather than return an object (which will fail)
         try:
-            detail=f"Bad Solr Search Request. {ret_status[1].reason}:{ret_status[1].body}"
+            detail = ERR_MSG_BAD_SEARCH_REQUEST + f" {ret_status[1].reason}:{ret_status[1].body}"
         except:
-            detail = "Bad Solr Search Request"
+            detail = ERR_MSG_BAD_SEARCH_REQUEST # "Bad Solr Search Request"
             
         raise HTTPException(
             status_code=ret_status[0],

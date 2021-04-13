@@ -6,11 +6,10 @@ import requests
 import logging
 logger = logging.getLogger(__name__)
 
-import opasConfig
-
-no_session = True
 import unitTestConfig
 from unitTestConfig import base_plus_endpoint_encoded, headers, UNIT_TEST_CLIENT_ID
+
+no_session = True
 headers = {"client-id": UNIT_TEST_CLIENT_ID,
           }
 
