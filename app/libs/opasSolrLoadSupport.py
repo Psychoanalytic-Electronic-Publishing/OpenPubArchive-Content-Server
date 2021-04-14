@@ -521,15 +521,47 @@ class ArticleInfo(object):
         self.art_all_authors = self.art_auth_mast + " (" + self.art_auth_mast_unlisted_str + ")"
 
         self.issue_id_str = f"<issue_id><src>{self.src_code}</src><yr>{self.art_year}</yr><vol>{self.art_vol_str}</vol><iss>{self.art_issue}</iss></issue_id>"
-        
+        try:
+            if self.src_title_full is not None:
+                safe_src_title_full = html.escape(self.src_title_full)
+            else:
+                logger.warning(f"Source title full is None")
+                safe_src_title_full = ''
+
+        except Exception as e:
+            logger.error(f"Source title escape error: {e}")
+            safe_src_title_full = ''
+            
+        try:
+            if self.art_title is not None:
+                safe_art_title = html.escape(self.art_title)
+            else:
+                logger.warning(f"Art title is None")
+                safe_art_title = ''
+
+        except Exception as e:
+            logger.error(f"Art title escape error: {e}")
+            safe_art_title = ''
+
+        try:
+            if self.art_pgrg is not None:
+                safe_art_pgrg = html.escape(self.art_pgrg)
+            else:
+                logger.warning(f"Art title is None")
+                safe_art_pgrg = ''
+
+        except Exception as e:
+            logger.error(f"Art PgRg escape error: {e}")
+            safe_art_pgrg = ''
+            
         # Usually we put the abbreviated title here, but that won't always work here.
         self.art_citeas_xml = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="sourcetitle">%s</span> <span class="pgrg">%s</span>:<span class="pgrg">%s</span></p>""" \
             %                   (self.authors_bibliographic,
                                  self.art_year,
-                                 html.escape(self.art_title),
-                                 html.escape(self.src_title_full),
+                                 safe_art_title,
+                                 safe_src_title_full,
                                  self.art_vol_int,
-                                 html.escape(self.art_pgrg)
+                                 safe_art_pgrg
                                 )
         
         self.art_citeas_text = opasxmllib.xml_elem_or_str_to_text(self.art_citeas_xml)
