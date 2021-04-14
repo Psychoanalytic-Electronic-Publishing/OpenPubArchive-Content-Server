@@ -362,11 +362,6 @@ class ArticleInfo(object):
         except Exception as e:
             self.art_kwds_count = 0
 
-        # art_chars_count
-        try:
-            self.art_chars_count = int(pepxml.xpath("string-length(normalize-space(node()))"))
-        except Exception as e:
-            self.art_chars_count  = 0
         # art_abs_count
         try:
             self.art_abs_count = int(pepxml.xpath("count(//abs)"))
@@ -442,6 +437,22 @@ class ArticleInfo(object):
             self.art_figcount = int(pepxml.xpath("count(//figure)")) # 20200922
         except Exception as e:
             self.art_figcount = 0
+            
+        # art_chars_count
+        try:
+            self.art_chars_count = int(pepxml.xpath("string-length(normalize-space(//node()))"))
+        except Exception as e:
+            self.art_chars_count  = 0
+
+        try:
+            self.art_chars_no_spaces_count = int(pepxml.xpath("string-length(translate(normalize-space(//node()),' ',''))"))
+        except Exception as e:
+            self.art_chars_no_spaces_count  = 0
+
+        try:
+            self.art_words_count = self.art_chars_count - self.art_chars_no_spaces_count + 1
+        except Exception as e:
+            self.art_words_count  = 0
 
         # ************* end of counts! 20210413 *******************************************
 
@@ -994,6 +1005,8 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "art_citations_count" : artInfo.art_citations_count,
                 "art_quotes_count" : artInfo.art_quotes_count,
                 "art_chars_count" : artInfo.art_chars_count,
+                "art_chars_no_spaces_count" : artInfo.art_chars_no_spaces_count,
+                "art_words_count" : artInfo.art_words_count,
                 "art_graphic_list" : artInfo.art_graphic_list,
                 "reference_count" : artInfo.ref_count,
                 "art_iss" : artInfo.art_issue,

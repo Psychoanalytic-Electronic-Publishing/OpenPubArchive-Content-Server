@@ -2,6 +2,8 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2021-04-14 Added additional counting fields useful for QA keyboarding and hopefully more, set up consistent naming, leaving old names in 
+
     2021-04-13 Added new counting fields useful for QA keyboarding and hopefully more
 
     2020-12-08 Changed art_graphic_list to indexed, so client can find an instance by a graphic id contained within.
@@ -328,33 +330,40 @@
 
   <field name="caption_text_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="caption_title_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_graphic_list" type="string_ci" indexed="true" stored="true" multiValued="true" docValues="false"/>         <!--Added 2020-09-22-->
 
   <!-- *********************** Counting fields *********************** -->
+  <!-- start older field names-->
+  <field name="reference_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>   
   <field name="art_pgcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
-  <field name="reference_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-
-  <!--Added 2021-04-13 Mainly for checking XML data -->
-  <field name="art_abs_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_kwds_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_ftns_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_paras_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_terms_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
-  <field name="art_quotes_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_dreams_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
-  <field name="art_dialogs_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
-  <field name="art_notes_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
-  <field name="art_poems_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
-  <field name="art_citations_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
-  <field name="art_headings_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>   
-  <field name="art_chars_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  <!-- may not populate -->
-
-  <!--Added 2020-09-22-->
-  <field name="art_graphic_list" type="string_ci" indexed="true" stored="true" multiValued="true" docValues="false"/>
-  <field name="art_figcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_tblcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-
-  <!--Added 7/24 to facilitate smartsearch-->
-  <field name="art_authors_count" type="pint" indexed="false" stored="false" docValues="true" multiValued="false"/>
+  <field name="art_tblcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>                <!--Added 2020-09-22-->
+  <field name="art_figcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>                <!--Added 2020-09-22-->
+  <!-- end older count field names  -->
+  <field name="art_abs_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>               <!--new 2021-04-13-->
+  <field name="art_kwds_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>              <!--new 2021-04-13-->
+  <field name="art_ftns_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>              <!--new 2021-04-13-->
+  <field name="art_terms_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_quotes_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>            <!--new 2021-04-13-->
+  <field name="art_dreams_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>            <!--new 2021-04-13-->
+  <field name="art_dialogs_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>           <!--new 2021-04-13--> 
+  <field name="art_notes_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_poems_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_citations_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>         <!--new 2021-04-13-->
+  <field name="art_headings_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>          <!--new 2021-04-13-->
+  <field name="art_paras_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_chars_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_chars_no_spaces_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>   <!--new 2021-04-13-->
+  <field name="art_words_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_authors_count" type="pint" indexed="false" stored="false" docValues="true" multiValued="false"/>           <!--Added 7/24 to facilitate smartsearch-->
+  <field name="art_pg_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_tbl_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>               <!--Added 2020-09-22-->
+  <field name="art_fig_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>               <!--Added 2020-09-22-->
+  <field name="art_reference_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>   
+  <!--copy older names to newer named field consistent with others.  Leave old for backwards compat.-->
+  <copyField source="reference_count" dest="art_reference_count"/> 
+  <copyField source="art_pgcount" dest="art_pg_count"/> 
+  <copyField source="art_tblcount" dest="art_tbl_count"/> 
+  <copyField source="art_figcount" dest="art_fig_count"/> 
 
   <!-- 2020-09-23
        added art_product_key, a non-unique code that Opas can send to the auth server to verify access 
