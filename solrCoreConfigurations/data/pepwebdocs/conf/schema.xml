@@ -2,6 +2,8 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2021-04-13 Added new counting fields useful for QA keyboarding and hopefully more
+
     2020-12-08 Changed art_graphic_list to indexed, so client can find an instance by a graphic id contained within.
 
     2020-11-17 Added art_iss_seqnbr for journals like FA which really work by number more than issue.  See FA.014A.0001A 
@@ -274,8 +276,6 @@
   <field name="art_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!--Added 7/21 to facilitate smartsearch-->
   <field name="art_authors_lastnames" type="string_ci" indexed="true" stored="false" multiValued="true"/>
-  <!--Added 7/24 to facilitate smartsearch-->
-  <field name="art_authors_count" type="pint" indexed="false" stored="false" docValues="true" multiValued="false"/>
   
   <copyField source="art_authors" dest="art_authors_text"/>
   <copyField source="art_authors" dest="art_authors_ngrm"/>
@@ -302,7 +302,6 @@
   <field name="art_type" type="string" indexed="false" stored="false" multiValued="false" docValues="true" />
   <field name="art_pgrg" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--Added 2020-05-06-->
-  <field name="art_pgcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_lang" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/> <!--changed to multivalued=false, 2020-06-17 (it's an attribute of artinfo)-->
   <field name="art_issn" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--Added 2020-05-06-->
@@ -325,16 +324,37 @@
   <field name="bib_rx" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="bib_title" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="bib_journaltitle" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
-  <field name="reference_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
   <field name="references_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
 
   <field name="caption_text_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="caption_title_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
 
+  <!-- *********************** Counting fields *********************** -->
+  <field name="art_pgcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="reference_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+
+  <!--Added 2021-04-13 Mainly for checking XML data -->
+  <field name="art_abs_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_kwds_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_ftns_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_paras_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_terms_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
+  <field name="art_quotes_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
+  <field name="art_dreams_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
+  <field name="art_dialogs_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
+  <field name="art_notes_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
+  <field name="art_poems_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
+  <field name="art_citations_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  
+  <field name="art_headings_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>   
+  <field name="art_chars_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  <!-- may not populate -->
+
   <!--Added 2020-09-22-->
+  <field name="art_graphic_list" type="string_ci" indexed="true" stored="true" multiValued="true" docValues="false"/>
   <field name="art_figcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
   <field name="art_tblcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_graphic_list" type="string_ci" indexed="true" stored="true" multiValued="true" docValues="false"/>
+
+  <!--Added 7/24 to facilitate smartsearch-->
+  <field name="art_authors_count" type="pint" indexed="false" stored="false" docValues="true" multiValued="false"/>
 
   <!-- 2020-09-23
        added art_product_key, a non-unique code that Opas can send to the auth server to verify access 

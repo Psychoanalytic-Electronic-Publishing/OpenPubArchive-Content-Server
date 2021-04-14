@@ -345,25 +345,110 @@ class ArticleInfo(object):
         
         self.art_pgrg = opasxmllib.xml_get_subelement_textsingleton(artInfoNode, "artpgrg", default_return=None)  # note: getSingleSubnodeText(pepxml, "artpgrg")
         self.art_pgstart, self.art_pgend = opasgenlib.pgrg_splitter(self.art_pgrg)
+
         try:
             self.art_pgcount = int(pepxml.xpath("count(//pb)")) # 20200506
         except Exception as e:
             self.art_pgcount = 0
             
-        try:
-            self.art_figcount = int(pepxml.xpath("count(//figure)")) # 20200922
-        except Exception as e:
-            self.art_figcount = 0
-
-        self.art_graphic_list = pepxml.xpath('//graphic//@source')
-        #if self.art_graphic_list != []:
-            #print (f"Graphics found: {self.art_graphic_list}")
+        self.art_kwds = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/artkwds/node()", None)
         
+        # ************* new counts! 20210413 *******************************************
+        try:
+            if self.art_kwds is not None:
+                self.art_kwds_count = self.art_kwds.count(",") + 1 # 20210413
+            else:
+                self.art_kwds_count = 0
+        except Exception as e:
+            self.art_kwds_count = 0
+
+        # art_chars_count
+        try:
+            self.art_chars_count = int(pepxml.xpath("string-length(normalize-space(node()))"))
+        except Exception as e:
+            self.art_chars_count  = 0
+        # art_abs_count
+        try:
+            self.art_abs_count = int(pepxml.xpath("count(//abs)"))
+        except Exception as e:
+            self.art_abs_count  = 0
+
+        # art_ftns_count_count 
+        try:
+            self.art_ftns_count = int(pepxml.xpath("count(//ftn)")) # 20210413
+        except Exception as e:
+            self.art_ftns_count = 0
+
+        # art_paras_count
+        try:
+            self.art_paras_count = int(pepxml.xpath("count(//p)")) # 20210413
+        except Exception as e:
+            self.art_paras_count = 0
+
+        # art_headings_count
+        try:
+            self.art_headings_count = int(pepxml.xpath("count(//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6])")) # 20210413
+        except Exception as e:
+            self.art_headings_count = 0
+
+        # art_terms_count
+        try:
+            self.art_terms_count = int(pepxml.xpath('count(//impx[@type="TERM2"])')) # 20210413
+        except Exception as e:
+            self.art_terms_count = 0
+
+        # art_dreams_count
+        try:
+            self.art_dreams_count = int(pepxml.xpath("count(//dream)")) # 20210413
+        except Exception as e:
+            self.art_dreams_count = 0
+
+        # art_dialogs_count
+        try:
+            self.art_dialogs_count = int(pepxml.xpath("count(//dialog)")) # 20210413
+        except Exception as e:
+            self.art_dialogs_count = 0
+
+        # art_notes_count
+        try:
+            self.art_notes_count = int(pepxml.xpath("count(//note)")) # 20210413
+        except Exception as e:
+            self.art_notes_count = 0
+
+        # art_poems_count
+        try:
+            self.art_poems_count = int(pepxml.xpath("count(//poem)")) # 20210413
+        except Exception as e:
+            self.art_poems_count = 0
+            
+        # art_citations_count
+        try:
+            self.art_citations_count = int(pepxml.xpath("count(//bx)")) # 20210413
+        except Exception as e:
+            self.art_citations_count = 0
+        
+        # art_quotes_count
+        try:
+            self.art_quotes_count = int(pepxml.xpath("count(//quote)")) # 20210413
+        except Exception as e:
+            self.art_quotes_count = 0
+
         try:
             self.art_tblcount = int(pepxml.xpath("count(//tbl)")) # 20200922
         except Exception as e:
             self.art_tblcount = 0
 
+        try:
+            self.art_figcount = int(pepxml.xpath("count(//figure)")) # 20200922
+        except Exception as e:
+            self.art_figcount = 0
+
+        # ************* end of counts! 20210413 *******************************************
+
+        self.art_graphic_list = pepxml.xpath('//graphic//@source')
+        #if self.art_graphic_list != []:
+            #print (f"Graphics found: {self.art_graphic_list}")
+        
         if self.art_pgstart is not None:
             self.art_pgstart_prefix, self.art_pgstart, self.pgstart_suffix = opasgenlib.pgnum_splitter(self.art_pgstart)
         else:
@@ -423,7 +508,6 @@ class ArticleInfo(object):
         self.art_author_lastnames = opasxmllib.xml_xpath_return_textlist(pepxml, '//artinfo/artauth/aut[@listed="true"]/nlast')
         
         self.art_all_authors = self.art_auth_mast + " (" + self.art_auth_mast_unlisted_str + ")"
-        self.art_kwds = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/artkwds/node()", None)
 
         self.issue_id_str = f"<issue_id><src>{self.src_code}</src><yr>{self.art_year}</yr><vol>{self.art_vol_str}</vol><iss>{self.art_issue}</iss></issue_id>"
         
@@ -791,7 +875,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
         freuds_italics = remove_values_from_terms_highlighted_list(freuds_italics)
 
     if artInfo.art_title is not None:
-        title_str = artInfo.art_title.translate(str.maketrans('', '', string.punctuation)), # remove all punct for sorting
+        title_str = artInfo.art_title.translate(str.maketrans('', '', string.punctuation)) # remove all punct for sorting
     else:
         title_str = None
 
@@ -809,7 +893,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
         bk_title_str = None
 
     if artInfo.src_title_full is not None:
-        art_sourcetitlefull_str = artInfo.src_title_full.translate(str.maketrans('', '', string.punctuation)), # remove all punct for sorting,
+        art_sourcetitlefull_str = artInfo.src_title_full.translate(str.maketrans('', '', string.punctuation)) # remove all punct for sorting,
     else:
         art_sourcetitlefull_str = None
         
@@ -897,7 +981,21 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "art_pgcount" : artInfo.art_pgcount,
                 "art_tblcount" : artInfo.art_tblcount,
                 "art_figcount" : artInfo.art_figcount,
+                "art_kwds_count" : artInfo.art_kwds_count,
+                "art_abs_count" : artInfo.art_abs_count,
+                "art_ftns_count" : artInfo.art_ftns_count,
+                "art_paras_count" : artInfo.art_paras_count,
+                "art_headings_count" : artInfo.art_headings_count,
+                "art_terms_count" : artInfo.art_terms_count,
+                "art_dreams_count" : artInfo.art_dreams_count,
+                "art_dialogs_count" : artInfo.art_dialogs_count,
+                "art_notes_count" : artInfo.art_notes_count,
+                "art_poems_count" : artInfo.art_poems_count,
+                "art_citations_count" : artInfo.art_citations_count,
+                "art_quotes_count" : artInfo.art_quotes_count,
+                "art_chars_count" : artInfo.art_chars_count,
                 "art_graphic_list" : artInfo.art_graphic_list,
+                "reference_count" : artInfo.ref_count,
                 "art_iss" : artInfo.art_issue,
                 "art_iss_title" : artInfo.art_issue_title,
                 "art_iss_title_str" : art_issue_title_str, # remove all punct for sorting
@@ -926,7 +1024,6 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "panels_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//panel", default_return=None),
                 "poems_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//poem", default_return=None), # multi
                 "quotes_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//quote", default_return=None), # multi
-                "reference_count" : artInfo.ref_count,
                 "references_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//be|binc", default_return=None), # multi
                 "tables_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//tbl", default_return=None), # multi
                 "bk_pubyear" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkpubyear/node()", default_return=None), # multi
