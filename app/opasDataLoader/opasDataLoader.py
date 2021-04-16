@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0211.1" 
+__version__     = "2021.0416.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -303,14 +303,15 @@ def main():
             ocd.delete_all_article_data()
             solr_docs2.delete(q='*:*')
             solr_docs2.commit()
-            solr_authors2.delete_query("*:*")
+            solr_authors2.delete(q="*:*")
             solr_authors2.commit()
-            
+
+        # reset glossary core when others are reset, or when --resetcore is selected with --glossaryonly   
         if 1: # options.glossary_core_update:
             msg = "*** Deleting all data from the Glossary core ***"
             logger.warning(msg)
             print (msg)
-            solr_gloss2.delete_query("*:*")
+            solr_gloss2.delete(q="*:*")
             solr_gloss2.commit()
     else:
         # check for missing files and delete them from the core, since we didn't empty the core above

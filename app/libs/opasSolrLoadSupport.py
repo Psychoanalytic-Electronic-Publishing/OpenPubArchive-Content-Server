@@ -11,6 +11,7 @@ OPAS - opasSolrLoadSupport
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
+__version__     = "2021.0416.1" 
 
 import sys
 sys.path.append('../libs')
@@ -746,7 +747,7 @@ def process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLConten
 
     # We collected all the dictentries for the group.  Now lets save the whole shebang
     try:
-        response_update = solr_gloss2.add_many(all_dict_entries)  # lets hold off on the , _commit=True)
+        response_update = solr_gloss.add(all_dict_entries)  # lets hold off on the , _commit=True)
 
         if not re.search('"status">0</int>', response_update):
             logger.info(response_update)
