@@ -2,6 +2,27 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2021-04-17 art_authors_text is now stored, so it can be returned as well as searched. (Not necessary, may revert later) 
+               removed ngrams fields, not used
+               Changed authors to text to see if I can give simple names to users
+               User fields mod or added:
+                  authors (already there, changed to text_simple though)
+                  title   (already there)
+                  source  - copied
+                  reference - copied
+                  language - copied
+                  year - copied
+                  headings - copied
+                  volume - copied
+                  quotes - copied
+                  dreams - copied
+                  dialogs - copied
+                  notes - copied
+                  panels - copied
+                  poems - copied
+                  keywords - copied
+                  references - copied
+                  
     2021-04-14 Added additional counting fields useful for QA keyboarding and hopefully more, set up consistent naming, leaving old names in 
 
     2021-04-13 Added new counting fields useful for QA keyboarding and hopefully more
@@ -239,11 +260,9 @@
   <!-- End Key display fields! -->
   <!-- ************************************************************************************************* -->
 
-
   <!-- sections, can be used to grab part of a book, etc. Never really used so far-->
   <!-- <field name="sections_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>-->
   <!-- The text field is the default search zone when a field is not supplied.  So despite the waste, let's index everything here. -->
-
 
   <!-- Metadata fields -->
   <!-- Store whether its PEPArchive, PEPCurrent, etc. -->
@@ -253,10 +272,12 @@
   <!-- So how can we do queries for partial last names...can't bunch authors in printable form.  
        Try two fields, one XML one presentation one multifield. -->
   <!--Set docValues true to allow faceting authors -->
-  <field name="authors" type="string" indexed="true" stored="true" multiValued="true" docValues="true" />
+  
+  <!-- 2021-04-17 Changed authors to text to allow it to be searched by users textually with one name-->
+  <field name="authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_mast" type="string_ci" indexed="true" stored="true" multiValued="false"/>
-  
+
   <!--Added 20201019 to compare the masts with ids and see if they are complete, and the same (this field 
       was apparently here in an early incarnation but has been removed)
       art_authors_ids_str compare to art_authors_mast, though the former is from the attribute author_id
@@ -268,21 +289,23 @@
   <field name="art_authors_citation" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_authors_citation_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
   <copyField source="art_authors_citation" dest="art_authors_citation_str"/> # for sorting
+  <!-- Good for searching, separated author names, but full text like art_authors_citation (where they are not separated)-->
+  <field name="art_authors_text" type="text_simple" indexed="true" stored="True" multiValued="true"/> <!-- doesn't need to be stored, but useful to see -->
+  
   <!--try to improve author search for single names and full names-->
   <!--Many of these are Temporary. fpr trying different search results.  #TODO-->
-  <field name="art_authors_text" type="text_simple" indexed="true" stored="false" multiValued="true"/>
-  <field name="art_authors_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>
+  <!--<field name="art_authors_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
   <field name="art_authors_mast_text" type="text_simple" indexed="true" stored="false" multiValued="false"/>
-  <field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>
+  <!--<field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
   <field name="art_authors_unlisted" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!--Added 7/21 to facilitate smartsearch-->
   <field name="art_authors_lastnames" type="string_ci" indexed="true" stored="false" multiValued="true"/>
   
   <copyField source="art_authors" dest="art_authors_text"/>
-  <copyField source="art_authors" dest="art_authors_ngrm"/>
+  <!--<copyField source="art_authors" dest="art_authors_ngrm"/>-->
   <copyField source="art_authors_mast" dest="art_authors_mast_text"/>
-  <copyField source="art_authors_mast" dest="art_authors_mast_ngrm"/>
+  <!--<copyField source="art_authors_mast" dest="art_authors_mast_ngrm"/>-->
 
   <!-- by paras-->
   <!--<field name="art_body_xml" type="text_simple" indexed="true" stored="false" multiValued="false"/>-->
@@ -388,7 +411,6 @@
   <field name="body_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/> 
   <copyField source="body_xml" dest="body_xml_syn"/>
   
-  <!--#TODO: reinstate these-->
   <field name="quotes_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
   <field name="quotes_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
   <field name="dialogs_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
@@ -417,6 +439,7 @@
   <field name="glossary_group_terms" type="string_ci" indexed="true" stored="false" multiValued="true"/>
   <!--Store for debug only-->
   <field name="freuds_italics" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+
   
   <!--These are not displayed directly.  Search only. -->
   <!-- Special term fields -->
@@ -466,6 +489,40 @@
   <copyField source="para" dest="para_syn"/>
   
   <!--<field name="level" type="pint" indexed="true" stored="false" docValues="true"/>-->
+
+  <!-- ****************************************************************************************************** -->
+  <!-- 2021-04-17 new fields (names) - copies for advanced user search -->
+  <!-- others already in place: (see above)
+            for authors -->
+
+  <field name="language" type="string" indexed="true" stored="true" multiValued="false"/>
+  <copyField source="art_lang" dest="language"/>
+  <field name="dreams" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="dreams_xml" dest="dreams"/>
+  <field name="dialogs" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="dialogs_xml" dest="dialogs"/>
+  <field name="headings" type="text_simple" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="headings_xml" dest="headings"/>
+  <field name="keywords"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <copyField source="art_kwds" dest="keywords"/>
+  <field name="notes" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="notes_xml" dest="notes"/>
+  <field name="panels" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="panels_xml" dest="panels"/>
+  <field name="poems" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="poems_xml" dest="poems"/>
+  <field name="references" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="references_xml" dest="references"/>
+  <field name="volume" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <copyField source="art_vol" dest="volume"/>
+  <field name="quotes" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="quotes_xml" dest="quotes"/>
+  <field name="year" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <copyField source="art_year" dest="year"/>
+  <field name="source" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <copyField source="art_sourcetitlefull" dest="source"/>
+  <field name="sourcecode" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <copyField source="art_sourcecode" dest="sourcecode"/>
 
   <!-- The String case insensitive field.
        From: http://pietervogelaar.nl/solr-3-5-search-case-insensitive-on-a-string-field-for-exact-match
@@ -612,3 +669,4 @@
   </fieldtype>
 
 </schema>
+
