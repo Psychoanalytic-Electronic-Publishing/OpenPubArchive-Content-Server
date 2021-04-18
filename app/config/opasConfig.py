@@ -133,6 +133,15 @@ SOLR_FULL_TEXT_MAX_ANALYZED_CHARS = 25200000 # full-text markup won't show match
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 25200000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
 SOLR_HIGHLIGHT_RETURN_MIN_FRAGMENT_SIZE = 2000 # Abstract size
 
+# SmartSearch Return Classes
+WORDSEARCH = "WORDSEARCH"
+NAMELIST = "NAMELIST"
+SOLRFIELD = "SOLRFIELD"
+ADVANCED = "ADVANCED"
+DOI = "DOI"
+REFERENCEFIELDS = "REFERENCEFIELDS"
+
+
 #Standard Values for parameters
 # here anything matching the first 4 characters of type matches.
 DICTLEN_KEY = 'length'
@@ -675,8 +684,8 @@ SEARCH_TYPE_TITLE = "title"
 SEARCH_TYPE_PARAGRAPH = "paragraph search"
 SEARCH_TYPE_ID = "locator"
 SEARCH_TYPE_ARTICLE_FIELDS = "article fields"
-SEARCH_TYPE_ADVANCED = "solradvanced"
-SEARCH_TYPE_FIELDED = "solrfield"
+# SEARCH_TYPE_ADVANCED = "solradvanced"
+SEARCH_TYPE_FIELDED = "document field"
 SEARCH_TYPE_DOI = "doi"
 
 SEARCH_FIELD_LOCATOR = "art_id"
@@ -686,7 +695,6 @@ SEARCH_FIELD_TITLE = "title"
 SEARCH_FIELD_TEXT = "text"
 SEARCH_FIELD_DOI = "art_doi"
 SEARCH_FIELD_PGRG = "art_pgrg"
-
 
 # Dict = sort key to use, fields, default direction if one is not specified.
 PREDEFINED_SORTS = {

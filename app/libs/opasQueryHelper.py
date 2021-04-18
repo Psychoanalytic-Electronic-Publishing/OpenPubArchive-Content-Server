@@ -16,7 +16,7 @@ This library is meant to hold parsing and other functions which support query tr
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0412.1"
+__version__     = "2021.0417.1"
 __status__      = "Development"
 
 import re
@@ -973,19 +973,30 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if smarttext is not None:
         search_dict = smartsearch.smart_search(smarttext)
+        # search_dict = smartsearch_analyze.analyze_smart_string(smarttext)
+        # search_analysis = smartsearch_analyze.analyze_smart_string(smarttext)
+        
         # set up parameters as a solrQueryTermList to share that processing
         # solr_query_spec.solrQueryOpts.qOper = "OR"
         schema_field = search_dict.get(opasConfig.KEY_SEARCH_FIELD)
         limit = 0
         search_result_explanation = search_dict[opasConfig.KEY_SEARCH_SMARTSEARCH]
         if schema_field is not None:
-            schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
-            if opasgenlib.not_empty(schema_value):
-                if "'" in schema_value or '"' in schema_value:
-                    search_q += f"&& {schema_field}:{schema_value} "
-                else:
-                    search_q += f"&& {schema_field}:({schema_value}) "
-                limit = 1
+            if schema_field == "solr":
+                schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                if opasgenlib.not_empty(schema_value):
+                    search_q += f"&& {schema_value} "
+                    limit = 1
+                else: # not what we thought
+                    limit = 0
+            else:
+                schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                if opasgenlib.not_empty(schema_value):
+                    if "'" in schema_value or '"' in schema_value:
+                        search_q += f"&& {schema_field}:{schema_value} "
+                    else:
+                        search_q += f"&& {schema_field}:({schema_value}) "
+                    limit = 1
         else:
             syntax = search_dict.get("syntax")
             if syntax is not None:

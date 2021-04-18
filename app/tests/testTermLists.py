@@ -6,6 +6,7 @@ import requests
 
 from unitTestConfig import base_plus_endpoint_encoded, headers
 from opasPySolrLib import get_term_index
+
 # two libs for the same function, different restrictions
 import opasSolrPyLib # eventually, we may want to get rid of this.
 import opasPySolrLib
@@ -87,6 +88,7 @@ class TestTermSearch(unittest.TestCase):
 
     def test_2b_termlist(self):
         # only SolrPyLib supports wildcards.
+        # Note use of SolrPy here.
         tests = ["jea?ous?", "inc*", "m?th*"]
         term_list1 = opasSolrPyLib.get_term_count_list(tests)
         assert(len(term_list1) > 0)

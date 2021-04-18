@@ -4,7 +4,8 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0413.1.Beta"
+# funny source things happening, may be crosslinked files in the project...watch this one
+__version__     = "2021.0418.1.Beta" 
 __status__      = "Development"
 
 """
@@ -44,6 +45,14 @@ Endpoint and model documentation automatically available when server is running 
   http://localhost:8000/docs
   etc.
 
+Important Build and Usage Notes:
+
+  - Most of the Solr functions are handled by PySolr, except for one which still uses Solrpy: /v2/Database/TermCounts/"
+    and OPAS uses a copy--a modified version of Solrpy--because of an error I found.  Error handling is different
+    between the two libraries too.
+    
+       #TODO: Switch to the equivalent PySolr calls, see testTermLists.py
+  
 """
 #----------------------------------------------------------------------------------------------
 # Coding Standards
@@ -2568,7 +2577,7 @@ async def database_search_v2(response: Response,
         #  throw an exception rather than return an object (which will fail)
         try:
             detail = ERR_MSG_BAD_SEARCH_REQUEST + f" {ret_status[1].reason}:{ret_status[1].body}"
-        except:
+        except Exception as e:
             detail = ERR_MSG_BAD_SEARCH_REQUEST # "Bad Search Request"
             
         raise HTTPException(
@@ -3557,6 +3566,8 @@ async def database_term_counts(response: Response,
 
        Note: The field must be listed as stored, not just indexed.
 
+    Note this call still uses SolyPy rather than PySolr underneath.
+
     ## Return Type
        models.TermIndex
 
@@ -3566,10 +3577,15 @@ async def database_term_counts(response: Response,
     ## Sample Call
 
     ## Notes
+    
+    **** IMPORTANT: See Potential errors below ***
 
     See also: /v2/Database/TermCounts/
 
     ## Potential Errors
+
+    IMPORTANT: Note this API call still uses SolyPy rather than PySolr as the rest of the API does.  The error
+               handling is different between the two libraries
 
     ## Example Calls
 
@@ -4467,7 +4483,7 @@ def documents_abstracts(response: Response,
                         documentID: str=Path(..., title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDORPARTIAL), 
                         return_format: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
                         similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
-                        sort: str=Query("authors desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                        sort: str=Query("art_authors_citation asc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                         client_id:int=Depends(get_client_id), 
@@ -4512,7 +4528,7 @@ def documents_abstracts(response: Response,
                                                             )
     except Exception as e:
         response.status_code=httpCodes.HTTP_400_BAD_REQUEST
-        status_message = f"Error: {e}"
+        status_message = f"{e.status_code}:{e.detail}"
         logger.error(status_message)
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS_ABSTRACTS,
                                     session_info=session_info, 

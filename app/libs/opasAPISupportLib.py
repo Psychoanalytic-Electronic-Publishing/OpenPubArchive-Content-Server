@@ -44,6 +44,7 @@ import secrets
 import socket, struct
 from collections import OrderedDict
 from urllib.parse import unquote
+from urllib.error import HTTPError
 import json
 from xml.sax import SAXParseException
 
@@ -51,6 +52,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 from starlette.responses import Response
 import starlette.status as httpCodes
+from starlette.exceptions import HTTPException
 
 #from starlette.status import HTTP_200_OK, \
                                 #HTTP_400_BAD_REQUEST, \
@@ -921,8 +923,16 @@ def documents_get_abstracts(document_id,
                                                  session_info=session_info
                                                  )
 
-        documents = models.Documents(documents = document_list.documentList)
-
+        if not isinstance(document_list, models.ErrorReturn):
+            documents = models.Documents(documents = document_list.documentList)
+        else:
+            err = document_list
+            logger.error(err.error_description)
+            raise HTTPException(
+                status_code=err.error,
+                detail=err.error_description
+            )                
+        
         ret_val = documents
 
     return ret_val

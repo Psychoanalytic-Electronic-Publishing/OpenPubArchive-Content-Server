@@ -790,6 +790,26 @@ class WhatsNewListStruct(BaseModel):
 class WhatsNewList(BaseModel):
     whatsNew: WhatsNewListStruct
 
+# added 2021-4-17 for advanced smartsearch, but changed method, so not needed
+# was in deprecated module (actually never used...will eventually delete)
+#class AnalyzedInputString(BaseModel):
+    #inputString: str = None
+    #textToSearch: str = None    
+    #inputStringNoStopWords: list = []
+    #stop_words: list = []
+    #words: list = []
+    #noninitials: list = []
+    #nonBooleanWords: list = []
+    #booleanWords: list = []
+    #capitalized: list = []
+    #theNameList: list = []
+    #humanNameList: list = []
+    #hasStopWords: bool = False
+    #isBooleanStrict: bool = False
+    #isBooleanLoose: bool = False
+    #isBoolean: bool = False
+    #wordsAllCapitalized: bool = False
+    #hasBooleanWords: bool = False
     
 #-------------------------------------------------------
 # Perhaps use termindex instead

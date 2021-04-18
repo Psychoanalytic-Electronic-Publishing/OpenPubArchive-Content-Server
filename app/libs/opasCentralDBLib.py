@@ -186,7 +186,7 @@ class SourceInfoDB(object):
         for n in recs:
             try:
                 self.sourceData[n["pepsrccode"]] = n
-            except KeyError as e:
+            except KeyError:
                 logger.error("Missing Source Code Value in %s" % n)
 
     def lookupSourceCode(self, sourceCode):
