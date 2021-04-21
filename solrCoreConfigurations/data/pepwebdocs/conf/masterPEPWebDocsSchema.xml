@@ -523,6 +523,9 @@
   <copyField source="art_sourcetitlefull" dest="source"/>
   <field name="sourcecode" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <copyField source="art_sourcecode" dest="sourcecode"/>
+  # Added 2021-04-18
+  <field name="sourcetype" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <copyField source="art_sourcetype" dest="sourcetype"/>
 
   <!-- The String case insensitive field.
        From: http://pietervogelaar.nl/solr-3-5-search-case-insensitive-on-a-string-field-for-exact-match

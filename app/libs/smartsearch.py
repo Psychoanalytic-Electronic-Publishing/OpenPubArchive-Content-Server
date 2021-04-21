@@ -98,6 +98,15 @@ def smart_search(smart_search_text):
     smart_search_text = smart_search_text.rstrip(" ")
     # get rid of smart quotes
     smart_search_text = re.sub("“|”", "'", smart_search_text)
+    # count words
+    has_wildcards = len(re.findall(r'\*|(\S?\?+\S)', smart_search_text))
+    #if smart_search_includes_simple_wildcards:
+        #try:
+            #regc = re.compile(smart_search_text)
+            #smart_search_is_regex = None # we don't know
+        #except:
+            #smart_search_is_regex = False # we know it's not
+    
     
     if re.match("^[\"\'].*[\"\']$", smart_search_text):
         # literal string
@@ -207,7 +216,7 @@ def smart_search(smart_search_text):
                     orig_smart_search_text = smart_search_text
                     if not opasgenlib.in_quotes(smart_search_text):
                         if not opasgenlib.is_boolean(smart_search_text):
-                            if not opasgenlib.in_brackets(smart_search_text):
+                            if not opasgenlib.in_brackets(smart_search_text) and word_count > 1 and not has_wildcards:
                                 smart_search_text = f'"{smart_search_text}"~25'
                                 ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_PARAGRAPH
                                 ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched paragraphs with terms: ({orig_smart_search_text})"

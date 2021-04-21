@@ -20,6 +20,30 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["fullCount"] >= 15)
         print (response_set)
 
+    def test_1a_one_word_search(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=regretable') # misspelled, so only a few
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        assert(response_info["fullCount"] >= 5)
+        print (response_set)
+
+    def test_1a_one_word_search_with_wildcard(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=regretabl*') # misspelled, so only a few
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        assert(response_info["fullCount"] >= 12)
+        print (response_set)
+
     def test_1a_boolean_ignored_phrase_search(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="love or hate"')
         response = requests.get(full_URL, headers=headers)
