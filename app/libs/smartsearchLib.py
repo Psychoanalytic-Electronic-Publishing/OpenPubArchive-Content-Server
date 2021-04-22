@@ -57,6 +57,11 @@ advanced_syntax = f"(?P<schema_field>^adv)\:\:(?P<schema_value>.+$)"
 
 pat_prefix_amps = re.compile("^\s*&& ")
 
+rx_quoted_str_has_wildcards = r"(\"|\').*(\*|\?).*\1"
+pat_quoted_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
+rx_str_has_wildcards = r".*(\*|\?).*"
+pat_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
+
 cores = CORES
 
 class SearchEvaluation(object):
@@ -65,6 +70,42 @@ class SearchEvaluation(object):
         self.field = field
         self.found = found
         self.isfound = found > 0
+
+def quoted_str_has_wildcards(search_str):
+    """
+    Test if string which has a substring in quotes, that has wildcards.
+    
+    >>> result = quoted_str_has_wildcards(r"'test* 12?'")
+    >>> result is not None
+    True
+    
+    >>> result = quoted_str_has_wildcards(r"'test** 12?  '")
+    >>> result is not None
+    True
+    """
+    ret_val = False
+    if pat_quoted_str_has_wildcards.search(search_str):
+        ret_val = True
+
+    return ret_val
+
+def str_has_wildcards(search_str):
+    """
+    Test if string which has a substring in quotes, that has wildcards.
+    
+    >>> result = str_has_wildcards(r"test* 12?")
+    >>> result is not None
+    True
+    
+    >>> result = str_has_wildcards(r"test** 12?  ")
+    >>> result is not None
+    True
+    """
+    ret_val = False
+    if pat_str_has_wildcards.search(search_str):
+        ret_val = True
+
+    return ret_val
 
 #-----------------------------------------------------------------------------
 def cleanup_solr_query(solrquery):
@@ -139,6 +180,10 @@ def is_value_in_field(value,
         q = f'{field}:"{value}"~25'
     else:
         q = f'{field}:({value})'
+
+    if str_has_wildcards(q): # quoted_str_has_wildcards(q):
+        complex_phrase = "{!complexphrase}"
+        q = f"{complex_phrase}{q}"
 
     try:
         results = solr_core.search(q=q,  

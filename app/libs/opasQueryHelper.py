@@ -50,6 +50,7 @@ import opasDocPermissions as opasDocPerm
 count_anchors = 0
 
 import smartsearch
+import smartsearchLib
 
 sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
@@ -1493,6 +1494,15 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if search_q == "*:*" and filter_q == "*:*":
         filter_q = "art_level:1"
+
+    if smartsearchLib.str_has_wildcards(search_q): # quoted_str_has_wildcards(search_q):
+        complex_phrase = "{!complexphrase}"
+        search_q = f"{complex_phrase}{search_q}"
+    
+    #patComplexPhaseSearchRequired = "\".*(\*|\?).*\""
+    #complex_phrase = "{!complexphrase}"
+    #if re.search(patComplexPhaseSearchRequired, search_q, flags=re.I):
+        #search_q = f"{complex_phrase}{search_q}" 
 
     # Turn off highlighting if it's not needed, e.g, when there's no text search, e.g., a filter only, like mostcited and mostviewed calls
     # As of 2020-09-28, allow limit to be set here (via params)

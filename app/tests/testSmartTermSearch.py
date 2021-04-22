@@ -8,8 +8,8 @@ import requests
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 
 class TestSmartSearch(unittest.TestCase):
-    def test_1a_boolean_word_search(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love or hate')
+    def test_1a_phrase_search_with_wildcards(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Iterp* symbol*"~25')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -17,11 +17,59 @@ class TestSmartSearch(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
-        assert(response_info["fullCount"] >= 15)
+        full_count = response_info["fullCount"]
+        assert(response_info["fullCount"] >= 1)
+        print (response_set)
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Iterp* symbol*')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        full_count2 = response_info["fullCount"]
+        assert(full_count == full_count2)
+        print (response_set)
+    
+    def test_1a_literal_search_with_wildcards(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Car? Gr?nt"~25')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        assert(response_info["fullCount"] >= 45)
+        print (response_set)
+    
+    def test_1a_boolean_word_search(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love AND hate AND (joy OR sorrow) ')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        assert(response_info["fullCount"] >= 1500)
         print (response_set)
 
     def test_1a_one_word_search(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=regretable') # misspelled, so only a few
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        assert(response_info["fullCount"] >= 5)
+        print (response_set)
+
+    def test_1a_one_word_search_wildcard(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=regre?table') # should take care of spelling error
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()

@@ -378,10 +378,11 @@
   <field name="art_chars_no_spaces_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>   <!--new 2021-04-13-->
   <field name="art_words_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
   <field name="art_authors_count" type="pint" indexed="false" stored="false" docValues="true" multiValued="false"/>           <!--Added 7/24 to facilitate smartsearch-->
+  <!--Added copies of the older fields for consistent naming...at some point names should be revisited!-->
+  <field name="art_reference_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>   
   <field name="art_pg_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_tbl_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>               <!--Added 2020-09-22-->
   <field name="art_fig_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>               <!--Added 2020-09-22-->
-  <field name="art_reference_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>   
   <!--copy older names to newer named field consistent with others.  Leave old for backwards compat.-->
   <copyField source="reference_count" dest="art_reference_count"/> 
   <copyField source="art_pgcount" dest="art_pg_count"/> 
