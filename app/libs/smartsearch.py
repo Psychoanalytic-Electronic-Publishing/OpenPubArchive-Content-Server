@@ -213,11 +213,44 @@ def smart_search(smart_search_text):
                         ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {words}"
 
             if ret_val == {}:
+                if smartsearchLib.all_words_start_upper_case(smart_search_text):
+                    # try to build a list of names, and check them individually
+                    new_q = ""
+                    names = smartsearchLib.name_id_list(smart_search_text)
+                    for name in names:
+                        try:
+                            res = smartsearchLib.is_value_in_field(name, core="docs", field=opasConfig.SEARCH_FIELD_AUTHORS, match_type="adjacent")
+                            if res:
+                                # ok, this is a list of names
+                                if new_q != "":
+                                    new_q += f" && '{name}'"
+                                else: # first name
+                                    new_q = f'{name}'
+                            else: # name not found, they all have to be
+                                new_q = ""
+                                break 
+                        except Exception as e:
+                            logger.warning(f"Value error for {name}. {e}")
+                    
+                    if new_q != "":
+                        ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHORS
+                        ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHORS 
+                        ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{new_q}"
+                    else:
+                        #  join the names
+                        name_conjunction = " && ".join(names)
+                        if smartsearchLib.is_value_in_field(name_conjunction, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION, match_type="adjacent"):
+                            ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHOR_CITATION
+                            ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHOR_CITATION
+                            ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{name_conjunction}"
+                            ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for authors: {name_conjunction} "
+
+            if ret_val == {}:
                 if 1 != smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TEXT, match_type="proximate"):
                     orig_smart_search_text = smart_search_text
                     if not opasgenlib.in_quotes(smart_search_text):
                         if not opasgenlib.is_boolean(smart_search_text):
-                            if not opasgenlib.in_brackets(smart_search_text) and word_count > 1 and not has_wildcards:
+                            if not opasgenlib.in_brackets(smart_search_text) and word_count > 1:
                                 smart_search_text = f'"{smart_search_text}"~25'
                                 ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_PARAGRAPH
                                 ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched paragraphs with terms: ({orig_smart_search_text})"
@@ -240,35 +273,7 @@ def smart_search(smart_search_text):
                         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_LITERAL
                         ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{orig_smart_search_text}"
                     
-            if ret_val == {}:
-                if words[0].isupper():
-                    # try to build a list of names, and check them individually
-                    new_q = ""
-                    names = smartsearchLib.name_id_list(smart_search_text)
-                    for name in names:
-                        try:
-                            if smartsearchLib.is_value_in_field(name, core="docs", field=opasConfig.SEARCH_FIELD_AUTHORS):
-                                # ok, this is a list of names
-                                if new_q != "":
-                                    new_q += f" && '{name}'"
-                                #else:
-                                    #new_q += f"'{name}'"
-                        except Exception as e:
-                            logger.warning(f"Value error for {name}. {e}")
-                    
-                    if new_q != "":
-                        ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHORS
-                        ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHORS 
-                        ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{new_q}"
-                    else:
-                        #  join the names
-                        name_conjunction = " && ".join(names)
-                        if smartsearchLib.is_value_in_field(name_conjunction, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION, match_type="bool"):
-                            ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHOR_CITATION
-                            ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHOR_CITATION
-                            ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{name_conjunction}"
-                            ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for authors: {name_conjunction} "
-    
+   
     #  cleanup 
     if ret_val.get("art_id") is not None:
         ret_val["art_id"] = ret_val["art_id"].upper()

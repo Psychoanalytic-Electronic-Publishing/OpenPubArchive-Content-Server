@@ -72,6 +72,21 @@ class SearchEvaluation(object):
         self.found = found
         self.isfound = found > 0
 
+def all_words_start_upper_case(search_str):
+    """
+    >>> all_words_start_upper_case(r"The Rain in Spain")
+    False
+    >>> all_words_start_upper_case(r"The Rain In Spain")
+    True
+    """
+    ret_val = True
+    for word in search_str.split():
+        if not word[0].isupper() and word not in ("and"):
+            ret_val = False
+            break
+
+    return ret_val
+
 def quoted_str_has_wildcards(search_str):
     """
     Test if string which has a substring in quotes, that has wildcards.
@@ -185,6 +200,8 @@ def is_value_in_field(value,
         q = f'{field}:"{value}"~10'
     elif match_type == "proximate":
         q = f'{field}:"{value}"~25'
+    elif match_type == "adjacent":
+        q = f'{field}:"{value}"~2'
     else:
         q = f'{field}:({value})'
 

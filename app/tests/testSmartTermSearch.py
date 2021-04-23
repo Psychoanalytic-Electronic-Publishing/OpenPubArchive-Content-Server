@@ -9,7 +9,7 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 
 class TestSmartSearch(unittest.TestCase):
     def test_1a_phrase_search_with_wildcards(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Iterp* symbol*"~25')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Interpret* symbol"~25')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -20,7 +20,7 @@ class TestSmartSearch(unittest.TestCase):
         full_count = response_info["fullCount"]
         assert(response_info["fullCount"] >= 1)
         print (response_set)
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Iterp* symbol*')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Interpret* symbol')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -93,7 +93,7 @@ class TestSmartSearch(unittest.TestCase):
         print (response_set)
 
     def test_1a_boolean_ignored_phrase_search(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="love or hate"')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="love OR hate"')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -105,24 +105,32 @@ class TestSmartSearch(unittest.TestCase):
         print (response_set)
 
     def test_1a_boolean_word_search2(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love and sex')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love AND sex')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        print (f'Smarttext: {response_info["description"]}')
         count1 = response_info["fullCount"]
-        print (f'Smarttext: {response_info["description"]}')
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love and NOT sex')
+        print (f'Smarttext: {response_info["description"]} Count: {count1}')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love AND NOT sex')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count2 = response_info["fullCount"]
-        print (f'Smarttext: {response_info["description"]}')
+        print (f'Smarttext: {response_info["description"]} Count: {count2}')
         assert(count2 > count1)
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love AND NOT love')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"]
+        count2 = response_info["fullCount"]
+        print (f'Smarttext: {response_info["description"]} Count: {count2}')
+        assert(count2 == 0)
         print (response_set)
 
     def test_1b_3_word_search(self):

@@ -435,19 +435,6 @@ class TestSmartSearch(unittest.TestCase):
     def test_14_example_smart_search_classes(self):
         """
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Eitingon model')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        print (f'Smarttext: {response_info["description"]}')
-        print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 143)
-
-    def test_14a_example_smart_search_classes(self):
-        """
-        """
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Eitingon Model"')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -461,7 +448,7 @@ class TestSmartSearch(unittest.TestCase):
     def test_14b_example_smart_search_classes(self):
         """
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Eitingon and Model')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Eitingon AND Model')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()

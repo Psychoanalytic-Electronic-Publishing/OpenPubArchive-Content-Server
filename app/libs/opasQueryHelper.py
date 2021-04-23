@@ -981,7 +981,12 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # solr_query_spec.solrQueryOpts.qOper = "OR"
         schema_field = search_dict.get(opasConfig.KEY_SEARCH_FIELD)
         limit = 0
-        search_result_explanation = search_dict[opasConfig.KEY_SEARCH_SMARTSEARCH]
+        try:
+            search_result_explanation = search_dict[opasConfig.KEY_SEARCH_SMARTSEARCH]
+        except Exception as e:
+            search_result_explanation = "" # check why there's no explanation!
+            logger.warning(f"SmartSearch result explanation is not defined {e}")
+            
         if schema_field is not None:
             if schema_field == "solr":
                 schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)

@@ -579,10 +579,11 @@ def one_term(arg):
 
 def is_boolean(arg):
     """
-    >>> is_boolean("a and b")
+    Must be uppercase
+    >>> is_boolean("a AND b")
     True
     
-    >>> is_boolean("a or b")
+    >>> is_boolean("a OR b")
     True
 
     >>> is_boolean("a || b && cc")
@@ -594,7 +595,7 @@ def is_boolean(arg):
     """
     try:
         if isinstance(arg, str):
-            if re.search(r"\s(AND|OR|\&\&|\|\)\s)", arg, flags=re.IGNORECASE): 
+            if re.search(r"\s(AND|OR|\&\&|\|\)\s)", arg): 
                 return True
             else:
                 return False
