@@ -29,6 +29,7 @@ rx_vol_wildcard = rx_vol + "\*"
 rx_year_pgrg = rx_space_start_opt + rx_year + rx_space_or_colon + rx_pgrg + rx_space_end_opt
 rx_year_vol_pgrg = rx_year + rx_vol_pgrg + rx_space_end_opt
 rx_author_name = "(?P<author>[A-Z][a-z]+)(\,\s+(([A-Z]\.?\s?){0,2})\s*)?"
+rx_fuzzy_search = "[A-z]+~[0-9]"
 rx_author_connector = "(and|,)"
 rx_front_junk = "(\[|\()?[0-9]+(\]|\))?"
 # rx_author_and_year = rx_space_start_opt + rx_author_name + rx_space_req + rx_year + rx_space_end_opt
@@ -61,7 +62,7 @@ rx_quoted_str_has_wildcards = r"(\"|\').*(\*|\?).*\1"
 pat_quoted_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
 rx_str_has_wildcards = r".*(\*|\?).*"
 pat_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
-
+pat_str_has_fuzzy_search = re.compile(rx_fuzzy_search, flags=re.I)
 cores = CORES
 
 class SearchEvaluation(object):
@@ -89,6 +90,12 @@ def quoted_str_has_wildcards(search_str):
 
     return ret_val
 
+def str_has_fuzzy_ops(search_str):
+    if pat_str_has_fuzzy_search.search(search_str):
+        return True
+    else:
+        return False
+    
 def str_has_wildcards(search_str):
     """
     Test if string which has a substring in quotes, that has wildcards.

@@ -606,7 +606,7 @@ def get_access_limitations(doc_id,
                         # if this is True, then we can stop asking this time
                         if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED:
                             # now we can exit
-                            logger.info(f"Document {doc_id} unavailable.  Reason: {ret_val.accessLimitedDescription}. No more checks needed this set")
+                            logger.info(f"Document {doc_id} unavailable. Session {session_info.session_id}/Authenticated:{session_info.authenticated}  Reason: {ret_val.accessLimitedDescription}. No more checks needed this set")
                             # but is user really unauthenticated? It's can just be because article is PEPCurrent # Watch this.
                             # maybe just leave this alone?  For now try to set it per authenticated 2021-04-09
                             session_info.confirmed_unauthenticated = not session_info.authenticated 

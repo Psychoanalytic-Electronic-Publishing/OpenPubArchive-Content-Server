@@ -11,6 +11,7 @@ import smartsearchLib
 
 logger = logging.getLogger(__name__)
 
+
 def smart_search(smart_search_text):
     """
     Function to take an input string and parse out information to do a search against the DOCS core schema.
@@ -212,7 +213,7 @@ def smart_search(smart_search_text):
                         ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {words}"
 
             if ret_val == {}:
-                if 0 != smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TEXT, match_type="proximate"):
+                if 1 != smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TEXT, match_type="proximate"):
                     orig_smart_search_text = smart_search_text
                     if not opasgenlib.in_quotes(smart_search_text):
                         if not opasgenlib.is_boolean(smart_search_text):
@@ -234,8 +235,8 @@ def smart_search(smart_search_text):
                             ret_val[opasConfig.KEY_SEARCH_VALUE] = re.sub("\s+(OR)\s+", " || ", ret_val[opasConfig.KEY_SEARCH_VALUE], flags=re.IGNORECASE)
                             ret_val[opasConfig.KEY_SEARCH_VALUE] = re.sub("\s+(NOT)\s+", " NOT ", ret_val[opasConfig.KEY_SEARCH_VALUE], flags=re.IGNORECASE)
                     else:
-                        # literal
-                        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for literal string: ({orig_smart_search_text})"
+                        # literal with extra at the end, could be proximate with distance, maybe other solr searches?
+                        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for: ({orig_smart_search_text})"
                         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_LITERAL
                         ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{orig_smart_search_text}"
                     

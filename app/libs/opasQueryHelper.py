@@ -1495,7 +1495,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if search_q == "*:*" and filter_q == "*:*":
         filter_q = "art_level:1"
 
-    if smartsearchLib.str_has_wildcards(search_q): # quoted_str_has_wildcards(search_q):
+    if smartsearchLib.str_has_wildcards(search_q) or smartsearchLib.str_has_fuzzy_ops(search_q): # quoted_str_has_wildcards(search_q):
         complex_phrase = "{!complexphrase}"
         search_q = f"{complex_phrase}{search_q}"
     
