@@ -117,6 +117,11 @@ def check_search_args(**kwargs):
                     #print (f"After remove_proximity: {ret_val[kw]}")
                     ret_val[kw] = 422
                     errors = True
+
+                # temp fix for weird online issue: since searching all uppercase words seem to cause problems online
+                if arg.isupper():
+                    ret_val[kw] = arg.lower()
+                
             except Exception as e:
                 logger.error(f"fulltext cleanup error {e}")
                 print (f"Cleanup error: {e}")
