@@ -119,7 +119,7 @@ def check_search_args(**kwargs):
                     errors = True
 
                 # temp fix (UC.Workaround) for weird online issue: since searching all uppercase words seem to cause problems online
-                if arg.isupper():
+                if arg.isupper() and arg.isalpha():
                     ret_val[kw] = arg.lower()
                 
             except Exception as e:
