@@ -826,6 +826,8 @@ def search_analysis( query_list,
             #subfield_clauses = shlex.split(term_clause)
 
         try:
+            # remove outer parens added during query parsing
+            query_item = opasQueryHelper.remove_outer_parens(query_item)
             logger.info(f"Solr Query: q={query_item}")
             args = {
                 "defType": def_type,

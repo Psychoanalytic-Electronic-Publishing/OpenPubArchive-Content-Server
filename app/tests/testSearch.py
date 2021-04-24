@@ -188,9 +188,29 @@ class TestSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 20)
         print (response_set[0])
+        # try it with parens as the client does
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&startyear=(2015)')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["fullCount"] == 20)
+        print (response_set[0])
 
     def test_search_endyear(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&endyear=2011') # note: no volume in 2009-2011
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["fullCount"] >= 610)
+        print (response_set[0])
+        # try it with parens as the client does
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=aop&endyear=(2011)') # note: no volume in 2009-2011
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()

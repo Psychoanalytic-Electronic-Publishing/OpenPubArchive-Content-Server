@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0423.2.Beta" 
+__version__     = "2021.0424.1.Beta" 
 __status__      = "Development"
 
 """
@@ -2525,7 +2525,7 @@ async def database_search_v2(response: Response,
     # don't set parascope, unless they set paratext and forgot to set parascope
     if paratext is not None and parascope is None:
         parascope = "doc"
-
+        
     # current_year = datetime.utcfromtimestamp(time.time()).strftime('%Y')
     # this does intelligent processing of the query parameters and returns a smaller set of solr oriented         
     # params (per pydantic model SolrQuery), ready to use

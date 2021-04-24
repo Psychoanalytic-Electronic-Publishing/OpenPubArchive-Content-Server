@@ -16,7 +16,7 @@ This library is meant to hold parsing and other functions which support query tr
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0417.1"
+__version__     = "2021.0424.1"
 __status__      = "Development"
 
 import re
@@ -174,6 +174,21 @@ def cleanup_solr_query(solrquery):
     
     return ret_val
 
+#-----------------------------------------------------------------------------
+def remove_outer_parens(s):
+    """
+    If there are outer parens when we don't need them, get rid of them
+    
+    >>> a = "(1910-1920)"
+    >>> remove_outer_parens(a)
+    
+    """
+    ret_val = s
+    m = re.match("\s*\(+(?P<inside_data>.*)\)+\s*", s)
+    if m:
+        ret_val = m.group("inside_data")
+    
+    return ret_val
 #-----------------------------------------------------------------------------
 def strip_outer_matching_chars(s, outer_char):
     """
@@ -461,9 +476,9 @@ def year_parser_support(year_arg):
             logger.warning("Search - StartYear bad argument {}".format(year_arg))
         else:
             if option is None and separator is None:
-                search_clause = f" art_year_int:{year_arg} "
+                search_clause = f" art_year_int:({year_arg}) "
             elif option == "=" and separator is None:
-                search_clause = f" art_year_int:{year_arg} "
+                search_clause = f" art_year_int:({year_arg}) "
             elif separator == "-":
                 # between
                 # find endyear by parsing
@@ -820,6 +835,15 @@ def parse_search_query_parameters(search=None,             # url based parameter
     artLevel = 1 # Doc query, sets to 2 if clauses indicate child query
     search_q_prefix = ""
     search_result_explanation = None
+    ignored_start_chars = "[\s(]*"
+    ignored_end_chars = "[)\s]*"
+
+    # Problems when they surround these numeric fields with parens, as the PEP client started doing 2021-04
+    if startyear is not None:
+        startyear = remove_outer_parens(startyear)
+    if endyear is not None:
+        endyear = remove_outer_parens(endyear)
+
     # IMPORTANT: 
     # These parameters need match the query line endpoint parameters for search, 
     #   but had been renamed, causing a problem.  So I've put the parameters back to the endpoint query parameter
@@ -1211,7 +1235,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             # qfilterTerm = ""
             filter_sub_clause = get_term_list_spec(solrQueryTermList.qf)
             if filter_sub_clause != "":
-                analyze_this = f"&& ({filter_sub_clause})"
+                analyze_this = f"&& ({filter_sub_clause}) "
                 filter_q += analyze_this
                 search_analysis_term_list.append(analyze_this)
         except Exception as e:
@@ -1345,7 +1369,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             
         author_text = qparse.markup(author_or_corrected, "art_authors_text", quoted=False) # convert AND/OR/NOT, set up field query
         author_cited = qparse.markup(author_or_corrected, "art_authors_citation", quoted=False)
-        analyze_this = f' && ({author_text} || {author_cited}) ' # search analysis
+        analyze_this = f'&& ({author_text} || {author_cited}) ' # search analysis
         filter_q += analyze_this        # query filter qf
         search_analysis_term_list.append(analyze_this)  
         query_term_list.append(author)       
@@ -1420,7 +1444,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         val = None
         cited_in_period = None
         val_end = "*"
-        match_ptn = "\s*(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?\s*"
+        match_ptn = f"{ignored_start_chars}(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?{ignored_end_chars}" # ignore outside parens
         m = re.match(match_ptn, citecount, re.IGNORECASE)
         if m is not None:
             val = m.group("nbr")
@@ -1437,7 +1461,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
         range_list = opasgenlib.range_list(citecount)
         if range_list != "":
-            analyze_this = f"&& art_cited_{cited_in_period.lower()}:({range_list})"
+            analyze_this = f"&& art_cited_{cited_in_period.lower()}:({range_list}) "
         else:
             analyze_this = f"&& art_cited_{cited_in_period.lower()}:[{val} TO {val_end}] "
 
@@ -1450,7 +1474,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         val = None
         viewed_in_period = None
         val_end = "*"
-        match_ptn = "\s*((?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?\,?\s*)+(\s+IN\s+(?P<period>(lastweek|lastmonth|last6months|last12months|lastcalendaryear)))?\s*"
+        match_ptn = f"{ignored_start_chars}((?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?\,?\s*)+(\s+IN\s+(?P<period>(lastweek|lastmonth|last6months|last12months|lastcalendaryear)))?{ignored_end_chars}"
         m = re.match(match_ptn, viewcount, re.IGNORECASE)
         if m is not None:
             val = m.group("nbr")
@@ -1477,7 +1501,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 
             range_list = opasgenlib.range_list(viewcount)
             if range_list != "":
-                analyze_this = f"&& {view_count_field}:({range_list})"
+                analyze_this = f"&& {view_count_field}:({range_list}) "
             else:
                 analyze_this = f"&& {view_count_field}:[{val} TO {val_end}] "
                 

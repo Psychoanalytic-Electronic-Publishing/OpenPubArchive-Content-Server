@@ -36,10 +36,11 @@ class TestSearchAnalysis(unittest.TestCase):
         print (f"Term: {response_set[0]['term']} Count: {response_set[0]['termCount']}")
         print (f"Term: {response_set[1]['term']} Count: {response_set[1]['termCount']}")
         term0 = r["termIndex"]["responseSet"][0]["term"]
-        assert(term0 == '(AOP) (in source)')
         assert(r["termIndex"]["responseSet"][0]["termCount"] >= 630)
         term1 = r["termIndex"]["responseSet"][1]["term"]
         assert(r["termIndex"]["responseSet"][1]["termCount"] >= 59)
+        print (term0)
+        assert(term0 == '(AOP) (in source)')
 
     def test_v2_searchanalysis_author_and_journalcode_and_paratext(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?sourcecode=BAP&fulltext1="freud psychoanalysis"~25')
@@ -72,6 +73,7 @@ class TestSearchAnalysis(unittest.TestCase):
         assert(term0 == '(PCT) (in source)')
         assert(r["termIndex"]["responseSet"][0]["termCount"] == 482)
         term1 = r["termIndex"]["responseSet"][1]["term"]
+        print ("Term1=", term1)
         assert(term1 == '[3 TO *] (in cited, cited in the last 5 years)')
         assert(r["termIndex"]["responseSet"][1]["termCount"] >= 2322)
 
