@@ -11,7 +11,7 @@ Sitemap.py
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0301.1"
+__version__     = "2021.0424.1"
 __status__      = "Development"
 
 # from xml.sax import SAXParseException
@@ -29,7 +29,7 @@ sys.path.append('./libs/configLib')
 import opasPySolrLib
 
 SITEMAP_LOC = r"development.org"
-SITEMAP_DATE = "2021-03-01"
+SITEMAP_DATE = "2021-04-24"
 
 def opas_sitemap_index(output_file="../sitemapindex", sitemap_list=[]):
    """
@@ -79,17 +79,13 @@ def opas_sitemap_index(output_file="../sitemapindex", sitemap_list=[]):
 def metadata_export(outputFileName="../sitemap", total_records=140000, records_per_file=10000):
    """
    Populate the build table from the articles table.
-   Create the include list by calling class member	writeFFFInclude
-
-   The intermediate tables are built, rather than using a transitional query, in order to
-   correctly populate the author information, which is used for sorting.
 
    >> metadata_export()
    
    """
 
    retVal = 0
-   base_url = "https://stage.pep-web.rocks/read/document"
+   base_url = "https://pep-web.rocks/browse/document/"
    header = '<?xml version="1.0" encoding="utf-8" ?>\n<!DOCTYPE articles SYSTEM "googlearticles.dtd">\n'
    sitemap_list = []
    file_count = 0
