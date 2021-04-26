@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0424.4.Beta.UC.Workaround" 
+__version__     = "2021.0425.1.Beta" 
 __status__      = "Development"
 
 """
@@ -728,6 +728,9 @@ async def admin_sitemap(response: Response,
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                         api_key: APIKey = Depends(get_api_key), 
                         client_id:int=Depends(get_client_id),
+                        path: str=Query(localsecrets.SITEMAP_PATH, title=opasConfig.TITLE_SITEMAP_PATH, description=opasConfig.DESCRIPTION_SITEMAP_PATH),
+                        size: int=Query(8000, title=opasConfig.TITLE_SITEMAP_RECORDS_PER_FILE, description=opasConfig.DESCRIPTION_SITEMAP_RECORDS_PER_FILE),
+                        max_records: int=Query(200000, title=opasConfig.TITLE_SITEMAP_MAX_RECORDS, description=opasConfig.DESCRIPTION_SITEMAP_MAX_RECORDS),
                         #client_session:str= Depends(get_client_session),
                        ):
     
@@ -753,18 +756,15 @@ async def admin_sitemap(response: Response,
 
     # Need to move these to localsecrets on AWS, then remove this
     try:
-        SITEMAP_OUTPUT_FILE = localsecrets.SITEMAP_PATH + "/sitemap"
-        SITEMAP_INDEX_FILE = localsecrets.SITEMAP_PATH + "/sitemapindex.xml"
+        SITEMAP_OUTPUT_FILE = path + "/sitemap" # don't include xml extension here, it's added
+        SITEMAP_INDEX_FILE = path + "/sitemapindex.xml"
     except Exception as e:
-        SITEMAP_OUTPUT_FILE = "../sitemap" # don't include xml extension here, it's added
+        SITEMAP_OUTPUT_FILE = "../sitemap"             # don't include xml extension here, it's added
         SITEMAP_INDEX_FILE = "../sitemapindex.xml"
-
-    max_records = 150000
-    records_per_file = 8000
-    
+   
     try:
         # returns a list of the sitemap files (since split)
-        sitemap_list = opasSiteMap.metadata_export(SITEMAP_OUTPUT_FILE, total_records=max_records, records_per_file=records_per_file)
+        sitemap_list = opasSiteMap.metadata_export(SITEMAP_OUTPUT_FILE, total_records=max_records, records_per_file=size)
         sitemap_index = opasSiteMap.opas_sitemap_index(output_file=SITEMAP_INDEX_FILE, sitemap_list=sitemap_list)
         ret_val = sitemap_index
     except Exception as e:
