@@ -71,7 +71,7 @@ def opas_sitemap_index(output_file="../sitemapindex", sitemap_list=[]):
             # sitemap_base = os.path.basename(sitemap)
             record = f'''
                <sitemap>
-                  <loc>{sitemap}</loc>
+                  <loc>{localsecrets.SITEMAP_URL}{sitemap}</loc>
                   <lastmod>{mod_time}</lastmod>
                </sitemap>\n
             '''

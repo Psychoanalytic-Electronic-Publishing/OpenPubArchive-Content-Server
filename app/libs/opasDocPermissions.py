@@ -570,7 +570,7 @@ def get_access_limitations(doc_id,
                 # if (session_info.confirmed_unauthenticated == False and (ret_val.accessLimited == True or fulltext_request == True)): # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
                 # TODO: This is temp...just check as long as there is a session and full-text is requested
                 #if session_info.session_id is not None and fulltext_request == True:
-                if (session_info.confirmed_unauthenticated == False # Must be authenticated for this check
+                if (session_info.authenticated == True # Must be authenticated for this check
                     and (ret_val.accessLimited == True # if it's marked limited, then may need to check, it might be first one
                          or fulltext_request == True)): # or whenever full-text is requested.
                     # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
@@ -603,20 +603,37 @@ def get_access_limitations(doc_id,
                             
     
                     finally:
+                        #if 1: # force error for testing
+                            #resp.StatusCode = httpCodes.HTTP_401_UNAUTHORIZED
                         # if this is True, then we can stop asking this time
+                        # You would get the same return if 
+                        #    the session was not recognised on pads, 
+                        #    the session had been deleted from the database (should never happen…), or 
+                        #    the session simply never existed.
                         if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED:
-                            # now we can exit
-                            logger.info(f"Document {doc_id} unavailable. Session {session_info.session_id}/Authenticated:{session_info.authenticated}  Reason: {ret_val.accessLimitedDescription}. No more checks needed this set")
-                            # but is user really unauthenticated? It's can just be because article is PEPCurrent # Watch this.
-                            # maybe just leave this alone?  For now try to set it per authenticated 2021-04-09
-                            session_info.confirmed_unauthenticated = not session_info.authenticated 
+                            documentListItem.accessLimited = True
+                            documentListItem.accessLimitedReason = f"Document {doc_id} unavailable (401). " + opasConfig.ACCESSLIMITED_401_UNAUTHORIZED + f" (PaDS: {resp.ReasonStr})"
+                            # workaround since this comes back 401 for PEP current
+                            # print (documentListItem.accessLimitedReason)
+                            if classification not in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
+                                session_info.authorized_peparchive = False
+                                session_info.authorized_pepcurrent = False
+                                session_info.authenticated = False
+                                session_info.confirmed_unauthenticated = True
+                                logger.info(documentListItem.accessLimitedReason)
+
+                            if fulltext_request == True:
+                                # not important to log for searches.
+                                logger.info(documentListItem.accessLimitedReason)
                         else:
                             # if this is True, then as long as session_info is valid, it won't need to check again
                             # if accessLimited is ever True again, e.g., now a different type of document, it will check again.
                             # should markedly decrease the number of calls to PaDS to check.
-                            # check for conflicts
-                            if session_info.authorized_peparchive == True and resp.HasArchiveAccess == False:
-                                logger.error(f"Permission Conflict: session {session_info.session_id} PEPArchive authorized; PaDS says No. PaDS message: {resp.ReasonStr} ")
+                            # check for conflicts if not a universal access item, specifically a TOC.  
+                            # This is also a workaround--universal access items should probably be in Free or otherwise indicated in the data. 
+                            if documentListItem.docType != "TOC":
+                                if session_info.authorized_peparchive == True and resp.HasArchiveAccess == False:
+                                    logger.error(f"Permission Conflict: Document: {documentListItem.documentID} session {session_info.session_id} PEPArchive authorized; PaDS says No. PaDS message: {resp.ReasonStr} ")
                                 
                             if resp.HasArchiveAccess == True:
                                 session_info.authorized_peparchive = True
@@ -658,7 +675,8 @@ def get_access_limitations(doc_id,
                             else:
                                 ret_val.accessLimited = True
                                 if classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
-                                    ret_val.accessLimitedReason
+                                    ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_EMBARGOED
+
                                 logger.info(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
                 else:
                     # not full-text OR (not authenticated or accessLimited==False)

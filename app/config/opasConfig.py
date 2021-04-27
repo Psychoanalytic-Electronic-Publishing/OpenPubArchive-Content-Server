@@ -425,8 +425,9 @@ ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = "<a href=\"http://dx.doi.org/%s\" targe
 ACCESSLIMITED_DESCRIPTION_OFFSITE = "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
 # ACCESSLIMITED_DESCRIPTION_LIMITED = "This is a summary excerpt from the full text of the article. The full text of the document may be available on the publisher's website"
 ACCESSLIMITED_DESCRIPTION_FREE = "This content is currently free to all users."
-ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access"
-ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access"
+ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access."
+ACCESSLIMITED_401_UNAUTHORIZED = "This document is not authorized for viewing. "
+ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access."
 
 # control whether abstracts can be viewed by non-logged-in users
 ACCESS_ABSTRACT_RESTRICTION = False
