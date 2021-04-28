@@ -441,7 +441,7 @@ class SessionInfo(BaseModel):
     is_valid_username: bool = Schema(False, title="")
     authenticated: bool = Schema(False, title="True if the user has been authenticated.")
     # the next field allows us to stop asking for permits
-    confirmed_unauthenticated: bool = Schema(False, title="True if PaDS has replied to a permit with http code 401 unauthenticated.")
+    # confirmed_unauthenticated: bool = Schema(False, title="True if PaDS has replied to a permit with http code 401 unauthenticated.")
     authorized_peparchive: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the archive.")
     authorized_pepcurrent: bool = Schema(False, title="New field to simplify permissions - if true this user has access to all of the current issues.")
     session_start: datetime = Schema(None, title="The datetime when the user started the session")

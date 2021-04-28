@@ -223,7 +223,7 @@ def get_authserver_session_info(session_id,
         session_info.is_valid_login = pads_session_info.IsValidLogon
         session_info.is_valid_username = pads_session_info.IsValidUserName
         session_info.authenticated = pads_session_info.IsValidLogon
-        session_info.confirmed_unauthenticated = False
+        # session_info.confirmed_unauthenticated = False
         session_info.session_start = start_time
         session_info.session_expires_time = start_time + datetime.timedelta(seconds=pads_session_info.SessionExpires)
         session_info.pads_session_info = pads_session_info
@@ -231,12 +231,12 @@ def get_authserver_session_info(session_id,
     # either continue an existing session, or start a new one
     pads_user_info, status_code = get_authserver_session_userinfo(session_id, client_id)
     session_info.pads_user_info = pads_user_info
-    if status_code == 401:
+    if status_code == 401: # could be just no session_id, but also could have be returned by PaDS if it doesn't recognize it
         if session_info.pads_session_info.pads_status_response > 500:
             msg = "PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned"
             logger.error(msg)
         # session is not logged in
-        session_info.confirmed_unauthenticated = True
+        # session_info.confirmed_unauthenticated = True
         # these are defaults so commented out
         # session_info.authenticated = False
         # session_info.user_id = 0
@@ -488,8 +488,10 @@ def get_access_limitations(doc_id,
         
         if documentListItem is not None:
             ret_val = documentListItem
+            ret_type = "documentListItem"
         else:
             ret_val = models.AccessLimitations()
+            ret_type = "accessLimitations"
     
         ret_val.doi = doi
         ret_val.accessLimitedPubLink = None
@@ -619,7 +621,7 @@ def get_access_limitations(doc_id,
                                 session_info.authorized_peparchive = False
                                 session_info.authorized_pepcurrent = False
                                 session_info.authenticated = False
-                                session_info.confirmed_unauthenticated = True
+                                # session_info.confirmed_unauthenticated = True
                                 logger.info(documentListItem.accessLimitedReason)
 
                             if fulltext_request == True:
@@ -630,10 +632,13 @@ def get_access_limitations(doc_id,
                             # if accessLimited is ever True again, e.g., now a different type of document, it will check again.
                             # should markedly decrease the number of calls to PaDS to check.
                             # check for conflicts if not a universal access item, specifically a TOC.  
-                            # This is also a workaround--universal access items should probably be in Free or otherwise indicated in the data. 
-                            if documentListItem.docType != "TOC":
-                                if session_info.authorized_peparchive == True and resp.HasArchiveAccess == False:
-                                    logger.error(f"Permission Conflict: Document: {documentListItem.documentID} session {session_info.session_id} PEPArchive authorized; PaDS says No. PaDS message: {resp.ReasonStr} ")
+                            # This is also a workaround--universal access items should probably be in Free or otherwise indicated in the data.
+                            try:
+                                if ret_type == "documentListItem" and documentListItem.docType != "TOC":
+                                    if session_info.authorized_peparchive == True and resp.HasArchiveAccess == False:
+                                        logger.error(f"Permission Conflict: Document: {documentListItem.documentID} session {session_info.session_id} PEPArchive authorized; PaDS says No. PaDS message: {resp.ReasonStr} ")
+                            except Exception as e:
+                                logger.error(f"docType check:{e}")
                                 
                             if resp.HasArchiveAccess == True:
                                 session_info.authorized_peparchive = True
@@ -680,7 +685,7 @@ def get_access_limitations(doc_id,
                                 logger.info(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
                 else:
                     # not full-text OR (not authenticated or accessLimited==False)
-                    logger.debug(f"No PaDS check needed (no access).  Document {doc_id} accessLimited: {ret_val.accessLimited}. Unauthent: {session_info.confirmed_unauthenticated}")
+                    logger.debug(f"No PaDS check needed (no access).  Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}")
         
             except Exception as e:
                 logger.error(f"Issue checking document permission. Possibly not logged in {e}")

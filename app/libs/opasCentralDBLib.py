@@ -1176,7 +1176,6 @@ class opasCentralDB(object):
                                                        authenticated,
                                                        authorized_peparchive,
                                                        authorized_pepcurrent,
-                                                       confirmed_unauthenticated,
                                                        has_subscription,
                                                        is_valid_login,
                                                        is_valid_username,
@@ -1187,7 +1186,7 @@ class opasCentralDB(object):
                                                        session_expires_time
             )
             VALUES 
-              (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """
+              (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """ # removed session_info.confirmed_unauthenticated
                     try:
                         success = cursor.execute(sql, 
                                                  (session_info.session_id, 
@@ -1197,7 +1196,7 @@ class opasCentralDB(object):
                                                   session_info.authenticated,
                                                   session_info.authorized_peparchive,
                                                   session_info.authorized_pepcurrent, 
-                                                  session_info.confirmed_unauthenticated, 
+                                                  #session_info.confirmed_unauthenticated, 
                                                   session_info.has_subscription, 
                                                   session_info.is_valid_login, 
                                                   session_info.is_valid_username, 
