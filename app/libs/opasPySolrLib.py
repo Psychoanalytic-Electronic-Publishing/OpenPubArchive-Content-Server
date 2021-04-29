@@ -1240,26 +1240,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
 
     except AttributeError as e:
         logger.error(f"Attribute Error: {e}")
-    
-    #except solr.SolrException as e:
-        ## exception from solr.  This exception model does not likely apply to pysolr, but leave in for now 
-        #if e is None:
-            #errmsg = "Unknown error or Search syntax error"
-            #error_description=f"Solr engine returned error without a reason"
-            #ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error=errmsg, error_description=error_description)
-            #ret_status = (httpCodes.HTTP_400_BAD_REQUEST, errmsg) # e has useful elements of httpcode, reason, and body
-            #logger.error(f"Solr Runtime Search Error (a): {error_description}")
-        #elif e.reason is not None:
-            #ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
-            #ret_status = (e.httpcode, e) 
-            #logger.error(f"Solr Runtime Search Error (b): {e.reason}")
-            #logger.error(e.body)
-        #else:
-            #ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-            #ret_status = (e.httpcode, e) 
-            #logger.error(f"Solr Runtime Search Error (c): {e.httpcode}")
-            #logger.error(e.body)
-        
+           
     except pysolr.SolrError as e:
         error = "pySolr.SolrError"
         error_num = 400
@@ -1350,15 +1331,24 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)
                     if record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
                         #print(f"Precheck: Session info archive access: {session_info.authorized_peparchive}")
-                        opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
-                                                            classification=documentListItem.accessClassification, 
-                                                            year=documentListItem.year,
-                                                            doi=documentListItem.doi, 
-                                                            session_info=session_info, 
-                                                            documentListItem=documentListItem,
-                                                            fulltext_request=solr_query_spec.fullReturn,
-                                                            request=request
-                                                           ) # will updated accessLimited fields in documentListItem
+                        access = opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
+                                                                     classification=documentListItem.accessClassification, 
+                                                                     year=documentListItem.year,
+                                                                     doi=documentListItem.doi, 
+                                                                     session_info=session_info, 
+                                                                     documentListItem=documentListItem,
+                                                                     fulltext_request=solr_query_spec.fullReturn,
+                                                                     request=request
+                                                                    ) # will updated accessLimited fields in documentListItem
+                        
+                        if access is not None: # copy all the access info returned
+                            documentListItem.accessLimited = access.accessLimited   
+                            documentListItem.accessLimitedCode = access.accessLimitedCode
+                            documentListItem.accessLimitedClassifiedAsCurrentContent = access.accessLimitedClassifiedAsCurrentContent
+                            documentListItem.accessLimitedReason = access.accessLimitedReason
+                            documentListItem.accessLimitedDescription = access.accessLimitedDescription
+                            documentListItem.accessLimitedPubLink = access.accessLimitedPubLink
+
                         #print(f"Postcheck: Session info archive access: {session_info.authorized_peparchive}")
     
                     documentListItem.score = result.get("score", None)               
@@ -2301,7 +2291,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
                             next_vol = next_vol['pivot'][0]
                             next_vol['year'] = next_vol_year
                     else:
-                        logger.warning("No volume to assess: ", match_vol_idx)
+                        logger.warning(f"No volume to assess: {match_vol_idx} ")
                         
                 try:
                     del(match_vol['field'])

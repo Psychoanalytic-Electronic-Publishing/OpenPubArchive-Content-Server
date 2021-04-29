@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0427.2.Beta" 
+__version__     = "2021.0428.1.Beta" 
 __status__      = "Development"
 
 """
@@ -370,7 +370,7 @@ def log_endpoint(request, client_id=None, session_id=None, path_params=True):
     else:
         logger.info(f"*************[{client_id}:{session_id}]:{request['path']}********************************************************************************")
         url = urllib.parse.unquote(f"....{request.url}")
-        logger.info(f"************ URL: {url}")
+        logger.debug(f"************ URL: {url}")
 
 def log_endpoint_time(request, ts): 
     if opasConfig.LOG_CALL_TIMING:
@@ -4528,7 +4528,7 @@ def documents_abstracts(response: Response,
                                                             )
     except Exception as e:
         response.status_code=httpCodes.HTTP_400_BAD_REQUEST
-        status_message = f"{e.status_code}:{e.detail}"
+        status_message = f"{response.status_code}: {e}"
         logger.error(status_message)
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS_ABSTRACTS,
                                     session_info=session_info, 
@@ -4544,8 +4544,6 @@ def documents_abstracts(response: Response,
     else:
         status_message = opasCentralDBLib.API_STATUS_SUCCESS
 
-        #client_host = request.client.host
-        # title = ret_val.documents.responseSet[0].title  # blank!
         if ret_val.documents.responseInfo.count > 0:
             response.status_code = httpCodes.HTTP_200_OK
             #  record document view if found
@@ -4618,17 +4616,8 @@ def documents_concordance(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     try:
-        ##  this may not be useful...if so, remove and remove parameter.
-        #if search is not None:
-            #argdict = dict(parse.parse_qsl(parse.urlsplit(search).query))
-        #else:
-            #argdict = {}
-        #solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
-        #logger.debug("Concordance View Request: %s/%s/%s", solr_query_params, f"{paralangid} / {paralangrx}", return_format)
-
         ret_val = opasAPISupportLib.documents_get_concordance_paras( para_lang_id=paralangid,
                                                                      para_lang_rx=paralangrx, 
-                                                                     #solr_query_spec=solr_query_params,
                                                                      ret_format=return_format,
                                                                      req_url=request.url._url, 
                                                                      session_info=session_info
@@ -5069,7 +5058,7 @@ def documents_downloads(response: Response,
                     status_message = opasCentralDBLib.API_STATUS_SUCCESS
                     # temp
                     status_message = "Successful Download of PDFOrig" # opasCentralDBLib.API_STATUS_SUCCESS
-                    logger.info(status_message)
+                    logger.debug(status_message)
                     ocd.record_document_view(document_id=documentID,
                                              session_info=session_info,
                                              view_type=file_format)
@@ -5110,7 +5099,7 @@ def documents_downloads(response: Response,
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
                 # temp
                 status_message = "Successful Download of PDF" # opasCentralDBLib.API_STATUS_SUCCESS
-                logger.info(status_message)
+                logger.debug(status_message)
                 ocd.record_document_view(document_id=documentID,
                                          session_info=session_info,
                                          view_type=file_format)
@@ -5149,7 +5138,7 @@ def documents_downloads(response: Response,
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
                 # temp
                 status_message = "Successful Download of ePub" # opasCentralDBLib.API_STATUS_SUCCESS
-                logger.info(status_message)
+                logger.debug(status_message)
                 ocd.record_document_view(document_id=documentID,
                                          session_info=session_info,
                                          view_type=file_format)
@@ -5361,7 +5350,7 @@ async def documents_image_fetch(response: Response,
                                                          root=expert_picks_path) 
                 filenames = flex_fs.get_matching_filelist(path=expert_picks_path, filespec_regex=".*\.jpg", max_items=opasConfig.EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT)
                 status_message = f"Expert Picks Image Count: {len(filenames)}"
-                logger.warning(status_message)
+                logger.debug(status_message)
                 filename = random.choice(filenames)
                 filename = filename.basename
                 expert_pick_image[0] = today

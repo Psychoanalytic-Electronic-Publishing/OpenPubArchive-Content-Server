@@ -134,7 +134,8 @@ class APIStatusItem(BaseModel):
 #-------------------------------------------------------
 class AccessLimitations(BaseModel):
     accessLimited: bool = Schema(True, title="True if the data can not be provided for this user")
-    accessLimitedCurrentContent: bool = Schema(False, title="True if the data is considered Current Content (embargoed)")
+    accessLimitedCode: int = Schema(None, title="If an error code is returned from the server, pass it back here for ease of client processing")
+    accessLimitedClassifiedAsCurrentContent: bool = Schema(False, title="True if the data is considered Current Content (embargoed). Note True does not mean it's limited for this user(See accessLimited for that).")
     accessLimitedReason: str = Schema(None, title="Explanation of limited access status")
     accessLimitedDescription: str = Schema(None, title="Description of why access is limited")
     accessLimitedPubLink: str = Schema(None, title="Link to publisher") 
@@ -294,9 +295,10 @@ class DocumentListItem(BaseModel):
     # these are not all currently used
     accessClassification: str = Schema(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
     accessLimited: bool = Schema(True, title="Access is limited, preventing full-text return")
+    accessLimitedCode: int = Schema(None, title="If an error code is returned from the server, pass it back here for ease of client processing")
     accessLimitedReason: str = Schema(None, title="Explanation of user's access to this")
     accessLimitedDescription: str = Schema(None, title="Description of the access limitation applied")
-    accessLimitedCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
+    accessLimitedClassifiedAsCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
     accessLimitedPubLink: str = Schema(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
     
 class DocumentListStruct(BaseModel):
@@ -696,7 +698,7 @@ class SourceInfoListItem(BaseModel):
     accessLimited: bool = Schema(True, title="Access is limited, preventing full-text return")
     accessLimitedReason: str = Schema(None, title="Explanation of user's access to this")
     accessLimitedDescription: str = Schema(None, title="Description of the access limitation applied")
-    accessLimitedCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
+    accessLimitedClassifiedAsCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
     accessLimitedPubLink: str = Schema(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
     
 
@@ -744,7 +746,7 @@ class VideoInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few 
     accessLimited: bool = Schema(True, title="Access is limited, preventing full-text return")
     accessLimitedReason: str = Schema(None, title="Explanation of user's access to this")
     accessLimitedDescription: str = Schema(None, title="Description of the access limitation applied")
-    accessLimitedCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
+    accessLimitedClassifiedAsCurrentContent: bool = Schema(None, title="Access is limited by embargo to this specific content")
     accessLimitedPubLink: str = Schema(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
 
 class VideoInfoStruct(BaseModel):

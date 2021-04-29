@@ -103,6 +103,7 @@ DOCUMENT_ACCESS_EMBARGOED = "current"
 DOCUMENT_ACCESS_ARCHIVE = "archive"
 DOCUMENT_ACCESS_UNDEFINED = "undefined"
 DOCUMENT_ACCESS_OFFSITE = "offsite"
+DOCUMENT_ACCESS_TOC = "toc"              # special handling tocs (free)
 
 MAX_JOURNALCODE_LEN = 13
 MIN_EXCERPT_CHARS = 480
@@ -426,7 +427,7 @@ ACCESSLIMITED_DESCRIPTION_OFFSITE = "This important document is part of our 'off
 # ACCESSLIMITED_DESCRIPTION_LIMITED = "This is a summary excerpt from the full text of the article. The full text of the document may be available on the publisher's website"
 ACCESSLIMITED_DESCRIPTION_FREE = "This content is currently free to all users."
 ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access."
-ACCESSLIMITED_401_UNAUTHORIZED = "This document is not authorized for viewing. "
+ACCESSLIMITED_401_UNAUTHORIZED = "Your session may have timed out. Please try and login again."
 ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access."
 
 # control whether abstracts can be viewed by non-logged-in users

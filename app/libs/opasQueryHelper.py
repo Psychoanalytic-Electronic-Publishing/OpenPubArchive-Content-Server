@@ -1999,7 +1999,7 @@ def merge_documentListItems(old, new):
     if old.updated is None: old.updated = new.updated 
     if old.accessClassification is None: old.accessClassification = new.accessClassification 
     if old.accessLimited is None: old.accessLimited = new.accessLimited
-    if old.accessLimitedCurrentContent is None: old.accessLimitedCurrentContent = new.accessLimitedCurrentContent
+    if old.accessLimitedClassifiedAsCurrentContent is None: old.accessLimitedClassifiedAsCurrentContent = new.accessLimitedClassifiedAsCurrentContent
     if old.accessLimitedDescription is None: old.accessLimitedDescription = new.accessLimitedDescription 
     if old.accessLimitedPubLink is None: old.accessLimitedPubLink = new.accessLimitedPubLink 
     if old.accessLimitedReason is None: old.accessLimitedReason = new.accessLimitedReason

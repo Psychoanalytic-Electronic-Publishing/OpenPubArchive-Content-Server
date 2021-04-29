@@ -470,106 +470,114 @@ def authserver_permission_check(session_id,
     return ret_val, ret_resp      
         
 def get_access_limitations(doc_id,
-                           classification,
-                           session_info,
+                           classification,   # document classification, e.g., free, current, archive, undefined, offsite, toc
+                           session_info,     # updated in code below
                            year=None,
                            doi=None,
-                           documentListItem: models.DocumentListItem=None,
+                           documentListItem: models.DocumentListItem=None,  # deprecated, not used
                            fulltext_request:bool=None,
                            request=None):
     """
     Based on the classification of the document (archive, current [embargoed],
        free, offsite), and the users permissions in session_info, determine whether
        this user has access to the full-text of the document, and fill out permissions
-       in documentListItem (ret_val) structure for document doc_id
+       in accessLimitations (ret_val) structure for document doc_id
+       
+    20210428 - removed documentListItem and update side effects, caller should copy access
+               There are still side effects on session_info
        
     """
     try:
         
-        if documentListItem is not None:
-            ret_val = documentListItem
-            ret_type = "documentListItem"
-        else:
-            ret_val = models.AccessLimitations()
-            ret_type = "accessLimitations"
-    
+        ret_val = models.AccessLimitations()
         ret_val.doi = doi
         ret_val.accessLimitedPubLink = None
-        ret_val.accessLimited = True # no access...default, may be changed below.
+        ret_val.accessLimitedCode = 200 # default (for now)
+
+        # USE THESE DEFAULTS, only set below if different
+        # default, turned on if classification below is opasConfig.DOCUMENT_ACCESS_EMBARGOED
+        ret_val.accessLimited = True # no access by default, may be changed below.
+        ret_val.accessLimitedClassifiedAsCurrentContent = False
         
         if session_info is None:
             logger.debug(f"Document permissions for {doc_id} -- no session info")
-            ## not logged in; take the quickest way out.
-            #ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
-            #ret_val.accessLimited = True
-            #ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS
-        
-        if ret_val.doi is not None:
-            publisherAccess = opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO + opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK % ret_val.doi
-            # TODO: get the link we use to send users to publishers site when we don't have it, and no doi, and implement here.
-            #       for now, just doi
-            ret_val.accessLimitedPubLink = opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK % ret_val.doi
+            ret_val.accessLimitedCode = 401 # no session
+            session_id = "No Session Info"
+            # not logged in
+            # use all the defaults
         else:
-            publisherAccess = ""
-        
-        if classification in (opasConfig.DOCUMENT_ACCESS_FREE):
-            # free can be for anytone
-            ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
-            ret_val.accessLimited = False
-            ret_val.accessLimitedCurrentContent = False
-            #"This content is currently free to all users."
-            ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
+            # for debugging display at return
+            try:
+                session_id = session_info.session_id
+            except:
+                session_id = "No Session ID"
+
+            if ret_val.doi is not None:
+                publisherAccess = opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO + opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK % ret_val.doi
+                # TODO: get the link we use to send users to publishers site when we don't have it, and no doi, and implement here.
+                #       for now, just doi
+                ret_val.accessLimitedPubLink = opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK % ret_val.doi
+            else:
+                publisherAccess = ""
             
-        elif classification in (opasConfig.DOCUMENT_ACCESS_OFFSITE):
-            ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_OFFSITE
-            ret_val.accessLimited = True
-            ret_val.accessLimitedCurrentContent = False
-            #"This content is currently free to all users."
-            ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_EMBARGOED + publisherAccess # limited...get it elsewhere
+            if classification in (opasConfig.DOCUMENT_ACCESS_FREE):
+                # free can be for anyone!!!! Change accessLimited
+                ret_val.accessLimited = False
+                ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
+                #"This content is currently free to all users."
+                ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
+                
+            elif classification in (opasConfig.DOCUMENT_ACCESS_OFFSITE):
+                # we only allow reading abstracts for offsite, accessLimited is True
+                ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_OFFSITE
+                #"This content is currently free to all users."
+                ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_EMBARGOED + publisherAccess # limited...get it elsewhere
+        
+            elif classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED): # PEPCurrent
+                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_EMBARGOED
+                ret_val.accessLimitedClassifiedAsCurrentContent = True
+                ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_EMBARGOED + publisherAccess # limited...get it elsewhere
+                if session_info is not None:
+                    try:
+                        if session_info.authorized_pepcurrent:
+                            ret_val.accessLimited = False # you can access it!!!
+                            # "This current content is available for you to access"
+                            ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE 
+                    except Exception as e:
+                        logger.error(f"PEPCurrent document error checking permission: {e}")
+                else:
+                    logger.debug("No session info provided to assess current document authorization")
+            elif classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE):
+                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
+                # ret_val.accessLimited = True # default is true
+                ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS
+                if session_info is not None:
+                    try:
+                        if session_info.authorized_peparchive:
+                            ret_val.accessLimited = False # you can access it!!!
+                            # "This content is available for you to access"
+                            ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE
+                            logger.debug("Optimization - session info used to authorize PEPArchive document")
+                    except Exception as e:
+                        logger.error(f"PEPArchive document error checking permission: {e}")
+                else:
+                    logger.debug("No session info provided to assess archive document authorization")
+            elif classification in (opasConfig.DOCUMENT_ACCESS_TOC):
+                ret_val.accessLimited = False # you can access it!!! (All TOCs are open)
+                # just like free for now
+                ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
+                #"This content is currently free to all users."
+                ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
     
-        elif classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED): # PEPCurrent
-            ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_EMBARGOED
-            ret_val.accessLimitedCurrentContent = True
-            ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_EMBARGOED + publisherAccess # limited...get it elsewhere
-            if session_info is not None:
-                try:
-                    if session_info.authorized_pepcurrent:
-                        ret_val.accessLimited = False # you can access it
-                        ret_val.accessLimitedCurrentContent = True # true, this is current content,
-                        # "This current content is available for you to access"
-                        ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE 
-                except Exception as e:
-                    logger.error(f"PEPCurrent document error checking permission: {e}")
             else:
-                logger.debug("No session info provided to assess current document authorization")
-        elif classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE):
-            ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
-            ret_val.accessLimited = True
-            ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS
-            if session_info is not None:
-                try:
-                    if session_info.authorized_peparchive:
-                        ret_val.accessLimited = False
-                        ret_val.accessLimitedCurrentContent = False
-                        # "This content is available for you to access"
-                        ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE
-                        logger.debug("Optimization - session info used to authorize PEPArchive document")
-                except Exception as e:
-                    logger.error(f"PEPArchive document error checking permission: {e}")
-            else:
-                logger.debug("No session info provided to assess archive document authorization")
-        else:
-            logger.error(f"Unknown classification: {classification}")
-        
-        # We COULD check the session_id in PADS here with the art_id and year, for EVERY return!
-        #  would it be slow?  Certainly for more than a dozen records, might...this is just for one instance though.
-        # print (f"SessionID {session_info.session_id}, classificaton: {ret_val.accessLimited} and client_session: {session_info.api_client_session}")
-        
-        if session_info is not None:
+                logger.error(f"Unknown classification: {classification}")
+
+            # **************************************
+            # Now check for access, or cached access
+            #   - always check for a full-text request so PaDS can track them.
+            #     since we don't really always know about authentication, we need to check all requests that are otherwise rejected.
+            # **************************************
             try:                   
-                # always check for a full-text request so PaDS can track them.
-                # since we don't really always know about authentication, we need to check all requests that are otherwise rejected.
-                # if (session_info.confirmed_unauthenticated == False and (ret_val.accessLimited == True or fulltext_request == True)): # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
                 # TODO: This is temp...just check as long as there is a session and full-text is requested
                 #if session_info.session_id is not None and fulltext_request == True:
                 if (session_info.authenticated == True # Must be authenticated for this check
@@ -583,11 +591,11 @@ def get_access_limitations(doc_id,
     
                     logger.debug(f"Sending permit request for {session_info.session_id}")
                     try:
-                        authorized, resp = authserver_permission_check(session_id=session_info.session_id,
-                                                                 doc_id=doc_id,
-                                                                 doc_year=year,
-                                                                 reason_for_check=reason_for_check,
-                                                                 request=request)
+                        pads_authorized, resp = authserver_permission_check(session_id=session_info.session_id,
+                                                                            doc_id=doc_id,
+                                                                            doc_year=year,
+                                                                            reason_for_check=reason_for_check,
+                                                                            request=request)
                     except Exception as e:
                         # PaDS could be down, local development
                         logger.error(f"PaDS Access Exception: {e}")
@@ -596,59 +604,59 @@ def get_access_limitations(doc_id,
                             # so it doesn't have to check this later
                             session_info.authorized_peparchive = True
                             session_info.authorized_pepcurrent = True
-                            authorized = True
                         else:
                             session_info.authorized_peparchive = False
                             session_info.authorized_pepcurrent = False
-                            authorized = False
                             resp = models.PadsPermitInfo(Permit=False, HasArchiveAccess=False, HasCurrentAccess=False)
                             
     
                     finally:
+                        # save PaDS code
+                        ret_val.accessLimitedCode = resp.StatusCode
+
                         #if 1: # force error for testing
                             #resp.StatusCode = httpCodes.HTTP_401_UNAUTHORIZED
-                        # if this is True, then we can stop asking this time
-                        # You would get the same return if 
-                        #    the session was not recognised on pads, 
-                        #    the session had been deleted from the database (should never happen…), or 
-                        #    the session simply never existed.
-                        if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED:
-                            documentListItem.accessLimited = True
-                            documentListItem.accessLimitedReason = f"Document {doc_id} unavailable (401). " + opasConfig.ACCESSLIMITED_401_UNAUTHORIZED + f" (PaDS: {resp.ReasonStr})"
-                            # workaround since this comes back 401 for PEP current
-                            # print (documentListItem.accessLimitedReason)
-                            if classification not in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
-                                session_info.authorized_peparchive = False
-                                session_info.authorized_pepcurrent = False
-                                session_info.authenticated = False
-                                # session_info.confirmed_unauthenticated = True
-                                logger.info(documentListItem.accessLimitedReason)
+                            #ret_val.accessLimitedCode = resp.StatusCode
 
-                            if fulltext_request == True:
-                                # not important to log for searches.
-                                logger.info(documentListItem.accessLimitedReason)
-                        else:
-                            # if this is True, then as long as session_info is valid, it won't need to check again
-                            # if accessLimited is ever True again, e.g., now a different type of document, it will check again.
-                            # should markedly decrease the number of calls to PaDS to check.
-                            # check for conflicts if not a universal access item, specifically a TOC.  
-                            # This is also a workaround--universal access items should probably be in Free or otherwise indicated in the data.
-                            try:
-                                if ret_type == "documentListItem" and documentListItem.docType != "TOC":
-                                    if session_info.authorized_peparchive == True and resp.HasArchiveAccess == False:
-                                        logger.error(f"Permission Conflict: Document: {documentListItem.documentID} session {session_info.session_id} PEPArchive authorized; PaDS says No. PaDS message: {resp.ReasonStr} ")
-                            except Exception as e:
-                                logger.error(f"docType check:{e}")
-                                
-                            if resp.HasArchiveAccess == True:
-                                session_info.authorized_peparchive = True
-                                ret_val.accessLimited = False
+                        # quick workaround
+                        if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED and ret_val.accessLimitedClassifiedAsCurrentContent:
+                            resp.StatusCode = 200
                             
-                            if resp.HasCurrentAccess == True:
-                                session_info.authorized_pepcurrent = True
-                                ret_val.accessLimitedCurrentContent = False
-                        
-                            if fulltext_request and authorized:
+                        if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED:
+                            # if this is True, then we can stop asking this time
+                            # You would get the same return if 
+                            #    the session was not recognised on pads, 
+                            #    the session had been deleted from the database (should never happen…), or 
+                            #    the session simply never existed.
+                            # But 20210428 James response to seeing this as Current was to stop sending it altogether?
+                            # 
+                            ret_val.accessLimited = True
+                            ret_val.accessLimitedReason = f"Full text of {doc_id} unavailable. " + opasConfig.ACCESSLIMITED_401_UNAUTHORIZED
+
+                            ## WORKAROUND - TEMPORARY since this comes back 401 for PEP current
+                            if 1:
+                                ret_val.accessLimitedCode = 201 # to show workaround in place
+                                pass
+
+                            #if fulltext_request == True:
+                                ## not important to log for searches.
+                                #logger.info(ret_val.accessLimitedReason)
+                        else:
+                            # set default again based on update from PaDS query
+                            ret_val.accessLimited = True
+
+                            if ret_val.accessLimitedClassifiedAsCurrentContent == True:
+                                if resp.HasCurrentAccess == True:
+                                    session_info.authorized_pepcurrent = True
+                                    ret_val.accessLimited = False
+                                else:
+                                    ret_val.accessLimited = True
+                            else: # not current content
+                                if resp.HasArchiveAccess == True:
+                                    session_info.authorized_peparchive = True
+                                    ret_val.accessLimited = False
+
+                            if fulltext_request and pads_authorized:
                                 # let's make sure we know about this user.
                                 if session_info.user_id == opasConfig.USER_NOT_LOGGED_IN_NAME:
                                     # We got this far, We need to find out who this is
@@ -669,20 +677,17 @@ def get_access_limitations(doc_id,
                                                            api_client_id=session_info.api_client_id
                                                            )
                                         
-                            if authorized:
+                            if pads_authorized:
                                 # "This content is available for you to access"
-                                ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
                                 ret_val.accessLimited = False
-                                #documentListItem.accessLimitedCurrentContent = False
-                                # "This content is available for you to access"
+                                ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
                                 ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-                                logger.info(f"Document {doc_id} available.  Opas Reason: {ret_val.accessLimitedDescription}")
+                                logger.debug(f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr}. Opas Reason: {ret_val.accessLimitedDescription}")
                             else:
                                 ret_val.accessLimited = True
-                                if classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED):
+                                if ret_val.accessLimitedClassifiedAsCurrentContent:
                                     ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_EMBARGOED
-
-                                logger.info(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
+                                logger.warning(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
                 else:
                     # not full-text OR (not authenticated or accessLimited==False)
                     logger.debug(f"No PaDS check needed (no access).  Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}")
@@ -693,7 +698,10 @@ def get_access_limitations(doc_id,
 
     except Exception as e:
         logger.error(f"General exception {e} trying ascertain access limitations.")
-        
+
+    if fulltext_request and ret_val.accessLimited:
+        print (f"Debug Sess:{session_id}: Access:{ret_val.accessLimitedReason}")
+
     return ret_val
 
 # ##################################################################################################################################################
