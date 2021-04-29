@@ -622,10 +622,10 @@ def get_access_limitations(doc_id,
                             #ret_val.accessLimitedCode = resp.StatusCode
 
                         # quick workaround
-                        if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED and ret_val.accessLimitedClassifiedAsCurrentContent:
-                            resp.StatusCode = 200
-                            
-                        if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED:
+                        #if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED and ret_val.accessLimitedClassifiedAsCurrentContent:
+                            #resp.StatusCode = 200
+                        # no error code when PaDS rejects because unauthenticaed.  TEMP: Test and reject on message:
+                        if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED or resp.ReasonStr == 'Session has not been authenticated':
                             # if this is True, then we can stop asking this time
                             # You would get the same return if 
                             #    the session was not recognised on pads, 
