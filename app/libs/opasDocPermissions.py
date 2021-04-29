@@ -458,6 +458,9 @@ def authserver_permission_check(session_id,
         # returns 401 for a non-authenticated session
         ret_resp.StatusCode = response.status_code
         ret_val = ret_resp.Permit
+        if ret_resp.StatusCode != 200:
+            msg = f"PaDS returned a non-200 permit req status: {ret_resp.StatusCode}"
+            logger.info(msg)
         
     except Exception as e:
         msg = f"Permits response error {e}. Composing no access response."
@@ -684,10 +687,15 @@ def get_access_limitations(doc_id,
                                 ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
                                 logger.debug(f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr}. Opas Reason: {ret_val.accessLimitedDescription}")
                             else:
+                                logger.warning(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
                                 ret_val.accessLimited = True
                                 if ret_val.accessLimitedClassifiedAsCurrentContent:
+                                    # embargoed
                                     ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_EMBARGOED
-                                logger.warning(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
+                                else:
+                                    # non embargoed, but no access.
+                                    ret_val.accessLimitedReason = f"{ret_val.accessLimitedDescription} {ret_val.accessReason}"
+                                    
                 else:
                     # not full-text OR (not authenticated or accessLimited==False)
                     logger.debug(f"No PaDS check needed (no access).  Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}")

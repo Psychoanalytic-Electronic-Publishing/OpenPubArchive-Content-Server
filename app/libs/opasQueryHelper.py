@@ -1374,7 +1374,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
             
         author_text = qparse.markup(author_or_corrected, "art_authors_text", quoted=False) # convert AND/OR/NOT, set up field query
         author_cited = qparse.markup(author_or_corrected, "art_authors_citation", quoted=False)
-        analyze_this = f'&& ({author_text} || {author_cited}) ' # search analysis
+        author_mast = qparse.markup(author_or_corrected, "art_authors_mast", quoted=False)
+        analyze_this = f'&& ({author_text} || {author_cited} || {author_mast})' # search analysis
         filter_q += analyze_this        # query filter qf
         search_analysis_term_list.append(analyze_this)  
         query_term_list.append(author)       

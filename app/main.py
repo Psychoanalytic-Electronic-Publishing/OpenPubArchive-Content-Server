@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0428.2.Beta" 
+__version__     = "2021.0429.1.Beta" 
 __status__      = "Development"
 
 """
@@ -1235,7 +1235,7 @@ def session_login(response: Response,
     """
     # for debugging client call
     opasDocPermissions.verify_header(request, "Login")
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
     if opas_session_cookie != client_session and opas_session_cookie is not None:
