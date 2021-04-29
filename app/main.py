@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0428.1.Beta" 
+__version__     = "2021.0428.2.Beta" 
 __status__      = "Development"
 
 """
@@ -363,18 +363,25 @@ async def get_api_key(api_key_query: str = Security(api_key_query),
 # End Dependence routines
 # ############################################################################
 
-def log_endpoint(request, client_id=None, session_id=None, path_params=True):
+def log_endpoint(request, client_id=None, session_id=None, path_params=True, level="info"):
     if client_id == 3: # PaDS, sends a lot of requests at once, so mute
         logger.debug(f"***[{client_id}:{session_id}]:{request['path']}***")
         #logger.info(urllib.parse.unquote(f"....{request.url}"))
     else:
-        logger.info(f"*************[{client_id}:{session_id}]:{request['path']}********************************************************************************")
         url = urllib.parse.unquote(f"....{request.url}")
-        logger.debug(f"************ URL: {url}")
+        if level == "info":
+            logger.info(f"*************[{client_id}:{session_id}]:{request['path']}********************************************************************************")
+            logger.info(f"************ URL: {url}")
+        elif level == "debug":
+            logger.debug(f"*************[{client_id}:{session_id}]:{request['path']}********************************************************************************")
+            logger.debug(f"************ URL: {url}")
 
-def log_endpoint_time(request, ts): 
+def log_endpoint_time(request, ts, level="info"): 
     if opasConfig.LOG_CALL_TIMING:
-        logger.info(f"***{request['path']} response time: {time.time() - ts}***")
+        if level == "info":
+            logger.info(f"***{request['path']} response time: {time.time() - ts}***")
+        elif level == "debug":
+            logger.debug(f"***{request['path']} response time: {time.time() - ts}***")
 
 # ############################################################################
 # EndPoints
@@ -891,7 +898,7 @@ async def client_save_configuration(response: Response,
     #  return current config (old if it fails).
 
     opasDocPermissions.verify_header(request, "ClientSaveConfig") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
@@ -962,7 +969,7 @@ async def client_update_configuration(response: Response,
     #  return current config (old if it fails).
 
     opasDocPermissions.verify_header(request, "ClientUpdateConfig") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
     msg = ""
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
@@ -1053,7 +1060,7 @@ async def client_get_configuration(response: Response,
     """
     # maybe no session id when they get this, so don't check here
     # opasDocPermissions.verify_header(request, "ClientGetConfig") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
@@ -1120,7 +1127,7 @@ async def client_del_configuration(response: Response,
     """
     
     opasDocPermissions.verify_header(request, "ClientDelConfig") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
@@ -1464,7 +1471,7 @@ async def session_whoami(response: Response,
 
     """
     opasDocPermissions.verify_header(request, "WhoAmI") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     if client_session is not None:
         ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
@@ -3038,7 +3045,7 @@ async def database_morelikethis(response: Response,
 
     """
     opasDocPermissions.verify_header(request, "MoreLikeThis") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     ret_val = await database_search_v2(response,
                                        request,
@@ -3131,7 +3138,7 @@ def database_mostviewed(response: Response,
     query_arg_error = None
     
     opasDocPermissions.verify_header(request, "MostViewed") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
@@ -3234,7 +3241,7 @@ def database_mostviewed(response: Response,
                     detail = detail
                 )
         
-    log_endpoint_time(request, ts=ts)
+    log_endpoint_time(request, ts=ts, level="debug")
     return ret_val  # document_list
 
 #---------------------------------------------------------------------------------------------------------
@@ -3290,7 +3297,7 @@ def database_mostcited(response: Response,
     ts = time.time()
     
     opasDocPermissions.verify_header(request, "MostCited") # for debugging client call 
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
@@ -3371,7 +3378,7 @@ def database_mostcited(response: Response,
             
         # Don't record in final build - (ok for now during testing)
 
-    log_endpoint_time(request, ts=ts)
+    log_endpoint_time(request, ts=ts, level="debug")
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -3802,7 +3809,7 @@ def database_whatsnew(response: Response,
     # (Don't log calls to this endpoint)
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
-    log_endpoint(request, client_id=client_id)
+    log_endpoint(request, client_id=client_id, level="debug")
     
     try:
         # return whatsNewList
@@ -3822,7 +3829,7 @@ def database_whatsnew(response: Response,
         response.status_code = httpCodes.HTTP_200_OK
         ret_val.whatsNew.responseInfo.request = request.url._url
 
-    log_endpoint_time(request, ts=ts)
+    log_endpoint_time(request, ts=ts, level="debug")
     return ret_val
 
 @app.get("/v2/Database/WordWheel/", response_model=models.TermIndex, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_WORD_WHEEL)
@@ -4146,7 +4153,7 @@ def metadata_journals(response: Response,
     ## Potential Errors
 
     """
-    log_endpoint(request, client_id=client_id)
+    log_endpoint(request, client_id=client_id, level="debug")
     ret_val = metadata_by_sourcetype_sourcecode(response,
                                                 request,
                                                 SourceType="Journal",
@@ -4245,7 +4252,7 @@ def metadata_volumes(response: Response,
 
     """
     ocd = opasCentralDBLib.opasCentralDB()
-    log_endpoint(request, client_id=client_id)
+    log_endpoint(request, client_id=client_id, level="debug")
 
     # Solr is case sensitive, make sure arg is upper
     try:
@@ -4323,7 +4330,7 @@ def metadata_by_sourcetype_sourcecode(response: Response,
 
     """
     opasDocPermissions.verify_header(request, "metadata_by_sourcetype_sourcecode") # for debugging client call
-    log_endpoint(request, client_id=client_id)
+    log_endpoint(request, client_id=client_id, level="debug")
 
     #ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
