@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 import unittest
 import requests
+import localsecrets
 
 import opasDocPermissions
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
@@ -62,13 +63,24 @@ class TestGetDocuments(unittest.TestCase):
         # see "why" -- it's current content
     
 
-    def test_6_nonexistent_document(self):
+    def test_001C_nonexistent_document(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/APA.064E.6666A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.status_code == 404)
         assert(response.reason == "Not Found")
 
-
+    def test_001D_nonexistent_session(self):
+        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJP.056.0303A/?return_format=XML&search={search_param_encoded}")
+        headers = {f"client-session":f"123456789",
+                   "client-id": UNIT_TEST_CLIENT_ID, 
+                   "Content-Type":"application/json",
+                   localsecrets.API_KEY_NAME: localsecrets.API_KEY}
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        print(response.status_code)
+        assert(response.status_code == 401)
+        assert(response.reason == "Not Found")
+        
 if __name__ == '__main__':
     unittest.main()    
