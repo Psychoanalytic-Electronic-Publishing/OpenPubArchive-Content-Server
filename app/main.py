@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0429.2.Beta" 
+__version__     = "2021.0429.3.Beta" 
 __status__      = "Development"
 
 """
@@ -5309,6 +5309,20 @@ async def documents_image_fetch(response: Response,
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
     """
+    
+    def select_new_image():
+        flex_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                                 secret=localsecrets.S3_SECRET,
+                                                 root=expert_picks_path) 
+        filenames = flex_fs.get_matching_filelist(path=expert_picks_path, filespec_regex=".*\.jpg", max_items=opasConfig.EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT)
+        status_message = f"Expert Picks Image Count: {len(filenames)}"
+        logger.debug(status_message)
+        filename = random.choice(filenames)
+        filename = filename.basename
+        expert_pick_image[0] = today
+        expert_pick_image[1] = filename
+        return filename
+        
     # temporary until in localsecrets on AWS
     try:
         expert_picks_path = localsecrets.S3_IMAGE_EXPERT_PICKS_PATH
@@ -5352,16 +5366,8 @@ async def documents_image_fetch(response: Response,
             #  load a random image.  Load a new one each day
             today = datetime.today().strftime("%Y%m%d")
             if expert_pick_image[0] != today or reselect:
-                flex_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
-                                                         secret=localsecrets.S3_SECRET,
-                                                         root=expert_picks_path) 
-                filenames = flex_fs.get_matching_filelist(path=expert_picks_path, filespec_regex=".*\.jpg", max_items=opasConfig.EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT)
-                status_message = f"Expert Picks Image Count: {len(filenames)}"
-                logger.debug(status_message)
-                filename = random.choice(filenames)
-                filename = filename.basename
-                expert_pick_image[0] = today
-                expert_pick_image[1] = filename
+                select_new_image() # saves new image to expert_pick_image as a side effect
+                filename = expert_pick_image[1] 
             else:
                 filename = expert_pick_image[1] 
             
@@ -5389,8 +5395,23 @@ async def documents_image_fetch(response: Response,
             elif download == 2:
                 # TODO - get article ID instead of filename (otherwise will need to remove those that aren't articleID based)
                 try:
-                    graphic_item = models.GraphicItem(documentID = opasGenSupportLib.DocumentID(filename).document_id,
-                                                      graphic = filename)
+                    # TODO: Fix this routine to better deal with nonconforming names
+                    #       and then we won't need the while.
+                    doc_id = opasGenSupportLib.DocumentID(filename).document_id
+                    counter = 0
+                    while doc_id is None: # non-conforming image filename
+                        logger.error(f"Nonconforming image filename {filename} found in expert pick images")
+                        counter += 1
+                        filename = select_new_image()
+                        doc_id = opasGenSupportLib.DocumentID(filename).document_id
+                        if doc_id is not None:
+                            break
+                        
+                        if counter > 10:
+                            logger.error(f"{counter} nonconforming image filenames found in expert pick images.  Quitting.")
+                            break # should never get that high
+                        
+                    graphic_item = models.GraphicItem(documentID = doc_id, graphic = filename)
                     ret_val = response = graphic_item
                     
                 except Exception as e:
