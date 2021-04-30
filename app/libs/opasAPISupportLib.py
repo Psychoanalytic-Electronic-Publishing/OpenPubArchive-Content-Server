@@ -261,6 +261,8 @@ def get_session_info(request: Request,
                 logger.debug(f"User was not logged in; checked to see if they are now. Session Info returned from PaDS: {session_info}")
                 #session_info = ocd.save_session(session_id, session_info)
             else:
+                # important - because they "were" logged in, we will return a session timed out error
+                # so don't refresh it...server likes to know they were logged in
                 logger.debug(f"User was logged in.  No further checks needed.")
 
         if opasConfig.LOG_CALL_TIMING:

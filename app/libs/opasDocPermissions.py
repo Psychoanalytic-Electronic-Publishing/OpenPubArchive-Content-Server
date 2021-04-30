@@ -436,12 +436,14 @@ def authserver_permission_check(session_id,
     else:
         headers = None
 
-    response = requests.get(full_URL, headers=headers)
-    
-    if response.status_code == 503:
-        # PaDS down, fake it for now
-        msg = f"Permits response error {e}. Temporarily return data."
-        logger.error(msg)
+    try: # permit request to PaDS
+        response = requests.get(full_URL, headers=headers)
+    except Exception as e:
+        logger.error(f"PaDS request session {session_id} exception part 1: {full_URL}")
+        logger.error(f"PaDS request session {session_id} exception part 2: {response}")
+        logger.error(f"PaDS request session {session_id} exception part 3: {e}")
+        logger.error(f"PaDS request session {session_id} exception part 4: headers {headers}")
+        # just return no access
         ret_resp = models.PadsPermitInfo(SessionId = session_id,
                                          DocID = doc_id,
                                          HasArchiveAccess=True, 
@@ -449,26 +451,53 @@ def authserver_permission_check(session_id,
                                          Permit=True, 
                                          ReasonId=0, 
                                          StatusCode=200,
-                                         ReasonStr="PaDS not responding"
+                                         ReasonStr=f"PaDS error {e}"
         )
-        
-    try:
-        ret_resp = response.json()
-        ret_resp = models.PadsPermitInfo(**ret_resp)
-        # returns 401 for a non-authenticated session
-        ret_resp.StatusCode = response.status_code
-        ret_val = ret_resp.Permit
-        if ret_resp.StatusCode != 200:
-            msg = f"PaDS returned a non-200 permit req status: {ret_resp.StatusCode}"
-            logger.info(msg)
-        
-    except Exception as e:
-        msg = f"Permits response error {e}. Composing no access response."
-        logger.error(msg)
-        ret_val = False
-        ret_resp = models.PadsPermitInfo(SessionId=session_id,
-                                         DocId=doc_id,
-                                         ReasonStr=msg)
+    else:
+        try:
+                
+            if response.status_code == 503:
+                # PaDS down, fake it for now
+                msg = f"Permits response error {e}. Temporarily return data."
+                logger.error(msg)
+                ret_resp = models.PadsPermitInfo(SessionId = session_id,
+                                                 DocID = doc_id,
+                                                 HasArchiveAccess=True, 
+                                                 HasCurrentAccess=False,
+                                                 Permit=True, 
+                                                 ReasonId=0, 
+                                                 StatusCode=200,
+                                                 ReasonStr="PaDS not responding"
+                )
+            elif response.status_code == 401:
+                msg = response.json()
+                ret_val = False
+                ret_resp = models.PadsPermitInfo(SessionId = session_id,
+                                                 DocID = doc_id,
+                                                 HasArchiveAccess=False, 
+                                                 HasCurrentAccess=False,
+                                                 Permit=False, 
+                                                 ReasonId=0, 
+                                                 StatusCode=401,
+                                                 ReasonStr=msg
+                )
+            else:
+                ret_resp = response.json()
+                ret_resp = models.PadsPermitInfo(**ret_resp)
+                # returns 401 for a non-authenticated session
+                ret_resp.StatusCode = response.status_code
+                ret_val = ret_resp.Permit
+                if ret_resp.StatusCode != 200:
+                    msg = f"PaDS returned a non-200 permit req status: {ret_resp.StatusCode}"
+                    logger.info(msg)
+                    
+        except Exception as e:
+            msg = f"Permits response error {e}. Composing no access response."
+            logger.error(msg)
+            ret_val = False
+            ret_resp = models.PadsPermitInfo(SessionId=session_id,
+                                             DocId=doc_id,
+                                             ReasonStr=msg)
 
     return ret_val, ret_resp      
         
@@ -491,7 +520,7 @@ def get_access_limitations(doc_id,
        
     """
     try:
-        
+        open_access = False
         ret_val = models.AccessLimitations()
         ret_val.doi = doi
         ret_val.accessLimitedPubLink = None
@@ -503,7 +532,7 @@ def get_access_limitations(doc_id,
         ret_val.accessLimitedClassifiedAsCurrentContent = False
         
         if session_info is None:
-            logger.debug(f"Document permissions for {doc_id} -- no session info")
+            logger.warning(f"Document permissions for {doc_id} -- no session info")
             ret_val.accessLimitedCode = 401 # no session
             session_id = "No Session Info"
             # not logged in
@@ -525,6 +554,7 @@ def get_access_limitations(doc_id,
             
             if classification in (opasConfig.DOCUMENT_ACCESS_FREE):
                 # free can be for anyone!!!! Change accessLimited
+                open_access = True
                 ret_val.accessLimited = False
                 ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
                 #"This content is currently free to all users."
@@ -542,36 +572,41 @@ def get_access_limitations(doc_id,
                 ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_EMBARGOED + publisherAccess # limited...get it elsewhere
                 if session_info is not None:
                     try:
+                        # #########################################################################################
+                        # optimization...if authorized for PEPCurrent, don't check again this query, unless it's a full-text request
+                        # #########################################################################################
                         if session_info.authorized_pepcurrent:
                             ret_val.accessLimited = False # you can access it!!!
                             # "This current content is available for you to access"
                             ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE 
+                            logger.info("Optimization - session info used to authorize PEPArchive document")
                     except Exception as e:
                         logger.error(f"PEPCurrent document error checking permission: {e}")
-                else:
-                    logger.debug("No session info provided to assess current document authorization")
+
             elif classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE):
                 ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
                 # ret_val.accessLimited = True # default is true
                 ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS
+                # #########################################################################################
+                # optimization...if authorized, don't check again, unless it's a full-text request
+                # #########################################################################################
                 if session_info is not None:
                     try:
                         if session_info.authorized_peparchive:
                             ret_val.accessLimited = False # you can access it!!!
                             # "This content is available for you to access"
                             ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE
-                            logger.debug("Optimization - session info used to authorize PEPArchive document")
+                            logger.info("Optimization - session info used to authorize PEPArchive document")
                     except Exception as e:
                         logger.error(f"PEPArchive document error checking permission: {e}")
-                else:
-                    logger.debug("No session info provided to assess archive document authorization")
+
             elif classification in (opasConfig.DOCUMENT_ACCESS_TOC):
+                open_access = True
                 ret_val.accessLimited = False # you can access it!!! (All TOCs are open)
                 # just like free for now
                 ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
                 #"This content is currently free to all users."
                 ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
-    
             else:
                 logger.error(f"Unknown classification: {classification}")
 
@@ -581,124 +616,106 @@ def get_access_limitations(doc_id,
             #     since we don't really always know about authentication, we need to check all requests that are otherwise rejected.
             # **************************************
             try:                   
-                # TODO: This is temp...just check as long as there is a session and full-text is requested
-                #if session_info.session_id is not None and fulltext_request == True:
-                if (session_info.authenticated == True # Must be authenticated for this check
-                    and (ret_val.accessLimited == True # if it's marked limited, then may need to check, it might be first one
-                         or fulltext_request == True)): # or whenever full-text is requested.
-                    # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
-                    if fulltext_request:
-                        reason_for_check = opasConfig.AUTH_DOCUMENT_VIEW_REQUEST
-                    else:
-                        reason_for_check = opasConfig.AUTH_ABSTRACT_VIEW_REQUEST
-    
-                    logger.debug(f"Sending permit request for {session_info.session_id}")
-                    try:
-                        pads_authorized, resp = authserver_permission_check(session_id=session_info.session_id,
-                                                                            doc_id=doc_id,
-                                                                            doc_year=year,
-                                                                            reason_for_check=reason_for_check,
-                                                                            request=request)
-                    except Exception as e:
-                        # PaDS could be down, local development
-                        logger.error(f"PaDS Access Exception: {e}")
-                        if localsecrets.BASEURL == "development.org:9100":
-                            resp = models.PadsPermitInfo(Permit=True, HasArchiveAccess=True, HasCurrentAccess=True)
-                            # so it doesn't have to check this later
-                            session_info.authorized_peparchive = True
-                            session_info.authorized_pepcurrent = True
+                if not open_access:
+                    if (session_info.authenticated == True # Must be authenticated for this check
+                        and (ret_val.accessLimited == True # if it's marked limited, then may need to check, it might be first one
+                             or fulltext_request == True)): # or whenever full-text is requested.
+                        # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
+                        if fulltext_request:
+                            reason_for_check = opasConfig.AUTH_DOCUMENT_VIEW_REQUEST
                         else:
-                            session_info.authorized_peparchive = False
-                            session_info.authorized_pepcurrent = False
-                            resp = models.PadsPermitInfo(Permit=False, HasArchiveAccess=False, HasCurrentAccess=False)
-                            
-    
-                    finally:
-                        # save PaDS code
-                        ret_val.accessLimitedCode = resp.StatusCode
-
-                        #if 1: # force error for testing
-                            #resp.StatusCode = httpCodes.HTTP_401_UNAUTHORIZED
-                            #ret_val.accessLimitedCode = resp.StatusCode
-
-                        # quick workaround
-                        #if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED and ret_val.accessLimitedClassifiedAsCurrentContent:
-                            #resp.StatusCode = 200
-                        # no error code when PaDS rejects because unauthenticaed.  TEMP: Test and reject on message:
-                        if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED or resp.ReasonStr == 'Session has not been authenticated':
-                            # if this is True, then we can stop asking this time
-                            # You would get the same return if 
-                            #    the session was not recognised on pads, 
-                            #    the session had been deleted from the database (should never happen…), or 
-                            #    the session simply never existed.
-                            # But 20210428 James response to seeing this as Current was to stop sending it altogether?
-                            # 
-                            ret_val.accessLimited = True
-                            ret_val.accessLimitedReason = f"Full text of {doc_id} unavailable. " + opasConfig.ACCESSLIMITED_401_UNAUTHORIZED
-
-                            ## WORKAROUND - TEMPORARY since this comes back 401 for PEP current
-                            if 1:
-                                ret_val.accessLimitedCode = 201 # to show workaround in place
-                                pass
-
-                            #if fulltext_request == True:
-                                ## not important to log for searches.
-                                #logger.info(ret_val.accessLimitedReason)
-                        else:
-                            # set default again based on update from PaDS query
-                            ret_val.accessLimited = True
-
-                            if ret_val.accessLimitedClassifiedAsCurrentContent == True:
-                                if resp.HasCurrentAccess == True:
-                                    session_info.authorized_pepcurrent = True
-                                    ret_val.accessLimited = False
-                                else:
-                                    ret_val.accessLimited = True
-                            else: # not current content
-                                if resp.HasArchiveAccess == True:
-                                    session_info.authorized_peparchive = True
-                                    ret_val.accessLimited = False
-
-                            if fulltext_request and pads_authorized:
-                                # let's make sure we know about this user.
-                                if session_info.user_id == opasConfig.USER_NOT_LOGGED_IN_NAME:
-                                    # We got this far, We need to find out who this is
-                                    pads_user_info, status_code = get_authserver_session_userinfo(session_info.session_id, session_info.api_client_id)
-                                    if pads_user_info is not None:
-                                        session_info.user_id = pads_user_info.UserId
-                                        session_info.username = pads_user_info.UserName
-                                        session_info.user_type = pads_user_info.UserType # TODO - Add this to session table
-                                        # session_info.session_expires_time = ?
-                                        ocd = opasCentralDBLib.opasCentralDB()
-                                        ocd.update_session(session_info.session_id,
-                                                           userID=session_info.user_id,
-                                                           username=session_info.username, 
-                                                           authenticated=1,
-                                                           authorized_peparchive=1 if session_info.authorized_peparchive == True else 0,
-                                                           authorized_pepcurrent=1 if session_info.authorized_pepcurrent == True else 0,
-                                                           session_end=session_info.session_expires_time,
-                                                           api_client_id=session_info.api_client_id
-                                                           )
-                                        
-                            if pads_authorized:
-                                # "This content is available for you to access"
-                                ret_val.accessLimited = False
-                                ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-                                ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-                                logger.debug(f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr}. Opas Reason: {ret_val.accessLimitedDescription}")
+                            reason_for_check = opasConfig.AUTH_ABSTRACT_VIEW_REQUEST
+                        try:
+                            pads_authorized, resp = authserver_permission_check(session_id=session_info.session_id,
+                                                                                doc_id=doc_id,
+                                                                                doc_year=year,
+                                                                                reason_for_check=reason_for_check,
+                                                                                request=request)
+                        except Exception as e:
+                            # PaDS could be down, local development
+                            logger.error(f"PaDS Access Exception: {e}")
+                            if localsecrets.BASEURL == "development.org:9100":
+                                resp = models.PadsPermitInfo(Permit=True, HasArchiveAccess=True, HasCurrentAccess=True)
+                                # so it doesn't have to check this later
+                                session_info.authorized_peparchive = True
+                                session_info.authorized_pepcurrent = True
                             else:
-                                logger.warning(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
+                                session_info.authorized_peparchive = False
+                                session_info.authorized_pepcurrent = False
+                                resp = models.PadsPermitInfo(Permit=False, HasArchiveAccess=False, HasCurrentAccess=False)
+                                
+        
+                        finally:
+                            # save PaDS code
+                            ret_val.accessLimitedCode = resp.StatusCode
+    
+                            if resp.StatusCode == httpCodes.HTTP_401_UNAUTHORIZED: # or resp.ReasonStr == 'Session has not been authenticated':
+                                # if this is True, then we can stop asking this time
+                                # You would get the same return if 
+                                #    the session was not recognised on pads, 
+                                #    the session had been deleted from the database (should never happen…), or 
+                                #    the session simply never existed.
                                 ret_val.accessLimited = True
-                                if ret_val.accessLimitedClassifiedAsCurrentContent:
-                                    # embargoed
-                                    ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_EMBARGOED
+                                session_info.authenticated = False
+                                ret_val.accessLimitedReason = f"Full text of {doc_id} unavailable. " + opasConfig.ACCESSLIMITED_401_UNAUTHORIZED
+                            else:
+                                # set default again based on update from PaDS query
+                                ret_val.accessLimited = True
+    
+                                if ret_val.accessLimitedClassifiedAsCurrentContent == True:
+                                    if resp.HasCurrentAccess == True:
+                                        session_info.authorized_pepcurrent = True
+                                        ret_val.accessLimited = False
+                                    else:
+                                        ret_val.accessLimited = True
+                                else: # not current content
+                                    if resp.HasArchiveAccess == True:
+                                        session_info.authorized_peparchive = True
+                                        ret_val.accessLimited = False
+    
+                                if fulltext_request and pads_authorized:
+                                    # let's make sure we know about this user.
+                                    if session_info.user_id == opasConfig.USER_NOT_LOGGED_IN_NAME:
+                                        # We got this far, We need to find out who this is
+                                        pads_user_info, status_code = get_authserver_session_userinfo(session_info.session_id, session_info.api_client_id)
+                                        if pads_user_info is not None:
+                                            session_info.user_id = pads_user_info.UserId
+                                            session_info.username = pads_user_info.UserName
+                                            session_info.user_type = pads_user_info.UserType # TODO - Add this to session table
+                                            # session_info.session_expires_time = ?
+                                            ocd = opasCentralDBLib.opasCentralDB()
+                                            ocd.update_session(session_info.session_id,
+                                                               userID=session_info.user_id,
+                                                               username=session_info.username, 
+                                                               authenticated=1,
+                                                               authorized_peparchive=1 if session_info.authorized_peparchive == True else 0,
+                                                               authorized_pepcurrent=1 if session_info.authorized_pepcurrent == True else 0,
+                                                               session_end=session_info.session_expires_time,
+                                                               api_client_id=session_info.api_client_id
+                                                               )
+                                            
+                                if pads_authorized:
+                                    # "This content is available for you to access"
+                                    ret_val.accessLimited = False
+                                    ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+                                    ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+                                    logger.debug(f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr}. Opas Reason: {ret_val.accessLimitedDescription}")
                                 else:
-                                    # non embargoed, but no access.
-                                    ret_val.accessLimitedReason = f"{ret_val.accessLimitedDescription} {ret_val.accessReason}"
-                                    
-                else:
-                    # not full-text OR (not authenticated or accessLimited==False)
-                    logger.debug(f"No PaDS check needed (no access).  Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}")
+                                    logger.warning(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
+                                    ret_val.accessLimited = True
+                                    if ret_val.accessLimitedClassifiedAsCurrentContent:
+                                        # embargoed
+                                        ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_EMBARGOED
+                                    else:
+                                        # non embargoed, but no access.
+                                        ret_val.accessLimitedReason = f"{ret_val.accessLimitedDescription} {ret_val.accessReason}"
+                                        
+                    else:
+                        # not full-text OR (not authenticated or accessLimited==False)
+                        logger.info(f"No PaDS check needed: Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}")
+
+                else: # It's open access!
+                    logger.info(f"No PaDS check needed: Document {doc_id} is open access")
         
             except Exception as e:
                 logger.error(f"Issue checking document permission. Possibly not logged in {e}")

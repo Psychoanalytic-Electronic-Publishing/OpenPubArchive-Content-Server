@@ -1376,19 +1376,22 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     
                     # do this before we potentially clear text_xml if no full text requested below
                     if solr_query_spec.abstractReturn:
-                        omit_abstract = False
-                        if opasConfig.ACCESS_ABSTRACT_RESTRICTION and documentListItem.accessLimited: # if restriction is on, AND this is restricted content
-                            if session_info is not None:
-                                if not session_info.authenticated:
-                                    # experimental - remove abstract if not authenticated, per DT's requirement
-                                    omit_abstract = True
-                            else: # no session info, omit abstract
-                                omit_abstract = True
-                        
+                        # we don't want to ever do this (Google!) 2021-04-29 (delete later, if the urge passes)
+                        #omit_abstract = False
+                        #if opasConfig.ACCESS_ABSTRACT_RESTRICTION and documentListItem.accessLimited: # if restriction is on, AND this is restricted content
+                            #if session_info is not None:
+                                #if not session_info.authenticated:
+                                    ## experimental - remove abstract if not authenticated, per DT's requirement
+                                    #omit_abstract = True
+                            #else: # no session info, omit abstract
+                                #omit_abstract = True
+
+                        # this would print a message about logging in and not display an abstrac if omit_abstract were true,
+                        # but then Google could not index
                         documentListItem = opasQueryHelper.get_excerpt_from_search_result(result,
                                                                                           documentListItem,
                                                                                           solr_query_spec.returnFormat,
-                                                                                          omit_abstract=omit_abstract)
+                                                                                          omit_abstract=False)
     
                     documentListItem.kwic = "" # need this, so it doesn't default to Nonw
                     documentListItem.kwicList = []
@@ -1441,7 +1444,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                                             page_limit=solr_query_spec.page_limit,
                                                                             documentListItem=documentListItem)
 
-                        #  test remove glossary..for my tests, not for stage/production code.
+                        # test remove glossary..for my tests, not for stage/production code.
                         # Note: the question mark before the first field in search= matters
                         #  e.g., http://development.org:9100/v2/Documents/Document/JCP.001.0246A/?return_format=XML&search=%27?fulltext1="Evenly%20Suspended%20Attention"~25&limit=10&facetmincount=1&facetlimit=15&sort=score%20desc%27
                         # documentListItem.document = opasxmllib.xml_remove_tags_from_xmlstr(documentListItem.document,['impx'])
