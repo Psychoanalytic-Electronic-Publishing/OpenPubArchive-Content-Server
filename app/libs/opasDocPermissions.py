@@ -725,7 +725,7 @@ def get_access_limitations(doc_id,
         logger.error(f"General exception {e} trying ascertain access limitations.")
 
     if fulltext_request and ret_val.accessLimited:
-        print (f"Debug Sess:{session_id}: Access:{ret_val.accessLimitedReason}")
+        logger.error(f"Full-text access for {doc_id} denied ({ret_val.accessLimitedCode}). Sess:{session_id}: Access:{ret_val.accessLimitedReason}")
 
     return ret_val
 
