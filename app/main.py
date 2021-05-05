@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0430.1.Beta" 
+__version__     = "2021.0504.1.Beta" 
 __status__      = "Development"
 
 """
@@ -3950,7 +3950,7 @@ def metadata_books(response: Response,
     ## Function
        <b>Get a list of Book names equivalent to what is displayed on the original PEP-Web in the books tab.</b>
 
-       The data is pulled from the database ISSN table.  Subvolumes of a book series (e.g., GW, SE) are not returned, nor is any volume
+       The data is pulled from the database api_productbase table.  Subvolumes of a book series (e.g., GW, SE) are not returned, nor is any volume
        marked with multivolumesubbok in the src_type_qualifier column.  This is exactly what's currently in PEP-Web's
        presentation today.
        
