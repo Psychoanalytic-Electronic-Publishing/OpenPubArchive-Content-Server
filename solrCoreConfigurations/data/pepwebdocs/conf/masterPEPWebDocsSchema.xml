@@ -48,7 +48,7 @@
                 Side Note: tested adding a field (art_product_key) this to an existing core via interactive schema and 
                  it still allowed stat updates on my localhost
 
-    2020-09-22  Added figure_count, table_count and art_graphic_list (callouts)
+    2020-09-22  Added art_figcount, art_tblcount, and art_graphic_list (callouts)
 
     2020-09-04  Moving art_cited_x updates to post-load updates.  to do that, like the art_views, no
                 data should be indexed during the original load, or you get a Solr error that says 
