@@ -71,6 +71,8 @@ class TestGetDocuments(unittest.TestCase):
         assert(response.reason == "Not Found")
 
     def test_001D_nonexistent_session(self):
+        search_param = f"?facetfields=art_year_int,art_views_last12mos,art_cited_5,art_authors,art_lang,art_type,art_sourcetype,art_sourcetitleabbr,glossary_group_terms,art_kwds_str&facetlimit=15&facetmincount=1&highlightlimit=4&synonyms=false&fulltext1={self.search_term}"
+        search_param_encoded = requests.utils.quote(search_param)
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJP.056.0303A/?return_format=XML&search={search_param_encoded}")
         headers = {f"client-session":f"123456789",
                    "client-id": UNIT_TEST_CLIENT_ID, 
@@ -79,8 +81,9 @@ class TestGetDocuments(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         print(response.status_code)
-        assert(response.status_code == 401)
-        assert(response.reason == "Not Found")
+        assert(response.status_code == 424)
+        print (response.reason)
+        assert(response.reason == "Failed Dependency")
         
 if __name__ == '__main__':
     unittest.main()    

@@ -738,10 +738,9 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
         if return_status != (200, "OK"):
             raise Exception(return_status(1))
     else: # get from mySQL
-        if src_type == 'book': # debug trap
-            print ("BOOK!!!!!")
-            pass
-        
+        #if src_type == 'book': # debug trap
+            #print ("BOOK!!!!!")
+            #pass
         try:
             # print(src_type, src_code, src_name, limit, offset)
             # note...this sorts by title as only current option
@@ -850,8 +849,9 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
             if err == 0:
                 source_info_listitems.append(item)
     else:
-        # book series workaround...look into updating the database for this
-        if src_code in ("ZBK", "IPL", "NLP"):
+        # book series workaround...any code not enabled in the database, i.e., SE/GW should not ever be getting do
+        if src_code in opasConfig.BOOK_CODES_ALL:  # ("ZBK", "IPL", "NLP", "SE", "GW"):
+            #print (f"Book Source code workaround--not enabled in DB: {src_code}")
             try:
                 item = models.SourceInfoListItem( sourceType = "book series",
                                                   PEPCode = src_code,
@@ -873,7 +873,33 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 response_info.count = 1
     
             except ValidationError as e:
-                logger.error("metadataGetSourceByType SourceInfoListItem Validation Error:")
+                logger.error("metadataGetSourceByType SourceInfoListItem Book Validation Error:")
+                logger.error(e.json())
+                err = 1
+        
+        elif src_code in opasConfig.VIDEOSTREAM_CODES_ALL:  # workaround for getting codes 
+            try:
+                item = models.SourceInfoListItem( sourceType = "videostream series",
+                                                  PEPCode = src_code,
+                                                  #srcTitle = title,  # v1 Deprecated for future
+                                                  #bookCode = book_code,
+                                                  #abbrev = source.get("bibabbrev"),
+                                                  bannerURL = f"{localsecrets.APIURL}/{opasConfig.IMAGES}/banner{src_code}Logo.gif",
+                                                  #language = source.get("language"),
+                                                  #ISSN = source.get("ISSN"),
+                                                  #ISBN10 = source.get("ISBN-10"),
+                                                  #ISBN13 = source.get("ISBN-13"),
+                                                  #yearFirst = start_year,
+                                                  #yearLast = end_year,
+                                                  #instanceCount = instance_count, 
+                                                  #embargoYears = source.get("embargo")
+                                                  ) 
+    
+                source_info_listitems.append(item)
+                response_info.count = 1
+    
+            except ValidationError as e:
+                logger.error("metadataGetSourceByType SourceInfoListItem Video Validation Error:")
                 logger.error(e.json())
                 err = 1
 

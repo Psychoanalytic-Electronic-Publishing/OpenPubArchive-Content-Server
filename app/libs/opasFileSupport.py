@@ -469,41 +469,6 @@ class FlexFileSystem(object):
       
         return ret_val
     
-    def deprecated_get_matching_filelist_info(self, bucket=None, filespec_regex=None, revised_after_date=None, max_items=None, look_past_match_count=0):
-        """
-        Return a list of matching files, as s3 fileinfo dicts.
-        
-        fs convenience function for get_s3_matching_files
-
-        Args:
-         - filespec_regex - regexp pattern with folder name and file name pattern, not including the root.
-         - Examples:
-            get_matching_filelist_info(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
-            get_matching_filelist_info(match_path="_PEPCurrent/.*\.xml")
-
-      - is_folder - set to true to find folders
-
-      - revised_after_date - files will only match if their revise date is after this
-
-      - max_items - maximum number of matched files
-
-      - look_past_match_count - a number used to stop searching when we "guess" it should be past the last hit.
-           This can limit how many items past a match are searched, e.g., if all the matches are in on folder, then
-           if this number is greater than the possible number of items in the folder, it will stop at some point in the next folder or so.
-           At least this should be useful for testing...in practice, on AWS, it shouldn't be needed, since hopefully, file search is much
-           faster.
-    """
-        if bucket is None:
-            bucket = self.root
-            
-        ret_val = get_s3_matching_files(bucket=bucket,
-                                        subpath_tomatch=filespec_regex,
-                                        after_revised_date=revised_after_date,
-                                        max_items=max_items,
-                                        look_past_match_count=look_past_match_count)
-        
-        return ret_val
-
     def get_matching_filelist(self, path=None, filespec_regex=None, revised_after_date=None, max_items=None):
         """
         Return a list of matching files, as FileInfo objects
@@ -593,72 +558,6 @@ class FlexFileSystem(object):
         return ret_val            
     
     
-def get_s3_matching_files(bucket=None,
-                          subpath_tomatch=".*",
-                          is_folder=False,
-                          after_revised_date=None,
-                          max_items=None,
-                          look_past_match_count: int=0):
-    """
-    Find matching files where:
-      - subpath_tomatch - regexp pattern with folder name and file name pattern, not including the root.
-         - Examples:
-            get_s3_matching_files(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
-            get_s3_matching_files(match_path="_PEPCurrent/.*\.xml")
-
-      - is_folder - set to true to find folders
-
-      - after_revised_date - files will only match if their revise date is after this
-
-      - max_items - maximum number of matched files
-
-      - look_past_match_count - a number used to stop searching when we "guess" it should be past the last hit.
-           This can limit how many items past a match are searched, e.g., if all the matches are in on folder, then
-           if this number is greater than the possible number of items in the folder, it will stop at some point in the next folder or so.
-           At least this should be useful for testing...in practice, on AWS, it shouldn't be needed, since hopefully, file search is much
-           faster.
-    """
-    
-    ret_val = []
-    if bucket == None:
-        bucket = localsecrets.XML_ORIGINALS_PATH
-        
-    count = 0
-    tried = 0
-    rc_match = re.compile(subpath_tomatch, flags=re.IGNORECASE)
-    after_match_count = 0
-    for item in iterate_bucket_items(bucket=bucket):
-        tried += 1
-        m = rc_match.match(item["Key"])
-        if m:
-            if is_folder == True:
-                if item.Size !=  0:
-                    continue
-            elif after_revised_date is not None:
-                after_revised_date_obj = datetime.datetime.date(datetime.datetime.strptime(after_revised_date, '%Y-%m-%d'))
-                item_date = datetime.datetime.date(item["LastModified"])
-                if item_date <= after_revised_date_obj:
-                    continue
-
-            count = count + 1
-            print (f"Matched: {item['Key']}")
-            # reset after match count
-            after_match_count = 0
-                
-            ret_val.append(item)
-            if max_items is not None:
-                if count >= max_items:
-                    break
-        else:
-            # no match
-            if count > 0: # won't increment unless there's been at least one match
-                after_match_count += 1
-                if look_past_match_count > 0:
-                    if after_match_count > look_past_match_count:
-                        break # guess we're past all the hits
-
-    return ret_val            
-
 def find_s3_file(bucket=r'pep-web-xml',
                  filename=None,
                  is_folder=False,

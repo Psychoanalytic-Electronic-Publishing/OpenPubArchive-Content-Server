@@ -708,7 +708,7 @@ def get_access_limitations(doc_id,
                                         ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_EMBARGOED
                                     else:
                                         # non embargoed, but no access.
-                                        ret_val.accessLimitedReason = f"{ret_val.accessLimitedDescription} {ret_val.accessReason}"
+                                        ret_val.accessLimitedReason = f"{ret_val.accessLimitedDescription} {ret_val.accessLimitedReason}"
                                         
                     else:
                         # not full-text OR (not authenticated or accessLimited==False)
