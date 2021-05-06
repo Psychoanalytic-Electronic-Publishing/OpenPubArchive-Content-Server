@@ -2,6 +2,17 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2021-05-05 many strings not case insensitive but should be for searching, particularly ids where case doesn't matter.
+                art_id
+                art_qual
+                art_origrx
+                art_sourcecode
+                art_sourcetitleabbr
+                art_doi
+                bk_main_toc_id
+                bk_series_toc_id
+                bk_next_id
+                
     2021-04-17 art_authors_text is now stored, so it can be returned as well as searched. (Not necessary, may revert later) 
                removed ngrams fields, not used
                Changed authors to text to see if I can give simple names to users
@@ -163,7 +174,7 @@
   <!-- ************************************************************************************************* -->
   <!-- Key display fields and their index surrogates (not displayed) -->
   <!-- ************************************************************************************************* -->
-  <field name="art_id" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_id" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!-- this will be a full-text reference to the citing document, it can be used to list matching document info -->
   <field name="art_citeas_xml" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <!--......................................................................................................-->
@@ -211,7 +222,7 @@
   <!--<copyField source="art_iss_title" dest="art_iss_title_str"/> -->
   <field name="art_year" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_year_int" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
-  <field name="art_origrx" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_origrx" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--Added art_views_lastcalyear 2020-05 to meet search requirements-->
   <!--These have to be false for all but docValues to allow in place updates-->
   <field name="art_cited_all" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
@@ -226,15 +237,15 @@
   <field name="art_views_last12mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
   <field name="art_views_lastweek" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
    
-  <field name="art_sourcecode" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
-  <field name="art_sourcetitleabbr" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_sourcecode" type="string_ci" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_sourcetitleabbr" type="string_ci" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_sourcetitlefull" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_sourcetitlefull_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
   <!--<copyField source="art_sourcetitlefull" dest="art_sourcetitlefull_str"/> -->
   
   <!--<field name="art_sourcetitle_fulltext" type="text_simple" indexed="true" stored="true" multiValued="false"/>-->
   <!--<copyField source="art_sourcetitlefull" dest="art_sourcetitle_fulltext"/>-->
-  <field name="art_doi" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_doi" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--name for this section of an issue, e.g., section name in a issue TOC-->
   <field name="art_newsecnm" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!-- extra metadata for books -->
@@ -251,10 +262,10 @@
   <field name="bk_subdoc" type="boolean" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--New fields for book management 2020-08-11 -->
   <!--Books with a TOC (main book in series or single book) point to themselves; others point to where the TOC is.-->
-  <field name="bk_main_toc_id" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
-  <field name="bk_series_toc_id" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="bk_main_toc_id" type="string_ci" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="bk_series_toc_id" type="string_ci" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--This is in the schema because it can be used to sort a multiple instance book by sequence-->
-  <field name="bk_next_id" type="string" indexed="false" stored="false" multiValued="false" docValues="true" sortMissingFirst="true"/>
+  <field name="bk_next_id" type="string_ci" indexed="false" stored="false" multiValued="false" docValues="true" sortMissingFirst="true"/>
   
   <!-- ************************************************************************************************* -->
   <!-- End Key display fields! -->
