@@ -6,12 +6,12 @@
                 art_id
                 art_qual
                 art_origrx
-                art_sourcecode
-                art_sourcetitleabbr
                 art_doi
                 bk_main_toc_id
                 bk_series_toc_id
                 bk_next_id
+                art_isbn
+                art_qual
                 
     2021-04-17 art_authors_text is now stored, so it can be returned as well as searched. (Not necessary, may revert later) 
                removed ngrams fields, not used
@@ -237,8 +237,8 @@
   <field name="art_views_last12mos" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
   <field name="art_views_lastweek" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
    
-  <field name="art_sourcecode" type="string_ci" indexed="false" stored="false" multiValued="false" docValues="true"/>
-  <field name="art_sourcetitleabbr" type="string_ci" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_sourcecode" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_sourcetitleabbr" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_sourcetitlefull" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_sourcetitlefull_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
   <!--<copyField source="art_sourcetitlefull" dest="art_sourcetitlefull_str"/> -->
@@ -262,10 +262,10 @@
   <field name="bk_subdoc" type="boolean" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--New fields for book management 2020-08-11 -->
   <!--Books with a TOC (main book in series or single book) point to themselves; others point to where the TOC is.-->
-  <field name="bk_main_toc_id" type="string_ci" indexed="false" stored="false" multiValued="false" docValues="true"/>
-  <field name="bk_series_toc_id" type="string_ci" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="bk_main_toc_id" type="string_ci" indexed="false" stored="false" multiValued="false"/>
+  <field name="bk_series_toc_id" type="string_ci" indexed="false" stored="false" multiValued="false"/>
   <!--This is in the schema because it can be used to sort a multiple instance book by sequence-->
-  <field name="bk_next_id" type="string_ci" indexed="false" stored="false" multiValued="false" docValues="true" sortMissingFirst="true"/>
+  <field name="bk_next_id" type="string_ci" indexed="false" stored="false" multiValued="false" sortMissingFirst="true"/>
   
   <!-- ************************************************************************************************* -->
   <!-- End Key display fields! -->
@@ -339,11 +339,11 @@
   <field name="art_pgrg" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--Added 2020-05-06-->
   <field name="art_lang" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/> <!--changed to multivalued=false, 2020-06-17 (it's an attribute of artinfo)-->
-  <field name="art_issn" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_issn" type="string_ci" indexed="false" stored="false" multiValued="false"/>
   <!--Added 2020-05-06-->
-  <field name="art_isbn" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_isbn" type="string_ci" indexed="false" stored="false" multiValued="false"/>
   <field name="art_kwds"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_qual" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_qual" type="string_ci" indexed="false" stored="false" multiValued="false"/>
   <!--Added for faceting use, 2020-04-25-->
   <!--For faceting multi word keywords, may want to eventually just replace art_kwds with this -->
   <field name="art_kwds_str"  type="string_ci" indexed="true" stored="false" multiValued="true"/>
