@@ -1655,7 +1655,9 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     solr_query_spec = set_return_fields(solr_query_spec, return_field_set=return_field_set)
     
     #Always add id and file_classification to return fields
-    solr_query_spec.returnFields += ", id, file_classification" #  need to always return id
+    solr_query_spec.returnFields += ",id"
+    if "file_classification" not in solr_query_spec.returnFields: # don't add twice
+        solr_query_spec.returnFields += ",file_classification" #  need to always return id
 
     if full_text_requested is not None:
         solr_query_spec.fullReturn = full_text_requested
@@ -1948,8 +1950,16 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
         citeas = force_string_return_from_various_return_types(citeas)
         documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
         documentListItem.documentRefHTML = citeas
+        # para level is ok, default to archive
+        if documentListItem.docLevel >= 2:
+            documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_DEFAULT)
+        else:
+            documentListItem.accessClassification = result.get("file_classification", None)
+            
+        if documentListItem.accessClassification is None:
+            logger.error(f"art_id: {documentListItem.documentID} no file_classification returned!")
+            
         documentListItem.updated=result.get("file_last_modified", None)
-        documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_ARCHIVE)
 
         if parent_tag is not None:
             documentListItem.docChild = {}

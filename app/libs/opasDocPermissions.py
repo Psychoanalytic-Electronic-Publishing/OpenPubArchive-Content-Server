@@ -550,7 +550,7 @@ def get_access_limitations(doc_id,
                 #       for now, just doi
                 ret_val.accessLimitedPubLink = opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK % ret_val.doi
             else:
-                publisherAccess = ""
+                publisherAccess = "."
             
             if classification in (opasConfig.DOCUMENT_ACCESS_FREE):
                 # free can be for anyone!!!! Change accessLimited
@@ -562,12 +562,12 @@ def get_access_limitations(doc_id,
                 
             elif classification in (opasConfig.DOCUMENT_ACCESS_OFFSITE):
                 # we only allow reading abstracts for offsite, accessLimited is True
-                ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_OFFSITE
+                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_DESCRIPTION
                 #"This content is currently free to all users."
-                ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_EMBARGOED + publisherAccess # limited...get it elsewhere
+                ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_OFFSITE + publisherAccess # limited...get it elsewhere
         
             elif classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED): # PEPCurrent
-                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_EMBARGOED
+                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_DESCRIPTION
                 ret_val.accessLimitedClassifiedAsCurrentContent = True
                 ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_EMBARGOED + publisherAccess # limited...get it elsewhere
                 if session_info is not None:
@@ -584,9 +584,9 @@ def get_access_limitations(doc_id,
                         logger.error(f"PEPCurrent document error checking permission: {e}")
 
             elif classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE):
-                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
+                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_DESCRIPTION 
                 # ret_val.accessLimited = True # default is true
-                ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS
+                ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
                 # #########################################################################################
                 # optimization...if authorized, don't check again, unless it's a full-text request
                 # #########################################################################################
@@ -699,9 +699,9 @@ def get_access_limitations(doc_id,
                                     ret_val.accessLimited = False
                                     ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
                                     ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-                                    logger.debug(f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr}. Opas Reason: {ret_val.accessLimitedDescription}")
+                                    logger.debug(f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr}. Opas Reason: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}")
                                 else:
-                                    logger.warning(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas Reason: {ret_val.accessLimitedDescription}") # limited...get it elsewhere
+                                    logger.warning(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}") # limited...get it elsewhere
                                     ret_val.accessLimited = True
                                     if ret_val.accessLimitedClassifiedAsCurrentContent:
                                         # embargoed

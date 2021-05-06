@@ -1350,6 +1350,9 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             documentListItem.accessLimitedPubLink = access.accessLimitedPubLink
 
                         #print(f"Postcheck: Session info archive access: {session_info.authorized_peparchive}")
+                        #if 1: # result == results.docs[-1]:
+                            ## last one in set
+                            #print (f"Description: {documentListItem.accessLimitedDescription} Reason: {documentListItem.accessLimitedReason} Current: {documentListItem.accessLimitedClassifiedAsCurrentContent}")
     
                     documentListItem.score = result.get("score", None)               
                     try:

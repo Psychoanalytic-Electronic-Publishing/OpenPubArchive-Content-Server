@@ -104,6 +104,8 @@ DOCUMENT_ACCESS_ARCHIVE = "archive"
 DOCUMENT_ACCESS_UNDEFINED = "undefined"
 DOCUMENT_ACCESS_OFFSITE = "offsite"
 DOCUMENT_ACCESS_TOC = "toc"              # special handling tocs (free)
+# Let this be the default, e.g., when there's no data, like for paras
+DOCUMENT_ACCESS_DEFAULT = DOCUMENT_ACCESS_ARCHIVE
 
 MAX_JOURNALCODE_LEN = 13
 MIN_EXCERPT_CHARS = 480
@@ -415,12 +417,12 @@ ENDPOINT_SUMMARY_WHATS_NEW = "Return the newest uploaded issues"
 ENDPOINT_SUMMARY_WHO_AM_I = "Return information about the current user"
 ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the specified field"
 
-ACCESS_SUMMARY_DESCRIPTION = "This is a summary excerpt from the full text of the document. "
+ACCESS_SUMMARY_DESCRIPTION = "This is a summary excerpt from the full document. "
 ACCESS_SUMMARY_FORSUBSCRIBERS = "The full content of the document is available to subscribers. "
 ACCESS_SUMMARY_EMBARGOED = "The full-text content of the document is embargoed per an agreement with the publisher. "
 # ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
-ACCESS_SUMMARY_PUBLISHER_INFO = "The full-text content of the document may be available on the publisher's website. "
-ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = "<a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>."
+ACCESS_SUMMARY_PUBLISHER_INFO = "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
+ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = " <a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>." # needs the left space now 2021-05-05
 # ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."
 
 ACCESSLIMITED_DESCRIPTION_OFFSITE = "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
@@ -507,7 +509,8 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_views_last12mos, 
  art_views_lastweek, 
  reference_count, 
- file_last_modified, 
+ file_last_modified,
+ file_classification,
  timestamp, 
  score
 """
@@ -544,14 +547,16 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
  art_qual, 
  art_kwds, 
  file_last_modified, 
- timestamp, 
+ timestamp,
+ file_classification,
  score
 """
 
 # try the more squashed approach to listing, see if that shows better in the solr call logs
 DOCUMENT_ITEM_VIDEO_FIELDS = """
-art_id,art_issn, art_sourcecode, art_authors, title, art_subtitle_xml, art_title_xml,
-art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, art_vol,art_vol_title, art_year, art_iss, art_iss_title, art_year, art_citeas_xml, art_pgrg, art_lang, art_origrx, art_qual, art_kwds 
+art_id,art_issn, art_sourcecode,art_authors, title, art_subtitle_xml, art_title_xml,
+art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, art_vol,art_vol_title, art_year, art_iss, art_iss_title,
+art_year, art_citeas_xml, art_pgrg, art_lang, art_origrx, art_qual, art_kwds, file_classification
 """
 
 DOCUMENT_ITEM_TOC_FIELDS = """
@@ -578,7 +583,8 @@ DOCUMENT_ITEM_TOC_FIELDS = """
  art_issn, 
  art_origrx, 
  art_qual, 
- art_kwds, 
+ art_kwds,
+ file_classification, 
  score
 """
 
@@ -595,6 +601,7 @@ DOCUMENT_ITEM_META_FIELDS ="""
  art_vol,
  art_year, 
  art_pgrg,
+ file_classification, 
  score
 """
 
@@ -618,6 +625,7 @@ DOCUMENT_ITEM_STAT_FIELDS = """
  art_views_last12mos, 
  art_views_lastweek, 
  reference_count, 
+ file_classification, 
  score
 """
 
@@ -633,6 +641,7 @@ GLOSSARY_ITEM_DEFAULT_FIELDS = """
  term_def_rest_xml,
  group_name,
  group_term_count,
+ file_classification, 
  text
 """
 
