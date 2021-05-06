@@ -11,7 +11,7 @@
                 bk_series_toc_id
                 bk_next_id
                 art_isbn
-                art_qual
+                art_issn
                 
     2021-04-17 art_authors_text is now stored, so it can be returned as well as searched. (Not necessary, may revert later) 
                removed ngrams fields, not used
