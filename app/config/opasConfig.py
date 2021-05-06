@@ -712,6 +712,14 @@ SEARCH_FIELD_TITLE = "title"
 SEARCH_FIELD_TEXT = "text"
 SEARCH_FIELD_DOI = "art_doi"
 SEARCH_FIELD_PGRG = "art_pgrg"
+SEARCH_FIELD_RELATED = "art_qual"
+SEARCH_FIELD_RELATED_EXPANDED = "related"
+
+SS_BROADEN_SEARCH_FIELD_RELATED = (SEARCH_FIELD_RELATED, SEARCH_FIELD_LOCATOR) # technique can be used generally to expand search based on field specified
+
+SS_BROADEN_DICT = {SEARCH_FIELD_RELATED: SS_BROADEN_SEARCH_FIELD_RELATED,
+                   SEARCH_FIELD_RELATED_EXPANDED: SS_BROADEN_SEARCH_FIELD_RELATED,
+                  }
 
 # Dict = sort key to use, fields, default direction if one is not specified.
 PREDEFINED_SORTS = {

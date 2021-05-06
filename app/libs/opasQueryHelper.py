@@ -1027,11 +1027,30 @@ def parse_search_query_parameters(search=None,             # url based parameter
             else:
                 schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
                 if opasgenlib.not_empty(schema_value):
-                    if "'" in schema_value or '"' in schema_value:
-                        search_q += f"&& {schema_field}:{schema_value} "
+                    if schema_field in opasConfig.SS_BROADEN_DICT.keys():
+                        broad_field_list = opasConfig.SS_BROADEN_DICT.get(schema_field, None)
+                        if broad_field_list is not None:
+                            search_q += f"&& ("
+                            for n in broad_field_list:
+                                search_q += f"{n}:{schema_value} "
+                                if n != broad_field_list[-1]: # if this isn't the last, add an OR
+                                    search_q += f"|| "
+                            # done, end the parens
+                            search_q += f")"
+                            limit = 1
+                        else:
+                            logger.error(f"SS_Broaden configuration error: {schema_field}")
+                            # don't broaden
+                            if "'" in schema_value or '"' in schema_value:
+                                search_q += f"&& {schema_field}:{schema_value} "
+                            else:
+                                search_q += f"&& {schema_field}:({schema_value}) "
                     else:
-                        search_q += f"&& {schema_field}:({schema_value}) "
-                    limit = 1
+                        if "'" in schema_value or '"' in schema_value:
+                            search_q += f"&& {schema_field}:{schema_value} "
+                        else:
+                            search_q += f"&& {schema_field}:({schema_value}) "
+                        limit = 1
         else:
             syntax = search_dict.get("syntax")
             if syntax is not None:

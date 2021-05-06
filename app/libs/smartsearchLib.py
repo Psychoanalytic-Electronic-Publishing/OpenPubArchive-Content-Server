@@ -50,9 +50,9 @@ rx_doi = "((h.*?://)?(.*?/))?(?P<doi>(10\.[0-9]{4,4}/[A-z0-9\.\-/]+)|(doi.org/[A
 
 # schema fields must have a _ in them to use.  A - at the beginning is allowed, for negation
 # user search fields (PEP Spec)
-# USER_SEARCH_FIELDS = "authors|dialogs|dreams|headings|keywords|notes|panels|poems|quotes|references|source|sourcecode|text|volume|year|art_*"
-USER_SEARCH_FIELDS = "[a-z_]*"
-rx_solr_field = f"(?P<schema_field>^{USER_SEARCH_FIELDS})\:(?P<schema_value>([^:]*$))" # only one field permitted
+# SS_ = "authors|dialogs|dreams|headings|keywords|notes|panels|poems|quotes|references|source|sourcecode|text|volume|year|art_*"
+SS_SEARCH_FIELDS = "[a-z_]*"
+rx_solr_field = f"(?P<schema_field>^{SS_SEARCH_FIELDS})\:(?P<schema_value>([^:]*$))" # only one field permitted
 # rx_syntax = "(?P<schema_field>^[a-z]{3,9})\:\:(?P<schema_value>.+$)"
 advanced_syntax = f"(?P<schema_field>^adv)\:\:(?P<schema_value>.+$)"
 
