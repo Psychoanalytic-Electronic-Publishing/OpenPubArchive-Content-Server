@@ -2,6 +2,9 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2021-05-06 corrected error: string_ci fields need to be stored and indexed, since they are no longer docvalues
+               but keep using docvalues for any field that is used for faceting.
+               
     2021-05-05 many strings not case insensitive but should be for searching, particularly ids where case doesn't matter.
                 art_id
                 art_qual
@@ -262,10 +265,10 @@
   <field name="bk_subdoc" type="boolean" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--New fields for book management 2020-08-11 -->
   <!--Books with a TOC (main book in series or single book) point to themselves; others point to where the TOC is.-->
-  <field name="bk_main_toc_id" type="string_ci" indexed="false" stored="false" multiValued="false"/>
-  <field name="bk_series_toc_id" type="string_ci" indexed="false" stored="false" multiValued="false"/>
+  <field name="bk_main_toc_id" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  <field name="bk_series_toc_id" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--This is in the schema because it can be used to sort a multiple instance book by sequence-->
-  <field name="bk_next_id" type="string_ci" indexed="false" stored="false" multiValued="false" sortMissingFirst="true"/>
+  <field name="bk_next_id" type="string_ci" indexed="true" stored="true" multiValued="false" sortMissingFirst="true"/>
   
   <!-- ************************************************************************************************* -->
   <!-- End Key display fields! -->
@@ -339,14 +342,15 @@
   <field name="art_pgrg" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--Added 2020-05-06-->
   <field name="art_lang" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/> <!--changed to multivalued=false, 2020-06-17 (it's an attribute of artinfo)-->
-  <field name="art_issn" type="string_ci" indexed="false" stored="false" multiValued="false"/>
+  <field name="art_issn" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--Added 2020-05-06-->
-  <field name="art_isbn" type="string_ci" indexed="false" stored="false" multiValued="false"/>
-  <field name="art_kwds"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_qual" type="string_ci" indexed="false" stored="false" multiValued="false"/>
+  <field name="art_isbn" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_kwds" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_qual" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+
   <!--Added for faceting use, 2020-04-25-->
   <!--For faceting multi word keywords, may want to eventually just replace art_kwds with this -->
-  <field name="art_kwds_str"  type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  <field name="art_kwds_str"  type="string_ci" indexed="true" stored="true" multiValued="true"/>
   
   <!-- author data -->
   <field name="author_aff_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
