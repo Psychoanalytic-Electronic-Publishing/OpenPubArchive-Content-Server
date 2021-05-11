@@ -243,6 +243,28 @@ class FlexFileSystem(object):
         return ret_val        
 
     #-----------------------------------------------------------------------------
+    def get_full_name_if_exists(self, filespec, path=None):
+        """
+        Find if the filespec exists, return it, otherwise return None
+        if the instance variable key was set at init, checks s3 otherwise, local file system
+        """
+        #  see if the file exists
+        ret_val = None
+        filespec = self.fullfilespec(path=path, filespec=filespec) # "pep-graphics/embedded-graphics"
+        try:
+            if self.key is not None:
+                if self.fs.exists(filespec):
+                    ret_val = filespec
+            else:
+                if os.path.exists(filespec):
+                    ret_val = filespec
+                    
+        except Exception as e:
+            logger.error(f"File access error: ({e})")
+        
+        return ret_val        
+
+    #-----------------------------------------------------------------------------
     def create_text_file(self, filespec, path=None, data=" "):
         """
          >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
@@ -363,31 +385,89 @@ class FlexFileSystem(object):
             ret_val = None
             
         return ret_val   
+
     #-----------------------------------------------------------------------------
-    def get_image_filename(self, filespec, path=None):
+    def get_imagename_if_exists(self, namestr: str, extensions=(".jpg", ".gif", ".tif"), insensitive=True):
+        ret_val = None
+        dirname, basename = os.path.split(namestr)
+        base, base_ext = os.path.splitext(basename)
+        try: # to pull out an extension, it must be in extensions
+            if base_ext is not None:
+                exts = [a.lower() for a in extensions] + [a.upper() for a in extensions]
+                if len(base_ext) > 4 or base_ext not in exts: #  revert to no extension
+                    base = basename
+                    base_ext = None
+        except Exception as e:
+            logger.debug(f"Exception checking extension: {e}")
+            base = basename
+            base_ext = None
+
+        if base_ext is not None and base_ext != '':
+            if insensitive:
+                exts = (base_ext, base_ext.swapcase())
+            else:
+                exts = (base_ext, ) # comma to ensure it understands the ()
+        else:
+            # alway use case insensitive extensions
+            if base.isupper():
+                exts = [a.upper() for a in extensions] + [a.lower() for a in extensions]
+            else:
+                exts = [a.lower() for a in extensions] + [a.upper() for a in extensions]
+            
+        if insensitive:
+            if base.isupper():
+                names = (base, base.lower())
+                # prioritize upper
+            elif base.islower():
+                names = (base, base.upper())
+            else: # mixed
+                names = (base, base.upper(), base.lower())
+        else:
+            names = (base, ) # comma to ensure it understands the ()
+            
+        # test all permutations, in optimum order
+        for name in names:
+            for ext in exts:
+                ret_val = self.get_full_name_if_exists(name + ext)
+                if ret_val:
+                    if not insensitive:
+                        # fail if they don't match
+                        if base != name or ext != base_ext:
+                            logger.error(f"File insensitive match {base} vs {name} found insensitive match but not sensitive match.")
+                            ret_val = None
+
+                    return (ret_val)
+                
+
+        # if it wasn't found, return None
+        return ret_val
+
+    #-----------------------------------------------------------------------------
+    def get_image_filename(self, filespec, path=None, insensitive=True):
         """
         Return the file name given the image id, if it exists
         
         """
+    
         # check if local storage or secure storage is enabled
         ret_val = self.fullfilespec(path=path, filespec=filespec) # "pep-graphics/embedded-graphics"
 
         # look to see if the file type has been specified via extension
-        ext = os.path.splitext(ret_val)[-1].lower()
-        if ext in (".jpg", ".tif", ".gif"):
-            exists = self.exists(ret_val)
-            if not exists:
-                ret_val = None
-        else:
-            if self.exists(ret_val + ".jpg"):
-                ret_val = ret_val + ".jpg"
-            elif self.exists(ret_val + ".gif"):
-                ret_val = ret_val + ".gif"
-            elif  self.exists(ret_val + ".tif"):
-                ret_val = ret_val + ".tif"
-            else:
-                logger.warning(f"File {ret_val} not found")
-                ret_val = None
+        #ext = os.path.splitext(ret_val)[-1].lower()
+        #if re.match("\.jpg|\.tif|\.gif", ext, flags=re.I):
+            #exists = self.exists(ret_val)
+            #if not exists:
+                #fileandpath, ext = os.path.splitext(ret_val)
+                #try2 = exists_filename_case_insensitive(fileandpath)
+                #if try2 is not None:
+                    #logger.warning(f"File {ret_val} not found. Possible missing or case mismatch.")
+                #else:
+                    #ret_val = try2
+        #else:
+        #watch for case sensitive extensions on S3 and other systems
+        ret_val = self.get_imagename_if_exists(namestr=ret_val, extensions=(".jpg", ".gif", ".tif"), insensitive=insensitive)
+        if ret_val is None:
+            logger.warning(f"File {filespec} not found")
     
         return ret_val   
     #-----------------------------------------------------------------------------

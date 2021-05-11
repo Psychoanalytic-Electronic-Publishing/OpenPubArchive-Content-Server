@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0506.1.Beta2" 
+__version__     = "2021.05010.1.Beta2" 
 __status__      = "Development"
 
 """
@@ -5276,6 +5276,7 @@ async def documents_image_fetch(response: Response,
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 imageID: str=Path(..., title=opasConfig.TITLE_IMAGEID, description=opasConfig.DESCRIPTION_IMAGEID),
                                 download: int=Query(0, title="Return or download", description="0 returns the binary image, 1 downloads, 2 returns the article ID"),
+                                insensitive: bool=Query(True, title="Filename case ignored"),  
                                 client_id:int=Depends(get_client_id),
                                 #seed:str=Query(None, title="Seed String to help randomize daily expert pick", description="Use the date, for example, to avoid caching from a prev. date. "),
                                 reselect:bool=Query(False, title="Force a new random image selection")  
@@ -5360,7 +5361,7 @@ async def documents_image_fetch(response: Response,
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
     media_type='image/jpeg'
     if imageID != "*":
-        filename = fs.get_image_filename(filespec=imageID) # IMAGE_SOURCE_PATH set as root above, all that we need
+        filename = fs.get_image_filename(filespec=imageID, insensitive=insensitive) # IMAGE_SOURCE_PATH set as root above, all that we need
     if download == 0 or download == 2:
         if imageID == "*":
             #  load a random image.  Load a new one each day
@@ -5400,7 +5401,7 @@ async def documents_image_fetch(response: Response,
                     doc_id = opasGenSupportLib.DocumentID(filename).document_id
                     counter = 0
                     while doc_id is None: # non-conforming image filename
-                        logger.error(f"Nonconforming image filename {filename} found in expert pick images")
+                        logger.error(f"Nonconforming image filename {filename}, can't get article id from it")
                         counter += 1
                         filename = select_new_image()
                         doc_id = opasGenSupportLib.DocumentID(filename).document_id

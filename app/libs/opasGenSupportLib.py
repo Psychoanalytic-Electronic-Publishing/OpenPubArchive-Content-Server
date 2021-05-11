@@ -93,6 +93,9 @@ class DocumentID(object):
     rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-M]|S?))", flags=re.I)
     def __init__(self, document_id):
         #  See https://docs.google.com/document/d/1QmRG6MnM1jJOEq9irqCyoEY6Bt4U3mm8FY6TtZSt3-Y/edit#heading=h.mv7bvgdg7i7h for document ID information
+        dirname, basename = os.path.split(document_id)
+        if dirname is not None:
+            document_id = basename
         self.document_id = None
         self.document_id_pagejump = None
         self.jrnlvol_id = None
