@@ -1386,6 +1386,16 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if opasgenlib.not_empty(author):
         author = author
+        # author comes in inside quotes, due to issue #410 regarding faceting.
+        # they can use booleans though, the client strips them in that case
+        # but without a boolean connector, without being stripped, they cannot use a wild card on a name
+        # So, strip if
+        #  only one word
+        #  not an author ID
+        #  has wildcards
+        if smartsearchLib.str_has_one_word(author) or smartsearchLib.quoted_str_has_wildcards(author) and not smartsearchLib.str_has_author_id(author):
+            author = strip_outer_matching_chars(author, '\"')
+            
         # if there's or and or not in lowercase, need to uppercase them
         # author = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", author)])
         # art_authors_citation:("tuckett, D.") OR art_authors_text:("tuckett, David")
@@ -1499,7 +1509,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         val = None
         viewed_in_period = None
         val_end = "*"
-        match_ptn = f"{ignored_start_chars}((?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?\,?\s*)+(\s+IN\s+(?P<period>(lastweek|lastmonth|last6months|last12months|lastcalendaryear)))?{ignored_end_chars}"
+        match_ptn = f"{ignored_start_chars}((?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?\,?)(\s+IN\s+(?P<period>(lastweek|lastmonth|last6months|last12months|lastcalendaryear)))?{ignored_end_chars}"
         m = re.match(match_ptn, viewcount, re.IGNORECASE)
         if m is not None:
             val = m.group("nbr")
@@ -1927,78 +1937,89 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
 def get_base_article_info_from_search_result(result, documentListItem: models.DocumentListItem):
     
     if result is not None:
-        documentListItem.documentID = result.get("art_id", None)
-        documentListItem.docLevel = result.get("art_level", None)
-        documentListItem.PEPCode = result.get("art_sourcecode", None)
-        parent_tag = result.get("parent_tag", None)
+        try:
+            documentListItem.documentID = result.get("art_id", None)
+            if documentListItem.documentID is None:
+                logger.error(f"Database error, incomplete record, can't find ID: {result}")
 
-        if result.get("meta_xml", None): documentListItem.documentMetaXML = result.get("meta_xml", None)
-        if result.get("art_info_xml", None): documentListItem.documentInfoXML = result.get("art_info_xml", None)
-        if result.get("art_pgrg", None): documentListItem.pgRg = result.get("art_pgrg", None)
-        art_lang = result.get("art_lang", None)
-        if isinstance(art_lang, list):
-            art_lang = art_lang[0]
-        documentListItem.lang=art_lang
-        documentListItem.year = result.get("art_year", None)
-        documentListItem.vol = result.get("art_vol", None)
-        documentListItem.docType = result.get("art_type", None)
-        if result.get("art_doi", None): documentListItem.doi = result.get("art_doi", None)
-        documentListItem.issue = result.get("art_iss", None)
-        documentListItem.issn = result.get("art_issn", None)
-        # documentListItem.isbn = result.get("art_isbn", None) # no isbn in solr stored data, only in products table
-        # see if using art_title instead is a problem for clients...at least that drops the footnote
-        documentListItem.title = result.get("art_title", "")  
-        # documentListItem.title = result.get("art_title_xml", "")  
-        if documentListItem.pgRg is not None:
-            pg_start, pg_end = opasgenlib.pgrg_splitter(documentListItem.pgRg)
-            documentListItem.pgStart = pg_start
-            documentListItem.pgEnd = pg_end
-
-        if result.get("art_origrx", None): documentListItem.origrx = result.get("art_origrx", None)
-        if result.get("art_qual", None): documentListItem.relatedrx= result.get("art_qual", None)
-        documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
-        documentListItem.sourceType = result.get("art_sourcetype", None)
-        author_ids = result.get("art_authors", None)
-        if author_ids is None:
-            # try this, instead of abberrant behavior in alpha of display None!
-            documentListItem.authorMast = result.get("art_authors_mast", "")
-        else:
-            documentListItem.authorMast = opasgenlib.derive_author_mast(author_ids)
-        if result.get("art_newsecnm", None): documentListItem.newSectionName=result.get("art_newsecnm", None)            
-        citeas = result.get("art_citeas_xml", None)
-        citeas = force_string_return_from_various_return_types(citeas)
-        documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
-        documentListItem.documentRefHTML = citeas
-        # para level is ok, default to archive
-        if documentListItem.docLevel >= 2:
-            documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_DEFAULT)
-        else:
-            documentListItem.accessClassification = result.get("file_classification", None)
+            documentListItem.docLevel = result.get("art_level", None)
+            documentListItem.PEPCode = result.get("art_sourcecode", None)
+            parent_tag = result.get("parent_tag", None)
+    
+            if result.get("meta_xml", None): documentListItem.documentMetaXML = result.get("meta_xml", None)
+            if result.get("art_info_xml", None): documentListItem.documentInfoXML = result.get("art_info_xml", None)
+            if result.get("art_pgrg", None): documentListItem.pgRg = result.get("art_pgrg", None)
+            art_lang = result.get("art_lang", None)
+            if isinstance(art_lang, list):
+                art_lang = art_lang[0]
+            documentListItem.lang=art_lang
+            documentListItem.year = result.get("art_year", None)
+            documentListItem.vol = result.get("art_vol", None)
+            documentListItem.docType = result.get("art_type", None)
+            if result.get("art_doi", None): documentListItem.doi = result.get("art_doi", None)
+            documentListItem.issue = result.get("art_iss", None)
+            documentListItem.issn = result.get("art_issn", None)
+            # documentListItem.isbn = result.get("art_isbn", None) # no isbn in solr stored data, only in products table
+            # see if using art_title instead is a problem for clients...at least that drops the footnote
+            documentListItem.title = result.get("art_title", "")  
+            # documentListItem.title = result.get("art_title_xml", "")  
+            if documentListItem.pgRg is not None:
+                pg_start, pg_end = opasgenlib.pgrg_splitter(documentListItem.pgRg)
+                documentListItem.pgStart = pg_start
+                documentListItem.pgEnd = pg_end
+    
+            if result.get("art_origrx", None): documentListItem.origrx = result.get("art_origrx", None)
+            if result.get("art_qual", None): documentListItem.relatedrx= result.get("art_qual", None)
+            documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
+            documentListItem.sourceType = result.get("art_sourcetype", None)
+            author_ids = result.get("art_authors", None)
+            if author_ids is None:
+                # try this, instead of abberrant behavior in alpha of display None!
+                documentListItem.authorMast = result.get("art_authors_mast", "")
+            else:
+                documentListItem.authorMast = opasgenlib.derive_author_mast(author_ids)
+            if result.get("art_newsecnm", None): documentListItem.newSectionName=result.get("art_newsecnm", None)            
+            citeas = result.get("art_citeas_xml", None)
+            citeas = force_string_return_from_various_return_types(citeas)
+            documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
+            documentListItem.documentRefHTML = citeas
+            # para level is ok, default to archive
+            try:
+                if documentListItem.docLevel >= 2:
+                    documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_DEFAULT)
+                else:
+                    documentListItem.accessClassification = result.get("file_classification", None)
+            except Exception as e:
+                # don't log, at this point there are other things being logged.
+                # logger.error(f"GetBaseArticleInfo: Error in database: {e}")
+                documentListItem.accessClassification = opasConfig.DOCUMENT_ACCESS_DEFAULT
+                
+            if documentListItem.accessClassification is None:
+                logger.error(f"art_id: {documentListItem.documentID} no file_classification returned!")
+                
+            documentListItem.updated=result.get("file_last_modified", None)
+    
+            if parent_tag is not None:
+                documentListItem.docChild = {}
+                documentListItem.docChild["id"] = result.get("id", None)
+                documentListItem.docChild["parent_tag"] = parent_tag
+                documentListItem.docChild["para"] = result.get("para", None)
+                documentListItem.docChild["lang"] = result.get("lang", None)
+                if isinstance(documentListItem.docChild["lang"], list):
+                    documentListItem.docChild["lang"] = documentListItem.docChild["lang"][0]
+                documentListItem.docChild["para_art_id"] = result.get("para_art_id", None)
             
-        if documentListItem.accessClassification is None:
-            logger.error(f"art_id: {documentListItem.documentID} no file_classification returned!")
-            
-        documentListItem.updated=result.get("file_last_modified", None)
-
-        if parent_tag is not None:
-            documentListItem.docChild = {}
-            documentListItem.docChild["id"] = result.get("id", None)
-            documentListItem.docChild["parent_tag"] = parent_tag
-            documentListItem.docChild["para"] = result.get("para", None)
-            documentListItem.docChild["lang"] = result.get("lang", None)
-            if isinstance(documentListItem.docChild["lang"], list):
-                documentListItem.docChild["lang"] = documentListItem.docChild["lang"][0]
-            documentListItem.docChild["para_art_id"] = result.get("para_art_id", None)
-        
-        para_art_id = result.get("para_art_id", None)
-        if documentListItem.documentID is None and para_art_id is not None:
-            # this is part of a document, we should retrieve the parent info
-            top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
-            if top_level_doc is not None:
-                documentListItem = merge_documentListItems(documentListItem, top_level_doc)
-
-        # don't set the value, if it's None, so it's not included at all in the pydantic return
-        # temp workaround for art_lang change
+            para_art_id = result.get("para_art_id", None)
+            if documentListItem.documentID is None and para_art_id is not None:
+                # this is part of a document, we should retrieve the parent info
+                top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
+                if top_level_doc is not None:
+                    documentListItem = merge_documentListItems(documentListItem, top_level_doc)
+    
+            # don't set the value, if it's None, so it's not included at all in the pydantic return
+            # temp workaround for art_lang change
+        except Exception as e:
+            logger.warning(f"Error in data: {e}")
 
     return documentListItem # return a partially filled document list item
 

@@ -63,6 +63,9 @@ pat_quoted_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.
 rx_str_has_wildcards = r".*(\*|\?).*"
 pat_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
 pat_str_has_fuzzy_search = re.compile(rx_fuzzy_search, flags=re.I)
+pat_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
+rx_str_has_author_id = r"[A-z]+[,]?\s[A-z]\.?\b"
+pat_str_has_author_id = re.compile(rx_str_has_author_id, flags=re.I)
 cores = CORES
 
 class SearchEvaluation(object):
@@ -110,6 +113,22 @@ def str_has_fuzzy_ops(search_str):
         return True
     else:
         return False
+
+def str_has_one_word(search_str):
+    """
+    Test if string which has a substring in quotes, that has wildcards.
+    
+    >>> str_has_one_word(r"test* 12?")
+    False
+    
+    >>> str_has_one_word(r"test**")
+    True
+
+    """
+    if len(search_str.split()) == 1: # has more than 1 word
+        return True
+    else:
+        return False
     
 def str_has_wildcards(search_str):
     """
@@ -129,6 +148,26 @@ def str_has_wildcards(search_str):
 
     return ret_val
 
+def str_has_author_id(search_str):
+    """
+    >>> str_has_author_id("Tuckett, D.")
+    True
+    >>> str_has_author_id("Tuckett, David")
+    False
+    >>> str_has_author_id("  Tuckett, Dav")
+    False
+    >>> str_has_author_id("   Tuckett, D")
+    True
+    >>> str_has_author_id("   Tuckett D")
+    True
+    >>> str_has_author_id("   Tuckett D Fonagy")
+    True
+    """
+    if pat_str_has_author_id.search(search_str):
+        return True
+    else:
+        return False
+        
 #-----------------------------------------------------------------------------
 def cleanup_solr_query(solrquery):
     """

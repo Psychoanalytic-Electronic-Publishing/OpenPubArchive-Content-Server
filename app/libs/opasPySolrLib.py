@@ -1326,6 +1326,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     documentListItem = models.DocumentListItem()
                     documentListItem = opasQueryHelper.get_base_article_info_from_search_result(result, documentListItem)
                     documentID = documentListItem.documentID
+                    if documentID is None:
+                        # there's a problem with this records
+                        logger.error(f"Record Decode Error, incomplete record, skipping. Possible corrupt solr database: {result}")
+                        continue
                     # sometimes, we don't need to check permissions
                     # Always check if fullReturn is selected
                     # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)

@@ -9,7 +9,7 @@ __version__     = "2021.0213.1" # per changes pushed earlier today to project
 __status__      = "Development"
 
 # Breaking change in Pydantic with 1.8... changed Schema to Field, and no longer offering the equivalency
-#  Interesting though--seems to be breaking AWS but not here, and both appear to be using 1.6.1 as per
+#  Interesting though--seems to be breaking loading AWS but not here, and both appear to be using 1.6.1 as per
 #  requirements.txt
 # 
 #  Breaking Change, remove old deprecation aliases from v1, #2415 by @samuelcolvin:
