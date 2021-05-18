@@ -1,5 +1,3 @@
-!*/schemas/*.pdf
-# Include  pdfs in the schemas folder
 **/opasCenter - not Open Source Yet/*
 *.7z
 *.bak
@@ -46,3 +44,7 @@ scrap.*
 sql/schemas/pepwebdownload*
 venv/
 xxx*
+!*schema.xml
+!*master*Schema.xml
+# Include  pdfs in the schemas folder
+!*/schemas/*.pdf
