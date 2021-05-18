@@ -4,7 +4,7 @@
  Source Server         : AWS-RDS-Prod-Production
  Source Server Type    : MySQL
  Source Server Version : 80017
- Source Host           : production.c6re6qczl2ae.us-east-1.rds.amazonaws.com:3306
+ Source Host           : 
  Source Schema         : opascentral
 
  Target Server Type    : MySQL
