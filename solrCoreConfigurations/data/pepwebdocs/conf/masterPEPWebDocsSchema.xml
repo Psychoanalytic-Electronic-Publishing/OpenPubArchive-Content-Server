@@ -2,6 +2,44 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2021-05-06 corrected error: string_ci fields need to be stored and indexed, since they are no longer docvalues
+               but keep using docvalues for any field that is used for faceting.
+               
+    2021-05-05 many strings not case insensitive but should be for searching, particularly ids where case doesn't matter.
+                art_id
+                art_qual
+                art_origrx
+                art_doi
+                bk_main_toc_id
+                bk_series_toc_id
+                bk_next_id
+                art_isbn
+                art_issn
+                
+    2021-04-17 art_authors_text is now stored, so it can be returned as well as searched. (Not necessary, may revert later) 
+               removed ngrams fields, not used
+               Changed authors to text to see if I can give simple names to users
+               User fields mod or added:
+                  authors (already there, changed to text_simple though)
+                  title   (already there)
+                  source  - copied
+                  language - copied
+                  year - copied
+                  headings - copied
+                  volume - copied
+                  quotes - copied
+                  dreams - copied
+                  dialogs - copied
+                  notes - copied
+                  panels - copied
+                  poems - copied
+                  keywords - copied
+                  references - copied
+                  
+    2021-04-14 Added additional counting fields useful for QA keyboarding and hopefully more, set up consistent naming, leaving old names in 
+
+    2021-04-13 Added new counting fields useful for QA keyboarding and hopefully more
+
     2020-12-08 Changed art_graphic_list to indexed, so client can find an instance by a graphic id contained within.
 
     2020-11-17 Added art_iss_seqnbr for journals like FA which really work by number more than issue.  See FA.014A.0001A 
@@ -23,7 +61,7 @@
                 Side Note: tested adding a field (art_product_key) this to an existing core via interactive schema and 
                  it still allowed stat updates on my localhost
 
-    2020-09-22  Added figure_count, table_count and art_graphic_list (callouts)
+    2020-09-22  Added art_figcount, art_tblcount, and art_graphic_list (callouts)
 
     2020-09-04  Moving art_cited_x updates to post-load updates.  to do that, like the art_views, no
                 data should be indexed during the original load, or you get a Solr error that says 
@@ -138,7 +176,7 @@
   <!-- ************************************************************************************************* -->
   <!-- Key display fields and their index surrogates (not displayed) -->
   <!-- ************************************************************************************************* -->
-  <field name="art_id" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_id" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!-- this will be a full-text reference to the citing document, it can be used to list matching document info -->
   <field name="art_citeas_xml" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <!--......................................................................................................-->
@@ -186,7 +224,7 @@
   <!--<copyField source="art_iss_title" dest="art_iss_title_str"/> -->
   <field name="art_year" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_year_int" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
-  <field name="art_origrx" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_origrx" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--Added art_views_lastcalyear 2020-05 to meet search requirements-->
   <!--These have to be false for all but docValues to allow in place updates-->
   <field name="art_cited_all" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
@@ -209,7 +247,7 @@
   
   <!--<field name="art_sourcetitle_fulltext" type="text_simple" indexed="true" stored="true" multiValued="false"/>-->
   <!--<copyField source="art_sourcetitlefull" dest="art_sourcetitle_fulltext"/>-->
-  <field name="art_doi" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_doi" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--name for this section of an issue, e.g., section name in a issue TOC-->
   <field name="art_newsecnm" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <!-- extra metadata for books -->
@@ -226,20 +264,18 @@
   <field name="bk_subdoc" type="boolean" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--New fields for book management 2020-08-11 -->
   <!--Books with a TOC (main book in series or single book) point to themselves; others point to where the TOC is.-->
-  <field name="bk_main_toc_id" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
-  <field name="bk_series_toc_id" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="bk_main_toc_id" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  <field name="bk_series_toc_id" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--This is in the schema because it can be used to sort a multiple instance book by sequence-->
-  <field name="bk_next_id" type="string" indexed="false" stored="false" multiValued="false" docValues="true" sortMissingFirst="true"/>
+  <field name="bk_next_id" type="string_ci" indexed="true" stored="true" multiValued="false" sortMissingFirst="true"/>
   
   <!-- ************************************************************************************************* -->
   <!-- End Key display fields! -->
   <!-- ************************************************************************************************* -->
 
-
   <!-- sections, can be used to grab part of a book, etc. Never really used so far-->
   <!-- <field name="sections_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>-->
   <!-- The text field is the default search zone when a field is not supplied.  So despite the waste, let's index everything here. -->
-
 
   <!-- Metadata fields -->
   <!-- Store whether its PEPArchive, PEPCurrent, etc. -->
@@ -249,10 +285,12 @@
   <!-- So how can we do queries for partial last names...can't bunch authors in printable form.  
        Try two fields, one XML one presentation one multifield. -->
   <!--Set docValues true to allow faceting authors -->
-  <field name="authors" type="string" indexed="true" stored="true" multiValued="true" docValues="true" />
+  
+  <!-- 2021-04-17 Changed authors to text to allow it to be searched by users textually with one name-->
+  <field name="authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_mast" type="string_ci" indexed="true" stored="true" multiValued="false"/>
-  
+
   <!--Added 20201019 to compare the masts with ids and see if they are complete, and the same (this field 
       was apparently here in an early incarnation but has been removed)
       art_authors_ids_str compare to art_authors_mast, though the former is from the attribute author_id
@@ -264,23 +302,23 @@
   <field name="art_authors_citation" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_authors_citation_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
   <copyField source="art_authors_citation" dest="art_authors_citation_str"/> # for sorting
+  <!-- Good for searching, separated author names, but full text like art_authors_citation (where they are not separated)-->
+  <field name="art_authors_text" type="text_simple" indexed="true" stored="True" multiValued="true"/> <!-- doesn't need to be stored, but useful to see -->
+  
   <!--try to improve author search for single names and full names-->
   <!--Many of these are Temporary. fpr trying different search results.  #TODO-->
-  <field name="art_authors_text" type="text_simple" indexed="true" stored="false" multiValued="true"/>
-  <field name="art_authors_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>
+  <!--<field name="art_authors_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
   <field name="art_authors_mast_text" type="text_simple" indexed="true" stored="false" multiValued="false"/>
-  <field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>
+  <!--<field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
   <field name="art_authors_unlisted" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!--Added 7/21 to facilitate smartsearch-->
   <field name="art_authors_lastnames" type="string_ci" indexed="true" stored="false" multiValued="true"/>
-  <!--Added 7/24 to facilitate smartsearch-->
-  <field name="art_authors_count" type="pint" indexed="false" stored="false" docValues="true" multiValued="false"/>
   
   <copyField source="art_authors" dest="art_authors_text"/>
-  <copyField source="art_authors" dest="art_authors_ngrm"/>
+  <!--<copyField source="art_authors" dest="art_authors_ngrm"/>-->
   <copyField source="art_authors_mast" dest="art_authors_mast_text"/>
-  <copyField source="art_authors_mast" dest="art_authors_mast_ngrm"/>
+  <!--<copyField source="art_authors_mast" dest="art_authors_mast_ngrm"/>-->
 
   <!-- by paras-->
   <!--<field name="art_body_xml" type="text_simple" indexed="true" stored="false" multiValued="false"/>-->
@@ -302,16 +340,16 @@
   <field name="art_type" type="string" indexed="false" stored="false" multiValued="false" docValues="true" />
   <field name="art_pgrg" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--Added 2020-05-06-->
-  <field name="art_pgcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_lang" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/> <!--changed to multivalued=false, 2020-06-17 (it's an attribute of artinfo)-->
-  <field name="art_issn" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_issn" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--Added 2020-05-06-->
-  <field name="art_isbn" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
-  <field name="art_kwds"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_qual" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_isbn" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_kwds" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_qual" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+
   <!--Added for faceting use, 2020-04-25-->
   <!--For faceting multi word keywords, may want to eventually just replace art_kwds with this -->
-  <field name="art_kwds_str"  type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  <field name="art_kwds_str"  type="string_ci" indexed="true" stored="true" multiValued="true"/>
   
   <!-- author data -->
   <field name="author_aff_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
@@ -325,16 +363,45 @@
   <field name="bib_rx" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="bib_title" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="bib_journaltitle" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
-  <field name="reference_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
   <field name="references_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
 
   <field name="caption_text_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="caption_title_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_graphic_list" type="string_ci" indexed="true" stored="true" multiValued="true" docValues="false"/>         <!--Added 2020-09-22-->
 
-  <!--Added 2020-09-22-->
-  <field name="art_figcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_tblcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
-  <field name="art_graphic_list" type="string_ci" indexed="true" stored="true" multiValued="true" docValues="false"/>
+  <!-- *********************** Counting fields *********************** -->
+  <!-- start older field names-->
+  <field name="reference_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>   
+  <field name="art_pgcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_tblcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>                <!--Added 2020-09-22-->
+  <field name="art_figcount" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>                <!--Added 2020-09-22-->
+  <!-- end older count field names  -->
+  <field name="art_abs_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>               <!--new 2021-04-13-->
+  <field name="art_kwds_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>              <!--new 2021-04-13-->
+  <field name="art_ftns_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>              <!--new 2021-04-13-->
+  <field name="art_terms_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_quotes_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>            <!--new 2021-04-13-->
+  <field name="art_dreams_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>            <!--new 2021-04-13-->
+  <field name="art_dialogs_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>           <!--new 2021-04-13--> 
+  <field name="art_notes_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_poems_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_citations_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>         <!--new 2021-04-13-->
+  <field name="art_headings_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>          <!--new 2021-04-13-->
+  <field name="art_paras_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_chars_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_chars_no_spaces_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>   <!--new 2021-04-13-->
+  <field name="art_words_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>             <!--new 2021-04-13-->
+  <field name="art_authors_count" type="pint" indexed="false" stored="false" docValues="true" multiValued="false"/>           <!--Added 7/24 to facilitate smartsearch-->
+  <!--Added copies of the older fields for consistent naming...at some point names should be revisited!-->
+  <field name="art_reference_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>   
+  <field name="art_pg_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_tbl_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>               <!--Added 2020-09-22-->
+  <field name="art_fig_count" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>               <!--Added 2020-09-22-->
+  <!--copy older names to newer named field consistent with others.  Leave old for backwards compat.-->
+  <copyField source="reference_count" dest="art_reference_count"/> 
+  <copyField source="art_pgcount" dest="art_pg_count"/> 
+  <copyField source="art_tblcount" dest="art_tbl_count"/> 
+  <copyField source="art_figcount" dest="art_fig_count"/> 
 
   <!-- 2020-09-23
        added art_product_key, a non-unique code that Opas can send to the auth server to verify access 
@@ -359,7 +426,6 @@
   <field name="body_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/> 
   <copyField source="body_xml" dest="body_xml_syn"/>
   
-  <!--#TODO: reinstate these-->
   <field name="quotes_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
   <field name="quotes_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
   <field name="dialogs_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
@@ -388,6 +454,7 @@
   <field name="glossary_group_terms" type="string_ci" indexed="true" stored="false" multiValued="true"/>
   <!--Store for debug only-->
   <field name="freuds_italics" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+
   
   <!--These are not displayed directly.  Search only. -->
   <!-- Special term fields -->
@@ -437,6 +504,43 @@
   <copyField source="para" dest="para_syn"/>
   
   <!--<field name="level" type="pint" indexed="true" stored="false" docValues="true"/>-->
+
+  <!-- ****************************************************************************************************** -->
+  <!-- 2021-04-17 new fields (names) - copies for advanced user search -->
+  <!-- others already in place: (see above)
+            for authors -->
+
+  <field name="language" type="string" indexed="true" stored="true" multiValued="false"/>
+  <copyField source="art_lang" dest="language"/>
+  <field name="dreams" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="dreams_xml" dest="dreams"/>
+  <field name="dialogs" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="dialogs_xml" dest="dialogs"/>
+  <field name="headings" type="text_simple" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="headings_xml" dest="headings"/>
+  <field name="keywords"  type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <copyField source="art_kwds" dest="keywords"/>
+  <field name="notes" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="notes_xml" dest="notes"/>
+  <field name="panels" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="panels_xml" dest="panels"/>
+  <field name="poems" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="poems_xml" dest="poems"/>
+  <field name="references" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="references_xml" dest="references"/>
+  <field name="volume" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <copyField source="art_vol" dest="volume"/>
+  <field name="quotes" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="quotes_xml" dest="quotes"/>
+  <field name="year" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <copyField source="art_year" dest="year"/>
+  <field name="source" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <copyField source="art_sourcetitlefull" dest="source"/>
+  <field name="sourcecode" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <copyField source="art_sourcecode" dest="sourcecode"/>
+  # Added 2021-04-18
+  <field name="sourcetype" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <copyField source="art_sourcetype" dest="sourcetype"/>
 
   <!-- The String case insensitive field.
        From: http://pietervogelaar.nl/solr-3-5-search-case-insensitive-on-a-string-field-for-exact-match
@@ -583,3 +687,4 @@
   </fieldtype>
 
 </schema>
+

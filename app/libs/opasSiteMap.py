@@ -4,15 +4,18 @@
 # doctest_ellipsis.py
 
 """
-Sitemap.py
+opasSitemap.py
 
+Build a Google sitemap from the document urls
 
 """
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0301.1"
+__version__     = "2021.0424.1"
 __status__      = "Development"
+
+import localsecrets
 
 # from xml.sax import SAXParseException
 import sys
@@ -24,12 +27,14 @@ logger = logging.getLogger(__name__)
 from fastapi import HTTPException
 
 import codecs
+import s3fs
+
 sys.path.append('./libs/configLib')
 
 import opasPySolrLib
 
 SITEMAP_LOC = r"development.org"
-SITEMAP_DATE = "2021-03-01"
+SITEMAP_DATE = "2021-04-24"
 
 def opas_sitemap_index(output_file="../sitemapindex", sitemap_list=[]):
    """
@@ -37,38 +42,47 @@ def opas_sitemap_index(output_file="../sitemapindex", sitemap_list=[]):
    Call metadata_export to populate the index files.
    Create the index of the returned file names
 
-   >>> sitemap_list = metadata_export(outputFileName="../sitemap", total_records=1000, records_per_file=200)
-   >>> opas_sitemap_index(output_file="../sitemapindex", sitemap_list=sitemap_list)
+   >>> SITEMAP_OUTPUT_FILE = localsecrets.SITEMAP_PATH + "/sitemap" # don't include xml extension here, it's added
+   >>> SITEMAP_INDEX_FILE = localsecrets.SITEMAP_PATH + "/sitemapindex.xml"
+   >>> sitemap_list = metadata_export(outputFileName=SITEMAP_OUTPUT_FILE, total_records=1000, records_per_file=200)
+   >>> list = opas_sitemap_index(output_file=SITEMAP_INDEX_FILE, sitemap_list=sitemap_list)
+   >> len(list) > 0
    True
    
    """
    dtformat = '%Y-%m-%dT%H:%M:%S%Z'
    
    try:
-      ret_val = True
-      enf = codecs.open(output_file,'w','utf-8')
+      ret_val = ""
       sm_index_head = f'''
          <?xml version="1.0" encoding="UTF-8"?>\n
          <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n
          '''
-   
-      mod_time = datetime.datetime.now().strftime(dtformat)
-      enf.write(sm_index_head)
-      for sitemap in sitemap_list:
-         sitemap_base = os.path.basename(sitemap)
-         record = f'''
-            <sitemap>
-               <loc>{sitemap_base}</loc>
-               <lastmod>{mod_time}</lastmod>
-            </sitemap>\n
-         '''
-         enf.write(record)
-   
-      enf.write("</sitemapindex>\n")
-      enf.close()
+
+      if localsecrets.CONFIG != 'Local':
+         fs = s3fs.S3FileSystem(anon=False)
+      else:
+         fs = codecs
+
+      with fs.open(output_file, 'w') as enf:
+         mod_time = datetime.datetime.now().strftime(dtformat)
+         enf.write(sm_index_head)
+         for sitemap in sitemap_list:
+            # sitemap_base = os.path.basename(sitemap)
+            record = f'''
+               <sitemap>
+                  <loc>{localsecrets.SITEMAP_URL}{sitemap}</loc>
+                  <lastmod>{mod_time}</lastmod>
+               </sitemap>\n
+            '''
+            enf.write(record)
+            ret_val += record
+      
+         enf.write("</sitemapindex>\n")
+
    except Exception as err:
-      ret_val = False
-      print (f"Error: {err}")
+      ret_val = f"Error: {err}"
+      logger.error(ret_val)
       
    return ret_val
      
@@ -77,17 +91,10 @@ def opas_sitemap_index(output_file="../sitemapindex", sitemap_list=[]):
 def metadata_export(outputFileName="../sitemap", total_records=140000, records_per_file=10000):
    """
    Populate the build table from the articles table.
-   Create the include list by calling class member	writeFFFInclude
 
-   The intermediate tables are built, rather than using a transitional query, in order to
-   correctly populate the author information, which is used for sorting.
-
-   >> metadata_export()
-   
    """
 
-   retVal = 0
-   base_url = "https://stage.pep-web.rocks/read/document"
+   base_url = "https://pep-web.rocks/browse/document/"
    header = '<?xml version="1.0" encoding="utf-8" ?>\n<!DOCTYPE articles SYSTEM "googlearticles.dtd">\n'
    sitemap_list = []
    file_count = 0
@@ -107,33 +114,38 @@ def metadata_export(outputFileName="../sitemap", total_records=140000, records_p
          if len(results.docs) == 0: # if there are no more records, stop creating files
             break
          else: # write the file
+            if localsecrets.CONFIG != 'Local':
+               fs = s3fs.S3FileSystem(anon=False)
+            else:
+               fs = codecs
+
             file_count += 1
             filename = f"{outputFileName}{file_count}.xml"
             sitemap_list.append(filename)
-            enf = codecs.open(filename,'w','utf-8')
             logger.info(f"Writing {filename}")
-            enf.write(header)
-            enf.write('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n')
-   
-            for n in results.docs:
-               rec_count += 1
-               art_id = n.get("art_id", None)
-               file_last_modified = n.get("file_last_modified", None)
-               
-               if art_id is not None:
-                  enf.write("\t<url>\n")
-                  enf.write(f"\t\t<loc>{base_url}/{art_id}</loc>\n")
-                  enf.write(f"\t\t<lastmod>{file_last_modified}</lastmod>\n")
-                  enf.write("\t</url>\n")
-            
-            enf.write("</urlset>\n")
-            enf.close()
+
+            try:
+               with fs.open(filename, 'w') as enf:
+                  enf.write(header)
+                  enf.write('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n')
+                  for n in results.docs:
+                     rec_count += 1
+                     art_id = n.get("art_id", None)
+                     file_last_modified = n.get("file_last_modified", None)
+                     
+                     if art_id is not None:
+                        enf.write("\t<url>\n")
+                        enf.write(f"\t\t<loc>{base_url}{art_id}</loc>\n")
+                        enf.write(f"\t\t<lastmod>{file_last_modified}</lastmod>\n")
+                        enf.write("\t</url>\n")  
+                  enf.write("</urlset>\n")
+            except Exception as e:
+               logger.error(f"metadata_export error: {e}")
 
    except Exception as err:
       raise HTTPException(404, detail=err)
       
-
-   return sitemap_list
+   return sitemap_list # needed by opas_sitemap_index
 
 if __name__ == "__main__":
    sys.path.append('./config') 

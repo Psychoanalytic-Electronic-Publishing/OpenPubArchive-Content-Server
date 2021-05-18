@@ -44,6 +44,7 @@ import secrets
 import socket, struct
 from collections import OrderedDict
 from urllib.parse import unquote
+from urllib.error import HTTPError
 import json
 from xml.sax import SAXParseException
 
@@ -51,6 +52,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 from starlette.responses import Response
 import starlette.status as httpCodes
+from starlette.exceptions import HTTPException
 
 #from starlette.status import HTTP_200_OK, \
                                 #HTTP_400_BAD_REQUEST, \
@@ -253,12 +255,14 @@ def get_session_info(request: Request,
             logger.debug(f"Session {session_id} found in DB.  Checking if already marked authenticated.")
             if session_info.authenticated == 0: # not logged in
                 # better check if now they are logged in
-                logger.info(f"User was not logged in; checking to see if they are now.")
                 session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
                                                                        client_id=client_id, 
                                                                        request=request)
+                logger.debug(f"User was not logged in; checked to see if they are now. Session Info returned from PaDS: {session_info}")
                 #session_info = ocd.save_session(session_id, session_info)
             else:
+                # important - because they "were" logged in, we will return a session timed out error
+                # so don't refresh it...server likes to know they were logged in
                 logger.debug(f"User was logged in.  No further checks needed.")
 
         if opasConfig.LOG_CALL_TIMING:
@@ -734,6 +738,9 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
         if return_status != (200, "OK"):
             raise Exception(return_status(1))
     else: # get from mySQL
+        #if src_type == 'book': # debug trap
+            #print ("BOOK!!!!!")
+            #pass
         try:
             # print(src_type, src_code, src_name, limit, offset)
             # note...this sorts by title as only current option
@@ -841,9 +848,60 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
     
             if err == 0:
                 source_info_listitems.append(item)
+    else:
+        # book series workaround...any code not enabled in the database, i.e., SE/GW should not ever be getting do
+        if src_code in opasConfig.BOOK_CODES_ALL:  # ("ZBK", "IPL", "NLP", "SE", "GW"):
+            #print (f"Book Source code workaround--not enabled in DB: {src_code}")
+            try:
+                item = models.SourceInfoListItem( sourceType = "book series",
+                                                  PEPCode = src_code,
+                                                  #srcTitle = title,  # v1 Deprecated for future
+                                                  #bookCode = book_code,
+                                                  #abbrev = source.get("bibabbrev"),
+                                                  bannerURL = f"{localsecrets.APIURL}/{opasConfig.IMAGES}/banner{src_code}Logo.gif",
+                                                  #language = source.get("language"),
+                                                  #ISSN = source.get("ISSN"),
+                                                  #ISBN10 = source.get("ISBN-10"),
+                                                  #ISBN13 = source.get("ISBN-13"),
+                                                  #yearFirst = start_year,
+                                                  #yearLast = end_year,
+                                                  #instanceCount = instance_count, 
+                                                  #embargoYears = source.get("embargo")
+                                                  ) 
     
-
-
+                source_info_listitems.append(item)
+                response_info.count = 1
+    
+            except ValidationError as e:
+                logger.error("metadataGetSourceByType SourceInfoListItem Book Validation Error:")
+                logger.error(e.json())
+                err = 1
+        
+        elif src_code in opasConfig.VIDEOSTREAM_CODES_ALL:  # workaround for getting codes 
+            try:
+                item = models.SourceInfoListItem( sourceType = "videostream series",
+                                                  PEPCode = src_code,
+                                                  #srcTitle = title,  # v1 Deprecated for future
+                                                  #bookCode = book_code,
+                                                  #abbrev = source.get("bibabbrev"),
+                                                  bannerURL = f"{localsecrets.APIURL}/{opasConfig.IMAGES}/banner{src_code}Logo.gif",
+                                                  #language = source.get("language"),
+                                                  #ISSN = source.get("ISSN"),
+                                                  #ISBN10 = source.get("ISBN-10"),
+                                                  #ISBN13 = source.get("ISBN-13"),
+                                                  #yearFirst = start_year,
+                                                  #yearLast = end_year,
+                                                  #instanceCount = instance_count, 
+                                                  #embargoYears = source.get("embargo")
+                                                  ) 
+    
+                source_info_listitems.append(item)
+                response_info.count = 1
+    
+            except ValidationError as e:
+                logger.error("metadataGetSourceByType SourceInfoListItem Video Validation Error:")
+                logger.error(e.json())
+                err = 1
 
     try:
         source_info_struct = models.SourceInfoStruct( responseInfo = response_info, 
@@ -921,8 +979,16 @@ def documents_get_abstracts(document_id,
                                                  session_info=session_info
                                                  )
 
-        documents = models.Documents(documents = document_list.documentList)
-
+        if not isinstance(document_list, models.ErrorReturn):
+            documents = models.Documents(documents = document_list.documentList)
+        else:
+            err = document_list
+            logger.error(err.error_description)
+            raise HTTPException(
+                status_code=err.error,
+                detail=err.error_description
+            )                
+        
         ret_val = documents
 
     return ret_val

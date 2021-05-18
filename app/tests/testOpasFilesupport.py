@@ -161,31 +161,9 @@ class TestFileSystemFunctions(unittest.TestCase):
         print (len(matchlist))
         assert (len(matchlist) == 20)
 
-        #if localsecrets.use_server == 1:
-            #matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat)
-        #else:
-            #matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat)
-            
-        #print (len(matchlist))
-        #assert (len(matchlist) >= 100)
-
-        #if localsecrets.use_server == 1:
-            #matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
-        #else:
-            #matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, max_items=20)
-        #print (len(matchlist))
-        #assert (len(matchlist) == 20)
-        
-        #if localsecrets.use_server == 1:
-            #matchlist = fs.get_matching_filelist(path="/pep-web-xml/_PEPCurrent/IJP/098.2017", filespec_regex=pat, max_items=20)
-        #else:
-            #matchlist = fs.get_matching_filelist(path=testfullpath, filespec_regex=pat, max_items=20)
-            
-        #print (len(matchlist))
-        #assert (len(matchlist) == 20)
-
-        #res = opasFileSupport.get_s3_matching_files(subpath_tomatch="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
-        #res = opasFileSupport.get_s3_matching_files(subpath_tomatch="_PEPCurrent/.*\.xml")
+        # function removed 2021-05-05
+           #res = opasFileSupport.get_s3_matching_files(subpath_tomatch="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
+           #res = opasFileSupport.get_s3_matching_files(subpath_tomatch="_PEPCurrent/.*\.xml")
         
 if __name__ == '__main__':
     unittest.main()

@@ -8,9 +8,6 @@ Version: 2020-08-24
 """
 import os.path
 import sys
-import localsecrets
-from localsecrets import use_server
-import opasDocPermissions
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
@@ -20,6 +17,10 @@ if folder == "tests": # testing from within WingIDE, default folder is tests
 else: # python running from should be within folder app
     sys.path.append('./libs')
     sys.path.append('./config')
+
+import localsecrets
+from localsecrets import use_server
+import opasDocPermissions
 
 # use the configured server.
 from localsecrets import APIURL

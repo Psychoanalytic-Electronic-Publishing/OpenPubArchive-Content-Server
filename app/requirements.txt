@@ -29,7 +29,7 @@ idna==2.10
 #
 jmespath==0.10.0
 #
-lxml==4.6.2
+lxml==4.6.3
 nameparser==1.0.6
 namesparser==1.0.0
 #
@@ -49,7 +49,7 @@ PyMySQL==0.10.0
 #
 fpdf2==2.3.1
 pdfrw==0.4
-#PyPDF2==1.26.0               # may not be needed anymore
+PyPDF2==1.26.0               # needed by Pisa, apparently
 pysolr==3.9.0
 python-dateutil==2.8.1
 #

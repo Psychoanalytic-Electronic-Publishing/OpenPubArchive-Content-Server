@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0321.1"
+__version__     = "2021.0409.1"
 __status__      = "Development"
 
 programNameShort = "opasPushSettings"
@@ -37,10 +37,13 @@ from opasConfig import CLIENT_CONFIGS
 try:
     STAGE_DB_HOST = localsecrets.STAGE_DB_HOST
     PRODUCTION_DB_HOST = localsecrets.PRODUCTION_DB_HOST
+    
     # use dev server for testing!
     # PRODUCTION_DB_HOST = "development.c6re6qczl2ae.us-east-1.rds.amazonaws.com"
     STAGE_PW = localsecrets.STAGE2PROD_PW[0]
     PROD_PW = localsecrets.STAGE2PROD_PW[1]
+    STAGE_USER = localsecrets.STAGE2PROD_USER[0]
+    PROD_USER = localsecrets.STAGE2PROD_USER[1]
 except:
     msg = f"DB addresses need to be defined."
     logger.error(msg)
@@ -52,14 +55,18 @@ except:
 def main():
     #  open databases
     try:
-        stage_ocd = opasCentralDBLib.opasCentralDB(host=STAGE_DB_HOST, password=STAGE_PW)
-        production_ocd = opasCentralDBLib.opasCentralDB(host=PRODUCTION_DB_HOST, password=PROD_PW)
+        stage_ocd = opasCentralDBLib.opasCentralDB(host=STAGE_DB_HOST, password=STAGE_PW, user=STAGE_USER)
+        production_ocd = opasCentralDBLib.opasCentralDB(host=PRODUCTION_DB_HOST, password=PROD_PW, user=PROD_USER)
     except Exception as e:
         logger.error(f"Cannot open stage or production databases: {e}.  Terminating without changes")
     else:
         client_id = "2"
-        stage_ocd.open_connection(caller_name="opasPushSettings")
-        production_ocd.open_connection(caller_name="opasPushSettings")
+        if not stage_ocd.open_connection(caller_name="opasPushSettings"):
+            raise Exception(f"Stage DB Connection Error: {STAGE_DB_HOST}")
+
+        if not production_ocd.open_connection(caller_name="opasPushSettings"):
+            raise Exception(f"Production DB Connection Error: {PRODUCTION_DB_HOST}")
+            
         for config in CLIENT_CONFIGS:
             logger.info(f"Reading '{config}' from Staging DB")
             client_config = stage_ocd.get_client_config(client_id=client_id, client_config_name=config)

@@ -243,6 +243,28 @@ class FlexFileSystem(object):
         return ret_val        
 
     #-----------------------------------------------------------------------------
+    def get_full_name_if_exists(self, filespec, path=None):
+        """
+        Find if the filespec exists, return it, otherwise return None
+        if the instance variable key was set at init, checks s3 otherwise, local file system
+        """
+        #  see if the file exists
+        ret_val = None
+        filespec = self.fullfilespec(path=path, filespec=filespec) # "pep-graphics/embedded-graphics"
+        try:
+            if self.key is not None:
+                if self.fs.exists(filespec):
+                    ret_val = filespec
+            else:
+                if os.path.exists(filespec):
+                    ret_val = filespec
+                    
+        except Exception as e:
+            logger.error(f"File access error: ({e})")
+        
+        return ret_val        
+
+    #-----------------------------------------------------------------------------
     def create_text_file(self, filespec, path=None, data=" "):
         """
          >>> fs = FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
@@ -357,35 +379,95 @@ class FlexFileSystem(object):
             ret_val = ret_val + ext  
             
         if not self.exists(ret_val):
-            logger.warning(f"Download file does not exist: {ret_val}")
+            # note: this could be called, just to check whether to offer it to the caller who is looking at the html
+            #       so this info may be "superfluous"
+            logger.debug(f"Download file does not exist: {ret_val}")
             ret_val = None
             
         return ret_val   
+
     #-----------------------------------------------------------------------------
-    def get_image_filename(self, filespec, path=None):
+    def get_imagename_if_exists(self, namestr: str, extensions=(".jpg", ".gif", ".tif"), insensitive=True):
+        ret_val = None
+        dirname, basename = os.path.split(namestr)
+        base, base_ext = os.path.splitext(basename)
+        try: # to pull out an extension, it must be in extensions
+            if base_ext is not None:
+                exts = [a.lower() for a in extensions] + [a.upper() for a in extensions]
+                if len(base_ext) > 4 or base_ext not in exts: #  revert to no extension
+                    base = basename
+                    base_ext = None
+        except Exception as e:
+            logger.debug(f"Exception checking extension: {e}")
+            base = basename
+            base_ext = None
+
+        if base_ext is not None and base_ext != '':
+            if insensitive:
+                exts = (base_ext, base_ext.swapcase())
+            else:
+                exts = (base_ext, ) # comma to ensure it understands the ()
+        else:
+            # alway use case insensitive extensions
+            if base.isupper():
+                exts = [a.upper() for a in extensions] + [a.lower() for a in extensions]
+            else:
+                exts = [a.lower() for a in extensions] + [a.upper() for a in extensions]
+            
+        if insensitive:
+            if base.isupper():
+                names = (base, base.lower())
+                # prioritize upper
+            elif base.islower():
+                names = (base, base.upper())
+            else: # mixed
+                names = (base, base.upper(), base.lower())
+        else:
+            names = (base, ) # comma to ensure it understands the ()
+            
+        # test all permutations, in optimum order
+        for name in names:
+            for ext in exts:
+                ret_val = self.get_full_name_if_exists(name + ext)
+                if ret_val:
+                    if not insensitive:
+                        # fail if they don't match
+                        if base != name or ext != base_ext:
+                            logger.error(f"File insensitive match {base} vs {name} found insensitive match but not sensitive match.")
+                            ret_val = None
+
+                    return (ret_val)
+                
+
+        # if it wasn't found, return None
+        return ret_val
+
+    #-----------------------------------------------------------------------------
+    def get_image_filename(self, filespec, path=None, insensitive=True):
         """
         Return the file name given the image id, if it exists
         
         """
+    
         # check if local storage or secure storage is enabled
         ret_val = self.fullfilespec(path=path, filespec=filespec) # "pep-graphics/embedded-graphics"
 
         # look to see if the file type has been specified via extension
-        ext = os.path.splitext(ret_val)[-1].lower()
-        if ext in (".jpg", ".tif", ".gif"):
-            exists = self.exists(ret_val)
-            if not exists:
-                ret_val = None
-        else:
-            if self.exists(ret_val + ".jpg"):
-                ret_val = ret_val + ".jpg"
-            elif self.exists(ret_val + ".gif"):
-                ret_val = ret_val + ".gif"
-            elif  self.exists(ret_val + ".tif"):
-                ret_val = ret_val + ".tif"
-            else:
-                logger.warning(f"File {ret_val} not found")
-                ret_val = None
+        #ext = os.path.splitext(ret_val)[-1].lower()
+        #if re.match("\.jpg|\.tif|\.gif", ext, flags=re.I):
+            #exists = self.exists(ret_val)
+            #if not exists:
+                #fileandpath, ext = os.path.splitext(ret_val)
+                #try2 = exists_filename_case_insensitive(fileandpath)
+                #if try2 is not None:
+                    #logger.warning(f"File {ret_val} not found. Possible missing or case mismatch.")
+                #else:
+                    #ret_val = try2
+        #else:
+        #watch for case sensitive extensions on S3 and other systems
+        ret_val = self.get_imagename_if_exists(namestr=ret_val, extensions=(".jpg", ".gif", ".tif"), insensitive=insensitive)
+        if ret_val is None:
+            logger.warning(f"File {filespec} not found")
     
         return ret_val   
     #-----------------------------------------------------------------------------
@@ -467,41 +549,6 @@ class FlexFileSystem(object):
       
         return ret_val
     
-    def deprecated_get_matching_filelist_info(self, bucket=None, filespec_regex=None, revised_after_date=None, max_items=None, look_past_match_count=0):
-        """
-        Return a list of matching files, as s3 fileinfo dicts.
-        
-        fs convenience function for get_s3_matching_files
-
-        Args:
-         - filespec_regex - regexp pattern with folder name and file name pattern, not including the root.
-         - Examples:
-            get_matching_filelist_info(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
-            get_matching_filelist_info(match_path="_PEPCurrent/.*\.xml")
-
-      - is_folder - set to true to find folders
-
-      - revised_after_date - files will only match if their revise date is after this
-
-      - max_items - maximum number of matched files
-
-      - look_past_match_count - a number used to stop searching when we "guess" it should be past the last hit.
-           This can limit how many items past a match are searched, e.g., if all the matches are in on folder, then
-           if this number is greater than the possible number of items in the folder, it will stop at some point in the next folder or so.
-           At least this should be useful for testing...in practice, on AWS, it shouldn't be needed, since hopefully, file search is much
-           faster.
-    """
-        if bucket is None:
-            bucket = self.root
-            
-        ret_val = get_s3_matching_files(bucket=bucket,
-                                        subpath_tomatch=filespec_regex,
-                                        after_revised_date=revised_after_date,
-                                        max_items=max_items,
-                                        look_past_match_count=look_past_match_count)
-        
-        return ret_val
-
     def get_matching_filelist(self, path=None, filespec_regex=None, revised_after_date=None, max_items=None):
         """
         Return a list of matching files, as FileInfo objects
@@ -523,6 +570,9 @@ class FlexFileSystem(object):
         else:
             if path == pathlib.Path(localsecrets.XML_ORIGINALS_PATH):
                 data_folder = pathlib.Path(localsecrets.XML_ORIGINALS_PATH)
+            elif self.key is not None:
+                # s3 running from local
+                data_folder = pathlib.Path(path)
             else:
                 data_folder = path
             
@@ -588,72 +638,6 @@ class FlexFileSystem(object):
         return ret_val            
     
     
-def get_s3_matching_files(bucket=None,
-                          subpath_tomatch=".*",
-                          is_folder=False,
-                          after_revised_date=None,
-                          max_items=None,
-                          look_past_match_count: int=0):
-    """
-    Find matching files where:
-      - subpath_tomatch - regexp pattern with folder name and file name pattern, not including the root.
-         - Examples:
-            get_s3_matching_files(match_path="_PEPArchive/BAP/.*\.xml", after_revised_date="2020-09-01")
-            get_s3_matching_files(match_path="_PEPCurrent/.*\.xml")
-
-      - is_folder - set to true to find folders
-
-      - after_revised_date - files will only match if their revise date is after this
-
-      - max_items - maximum number of matched files
-
-      - look_past_match_count - a number used to stop searching when we "guess" it should be past the last hit.
-           This can limit how many items past a match are searched, e.g., if all the matches are in on folder, then
-           if this number is greater than the possible number of items in the folder, it will stop at some point in the next folder or so.
-           At least this should be useful for testing...in practice, on AWS, it shouldn't be needed, since hopefully, file search is much
-           faster.
-    """
-    
-    ret_val = []
-    if bucket == None:
-        bucket = localsecrets.XML_ORIGINALS_PATH
-        
-    count = 0
-    tried = 0
-    rc_match = re.compile(subpath_tomatch, flags=re.IGNORECASE)
-    after_match_count = 0
-    for item in iterate_bucket_items(bucket=bucket):
-        tried += 1
-        m = rc_match.match(item["Key"])
-        if m:
-            if is_folder == True:
-                if item.Size !=  0:
-                    continue
-            elif after_revised_date is not None:
-                after_revised_date_obj = datetime.datetime.date(datetime.datetime.strptime(after_revised_date, '%Y-%m-%d'))
-                item_date = datetime.datetime.date(item["LastModified"])
-                if item_date <= after_revised_date_obj:
-                    continue
-
-            count = count + 1
-            print (f"Matched: {item['Key']}")
-            # reset after match count
-            after_match_count = 0
-                
-            ret_val.append(item)
-            if max_items is not None:
-                if count >= max_items:
-                    break
-        else:
-            # no match
-            if count > 0: # won't increment unless there's been at least one match
-                after_match_count += 1
-                if look_past_match_count > 0:
-                    if after_match_count > look_past_match_count:
-                        break # guess we're past all the hits
-
-    return ret_val            
-
 def find_s3_file(bucket=r'pep-web-xml',
                  filename=None,
                  is_folder=False,

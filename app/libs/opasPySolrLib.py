@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 import time
 from datetime import datetime
 # import datetime as dtime
+from operator import itemgetter
 
 import sys
 sys.path.append('./solrpy')
-import solrpy as solr
 from xml.sax import SAXParseException
 # import lxml
 
@@ -51,7 +51,10 @@ import opasQueryHelper
 from xhtml2pdf import pisa             # for HTML 2 PDF conversion
 
 import pysolr
+# still using a function in solpy
+import solrpy as solr
 
+# logging.getLogger('pysolr').setLevel(logging.INFO)
 sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
 pat_prefix_amps = re.compile("^\s*&& ")
@@ -62,6 +65,39 @@ rx_nuisance_words = f"""{opasConfig.HITMARKERSTART}(?P<word>i\.e|e\.g|a|am|an|ar
 |was|we|were|what|when|where|which|while|who|whom|why|with|would|you|your|yours|yourself|yourselves){opasConfig.HITMARKEREND}"""
 
 rcx_remove_nuisance_words = re.compile(rx_nuisance_words, flags=re.IGNORECASE)
+
+def pysolrerror_processing(e):
+    error = "pySolr.SolrError"
+    error_num = 400
+    error_description=f"There's an error in your input (no reason supplied)"
+    ret_val = models.ErrorReturn(httpcode=400, error=error, error_description=error_description)
+
+    try:
+        if e is None:
+            pass # take defaults
+        elif e.args is not None:
+            # defaults, before trying to decode error
+            error = 400
+            try:
+                err = e.args
+                error_set = err[0].split(":", 1)
+                error = error_set[0]
+                error = error.replace('Solr ', 'Search engine ')
+                ret_val.error = error_set[1]
+                ret_val.error_description = error_description.strip(" []")
+                m = re.search("HTTP (?P<err>[0-9]{3,3})", error)
+                if m is not None:
+                    http_error = m.group("err")
+                    http_error_num = int(http_error)
+                    ret_val.httpcode = http_error_num
+            except Exception as e:
+                logger.error(f"Error parsing Solr error {e.args} PySolr error {e}")
+            else:
+                ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
+    except Exception as e2:
+        logger.error(f"PySolr error {e} processing error {e2}")
+
+    return ret_val    
 
 #-----------------------------------------------------------------------------
 def remove_nuisance_word_hits(result_str):
@@ -76,6 +112,9 @@ def remove_nuisance_word_hits(result_str):
     
 #-----------------------------------------------------------------------------
 def list_all_matches(search_result):
+    """
+    Not currently used.
+    """
     # makes it easier to see matches in a large result
     ret_val = re.findall(f"{opasConfig.HITMARKERSTART}.*{opasConfig.HITMARKEREND}", search_result)
     #for hit in ret_val:
@@ -160,7 +199,10 @@ def facet_processing(facets):
         
 #-----------------------------------------------------------------------------
 def get_base_article_info_by_id(art_id):
-    
+    """
+    Not currently used.
+    """
+
     documentList, ret_status = search_text(query=f"art_id:{art_id}", 
                                            limit=1,
                                            abstract_requested=False,
@@ -442,7 +484,7 @@ def document_get_info(document_id, fields="art_id, art_sourcetype, art_year, fil
     """
     Gets key information about a single document for the specified fields.
     
-    Currently unused.
+    Currently unused (except in tests)
 
     Note: Careful about letting the caller specify fields in an endpoint,
        or they could get full-text
@@ -784,6 +826,8 @@ def search_analysis( query_list,
             #subfield_clauses = shlex.split(term_clause)
 
         try:
+            # remove outer parens added during query parsing
+            query_item = opasQueryHelper.remove_outer_parens(query_item)
             logger.info(f"Solr Query: q={query_item}")
             args = {
                 "defType": def_type,
@@ -1184,28 +1228,11 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         # PySolr does not like None's, so clean them
         solr_param_dict = cleanNullTerms(solr_param_dict)
 
-        # SEARCH!
+        # ####################################################################################
+        # THE SEARCH!
         results = solr_docs2.search(query, **solr_param_dict)
+        # ####################################################################################
        
-
-    except solr.SolrException as e:
-        # TODO not sure if this exception model applies to pysolr, and no documentation on exceptions I can find.  So need to watch it.
-        if e is None:
-            ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
-            ret_status = (e.httpcode, None) # e has useful elements of httpcode, reason, and body
-            logger.error(f"Solr Runtime Search Error (a): {e.reason}")
-            logger.error(e.body)
-        elif e.reason is not None:
-            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
-            ret_status = (e.httpcode, e) 
-            logger.error(f"Solr Runtime Search Error (b): {e.reason}")
-            logger.error(e.body)
-        else:
-            ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-            ret_status = (e.httpcode, e) 
-            logger.error(f"Solr Runtime Search Error (c): {e.httpcode}")
-            logger.error(e.body)
-        
     except SAXParseException as e:
         ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Search syntax error", error_description=f"{e.getMessage()}")
         ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) 
@@ -1213,7 +1240,41 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
 
     except AttributeError as e:
         logger.error(f"Attribute Error: {e}")
-    
+           
+    except pysolr.SolrError as e:
+        error = "pySolr.SolrError"
+        error_num = 400
+        error_description=f"There's an error in your input (no reason supplied)"
+        # {ret_status[1].reason}:{ret_status[1].body}
+        ret_status = (error_num, {"reason": error, "body": error_description})
+        ret_val = models.ErrorReturn(httpcode=400, error=error, error_description=error_description)
+
+        if e is None:
+            pass # take defaults
+        elif e.args is not None:
+            # defaults, before trying to decode error
+            error_description = "Search Error"
+            error = 400
+            try:
+                err = e.args
+                error_set = err[0].split(":", 1)
+                error = error_set[0]
+                error = error.replace('Solr ', 'Search engine ')
+                error_description = error_set[1]
+                error_description = error_description.strip(" []")
+                m = re.search("HTTP (?P<err>[0-9]{3,3})", error)
+                if m is not None:
+                    http_error = m.group("err")
+                    http_error_num = int(http_error)
+            except Exception as e:
+                logger.error(f"Error parsing Solr error {e.args}")
+                ret_status = (error_num, e.args)
+            else:
+                ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
+                ret_status = (error_num, {"reason": error, "body": error_description})
+
+        logger.error(f"PySolr Solr Runtime Search Error (syntax): {ret_status}. Params sent: {solr_param_dict}")
+        
     except Exception as e:
         try:
             tb = sys.exc_info()[2]
@@ -1265,21 +1326,37 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     documentListItem = models.DocumentListItem()
                     documentListItem = opasQueryHelper.get_base_article_info_from_search_result(result, documentListItem)
                     documentID = documentListItem.documentID
+                    if documentID is None:
+                        # there's a problem with this records
+                        logger.error(f"Record Decode Error, incomplete record, skipping. Possible corrupt solr database: {result}")
+                        continue
                     # sometimes, we don't need to check permissions
                     # Always check if fullReturn is selected
                     # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)
                     if record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
                         #print(f"Precheck: Session info archive access: {session_info.authorized_peparchive}")
-                        opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
-                                                            classification=documentListItem.accessClassification, 
-                                                            year=documentListItem.year,
-                                                            doi=documentListItem.doi, 
-                                                            session_info=session_info, 
-                                                            documentListItem=documentListItem,
-                                                            fulltext_request=solr_query_spec.fullReturn,
-                                                            request=request
-                                                           ) # will updated accessLimited fields in documentListItem
+                        access = opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
+                                                                     classification=documentListItem.accessClassification, 
+                                                                     year=documentListItem.year,
+                                                                     doi=documentListItem.doi, 
+                                                                     session_info=session_info, 
+                                                                     documentListItem=documentListItem,
+                                                                     fulltext_request=solr_query_spec.fullReturn,
+                                                                     request=request
+                                                                    ) # will updated accessLimited fields in documentListItem
+                        
+                        if access is not None: # copy all the access info returned
+                            documentListItem.accessLimited = access.accessLimited   
+                            documentListItem.accessLimitedCode = access.accessLimitedCode
+                            documentListItem.accessLimitedClassifiedAsCurrentContent = access.accessLimitedClassifiedAsCurrentContent
+                            documentListItem.accessLimitedReason = access.accessLimitedReason
+                            documentListItem.accessLimitedDescription = access.accessLimitedDescription
+                            documentListItem.accessLimitedPubLink = access.accessLimitedPubLink
+
                         #print(f"Postcheck: Session info archive access: {session_info.authorized_peparchive}")
+                        #if 1: # result == results.docs[-1]:
+                            ## last one in set
+                            #print (f"Description: {documentListItem.accessLimitedDescription} Reason: {documentListItem.accessLimitedReason} Current: {documentListItem.accessLimitedClassifiedAsCurrentContent}")
     
                     documentListItem.score = result.get("score", None)               
                     try:
@@ -1306,19 +1383,22 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     
                     # do this before we potentially clear text_xml if no full text requested below
                     if solr_query_spec.abstractReturn:
-                        omit_abstract = False
-                        if opasConfig.ACCESS_ABSTRACT_RESTRICTION and documentListItem.accessLimited: # if restriction is on, AND this is restricted content
-                            if session_info is not None:
-                                if not session_info.authenticated:
-                                    # experimental - remove abstract if not authenticated, per DT's requirement
-                                    omit_abstract = True
-                            else: # no session info, omit abstract
-                                omit_abstract = True
-                        
+                        # we don't want to ever do this (Google!) 2021-04-29 (delete later, if the urge passes)
+                        #omit_abstract = False
+                        #if opasConfig.ACCESS_ABSTRACT_RESTRICTION and documentListItem.accessLimited: # if restriction is on, AND this is restricted content
+                            #if session_info is not None:
+                                #if not session_info.authenticated:
+                                    ## experimental - remove abstract if not authenticated, per DT's requirement
+                                    #omit_abstract = True
+                            #else: # no session info, omit abstract
+                                #omit_abstract = True
+
+                        # this would print a message about logging in and not display an abstrac if omit_abstract were true,
+                        # but then Google could not index
                         documentListItem = opasQueryHelper.get_excerpt_from_search_result(result,
                                                                                           documentListItem,
                                                                                           solr_query_spec.returnFormat,
-                                                                                          omit_abstract=omit_abstract)
+                                                                                          omit_abstract=False)
     
                     documentListItem.kwic = "" # need this, so it doesn't default to Nonw
                     documentListItem.kwicList = []
@@ -1329,13 +1409,20 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         kwic_list = []
                         for n in text_xml:
                             # strip all tags
-                            match = opasxmllib.xml_string_to_text(n)
-                            # change the tags the user told Solr to use to the final output tags they want
-                            #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
-                            # this function changes variable count_anchors with the count of changes
-                            match = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, match)
-                            match = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, match)
-                            kwic_list.append(match)
+                            try:
+                                match = opasxmllib.xml_string_to_text(n)
+                                # change the tags the user told Solr to use to the final output tags they want
+                                #   this is done to use non-xml-html hit tags, then convert to that after stripping the other xml-html tags
+                                # this function changes variable count_anchors with the count of changes
+                                match = re.sub(opasConfig.HITMARKERSTART, opasConfig.HITMARKERSTART_OUTPUTHTML, match)
+                                match = re.sub(opasConfig.HITMARKEREND, opasConfig.HITMARKEREND_OUTPUTHTML, match)
+                                # watch for Doctype which isn't removed if partial or part of a tag (2021-04-05)
+                                match = re.sub("(\<?DOCTYPE[^>]+?\>)|(^[^\<]{0,25}?>)", "", match)
+                                match = match.lstrip(". ")
+                            except Exception as e:
+                                logger.warn(f"Error in processing hitlist entry: {e}")
+                            else:
+                                kwic_list.append(match)
     
                         kwic = " . . . ".join(kwic_list)  # how its done at GVPi, for compatibility (as used by PEPEasy)
                         # we don't need fulltext
@@ -1364,7 +1451,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                                             page_limit=solr_query_spec.page_limit,
                                                                             documentListItem=documentListItem)
 
-                        #  test remove glossary..for my tests, not for stage/production code.
+                        # test remove glossary..for my tests, not for stage/production code.
                         # Note: the question mark before the first field in search= matters
                         #  e.g., http://development.org:9100/v2/Documents/Document/JCP.001.0246A/?return_format=XML&search=%27?fulltext1="Evenly%20Suspended%20Attention"~25&limit=10&facetmincount=1&facetlimit=15&sort=score%20desc%27
                         # documentListItem.document = opasxmllib.xml_remove_tags_from_xmlstr(documentListItem.document,['impx'])
@@ -1748,6 +1835,7 @@ def database_get_whats_new(days_back=14,
     field_list = "art_id, title, art_vol, art_iss, art_year, art_sourcecode, art_sourcetitlefull, art_sourcetitleabbr, file_last_modified, timestamp, art_sourcetype"
     sort_by = "file_last_modified desc"
     ret_val = None
+    new_articles = ocd.get_articles_newer_than(days_back)
 
     # two ways to get date, slightly different meaning: timestamp:[NOW-{days_back}DAYS TO NOW] AND file_last_modified:[NOW-{days_back}DAYS TO NOW]
     try:
@@ -1758,7 +1846,7 @@ def database_get_whats_new(days_back=14,
             "fl": field_list,
             "fq": "{!collapse field=art_sourcecode max=art_year_int}",
             "sort": sort_by,
-            "rows": limit,
+            "rows": opasConfig.MAX_WHATSNEW_ARTICLES_TO_CONSIDER,
             "start": offset
         }
 
@@ -1777,6 +1865,7 @@ def database_get_whats_new(days_back=14,
                                              )
         response_info.count = 0
         whats_new_list_items = []
+        
         whats_new_list_struct = models.WhatsNewListStruct( responseInfo = response_info, 
                                                            responseSet = whats_new_list_items
                                                            )
@@ -1787,12 +1876,22 @@ def database_get_whats_new(days_back=14,
         row_count = 0
         already_seen = []
         for result in results.docs:
+            document_id = result.get("art_id", None)
+            updated = result.get("file_last_modified", None)
+            updated = datetime.strptime(updated,'%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d')
+            if document_id not in new_articles:
+                logger.debug(f"File {document_id} updated {updated}")
+                continue
+            
             PEPCode = result.get("art_sourcecode", None)
             #if PEPCode is None or PEPCode in ["SE", "GW", "ZBK", "IPL"]:  # no books
                 #continue
             src_type = result.get("art_sourcetype", None)
             if src_type != "journal":
                 continue
+            
+            # see if this is already been in the article tracker
+            
     
             volume = result.get("art_vol", None)
             issue = result.get("art_iss", "")
@@ -1800,8 +1899,6 @@ def database_get_whats_new(days_back=14,
             abbrev = result.get("art_sourcetitleabbr", None)
             src_title = result.get("art_sourcetitlefull", None)
             
-            updated = result.get("file_last_modified", None)
-            updated = datetime.strptime(updated,'%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d')
             if abbrev is None:
                 abbrev = src_title
             display_title = abbrev + " v%s.%s (%s) " % (volume, issue, year)
@@ -1821,12 +1918,23 @@ def database_get_whats_new(days_back=14,
                                             srcTitle = src_title,
                                             volumeURL = volume_url,
                                             updated = updated
-                                            ) 
+                                            )
+
             whats_new_list_items.append(item)
+            
             row_count += 1
-            if row_count > limit:
-                break
+            #if row_count > limit:
+                #break
     
+        whats_new_list_items = sorted(whats_new_list_items, key=lambda x: x.displayTitle, reverse = False)    
+
+        if limit != None:
+            if offset is None:
+                offset = 0
+            limited_whats_new_list = whats_new_list_items[offset:offset+limit]
+        else:
+            limited_whats_new_list = whats_new_list_items
+        
         response_info = models.ResponseInfo( count = len(results.docs),
                                              fullCount = num_found,
                                              limit = limit,
@@ -1840,7 +1948,7 @@ def database_get_whats_new(days_back=14,
         response_info.count = len(whats_new_list_items)
     
         whats_new_list_struct = models.WhatsNewListStruct( responseInfo = response_info, 
-                                                           responseSet = whats_new_list_items
+                                                           responseSet = limited_whats_new_list
                                                            )
     
         ret_val = models.WhatsNewList(whatsNew = whats_new_list_struct)
@@ -1907,7 +2015,7 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
 
     #allow core parameter here
     solr_query_spec.core = "pepwebdocs"
-    solr_core = solr_docs2
+    solr_core = solr_docs2 # by specing this it's always solrpy docs2, no effect of core choice
 
     # ############################################################################
     # SOLR Download Query
@@ -1917,6 +2025,9 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
         results = solr_core.search(query, **solr_param_dict)
         total_time = time.time() - start_time
         
+    except pysolr.SolrError as e:
+        ret_status = pysolrerror_processing(e)
+
     except solr.SolrException as e:
         if e is None:
             ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
@@ -2190,7 +2301,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
                             next_vol = next_vol['pivot'][0]
                             next_vol['year'] = next_vol_year
                     else:
-                        logger.warning("No volume to assess: ", match_vol_idx)
+                        logger.warning(f"No volume to assess: {match_vol_idx} ")
                         
                 try:
                     del(match_vol['field'])
@@ -2377,9 +2488,9 @@ def prep_document_download(document_id,
             art_info = results.docs[0]
             docs = art_info.get("text_xml", art_info.get("art_excerpt", None))
         except IndexError as e:
-            logger.warning("No matching document for %s.  Error: %s", document_id, e)
+            logger.warning("Download Request: No matching document for %s.  Error: %s", document_id, e)
         except KeyError as e:
-            logger.warning("No full-text content found for %s.  Error: %s", document_id, e)
+            logger.warning("Download Request: No full-text content found for %s.  Error: %s", document_id, e)
         else:
             try:    
                 if isinstance(docs, list):
@@ -2387,7 +2498,7 @@ def prep_document_download(document_id,
                 else:
                     doc = docs
             except Exception as e:
-                logger.warning("Empty return: %s", e)
+                logger.error("Download Request: Empty return: %s", e)
             else:
                 doi = art_info.get("art_doi", None)
                 pub_year = art_info.get("art_year", None)
@@ -2421,7 +2532,8 @@ def prep_document_download(document_id,
                                 filename = flex_fs.get_download_filename(filespec=document_id, path=localsecrets.PDF_ORIGINALS_PATH, year=pub_year, ext=".pdf")    
                                 ret_val = filename
                             else:
-                                err_msg = "File path error."
+                                err_msg = "Prep for Download: File system setup error."
+                                logger.error(err_msg)
                                 status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
                                                              error_description=err_msg
                                                            )
@@ -2460,160 +2572,21 @@ def prep_document_download(document_id,
                                                        )
         
                     except Exception as e:
-                        logger.warning("Can't convert data: %s", e)
+                        logger.error("Prep for Download: Can't convert data: %s", e)
                         ret_val = None
                         status = models.ErrorReturn( httpcode=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
                                                      error_description="Can't convert document data"
                                                    )
-                else:
+                else: # access is limited
+                    err_msg = f"No permission to download document {document_id} for user"
+                    logger.warning(err_msg)
                     status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
-                                                 error_description="No permission for document"
+                                                 error_description=err_msg
                                                )
                     ret_val = None
     
     return ret_val, status
 
-def get_fulltext_new(documentListItem, solr_query_spec):
-    # Note: Started 2021-01-14? (actually moved in from opasAPISupport.py, abandon?)
-    # to do work on return data other than conversion first, then convert later.
-    #   but currently untested/unused.
-    
-    child_xml = None
-    offset = 0
-    #if documentListItem.sourceTitle is None:
-        #documentListItem = get_base_article_info_from_search_result(result, documentListItem)
-        
-    #if page_limit is None:
-        #page_limit = opasConfig.DEFAULT_PAGE_LIMIT
-
-    format_requested=solr_query_spec.returnFormat,
-    return_options=solr_query_spec.returnOptions, 
-    documentListItem.docPagingInfo = {}    
-    documentListItem.docPagingInfo["page"] = solr_query_spec.page,
-    documentListItem.docPagingInfo["page_limit"] = solr_query_spec.page_limit
-    documentListItem.docPagingInfo["page_offset"] = page_offset=solr_query_spec.page_offset
-
-    fullText = documentListItem.document # result.get("text_xml", None)
-    text_xml = opasQueryHelper.force_string_return_from_various_return_types(fullText)
-    if fullText is not None:
-        if len(fullText) > len(text_xml):
-            logger.warning("Warning: text with highlighting is smaller than full-text area.  Returning without hit highlighting.")
-            text_xml = fullText
-
-    if text_xml is not None:
-        reduce = False
-        # see if an excerpt was requested.
-        if page is not None and page <= int(documentListItem.pgEnd) and page > int(documentListItem.pgStart):
-            # use page to grab the starting page
-            # we've already done the search, so set page offset and limit these so they are returned as offset and limit per V1 API
-            offset = page - int(documentListItem.pgStart)
-            reduce = True
-        # Only use supplied offset if page parameter is out of range, or not supplied
-        if reduce == False and page_offset is not None and page_offset != 0: 
-            offset = page_offset
-            reduce = True
-
-        if reduce == True or page_limit is not None:
-            # extract the requested pages
-            try:
-                temp_xml = opasxmllib.xml_get_pages(xmlstr=text_xml,
-                                                    offset=offset,
-                                                    limit=page_limit,
-                                                    pagebrk="pb",
-                                                    inside="body",
-                                                    env="body")
-                temp_xml = temp_xml[0]
-                
-            except Exception as e:
-                logger.error(f"Page extraction from document failed. Error: {e}.  Keeping entire document.")
-            else: # ok
-                text_xml = temp_xml
-    
-        if return_options is not None:
-            if return_options.get("Glossary", None) == False:
-                # remove glossary markup
-                text_xml = opasxmllib.remove_glossary_impx(text_xml)   
-    
-    try:
-        format_requested_ci = format_requested.lower() # just in case someone passes in a wrong type
-    except:
-        format_requested_ci = "html"
-
-    if documentListItem.docChild != {} and documentListItem.docChild is not None:
-        child_xml = documentListItem.docChild["para"]
-    else:
-        child_xml = None
-    
-    if text_xml is None and child_xml is not None:
-        text_xml = child_xml
-
-    # ####################################
-    # here's where we need to massage hit markup
-    # ####################################
-    # TBD
-
-    if format_requested_ci == "html":
-        # Convert to HTML
-        heading = opasxmllib.get_running_head( source_title=documentListItem.sourceTitle,
-                                               pub_year=documentListItem.year,
-                                               vol=documentListItem.vol,
-                                               issue=documentListItem.issue,
-                                               pgrg=documentListItem.pgRg,
-                                               ret_format="HTML"
-                                               )
-        try:
-            text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
-        except Exception as e:
-            logger.error(f"Could not convert to HTML {e}; returning native format")
-            text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-        else:
-            try:
-                global count_anchors
-                count_anchors = 0
-                # print (f"Hitmarkers: {opasConfig.HITMARKERSTART}, {opasConfig.HITMARKEREND}, Count_Anchors: {count_anchors}")
-                text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-                text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
-            except Exception as e:
-                logger.error(f"Could not do substitution {e}")
-
-        if child_xml is not None:
-            child_xml = opasxmllib.xml_str_to_html(child_xml)
-                
-    elif format_requested_ci == "textonly":
-        # strip tags
-        text_xml = opasxmllib.xml_elem_or_str_to_text(text_xml, default_return=text_xml)
-        if child_xml is not None:
-            child_xml = opasxmllib.xml_elem_or_str_to_text(child_xml, default_return=text_xml)
-    elif format_requested_ci == "xml":
-        # don't do this for XML
-        pass
-        # text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
-        # child_xml = child_xml
-
-    documentListItem.document = text_xml
-                
-    if child_xml is not None:
-        # return child para in requested format
-        documentListItem.docChild['para'] = child_xml
-
-    if documentListItem.document == None:
-        errmsg = f"Document fetch failed! ({solr_query_spec.solrQuery.searchQ}"
-        logger.error(errmsg)
-        documentListItem.term = f"SearchHits({solr_query_spec.solrQuery.searchQ})"
-        documentListItem.termCount = 0
-    else:
-        try:
-            matches = re.findall(f"class='searchhit'|{opasConfig.HITMARKERSTART}", documentListItem.document)
-        except Exception as e:
-            logger.warning(f"Exception.  Could not count matches. {e}")
-            documentListItem.term = f"SearchHits({solr_query_spec.solrQuery.searchQ})"
-            documentListItem.termCount = 0
-        else:
-            documentListItem.term = f"SearchHits({solr_query_spec.solrQuery.searchQ})"
-            documentListItem.termCount = len(matches)
-
-    return documentListItem
-    
 #-----------------------------------------------------------------------------
 def get_fulltext_from_search_results(result,
                                      text_xml,

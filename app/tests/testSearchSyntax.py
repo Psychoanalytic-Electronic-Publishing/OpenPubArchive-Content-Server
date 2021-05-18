@@ -13,38 +13,38 @@ from unitTestConfig import base_plus_endpoint_encoded, headers, session_id, sess
 
 ocd = opasCentralDBLib.opasCentralDB()
 fulltext1 = [
-               ("dreams_xml:mother and father and authors:David Tuckett and Nadine Levinson", 0), 
+               ("dreams_xml:mother AND father AND authors:David Tuckett AND Nadine Levinson", 0), 
                ('text:("mother love"~25) AND dreams_xml:("father love"~25)', 4), # (switching quote types for testing)
-               ('text:(love and hate)', 11210),
-               ('text:(love and -hate)', 26675),
+               ('text:(love AND hate)', 11210),
+               ('text:(love AND -hate)', 26675),
                ('text:("love hate"~25)', 6977),
-               ('text:(love or hate and emotions)', 4763),
+               ('text:(love OR hate AND emotions)', 4763),
                ('text:love', 37813),
                ('text:"hate emotions"~25', 553),
-               ('text:(love or "hate emotions"~25)', 37861),
-               ("dreams_xml:(mother and father) AND text:fight", 39), 
-               ("mother and father", 30000), # was 31294, latest db disagrees, 2021-01-25
-               ("mother or father", 51432), # was 52273, latest db disagrees 2021-01-25
-               ("mother and father or son", 45487), # was 46389, latest db disagrees 2021-01-25
-               ("mother and father and child", 26149), # was 27087, latest db disagrees 2021-01-25
-               ("mother and father and -child", 4207), 
-               ("mother and father", 30000), 
-               ("mother and -father", 15074), # was 15095, latest db disagrees 2021-01-25
-               ("dreams_xml:(mother and father)", 140), # was 142, latest db disagrees 2021-01-25
-               ("dreams_xml:(mother and -father)", 253), # was 255
-               ("dreams_xml:(mother and (father or son))", 140), # was 142
-               ("dreams_xml:(mother and father and child)", 36), #  was 38
-               ("dreams_xml:(mother and father and -child)", 104), 
-               ("'adoptive mother' and father", 810), # was 817
-               ("'adoptive mother' or father", 1142),
-               ("'adoptive mother' and father or son", 987), #  was 992
-               ("'adoptive mother' and father and child", 785),  # was 795
-               ("'adoptive mother' and father and -child", 22), 
-               ("'adoptive mother' and father", 810), # was 817
-               ("'adoptive mother' and -father", 175),
-               ("dreams_xml:((mother and father) or (mother and son))", 140), # was 397
-               ("dreams_xml:(mother and father or mother and son)", 39), 
-               ("dreams_xml:(mother and son)", 39), # was 397
+               ('text:(love OR "hate emotions"~25)', 37861),
+               ("dreams_xml:(mother AND father) AND text:fight", 39), 
+               ("mother AND father", 30000), # was 31294, latest db disagrees, 2021-01-25
+               ("mother OR father", 51432), # was 52273, latest db disagrees 2021-01-25
+               ("mother AND father OR son", 45487), # was 46389, latest db disagrees 2021-01-25
+               ("mother AND father AND child", 26149), # was 27087, latest db disagrees 2021-01-25
+               ("mother AND father AND -child", 4207), 
+               ("mother AND father", 30000), 
+               ("mother AND -father", 15074), # was 15095, latest db disagrees 2021-01-25
+               ("dreams_xml:(mother AND father)", 140), # was 142, latest db disagrees 2021-01-25
+               ("dreams_xml:(mother AND -father)", 253), # was 255
+               ("dreams_xml:(mother AND (father OR son))", 140), # was 142
+               ("dreams_xml:(mother AND father AND child)", 36), #  was 38
+               ("dreams_xml:(mother AND father AND -child)", 104), 
+               ("'adoptive mother' AND father", 810), # was 817
+               ("'adoptive mother' OR father", 1142),
+               ("'adoptive mother' AND father OR son", 987), #  was 992
+               ("'adoptive mother' AND father AND child", 785),  # was 795
+               ("'adoptive mother' AND father AND -child", 22), 
+               ("'adoptive mother' AND father", 810), # was 817
+               ("'adoptive mother' AND -father", 175),
+               ("dreams_xml:((mother AND father) OR (mother AND son))", 140), # was 397
+               ("dreams_xml:(mother AND father OR mother AND son)", 39), 
+               ("dreams_xml:(mother AND son)", 39), # was 397
             ]
 
 class TestSearchSyntax(unittest.TestCase):
@@ -66,6 +66,7 @@ class TestSearchSyntax(unittest.TestCase):
             r = response.json()
             response_info = r["documentList"]["responseInfo"]
             response_set = r["documentList"]["responseSet"]
+            print (f"Search: {n}, expected count: {expected_count}, full count: {response_info['fullCount']}")
             assert response_info["fullCount"] >= expected_count, (n, f"Expected: {expected_count} vs FullCount: {response_info['fullCount']}, solr_q={solr_query_spec.solrQuery.searchQ}") # just make sure there's a count
             
     def test_01_simple_syntax(self):

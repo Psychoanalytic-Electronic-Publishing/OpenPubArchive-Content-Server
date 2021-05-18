@@ -33,7 +33,8 @@ ALL_EXCEPT_JOURNAL_CODES = BOOK_CODES_ALL + VIDEOSTREAM_CODES_ALL
 
 # Note: language symbols to be lower case (will be converted to lowercase if not)
 DEFAULT_DATA_LANGUAGE_ENCODING = "en"
-CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr")
+CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr", "de-de", "it-it")
+EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT = 13000 # lower numbers are faster, but don't read the last n files before making a random selection
 
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.
@@ -68,6 +69,8 @@ API_URL_DOCUMENTURL = "/v2/Documents/"
 
 #logger = logging.getLogger(programNameShort)
 
+MAX_WHATSNEW_ARTICLES_TO_CONSIDER = 1000
+
 IMAGES = "v2/Documents/Image" # from endpoint; was just images, e.g., "http://pep-web.rocks/images/bannerADPSALogo.gif
 HITMARKERSTART = "#@@@"  # using non html/xml default markers, so we can strip all tags but leave the hitmarkers!
 HITMARKEREND = "@@@#"
@@ -89,7 +92,7 @@ OPASACCESSTOKEN = "opasSessionInfo"
 OPASEXPIRES= "OpasExpiresTime"
 CLIENTID = "client-id" # also header param or qparam
 CLIENTSESSIONID = "client-session" # also header param or qparam
-X_FORWARDED_FOR = "X-Forwarded-For"
+X_FORWARDED_FOR = "X-Forwarded-For-PEP"
 
 AUTH_DOCUMENT_VIEW_REQUEST = "DocumentView"
 AUTH_ABSTRACT_VIEW_REQUEST = "AbstractView"
@@ -100,7 +103,11 @@ DOCUMENT_ACCESS_EMBARGOED = "current"
 DOCUMENT_ACCESS_ARCHIVE = "archive"
 DOCUMENT_ACCESS_UNDEFINED = "undefined"
 DOCUMENT_ACCESS_OFFSITE = "offsite"
+DOCUMENT_ACCESS_TOC = "toc"              # special handling tocs (free)
+# Let this be the default, e.g., when there's no data, like for paras
+DOCUMENT_ACCESS_DEFAULT = DOCUMENT_ACCESS_ARCHIVE
 
+MAX_JOURNALCODE_LEN = 13
 MIN_EXCERPT_CHARS = 480
 MAX_EXCERPT_CHARS = 2000
 MAX_EXCERPT_PARAS = 10
@@ -128,6 +135,15 @@ SOLR_KWIC_MAX_ANALYZED_CHARS = 25200000 # kwic (and highlighting) wont show any 
 SOLR_FULL_TEXT_MAX_ANALYZED_CHARS = 25200000 # full-text markup won't show matches beyond this.
 SOLR_HIGHLIGHT_RETURN_FRAGMENT_SIZE = 25200000 # to get a complete document from SOLR, with highlights, needs to be large.  SummaryFields do not have highlighting.
 SOLR_HIGHLIGHT_RETURN_MIN_FRAGMENT_SIZE = 2000 # Abstract size
+
+# SmartSearch Return Classes
+WORDSEARCH = "WORDSEARCH"
+NAMELIST = "NAMELIST"
+SOLRFIELD = "SOLRFIELD"
+ADVANCED = "ADVANCED"
+DOI = "DOI"
+REFERENCEFIELDS = "REFERENCEFIELDS"
+
 
 #Standard Values for parameters
 # here anything matching the first 4 characters of type matches.
@@ -244,9 +260,12 @@ DESCRIPTION_REPORT_MATCHSTR="Report specific match string (params for session-vi
 DESCRIPTION_RETURNFORMATS = "The format of the returned full-text (e.g., abstract or document data).  One of: 'HTML', 'XML', 'TEXTONLY'.  The default is HTML."
 DESCRIPTION_RETURN_ABSTRACTS = "Return abstracts in the documentList (Boolean: true or false)"
 DESCRIPTION_SEARCHPARAM = "This is a document request, including search parameters, to show hits"
+DESCRIPTION_SITEMAP_PATH = "Folder or S3 Bucket to put the sitemap"
+DESCRIPTION_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
+DESCRIPTION_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
 DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that."
 DESCRIPTION_SORT ="Comma separated list of field names to sort by."
-DESCRIPTION_SOURCECODE = "The FULL 2-8 character PEP Code of the source for matching documents (e.g., journals: APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE; books: GW, SE, ZBK; videostreams: PEPGRANTVS, PEPTOPAUTHVS)"
+DESCRIPTION_SOURCECODE = "The 2-12 character PEP Code (e.g., APA, ANIJP-FR, CPS, PEPTOPAUTHVS), or a Boolean list of codes (e.g., APA OR CPS) or a comma separated list (e.g.: APA, IJP, CPS)"
 DESCRIPTION_SOURCECODE_METADATA_BOOKS = "The 2-3 character PEP Code for the book series (e.g., SE, GW, IPL, NLP, ZBK), or the PEP Code and specific volume number of a book in the series (e.g., GW001, SE006, NLP014, ZBK047 (classic book, specific book assigned number) or * for all."
 DESCRIPTION_SOURCECODE_METADATA_JOURNALS = "The FULL 2-8 character PEP Code of the journal source for matching documents (e.g., APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE) or * for all."
 DESCRIPTION_SOURCECODE_METADATA_VIDEOS = "The PEP Code of the video series (e.g., BPSIVS, IPSAVS, PEPVS, PEPGRANTVS, PEPTOPAUTHVS) or * for all."
@@ -311,12 +330,15 @@ TITLE_PARATEXT = "Paragraph based search"
 TITLE_SMARTSEARCH = "Search input parser"
 TITLE_SPECIALOPTIONS = "Integer mapped to Option flags for special options"
 TITLE_PARAZONE1_V1 = "Zone for paragraph search"
-TITLE_PUBLICATION_PERIOD = "Number of Years to include" 
+TITLE_PUBLICATION_PERIOD = "Number of Years to include"
 TITLE_REPORT_MATCHSTR="Report specific match string"
 TITLE_REQUEST = "HTTP Request" 
 TITLE_RETURN_ABSTRACTS_BOOLEAN = "Return an abstract with each match (true/false)"
 TITLE_RETURNFORMATS = "Document return format"
 TITLE_SEARCHPARAM = "Document request from search results"
+TITLE_SITEMAP_PATH = "Where to put the sitemap"
+TITLE_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
+TITLE_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
 TITLE_SORT = "Field names to sort by"
 TITLE_SOURCECODE = "Series code"
 TITLE_SOURCELANGCODE = "Source language code"
@@ -395,19 +417,20 @@ ENDPOINT_SUMMARY_WHATS_NEW = "Return the newest uploaded issues"
 ENDPOINT_SUMMARY_WHO_AM_I = "Return information about the current user"
 ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the specified field"
 
-ACCESS_SUMMARY_DESCRIPTION = "This is a summary excerpt from the full text of the document. "
-ACCESS_SUMMARY_FORSUBSCRIBERS = "The full-text content of the document is available to subscribers. "
+ACCESS_SUMMARY_DESCRIPTION = "This is a summary excerpt from the full document. "
+ACCESS_SUMMARY_FORSUBSCRIBERS = "The full content of the document is available to subscribers. "
 ACCESS_SUMMARY_EMBARGOED = "The full-text content of the document is embargoed per an agreement with the publisher. "
 # ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
-ACCESS_SUMMARY_PUBLISHER_INFO = "The full-text content of the document may be available on the publisher's website. "
-ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = "<a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>."
+ACCESS_SUMMARY_PUBLISHER_INFO = "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
+ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = " <a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>." # needs the left space now 2021-05-05
 # ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."
 
 ACCESSLIMITED_DESCRIPTION_OFFSITE = "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
 # ACCESSLIMITED_DESCRIPTION_LIMITED = "This is a summary excerpt from the full text of the article. The full text of the document may be available on the publisher's website"
 ACCESSLIMITED_DESCRIPTION_FREE = "This content is currently free to all users."
-ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access"
-ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access"
+ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access."
+ACCESSLIMITED_401_UNAUTHORIZED = "Your session may have timed out. Please try and login again."
+ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access."
 
 # control whether abstracts can be viewed by non-logged-in users
 ACCESS_ABSTRACT_RESTRICTION = False
@@ -486,7 +509,8 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_views_last12mos, 
  art_views_lastweek, 
  reference_count, 
- file_last_modified, 
+ file_last_modified,
+ file_classification,
  timestamp, 
  score
 """
@@ -523,14 +547,16 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
  art_qual, 
  art_kwds, 
  file_last_modified, 
- timestamp, 
+ timestamp,
+ file_classification,
  score
 """
 
 # try the more squashed approach to listing, see if that shows better in the solr call logs
 DOCUMENT_ITEM_VIDEO_FIELDS = """
-art_id,art_issn, art_sourcecode, art_authors, title, art_subtitle_xml, art_title_xml,
-art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, art_vol,art_vol_title, art_year, art_iss, art_iss_title, art_year, art_citeas_xml, art_pgrg, art_lang, art_origrx, art_qual, art_kwds 
+art_id,art_issn, art_sourcecode,art_authors, title, art_subtitle_xml, art_title_xml,
+art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, art_vol,art_vol_title, art_year, art_iss, art_iss_title,
+art_year, art_citeas_xml, art_pgrg, art_lang, art_origrx, art_qual, art_kwds, file_classification
 """
 
 DOCUMENT_ITEM_TOC_FIELDS = """
@@ -557,7 +583,8 @@ DOCUMENT_ITEM_TOC_FIELDS = """
  art_issn, 
  art_origrx, 
  art_qual, 
- art_kwds, 
+ art_kwds,
+ file_classification, 
  score
 """
 
@@ -574,6 +601,7 @@ DOCUMENT_ITEM_META_FIELDS ="""
  art_vol,
  art_year, 
  art_pgrg,
+ file_classification, 
  score
 """
 
@@ -597,6 +625,7 @@ DOCUMENT_ITEM_STAT_FIELDS = """
  art_views_last12mos, 
  art_views_lastweek, 
  reference_count, 
+ file_classification, 
  score
 """
 
@@ -612,6 +641,7 @@ GLOSSARY_ITEM_DEFAULT_FIELDS = """
  term_def_rest_xml,
  group_name,
  group_term_count,
+ file_classification, 
  text
 """
 
@@ -650,11 +680,46 @@ SORT_VIEWS = "art_views_last6mos {0}"
 SORT_TOC = "art_sourcetitlefull_str {0}, art_year {0}, art_iss {0}, art_pgrg {0}"
 SORT_SCORE = "score {0}"
 
+MAX_SOURCE_LEN = 14
 # search description fields to communicate about the search
-KEY_SEARCH_SMARTSEARCH = "smart_search"
+KEY_SEARCH_TYPE = "search_type"
 KEY_SEARCH_FIELD = "schema_field"
 KEY_SEARCH_VALUE = "schema_value"
-KEY_SEARCH_WORDSEARCH = "wordsearch"
+KEY_SEARCH_CLAUSE = "search_clause"
+KEY_SEARCH_SMARTSEARCH = "smart_search"
+KEY_SEARCH_FIELD_COUNT = "field_count"
+# KEY_MATCH_DICT = "match_dict"
+# KEY_SEARCH_WORDSEARCH = "word_search"
+
+SEARCH_TYPE_AUTHOR_CITATION = "author citation"
+SEARCH_TYPE_AUTHORS = "authors"
+# SEARCH_TYPE_AUTHORS_AND_YEARS = "pattern authors year"
+SEARCH_TYPE_WORDSEARCH = "wordsearch"
+SEARCH_TYPE_BOOLEAN = "boolean"
+SEARCH_TYPE_LITERAL = "literal"
+SEARCH_TYPE_TITLE = "title"
+SEARCH_TYPE_PARAGRAPH = "paragraph search"
+SEARCH_TYPE_ID = "locator"
+SEARCH_TYPE_ARTICLE_FIELDS = "article fields"
+# SEARCH_TYPE_ADVANCED = "solradvanced"
+SEARCH_TYPE_FIELDED = "document field"
+SEARCH_TYPE_DOI = "doi"
+
+SEARCH_FIELD_LOCATOR = "art_id"
+SEARCH_FIELD_AUTHOR_CITATION = "art_authors_citation"
+SEARCH_FIELD_AUTHORS = "authors"
+SEARCH_FIELD_TITLE = "title"
+SEARCH_FIELD_TEXT = "text"
+SEARCH_FIELD_DOI = "art_doi"
+SEARCH_FIELD_PGRG = "art_pgrg"
+SEARCH_FIELD_RELATED = "art_qual"
+SEARCH_FIELD_RELATED_EXPANDED = "related"
+
+SS_BROADEN_SEARCH_FIELD_RELATED = (SEARCH_FIELD_RELATED, SEARCH_FIELD_LOCATOR) # technique can be used generally to expand search based on field specified
+
+SS_BROADEN_DICT = {SEARCH_FIELD_RELATED: SS_BROADEN_SEARCH_FIELD_RELATED,
+                   SEARCH_FIELD_RELATED_EXPANDED: SS_BROADEN_SEARCH_FIELD_RELATED,
+                  }
 
 # Dict = sort key to use, fields, default direction if one is not specified.
 PREDEFINED_SORTS = {

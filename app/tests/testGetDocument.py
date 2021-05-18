@@ -193,19 +193,6 @@ class TestGetDocuments(unittest.TestCase):
             assert (data.documents.responseSet[0].documentID == 'LU-AM.029B.0202A')
             assert (len(data.documents.responseSet[0].abstract)) > 0
 
-    def test_3_get_document_logged_out_verify_only_abstract_return(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Logout')
-        response = requests.get(full_URL, headers=headers)
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        response_info = r["documents"]["responseInfo"]
-        response_set = r["documents"]["responseSet"]
-        assert(response_info["count"] == 1)
-        assert(response_set[0]["accessLimited"] == True)
-        assert(len(response_set[0]["abstract"]) == len(response_set[0]["document"])) 
-
     def test_4_get_long_document(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/ZBK.153.0001A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
@@ -217,6 +204,7 @@ class TestGetDocuments(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
+        assert(response_set[0]["accessLimited"] == False)
         print (response_set)
         
     def test_5_get_special_document(self):
@@ -237,6 +225,7 @@ class TestGetDocuments(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.status_code == 404)
         assert(response.reason == "Not Found")
+
 
 if __name__ == '__main__':
     unittest.main()    

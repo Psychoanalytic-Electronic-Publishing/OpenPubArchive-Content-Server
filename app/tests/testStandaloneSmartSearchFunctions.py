@@ -3,7 +3,7 @@
 
 import unittest
 import smartsearch
-from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE,  KEY_SEARCH_WORDSEARCH
+from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE,  KEY_SEARCH_TYPE
 from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestStandaloneSmartSearchFunctions(unittest.TestCase):
@@ -186,11 +186,11 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
     def test_2b_title_search(self):
         """
         """
-        result =  smartsearch.smart_search("Psychoanalysis of Developmental Arrests: Theory and Treatment.")
+        result =  smartsearch.smart_search('"Psychoanalysis of Developmental Arrests: Theory and Treatment."')
         print (result)
         #Title Search in Smart Search is currently "neutered" per David's request.
         # assert (result == {'title': 'Psychoanalysis of Developmental Arrests\\: Theory and Treatment.'})
-        assert result[KEY_SEARCH_WORDSEARCH] == 'Psychoanalysis of Developmental Arrests\\: Theory and Treatment.',  result[KEY_SEARCH_WORDSEARCH]
+        assert result[KEY_SEARCH_TYPE] == 'literal'
         
     def test_2c_word_search(self):
         """
@@ -206,11 +206,11 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         """
         result = smartsearch.smart_search("Goldberg, E.L. Myers, W.A. Zeifman, I. (1974). Some Observations on Three Interracial Analyses. Int. J. Psycho-Anal., 55:495-500.")
         print (result)
-        assert (result[KEY_SEARCH_SMARTSEARCH][:24] == 'Matched citation vol/pg:')
+        assert (result[KEY_SEARCH_TYPE] == 'authors year vol pgrg')
         
         result = smartsearch.smart_search("Rapaport, D. and Gill, M. M. ( 1959). The Points of View and Assumptions of Metapsychology. Int. J. Psycho-Anal. 40:153-162")
         print (result)
-        assert (result[KEY_SEARCH_SMARTSEARCH][:24] == 'Matched citation vol/pg:')
+        assert (result[KEY_SEARCH_TYPE] == 'authors year vol pgrg')
         
 if __name__ == '__main__':
     unittest.main()

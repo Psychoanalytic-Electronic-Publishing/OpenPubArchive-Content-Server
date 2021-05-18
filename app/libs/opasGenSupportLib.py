@@ -42,7 +42,19 @@ class DocumentID(object):
       - Now case insensitive (all resulting IDs are uppercase)
       - Tolerates missing leading zeros and corrects
     
-    
+    >>> DocumentID('LU-AM.005I.0025A.FIG001.jpg')
+    LU-AM.005I.0025A
+    >>> DocumentID('LU-AM.005I.0025A.FIG001')
+    LU-AM.005I.0025A
+    >>> DocumentID('LU-AM.005I.0025A.FIG 1')
+    LU-AM.005I.0025A
+    >>> DocumentID('AOP.001.0138.jpg')
+    AOP.001.0138A
+    >>> DocumentID('APA.01.00590.FIG 1.jpg')
+    APA.001.0059A
+    >>> DocumentID('APA.05.00050.FIG 12.jpg')
+    APA.005.0005A
+
     >>> DocumentID('ZBK.074.R0007A')
     ZBK.074.R0007A
     >>> DocumentID('zbk.074.r0007a')
@@ -73,15 +85,17 @@ class DocumentID(object):
     IJP.007.0007A
     >>> DocumentID('ijp.7.7')
     IJP.007.0007A
-    
 
     """
     # document id regex
-    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]|S?)\.(?P<pageextratype>(NP)?)(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
+    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-M]|S?)\.(?P<pageextratype>(NP)?)(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
     # vol id regex
-    rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z]{2,12})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]|S?))", flags=re.I)
+    rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-M]|S?))", flags=re.I)
     def __init__(self, document_id):
         #  See https://docs.google.com/document/d/1QmRG6MnM1jJOEq9irqCyoEY6Bt4U3mm8FY6TtZSt3-Y/edit#heading=h.mv7bvgdg7i7h for document ID information
+        dirname, basename = os.path.split(document_id)
+        if dirname is not None:
+            document_id = basename
         self.document_id = None
         self.document_id_pagejump = None
         self.jrnlvol_id = None
@@ -399,7 +413,7 @@ def in_quotes(arg):
     """
     try:
         if isinstance(arg, str):
-            if re.match(r"([\"\']).*?\1", arg):
+            if re.match(r"\s*([\"\']).*?\1\s*", arg):
                 return True
             else:
                 return False
@@ -438,7 +452,84 @@ def in_brackets(arg):
     except Exception as e:
         logger.error(f"Exception {e}")
         return False
+
+def groups_balanced(arg):
+    """
+    Match [, {, and ( for balance
     
+    >>> groups_balanced("(a) and (b)")
+    True
+    >>> groups_balanced("((a) and (b))")
+    True
+    >>> groups_balanced("((a) and (b)")
+    False
+    >>> groups_balanced(" [a] and [b]   ")
+    True
+    >>> groups_balanced("((a) and [(b)])")
+    True
+    >>> groups_balanced("((a) and [(b))]")
+    False
+    
+    """
+    arg = arg.strip()
+    open_list = ["(", "[", "{"]
+    close_list = [")", "]", "}"]    
+    stack = []
+    for i in arg:
+        if i in open_list:
+            stack.append(i)
+        elif i in close_list:
+            pos = close_list.index(i)
+            if ((len(stack) > 0) and
+                (open_list[pos] == stack[len(stack)-1])):
+                stack.pop()
+            else:
+                return False
+
+    if len(stack) == 0:
+        return True
+    else:
+        return False
+
+def parens_balanced(arg):
+    arg = arg.strip()
+    open_list = ["("]
+    close_list = [")"]    
+    stack = []
+    for i in arg:
+        if i in open_list:
+            stack.append(i)
+        elif i in close_list:
+            pos = close_list.index(i)
+            if ((len(stack) > 0) and
+                (open_list[pos] == stack[len(stack)-1])):
+                stack.pop()
+            else:
+                return False
+            
+    if len(stack) == 0:
+        return True
+    else:
+        return False
+
+def parens_outer(arg):
+    """
+    >>> parens_outer("(a) and (b)")
+    False
+    >>> parens_outer("((a) and (b))")
+    True
+    >>> parens_outer(" (a) and (b)   ")
+    False
+    >>> parens_outer("   ((a) and (b))    ")
+    True
+    """
+    arg_stripped = arg.strip()
+    if arg_stripped[0] == "(" and arg_stripped[-1] == ")":
+        # should not be balanced now if there are outer ()
+        return parens_balanced(arg_stripped[1:-1])
+    else:
+        return False
+        
 def in_parens(arg):
     """
     If string is in parens (must be at start and at end), return true
@@ -491,10 +582,11 @@ def one_term(arg):
 
 def is_boolean(arg):
     """
-    >>> is_boolean("a and b")
+    Must be uppercase
+    >>> is_boolean("a AND b")
     True
     
-    >>> is_boolean("a or b")
+    >>> is_boolean("a OR b")
     True
 
     >>> is_boolean("a || b && cc")
@@ -506,7 +598,7 @@ def is_boolean(arg):
     """
     try:
         if isinstance(arg, str):
-            if re.search(r"\s(AND|OR|\&\&|\|\)\s)", arg, flags=re.IGNORECASE):
+            if re.search(r"\s(AND|OR|\&\&|\|\)\s)", arg): 
                 return True
             else:
                 return False

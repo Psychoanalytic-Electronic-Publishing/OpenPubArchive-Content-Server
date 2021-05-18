@@ -7,6 +7,7 @@ opasQueryHelper
 
 This library is meant to hold parsing and other functions which support query translation to Solr
 
+2021.0412.1 - Fixed / Changed source_code parameter, now only accepts PEP source codes (not source names) and allows boolean or lists
 2020.0530.1 - Doc Test updates
 2020.0416.1 - Sort fixes, new viewcount options
 2019.1205.1 - First version
@@ -15,7 +16,7 @@ This library is meant to hold parsing and other functions which support query tr
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.1013.1"
+__version__     = "2021.0424.1"
 __status__      = "Development"
 
 import re
@@ -49,6 +50,7 @@ import opasDocPermissions as opasDocPerm
 count_anchors = 0
 
 import smartsearch
+import smartsearchLib
 
 sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
@@ -115,6 +117,11 @@ def check_search_args(**kwargs):
                     #print (f"After remove_proximity: {ret_val[kw]}")
                     ret_val[kw] = 422
                     errors = True
+
+                # temp fix (UC.Workaround) for weird online issue: since searching all uppercase words seem to cause problems online
+                if arg.isupper() and arg.replace(' ','').isalpha(): # isalpha doesn't consider spaces alpha!
+                    ret_val[kw] = arg.lower()
+                
             except Exception as e:
                 logger.error(f"fulltext cleanup error {e}")
                 print (f"Cleanup error: {e}")
@@ -160,10 +167,11 @@ def cleanup_solr_query(solrquery):
         ret_val = ret_val.replace("*:* {", "{")  # Remove if it's before a solr join for level 2 queries
         ret_val = pat_prefix_amps.sub("", ret_val)
 
-    ret_val = re.sub("\s+(AND)\s+", " && ", ret_val, flags=re.IGNORECASE)
-    ret_val = re.sub("\s+(OR)\s+", " || ", ret_val, flags=re.IGNORECASE)
-    ret_val = re.sub("\s+(NOT)\s+", " NOT ", ret_val, flags=re.IGNORECASE)
-    ret_val = remove_proximity_around_booleans(ret_val)
+    if re.match('\".*\"', ret_val) is None: # not literal
+        ret_val = re.sub("\s+(AND)\s+", " && ", ret_val) # flags=re.IGNORECASE)  2021-04-01 AND/OR/NOT must be uppercase now
+        ret_val = re.sub("\s+(OR)\s+", " || ", ret_val) # , flags=re.IGNORECASE)
+        ret_val = re.sub("\s+(NOT)\s+", " NOT ", ret_val) # , flags=re.IGNORECASE)
+        ret_val = remove_proximity_around_booleans(ret_val)
 
     # one last cleaning, watch for && *:*
     ret_val = ret_val.replace(" && *:*", "")
@@ -171,6 +179,21 @@ def cleanup_solr_query(solrquery):
     
     return ret_val
 
+#-----------------------------------------------------------------------------
+def remove_outer_parens(s):
+    """
+    If there are outer parens when we don't need them, get rid of them
+    
+    >>> a = "(1910-1920)"
+    >>> remove_outer_parens(a)
+    
+    """
+    ret_val = s
+    m = re.match("\s*\(+(?P<inside_data>.*)\)+\s*", s)
+    if m:
+        ret_val = m.group("inside_data")
+    
+    return ret_val
 #-----------------------------------------------------------------------------
 def strip_outer_matching_chars(s, outer_char):
     """
@@ -403,7 +426,7 @@ class QueryTextToSolr():
         
     def markup(self, str_input, field_label=None, field_thesaurus=None, quoted=False):
         
-        bordered = opasgenlib.in_parens(str_input) or opasgenlib.in_quotes(str_input) or opasgenlib.one_term(str_input) or opasgenlib.in_brackets(str_input)
+        bordered = opasgenlib.parens_outer(str_input) or opasgenlib.in_quotes(str_input) or opasgenlib.one_term(str_input) or opasgenlib.in_brackets(str_input)
 
         if quoted == False:
             str_input_mod = self.boolConnectorsToSymbols(str_input)
@@ -458,9 +481,9 @@ def year_parser_support(year_arg):
             logger.warning("Search - StartYear bad argument {}".format(year_arg))
         else:
             if option is None and separator is None:
-                search_clause = f" art_year_int:{year_arg} "
+                search_clause = f" art_year_int:({year_arg}) "
             elif option == "=" and separator is None:
-                search_clause = f" art_year_int:{year_arg} "
+                search_clause = f" art_year_int:({year_arg}) "
             elif separator == "-":
                 # between
                 # find endyear by parsing
@@ -655,7 +678,9 @@ def remove_proximity_around_booleans(query_str):
         m = re.search(srch_ptn, query_str)
         if m is not None:
             # does it have a boolean, a quote, or a bracket (range)?
-            n = re.search(r"\s(AND|OR|NOT|\&\&|\|\|)\s|([\"\[\']])", m.group(1), flags=re.IGNORECASE)
+            # n = re.search(r"\s(AND|OR|NOT|\&\&|\|\|)\s|([\"\[\']])", m.group(1), flags=re.IGNORECASE)
+            # 2021-04-01 Booleans must be UPPERCASE now
+            n = re.search(r"\s(AND|OR|NOT|\&\&|\|\|)\s|([\"\[\']])", m.group(1))
             # if it's not None, then this is not a proximity match
             if n is not None:
                 query_str = re.subn(srch_ptn, r'(\1)', query_str, 1)[0]
@@ -724,10 +749,8 @@ def are_brackets_balanced(expr):
 #           solr_query_params = opasQueryHelper.parse_search_query_parameters(**argdict)
 # 
 def parse_search_query_parameters(search=None,             # url based parameters, e.g., from previous search to be parsed
-                                  # model based query specification, allows full specification 
-                                  # of words/thes in request body, component at a time, per model
-                                  solrQueryTermList=None,
-                                  # parameter based options
+                                  solrQueryTermList=None,  # model based query specification, allows full specification of words/thes in request body, component at a time, per model
+                                  # parameter based options follow
                                   fulltext1=None,          # term, phrases, and boolean connectors with optional fields for full-text search
                                   smarttext=None,          # experimental detection of search parameters
                                   paratext=None,           # search paragraphs as child of scope
@@ -755,7 +778,6 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   viewcount: str=None,     # can include both the count and the count period, e.g., 25 in last12months or 25 in ALL
                                   viewperiod=None,         # period to evaluate view count 0-4, 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
                                   facetfields=None,        # facetfields to return
-                                  # sort field and direction
                                   facetmincount=None,
                                   facetlimit=None,
                                   facetoffset=0,
@@ -764,8 +786,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   formatrequested:str=None,
                                   return_field_set=None,
                                   return_field_options=None, 
-                                  sort=None,
-                                  highlightlimit:int=None, # same as highlighting_max_snips, but matches params (REQUIRED TO MATCH!)
+                                  sort=None,                # sort field and direction
+                                  highlightlimit:int=None,  # same as highlighting_max_snips, but matches params (REQUIRED TO MATCH!)
                                   extra_context_len=None,
                                   limit=None,
                                   offset=None, 
@@ -818,6 +840,15 @@ def parse_search_query_parameters(search=None,             # url based parameter
     artLevel = 1 # Doc query, sets to 2 if clauses indicate child query
     search_q_prefix = ""
     search_result_explanation = None
+    ignored_start_chars = "[\s(]*"
+    ignored_end_chars = "[)\s]*"
+
+    # Problems when they surround these numeric fields with parens, as the PEP client started doing 2021-04
+    if startyear is not None:
+        startyear = remove_outer_parens(startyear)
+    if endyear is not None:
+        endyear = remove_outer_parens(endyear)
+
     # IMPORTANT: 
     # These parameters need match the query line endpoint parameters for search, 
     #   but had been renamed, causing a problem.  So I've put the parameters back to the endpoint query parameter
@@ -972,19 +1003,54 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if smarttext is not None:
         search_dict = smartsearch.smart_search(smarttext)
+        # search_dict = smartsearch_analyze.analyze_smart_string(smarttext)
+        # search_analysis = smartsearch_analyze.analyze_smart_string(smarttext)
+        
         # set up parameters as a solrQueryTermList to share that processing
         # solr_query_spec.solrQueryOpts.qOper = "OR"
-        schema_field = search_dict.get("schema_field")
+        schema_field = search_dict.get(opasConfig.KEY_SEARCH_FIELD)
         limit = 0
-        search_result_explanation = search_dict[KEY_SEARCH_SMARTSEARCH]
+        try:
+            search_result_explanation = search_dict[opasConfig.KEY_SEARCH_SMARTSEARCH]
+        except Exception as e:
+            search_result_explanation = "" # check why there's no explanation!
+            logger.warning(f"SmartSearch result explanation is not defined {e}")
+            
         if schema_field is not None:
-            schema_value = search_dict.get("schema_value")
-            if opasgenlib.not_empty(schema_value):
-                if "'" in schema_value or '"' in schema_value:
-                    search_q += f"&& {schema_field}:{schema_value} "
-                else:
-                    search_q += f"&& {schema_field}:({schema_value}) "
-                limit = 1
+            if schema_field == "solr":
+                schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                if opasgenlib.not_empty(schema_value):
+                    search_q += f"&& {schema_value} "
+                    limit = 1
+                else: # not what we thought
+                    limit = 0
+            else:
+                schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                if opasgenlib.not_empty(schema_value):
+                    if schema_field in opasConfig.SS_BROADEN_DICT.keys():
+                        broad_field_list = opasConfig.SS_BROADEN_DICT.get(schema_field, None)
+                        if broad_field_list is not None:
+                            search_q += f"&& ("
+                            for n in broad_field_list:
+                                search_q += f"{n}:{schema_value} "
+                                if n != broad_field_list[-1]: # if this isn't the last, add an OR
+                                    search_q += f"|| "
+                            # done, end the parens
+                            search_q += f")"
+                            limit = 1
+                        else:
+                            logger.error(f"SS_Broaden configuration error: {schema_field}")
+                            # don't broaden
+                            if "'" in schema_value or '"' in schema_value:
+                                search_q += f"&& {schema_field}:{schema_value} "
+                            else:
+                                search_q += f"&& {schema_field}:({schema_value}) "
+                    else:
+                        if "'" in schema_value or '"' in schema_value:
+                            search_q += f"&& {schema_field}:{schema_value} "
+                        else:
+                            search_q += f"&& {schema_field}:({schema_value}) "
+                        limit = 1
         else:
             syntax = search_dict.get("syntax")
             if syntax is not None:
@@ -1033,7 +1099,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                     if author is None:
                         author = f'"{art_author}"'
     
-                title_search = search_dict.get("title")
+                title_search = search_dict.get(opasConfig.SEARCH_FIELD_TITLE)
                 if title_search is not None:
                     if title is None:
                         title = title_search
@@ -1075,7 +1141,20 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                         search_q += f'&& {field_name}:({word_search}) '
                                     else:
                                         search_q += f'&& {field_name}:"{word_search}"~25 '
-                                       
+
+                search_type = search_dict.get(opasConfig.KEY_SEARCH_TYPE)
+                if search_type == opasConfig.SEARCH_TYPE_LITERAL:
+                    literal_str = re.sub("'", '"', search_dict.get(opasConfig.KEY_SEARCH_VALUE))
+                    search_q += f'&& {literal_str}'
+                elif search_type == opasConfig.SEARCH_TYPE_BOOLEAN:
+                    boolean_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                    search_q += f'&& {boolean_str}'
+                elif search_type == opasConfig.SEARCH_TYPE_PARAGRAPH:
+                    search_q += f'&& {search_dict.get(KEY_SEARCH_VALUE)}'
+                #else:
+                    ## not sure what to search
+                    #search_q += f'&& {smarttext}'
+                    
 
     if art_level is not None:
         filter_q = f"&& art_level:{art_level} "  # for solr filter fq
@@ -1180,7 +1259,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             # qfilterTerm = ""
             filter_sub_clause = get_term_list_spec(solrQueryTermList.qf)
             if filter_sub_clause != "":
-                analyze_this = f"&& ({filter_sub_clause})"
+                analyze_this = f"&& ({filter_sub_clause}) "
                 filter_q += analyze_this
                 search_analysis_term_list.append(analyze_this)
         except Exception as e:
@@ -1263,43 +1342,28 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)
         
     if opasgenlib.not_empty(source_code):
-        # accepts a journal or book code (no wildcards) or a list of journal or book codes (no wildcards)
-        # ALSO can accept a single source name or partial name with an optional wildcard.  But
-        #   that's really what argument source_name is for, so this is just extra and may be later removed.
+        # accepts a journal or book code (no wildcards) or a boolean list of journal or book codes (no wildcards), or a simple string list "CPS, IJP, BAP"
         code_for_query = ""
         analyze_this = ""
-        # journal_code_list_pattern = "((?P<namelist>[A-z0-9]*[ ]*\+or\+[ ]*)+|(?P<namelist>[A-z0-9]))"
-        journal_wildcard_pattern = r".*\*[ ]*"  # see if it ends in a * (wildcard)
-        if re.match(journal_wildcard_pattern, source_code):
-            # it's a wildcard pattern, it's a full source name
-            code_for_query = source_code
-            analyze_this = f"&& art_sourcetitlefull:({code_for_query}) "
-            filter_q += analyze_this
-        else:
-            journal_code_list = source_code.upper().split(" OR ")
-            if len(journal_code_list) > 1:
-                journal_code_list = " OR ".join(journal_code_list)
-                # convert to upper case
-                code_for_query = f"art_sourcecode:({journal_code_list})"
-                # it was a list.
-                analyze_this = f"&& {code_for_query} "
-                filter_q += analyze_this
+        code_for_query = source_code.upper()
+        if re.search("[,]", code_for_query):
+            try:
+                code_for_query = re.sub("[\(\)\[\]]", "", code_for_query)
+                codelist = code_for_query.split(",")
+                new_query = ""
+                for code in codelist:
+                    if new_query == "":
+                        new_query = code
+                    else:
+                        new_query = new_query + f" OR {code}"
+            except Exception as e:
+                logger.warning(f"Error trying to convert source_code {code_for_query} to list: {e}")
             else:
-                sourceInfo = sourceDB.lookupSourceCode(source_code.upper())
-                if sourceInfo is not None or source_code.upper().strip('0123456789') == opasConfig.BOOKSOURCECODE:
-                    # it's a single source code
-                    code_for_query = source_code.upper()
-                    analyze_this = f"&& art_sourcecode:({code_for_query}) "
-                    filter_q += analyze_this
-                else: # not a pattern, or a code, or a list of codes.
-                    # must be a name
-                    code_for_query = source_code
-                    analyze_this = f"&& art_sourcetitlefull:({code_for_query}) "
-                    filter_q += analyze_this
-
+                code_for_query = new_query
+                
+        analyze_this = f"&& art_sourcecode:({code_for_query}) "
+        filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)
-        # or it could be an abbreviation #TODO
-        # or it counld be a complete name #TODO
 
     if opasgenlib.not_empty(cited_art_id):
         cited_art_id = cited_art_id.upper()
@@ -1322,6 +1386,16 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if opasgenlib.not_empty(author):
         author = author
+        # author comes in inside quotes, due to issue #410 regarding faceting.
+        # they can use booleans though, the client strips them in that case
+        # but without a boolean connector, without being stripped, they cannot use a wild card on a name
+        # So, strip if
+        #  only one word
+        #  not an author ID
+        #  has wildcards
+        if smartsearchLib.str_has_one_word(author) or smartsearchLib.quoted_str_has_wildcards(author) and not smartsearchLib.str_has_author_id(author):
+            author = strip_outer_matching_chars(author, '\"')
+            
         # if there's or and or not in lowercase, need to uppercase them
         # author = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", author)])
         # art_authors_citation:("tuckett, D.") OR art_authors_text:("tuckett, David")
@@ -1329,7 +1403,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
             
         author_text = qparse.markup(author_or_corrected, "art_authors_text", quoted=False) # convert AND/OR/NOT, set up field query
         author_cited = qparse.markup(author_or_corrected, "art_authors_citation", quoted=False)
-        analyze_this = f' && ({author_text} || {author_cited}) ' # search analysis
+        author_mast = qparse.markup(author_or_corrected, "art_authors_mast", quoted=False)
+        analyze_this = f'&& ({author_text} || {author_cited} || {author_mast})' # search analysis
         filter_q += analyze_this        # query filter qf
         search_analysis_term_list.append(analyze_this)  
         query_term_list.append(author)       
@@ -1404,7 +1479,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         val = None
         cited_in_period = None
         val_end = "*"
-        match_ptn = "\s*(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?\s*"
+        match_ptn = f"{ignored_start_chars}(?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?(\s+IN\s+(?P<period>(5|10|20|All)))?{ignored_end_chars}" # ignore outside parens
         m = re.match(match_ptn, citecount, re.IGNORECASE)
         if m is not None:
             val = m.group("nbr")
@@ -1421,7 +1496,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
         range_list = opasgenlib.range_list(citecount)
         if range_list != "":
-            analyze_this = f"&& art_cited_{cited_in_period.lower()}:({range_list})"
+            analyze_this = f"&& art_cited_{cited_in_period.lower()}:({range_list}) "
         else:
             analyze_this = f"&& art_cited_{cited_in_period.lower()}:[{val} TO {val_end}] "
 
@@ -1434,7 +1509,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         val = None
         viewed_in_period = None
         val_end = "*"
-        match_ptn = "\s*((?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?\,?\s*)+(\s+IN\s+(?P<period>(lastweek|lastmonth|last6months|last12months|lastcalendaryear)))?\s*"
+        match_ptn = f"{ignored_start_chars}((?P<nbr>[0-9]+)(\s+TO\s+(?P<endnbr>[0-9]+))?\,?)(\s+IN\s+(?P<period>(lastweek|lastmonth|last6months|last12months|lastcalendaryear)))?{ignored_end_chars}"
         m = re.match(match_ptn, viewcount, re.IGNORECASE)
         if m is not None:
             val = m.group("nbr")
@@ -1461,7 +1536,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 
             range_list = opasgenlib.range_list(viewcount)
             if range_list != "":
-                analyze_this = f"&& {view_count_field}:({range_list})"
+                analyze_this = f"&& {view_count_field}:({range_list}) "
             else:
                 analyze_this = f"&& {view_count_field}:[{val} TO {val_end}] "
                 
@@ -1483,6 +1558,15 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if search_q == "*:*" and filter_q == "*:*":
         filter_q = "art_level:1"
+
+    if smartsearchLib.str_has_wildcards(search_q) or smartsearchLib.str_has_fuzzy_ops(search_q): # quoted_str_has_wildcards(search_q):
+        complex_phrase = "{!complexphrase}"
+        search_q = f"{complex_phrase}{search_q}"
+    
+    #patComplexPhaseSearchRequired = "\".*(\*|\?).*\""
+    #complex_phrase = "{!complexphrase}"
+    #if re.search(patComplexPhaseSearchRequired, search_q, flags=re.I):
+        #search_q = f"{complex_phrase}{search_q}" 
 
     # Turn off highlighting if it's not needed, e.g, when there's no text search, e.g., a filter only, like mostcited and mostviewed calls
     # As of 2020-09-28, allow limit to be set here (via params)
@@ -1600,7 +1684,9 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     solr_query_spec = set_return_fields(solr_query_spec, return_field_set=return_field_set)
     
     #Always add id and file_classification to return fields
-    solr_query_spec.returnFields += ", id, file_classification" #  need to always return id
+    solr_query_spec.returnFields += ",id"
+    if "file_classification" not in solr_query_spec.returnFields: # don't add twice
+        solr_query_spec.returnFields += ",file_classification" #  need to always return id
 
     if full_text_requested is not None:
         solr_query_spec.fullReturn = full_text_requested
@@ -1851,70 +1937,89 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
 def get_base_article_info_from_search_result(result, documentListItem: models.DocumentListItem):
     
     if result is not None:
-        documentListItem.documentID = result.get("art_id", None)
-        documentListItem.docLevel = result.get("art_level", None)
-        documentListItem.PEPCode = result.get("art_sourcecode", None)
-        parent_tag = result.get("parent_tag", None)
+        try:
+            documentListItem.documentID = result.get("art_id", None)
+            if documentListItem.documentID is None:
+                logger.error(f"Database error, incomplete record, can't find ID: {result}")
 
-        if result.get("meta_xml", None): documentListItem.documentMetaXML = result.get("meta_xml", None)
-        if result.get("art_info_xml", None): documentListItem.documentInfoXML = result.get("art_info_xml", None)
-        if result.get("art_pgrg", None): documentListItem.pgRg = result.get("art_pgrg", None)
-        art_lang = result.get("art_lang", None)
-        if isinstance(art_lang, list):
-            art_lang = art_lang[0]
-        documentListItem.lang=art_lang
-        documentListItem.year = result.get("art_year", None)
-        documentListItem.vol = result.get("art_vol", None)
-        documentListItem.docType = result.get("art_type", None)
-        if result.get("art_doi", None): documentListItem.doi = result.get("art_doi", None)
-        documentListItem.issue = result.get("art_iss", None)
-        documentListItem.issn = result.get("art_issn", None)
-        # documentListItem.isbn = result.get("art_isbn", None) # no isbn in solr stored data, only in products table
-        # see if using art_title instead is a problem for clients...at least that drops the footnote
-        documentListItem.title = result.get("art_title", "")  
-        # documentListItem.title = result.get("art_title_xml", "")  
-        if documentListItem.pgRg is not None:
-            pg_start, pg_end = opasgenlib.pgrg_splitter(documentListItem.pgRg)
-            documentListItem.pgStart = pg_start
-            documentListItem.pgEnd = pg_end
-
-        if result.get("art_origrx", None): documentListItem.origrx = result.get("art_origrx", None)
-        if result.get("art_qual", None): documentListItem.relatedrx= result.get("art_qual", None)
-        documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
-        documentListItem.sourceType = result.get("art_sourcetype", None)
-        author_ids = result.get("art_authors", None)
-        if author_ids is None:
-            # try this, instead of abberrant behavior in alpha of display None!
-            documentListItem.authorMast = result.get("art_authors_mast", "")
-        else:
-            documentListItem.authorMast = opasgenlib.derive_author_mast(author_ids)
-        if result.get("art_newsecnm", None): documentListItem.newSectionName=result.get("art_newsecnm", None)            
-        citeas = result.get("art_citeas_xml", None)
-        citeas = force_string_return_from_various_return_types(citeas)
-        documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
-        documentListItem.documentRefHTML = citeas
-        documentListItem.updated=result.get("file_last_modified", None)
-        documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_ARCHIVE)
-
-        if parent_tag is not None:
-            documentListItem.docChild = {}
-            documentListItem.docChild["id"] = result.get("id", None)
-            documentListItem.docChild["parent_tag"] = parent_tag
-            documentListItem.docChild["para"] = result.get("para", None)
-            documentListItem.docChild["lang"] = result.get("lang", None)
-            if isinstance(documentListItem.docChild["lang"], list):
-                documentListItem.docChild["lang"] = documentListItem.docChild["lang"][0]
-            documentListItem.docChild["para_art_id"] = result.get("para_art_id", None)
-        
-        para_art_id = result.get("para_art_id", None)
-        if documentListItem.documentID is None and para_art_id is not None:
-            # this is part of a document, we should retrieve the parent info
-            top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
-            if top_level_doc is not None:
-                documentListItem = merge_documentListItems(documentListItem, top_level_doc)
-
-        # don't set the value, if it's None, so it's not included at all in the pydantic return
-        # temp workaround for art_lang change
+            documentListItem.docLevel = result.get("art_level", None)
+            documentListItem.PEPCode = result.get("art_sourcecode", None)
+            parent_tag = result.get("parent_tag", None)
+    
+            if result.get("meta_xml", None): documentListItem.documentMetaXML = result.get("meta_xml", None)
+            if result.get("art_info_xml", None): documentListItem.documentInfoXML = result.get("art_info_xml", None)
+            if result.get("art_pgrg", None): documentListItem.pgRg = result.get("art_pgrg", None)
+            art_lang = result.get("art_lang", None)
+            if isinstance(art_lang, list):
+                art_lang = art_lang[0]
+            documentListItem.lang=art_lang
+            documentListItem.year = result.get("art_year", None)
+            documentListItem.vol = result.get("art_vol", None)
+            documentListItem.docType = result.get("art_type", None)
+            if result.get("art_doi", None): documentListItem.doi = result.get("art_doi", None)
+            documentListItem.issue = result.get("art_iss", None)
+            documentListItem.issn = result.get("art_issn", None)
+            # documentListItem.isbn = result.get("art_isbn", None) # no isbn in solr stored data, only in products table
+            # see if using art_title instead is a problem for clients...at least that drops the footnote
+            documentListItem.title = result.get("art_title", "")  
+            # documentListItem.title = result.get("art_title_xml", "")  
+            if documentListItem.pgRg is not None:
+                pg_start, pg_end = opasgenlib.pgrg_splitter(documentListItem.pgRg)
+                documentListItem.pgStart = pg_start
+                documentListItem.pgEnd = pg_end
+    
+            if result.get("art_origrx", None): documentListItem.origrx = result.get("art_origrx", None)
+            if result.get("art_qual", None): documentListItem.relatedrx= result.get("art_qual", None)
+            documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
+            documentListItem.sourceType = result.get("art_sourcetype", None)
+            author_ids = result.get("art_authors", None)
+            if author_ids is None:
+                # try this, instead of abberrant behavior in alpha of display None!
+                documentListItem.authorMast = result.get("art_authors_mast", "")
+            else:
+                documentListItem.authorMast = opasgenlib.derive_author_mast(author_ids)
+            if result.get("art_newsecnm", None): documentListItem.newSectionName=result.get("art_newsecnm", None)            
+            citeas = result.get("art_citeas_xml", None)
+            citeas = force_string_return_from_various_return_types(citeas)
+            documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
+            documentListItem.documentRefHTML = citeas
+            # para level is ok, default to archive
+            try:
+                if documentListItem.docLevel >= 2:
+                    documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_DEFAULT)
+                else:
+                    documentListItem.accessClassification = result.get("file_classification", None)
+            except Exception as e:
+                # don't log, at this point there are other things being logged.
+                # logger.error(f"GetBaseArticleInfo: Error in database: {e}")
+                documentListItem.accessClassification = opasConfig.DOCUMENT_ACCESS_DEFAULT
+                
+            if documentListItem.accessClassification is None:
+                logger.error(f"art_id: {documentListItem.documentID} no file_classification returned!")
+                
+            documentListItem.updated=result.get("file_last_modified", None)
+    
+            if parent_tag is not None:
+                documentListItem.docChild = {}
+                documentListItem.docChild["id"] = result.get("id", None)
+                documentListItem.docChild["parent_tag"] = parent_tag
+                documentListItem.docChild["para"] = result.get("para", None)
+                documentListItem.docChild["lang"] = result.get("lang", None)
+                if isinstance(documentListItem.docChild["lang"], list):
+                    documentListItem.docChild["lang"] = documentListItem.docChild["lang"][0]
+                documentListItem.docChild["para_art_id"] = result.get("para_art_id", None)
+            
+            para_art_id = result.get("para_art_id", None)
+            if documentListItem.documentID is None and para_art_id is not None:
+                # this is part of a document, we should retrieve the parent info
+                top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
+                if top_level_doc is not None:
+                    documentListItem = merge_documentListItems(documentListItem, top_level_doc)
+    
+            # don't set the value, if it's None, so it's not included at all in the pydantic return
+            # temp workaround for art_lang change
+        except Exception as e:
+            logger.warning(f"Error in data: {e}")
 
     return documentListItem # return a partially filled document list item
 
@@ -1945,7 +2050,7 @@ def merge_documentListItems(old, new):
     if old.updated is None: old.updated = new.updated 
     if old.accessClassification is None: old.accessClassification = new.accessClassification 
     if old.accessLimited is None: old.accessLimited = new.accessLimited
-    if old.accessLimitedCurrentContent is None: old.accessLimitedCurrentContent = new.accessLimitedCurrentContent
+    if old.accessLimitedClassifiedAsCurrentContent is None: old.accessLimitedClassifiedAsCurrentContent = new.accessLimitedClassifiedAsCurrentContent
     if old.accessLimitedDescription is None: old.accessLimitedDescription = new.accessLimitedDescription 
     if old.accessLimitedPubLink is None: old.accessLimitedPubLink = new.accessLimitedPubLink 
     if old.accessLimitedReason is None: old.accessLimitedReason = new.accessLimitedReason

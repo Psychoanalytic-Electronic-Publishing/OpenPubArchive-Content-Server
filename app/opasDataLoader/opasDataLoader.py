@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0211.1" 
+__version__     = "2021.0416.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -63,6 +63,7 @@ sys.path.append('../config')
 sys.path.append('../libs/configLib')
 
 import time
+import random
 import pymysql
 import pysolr
 import localsecrets
@@ -198,7 +199,8 @@ def main():
     global options  # so the information can be used in support functions
     
     cumulative_file_time_start = time.time()
-    
+    randomizer_seed = None 
+
     # scriptSourcePath = os.path.dirname(os.path.realpath(__file__))
 
     processed_files_count = 0
@@ -301,14 +303,15 @@ def main():
             ocd.delete_all_article_data()
             solr_docs2.delete(q='*:*')
             solr_docs2.commit()
-            solr_authors2.delete_query("*:*")
+            solr_authors2.delete(q="*:*")
             solr_authors2.commit()
-            
+
+        # reset glossary core when others are reset, or when --resetcore is selected with --glossaryonly   
         if 1: # options.glossary_core_update:
             msg = "*** Deleting all data from the Glossary core ***"
             logger.warning(msg)
             print (msg)
-            solr_gloss2.delete_query("*:*")
+            solr_gloss2.delete(q="*:*")
             solr_gloss2.commit()
     else:
         # check for missing files and delete them from the core, since we didn't empty the core above
@@ -520,20 +523,26 @@ def main():
                     # fileTracker.commit()
                 if 1: # options.glossary_core_update:
                     solr_gloss2.commit()
-                    
             except Exception as e:
                 print(("Exception: ", e))
+            else:
+                # Use date time as seed, hoping multiple instances don't get here at the same time
+                # but only if caller did not specify
+                if randomizer_seed is None:
+                    randomizer_seed = int(datetime.utcnow().timestamp())
 
     # end of docs, authors, and/or references Adds
     
     # write updated file
     if issue_updates != {}:
+        # now seed randomizer, hopefull all instances have a different seed (or caller must force)
+        random.seed(randomizer_seed)
         try:
             # temp exception block just until localsecrets has been updated with DATA_UPDATE_LOG_DIR
             try:
-                fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}.xml"
+                fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
             except Exception as e:
-                fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d-%H%M%S')}.xml"
+                fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
                 
             print(f"Issue updates.  Writing file {fname}")
             with open(fname, 'w', encoding="utf8") as fo:
@@ -624,6 +633,9 @@ if __name__ == "__main__":
     parser.add_option("--resetcore",
                       action="store_true", dest="resetCoreData", default=False,
                       help="reset the data in the selected cores (author core is reset with the fulltext core).")
+    parser.add_option("--seed",
+                      dest="randomizer_seed", default=None,
+                      help="Seed so data update files don't collide if they start writing at exactly the same time.")
     parser.add_option("--sub", dest="subFolder", default=None,
                       help="Sub folder of root folder specified via -d to process")
     parser.add_option("--test", dest="testmode", action="store_true", default=False,
