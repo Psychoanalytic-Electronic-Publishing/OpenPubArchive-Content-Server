@@ -72,7 +72,7 @@ class TestSearchOpenURL(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 100)
-        assert(response_set[0]["authorMast"][0:5] == 'David')
+        assert('David' in response_set[0]["authorMast"])
 
     def test_search_aulast(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/OpenURL/?aulast=Tuckett')

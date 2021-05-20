@@ -1465,7 +1465,11 @@ def parse_search_query_parameters(search=None,             # url based parameter
           and not smartsearchLib.str_has_author_id(author):
             author = strip_outer_matching_chars(author, '\"')
         else:
-            pass # allow me to watch these
+            # only do this test if necessary, it would be the slowest of the four
+            if smartsearchLib.str_is_author_mastname(author):
+                author = strip_outer_matching_chars(author, '\"')
+            else: # leave the quotes on.
+                pass # allow me to watch these for now.
             
         # if there's or and or not in lowercase, need to uppercase them
         # author = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", author)])

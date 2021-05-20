@@ -336,7 +336,7 @@ def authserver_login(username=PADS_TEST_ID,
     msg = ""
     logger.info(f"Logging in user {username} with session_id {session_id}")
     if session_id is not None:
-        full_URL = base + f"/v1/Authenticate/" # + f"?SessionId={session_id}"
+        full_URL = base + f"/v1/Authenticate/?SessionId={session_id}"
     else:
         full_URL = base + f"/v1/Authenticate/"
 

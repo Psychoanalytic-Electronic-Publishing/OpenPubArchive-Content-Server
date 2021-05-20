@@ -170,14 +170,20 @@ def str_has_author_id(search_str):
     else:
         return False
 
-def str_has_author_firstname_lastname(search_str):
+def str_is_author_mastname(search_str):
     """
-    >>> str_has_author_id("David Tuckett")
+    Checks the database list of mastnames to see if the string matches exactly.
+    
+    >>> str_is_author_mastname("Vaughan Bell")
     True
-    >>> str_has_author_id("Tuckett Fonagy")
+    >>> str_is_author_mastname("David Tuckett")
     True
+    >>> str_is_author_mastname("Tuckett Fonagy")
+    False
     """
-    if pat_str_has_author_id.search(search_str):
+    if is_value_in_field(search_str,
+                         field="art_authors_mast_list_strings",
+                         limit=1):
         return True
     else:
         return False
@@ -309,21 +315,6 @@ def dict_clean_none_terms(d: dict):
       if v is not None
    }
 
-WORDS_NOT_CAPITALIZED = ["the", "and", "but", "in", "for", "a", "an", "at", "by", "to", "etc"]
-
-#-----------------------------------------------------------------------------
-def word_is_noun(word: str, stop_words=WORDS_NOT_CAPITALIZED):
-    ret_val = False
-
-    if len(word) > 3:
-        if word not in stop_words:
-            if word[0].isupper() and not word[1].isupper() and not word[2].isupper():
-                ret_val = True
-            else:
-                ret_val = False
-
-    return ret_val
-
 #-----------------------------------------------------------------------------
 def names_only(phrase: str):
     """
@@ -350,28 +341,7 @@ def names_only(phrase: str):
             logger.warning(f"Value error for {name}. {e}")
     
     return ret_val
-#-----------------------------------------------------------------------------
-def proper_nouns_or_names(phrase: str, stop_words=WORDS_NOT_CAPITALIZED):
-    """
-    See if the words longer than 2 chars and non-numeric start with a capital, but are not all capitals
-    
-    >>> proper_nouns_or_names("The Rain in Spain")
-    True
-    >>> proper_nouns_or_names("Edward Scissorhands")
-    True
-    
-    >>> proper_nouns_or_names("Every dog has its Day")
-    False
-    """
-    ret_val = True
-    for word in phrase:
-        if word not in stop_words:
-            if not word_is_noun(word):
-                ret_val = False
-                break
-
-    return ret_val
-                
+               
                 
 if __name__ == "__main__":
     global options  # so the information can be used in support functions
