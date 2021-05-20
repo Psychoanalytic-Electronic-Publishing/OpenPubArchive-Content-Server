@@ -8,6 +8,42 @@ import requests
 from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestSmartSearch(unittest.TestCase):
+    def test_0_smartsearch_endpoint(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/SmartSearch/?smarttext=aop.033.0079a&abstract=True')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        print (f'Smarttext: {response_info["description"]}')
+        #response_set = r["documentList"]["responseSet"] 
+        assert(response_info["count"] == 1)
+
+    def test_0_name_year_smartsearch_endpoint(self): 
+        full_URL = base_plus_endpoint_encoded('/v2/Database/SmartSearch/?smarttext=Tuckett 1982&sort=rank&limit=15&offset=0')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True) # rank is accepted, same as score
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        assert(response_info["fullCount"] == 1)
+        #print (response_set)
+        for n in response_set:
+            print (n["documentRef"])
+        # Confirm that the request-response cycle completed successfully.
+        
+    def test_0_DOI_smartsearch_endpoint(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/SmartSearch/?smarttext=10.3280/PU2019-004002')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        print (response_info)
+        response_set = r["documentList"]["responseSet"]
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["count"])
+        assert(response_info["count"] == 1)
+
     def test_1_smartsearch_regular(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=OPUS&smarttext=physics%20science%20observations&abstract=True')
         response = requests.get(full_URL, headers=headers)

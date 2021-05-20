@@ -523,6 +523,40 @@ def orclause_paren_wrapper(search_clause):
 
     return ret_val
 
+def page_arg_parser(pgrg=None, pgstart=None, pgend=None):
+    """
+    """
+    ret_val = None
+
+    if pgrg is not None:
+        try:
+            pgrg_parsed = pgrg.split("-")
+            pgstart = pgrg_parsed[0]
+            if len(pgstart) > 0:
+                pgstart = pgstart.strip()
+            else:
+                pgstart = "*"
+
+            try:
+                pgend = pgrg_parsed[1]
+                if len(pgend) > 0:
+                    pgend = pgend.strip()
+                else:
+                    pgend = None
+            except Exception as e:
+                pgend = None
+        except Exception as e:
+            logger.warning(f"Bad pgrg: {pgrg} ({e})")
+        
+    if pgstart and pgend is not None:
+        ret_val = f"({pgstart}-{pgend})"
+    elif pgstart is not None:
+        ret_val = f"({pgstart}-*) || {pgstart}"
+    elif pgend is not None:
+        ret_val = f"(*-{pgend})"
+        
+    return ret_val
+
 def year_arg_parser(year_arg):
     """
     Look for full start/end year ranges submitted in a single field.
@@ -756,6 +790,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   paratext=None,           # search paragraphs as child of scope
                                   parascope=None,          # parent_tag of the para, i.e., scope of the para ()
                                   art_level: int=None,     # Level of record (top or child, as artlevel)
+                                  document_id=None,        # new 2021-05-18 for openurl
                                   like_this_id=None,       # for morelikethis
                                   cited_art_id=None,       # for who cited this
                                   similar_count:int=0,     # Turn on morelikethis for the set
@@ -768,6 +803,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   source_lang_code=None,   # source language code
                                   vol=None,                # match only this volume (integer)
                                   issue=None,              # match only this issue (integer)
+                                  pgrg=None,
+                                  pgstart=None,
+                                  pgend=None, 
                                   author=None,             # author last name, optional first, middle.  Wildcards permitted
                                   title=None,
                                   articletype=None,        # types of articles: article, abstract, announcement, commentary, errata, profile, report, or review
@@ -978,7 +1016,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     
     if sort is not None:
         s = sort
-        mat = "(" + "|".join(opasConfig.PREDEFINED_SORTS.keys()) + ")"
+        mat = "(" + "|".join(schemaMap.PREDEFINED_SORTS.keys()) + ")"
         m = re.match(f"{mat}(\s(asc|desc))?", s, flags=re.IGNORECASE)
         if m: #  one of the predefined sorts was used.
             try:
@@ -986,18 +1024,38 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 direction = m.group(2)
                 if direction is None:
                     try:
-                        direction = opasConfig.PREDEFINED_SORTS[sort_key][1]
+                        direction = schemaMap.PREDEFINED_SORTS[sort_key][1]
                     except KeyError:
                         direction = "DESC" # default
                     except Exception as e:
                         logger.error(f"PREDEFINED_SORTS lookup error {e}")
                         direction = "DESC" # default
                 
-                sort = opasConfig.PREDEFINED_SORTS[sort_key][0].format(direction)
+                sort = schemaMap.PREDEFINED_SORTS[sort_key][0].format(direction)
+
             except Exception as e:
-                logger.warning(f"Predefined sort key {s} not found. Trying it directly against the database.")
+                logger.warning(f"PREDEFINED_SORTS sort key {s} not found. Trying it directly against the database.")
         else:
-            logger.debug(f"No match with predefined sort key; Passing sort through: {s}")
+            mat = "(" + "|".join(schemaMap.SORT_FIELD_MAP.keys()) + ")"
+            m = re.match(f"{mat}(\s(asc|desc))?", s, flags=re.IGNORECASE)
+            if m: #  one of the predefined sorts was used.
+                try:
+                    sort_key = m.group(1).lower()
+                    direction = m.group(2)
+                    if direction is None:
+                        try:
+                            direction = schemaMap.SORT_FIELD_MAP[sort_key][1]
+                        except KeyError:
+                            direction = "DESC" # default
+                        except Exception as e:
+                            logger.error(f"SORT_FIELD_MAP lookup error {e}")
+                            direction = "DESC" # default
+                    
+                    sort = schemaMap.SORT_FIELD_MAP[sort_key][0] + " " + direction
+                except Exception as e:
+                    logger.warning(f"SORT_FIELD_MAP sort key {s} not found. Trying it directly against the database.")
+            else:
+                logger.debug(f"No match with predefined sort key; Passing sort through: {s}")
     #else:
         #sort = f"{opasConfig.DEFAULT_SOLR_SORT_FIELD} {opasConfig.DEFAULT_SOLR_SORT_DIRECTION}"
 
@@ -1158,6 +1216,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if art_level is not None:
         filter_q = f"&& art_level:{art_level} "  # for solr filter fq
+        
+    if document_id is not None:
+        filter_q += f"&& art_id:({document_id}) "
         
     if paratext is not None:
         # set up parameters as a solrQueryTermList to share that processing
@@ -1384,6 +1445,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
+    page_range = page_arg_parser(pgrg=pgrg, pgstart=pgstart, pgend=pgend)
+    if opasgenlib.not_empty(page_range):
+        pgrg = qparse.markup(page_range, "art_pgrg") # convert AND/OR/NOT, set up field query
+        analyze_this = f"&& {pgrg} "
+        filter_q += analyze_this
+        search_analysis_term_list.append(analyze_this)  # Not collecting this!
+
     if opasgenlib.not_empty(author):
         author = author
         # author comes in inside quotes, due to issue #410 regarding faceting.
@@ -1393,8 +1461,11 @@ def parse_search_query_parameters(search=None,             # url based parameter
         #  only one word
         #  not an author ID
         #  has wildcards
-        if smartsearchLib.str_has_one_word(author) or smartsearchLib.quoted_str_has_wildcards(author) and not smartsearchLib.str_has_author_id(author):
+        if smartsearchLib.str_has_one_word(author) or smartsearchLib.quoted_str_has_wildcards(author) \
+          and not smartsearchLib.str_has_author_id(author):
             author = strip_outer_matching_chars(author, '\"')
+        else:
+            pass # allow me to watch these
             
         # if there's or and or not in lowercase, need to uppercase them
         # author = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", author)])
@@ -1606,7 +1677,7 @@ def set_return_fields(solr_query_spec: models.SolrQuerySpec,
     if solr_query_spec.returnFieldSet is not None:
         solr_query_spec.returnFieldSet = solr_query_spec.returnFieldSet.upper()
         
-    if solr_query_spec.returnFieldSet == "DEFAULT":
+    if solr_query_spec.returnFieldSet == "DEFAULT": # keyword default
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
     elif solr_query_spec.returnFieldSet == "TOC":
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_TOC_FIELDS
@@ -1618,7 +1689,7 @@ def set_return_fields(solr_query_spec: models.SolrQuerySpec,
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_STAT_FIELDS
     elif solr_query_spec.returnFieldSet == "CONCORDANCE":
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_CONCORDANCE_FIELDS
-    else: #  true default!
+    else: #  true default, if not specified
         solr_query_spec.returnFieldSet = "DEFAULT"
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
 
@@ -1959,7 +2030,8 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             if result.get("art_doi", None): documentListItem.doi = result.get("art_doi", None)
             documentListItem.issue = result.get("art_iss", None)
             documentListItem.issn = result.get("art_issn", None)
-            # documentListItem.isbn = result.get("art_isbn", None) # no isbn in solr stored data, only in products table
+            documentListItem.isbn = result.get("art_isbn", None)
+            
             # see if using art_title instead is a problem for clients...at least that drops the footnote
             documentListItem.title = result.get("art_title", "")  
             # documentListItem.title = result.get("art_title_xml", "")  
@@ -1983,6 +2055,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             citeas = force_string_return_from_various_return_types(citeas)
             documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
             documentListItem.documentRefHTML = citeas
+            
             # para level is ok, default to archive
             try:
                 if documentListItem.docLevel >= 2:

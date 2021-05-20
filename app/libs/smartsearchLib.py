@@ -66,6 +66,8 @@ pat_str_has_fuzzy_search = re.compile(rx_fuzzy_search, flags=re.I)
 pat_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
 rx_str_has_author_id = r"[A-z]+[,]?\s[A-z]\.?\b"
 pat_str_has_author_id = re.compile(rx_str_has_author_id, flags=re.I)
+rx_str_has_author_name = r"[A-z]+\s[A-z]+\b"
+pat_str_has_author_name = re.compile(rx_str_has_author_name, flags=re.I)
 cores = CORES
 
 class SearchEvaluation(object):
@@ -161,6 +163,18 @@ def str_has_author_id(search_str):
     >>> str_has_author_id("   Tuckett D")
     True
     >>> str_has_author_id("   Tuckett D Fonagy")
+    True
+    """
+    if pat_str_has_author_id.search(search_str):
+        return True
+    else:
+        return False
+
+def str_has_author_firstname_lastname(search_str):
+    """
+    >>> str_has_author_id("David Tuckett")
+    True
+    >>> str_has_author_id("Tuckett Fonagy")
     True
     """
     if pat_str_has_author_id.search(search_str):

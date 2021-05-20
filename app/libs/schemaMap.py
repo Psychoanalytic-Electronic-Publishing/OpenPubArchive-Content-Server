@@ -3,15 +3,78 @@
 # pylint: disable=C0321,C0103,C0301,E1101,C0303,E1004,C0330,R0915,R0914,W0703,C0326
 
 """
-Schemamap
+SchemaMap
+
+Used to map solr fields to more common user names and vice versa
 
 2020.0106.1 - First version
 
+Notes:
+  2020-03-13 - Added Body to USER2SOLR_MAP as a standalone item, in case someone issues it like that through advanced.  But normally, you should use doc to include summaries or appxs
+  2021.0519 - Also see opasConfig, many schema dependent names there.  Consolidated some the sort related ones here
+
 """
-# 2020-03-13 - Added Body to USER2SOLR_MAP as a standalone item, in case someone issues it like that through advanced.  But normally, you should use doc to include summaries or appxs
+
+import re
+
+# specify fields for sort, the variable allows ASC and DESC to be varied during calls.
+SORT_BIBLIOGRAPHIC = "art_authors_citation_str {0}, art_year {0}, art_title_str {0}"
+SORT_YEAR = "art_year {0}"
+SORT_AUTHOR = "art_authors_citation_str {0}"
+SORT_TITLE = "art_title_str {0}"
+SORT_SOURCE = "art_sourcetitlefull_str {0}"
+SORT_CITATIONS = "art_cited_5 {0}"
+SORT_VIEWS = "art_views_last6mos {0}"
+SORT_TOC = "art_sourcetitlefull_str {0}, art_year {0}, art_iss {0}, art_pgrg {0}"
+SORT_SCORE = "score {0}"
+
+# Dict = sort key to use, fields, default direction if one is not specified.
+PREDEFINED_SORTS = {
+    "bibliographic": (SORT_BIBLIOGRAPHIC, "asc"),
+    "year":(SORT_YEAR, "desc"),
+    "author":(SORT_AUTHOR, "asc"),
+    "title":(SORT_TITLE, "asc"),
+    "source":(SORT_SOURCE, "asc"),
+    "citations":(SORT_CITATIONS, "desc"),
+    "views":(SORT_VIEWS, "desc"),
+    "toc":(SORT_TOC, "asc"),
+    "score":(SORT_SCORE, "desc"),
+    # legacy/historical naming for sorts
+    "citecount":(SORT_CITATIONS, "desc"), 
+    "rank":(SORT_SCORE, "desc"), 
+    }
+
+SORT_FIELD_MAP = {
+    "documentid": ('art_id', 'asc'),
+    "doctype": ('art_type', 'asc'),
+    "documentref": (SORT_BIBLIOGRAPHIC, "asc"),
+    "authors": (SORT_BIBLIOGRAPHIC, "asc"),
+    "authormast": ('art_authors_mast', 'asc'),
+    "pepcode": ('art_id', 'asc'),
+    "sourcetitle": ('art_sourcetitlefull', 'asc'),
+    "sourcetype": ('sourcetype', 'asc'),
+    "vol": ('art_vol', 'asc'),
+    "year": ('art_year', 'asc'),
+    "issue": ('art_iss', 'asc'),
+    "lang": ('language', 'asc'),
+    "issn": ('art_issn', 'asc'),
+    "isbn": ('art_isbn', 'asc'),
+    "doi": ('art_doi', 'asc'),
+    "figures": ('art_fig_count', 'desc'),
+    "tables": ('art_tbl_count', 'desc'),
+    "words": ('art_words_count', 'desc'),
+    "referencecount": ('art_reference_count', 'asc'), 
+    "viewslastmonth": ('art_views_last1mos', 'desc'),
+    "viewslastweek": ('art_views_lastweek', 'desc'),
+    "viewslastyear": ('art_views_last12mos', 'desc'),
+    "viewslastcalyear": ('art_views_lastcalyear', 'desc'),
+    "viewslastsixmonths": ('art_views_last6mos', 'desc'),
+    "pgstart": ('art_pgrg', 'asc'),
+    "rank": ('score', 'desc'),
+    "score": ('score', 'desc') # make sure there's a default sort direction of desc when they say score.
+}
 
 SOLR2USER_MAP = {}
-import re
 
 # Map client names to schema names
 USER2SOLR_MAP = {

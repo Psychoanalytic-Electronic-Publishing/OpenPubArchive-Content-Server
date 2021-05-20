@@ -36,6 +36,51 @@ class TestSearch(unittest.TestCase):
         assert(response_info["count"] >= 1)
         print (response_set[0])
 
+    def test_search_author_forward(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Moshe Spero')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        assert(response.ok == True)
+        # print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["count"] >= 1)
+        print (response_set[0])
+
+    def test_search_author_forward_order_with_quotes(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author="Moshe Spero"')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        assert(response.ok == True)
+        # print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["count"] >= 1)
+        print (response_set[0])
+
+    def test_search_author_reverse(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Spero, Moshe')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        assert(response.ok == True)
+        # print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["count"] >= 1)
+        print (response_set[0])
+
+
+    def test_search_author_reverse_inits(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Spero, M')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        assert(response.ok == True)
+        # print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["count"] >= 1)
+        print (response_set[0])
+
     def test_search_long_para(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=OPUS&fulltext1="physics science observations"~25&abstract=True')
         response = requests.get(full_URL, headers=headers)
@@ -61,7 +106,7 @@ class TestSearch(unittest.TestCase):
         print (response_set)
 
     def test_0a_rank(self): 
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=AOP&fulltext1=cried&sort=rank&limit=15&offset=0')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?sourcecode=AOP&fulltext1=cried&sort=rank desc&limit=15&offset=0')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True) # rank is accepted, same as score
         r = response.json()

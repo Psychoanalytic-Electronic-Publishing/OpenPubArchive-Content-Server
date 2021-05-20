@@ -3,6 +3,8 @@ import logging
 #import datetime
 import tempfile
 import os
+from schemaMap import PREDEFINED_SORTS
+
 #import urllib.request
 # from enum import Enum, EnumMeta, IntEnum
 
@@ -231,11 +233,13 @@ DESCRIPTION_ENDDATE = "Find records on or before this date (input date as 2020-0
 DESCRIPTION_ENDYEAR = "Find documents published on or before this year (e.g, 2001)" 
 DESCRIPTION_FACETFIELDS = "List of fields for which to return facet info. Field art_sourcetype, for example, will give results counts by type (journal, book, videostream)."
 DESCRIPTION_FIRST_PAGE = "Document's first page"
+DESCRIPTION_LAST_PAGE = "Document's last page"
 DESCRIPTION_FULLTEXT1 = "Words or phrases (in quotes) across the document (booleans search is not paragraph level). Field specifications are allowed."
 DESCRIPTION_FULLTEXT1_V1 = "Words or phrases (in quotes) in a paragraph in the document."
 DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to return the document. Specify which type of identifier using query param termidtype."
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_ISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals of all kinds and on all media–print and electronic."
+DESCRIPTION_EISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals as electronic (the same as issn in PEP schema)"
 DESCRIPTION_ISBN = "International Standard Book Number. 10 digits up to the end of 2006, now always consist of 13 digits"
 DESCRIPTION_ISSUE = "The issue number if the source has one"
 DESCRIPTION_LIMIT = "Maximum number of items to return."
@@ -260,11 +264,11 @@ DESCRIPTION_REPORT_MATCHSTR="Report specific match string (params for session-vi
 DESCRIPTION_RETURNFORMATS = "The format of the returned full-text (e.g., abstract or document data).  One of: 'HTML', 'XML', 'TEXTONLY'.  The default is HTML."
 DESCRIPTION_RETURN_ABSTRACTS = "Return abstracts in the documentList (Boolean: true or false)"
 DESCRIPTION_SEARCHPARAM = "This is a document request, including search parameters, to show hits"
-DESCRIPTION_SITEMAP_PATH = "Folder or S3 Bucket to put the sitemap"
+DESCRIPTION_SITEMAP_PATH = f"Folder or S3 Bucket to put the sitemap"
 DESCRIPTION_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
 DESCRIPTION_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
 DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that."
-DESCRIPTION_SORT ="Comma separated list of field names to sort by."
+DESCRIPTION_SORT =f"Comma separated list of field names to sort by {tuple(PREDEFINED_SORTS.keys())}."
 DESCRIPTION_SOURCECODE = "The 2-12 character PEP Code (e.g., APA, ANIJP-FR, CPS, PEPTOPAUTHVS), or a Boolean list of codes (e.g., APA OR CPS) or a comma separated list (e.g.: APA, IJP, CPS)"
 DESCRIPTION_SOURCECODE_METADATA_BOOKS = "The 2-3 character PEP Code for the book series (e.g., SE, GW, IPL, NLP, ZBK), or the PEP Code and specific volume number of a book in the series (e.g., GW001, SE006, NLP014, ZBK047 (classic book, specific book assigned number) or * for all."
 DESCRIPTION_SOURCECODE_METADATA_JOURNALS = "The FULL 2-8 character PEP Code of the journal source for matching documents (e.g., APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE) or * for all."
@@ -339,7 +343,7 @@ TITLE_SEARCHPARAM = "Document request from search results"
 TITLE_SITEMAP_PATH = "Where to put the sitemap"
 TITLE_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
 TITLE_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
-TITLE_SORT = "Field names to sort by"
+TITLE_SORT = f"Field names to sort by {tuple(PREDEFINED_SORTS.keys())}."
 TITLE_SOURCECODE = "Series code"
 TITLE_SOURCELANGCODE = "Source language code"
 TITLE_SOURCENAME = "Series name"
@@ -442,18 +446,6 @@ TEMPDIRECTORY = tempfile.gettempdir()
 VIEW_MOSTVIEWED_DOWNLOAD_COLUMNS = "textref, lastweek, lastmonth, last6months, last12months, lastcalyear"
 VIEW_MOSTCITED_DOWNLOAD_COLUMNS = "art_citeas_text, count5, count10, count20, countAll"
 
-# VIEW_PERIOD_LASTWEEK = "lastweek"
-# VIEW_PERIOD_LASTMONTH = "lastmonth"
-# VIEW_PERIOD_LAST6MONTHS = "last6months"
-# VIEW_PERIOD_LAST12MONTHS = "last12months"
-# VIEW_PERIOD_LASTCALYEAR = "lastcalendaryear"
-
-# VIEW_DBNAME_LASTWEEK = "vw_stat_docviews_lastweek"
-# VIEW_DBNAME_LASTMONTH = "vw_stat_docviews_lastmonth"
-# VIEW_DBNAME_LAST6MONTHS = "vw_stat_docviews_lastsixmonths"
-# VIEW_DBNAME_LAST12MONTHS = "vw_stat_docviews_last12months"
-# VIEW_DBNAME_LASTCALYEAR = "vw_stat_docviews_lastcalyear"
-
 #Schema Field Name Suffix for Synonym Searching
 SYNONYM_SUFFIX = "_syn"
 # Must not have spaces
@@ -468,7 +460,9 @@ DEFAULT_MORE_LIKE_THIS_COUNT = 0
 
 # DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, art_title, art_title_xml, art_subtitle_xml, art_author_id, art_authors, art_citeas_xml, art_info_xml, art_sourcecode, art_sourcetitleabbr, art_sourcetitlefull, art_sourcetype, art_level, para_art_id,parent_tag, para, art_vol, art_type, art_vol_title, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_lang, art_doi, art_issn, art_origrx, art_qual, art_kwds, art_cited_all, art_cited_5, art_cited_10, art_cited_20, art_views_lastcalyear, art_views_last1mos, art_views_last6mos, art_views_last12mos, art_views_lastweek, reference_count, file_last_modified, timestamp, score"
 
-DOCUMENT_ITEM_SUMMARY_FIELDS ="""
+# This is the default return, used most of the time.
+# Adding count type fields (2021/5/19) which might be useful to a client
+DOCUMENT_ITEM_SUMMARY_FIELDS =""" 
  art_id, 
  art_title, 
  art_title_xml, 
@@ -495,7 +489,8 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_pgrg, 
  art_lang, 
  art_doi, 
- art_issn, 
+ art_issn,
+ art_isbn,
  art_origrx, 
  art_qual, 
  art_kwds, 
@@ -508,7 +503,15 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_views_last6mos, 
  art_views_last12mos, 
  art_views_lastweek, 
- reference_count, 
+ reference_count,
+ art_fig_count,
+ art_tbl_count,
+ art_kwds_count,
+ art_words_count,
+ art_citations_count,
+ art_ftns_count,
+ art_notes_count,
+ art_dreams_count,
  file_last_modified,
  file_classification,
  timestamp, 
@@ -542,7 +545,8 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
  art_pgrg, 
  art_lang, 
  art_doi, 
- art_issn, 
+ art_issn,
+ art_isbn,
  art_origrx, 
  art_qual, 
  art_kwds, 
@@ -580,7 +584,8 @@ DOCUMENT_ITEM_TOC_FIELDS = """
  art_pgrg, 
  art_lang, 
  art_doi, 
- art_issn, 
+ art_issn,
+ art_isbn,
  art_origrx, 
  art_qual, 
  art_kwds,
@@ -669,17 +674,6 @@ running_head_fmts = {
     'textonly': "({pub_year}). {source_title}{vol}{issue}{pgrg}"
 }
 
-# specify fields for sort, the variable allows ASC and DESC to be varied during calls.
-SORT_BIBLIOGRAPHIC = "art_authors_citation_str {0}, art_year {0}, art_title_str {0}"
-SORT_YEAR = "art_year {0}"
-SORT_AUTHOR = "art_authors_citation_str {0}"
-SORT_TITLE = "art_title_str {0}"
-SORT_SOURCE = "art_sourcetitlefull_str {0}"
-SORT_CITATIONS = "art_cited_5 {0}"
-SORT_VIEWS = "art_views_last6mos {0}"
-SORT_TOC = "art_sourcetitlefull_str {0}, art_year {0}, art_iss {0}, art_pgrg {0}"
-SORT_SCORE = "score {0}"
-
 MAX_SOURCE_LEN = 14
 # search description fields to communicate about the search
 KEY_SEARCH_TYPE = "search_type"
@@ -720,22 +714,6 @@ SS_BROADEN_SEARCH_FIELD_RELATED = (SEARCH_FIELD_RELATED, SEARCH_FIELD_LOCATOR) #
 SS_BROADEN_DICT = {SEARCH_FIELD_RELATED: SS_BROADEN_SEARCH_FIELD_RELATED,
                    SEARCH_FIELD_RELATED_EXPANDED: SS_BROADEN_SEARCH_FIELD_RELATED,
                   }
-
-# Dict = sort key to use, fields, default direction if one is not specified.
-PREDEFINED_SORTS = {
-    "bibliographic": (SORT_BIBLIOGRAPHIC, "asc"),
-    "year":(SORT_YEAR, "desc"),
-    "author":(SORT_AUTHOR, "asc"),
-    "title":(SORT_TITLE, "asc"),
-    "source":(SORT_SOURCE, "asc"),
-    "citations":(SORT_CITATIONS, "desc"),
-    "views":(SORT_VIEWS, "desc"),
-    "toc":(SORT_TOC, "asc"),
-    "score":(SORT_SCORE, "desc"),
-    # legacy/historical naming for sorts
-    "citecount":(SORT_CITATIONS, "desc"), 
-    "rank":(SORT_SCORE, "desc"), 
-    }
 
 #PEPWEB_ABSTRACT_MSG1 = """
 #This is a summary or excerpt from the full text of the article. PEP-Web provides full-text search of the complete articles for

@@ -1374,13 +1374,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                 text_xml = result["text_xml"]
                             except:
                                 text_xml = result.get("para", None)
-    
+                    
                     #if text_xml is None: # PySolrLib doesn't put text in highlight unless there was a term search, so get it here.
                         #text_xml = result.get("text_xml", None)
     
                     if text_xml is not None and type(text_xml) != list:
                         text_xml = [text_xml]
-    
+                       
                     # do this before we potentially clear text_xml if no full text requested below
                     if solr_query_spec.abstractReturn:
                         # we don't want to ever do this (Google!) 2021-04-29 (delete later, if the urge passes)
@@ -1486,6 +1486,17 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         stat["art_views_last6mos"] = count3
                         stat["art_views_last12mos"] = count4
     
+                    # count fields (relatively new, 2021)
+                    stat["reference_count"] = result.get("art_ref_count", 0)
+                    stat["art_fig_count"] = result.get("art_fig_count", 0)
+                    stat["art_tbl_count"] = result.get("art_tbl_count", 0)
+                    stat["art_kwds_count"] = result.get("art_kwds_count", 0)
+                    stat["art_words_count"] = result.get("art_words_count", 0)
+                    stat["art_citations_count"] = result.get("art_citations_count", 0)
+                    stat["art_ftns_count"] = result.get("art_ftns_count", 0)
+                    stat["art_notes_count"] = result.get("art_notes_count", 0)
+                    stat["art_dreams_count"] = result.get("art_dreams_count", 0)
+
                     if stat == {}:
                         stat = None
     

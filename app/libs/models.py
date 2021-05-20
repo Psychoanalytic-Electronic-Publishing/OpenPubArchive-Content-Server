@@ -255,7 +255,7 @@ class DocumentListItem(BaseModel):
     year: str = Field(None, title="Serial Publication Year", description="The four digit year of publication")
     lang: str = Field(None, title="Language", description="The primary language of this article")
     issn: str = Field(None, title="The ISSN", description="The ISSN for the source") # 2020506 Not sure if we should include this, but we are at least already storing it at article level
-    #isbn: str = Field(None, title="The ISBN", description="The ISBN for the source") #  2020506 isbn is not stored at article level, so not now at least
+    isbn: str = Field(None, title="The ISBN", description="The ISBN for the source") 
     doi: str = Field(None, title="Document object identifier", description="Document object identifier, a standard id system admin by the International DOI Foundation (IDF)")
     issue: str = Field(None, title="Serial Issue Number")
     issueSeqNbr: str = Field(None, title="Serial Issue Sequence Number (continuous count)") 
@@ -505,6 +505,12 @@ class ServerStatusItem(BaseModel):
 
 #-------------------------------------------------------
 
+class SiteMapInfo(BaseModel):
+    siteMapIndex: str = Field(None, title="Site Map Index file name")
+    siteMapList: List = Field(None, title="Site Map List of files (filenames)")
+
+#-------------------------------------------------------
+
 class JournalInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few fields
     sourceType: str = Field(None, title="")
     PEPCode: str = Field(None, title="")
@@ -608,7 +614,7 @@ class SolrQuerySpec(BaseModel):
     fileClassification: str = Field(None, title="File Status: free, current, archive, or offsite", description="File Status: free, current, archive, or offsite")
     fullReturn: bool = Field(False, title="Request full length text return", description="Request full length text (XML) return (otherwise, return field length is capped)")
     abstractReturn: bool = Field(False, title="Request return of abstracts or summaries", description="Request return of abstracts or summaries")
-    returnFieldSet: str = Field(None, title="Return field predefined set: DEFAULT, TOC, META, applies only to AdvancedSearch")
+    returnFieldSet: str = Field(None, title="Return field predefined set: DEFAULT, TOC, META, FULL, STAT, CONCORDANCE, applies only to AdvancedSearch. DOCUMENT_ITEM_SUMMARY_FIELDS is default.")
     returnFields: str = Field(None, title="List of return fields (ExtendedSearch Only)", description="Comma separated list of return fields.  Only applies to ExtendedSearch.")
     returnFormat: str = Field("HTML", title="Return type: XML, HTML, TEXT_ONLY", description="Return type applies to abstract and document fields only.")
     returnOptions: dict = Field({}, title="Dictionary of special options for return data (e.g., glossary=False, ...)")

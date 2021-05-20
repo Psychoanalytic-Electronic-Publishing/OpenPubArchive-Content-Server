@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0513.1.Beta2" 
+__version__     = "2021.0519.1.Beta2" 
 __status__      = "Development"
 
 """
@@ -452,7 +452,6 @@ async def admin_set_loglevel(response: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Admin/Reports/{report}", response_model=models.Report, tags=["Admin"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
-@app.get("/v2/Reports/{report}", response_model=models.Report, tags=["Admin", "Deprecated"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
 async def reports(response: Response, 
                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                   report: models.ReportTypeEnum=Path(..., title="Report Requested", description="One of the predefined report names"),
@@ -730,7 +729,7 @@ async def api_openapi_spec(api_key: APIKey = Depends(get_api_key),
     return response
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Admin/Sitemap/", tags=["Admin"], summary="Admin function to generate sitemap")
+@app.get("/v2/Admin/Sitemap/", tags=["Admin"], summary="Admin function to generate sitemap for search engines", response_model=models.SiteMapInfo)
 async def admin_sitemap(response: Response, 
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                         api_key: APIKey = Depends(get_api_key), 
@@ -745,13 +744,26 @@ async def admin_sitemap(response: Response,
     ## Function
        <b>Generate a Sitemap for Google.</b>
 
-       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
+       <b>Secure call requires</b> API key and client_id in the header (use 'client-id' in call header).
+       
 
     ## Return Type
-       saves a sitemap to the location 
+        SiteMapInfo model pointing to sitemapindex and list of files, e.g.,
+            {
+               "siteMapIndex": "X:\\AWS_S3\\AWSProd PEP-Web-Google/sitemapindex.xml",
+               "siteMapList": [
+                 "X:\\AWS_S3\\AWSProd PEP-Web-Google/sitemap1.xml",
+                 "X:\\AWS_S3\\AWSProd PEP-Web-Google/sitemap2.xml",
+                 "X:\\AWS_S3\\AWSProd PEP-Web-Google/sitemap3.xml",
+                 "X:\\AWS_S3\\AWSProd PEP-Web-Google/sitemap4.xml"
+               ]
+            }
 
     ## Status
        This endpoint is working.
+
+    ## Sample Call
+       /v2/Admin/Sitemap/?size=100&max_records=500
 
     ## Notes
        
@@ -763,17 +775,22 @@ async def admin_sitemap(response: Response,
 
     # Need to move these to localsecrets on AWS, then remove this
     try:
-        SITEMAP_OUTPUT_FILE = path + "/sitemap" # don't include xml extension here, it's added
-        SITEMAP_INDEX_FILE = path + "/sitemapindex.xml"
+        SITEMAP_OUTPUT_FILE = path + localsecrets.PATH_SEPARATOR + "sitemap" # don't include xml extension here, it's added
+        SITEMAP_INDEX_FILE = path + localsecrets.PATH_SEPARATOR + "sitemapindex.xml"
     except Exception as e:
-        SITEMAP_OUTPUT_FILE = "../sitemap"             # don't include xml extension here, it's added
-        SITEMAP_INDEX_FILE = "../sitemapindex.xml"
+        SITEMAP_OUTPUT_FILE = ".." + localsecrets.PATH_SEPARATOR + "sitemap"             # don't include xml extension here, it's added
+        SITEMAP_INDEX_FILE = ".." + localsecrets.PATH_SEPARATOR + "sitemapindex.xml"
    
     try:
         # returns a list of the sitemap files (since split)
         sitemap_list = opasSiteMap.metadata_export(SITEMAP_OUTPUT_FILE, total_records=max_records, records_per_file=size)
         sitemap_index = opasSiteMap.opas_sitemap_index(output_file=SITEMAP_INDEX_FILE, sitemap_list=sitemap_list)
-        ret_val = sitemap_index
+        ret_val = models.SiteMapInfo(siteMapIndex=SITEMAP_INDEX_FILE, siteMapList=sitemap_list)
+        #ret_val = {
+                   #"SiteMapIndex" : SITEMAP_INDEX_FILE, 
+                   #"SiteMapList" : sitemap_list
+                   #}
+
     except Exception as e:
         ret_val=f"Sitemap Error: {e}"
         logger.error(ret_val)
@@ -1746,7 +1763,7 @@ async def database_advanced_search(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.post("/v2/Database/ExtendedSearch/", tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_EXTENDED_SEARCH)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, response_model=models.SolrReturnList, 
+@app.post("/v3/Database/ExtendedSearch/", tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_EXTENDED_SEARCH)  #  response_model_exclude_unset=True removed for now: response_model=models.DocumentList, response_model=models.SolrReturnList, 
 async def database_extendedsearch(response: Response,
                                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                   solrcore: str=Body("pepwebdocs", embed=True),
@@ -3388,8 +3405,9 @@ async def open_url(response: Response,
                    #moreinfo: bool=Query(False, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO),
                    client_id:int=Depends(get_client_id), 
                    client_session:str= Depends(get_client_session), 
+                   #open_url arg reference: https://biblio.ugent.be/publication/760060/file/760063
                    issn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_ISSN), 
-                   eissn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_ISSN), 
+                   eissn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_EISSN), 
                    isbn: str=Query(None, title=opasConfig.TITLE_ISBN, description=opasConfig.DESCRIPTION_ISBN), 
                    title: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
                    stitle: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
@@ -3398,9 +3416,10 @@ async def open_url(response: Response,
                    aulast: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
                    volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
                    issue: str=Query(None, title=opasConfig.TITLE_ISSUE, description=opasConfig.DESCRIPTION_ISSUE),
-                   spage:int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_FIRST_PAGE),
-                   # this var name may be an error in the GVPi URL implementation, should it just be spage?
-                   pages:int=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
+                   spage: int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_FIRST_PAGE),
+                   epage: int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_LAST_PAGE),
+                   pages: str=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
+                   artnum: str=Query(None, title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDSINGLE), # return controls 
                    date: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
                    sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                    limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
@@ -3463,12 +3482,14 @@ async def open_url(response: Response,
         startyear = date
     else:
         startyear = None
-        
-    if spage is not None:
-        if smarttext is None:
-            smarttext += f"artpgrg:[{spage} TO *]"
-        else:
-            smarttext += f" && artpgrg:[{spage} TO *]"
+
+    #page_range = opasQueryHelper.page_arg_parser(pgrg=pages, pgstart=spage, pgend=epage)
+    
+    #if page_range is not None and page_range != "":
+        #if smarttext is None:
+            #smarttext = f"art_pgrg:{page_range}"
+        #else:
+            #smarttext += f" && art_pgrg:{page_range}"
         
     opasDocPermissions.verify_header(request, "OpenURL") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
@@ -3490,9 +3511,13 @@ async def open_url(response: Response,
         opasQueryHelper.parse_search_query_parameters(solrQueryTermList=None,
                                                       source_name=sourcename,
                                                       source_type=sourcetype,
-                                                      smarttext=smarttext, 
+                                                      smarttext=smarttext,
+                                                      document_id=artnum, 
                                                       vol=volume,
                                                       issue=issue,
+                                                      pgrg=pages,
+                                                      pgstart=spage,
+                                                      pgend=epage, 
                                                       author=author,
                                                       title=title,
                                                       startyear=startyear,
