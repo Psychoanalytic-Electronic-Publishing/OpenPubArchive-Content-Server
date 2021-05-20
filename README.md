@@ -8,75 +8,44 @@ While the software that's part of this project is open source, the content any i
 
 The project plan is to build a server, written in Python and based on the Apache Solr engine.  It will have a RESTful interface, so that various clients can be written, which may be modules in this project or separate projects.
 
-The rest of this file is a template for the initial project developers to fill in.
-
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
 
 ### Prerequisites
 
-At the moment, the only pre-requisite is having the docker demon installed.
-Once that's taken care of:
-```
-cd /CURRENT/DIRECTORY
-docker-compose up
-```
-will start both MySQL and Solr.
+- The server is written in Python.  
+- It uses Solr as it's own backend.  
+- [FastAPI](https://fastapi.tiangolo.com/) provides a fast, modern, API infrastructure, with a OpenAPI front end for trying out the endpoints.
+- It uses a structured, SQL database for data recording and some configuration data: Currently, either MySQL or AWS RDS
+- The configuration itself is specific to PEP's needs.  The configuration/addressing of these components is in a private .py file called localsecrets.  For PEP, it's been setup so it can be switched quickly between local running on a PC, and running on AWS, or a hybrid of the two.
 
-Currently the FastAPI build goes up via a separate Docker image.  The plan was to merge that into the docker-compose file, but that was not done during our first installation by DevOps.
+### Setup
 
-#TODO DevOPS: The Docker file commands should be translated into docker-compose syntax so all can go up at once.
+Server local install requires Solr, MySQL, and Python.  
 
-To start the Server, you then need to start the docker python process, which is curently a Docker file.
+#TODO DevOPS.
 
-The address:
-http://localhost:8983/solr
+### Schema
 
-should be accessible once the services have started.
-
-The MySQL will be on port 3308 but requires a username and password you can set in the YML file.
-
-#TODO DevOPS: The Solr install should have a password and other security precautions:
-     See https://cwiki.apache.org/confluence/display/solr/SolrSecurity
-     
-#TODO DevOPS: Neither Solr or MySQL should use the published usernames/passwords.
-
-**Please note** that the index will be empty. It is then necessary to copy/move the data for the index, or insert the documents. **The index will be persisted**.
-
-#TODO DevOPS.  Make note of the persistent folders
+There is currently no "sample schema" set provided.  The schemas are included in the repository but are fairly complex and are all very specific to PEP's data.  At the project close, we shall aim to develop a sample schema set.
 
 ### Installing
 
-#TODO DevOPS.  A step by step series of examples shall be provided (eventually here) that tell you how to get a development env running without giving direct security info here.
+#TODO DevOPS.  
 
-Say what the step will be
-
-```
-Give the example
-```
-
-And repeat
-
-```
-until finished
-```
-
-End with an example of getting some data out of the system or using it for a little demo
+A step by step series of examples shall be provided (eventually here) that tell you how to get a development env running without giving direct security info here.
 
 ## Running the tests
 
-Explain how to run the automated tests for this system
+The source includes a set of tests intended to detect broken features during development using the pytest platform.  It is, of course, schema dependent.
 
-#TODO DevOPS - document any testing possible
-
-To test the Python API/Server code, there are both Docstring tests and unittests.  To run the unittests, go to the APP folder and run the batch file testsuite.bat:
+To test the Python API/Server code, there are both docstring tests and unittests.  To run the unittests, go to the test folder and run the batch file testsuite.bat:
 
 ./testsuite - in Windows, or the equiv in Unix environments.  Basically, you must first set the python environment to the env folder and then run the tests.  E.g., from the App folder:
 
 .\env\scripts\activate
 .\env\scripts\python -m unittest discover tests
-
 
 ### Break down into end to end tests
 
@@ -103,7 +72,8 @@ Docker will be used to make deployment and redeployment easy.
 
 * [Python 3]
 * [Solr](http://lucene.apache.org/solr/) - Dependency Management
-* solrpy A convenience Python library for Solr.
+* solrpy A convenience Python library for Solr. - still used for one feature, but due to problems, mostly isolated
+* pysolr A convenience Python library for Solr. - Main library used.
 * Python Web framework - [FastAPI](https://github.com/tiangolo/fastapi) (see [Requirements.txt] in APP for complete list)
 * [MySQL](https://dev.mysql.com/downloads/)
 * [XSLT](https://lxml.de/xpathxslt.html) via LXML for coding source files and transforming them
