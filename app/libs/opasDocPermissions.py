@@ -579,7 +579,7 @@ def get_access_limitations(doc_id,
                             ret_val.accessLimited = False # you can access it!!!
                             # "This current content is available for you to access"
                             ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE 
-                            logger.info("Optimization - session info used to authorize PEPArchive document")
+                            logger.debug("Optimization - session info used to authorize PEPArchive document")
                     except Exception as e:
                         logger.error(f"PEPCurrent document error checking permission: {e}")
 
@@ -596,7 +596,7 @@ def get_access_limitations(doc_id,
                             ret_val.accessLimited = False # you can access it!!!
                             # "This content is available for you to access"
                             ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE
-                            logger.info("Optimization - session info used to authorize PEPArchive document")
+                            logger.debug("Optimization - session info used to authorize PEPArchive document")
                     except Exception as e:
                         logger.error(f"PEPArchive document error checking permission: {e}")
 
@@ -712,10 +712,10 @@ def get_access_limitations(doc_id,
                                         
                     else:
                         # not full-text OR (not authenticated or accessLimited==False)
-                        logger.info(f"No PaDS check needed: Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}")
+                        logger.debug(f"No PaDS check needed: Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}")
 
                 else: # It's open access!
-                    logger.info(f"No PaDS check needed: Document {doc_id} is open access")
+                    logger.debug(f"No PaDS check needed: Document {doc_id} is open access")
         
             except Exception as e:
                 logger.error(f"Issue checking document permission. Possibly not logged in {e}")
