@@ -9,7 +9,6 @@ from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestSearch(unittest.TestCase):
     
-    
     def test_search_fulltext0(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?abstract=true&facetfields=art_year_int%2Cart_views_last12mos%2Cart_cited_5%2Cart_authors%2Cart_lang%2Cart_type%2Cart_sourcetype%2Cart_sourcetitleabbr%2Cglossary_group_terms%2Cart_kwds_str&facetlimit=15&facetmincount=1&formatrequested=XML&fulltext1=text%3A(%22anxiety+hysteria%22~25)&highlightlimit=5&limit=20&offset=0&sort=author&synonyms=false')
         response = requests.get(full_URL, headers=headers)
@@ -33,51 +32,6 @@ class TestSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         kwiclist = r["documentList"]["responseSet"][0]["kwicList"]
         assert(len(kwiclist) > 0)
-        assert(response_info["count"] >= 1)
-        print (response_set[0])
-
-    def test_search_author_forward(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Moshe Spero')
-        response = requests.get(full_URL, headers=headers)
-        r = response.json()
-        assert(response.ok == True)
-        # print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] >= 1)
-        print (response_set[0])
-
-    def test_search_author_forward_order_with_quotes(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author="Moshe Spero"')
-        response = requests.get(full_URL, headers=headers)
-        r = response.json()
-        assert(response.ok == True)
-        # print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] >= 1)
-        print (response_set[0])
-
-    def test_search_author_reverse(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Spero, Moshe')
-        response = requests.get(full_URL, headers=headers)
-        r = response.json()
-        assert(response.ok == True)
-        # print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        assert(response_info["count"] >= 1)
-        print (response_set[0])
-
-
-    def test_search_author_reverse_inits(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Spero, M')
-        response = requests.get(full_URL, headers=headers)
-        r = response.json()
-        assert(response.ok == True)
-        # print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] >= 1)
         print (response_set[0])
 
@@ -139,56 +93,6 @@ class TestSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == False)
         r = response.json()
-
-    def test_1a_search_mixedcase(self):
-        # Send a request to the API server and store the response.
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Greenfield')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        #print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] >= 6)
-        #print (response_set)
-        for n in response_set:
-            print (n["documentRef"])
-        # Confirm that the request-response cycle completed successfully.
-
-    def test_1b_search_lowercase(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=greenfield')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] >= 6)
-        print (response_set[0])
-        # Confirm that the request-response cycle completed successfully.
-
-    def test_1c_search_wildcard(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=gre?nfield')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        # print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] >= 7)
-        # print (response_set)
-        # Confirm that the request-response cycle completed successfully.
-
-    def test_search_journalcode(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Bollas&sourcecode=AOP')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        # print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] == 2)
-        print (response_set[0])
 
     def test_search_author_and_journalcode(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Levin&sourcecode=AOP')
@@ -342,16 +246,6 @@ class TestSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 1)
         print (response_set[0])
-
-    def test_search_facets(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=cooper AND cooper, steven h. OR cooper, steven')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        print (r)
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 70)
 
 if __name__ == '__main__':
     unittest.main()

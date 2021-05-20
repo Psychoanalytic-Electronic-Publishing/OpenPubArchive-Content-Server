@@ -8,6 +8,7 @@ Version: 2020-08-24
 """
 import os.path
 import sys
+import urllib
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests

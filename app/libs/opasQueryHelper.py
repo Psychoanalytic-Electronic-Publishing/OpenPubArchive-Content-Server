@@ -1453,23 +1453,21 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
     if opasgenlib.not_empty(author):
-        author = author
-        # author comes in inside quotes, due to issue #410 regarding faceting.
-        # they can use booleans though, the client strips them in that case
-        # but without a boolean connector, without being stripped, they cannot use a wild card on a name
-        # So, strip if
-        #  only one word
-        #  not an author ID
-        #  has wildcards
-        if smartsearchLib.str_has_one_word(author) or smartsearchLib.quoted_str_has_wildcards(author) \
-          and not smartsearchLib.str_has_author_id(author):
-            author = strip_outer_matching_chars(author, '\"')
-        else:
-            # only do this test if necessary, it would be the slowest of the four
-            if smartsearchLib.str_is_author_mastname(author):
-                author = strip_outer_matching_chars(author, '\"')
-            else: # leave the quotes on.
-                pass # allow me to watch these for now.
+        # temp code for debug.
+        # remove quotes from author field, change to ().
+        print (f"****QueryHelper Before: {author}")
+        author = re.sub("\"([^\"]+?)\"", r"(\1)", author)
+        print (f"****QueryHelper After: {author}")
+        
+        #if smartsearchLib.str_has_one_word(author) or smartsearchLib.quoted_str_has_wildcards(author) \
+          #and not smartsearchLib.str_has_author_id(author):
+            #author = strip_outer_matching_chars(author, '\"')
+        #else:
+            ## only do this test if necessary, it would be the slowest of the four
+            #if smartsearchLib.str_is_author_mastname(author):
+                #author = strip_outer_matching_chars(author, '\"')
+            #else: # leave the quotes on.
+                #pass # allow me to watch these for now.
             
         # if there's or and or not in lowercase, need to uppercase them
         # author = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", author)])
