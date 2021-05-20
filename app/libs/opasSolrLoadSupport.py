@@ -1008,6 +1008,8 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "art_authors" : artInfo.author_list,
                 "art_authors_count" : artInfo.art_authors_count,
                 "art_authors_mast" : non_empty_string(artInfo.art_auth_mast),
+                "art_authors_mast_list" : non_empty_string(artInfo.art_auth_mast_list),
+                "art_authors_mast_list_strings" : non_empty_string(artInfo.art_auth_mast_list),
                 # next two fields may be temp, but I want to compare mast to ids
                 "art_authors_ids" : artInfo.art_author_id_list,
                 "art_authors_ids_str" : non_empty_string(artInfo.art_author_ids_str),
