@@ -25,7 +25,7 @@ import starlette.status as httpCodes # HTTP_ codes, e.g.
 FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
 LOG_CALL_TIMING = True
-OUTPUT_LOCAL_DEBUGGER = True
+LOCAL_TRACE = True
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
@@ -234,6 +234,7 @@ DESCRIPTION_ENDYEAR = "Find documents published on or before this year (e.g, 200
 DESCRIPTION_FACETFIELDS = "List of fields for which to return facet info. Field art_sourcetype, for example, will give results counts by type (journal, book, videostream)."
 DESCRIPTION_FIRST_PAGE = "Document's first page"
 DESCRIPTION_LAST_PAGE = "Document's last page"
+DESCRIPTION_FACETQUERY = 'Facet field(s) limiter using Solr query syntax and facet names, e.g. art_sourcetitleabbr:("Int. J. Psychoanal." OR "Int. Rev. Psycho-Anal." OR "Brit. J. Psychother.").'
 DESCRIPTION_FULLTEXT1 = "Words or phrases (in quotes) across the document (booleans search is not paragraph level). Field specifications are allowed."
 DESCRIPTION_FULLTEXT1_V1 = "Words or phrases (in quotes) in a paragraph in the document."
 DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to return the document. Specify which type of identifier using query param termidtype."
@@ -315,6 +316,7 @@ TITLE_DOCUMENT_ID = "Document ID (e.g., IJP.077.0217A)"
 TITLE_ENDDATE = "End date"
 TITLE_ENDYEAR = "End year"
 TITLE_FACETFIELDS = "List of field names for faceting"
+TITLE_FACETQUERY = "Facet field(s) limiter using Solr query syntax and facet names"
 TITLE_FULLTEXT1 = "Document-wide search"
 TITLE_FULLTEXT1_V1 = "Paragraph based search"
 TITLE_IMAGEID = "Image ID (unique)"

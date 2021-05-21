@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0520.3.Beta2" 
+__version__     = "2021.0521.1.Beta2" 
 __status__      = "Development"
 
 """
@@ -2043,6 +2043,7 @@ async def database_glossary_search_v2(response: Response,
                                       paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
                                       parascope: str=Query("doc", title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
                                       synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
+                                      facetquery: str=Query(None, title=opasConfig.TITLE_FACETQUERY, description=opasConfig.DESCRIPTION_FACETQUERY),
                                       sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                       facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
                                       formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
@@ -2088,6 +2089,7 @@ async def database_glossary_search_v2(response: Response,
                                         parascope=parascope,
                                         similarcount=0, 
                                         synonyms=synonyms,
+                                        facetquery=None, 
                                         sourcename=None, 
                                         sourcecode="ZBK",
                                         volume="69",
@@ -2231,6 +2233,7 @@ async def database_search_v2b( response: Response,
                                paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
                                parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
                                synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
+                               facetquery: str=Query(None, title=opasConfig.TITLE_FACETQUERY, description=opasConfig.DESCRIPTION_FACETQUERY),
                                # filters (Solr query filter)
                                sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
                                sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2), 
@@ -2371,6 +2374,7 @@ async def database_search_v2b( response: Response,
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
+                                                      facetquery=None, 
                                                       vol=volume,
                                                       issue=issue,
                                                       author=author,
@@ -2448,6 +2452,7 @@ async def database_search_v2(response: Response,
                              paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
                              parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
                              synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
+                             facetquery: str=Query(None, title=opasConfig.TITLE_FACETQUERY, description=opasConfig.DESCRIPTION_FACETQUERY),
                              # filters (Solr query filter)
                              sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
                              sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2), 
@@ -2538,11 +2543,13 @@ async def database_search_v2(response: Response,
     if re.search(r"/Search/", request.url._url):
         logger.debug("Search Request: %s", request.url._url)
 
-    if fulltext1 is not None:
-        logger.info("Search Fulltext1: %s", fulltext1)
-        
-    if smarttext is not None:
-        logger.info("Search Smarttext: %s", smarttext)
+    if opasConfig.LOCAL_TRACE:
+        if fulltext1 is not None:
+            print("+****Trace: Search Fulltext1: %s" % fulltext1) # tracing
+        if smarttext is not None:
+            print("+****Trace: Search Smarttext: %s" % smarttext) # tracing
+        if author is not None:
+            print("+****Trace:Search Author: %s" % author) # tracing
 
     analysis_mode = False
 
@@ -2565,6 +2572,7 @@ async def database_search_v2(response: Response,
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
+                                                      facetquery=facetquery, 
                                                       vol=volume,
                                                       issue=issue,
                                                       author=author,
@@ -2668,6 +2676,7 @@ def database_searchanalysis_v2(response: Response,
                                paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
                                parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
                                synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
+                               facetquery: str=Query(None, title=opasConfig.TITLE_FACETQUERY, description=opasConfig.DESCRIPTION_FACETQUERY),
                                # filters (Solr query filter)
                                sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
                                sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2),
@@ -2745,6 +2754,7 @@ def database_searchanalysis_v2(response: Response,
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
+                                                      facetquery=facetquery, 
                                                       vol=volume,
                                                       issue=issue,
                                                       author=author,
@@ -2789,6 +2799,7 @@ def database_searchanalysis_v3(response: Response,
                                paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
                                parascope: str=Query(None, title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
                                synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
+                               facetquery: str=Query(None, title=opasConfig.TITLE_FACETQUERY, description=opasConfig.DESCRIPTION_FACETQUERY),
                                # filters (Solr query filter)
                                sourcename: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
                                sourcecode: str=Query(None, title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE, min_length=2),
@@ -2872,6 +2883,7 @@ def database_searchanalysis_v3(response: Response,
                                                       fulltext1=mod_args.get("fulltext1", None),  # more flexible search, including fields, anywhere in the doc, across paras
                                                       smarttext=mod_args.get("smarttext", None), # experimental detection of what user wants to query
                                                       synonyms=synonyms, 
+                                                      facetquery=None, 
                                                       vol=volume,
                                                       issue=issue,
                                                       author=author,
@@ -2910,6 +2922,7 @@ def database_searchanalysis_v3(response: Response,
 async def database_smartsearch(response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
+                               facetquery: str=Query(None, title=opasConfig.TITLE_FACETQUERY, description=opasConfig.DESCRIPTION_FACETQUERY),
                                # filters, v1 naming
                                sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
@@ -2999,6 +3012,7 @@ async def database_smartsearch(response: Response,
                                        parascope=None,
                                        smarttext=smarttext, 
                                        synonyms=False,
+                                       facetquery=None, 
                                        similarcount=similarcount, 
                                        sourcecode=None,
                                        sourcename=None, 
@@ -3034,6 +3048,7 @@ async def database_smartsearch(response: Response,
 async def database_morelikethis(response: Response, 
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 morelikethis: str=Query(None, title=opasConfig.TITLE_MORELIKETHIS, description=opasConfig.DESCRIPTION_MORELIKETHIS),
+                                facetquery: str=Query(None, title=opasConfig.TITLE_FACETQUERY, description=opasConfig.DESCRIPTION_FACETQUERY),
                                 sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                 abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
                                 similarcount: int=Query(5, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
@@ -3071,6 +3086,7 @@ async def database_morelikethis(response: Response,
                                        parascope=None,
                                        smarttext=morelikethis, 
                                        synonyms=False,
+                                       facetquery=None, 
                                        similarcount=similarcount, 
                                        sourcecode=None,
                                        sourcename=None, 

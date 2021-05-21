@@ -1039,7 +1039,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     ret_status = (200, "OK") # default is like HTTP_200_OK
     # count_anchors = 0
 
-    if 1:
+    if 1: # just to allow folding
         if solr_query_spec.solrQueryOpts is None: # initialize a new model
             solr_query_spec.solrQueryOpts = models.SolrQueryOpts()
     
@@ -1124,8 +1124,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         if solr_query_spec.solrQuery.searchQ is None or solr_query_spec.solrQuery.searchQ == "":
             logger.error(f">>>>>> solr_query_spec.solrQuery.searchQ is {solr_query_spec.solrQuery.searchQ}.  Filter: {solr_query_spec.solrQuery.filterQ} The endpoint request was: {req_url}")
             solr_query_spec.solrQuery.searchQ = "*.*"
-    
-        ## one last cleaning
+        
+        # one last cleaning
         #solr_query_spec.solrQuery.searchQ = solr_query_spec.solrQuery.searchQ.replace(" && *:*", "")
         #solr_query_spec.solrQuery.filterQ = solr_query_spec.solrQuery.filterQ.replace(" && *:*", "")
 
@@ -1146,9 +1146,17 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             if "summaries_xml" not in solr_query_spec.returnFields:
                 return_fields = return_fields + ", summaries_xml"
 
+        if type(solr_query_spec.solrQuery.facetQ) == str: # sometimes coming in as Query(None)
+            if solr_query_spec.solrQuery.facetQ is not None:
+                filterQ = solr_query_spec.solrQuery.filterQ + " && (" + solr_query_spec.solrQuery.facetQ + ")"
+            else:
+                filterQ = solr_query_spec.solrQuery.filterQ
+        else:
+            filterQ = solr_query_spec.solrQuery.filterQ
+            
         solr_param_dict = { 
                             # "q": solr_query_spec.solrQuery.searchQ,
-                            "fq": solr_query_spec.solrQuery.filterQ,
+                            "fq": filterQ,
                             "q.op": solr_query_spec.solrQueryOpts.qOper, 
                             # "debugQuery": solr_query_spec.solrQueryOpts.queryDebug or localsecrets.SOLR_DEBUG,
                             # "defType" : solr_query_spec.solrQueryOpts.defType,
@@ -1156,7 +1164,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             "facet" : facet,
                             "facet.field" : solr_query_spec.facetFields, #["art_lang", "art_authors"],
                             "facet.mincount" : solr_query_spec.facetMinCount,
-                            
                             "mlt" : mlt,
                             "mlt.fl" : mlt_fl,
                             "mlt.count" : mlt_count,
@@ -1228,6 +1235,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         # PySolr does not like None's, so clean them
         solr_param_dict = cleanNullTerms(solr_param_dict)
 
+        if opasConfig.LOCAL_TRACE:
+            print (f"+****SolrQuery: q:{query}, fq:{solr_param_dict['fq']}")
+            print (f"+****Solrfacets:{solr_param_dict.get('facet.field', 'No facets to return')}" )
+            
         # ####################################################################################
         # THE SEARCH!
         results = solr_docs2.search(query, **solr_param_dict)
@@ -1291,7 +1302,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     else: #  search was ok
         try:
             logger.info(f"Search Ok. Result Size:{results.hits}; Search:{solr_query_spec.solrQuery.searchQ}; Filter:{solr_query_spec.solrQuery.filterQ}")
-            scopeofquery = [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ]
+            scopeofquery = solr_query_spec.solrQuery # [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ, solr_query_spec.solrQuery.facetQ]
     
             if ret_status[0] == 200: 
                 documentItemList = []

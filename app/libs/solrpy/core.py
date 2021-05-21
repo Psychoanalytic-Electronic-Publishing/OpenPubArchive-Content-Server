@@ -1,4 +1,5 @@
 from __future__ import print_function
+from opasConfig import LOCAL_TRACE
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -829,7 +830,7 @@ class SearchHandler(object):
                 query.append((key, strify(value)))
         request = urllib.urlencode(query, doseq=True)
         conn = self.conn
-        if 1: # conn.debug:
+        if LOCAL_TRACE:
             logging.info("solrpy request: %s" % urlparse.unquote(request))
 
         try:

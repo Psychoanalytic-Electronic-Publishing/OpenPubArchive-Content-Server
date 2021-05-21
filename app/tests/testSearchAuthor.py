@@ -12,7 +12,7 @@ class TestSearch(unittest.TestCase):
 
     
     def test_search_facets1_base(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=(Ithier AND bournova, klio)')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Ithier&facetquery=art_authors:"bournova, klio"')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -22,7 +22,7 @@ class TestSearch(unittest.TestCase):
         assert(response_info["fullCount"] == 1)
 
     def test_search_facets1_quotes(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=("Béatrice Ithier" AND (bournova, klio))')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author="Béatrice Ithier"&facetquery=art_authors:"bournova, klio"')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -32,7 +32,7 @@ class TestSearch(unittest.TestCase):
         assert(response_info["fullCount"] == 1)
 
     def test_search_facets1_parens(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=((Béatrice Ithier) AND (bournova, klio))')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author="Béatrice Ithier"&facetquery=art_authors:"bournova, klio"')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -41,16 +41,18 @@ class TestSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 1)
 
-    def test_search_facets1_amp(self):
-        encodedarg = urllib.parse.quote_plus("((Béatrice Ithier) && (bournova, klio))")
-        full_URL = base_plus_endpoint_encoded(f'/v2/Database/Search/?author={encodedarg}')
+    def test_search_facets1_multi1(self):
+        encodedarg = urllib.parse.quote_plus("Tuckett")
+        encodedarg2 = 'art_sourcetitleabbr:("Int. J. Psychoanal." OR "Int. Rev. Psycho-Anal." OR "Brit. J. Psychother.") AND art_authors:("taffler, richard" OR "amati mehler, jacqueline")'
+        full_URL = base_plus_endpoint_encoded(f"/v2/Database/Search/?author={encodedarg}&facetquery={encodedarg2}")
+        print (f"Full URL: {full_URL}")
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] == 1)
+        assert(response_info["fullCount"] == 2)
 
     def test_search_facets1_fullnames(self):
         encodedarg = urllib.parse.quote_plus("((Ithier, Béatrice) && (bournova, klio))")

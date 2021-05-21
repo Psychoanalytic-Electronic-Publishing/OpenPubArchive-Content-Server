@@ -38,7 +38,7 @@ class TestSearch(unittest.TestCase):
         r = response.json()
         print (r)
         #"Watching to see how long a query can be here, since the mysql part generates a list of ids OR'd together"
-        qlen = len(r["documentList"]["responseInfo"]["scopeQuery"][0][1])
+        qlen = len(r["documentList"]["responseInfo"]["scopeQuery"][0]["filterQ"])
         print (f"MySQL QueryLen: {qlen}")
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 

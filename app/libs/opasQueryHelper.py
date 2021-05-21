@@ -788,6 +788,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   fulltext1=None,          # term, phrases, and boolean connectors with optional fields for full-text search
                                   smarttext=None,          # experimental detection of search parameters
                                   paratext=None,           # search paragraphs as child of scope
+                                  facetquery=None,         # Solr query syntax to apply against the facet fields
                                   parascope=None,          # parent_tag of the para, i.e., scope of the para ()
                                   art_level: int=None,     # Level of record (top or child, as artlevel)
                                   document_id=None,        # new 2021-05-18 for openurl
@@ -1455,9 +1456,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if opasgenlib.not_empty(author):
         # temp code for debug.
         # remove quotes from author field, change to ().
-        print (f"****QueryHelper Before: {author}")
+        print (f"+****QueryHelper Before: {author}")
         author = re.sub("\"([^\"]+?)\"", r"(\1)", author)
-        print (f"****QueryHelper After: {author}")
+        print (f"+****QueryHelper After: {author}")
         
         #if smartsearchLib.str_has_one_word(author) or smartsearchLib.quoted_str_has_wildcards(author) \
           #and not smartsearchLib.str_has_author_id(author):
@@ -1656,6 +1657,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     solr_query_spec.solrQuery.searchQ = search_q
     solr_query_spec.solrQuery.searchQPrefix = search_q_prefix
     solr_query_spec.solrQuery.filterQ = filter_q
+    solr_query_spec.solrQuery.facetQ = facetquery
     solr_query_spec.solrQuery.semanticDescription = search_result_explanation
     solr_query_spec.solrQuery.analyzeThis = analyze_this
     solr_query_spec.solrQuery.searchAnalysisTermList = search_analysis_term_list
