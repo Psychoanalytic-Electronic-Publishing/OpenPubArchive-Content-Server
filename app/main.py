@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0521.1.Beta2" 
+__version__     = "2021.0521.2.Beta2" 
 __status__      = "Development"
 
 """
@@ -2545,11 +2545,11 @@ async def database_search_v2(response: Response,
 
     if opasConfig.LOCAL_TRACE:
         if fulltext1 is not None:
-            print("+****Trace: Search Fulltext1: %s" % fulltext1) # tracing
+            print("+****Trace: Client Search Fulltext1: %s" % fulltext1) # tracing
         if smarttext is not None:
-            print("+****Trace: Search Smarttext: %s" % smarttext) # tracing
+            print("+****Trace: Client Search Smarttext: %s" % smarttext) # tracing
         if author is not None:
-            print("+****Trace:Search Author: %s" % author) # tracing
+            print("+****Trace: Client Search Author: %s" % author) # tracing
 
     analysis_mode = False
 

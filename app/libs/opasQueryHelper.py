@@ -1454,12 +1454,6 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
     if opasgenlib.not_empty(author):
-        # temp code for debug.
-        # remove quotes from author field, change to ().
-        print (f"+****QueryHelper Before: {author}")
-        author = re.sub("\"([^\"]+?)\"", r"(\1)", author)
-        print (f"+****QueryHelper After: {author}")
-        
         #if smartsearchLib.str_has_one_word(author) or smartsearchLib.quoted_str_has_wildcards(author) \
           #and not smartsearchLib.str_has_author_id(author):
             #author = strip_outer_matching_chars(author, '\"')

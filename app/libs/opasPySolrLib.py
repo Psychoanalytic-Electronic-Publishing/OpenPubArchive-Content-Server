@@ -1236,8 +1236,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         solr_param_dict = cleanNullTerms(solr_param_dict)
 
         if opasConfig.LOCAL_TRACE:
-            print (f"+****SolrQuery: q:{query}, fq:{solr_param_dict['fq']}")
-            print (f"+****Solrfacets:{solr_param_dict.get('facet.field', 'No facets to return')}" )
+            print (f"+****Solr Query: q:{query}, fq:{solr_param_dict['fq']}")
+            print (f"+****Solr facets:{solr_param_dict.get('facet.field', 'No facets to return')}" )
             
         # ####################################################################################
         # THE SEARCH!
