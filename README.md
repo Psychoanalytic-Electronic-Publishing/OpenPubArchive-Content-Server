@@ -1,12 +1,25 @@
-# OpenPubArchive - Open Publications Archive Software (OPAS) 
+# OpenPubArchive - Open Publications Archive (Content) Server (OPAS)
  
-(Software for online publishing of journal archives)
+Software for producing online searchable archives of academic publications (including journals, books and transcribed videos).
 
-The purpose of this project is to produce software to publish an archive of journals to the web.  The first version is based on the requirements of Psychoanalytic Electronic Publishing (PEP), a non-profit company, who currently operate www.PEP-Web.org via commercial software to publish journals and books in the subject domain of Psychoanalysis.  The goal is to rebuild and replace that software with a completely open source alternative.  This project is sponsored and directed initially by PEP.
+The purpose of this project is to produce software to provide a searchable archive of academic publications on the web.  The supplied version is based on the requirements for academic publications in the area of Psychoanalysis, but it should be easily generalizable to any academic area.  Specifically, this software is designed and developed based on the requirements of Psychoanalytic Electronic Publishing (PEP), a non-profit company, who currently operate www.PEP-Web.org via commercial software to publish journals and books in the subject domain of Psychoanalysis. This project was completely sponsored by PEP.
 
 While the software that's part of this project is open source, the content any implementation may host does not need to be free or open source.  In the case of PEP, the content to be hosted is not, which will drive at least the default configuration described below.
 
-The project plan is to build a server, written in Python and based on the Apache Solr engine.  It will have a RESTful interface, so that various clients can be written, which may be modules in this project or separate projects.
+The server is written in Python and based on the Apache Solr full-text search engine, and a MySQL based database, with a RESTful interface.  It exposes all functionalty as an API, so that various clients can be written, which may be modules in this project or separate projects.
+
+All references to the distribution below use the main folder, openpubarchive, as the root (.)
+
+## Primary Components
+
+1) Server with Restful API written in Python 3 using FastAPI - this is the main component, it provides an API to do queries against the journal, books, and videos stored
+   `./app/main.py`
+2) A Python 3 app for loading the Solr and MySQL database written in Python 3
+   `./app/opasDataLoader/opasDataLoader.py`
+3) A Python 3 app for updating statistical data kept about usage, to be run after opasDataLoader, and weekly or more often to update statistics   
+   `./app/opasDataUpdateStat/opasDataUpdateStat.py`
+4) A Python 3 app for copying the api_client_configs table from a staging DB (MySQL) to the Productin DB (MySQL) to transfer settings when "pushing" admin configurations from Stage to Production
+   `./app/opasPushSettings/opasPushSettingsToProduction.py`
 
 ## Getting Started
 
@@ -20,11 +33,51 @@ These instructions will get you a copy of the project up and running on your loc
 - It uses a structured, SQL database for data recording and some configuration data: Currently, either MySQL or AWS RDS
 - The configuration itself is specific to PEP's needs.  The configuration/addressing of these components is in a private .py file called localsecrets.  For PEP, it's been setup so it can be switched quickly between local running on a PC, and running on AWS, or a hybrid of the two.
 
-### Setup
+### General Install Instructions
 
-Server local install requires Solr, MySQL, and Python.  
+Server local install requires a Solr version 8.x or newer install, a MySQL compatible database (including AWS RDS), and Python 3. A list of requirements for Python libraries is in file requirements.txt
 
 #TODO DevOPS.
+
+1. Download the OpenPubArchive-Content-Server (API) source
+   Go to a local folder where you want to install in a subfolder, and run:
+
+   `git https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server.git`
+
+2. Install Solr
+    The repository contains a sample docker-compose.yml file if you would like to install via that.  
+    The PEP schemas for three Solr cores (pepwebdocs, pepwebauthors, pepwebglossary are included).  The compose file points to a local folder where you can persist the solr database (if you point to wherever you put folder ./solrCoreConfigurations/data, when Solr is started, the schemas will load automatically.)
+
+    version: '3.3'
+    services:
+      solr:
+          image: solr:latest
+          environment:
+              SOLR_JAVA_MEM: "-Xms1g -Xmx1g"
+          volumes:
+              - ./solrCoreConfigurations/data:/var/solr/data/
+          ports:
+              - "8983:8983"
+          command: solr-foreground
+          entrypoint: "docker-entrypoint.sh"
+          restart: always
+
+
+    # Names our volume
+    volumes:
+      solrdata:
+          driver: local
+          driver_opts:
+              type: bind
+              device: ./solrCoreConfigurations/data
+
+3. Install or Set up a MySQL compatible database (e.g., MySQL or RDS)
+    a. On AWS, PEP uses RDS.
+5. Load the SQL schemafile into MySQL.  It can be found in the ./sql folder
+6. Install the OPAS app and FastAPI environment (see the included Dockerfile, which starts the API Server)
+   a. Configure the Dockerfile to point to where you want the install to go
+   b. Rename the supplied localsecrets file, `localsecrets_fillin_and_change_name_to_localsecrets` to `localsecrets.py`
+   c. Customize the localsecrets.py file to point to the Solr and MySQL database and provide the usernames and passwords that provide full access.
 
 ### Schema
 
@@ -71,8 +124,8 @@ Docker will be used to make deployment and redeployment easy.
 ## Built With
 
 * [Python 3]
-* [Solr](http://lucene.apache.org/solr/) - Dependency Management
-* solrpy A convenience Python library for Solr. - still used for one feature, but due to problems, mostly isolated
+* [Solr](http://lucene.apache.org/solr/)
+* solrpy A convenience Python library for Solr. - original library used--still used for one feature, but due to some problems, switched to pysolr.
 * pysolr A convenience Python library for Solr. - Main library used.
 * Python Web framework - [FastAPI](https://github.com/tiangolo/fastapi) (see [Requirements.txt] in APP for complete list)
 * [MySQL](https://dev.mysql.com/downloads/)
@@ -86,7 +139,9 @@ Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c6
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) standards for versioning. We will use the build date as year.moday as the first two parts of the version numbers followed by a sequential differentiating number for any given day in case there are more than one builds for that day.
+We use a simple date + build number version numbers during Version 1 development: 
+
+We will prefix the date to [SemVer](http://semver.org/) standards for versioning with the first release version. 
 
 For the versions available, see the [tags on this repository](https://githuhttps://github.com/Psychoanalytic-Electronic-Publishing/openpubarchive/tags). 
 
