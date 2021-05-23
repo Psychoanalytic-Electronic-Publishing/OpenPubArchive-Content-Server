@@ -1,8 +1,10 @@
 # OpenPubArchive - Open Publications Archive (Content) Server (OPAS)
  
-Software for producing online searchable archives of academic publications (including journals, books and transcribed videos).
+Software for producing and providing a content server with a database of searchable archives of academic publications (including journals, books and transcribed videos).
 
-The purpose of this project is to produce software to provide a searchable archive of academic publications on the web.  The supplied version is based on the requirements for academic publications in the area of Psychoanalysis, but it should be easily generalizable to any academic area.  Specifically, this software is designed and developed based on the requirements of Psychoanalytic Electronic Publishing (PEP), a non-profit company, who currently operate www.PEP-Web.org via commercial software to publish journals and books in the subject domain of Psychoanalysis. This project was completely sponsored by PEP.
+The purpose of this project is to produce software to provide a searchable archive of academic publications on the web.  The supplied version is based on the requirements for academic publications in the area of Psychoanalysis, but it should be easily generalizable to any academic area.  Specifically, this software is designed and developed based on the requirements of Psychoanalytic Electronic Publishing (PEP), a non-profit company, who currently operate www.PEP-Web.org via commercial software to publish journals and books in the subject domain of Psychoanalysis. This project was completely sponsored by PEP.  
+
+PEP originally used v1 of the API in this project to provide an API around it's original journal database, which was written by Global Village Publishing and based on DTSearch.  When PEP needed to replace that system, we decided to develop and make the content server open source.
 
 While the software that's part of this project is open source, the content any implementation may host does not need to be free or open source.  In the case of PEP, the content to be hosted is not, which will drive at least the default configuration described below.
 
