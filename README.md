@@ -84,13 +84,18 @@ These instructions will get you a copy of the project up and running on your loc
     a. On AWS, PEP uses RDS.
 5. Load the SQL schemafile into MySQL.  It can be found in the ./sql folder
 6. Install the OPAS app and FastAPI environment (see the included Dockerfile, which starts the API Server)
-   a. Configure the Dockerfile to point to where you want the install to go
-   b. Rename the supplied localsecrets file, `localsecrets_fillin_and_change_name_to_localsecrets` to `localsecrets.py`
-   c. Customize the localsecrets.py file to point to the Solr and MySQL database and provide the usernames and passwords that provide full access.
+   1. Configure the Dockerfile to point to where you want the data volume to be. Make sure the provided schemas are in the data volume referenced, or copy them there in scripts.
+   2. Rename the supplied localsecrets file, `localsecrets_fillin_and_change_name_to_localsecrets` to `localsecrets.py`
+   3. Customize the localsecrets.py file to point to the Solr and MySQL database and provide the usernames and passwords that provide full access.
 
 ### Schema
 
 There is currently no "sample schema" set provided.  The schemas are included in the repository but are fairly complex and are all very specific to PEP's data.  At the project close, we shall aim to develop a sample schema set.
+
+The current schemas provided are the PEP-Web schemas:
+1. pep-web-docs - the main document (book, article and transcribed video) solr core/database 
+2. pep-web-glossary - the pep consolidated glossary solr core/database used by the glossary endpoint.
+3. pep-web-authors - a database of article authors in a solr core/database
 
 ### Installing
 
