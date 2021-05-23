@@ -55,7 +55,8 @@ These instructions will get you a copy of the project up and running on your loc
 2. Install Solr
     The repository contains a sample docker-compose.yml file if you would like to install via that.  
     The PEP schemas for three Solr cores (pepwebdocs, pepwebauthors, pepwebglossary are included).  The compose file points to a local folder where you can persist the solr database (if you point to wherever you put folder ./solrCoreConfigurations/data, when Solr is started, the schemas will load automatically.)
-
+    
+```
     version: '3.3'
     services:
       solr:
@@ -78,7 +79,7 @@ These instructions will get you a copy of the project up and running on your loc
           driver_opts:
               type: bind
               device: ./solrCoreConfigurations/data
-
+```
 3. Install or Set up a MySQL compatible database (e.g., MySQL or RDS)
     a. On AWS, PEP uses RDS.
 5. Load the SQL schemafile into MySQL.  It can be found in the ./sql folder
@@ -101,18 +102,16 @@ A step by step series of examples shall be provided (eventually here) that tell 
 
 The source includes a set of tests intended to detect broken features during development using the pytest platform.  It is, of course, schema dependent.
 
-To test the Python API/Server code, there are both docstring tests and unittests. To run the unittests, go to the test folder and run the batch file testsuite.bat:
+To test the Python API/Server code, there are both docstring tests and unittests. 
 
-./testsuite - in Windows, or the equiv in Unix environments.  Basically, you must first set the python environment to the env folder and then run the tests.  E.g., from the App folder:
+To run the unittests, you must first set the python environment to the env folder and then run the tests.  E.g., from the App folder:
 
+```
 .\env\scripts\activate
 .\env\scripts\python -m unittest discover tests
+```
 
-## Built With
-
-## Contributing
-
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+From Windows you can also just run the batch file `testsuite.bat` to do all of the above for testing.
 
 ## Versioning
 
