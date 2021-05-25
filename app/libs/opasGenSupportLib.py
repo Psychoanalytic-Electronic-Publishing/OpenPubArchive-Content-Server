@@ -523,11 +523,14 @@ def parens_outer(arg):
     >>> parens_outer("   ((a) and (b))    ")
     True
     """
-    arg_stripped = arg.strip()
-    if arg_stripped[0] == "(" and arg_stripped[-1] == ")":
-        # should not be balanced now if there are outer ()
-        return parens_balanced(arg_stripped[1:-1])
-    else:
+    try:
+        arg_stripped = arg.strip()
+        if arg_stripped[0] == "(" and arg_stripped[-1] == ")":
+            # should not be balanced now if there are outer ()
+            return parens_balanced(arg_stripped[1:-1])
+        else:
+            return False
+    except:
         return False
         
 def in_parens(arg):
@@ -570,13 +573,23 @@ def one_term(arg):
     True
     """
     ret_val = True
-    try:
-        if " " not in arg:
-            ret_val = True
+    std_arg = arg
+    if not isinstance(arg, str):
+        try:
+            std_arg = str(arg)
+        except Exception as e:
+            logger.warning(f"Error converting non-string term {e}. Perhaps data type issue.")
         else:
-            ret_val = False
-    except Exception as e:
-        logger.warning(f"Error checking one term {e}. Perhaps data type issue.")
+            std_arg = None
+
+    if std_arg is not None:
+        try:
+            if " " not in arg:
+                ret_val = True
+            else:
+                ret_val = False
+        except Exception as e:
+            logger.warning(f"Error checking one term {e}. Perhaps data type issue.")
         
     return ret_val
 
@@ -658,6 +671,123 @@ def is_empty(arg):
         return True
     else:
         return False
+
+
+#----------------------------------------------------------------------------
+def get_author_list_comma_separated(no_spaces_cited_list):
+    """
+    
+      >>> test="Goldberg,E.L.,Myers,W.A.,Zeifman,I."
+      >>> get_author_list_comma_separated(test)
+      [('Goldberg,E.L.', 'Goldberg', 'E.L.'), ('Myers,W.A.', 'Myers', 'W.A.'), ('Zeifman,I.', 'Zeifman', 'I.')]
+      >>> test="Goldberg,E.L."
+      >>> get_author_list_comma_separated(test)
+      [('Goldberg,E.L.', 'Goldberg', 'E.L.')]
+      >>> test="Goldberg,E.L.,Myers,W.A. and Zeifman,I."
+      >>> get_author_list_comma_separated(test)
+      [('Goldberg,E.L.', 'Goldberg', 'E.L.'), ('Myers,W.A.', 'Myers', 'W.A.'), ('Zeifman,I.', 'Zeifman', 'I.')]
+      >>> test="Goldberg, E.L., Myers,W.A., Zeifman,I."
+      >>> get_author_list_comma_separated(test)
+      [('Goldberg,E.L.', 'Goldberg', 'E.L.'), ('Myers,W.A.', 'Myers', 'W.A.'), ('Zeifman,I.', 'Zeifman', 'I.')]
+      >>> test="Goldberg,E.L.Myers,W.A.Zeifman,I."
+      >>> get_author_list_not_comma_separated(test)
+      [('Goldberg,E.L.', 'Goldberg', 'E.L.'), ('Myers,W.A.', 'Myers', 'W.A.'), ('Zeifman,I.', 'Zeifman', 'I.')]
+      
+    """
+
+    if " " in no_spaces_cited_list:
+        no_spaces_cited_list = re.sub(" ", "", no_spaces_cited_list)
+        
+    rxpat = "(([^,]+?),((?:[A-Z]\.){1,3})(?:,|and)?)+?"
+
+    ret_val = re.findall(rxpat, no_spaces_cited_list)
+    # just first ones:
+    # ret_val0 = [x[0][-1] for x in ret_val]
+    return ret_val
+
+
+#----------------------------------------------------------------------------
+def get_author_list_not_comma_separated(no_spaces_cited_list):
+    """
+    
+      >>> test="Goldberg,E.L.Myers,W.A.Zeifman,I."
+      >>> get_author_list_not_comma_separated(test)
+      [('Goldberg,E.L.', 'Goldberg', 'E.L.'), ('Myers,W.A.', 'Myers', 'W.A.'), ('Zeifman,I.', 'Zeifman', 'I.')]
+      >>> test="Goldberg,E.L."
+      >>> get_author_list_not_comma_separated(test)
+      [('Goldberg,E.L.', 'Goldberg', 'E.L.')]
+      >>> test="Goldberg, E.L. Myers,W.A. Zeifman,I."
+      >>> get_author_list_not_comma_separated(test)
+      [('Goldberg,E.L.', 'Goldberg', 'E.L.'), ('Myers,W.A.', 'Myers', 'W.A.'), ('Zeifman,I.', 'Zeifman', 'I.')]
+      
+    """
+
+    if " " in no_spaces_cited_list:
+        no_spaces_cited_list = re.sub(" ", "", no_spaces_cited_list)
+        
+    rxpat = "(([^,]+?),((?:[A-Z]\.){1,3}))+?"
+
+    ret_val = re.findall(rxpat, no_spaces_cited_list)
+
+    return ret_val
+
+#----------------------------------------------------------------------------
+def get_author_list_and_separated(cited_list):
+    """
+    
+      >>> test="Goldberg,E.L. and Zeifman,I."
+      >>> get_author_list_and_separated(test)
+      [('Goldberg,E.L.', '', ''), ('Zeifman,I.', '', '')]
+      >>> test="Goldberg,E.L."
+      >>> get_author_list_and_separated(test)
+      [('Goldberg,E.L.', '', '')]
+      
+      >>> test="Goldberg, E.L. and Myers,W.A. and Zeifman,I."
+      >>> get_author_list_and_separated(test)
+      [('Goldberg, E.L.', '', ''), ('Myers,W.A.', '', ''), ('Zeifman,I.', '', '')]
+      
+      >>> test="Eugene L. Goldberg, Wayne A. Myers and Israel Zeifman"
+      >>> get_author_list_and_separated(test)
+      [('Goldberg, E.L.', '', ''), ('Myers,W.A.', '', ''), ('Zeifman,I.', '', '')]
+      
+
+    """
+    ret_val = None
+
+    if " and " in cited_list:
+        ret_val = cited_list.split(" and ")
+    elif " AND " in cited_list:
+        ret_val = cited_list.split(" and ")
+    else:
+        ret_val = cited_list.split(" ")
+        
+    if " " in ret_val:
+        ret_val = re.sub(" ", "", ret_val)
+    
+    if ret_val is not None:
+        ret_val = [(x, '', '') for x in ret_val]
+        
+    return ret_val
+
+def another_citation_parser(arg):
+    """
+      >>> test="Eugene L. Goldberg, Wayne A. Myers and Israel Zeifman"
+      >>> another_citation_parser(test)
+      ['Eugene L. Goldberg', ' Wayne A. Myers', 'Israel Zeifman']
+      
+      >>> test="Goldberg, E.L. and Myers,W.A. and Zeifman,I."
+      >>> another_citation_parser(test)
+
+    """
+    # are there initials?
+    pat1 = "(\w{2,}\s(:?(\w\.)*?)?\s\w{3,})+"
+    pat2 = "(?:and\s)((\w{2,}\s(?:(\w\.){0,2}\s?)\w{3,}))"
+    names = re.split(",|\s+and\s+", arg, re.I)
+    print (names)
+    ret_val1 = re.findall(pat1, arg, flags=re.I)
+    ret_val2 = re.findall(pat2, arg, flags=re.I)
+    return ret_val1, ret_val2
+    
 
 # -------------------------------------------------------------------------------------------------------
 # run it!

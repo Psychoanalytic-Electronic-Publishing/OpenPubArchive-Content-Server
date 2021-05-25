@@ -152,7 +152,7 @@ def cleanup_solr_query(solrquery):
     'body_xml:"Evenly Suspended Attention"~25 && body_xml:tuckett'
     
     >>> cleanup_solr_query('body_xml:"Even and Attention"~25 && body_xml:tuckett')   
-    'body_xml:(Even && Attention) && body_xml:tuckett'
+    'body_xml:"Even and Attention"~25 && body_xml:tuckett'
     
     """
     ret_val = solrquery.strip()
@@ -183,13 +183,15 @@ def cleanup_solr_query(solrquery):
 def remove_outer_parens(s):
     """
     If there are outer parens when we don't need them, get rid of them
+    Only one set
     
     >>> a = "(1910-1920)"
     >>> remove_outer_parens(a)
+    '1910-1920'
     
     """
     ret_val = s
-    m = re.match("\s*\(+(?P<inside_data>.*)\)+\s*", s)
+    m = re.match("\s*\((?P<inside_data>.*)\)\s*", s)
     if m:
         ret_val = m.group("inside_data")
     
@@ -305,11 +307,11 @@ def parse_to_query_term_list(str_query):
       
       NOTE: this is only used by testSearchSyntax to produce term_lists!
       
-    >>> str = "dreams_xml:mother and father and authors:David Tuckett and Nadine Levinson"
+    >>> str = "dreams_xml:mother AND father AND authors:David Tuckett AND Nadine Levinson"
     >>> parse_to_query_term_list(str)
     [SolrQueryTerm(connector=' && ', subClause=[], field='dreams_xml', words='mother && father', parent=None, synonyms=False, synonyms_suffix='_syn'), SolrQueryTerm(connector='AND', subClause=[], field='authors', words='David Tuckett && Nadine Levinson', parent=None, synonyms=False, synonyms_suffix='_syn')]
 
-    >>> str = "dreams_xml:(mother and father)"
+    >>> str = "dreams_xml:(mother AND father)"
     >>> parse_to_query_term_list(str)
     [SolrQueryTerm(connector=' && ', subClause=[], field='dreams_xml', words='(mother && father)', parent=None, synonyms=False, synonyms_suffix='_syn')]
     
@@ -357,7 +359,7 @@ class QueryTextToSolr():
       parentheses for grouping the above
     
     >>> qs = QueryTextToSolr()
-    >>> qs.boolConnectorsToSymbols("a and band")
+    >>> qs.bool_ops_to_symbols("a and band")
     'a && band'
     
     >>> qs.markup("dog -mouse", field_label="text_xml")
@@ -414,7 +416,7 @@ class QueryTextToSolr():
                 logger.error(f"Processing error: {e}")
         return ret_val    
 
-    def boolConnectorsToSymbols(self, str_input):
+    def bool_ops_to_symbols(self, str_input):
         ret_val = str_input
         if isinstance(str_input, str):
             if opasgenlib.not_empty(ret_val) and not opasgenlib.in_quotes(ret_val):
@@ -424,12 +426,21 @@ class QueryTextToSolr():
         
         return ret_val
         
+    def remove_spaces(self, str_input):
+        ret_val = self.bool_ops_to_symbols(str_input)
+        ret_val = ret_val.replace(" ", "")
+        ret_val = ret_val.replace("||", " || ")
+        ret_val = ret_val.replace("&&", " && ")
+        ret_val = ret_val.replace("NOT", " NOT ") # upper case a must
+        
+        return ret_val
+
     def markup(self, str_input, field_label=None, field_thesaurus=None, quoted=False):
         
         bordered = opasgenlib.parens_outer(str_input) or opasgenlib.in_quotes(str_input) or opasgenlib.one_term(str_input) or opasgenlib.in_brackets(str_input)
 
         if quoted == False:
-            str_input_mod = self.boolConnectorsToSymbols(str_input)
+            str_input_mod = self.bool_ops_to_symbols(str_input)
             # str_input_mod = self.wrap_clauses(str_input_mod)
             if field_label is not None:
                 if not bordered: 
@@ -441,11 +452,11 @@ class QueryTextToSolr():
         else:
             if field_label is not None:
                 if not bordered:
-                    ret_val = self.boolConnectorsToSymbols(f'{field_label}:"({str_input})"')
+                    ret_val = self.bool_ops_to_symbols(f'{field_label}:"({str_input})"')
                 else:
-                    ret_val = self.boolConnectorsToSymbols(f'{field_label}:"{str_input}"')
+                    ret_val = self.bool_ops_to_symbols(f'{field_label}:"{str_input}"')
             else:
-                ret_val = self.boolConnectorsToSymbols(f'"{str_input}"')
+                ret_val = self.bool_ops_to_symbols(f'"{str_input}"')
 
         # watch for - inside parens
         ret_val = re.sub(r"\(\-([A-Z]+)", "-(\g<1>", ret_val)
@@ -569,9 +580,9 @@ def year_arg_parser(year_arg):
         1970
 
     >>> year_arg_parser("=1955")
-    '&& ( art_year_int:=1955 )'
+    '&& ( art_year_int:(=1955) )'
     >>> year_arg_parser("1970")
-    '&& ( art_year_int:1970 )'
+    '&& ( art_year_int:(1970) )'
     >>> year_arg_parser("-1990")
     '&& ( art_year_int:[* TO 1990] )'
     >>> year_arg_parser("1980-")
@@ -703,7 +714,7 @@ def remove_proximity_around_booleans(query_str):
 
     >>> a = 'body_xml:"Even and Attention"~25 && body_xml:tuckett'
     >>> remove_proximity_around_booleans(a)
-    'body_xml:(Even and Attention) && body_xml:tuckett'
+    'body_xml:"Even and Attention"~25 && body_xml:tuckett'
     
     """
     srch_ptn = r'\"([A-z\s0-9\!\@\*\~\-\&\|\[\]]+)\"~25'
@@ -810,7 +821,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   author=None,             # author last name, optional first, middle.  Wildcards permitted
                                   title=None,
                                   articletype=None,        # types of articles: article, abstract, announcement, commentary, errata, profile, report, or review
-                                  datetype=None,           # not implemented
+                                  # datetype=None,           # not implemented from API v1
                                   startyear=None,          # can contain complete range syntax
                                   endyear=None,            # year only.
                                   citecount: str=None,     # can include both the count and the count period, e.g., 25 in 10 or 25 in ALL
@@ -873,8 +884,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     >>> search = parse_search_query_parameters(journal="IJP", vol=57, author="Tuckett")
     >>> search.solrQuery.analyzeThis
-    '(art_authors_text:(Tuckett) || art_authors_citation:(Tuckett))'
-    
+    '((art_authors_text:Tuckett) || (art_authors_citation_list_strings_sql:(Tuckett) || art_authors_ids_strings_sql:(Tuckett) || art_authors_mast_list_strings_sql:(Tuckett)))'
+
     """
     artLevel = 1 # Doc query, sets to 2 if clauses indicate child query
     search_q_prefix = ""
@@ -1150,8 +1161,31 @@ def parse_search_query_parameters(search=None,             # url based parameter
         
                 art_authors = search_dict.get("author_list")
                 if art_authors is not None:
-                    if author is None:
-                        author = art_authors
+                    try:
+                        #lastnames = [x[1] for x in art_authors]
+                        #authorids = [x for x in art_authors]
+                        authorids = art_authors
+                    except Exception as e:
+                        logging.warning(f"Error getting author names: {e}")
+                    else:
+                        authors_bool = ""
+                        for n in authorids:
+                            n_nospaces = re.sub(" ", "", n)
+                            if authors_bool == "":
+                                authors_bool = f'("{n}" '
+                                authors_bool_nospaces = f'({n_nospaces}* ' # author id with no spaces
+                            else:
+                                authors_bool += f'&& "{n}" '
+                                authors_bool_nospaces += f'&& {n_nospaces}* ' # author id with no spaces
+                                
+                        if authors_bool != "":
+                            authors_bool += ")"
+                            authors_bool_nospaces += ")"
+                            # _nospaces for special space removed solr schema fields, of type string_sql
+                            filter_q += f"&& (art_authors:({authors_bool}) || art_authors_ids_strings_sql:({authors_bool_nospaces}) || art_authors_citation_list_strings_sql:({authors_bool_nospaces}) || art_authors_mast_list_strings_sql:({authors_bool_nospaces})) "
+                            
+                    #if author is None:
+                        #author = art_authors
                 
                 art_author = search_dict.get("author")
                 if art_author is not None:
@@ -1349,8 +1383,6 @@ def parse_search_query_parameters(search=None,             # url based parameter
             fulltext1 = fulltext1.replace("text_xml_offsite:", "text_xml_offsite_syn:")
             
         analyze_this = f"&& {fulltext1} "
-        #if smart_to_fulltext1 is not None:
-            #analyze_this += f"&& {smart_to_fulltext1} "
             
         if artLevel == 1:
             search_q += analyze_this
@@ -1454,25 +1486,32 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
     if opasgenlib.not_empty(author):
-        #if smartsearchLib.str_has_one_word(author) or smartsearchLib.quoted_str_has_wildcards(author) \
-          #and not smartsearchLib.str_has_author_id(author):
-            #author = strip_outer_matching_chars(author, '\"')
-        #else:
-            ## only do this test if necessary, it would be the slowest of the four
-            #if smartsearchLib.str_is_author_mastname(author):
-                #author = strip_outer_matching_chars(author, '\"')
-            #else: # leave the quotes on.
-                #pass # allow me to watch these for now.
+        #author = strip_outer_matching_chars(author, '\"')
+        if smartsearchLib.is_quoted_str(author) and not smartsearchLib.quoted_str_has_wildcards(author):
+            if smartsearchLib.str_has_one_word(author) \
+               or smartsearchLib.quoted_str_has_wildcards(author) \
+               and not (smartsearchLib.str_has_author_id(author) \
+                        or smartsearchLib.quoted_str_has_booleans):
+                author = strip_outer_matching_chars(author, '\"')
+            else:
+                # only do this test if necessary, it would be the slowest of the four
+                if smartsearchLib.str_is_author_mastname(author):
+                    author = strip_outer_matching_chars(author, '\"')
+                else: # leave the quotes on.
+                    pass # allow me to watch these for now.
             
         # if there's or and or not in lowercase, need to uppercase them
         # author = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", author)])
         # art_authors_citation:("tuckett, D.") OR art_authors_text:("tuckett, David")
-        author_or_corrected = orclause_paren_wrapper(author)
-            
-        author_text = qparse.markup(author_or_corrected, "art_authors_text", quoted=False) # convert AND/OR/NOT, set up field query
-        author_cited = qparse.markup(author_or_corrected, "art_authors_citation", quoted=False)
-        author_mast = qparse.markup(author_or_corrected, "art_authors_mast", quoted=False)
-        analyze_this = f'&& ({author_text} || {author_cited} || {author_mast})' # search analysis
+        # author_or_corrected = orclause_paren_wrapper(author)
+        author_text = qparse.markup(author, "art_authors_text", quoted=False) # convert AND/OR/NOT, set up field query
+        author_wild = qparse.remove_spaces(strip_outer_matching_chars(author, '\"'))
+        #author_wildcard_search = f'&& (({author_text}) || (art_authors_citation_list_ngrm:("{author}")) || (art_authors_citation_list_strings_sql:({author_wild}) || art_authors_ids_strings_sql:({author_wild}) || art_authors_mast_list_strings_sql:({author_wild}))) '
+        author_wildcard_search = f'&& (({author_text}) || (art_authors_citation_list_strings_sql:({author_wild}) || art_authors_ids_strings_sql:({author_wild}) || art_authors_mast_list_strings_sql:({author_wild}))) '
+        analyze_this = author_wildcard_search
+        #author_cited = qparse.markup(author_or_corrected, "art_authors_citation", quoted=False)
+        #author_mast = qparse.markup(author_or_corrected, "art_authors_mast", quoted=False)
+        #analyze_this = f'&& ({author_text} || {author_cited} || {author_mast})' # search analysis
         filter_q += analyze_this        # query filter qf
         search_analysis_term_list.append(analyze_this)  
         query_term_list.append(author)       
@@ -1485,9 +1524,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)
         query_term_list.append(articletype)       
         
-    if opasgenlib.not_empty(datetype):
-        #TODO for now, lets see if we need this. (We might not)
-        pass
+    #if opasgenlib.not_empty(datetype):
+        ##TODO for now, lets see if we need this. (We might not)
+        #pass
 
     if startyear is not None and endyear is None:
         # Only startyear specified, can use =. >, <, or - for range
@@ -2183,7 +2222,7 @@ if __name__ == "__main__":
         paratext="hij", author="klm", title="nop", startyear="1922", endyear="2020"
     )
     
-    print (ret)
+    print (f"check_search_args returns: {ret}")
     
     import doctest
     doctest.testmod()

@@ -90,7 +90,7 @@ class TestSmartSearch(unittest.TestCase):
             print (n["documentRef"])
         # Confirm that the request-response cycle completed successfully.
         
-    def test_3b_smartsearch_names_year(self): 
+    def test_3b_smartsearch_two_names_and_year(self): 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Tuckett and Fonagy (2012)')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True) # rank is accepted, same as score
@@ -256,7 +256,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["count"] == 1)
         print (response_set[0])
 
-    def test_11B2_multiple_name(self):
+    def test_11B2_anded_names(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Rapaport, D. and Gill, M. M.')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -268,10 +268,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["count"] == 1)
         print (response_set[0])
 
-    def test_12_names_and_dates(self):
-        """
-        
-        """
+    def test_12a_names_and_dates(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Tuckett and Fonagy (2012)')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -283,6 +280,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["count"] == 1)
         #print (response_set[0])
 
+    def test_12b_names_and_dates(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Tuckett and Fonagy 2012')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -294,17 +292,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["count"] == 1)
         #print (response_set[0])
 
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Tuckett, D. and Fonagy, P. 2012')
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        r = response.json()
-        response_info = r["documentList"]["responseInfo"]
-        response_set = r["documentList"]["responseSet"] 
-        print (f'Smarttext: {response_info["description"]}')
-        print (response_info["count"])
-        assert(response_info["count"] == 1)
-        print (response_set[0])
-
+    def test_12c_names_and_dates(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Eugene L. Goldberg, Wayne A. Myers and Israel Zeifman (1974)')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -316,7 +304,8 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["count"] == 1)
         #print (response_set[0])
 
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Tuckett, D. and Fonagy, P. (2012)')
+    def test_12d_names_and_dates(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Tuckett, D., Auchincloss, E.L. and Fonagy, P. (2012)')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -327,6 +316,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["count"] == 1)
         #print (response_set[0])
 
+    def test_12e_names_and_dates(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Tuckett and Fonagy 2012')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -338,6 +328,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["count"] == 1)
         #print (response_set[0])
 
+    def test_12f_names_and_dates(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Rapaport, D. and Gill, M. M. (1959)')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -348,6 +339,18 @@ class TestSmartSearch(unittest.TestCase):
         print (response_info["count"])
         assert(response_info["count"] == 1)
         #print (response_set[0])
+
+    def test_12g_names_and_dates(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Tuckett, D. and Fonagy, P. 2012')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["count"])
+        assert(response_info["count"] == 1)
+        print (response_set[0])
 
     def test_12b_phrase_search(self):
         """
@@ -389,9 +392,9 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["count"] >= 1)
         print (response_set[0])
 
-    def test_13_references(self):
+    def test_13_references_a(self):
         """
-        
+        Full references
         """
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Goldberg, E.L. Myers, W.A. Zeifman, I. (1974). Some Observations on Three Interracial Analyses. Int. J. Psycho-Anal., 55:495-500.')
         response = requests.get(full_URL, headers=headers)
@@ -404,6 +407,7 @@ class TestSmartSearch(unittest.TestCase):
         assert(response_info["count"] == 1)
         print (response_set[0])
 
+    def test_13_references_b(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Rapaport, D. and Gill, M. M. ( 1959). The Points of View and Assumptions of Metapsychology. Int. J. Psycho-Anal. 40:153-162')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)

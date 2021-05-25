@@ -147,40 +147,42 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         assert (result['schema_field'] == 'art_authors_citation')
         assert (result['schema_value'] == 'Goldberg, E. && Myers, W. && Zeifman, I.')
         
-    def test_2_names_and_dates(self):
-        """
-        
-        """
+    def test_2a_names_and_dates(self):
         result = smartsearch.smart_search("Tuckett and Fonagy (2012)")
         #print (result)
-        assert (result['author_list'] == 'Tuckett and Fonagy'), result['author_list']
+        assert (result['search_type'] == 'authors and year')
         assert (result['yr'] == '2012'), result['yr'] 
         
+    def test_2b_names_and_dates(self):
         result = smartsearch.smart_search("Tuckett and Fonagy 2012")
         #print (result)
-        assert (result['author_list'] == 'Tuckett and Fonagy'), result['author_list'] 
+        assert (result['search_type'] == 'authors and year')
         assert (result['yr'] == '2012'), result['yr'] 
         
+    def test_2c_names_and_dates(self):
         result = smartsearch.smart_search("Tuckett, D. and Fonagy, P. 2012")
         #print (result)
-        assert (result['author_list'] == 'Tuckett, D. and Fonagy, P.'), result['author_list'] 
+        assert (result['search_type'] == 'authors and year')
         assert (result['yr'] == '2012'), result['yr'] 
         
+    def test_2d_names_and_dates(self):
         result = smartsearch.smart_search("Tuckett, D. and Fonagy, P. (2012)")
         #print (result)
-        assert (result['author_list'] == 'Tuckett, D. and Fonagy, P.'), result['author_list'] 
+        assert (result['search_type'] == 'authors and year')
         assert (result['yr'] == '2012'), result['yr'] 
         
+    def test_2e_names_and_dates(self):
         result = smartsearch.smart_search("Eugene L. Goldberg, Wayne A. Myers and Israel Zeifman (1974)")
-        #print (result)
-        assert result['author_list'] == 'Eugene L. Goldberg, Wayne A. Myers and Israel Zeifman', result['author_list']
+        assert (result['search_type'] == 'authors and year')        
+        assert result['author_list'] == ['Goldberg, E.', 'Myers, W.', 'Zeifman, I.'], result['author_list']
         assert result['yr'] == '1974', result['yr']
         
+    def test_2f_names_and_dates(self):
         result = smartsearch.smart_search("Rapaport, D. and Gill, M. M. (1959)")
+        assert (result['search_type'] == 'authors and year')
         #print (result)
-        assert result['author_list'] == 'Rapaport, D. and Gill, M. M.', result['author_list']
+        assert result['author_list'] == ['Rapaport, D.', 'Gill, M.'], result['author_list']
         assert result['yr'] == '1959', result['yr']
-
         assert result[KEY_SEARCH_SMARTSEARCH][0:25] == 'Matched authors and year:', result[KEY_SEARCH_SMARTSEARCH][0:25]
         
     def test_2b_title_search(self):

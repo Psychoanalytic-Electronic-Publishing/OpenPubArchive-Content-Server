@@ -2,6 +2,10 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2021-05-25 Disabled the ngrm fields again in favor of using the new SQL fields, which 
+               SQL like searches from this spaces-removed field, easy for wildcard use, without using {!complexphrase} processing 
+               Also allows prefix searching quickly.
+               
     2021-05-19 added art_auth_mast_list to verify/search by firstname lastname individually 
     
     2021-05-06 corrected error: string_ci fields need to be stored and indexed, since they are no longer docvalues
@@ -293,38 +297,55 @@
   <field name="art_authors" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <!--this one has multiple names anded-->
   <field name="art_authors_mast" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_authors_mast_text" type="text_simple" indexed="true" stored="false" multiValued="false"/>
   <!-- 2021-05-19 same as mast but authors separated allows wild cards -->
-  <field name="art_authors_mast_list" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  <field name="art_authors_mast_list" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <!-- 2021-05-19 string string search exact to verify/search by firstname lastname individually, docvalues can be returned -->
   <field name="art_authors_mast_list_strings" type="strings" indexed="false" stored="false" docValues="true" multiValued="true" sortMissingLast="true"/>
+  <field name="art_authors_mast_list_strings_sql" type="string_sql" indexed="true" stored="true" multiValued="true"/>
+  <copyField source="art_authors_mast_list" dest="art_authors_mast_list_strings_sql"/>
+  <copyField source="art_authors_mast" dest="art_authors_mast_text"/>
 
   <!--Added 20201019 to compare the masts with ids and see if they are complete, and the same (this field 
       was apparently here in an early incarnation but has been removed)
       art_authors_ids_str compare to art_authors_mast, though the former is from the attribute author_id
       -->
   <field name="art_authors_ids" type="string_ci" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_ids_lc" type="string_lc" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_ids_str"  type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_authors_ids_strings_sql" type="string_sql" indexed="true" stored="true" multiValued="true"/>
+  <copyField source="art_authors_ids" dest="art_authors_ids_lc"/>
+  <copyField source="art_authors_ids" dest="art_authors_ids_strings_sql"/>
   
   <!--Added 20200410 to allow sort by authors-->
   <field name="art_authors_citation" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_authors_citation_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
+  <field name="art_authors_citation_list" type="string_ci" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_citation_list_strings" type="strings" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_citation_list_strings_sql" type="string_sql" indexed="true" stored="true" multiValued="true"/>
+  <!--<field name="art_authors_citation_list_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
   <copyField source="art_authors_citation" dest="art_authors_citation_str"/> # for sorting
+  <copyField source="art_authors_citation_list" dest="art_authors_citation_list_strings"/> # for sorting
+  <copyField source="art_authors_citation_list" dest="art_authors_citation_list_strings_sql"/>
+  <!--<copyField source="art_authors_citation_list" dest="art_authors_citation_list_ngrm"/> -->
+
   <!-- Good for searching, separated author names, but full text like art_authors_citation (where they are not separated)-->
   <field name="art_authors_text" type="text_simple" indexed="true" stored="True" multiValued="true"/> <!-- doesn't need to be stored, but useful to see -->
+  <copyField source="art_authors" dest="art_authors_text"/>
   
   <!--try to improve author search for single names and full names-->
   <!--Many of these are Temporary. fpr trying different search results.  #TODO-->
-  <!--<field name="art_authors_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
-  <field name="art_authors_mast_text" type="text_simple" indexed="true" stored="false" multiValued="false"/>
-  <!--<field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
   <field name="art_authors_unlisted" type="string_ci" indexed="true" stored="true" multiValued="true"/>
+  <field name="art_authors_unlisted_list_strings_sql" type="string_sql" indexed="true" stored="true" multiValued="true"/>
+  <copyField source="art_authors_unlisted" dest="art_authors_unlisted_list_strings_sql"/>
+  
   <field name="art_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!--Added 7/21 to facilitate smartsearch-->
   <field name="art_authors_lastnames" type="string_ci" indexed="true" stored="false" multiValued="true"/>
-  
-  <copyField source="art_authors" dest="art_authors_text"/>
+  <!--<field name="art_authors_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
+  <!--<field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
+
   <!--<copyField source="art_authors" dest="art_authors_ngrm"/>-->
-  <copyField source="art_authors_mast" dest="art_authors_mast_text"/>
   <!--<copyField source="art_authors_mast" dest="art_authors_mast_ngrm"/>-->
 
   <!-- by paras-->
@@ -571,6 +592,15 @@
     </analyzer>    
   </fieldType>  
 
+  <!--This sorts correctly.  Must be indexed though   -->
+  <fieldtype name="string_lc" class="solr.TextField" sortMissingLast="true" omitNorms="true">
+    <analyzer>
+      <charFilter class="solr.HTMLStripCharFilterFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <tokenizer class="solr.KeywordTokenizerFactory"/>
+    </analyzer>
+  </fieldtype>
+
   <!-- A basic text field that has reasonable, generic
    cross-language defaults: it tokenizes with StandardTokenizer,
    and down cases. It does not deal with stopwords or other issues.
@@ -683,15 +713,24 @@
        <filter class="solr.LowerCaseFilterFactory"/>
      </analyzer>
    </fieldType>
-
-  <!--This sorts correctly.  Must be indexed though   -->
-  <fieldtype name="string_lc" class="solr.TextField" sortMissingLast="true" omitNorms="true">
-    <analyzer>
-      <charFilter class="solr.HTMLStripCharFilterFactory"/>
-      <filter class="solr.LowerCaseFilterFactory"/>
-      <tokenizer class="solr.KeywordTokenizerFactory"/>
-    </analyzer>
-  </fieldtype>
+  
+  <!--SQL like searches from this spaces-removed field, easy for wildcard use, without using {!complexphrase} processing 
+      Also allows prefix searching quickly.
+  -->
+  <fieldType name="string_sql" class="solr.TextField" sortMissingLast="true">
+      <analyzer type="index">
+          <tokenizer class="solr.KeywordTokenizerFactory"/>
+          <filter class="solr.LowerCaseFilterFactory" />
+          <filter class="solr.PatternReplaceFilterFactory" pattern="(\s+)" replacement="" replace="all" />
+          <filter class="solr.ReversedWildcardFilterFactory" />
+      </analyzer>
+      <analyzer type="query">
+          <tokenizer class="solr.KeywordTokenizerFactory"/>
+          <filter class="solr.LowerCaseFilterFactory" />
+          <filter class="solr.PatternReplaceFilterFactory" pattern="(\s+)" replacement="" replace="all" />
+      </analyzer>
+  </fieldType>
+   
 
 </schema>
 

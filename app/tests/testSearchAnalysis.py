@@ -13,7 +13,7 @@ class TestSearchAnalysis(unittest.TestCase):
        even as the database is updated
     """
     def test_v2_searchanalysis(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?author=rangell&fulltext1=transference&soucecode=AOP')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/SearchAnalysis/?author=rangell&fulltext1=transference&sourcecode=AOP')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -22,8 +22,10 @@ class TestSearchAnalysis(unittest.TestCase):
         response_set = r["termIndex"]["responseSet"] 
         print (f"Term: {response_set[0]['term']} Count: {response_set[0]['termCount']}")
         assert(response_set[0]["termCount"] >= 38847)
+        print (f"Term: {response_set[1]['term']} Count: {response_set[1]['termCount']}")
         assert(response_set[1]["termCount"] >= 132)
-        print (response_set)
+        print (f"Term: {response_set[2]['term']} Count: {response_set[2]['termCount']}")
+        assert(response_set[1]["termCount"] >= 1)
         # Confirm that the request-response cycle completed successfully.       
 
     def test_v2_searchanalysis_author_and_journalcode(self):
@@ -34,10 +36,10 @@ class TestSearchAnalysis(unittest.TestCase):
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"]
         print (f"Term: {response_set[0]['term']} Count: {response_set[0]['termCount']}")
-        print (f"Term: {response_set[1]['term']} Count: {response_set[1]['termCount']}")
         term0 = r["termIndex"]["responseSet"][0]["term"]
         assert(r["termIndex"]["responseSet"][0]["termCount"] >= 630)
         term1 = r["termIndex"]["responseSet"][1]["term"]
+        print (f"Term: {response_set[1]['term']} Count: {response_set[1]['termCount']}")
         assert(r["termIndex"]["responseSet"][1]["termCount"] >= 59)
         print (term0)
         assert(term0 == '(AOP) (in source)')

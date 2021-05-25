@@ -185,7 +185,7 @@ def smart_search(smart_search_text):
                 ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHOR_CITATION
                 ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHOR_CITATION 
                 ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{words}"
-                ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for authors cited: ({words})"
+                ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles by authors: ({words})"
 
             if ret_val == {}:
                 if 0 != smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION, match_type="boolean"):
@@ -195,7 +195,7 @@ def smart_search(smart_search_text):
                         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHOR_CITATION
                         ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHOR_CITATION 
                         ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{words}"
-                        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched authors cited: (boolean query: {words})"
+                        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched by authors: (boolean query: {words})"
 
             if ret_val == {}:
                 if 0 != smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TITLE, match_type="ordered") == 1: # unique match only
@@ -216,7 +216,7 @@ def smart_search(smart_search_text):
                 if smartsearchLib.all_words_start_upper_case(smart_search_text):
                     # try to build a list of names, and check them individually
                     new_q = ""
-                    names = smartsearchLib.name_id_list(smart_search_text)
+                    names = smartsearchLib.get_list_of_name_ids(smart_search_text)
                     for name in names:
                         try:
                             res = smartsearchLib.is_value_in_field(name, core="docs", field=opasConfig.SEARCH_FIELD_AUTHORS, match_type="adjacent")
@@ -289,6 +289,26 @@ def smart_search(smart_search_text):
         ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles with text: {smart_search_text}"
 
     ret_val = smartsearchLib.dict_clean_none_terms(ret_val)
+    
+    # parse author list
+    author_list = ret_val.get("author_list")
+    if author_list is not None:
+        working_author_list = re.sub(" and ", ", ", author_list, re.I)
+        try:
+            alist = opasgenlib.get_author_list_not_comma_separated(working_author_list)
+            ret_val["author_list"] = alist
+        except Exception as e:
+            logging.warning(f"Can't parse and replace author list {e}")
+    
+        if alist == []:
+            # try and?
+            try:
+                alist = opasgenlib.get_author_list_and_separated(author_list)
+                ret_val["author_list"] = alist
+            except Exception as e:
+                logging.warning(f"Can't parse and replace author list {e}")
+            
+        ret_val["author_list"] = smartsearchLib.get_list_of_name_ids(author_list)
     return ret_val
 
 if __name__ == "__main__":

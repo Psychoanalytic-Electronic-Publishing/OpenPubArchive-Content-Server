@@ -285,10 +285,10 @@ DESCRIPTION_SIMILARCOUNT = "Return this many similar documents for each document
 DESCRIPTION_TERMCOUNT_METHOD = '1=Alternate method for termcounts, allows full wildcards (requires solrpy installed). Default (=0) only supports wildcard at end of string "*"' 
 DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)."
 DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."
-DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification"
+DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification (Post Only)"
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
 DESCRIPTION_TRANSLATIONS = "Return a list of documents which are translations of this document in field translationSet"
-DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
+# DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
 DESCRIPTION_VIEWCOUNT = "Include documents (not abstracts) viewed this many or more times (or X TO Y times). Optionally specify viewperiod, IN (lastweek|lastmonth|last6months|last12months|lastcalendaryear), or in parameter viewperiod"  
 DESCRIPTION_VIEWCOUNT_INT = "Include documents (not abstracts) viewed this many or more times. Must be an integer."  
 DESCRIPTION_VIEWPERIOD = "One of a few preset time frames for which to evaluate viewcount; 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months."
@@ -362,9 +362,9 @@ TITLE_TERMCOUNT_METHOD = '1=Alternate method for termcounts (req. solrpy lib ins
 TITLE_TERMFIELD = "Default field for which to get term counts"
 TITLE_TERMLIST = "List of terms"
 TITLE_TRANSLATIONS = "If true, return a list of documents which are translations"
-TITLE_QTERMLIST = "Opas Model SolrQeryTermList"
+TITLE_QTERMLIST = "Opas Model SolrQeryTermList (Post Only)"
 TITLE_TITLE = "Document Title"
-TITLE_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
+# TITLE_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
 TITLE_VIEWCOUNT = "Include documents viewed this many times or more within the view period"
 TITLE_VIEWPERIOD = "One of the preset timeframes within which to evaluate viewcount"
 TITLE_VOLUMENUMBER = "Volume Number"
@@ -409,7 +409,7 @@ ENDPOINT_SUMMARY_SEARCH_MORE_LIKE_THESE = "Full Search implementation, but expan
 ENDPOINT_SUMMARY_SEARCH_PARAGRAPHS = "Search at the paragraph (lowest) level by paragraph scope (doc, dreams, ...)"
 ENDPOINT_SUMMARY_SEARCH_V1 = "Search at the paragraph level by document zone (API v1 backwards compatible)"
 ENDPOINT_SUMMARY_SEARCH_V2 = "Full search implementation, at the document or paragraph level"
-ENDPOINT_SUMMARY_SEARCH_V3 = "Full search implementation, at the document or paragraph level with body (termlist)"
+ENDPOINT_SUMMARY_SEARCH_POST = "Full search implementation, at the document or paragraph level with body (termlist)"
 ENDPOINT_SUMMARY_OPENURL = "Search implementation using openURL .1 parameters"
 ENDPOINT_SUMMARY_API_STATUS = "Return the API version and status"
 ENDPOINT_SUMMARY_SERVER_STATUS = "Return the server status and more"
@@ -711,6 +711,8 @@ SEARCH_FIELD_PGRG = "art_pgrg"
 SEARCH_FIELD_RELATED = "art_qual"
 SEARCH_FIELD_RELATED_EXPANDED = "related"
 
+IMAGE_API_LINK = "/v2/Documents/Image/" # API Call for images
+
 SS_BROADEN_SEARCH_FIELD_RELATED = (SEARCH_FIELD_RELATED, SEARCH_FIELD_LOCATOR) # technique can be used generally to expand search based on field specified
 
 SS_BROADEN_DICT = {SEARCH_FIELD_RELATED: SS_BROADEN_SEARCH_FIELD_RELATED,
@@ -722,3 +724,4 @@ SS_BROADEN_DICT = {SEARCH_FIELD_RELATED: SS_BROADEN_SEARCH_FIELD_RELATED,
 #current and archive content, but only the abstracts are displayed for current content, due to contractual obligations with the
 #journal publishers. For details on how to read the full text of 2017 and more current articles see the publishers official website 
 #"""
+

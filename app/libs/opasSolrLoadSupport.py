@@ -61,11 +61,11 @@ rc_stopword_match = read_stopwords() # returns compile re for matching stopwords
 #------------------------------------------------------------------------------------------------------------
 #  Support functions
 #------------------------------------------------------------------------------------------------------------
-def non_empty_string(strval):
+def non_empty_string(strval): 
     try:
         return strval if strval != "" else None
     except Exception as e:
-        return None
+        return None  # note if type is not string, it returns None
 
 def strip_tags(value, compiled_tag_pattern):
     """
@@ -502,8 +502,9 @@ class ArticleInfo(object):
         
         self.author_xml_list = pepxml.xpath('//artinfo/artauth/aut')
         self.author_xml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, '//artinfo/artauth')
-        self.authors_bibliographic, self.author_list = opasxmllib.authors_citation_from_xmlstr(self.author_xml, listed=True)
+        self.authors_bibliographic, self.author_list, self.authors_bibliographic_list = opasxmllib.authors_citation_from_xmlstr(self.author_xml, listed=True)
         self.art_auth_citation = self.authors_bibliographic
+        self.art_auth_citation_list = self.authors_bibliographic_list
         # ToDo: I think I should add an author ID to bib aut too.  But that will have
         #  to wait until later.
         # TODO: fix PEP2XML--in cases like AJRPP.004.0273A it put Anonymous in the authindexid.
@@ -556,7 +557,7 @@ class ArticleInfo(object):
             safe_art_pgrg = ''
             
         # Usually we put the abbreviated title here, but that won't always work here.
-        self.art_citeas_xml = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="sourcetitle">%s</span> <span class="pgrg">%s</span>:<span class="pgrg">%s</span></p>""" \
+        self.art_citeas_xml = u"""<p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. <span class="sourcetitle">%s</span> <span class="vol">%s</span>:<span class="pgrg">%s</span></p>""" \
             %                   (self.authors_bibliographic,
                                  self.art_year,
                                  safe_art_title,
@@ -1015,6 +1016,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "art_authors_ids_str" : non_empty_string(artInfo.art_author_ids_str),
                 # end insertion ################################################
                 "art_authors_citation" : non_empty_string(artInfo.art_auth_citation),
+                "art_authors_citation_list" : non_empty_string(artInfo.art_auth_citation_list),
                 "art_authors_unlisted" : non_empty_string(artInfo.art_auth_mast_unlisted_str),
                 "art_authors_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//aut", default_return = None),
                 "art_year" : non_empty_string(artInfo.art_year),

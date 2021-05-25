@@ -813,18 +813,6 @@ def search_analysis( query_list,
         RetList = models.TermIndex
 
     for query_item in query_list:
-        # get rid of illegal stuff
-        # boolean_subs = [termpair.strip() for termpair in re.split("\s+\|\||\&\&|[ ]\s+", query_item)]
-        # boolean_subs = [termpair.strip() for termpair in re.split("\s*\|\||\&\&|AND|OR\s*", query_item)]
-        # for clause in query_item:
-            #clauses = n.split(":")
-            #if len(clauses) == 1:
-                #term_clause = clauses[0]
-            #else:
-                #field_clause = clauses[0]
-                #term_clause = clauses[1]
-            #subfield_clauses = shlex.split(term_clause)
-
         try:
             # remove outer parens added during query parsing
             query_item = opasQueryHelper.remove_outer_parens(query_item)
@@ -842,8 +830,6 @@ def search_analysis( query_list,
             
         except Exception as e:
             # try to return an error message for now.
-            # logger.error(HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=e))
-            # raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Bad Search syntax")
             return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
 
         if "!parent" in query_item:
@@ -1046,9 +1032,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         if solr_query_spec.solrQuery is None: # initialize a new model
             solr_query_spec.solrQuery = models.SolrQuery()
     
-        #if authenticated is None:
-            #authenticated = solr_query_spec.a
-    
         if extra_context_len is not None:
             solr_query_spec.solrQueryOpts.hlFragsize = extra_context_len
         elif solr_query_spec.solrQueryOpts.hlFragsize is None or solr_query_spec.solrQueryOpts.hlFragsize < opasConfig.DEFAULT_KWIC_CONTENT_LENGTH:
@@ -1190,17 +1173,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     except Exception as e:
         logger.error(f"Solr Param Assignment Error {e}")
 
-    # add additional facet parameters from faceSpec
-    #for key, value in solr_query_spec.facetSpec.items():
-        #if key[0:1] != "f":
-            #continue
-        #else:
-            #solr_param_dict[key] = value
-    
-    # Solr sometimes returns an SAX Parse error because of Nones!
-    # just in case, get rid of all Nones
-    # solr_param_dict = {k: v for k, v in solr_param_dict.items() if v is not None}
-
     #allow core parameter here
     if solr_core is None:
         if solr_query_spec.core is not None:
@@ -1236,8 +1208,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         solr_param_dict = cleanNullTerms(solr_param_dict)
 
         if opasConfig.LOCAL_TRACE:
-            print (f"+****Solr Query: q:{query}, fq:{solr_param_dict['fq']}")
-            print (f"+****Solr facets:{solr_param_dict.get('facet.field', 'No facets to return')}" )
+            print (f"+****Solr Query: q:{query}, fq:{filterQ}")
+            #print (f"+****Solr facets:{solr_param_dict.get('facet.field', 'No facets to return')}" )
+            print (f"+****Solr Facet Query: q:{solr_query_spec.solrQuery.facetQ}")
+            
             
         # ####################################################################################
         # THE SEARCH!

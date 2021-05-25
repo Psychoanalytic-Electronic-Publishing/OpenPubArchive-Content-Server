@@ -84,7 +84,7 @@ import lxml.html as lhtml
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 
 import opasConfig
-from localsecrets import APIURL, IMAGE_API_LINK
+from localsecrets import APIURL
 
 from ebooklib import epub
 from io import StringIO, BytesIO
@@ -416,7 +416,7 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
     ('Boulanger, G.', ['Boulanger, Ghislaine'])
     
     """
-    ret_val = ("", [])
+    ret_val = ("", [], [])
     if isinstance(author_xmlstr, lxml.etree._Element):
         author_xmlstr = etree.tostring(author_xmlstr, with_tail=False, encoding="unicode") 
 
@@ -446,6 +446,7 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
 
         author_count = len(author_xml_list)
         author_list = []
+        author_bibliographic_list = []
         authors_bib_style = ""
         curr_author_number = 0
         for n in author_xml_list:
@@ -481,15 +482,16 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
                 
     
             author_list.append(author_name)
+            author_bibliographic_list.append(author_name_inits)
             if authors_bib_style == "":
                 authors_bib_style = author_name_inits
-            else:   
+            else:
                 if curr_author_number == author_count:
                     authors_bib_style += " &amp; " + author_name_inits
                 else:
                     authors_bib_style += ", " + author_name_inits
 
-            ret_val = (authors_bib_style, author_list)
+            ret_val = (authors_bib_style, author_list, author_bibliographic_list)
 
     return ret_val
 
@@ -497,7 +499,7 @@ def get_html_citeas(authors_bib_style, art_year, art_title, art_pep_sourcetitle_
     """
     NOT CURRENTLY USED in OPAS (2020-09-14)
     """
-    ret_val = f"""<p class="citeas"><span class="authors">{authors_bib_style}</span> (<span class="year">{art_year}</span>) <span class="title">{art_title}</span>. <span class="sourcetitle">{art_pep_sourcetitle_full}</span> <span class="pgrg">{art_vol}</span>:<span class="pgrg">{art_pgrg}</span></p>"""
+    ret_val = f"""<p class="citeas"><span class="authors">{authors_bib_style}</span> (<span class="year">{art_year}</span>) <span class="title">{art_title}</span>. <span class="sourcetitle">{art_pep_sourcetitle_full}</span> <span class="vol">{art_vol}</span>:<span class="pgrg">{art_pgrg}</span></p>"""
     return ret_val
 
 def xmlstr_to_etree(xmlstr):
@@ -1590,7 +1592,7 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                     else:
                         ret_val = str(transformed_data)
                         # do substitutes
-                        ret_val = ret_val.replace("%24OPAS_IMAGE_URL;", APIURL + IMAGE_API_LINK)
+                        ret_val = ret_val.replace("%24OPAS_IMAGE_URL;", APIURL + opasConfig.IMAGE_API_LINK)
     return ret_val
 
 def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=None, stylesheet=opasConfig.CSS_STYLESHEET): #  e.g., "./libs/styles/pep-html-preview.css"

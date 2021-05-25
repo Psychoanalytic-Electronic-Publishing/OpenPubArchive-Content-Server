@@ -42,8 +42,21 @@ class TestSearch(unittest.TestCase):
         assert(response_info["fullCount"] == 1)
 
     def test_search_facets1_multi1(self):
-        encodedarg = urllib.parse.quote_plus("Tuckett")
-        encodedarg2 = 'art_sourcetitleabbr:("Int. J. Psychoanal." OR "Int. Rev. Psycho-Anal." OR "Brit. J. Psychother.") AND art_authors:("taffler, richard" OR "amati mehler, jacqueline")'
+        encodedarg = urllib.parse.quote_plus("David Tuckett")
+        encodedarg2 = urllib.parse.quote_plus('art_sourcetitleabbr:("Int. J. Psychoanal." OR "Int. Rev. Psycho-Anal." OR "Brit. J. Psychother.") AND art_authors:("taffler, richard" OR "amati mehler, jacqueline")')
+        full_URL = base_plus_endpoint_encoded(f"/v2/Database/Search/?author={encodedarg}&facetquery={encodedarg2}")
+        print (f"Full URL: {full_URL}")
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["fullCount"] == 2)
+
+    def test_search_facets1_multi2(self):
+        encodedarg = urllib.parse.quote_plus("David Tuckett OR Peter Fonagy")
+        encodedarg2 = urllib.parse.quote_plus('art_sourcetitleabbr:("Int. J. Psychoanal." OR "Int. Rev. Psycho-Anal." OR "Brit. J. Psychother.") AND art_authors:("taffler, richard" OR "amati mehler, jacqueline")')
         full_URL = base_plus_endpoint_encoded(f"/v2/Database/Search/?author={encodedarg}&facetquery={encodedarg2}")
         print (f"Full URL: {full_URL}")
         response = requests.get(full_URL, headers=headers)
@@ -96,7 +109,7 @@ class TestSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 22)
 
-    def test_search_facets2(self):
+    def test_search_facets2a(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=cooper AND cooper, steven h. OR cooper, steven')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -106,7 +119,8 @@ class TestSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 70)
   
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=(cooper AND (cooper, steven h.) OR (cooper, steven))')
+    def test_search_facets2b(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=(cooper AND cooper, steven h. OR (cooper, steven))')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -116,7 +130,7 @@ class TestSearch(unittest.TestCase):
         assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 70)
 
     def test_search_author_forward(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Moshe Spero')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author="Moshe Spero"')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         assert(response.ok == True)
@@ -137,7 +151,7 @@ class TestSearch(unittest.TestCase):
         assert(response_info["count"] >= 1)
         print (response_set[0])
 
-    def test_search_author_reverse(self):
+    def test_search_author_citation_order(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Spero, Moshe')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
@@ -149,8 +163,19 @@ class TestSearch(unittest.TestCase):
         print (response_set[0])
 
 
-    def test_search_author_reverse_inits(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Spero, M')
+    def test_search_author_citation_order_inits(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=Spero, M. H.')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        assert(response.ok == True)
+        # print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert(response_info["count"] >= 1)
+        print (response_set[0])
+
+    def test_search_author_citation_order_inits_wildcard(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author="Spero, M.*"')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         assert(response.ok == True)
