@@ -5,8 +5,8 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "20210525/02.01.02" # semver versioning now added after date.
-__status__      = "Development"
+__version__     = "2021.0526/v2.1.3" # semver versioning now added after date.
+__status__      = "Beta"
 
 """
 Main entry module for PEP version of OPAS API
@@ -187,37 +187,68 @@ app = FastAPI(
     debug=False,
     title="OpenPubArchive Server (OPAS) API for PEP-Web",
     description = """
-    
-<b>An Open Source Full-Text Journal and Book Server and API by Psychoanalytic Electronic Publishing (PEP)</b>
-
-This API server is an initial version of the OPAS Solr-based Server (API); it's not "fully generic", the
-schema and functionality were developed around the new full-functionality API Client meant
-to replace PEP's full-text journal, book, and video database, PEP-Web.  But
-PEP has developed it as open source, so it could be a start for an extended or general purpose server.
-
-While Solr already provides an API that is generic, the OPAS API wraps a higher level API on top of that, which based on
-PEP's experience, provides functionality that should simplify client development significantly.  This is in fact
-the second version of such a high level API (the first was written around DTSearch). That it simplifies development was shown by PEP-Easy, which was
-a very simple client written in javascript to the V1.0 version of the API. Having a higher level API also simplifies porting
-as PEP did when the underlying full-text indexing software changed from DTSearch to Solr.
-
-One key feature of this API is true paragraph level search...something not easily implemented in Solr in a straightforward way. That
-functionality requires a schema design where paragraphs are separately indexed using Solr's advanced nested indexing.  The PEP-Web Docs schema implements this.
-
-Note that a few of the endpoints require an API key.  If so, it is listed in the description of the function (not in the query parameter list).
-If a function requiring one is called  without the API key, you will get an authentication error.
-
-***
-*IMPORTANT UPDATE REGARDING THE PEP SCHEMA*: The current PEP Docs Schema does not index all documents by paragraphs,
-since to provide search results more compatible with PEP's original DTSearch based implementation, term proximity search
-is instead approximated by a preset word distance value, as was done in DTSearch.  However, SE and GW are indexed by
-paragraph as well, and thus the paratext (true paragraph search) feature of the API works for those book series. Thus, all searches
-using the "paratext" parameter will only currently search these two book series.  This of course only applies to the current PEPWebDocs core, and for other databases (cores), the
-paragraph level indexing and searches may still be fully utilized.  The PEP loader program, which are specific to the PEP-Schema, can be used to turn on and off paragraph level
-indexing for other documents. This is controlled in a simple manner by the SRC_CODES_TO_INCLUDE_PARAS list constant
-in the loaderConfig.py file.
-***
-    
+                 <b>An Open Source Full-Text Journal and Book Server and API by Psychoanalytic\
+                 Electronic Publishing (PEP)</b>
+                 
+                 This API server is an initial version of the OPAS Solr-based Server (API);\
+                 it's not "fully generic", the schema and functionality were developed around\
+                 the new full-functionality API Client meant to replace PEP's full-text\
+                 journal, book, and video database, PEP-Web. But PEP has developed it as open\
+                 source, so it could be a start for an extended or general purpose server.
+                 
+                 While Solr already provides an API that is generic, the OPAS API wraps a\
+                 higher level API on top of that, which based on PEP's experience, provides\
+                 functionality that should simplify client development significantly. This is\
+                 in fact the second version of such a high level API (the first was written\
+                 around DTSearch). That it simplifies development was shown by PEP-Easy, which\
+                 was a very simple client written in javascript to the V1.0 version of the\
+                 API. Having a higher level API also simplifies porting as PEP did when the\
+                 underlying full-text indexing software changed from DTSearch to Solr.
+                 
+                 One key feature of this API is true paragraph level search...something not\
+                 easily implemented in Solr in a straightforward way. That functionality\
+                 requires a schema design where paragraphs are separately indexed using Solr's\
+                 advanced nested indexing. The PEP-Web Docs schema implements this.
+                 
+                 Note that a few of the endpoints require an API key. If so, it is listed in\
+                 the description of the endpoint (not in the query parameter list). If a\
+                 function requiring one is called without the API key, you will get an\
+                 authentication error.
+                 
+                 ***
+                 
+                 *IMPORTANT UPDATE REGARDING THE PEP SCHEMA*: The current PEP Docs Schema does\
+                 not index all documents by paragraphs, since to provide search results more\
+                 compatible with PEP's original DTSearch based implementation, term proximity\
+                 search is instead approximated by a preset word distance value, as was done\
+                 in DTSearch. However, SE and GW are indexed by paragraph as well, and thus\
+                 the paratext (true paragraph search) feature of the API works for those book\
+                 series. Thus, all searches using the "paratext" parameter will only currently\
+                 search these two book series. This of course only applies to the current\
+                 PEPWebDocs core, and for other databases (cores), the paragraph level\
+                 indexing and searches may still be fully utilized. The PEP loader program,\
+                 which are specific to the PEP-Schema, can be used to turn on and off\
+                 paragraph level indexing for other documents. This is controlled in a simple\
+                 manner by the SRC_CODES_TO_INCLUDE_PARAS list constant in the loaderConfig.py\
+                 file.
+                 
+                 ***
+                 
+                 *INTERACTIVE DOCS USAGE NOTE*: For those using the interactive Docs interface\
+                 to test out endpoints, the built-in feature has one significant issue: the\
+                 input field widths are too small for some of our potential parameter values.\
+                 A workaround for this is to get a browser extension called `Stylebot`, which\
+                 will let you add a local CSS rule to fix that. Add this rule for the URL\
+                 where the docs are located for you:
+                 
+                             .swagger-ui .parameters-col_description input[type=text] {
+                                    max-width: 1300px;
+                                    width: 100%;
+                             }
+                             
+                 
+                 and that will enlarge the fields persistently.
+                 ***    
     """,
         version = f"{__version__}",
         static_directory=r"./docs",
@@ -2036,14 +2067,14 @@ async def database_extendedsearch(response: Response,
     return ret_val # solr_ret_list
 
 #---------------------------------------------------------------------------------------------------------
-@app.post("/v2/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH)
+@app.post("/v2/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH_POST)
 @app.get("/v2/Database/Glossary/Search/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_GLOSSARY_SEARCH)
 async def database_glossary_search_v2(response: Response, 
                                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                                       # qtermlist is only for POST
                                       qtermlist: models.SolrQueryTermList=None, # allows full specification
                                       fulltext1: str=Query(None, title=opasConfig.TITLE_FULLTEXT1, description=opasConfig.DESCRIPTION_FULLTEXT1),
-                                      sourcelangcode: str=Query("EN", title=opasConfig.TITLE_SOURCELANGCODE, description=opasConfig.DESCRIPTION_SOURCELANGCODE), 
+                                      sourcelangcode: str=Query("EN", title=opasConfig.TITLE_SOURCELANGCODE+" TITLE", description=opasConfig.DESCRIPTION_SOURCELANGCODE+" DESC"), 
                                       paratext: str=Query(None, title=opasConfig.TITLE_PARATEXT, description=opasConfig.DESCRIPTION_PARATEXT),
                                       parascope: str=Query("doc", title=opasConfig.TITLE_PARASCOPE, description=opasConfig.DESCRIPTION_PARASCOPE),
                                       synonyms: bool=Query(False, title=opasConfig.TITLE_SYNONYMS_BOOLEAN, description=opasConfig.DESCRIPTION_SYNONYMS_BOOLEAN),
@@ -2073,51 +2104,71 @@ async def database_glossary_search_v2(response: Response,
          /v2/Database/Glossary/Search/
 
     ## Notes
-
-       Termlist in the body is not supported by the GET function: to include a termlist, use PUT.
+       To include a termlist (qtermlist), use POST.
+       
+       Sample qtermlist:
+       ```
+       {"qtermlist":
+            {   "artLevel": 2, 
+               "qt" :
+               [
+                       {
+                               "parent":"quotes",
+                               "field" : "para",
+                               "words": "love",
+                               "synonyms": "false"
+                           },
+                           {
+                               "parent":"dreams",
+                               "field" : "para",
+                               "words": "sex",
+                               "synonyms": "false"
+                           }				
+               ]
+            }
+        }
+       ```
 
     ## Potential Errors
-       USER NEEDS TO BE AUTHENTICATED for glossary access at the term level.  Otherwise, returns error.
-
-       Client apps should disable the glossary links when not authenticated.
+    
     """
     opasDocPermissions.verify_header(request, "database_glossary_search_v2") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
-    ret_val = await database_search_get( response,
-                                        request,
-                                        qtermlist=qtermlist,
-                                        fulltext1=fulltext1,
-                                        smarttext=None, 
-                                        paratext=paratext, #  no advanced search. Only words, phrases, prox ~ op, and booleans allowed
-                                        parascope=parascope,
-                                        similarcount=0, 
-                                        synonyms=synonyms,
-                                        facetquery=None, 
-                                        sourcename=None, 
-                                        sourcecode="ZBK",
-                                        volume="69",
-                                        sourcetype=None, 
-                                        sourcelangcode=sourcelangcode,
-                                        articletype=None, 
-                                        issue=None, 
-                                        author=None, 
-                                        title=None,
-                                        startyear=None,
-                                        endyear=None,
-                                        citecount=None,
-                                        viewcount=None,
-                                        viewperiod=None,
-                                        formatrequested=formatrequested, 
-                                        highlightlimit=highlightlimit, 
-                                        facetfields=facetfields, 
-                                        sort=sort,
-                                        limit=limit,
-                                        offset=offset,
-                                        client_session=client_session,
-                                        client_id=client_id
-                                        )
+    ret_val = await database_search(response,
+                                    request,
+                                    qtermlist=qtermlist,
+                                    fulltext1=fulltext1,
+                                    smarttext=None, 
+                                    paratext=paratext, #  no advanced search. Only words, phrases, prox ~ op, and booleans allowed
+                                    parascope=parascope,
+                                    similarcount=0, 
+                                    synonyms=synonyms,
+                                    facetquery=None, 
+                                    sourcename=None, 
+                                    sourcecode="ZBK",
+                                    volume="69",
+                                    sourcetype=None, 
+                                    sourcelangcode=sourcelangcode,
+                                    articletype=None, 
+                                    issue=None, 
+                                    author=None, 
+                                    title=None,
+                                    startyear=None,
+                                    endyear=None,
+                                    citecount=None,
+                                    viewcount=None,
+                                    viewperiod=None,
+                                    formatrequested=formatrequested, 
+                                    highlightlimit=highlightlimit, 
+                                    facetfields=facetfields, 
+                                    sort=sort,
+                                    limit=limit,
+                                    offset=offset,
+                                    client_session=client_session,
+                                    client_id=client_id
+                                    )
     if ret_val != {}:
         matches = len(ret_val.documentList.responseSet)
     else:
@@ -2137,7 +2188,7 @@ async def database_glossary_search_v2(response: Response,
 #---------------------------------------------------------------------------------------------------------
 @app.post("/v2/Database/Search/", response_model=Union[models.DocumentList, models.ErrorReturn], response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_POST)
 @app.get("/v2/Database/Search/", response_model=Union[models.DocumentList, models.ErrorReturn], response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_V2)
-async def database_search_get(response: Response, 
+async def database_search(response: Response, 
                               request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                               #qtermlist only works with Post
                               qtermlist: models.SolrQueryTermList=Body(None, embed=True, title=opasConfig.TITLE_QTERMLIST, decription=opasConfig.DESCRIPTION_QTERMLIST), # allows full specification
@@ -2169,9 +2220,9 @@ async def database_search_get(response: Response,
                               similarcount: int=Query(0, title=opasConfig.TITLE_SIMILARCOUNT, description=opasConfig.DESCRIPTION_SIMILARCOUNT),
                               highlightlimit: int=Query(opasConfig.DEFAULT_MAX_KWIC_RETURNS, title=opasConfig.TITLE_MAX_KWIC_COUNT, description=opasConfig.DESCRIPTION_MAX_KWIC_COUNT),
                               facetfields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
-                              facetmincount: int=Query(1, title="Minimum count to return a facet"),
-                              facetlimit: int=Query(15, title="Maximum number of facet values to return"),
-                              facetoffset: int=Query(0, title="Offset that can be used for paging through a facet"),
+                              facetmincount: int=Query(1, description=opasConfig.DESCRIPTION_FACETMINCOUNT),
+                              facetlimit: int=Query(15, description=opasConfig.DESCRIPTION_FACETLIMIT),
+                              facetoffset: int=Query(0, description=opasConfig.DESCRIPTION_FACETOFFSET),
                               sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                               limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                               offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
@@ -2566,42 +2617,42 @@ async def database_smartsearch(response: Response,
     opasDocPermissions.verify_header(request, "SmartSearch") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
 
-    ret_val = await database_search_get(response,
-                                       request,
-                                       fulltext1=None,
-                                       paratext=None, 
-                                       parascope=None,
-                                       smarttext=smarttext, 
-                                       synonyms=False,
-                                       facetquery=None, 
-                                       similarcount=similarcount, 
-                                       sourcecode=None,
-                                       sourcename=None, 
-                                       sourcetype=None, 
-                                       sourcelangcode=None, 
-                                       volume=None,
-                                       issue=None, 
-                                       author=None,
-                                       title=None,
-                                       articletype=None, 
-                                       startyear=None,
-                                       endyear=None, 
-                                       citecount=None,   
-                                       viewcount=None,   
-                                       viewperiod=None,
-                                       highlightlimit=highlightlimit, 
-                                       facetfields=facetfields,
-                                       facetmincount=1,
-                                       facetlimit=15,
-                                       facetoffset=0,
-                                       abstract=abstract,
-                                       sort=sort,
-                                       formatrequested=formatrequested, 
-                                       limit=limit,
-                                       offset=offset,
-                                       client_id=client_id,
-                                       client_session=client_session
-                                       )
+    ret_val = await database_search(response,
+                                    request,
+                                    fulltext1=None,
+                                    paratext=None, 
+                                    parascope=None,
+                                    smarttext=smarttext, 
+                                    synonyms=False,
+                                    facetquery=None, 
+                                    similarcount=similarcount, 
+                                    sourcecode=None,
+                                    sourcename=None, 
+                                    sourcetype=None, 
+                                    sourcelangcode=None, 
+                                    volume=None,
+                                    issue=None, 
+                                    author=None,
+                                    title=None,
+                                    articletype=None, 
+                                    startyear=None,
+                                    endyear=None, 
+                                    citecount=None,   
+                                    viewcount=None,   
+                                    viewperiod=None,
+                                    highlightlimit=highlightlimit, 
+                                    facetfields=facetfields,
+                                    facetmincount=1,
+                                    facetlimit=15,
+                                    facetoffset=0,
+                                    abstract=abstract,
+                                    sort=sort,
+                                    formatrequested=formatrequested, 
+                                    limit=limit,
+                                    offset=offset,
+                                    client_id=client_id,
+                                    client_session=client_session
+                                    )
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
@@ -2640,42 +2691,42 @@ async def database_morelikethis(response: Response,
     opasDocPermissions.verify_header(request, "MoreLikeThis") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
-    ret_val = await database_search_get(response,
-                                       request,
-                                       fulltext1=None,
-                                       paratext=None, 
-                                       parascope=None,
-                                       smarttext=morelikethis, 
-                                       synonyms=False,
-                                       facetquery=None, 
-                                       similarcount=similarcount, 
-                                       sourcecode=None,
-                                       sourcename=None, 
-                                       sourcetype=None, 
-                                       sourcelangcode=None, 
-                                       volume=None,
-                                       issue=None, 
-                                       author=None,
-                                       title=None,
-                                       articletype=None, 
-                                       startyear=None,
-                                       endyear=None, 
-                                       citecount=None,   
-                                       viewcount=None,   
-                                       viewperiod=None,
-                                       highlightlimit=0,
-                                       facetfields=None,
-                                       facetmincount=1,
-                                       facetlimit=0,
-                                       facetoffset=0,
-                                       abstract=abstract,
-                                       sort=sort,
-                                       formatrequested=formatrequested, 
-                                       limit=limit,
-                                       offset=offset,
-                                       client_id=client_id,
-                                       client_session=client_session
-                                       )
+    ret_val = await database_search(response,
+                                    request,
+                                    fulltext1=None,
+                                    paratext=None, 
+                                    parascope=None,
+                                    smarttext=morelikethis, 
+                                    synonyms=False,
+                                    facetquery=None, 
+                                    similarcount=similarcount, 
+                                    sourcecode=None,
+                                    sourcename=None, 
+                                    sourcetype=None, 
+                                    sourcelangcode=None, 
+                                    volume=None,
+                                    issue=None, 
+                                    author=None,
+                                    title=None,
+                                    articletype=None, 
+                                    startyear=None,
+                                    endyear=None, 
+                                    citecount=None,   
+                                    viewcount=None,   
+                                    viewperiod=None,
+                                    highlightlimit=0,
+                                    facetfields=None,
+                                    facetmincount=1,
+                                    facetlimit=0,
+                                    facetoffset=0,
+                                    abstract=abstract,
+                                    sort=sort,
+                                    formatrequested=formatrequested, 
+                                    limit=limit,
+                                    offset=offset,
+                                    client_id=client_id,
+                                    client_session=client_session
+                                    )
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
@@ -2905,7 +2956,7 @@ def database_mostcited(response: Response,
 
         # Download CSV of selected set.  Returns only response with download, not usual documentList
         #   response to client
-        views = ocd.most_cited_generator( cited_in_period=citeperiod,
+        cites = ocd.most_cited_generator( cited_in_period=citeperiod,
                                           citecount=citecount,
                                           publication_period=pubperiod,
                                           author=author,
@@ -2919,7 +2970,7 @@ def database_mostcited(response: Response,
                                           )
 
         header = ["Document", "Last 5 Years", "Last 10 years", "Last 20 years", "All years"]
-        df = pd.DataFrame(views)
+        df = pd.DataFrame(cites)
         stream = io.StringIO()
         df.to_csv(stream, header=header, index = False)
         response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
@@ -3162,18 +3213,18 @@ async def database_term_counts(response: Response,
     ## Function
     <b>Get a list of term frequency counts (# of times term occurs across documents)</b>
 
-    Can specify a field per the schema to limit it. e.g.,
+    Can specify a field per the docs schema to limit it. e.g.,
 
        - text - all text
        - title - within titles
-       - author -
+       - author - within authors
        - author_bio_xml - in author bio
        - art_kwds - in keyword lists
        - art_lang - can look at frequency of en, fr, ... at article level
        - lang - can look at frequency of en, fr, ... at paragraph level
        - meta_xml - meta document data, including description of fixes, edits to documents
 
-       Note: The field must be listed as stored, not just indexed.
+       Note: The field must be listed in the docs schema as stored, not just indexed.
 
     Note this call still uses SolyPy rather than PySolr underneath.
 
@@ -3184,12 +3235,45 @@ async def database_term_counts(response: Response,
        Status: Working as described above
 
     ## Sample Call
+            
+            /v2/Database/TermCounts/?termlist=dog%2C%20cat%2C%20mouse&termfield=text
+            
+            Response:
+            {
+                 "termIndex": {
+                 "responseInfo": {
+                   "count": 3,
+                   "fullCountComplete": true,
+                   "listType": "termindex",
+                   "scopeQuery": [
+                     "Terms: dog, cat, mouse"
+                   ],
+                   "request": "http://development.org:9100/v2/Database/TermCounts/?termlist=dog%2C%20cat%2C%20mouse&termfield=text",
+                   "dataSource": "OPAS.Local.2021-05-26"
+                 },
+                 "responseSet": [
+                   {
+                     "field": "text",
+                     "term": "dog",
+                     "termCount": 4256
+                   },
+                   {
+                     "field": "text",
+                     "term": "cat",
+                     "termCount": 2431
+                   },
+                   {
+                     "field": "text",
+                     "term": "mouse",
+                     "termCount": 744
+                   }
+                 ]
+               }
+             }
 
     ## Notes
     
     **** IMPORTANT: See Potential errors below ***
-
-    See also: /v2/Database/TermCounts/
 
     ## Potential Errors
 
@@ -5071,6 +5155,8 @@ if __name__ == "__main__":
     print(f"Server Running ({localsecrets.BASEURL}:{localsecrets.API_PORT_MAIN})")
     print (f"Running in Python {sys.version_info[0]}.{sys.version_info[1]}")
     print (f"Configuration used: {CONFIG}")
+    print (f"Version:{__version__}")
+    
     uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=False, log_level="warning")
     # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
     print ("Now we're exiting...")

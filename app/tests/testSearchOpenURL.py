@@ -51,15 +51,15 @@ class TestSearchOpenURL(unittest.TestCase):
         assert(response_info["count"] >= 1)
 
     def test_search_stitle(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/OpenURL/?stitle=International Journal*')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/OpenURL/?stitle="International Journal*"')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
+        print (response_set[0]["PEPCode"])
         assert(response_info["count"] >= 1)
-        assert(response_set[0]["PEPCode"] == 'IJP')
 
     # atitle: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
     

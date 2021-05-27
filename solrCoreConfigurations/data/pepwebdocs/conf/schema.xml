@@ -2,6 +2,10 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2021-05-25 Disabled the ngrm fields again in favor of using the new SQL fields, which 
+               SQL like searches from this spaces-removed field, easy for wildcard use, without using {!complexphrase} processing 
+               Also allows prefix searching quickly.
+               
     2021-05-19 added art_auth_mast_list to verify/search by firstname lastname individually 
     
     2021-05-06 corrected error: string_ci fields need to be stored and indexed, since they are no longer docvalues
@@ -319,11 +323,11 @@
   <field name="art_authors_citation_list" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_citation_list_strings" type="strings" indexed="true" stored="true" multiValued="true"/>
   <field name="art_authors_citation_list_strings_sql" type="string_sql" indexed="true" stored="true" multiValued="true"/>
-  <field name="art_authors_citation_list_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>
+  <!--<field name="art_authors_citation_list_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
   <copyField source="art_authors_citation" dest="art_authors_citation_str"/> # for sorting
   <copyField source="art_authors_citation_list" dest="art_authors_citation_list_strings"/> # for sorting
   <copyField source="art_authors_citation_list" dest="art_authors_citation_list_strings_sql"/>
-  <copyField source="art_authors_citation_list" dest="art_authors_citation_list_ngrm"/> 
+  <!--<copyField source="art_authors_citation_list" dest="art_authors_citation_list_ngrm"/> -->
 
   <!-- Good for searching, separated author names, but full text like art_authors_citation (where they are not separated)-->
   <field name="art_authors_text" type="text_simple" indexed="true" stored="True" multiValued="true"/> <!-- doesn't need to be stored, but useful to see -->
@@ -338,11 +342,11 @@
   <field name="art_authors_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!--Added 7/21 to facilitate smartsearch-->
   <field name="art_authors_lastnames" type="string_ci" indexed="true" stored="false" multiValued="true"/>
-  <field name="art_authors_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>
-  <field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>
+  <!--<field name="art_authors_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
+  <!--<field name="art_authors_mast_ngrm" type="text_ngrm" indexed="true" stored="false" multiValued="true"/>-->
 
-  <copyField source="art_authors" dest="art_authors_ngrm"/>
-  <copyField source="art_authors_mast" dest="art_authors_mast_ngrm"/>
+  <!--<copyField source="art_authors" dest="art_authors_ngrm"/>-->
+  <!--<copyField source="art_authors_mast" dest="art_authors_mast_ngrm"/>-->
 
   <!-- by paras-->
   <!--<field name="art_body_xml" type="text_simple" indexed="true" stored="false" multiValued="false"/>-->
@@ -709,7 +713,10 @@
        <filter class="solr.LowerCaseFilterFactory"/>
      </analyzer>
    </fieldType>
-   
+  
+  <!--SQL like searches from this spaces-removed field, easy for wildcard use, without using {!complexphrase} processing 
+      Also allows prefix searching quickly.
+  -->
   <fieldType name="string_sql" class="solr.TextField" sortMissingLast="true">
       <analyzer type="index">
           <tokenizer class="solr.KeywordTokenizerFactory"/>

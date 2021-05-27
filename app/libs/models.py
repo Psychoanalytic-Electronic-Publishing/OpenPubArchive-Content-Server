@@ -666,7 +666,6 @@ class SolrQueryTermList(BaseModel):
     qt: List[SolrQueryTerm] = []
     qf: List[SolrQueryTerm] = []
     solrQueryOpts: SolrQueryOpts = None
-    # additions 2020-08-17 to make termlist a more complete solution for seaching
     similarCount: int = Field(0, title=opasConfig.TITLE_SIMILARCOUNT)
     returnFields: str = Field(None, title="List of return fields (ExtendedSearch Only)", description="Comma separated list of return fields.  Only applies to ExtendedSearch.")
     returnFormat: str = Field("HTML", title="Return type: XML, HTML, TEXT_ONLY", description="Return type: XML, HTML, TEXT_ONLY")
@@ -675,10 +674,10 @@ class SolrQueryTermList(BaseModel):
     facetFields: str = Field(None, title="Faceting field list (comma separated list)", description="Returns faceting counts if specified.")
     facetMinCount: int = Field(1, title="Minimum count to return a facet")
     # TODO: facetRanges not yet implemented
-    facetRanges: str = Field(None, title="Faceting range list (comma separated list)", description="Returns faceting ranges if specified.")
+    facetRanges: str = Field(None, title="Faceting range list (comma separated list)", description="Returns faceting ranges if specified. (Not Yet Implemented)")
     # facetSpec can include any Solr facet options, except any that are listed above.
     # option names should use _ instead of Solr's "."
-    facetSpec: dict = Field({}, title="Flexible Dictionary for facet specifications (using _ rather than .) ")
+    facetSpec: dict = Field({}, title="Flexible Dictionary for facet specifications (use _ rather than .) ")
 
 #-------------------------------------------------------
 # advanced Solr Raw return
