@@ -73,6 +73,9 @@ class ListTypeEnum(Enum):
     reportList = "reportlist"
     
 class ReportTypeEnum(str, Enum):
+    def __str__(self):
+        return '{0}'.format(self.value)
+    
     sessionLog = "Session-Log"
     userSearches = "User-Searches"
     documentViews = "Document-View-Stat"

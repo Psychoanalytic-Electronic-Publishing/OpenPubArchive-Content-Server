@@ -71,13 +71,13 @@ def base_plus_endpoint_encoded(endpoint, base=base_api):
 
 UNIT_TEST_CLIENT_ID = "4"
 
-def test_login():
-    pads_session_info = opasDocPermissions.authserver_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TEST_PW)
+def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TEST_PW, client_id=UNIT_TEST_CLIENT_ID):
+    pads_session_info = opasDocPermissions.authserver_login(username=username, password=password)
     session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id=UNIT_TEST_CLIENT_ID, pads_session_info=pads_session_info)
     # Confirm that the request-response cycle completed successfully.
     sessID = session_info.session_id
     headers = {f"client-session":f"{sessID}",
-               "client-id": UNIT_TEST_CLIENT_ID, 
+               "client-id": client_id, 
                "Content-Type":"application/json",
                localsecrets.API_KEY_NAME: localsecrets.API_KEY}
     return sessID, headers, session_info

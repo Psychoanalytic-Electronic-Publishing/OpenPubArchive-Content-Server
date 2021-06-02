@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0526/v2.1.3" # semver versioning now added after date.
+__version__     = "2021.0601/v2.1.4" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -187,69 +187,69 @@ app = FastAPI(
     debug=False,
     title="OpenPubArchive Server (OPAS) API for PEP-Web",
     description = """
-                 <b>An Open Source Full-Text Journal and Book Server and API by Psychoanalytic\
-                 Electronic Publishing (PEP)</b>
-                 
-                 This API server is an initial version of the OPAS Solr-based Server (API);\
-                 it's not "fully generic", the schema and functionality were developed around\
-                 the new full-functionality API Client meant to replace PEP's full-text\
-                 journal, book, and video database, PEP-Web. But PEP has developed it as open\
-                 source, so it could be a start for an extended or general purpose server.
-                 
-                 While Solr already provides an API that is generic, the OPAS API wraps a\
-                 higher level API on top of that, which based on PEP's experience, provides\
-                 functionality that should simplify client development significantly. This is\
-                 in fact the second version of such a high level API (the first was written\
-                 around DTSearch). That it simplifies development was shown by PEP-Easy, which\
-                 was a very simple client written in javascript to the V1.0 version of the\
-                 API. Having a higher level API also simplifies porting as PEP did when the\
-                 underlying full-text indexing software changed from DTSearch to Solr.
-                 
-                 One key feature of this API is true paragraph level search...something not\
-                 easily implemented in Solr in a straightforward way. That functionality\
-                 requires a schema design where paragraphs are separately indexed using Solr's\
-                 advanced nested indexing. The PEP-Web Docs schema implements this.
-                 
-                 Note that a few of the endpoints require an API key. If so, it is listed in\
-                 the description of the endpoint (not in the query parameter list). If a\
-                 function requiring one is called without the API key, you will get an\
-                 authentication error.
-                 
-                 ***
-                 
-                 *IMPORTANT UPDATE REGARDING THE PEP SCHEMA*: The current PEP Docs Schema does\
-                 not index all documents by paragraphs, since to provide search results more\
-                 compatible with PEP's original DTSearch based implementation, term proximity\
-                 search is instead approximated by a preset word distance value, as was done\
-                 in DTSearch. However, SE and GW are indexed by paragraph as well, and thus\
-                 the paratext (true paragraph search) feature of the API works for those book\
-                 series. Thus, all searches using the "paratext" parameter will only currently\
-                 search these two book series. This of course only applies to the current\
-                 PEPWebDocs core, and for other databases (cores), the paragraph level\
-                 indexing and searches may still be fully utilized. The PEP loader program,\
-                 which are specific to the PEP-Schema, can be used to turn on and off\
-                 paragraph level indexing for other documents. This is controlled in a simple\
-                 manner by the SRC_CODES_TO_INCLUDE_PARAS list constant in the loaderConfig.py\
-                 file.
-                 
-                 ***
-                 
-                 *INTERACTIVE DOCS USAGE NOTE*: For those using the interactive Docs interface\
-                 to test out endpoints, the built-in feature has one significant issue: the\
-                 input field widths are too small for some of our potential parameter values.\
-                 A workaround for this is to get a browser extension called `Stylebot`, which\
-                 will let you add a local CSS rule to fix that. Add this rule for the URL\
-                 where the docs are located for you:
-                 
-                             .swagger-ui .parameters-col_description input[type=text] {
-                                    max-width: 1300px;
-                                    width: 100%;
-                             }
-                             
-                 
-                 and that will enlarge the fields persistently.
-                 ***    
-    """,
+<b>An Open Source Full-Text Journal and Book Server and API by Psychoanalytic
+Electronic Publishing (PEP)</b>
+
+This API server is an initial version of the OPAS Solr-based Server (API);
+it's not "fully generic", the schema and functionality were developed around
+the new full-functionality API Client meant to replace PEP's full-text
+journal, book, and video database, PEP-Web. But PEP has developed it as open
+source, so it could be a start for an extended or general purpose server.
+
+While Solr already provides an API that is generic, the OPAS API wraps a
+higher level API on top of that, which based on PEP's experience, provides
+functionality that should simplify client development significantly. This is
+in fact the second version of such a high level API (the first was written
+around DTSearch). That it simplifies development was shown by PEP-Easy, which
+was a very simple client written in javascript to the V1.0 version of the
+API. Having a higher level API also simplifies porting as PEP did when the
+underlying full-text indexing software changed from DTSearch to Solr.
+
+One key feature of this API is true paragraph level search...something not
+easily implemented in Solr in a straightforward way. That functionality
+requires a schema design where paragraphs are separately indexed using Solr's
+advanced nested indexing. The PEP-Web Docs schema implements this.
+
+Note that a few of the endpoints require an API key. If so, it is listed in
+the description of the endpoint (not in the query parameter list). If a
+function requiring one is called without the API key, you will get an
+authentication error.
+
+***
+
+*IMPORTANT UPDATE REGARDING THE PEP SCHEMA*: The current PEP Docs Schema does 
+not index all documents by paragraphs, since to provide search results more 
+compatible with PEP's original DTSearch based implementation, term proximity 
+search is instead approximated by a preset word distance value, as was done 
+in DTSearch. However, SE and GW are indexed by paragraph as well, and thus 
+the paratext (true paragraph search) feature of the API works for those book 
+series. Thus, all searches using the "paratext" parameter will only currently 
+search these two book series. This of course only applies to the current 
+PEPWebDocs core, and for other databases (cores), the paragraph level 
+indexing and searches may still be fully utilized. The PEP loader program,
+which are specific to the PEP-Schema, can be used to turn on and off 
+paragraph level indexing for other documents. This is controlled in a simple 
+manner by the SRC_CODES_TO_INCLUDE_PARAS list constant in the loaderConfig.py 
+file.
+
+***
+
+*INTERACTIVE DOCS USAGE NOTE*: For those using the interactive Docs interface
+to test out endpoints, the built-in feature has one significant issue: the 
+input field widths are too small for some of our potential parameter values.
+A workaround for this is to get a browser extension called `Stylebot`, which
+will let you add a local CSS rule to fix that. Add this rule for the URL
+where the docs are located for you:
+
+            .swagger-ui .parameters-col_description input[type=text] {
+                   max-width: 1300px;
+                   width: 100%;
+            }
+            
+
+and that will enlarge the fields persistently.
+***    
+   """,
         version = f"{__version__}",
         static_directory=r"./docs",
         swagger_static={
@@ -418,20 +418,21 @@ def log_endpoint_time(request, ts, level="info"):
 # EndPoints
 # ############################################################################
 #-----------------------------------------------------------------------------
-@app.put("/v2/Admin/LogLevel/", tags=["Admin"], summary="Admin function to change logging level")
+@app.put("/v2/Admin/LogLevel/", tags=["Admin"], summary=opasConfig.ENDPOINT_SUMMARY_LOGLEVEL)
 async def admin_set_loglevel(response: Response, 
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                             level:str=Query(None, title="Log Level", description="DEBUG, INFO, WARNING, or ERROR"),
+                             sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
                              api_key: APIKey = Depends(get_api_key), 
                              client_id:int=Depends(get_client_id),
-                             sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
-                             level:str=Query("WARNING", title="Log Level", description="DEBUG, INFO, WARNING, or ERROR"),
+                             client_session:str= Depends(get_client_session), 
                             ):
     
     """
     ## Function
        <b>Change the logging level of the server to DEBUG, INFO, WARNING, or ERROR.</b>
-
-       <b>Requires</b> API key, sessionID and client_id in the header (use 'client-id' in call header).
+       
+       If level is not supplied, just report current level.
 
     ## Return Type
        Returns a string confirming the new logger level, or an error message.  
@@ -440,15 +441,24 @@ async def admin_set_loglevel(response: Response,
        This endpoint is working.
 
     ## Notes
+       ### Requires API key.
+       ### Requires Admin level user for changes.
+
        The input string is case insensitive.
        
     ## Potential Errors
-       NA
+       N/A
     
     """
     levels = {10: "DEBUG", 20: "INFO", 30: "WARNING", 40: "ERROR", 50: "CRITICAL"}
     logger = logging.getLogger() # Get root logger
     curr_level = levels.get(logger.level, str(logger.level))
+    # see if user is an admin
+    admin = False
+    if client_session is not None:
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+        if ocd.verify_admin(session_info):
+            admin = True
     
     try:
         # not necessary, since setLevel accepts the same strings
@@ -456,28 +466,39 @@ async def admin_set_loglevel(response: Response,
         # (as does the Exception)
         # At this point there's no reason I see to accept numeric levels
         err = ""
-        level = level.upper()
-        if level == "DEBUG":
-            lev_int = logging.DEBUG
-        elif level == "INFO":
-            lev_int = logging.INFO
-        elif level == "WARNING" or level == "WARN":
-            lev_int = logging.WARNING
-        elif level == "ERROR":
-            lev_int = logging.ERROR
+
+        change = False
+        ret_val = f"Specified log level is set to: {curr_level}."
+        if admin:
+            level = level.upper()
+            if level == "DEBUG":
+                lev_int = logging.DEBUG
+            elif level == "INFO":
+                lev_int = logging.INFO
+            elif level == "WARNING" or level == "WARN":
+                lev_int = logging.WARNING
+            elif level == "ERROR":
+                lev_int = logging.ERROR
+            else:
+                err = f"Specified log level {level} not recognized. Log level still set to: {curr_level}"
         else:
-            err = f"Specified log level {level} not recognized. Log level still set to: {curr_level}"
-        
-        if err == "":
+            if curr_level != level:
+                err = f"Log level can only be changed by an adminSpecified log level {level} not recognized. Log level still set to: {curr_level}"
+                raise HTTPException(httpCodes.HTTP_401_UNAUTHORIZED, detail=err)
+            else:
+                err = f"Log level set to: {curr_level}"
+            
+        if admin:
             logger.setLevel(lev_int)
-        else:
-            raise HTTPException(404, detail=err)
+            change = True
 
     except Exception as e:
-        logger.error(f"Error: {e}. {err}")
+        err = f"Exception setting or getting LogLevel: {e}"
+        logger.error(err)
         ret_val = err
     else:
-        ret_val = f"Log level set to: {levels.get(logger.level, str(logger.level))}" 
+        if change:
+            ret_val = f"Log level set to: {levels.get(logger.level, str(logger.level))}.  Was {curr_level}" 
 
     return ret_val
 
@@ -499,46 +520,49 @@ async def reports(response: Response,
                   api_key: APIKey = Depends(get_api_key)
                   ):
     """
-    ### Function
+    ## Function
       <b>Returns a report in JSON per the Reports</b>
 
-      Requires API key.
-      
-    ### Return Type
-      models.Report
+    ## Return Type
+       models.Report
 
-    ### Status
+    ## Status
        This endpoint is working.
 
-    ### Sample Call
-         #/v2/Reports/
+    ## Sample Call
+       #/v2/Reports/
 
-    ### Notes
-      For session-views and user-searches reports:
+    ## Notes
+       ### Requires API key.
+       ### Requires Admin level user  [Not Yet] #TODO: Change to admin level user, at least for some reports.
+    
+       For session-views and user-searches reports:
          matchstr does a regex search of the url (endpoint plus parameters)
          e.g.,
            /Documents/Document/AIM.023.0227A/
          
-      For document-view-log
-         matchstr does a regex search of the document type, e.g.,
-            PDF
+       For document-view-log matchstr does a regex search of the document type, e.g.,
+         PDF
  
-      Note as the examples above, you don't need to include special regex wildcards (it matches anywhere in the text)
+       Note as the examples above, you don't need to include special regex wildcards (it matches anywhere in the text)
 
-    ### Potential Errors
-       #NA
-
+    ## Potential Errors
+       N/A
 
     """
     opasDocPermissions.verify_header(request, "Reports") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    if session_info.admin != True:
+        # watch to see if PaDS is using the reports as an admin or non-admin user, if admin, change reports to admin only
+        logger.warning(f"Report {report} request by non-admin user ({session_info.username}).")
+    else:
+        logger.info(f"Report {report} request by admin user ({session_info.username}).")
 
     userid_condition = ""
     sessionid_condition = ""
     extra_condition = ""
-    #username_condition = ""
     standard_filter = "1"
     limited_count = 0
     ret_val = None
@@ -714,72 +738,24 @@ async def reports(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Api/LiveDoc", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENTATION)
-async def api_live_doc(api_key: APIKey = Depends(get_api_key),
-                       ):
-    """
-    This returns an HTML page of interactive api documentation.
-
-    Requires API key.
-
-    """
-    #It's really only useful if/when we turn off the free documentation
-    #changing the app call to:
-
-        #app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-
-    response = get_swagger_ui_html(openapi_url="/v2/Api/OpenapiSpec", title="docs")
-
-    #TODO: should we set this wherever the key is required?
-    response.set_cookie(
-        localsecrets.API_KEY_NAME,
-        value=api_key,
-        domain=localsecrets.COOKIE_DOMAIN,
-        httponly=True,
-        max_age=1800,
-        expires=1800,
-    )
-    return response
-
-#-----------------------------------------------------------------------------
-@app.get("/v2/Api/OpenapiSpec", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_OPEN_API)
-async def api_openapi_spec(api_key: APIKey = Depends(get_api_key), 
-                           ):
-    """
-    This returns openapi documentation in json that can be loaded to Swagger
-
-    Requires API key.
-
-    """
-    #Also a good demo of the simplicity to add APIKey to any endpoint. The APIKey
-    #can be added to the header (see postman example), in the interactive documentation
-    #it's just a matter of pressing the lock icon and filling out the form.  It can also
-    #be supplied as a query parameter in the endpoint call.
-
-    response = JSONResponse(get_openapi(title="FastAPI", version=1, routes=app.routes))
-    return response
-
-#-----------------------------------------------------------------------------
-@app.get("/v2/Admin/Sitemap/", tags=["Admin"], summary="Admin function to generate sitemap for search engines", response_model=models.SiteMapInfo)
+@app.get("/v2/Admin/Sitemap/", tags=["Admin"], response_model=models.SiteMapInfo, summary=opasConfig.ENDPOINT_SUMMARY_SITEMAP)
 async def admin_sitemap(response: Response, 
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                        api_key: APIKey = Depends(get_api_key), 
-                        client_id:int=Depends(get_client_id),
                         path: str=Query(localsecrets.SITEMAP_PATH, title=opasConfig.TITLE_SITEMAP_PATH, description=opasConfig.DESCRIPTION_SITEMAP_PATH),
                         size: int=Query(8000, title=opasConfig.TITLE_SITEMAP_RECORDS_PER_FILE, description=opasConfig.DESCRIPTION_SITEMAP_RECORDS_PER_FILE),
                         max_records: int=Query(200000, title=opasConfig.TITLE_SITEMAP_MAX_RECORDS, description=opasConfig.DESCRIPTION_SITEMAP_MAX_RECORDS),
-                        #client_session:str= Depends(get_client_session),
+                        api_key: APIKey = Depends(get_api_key), 
+                        client_id:int=Depends(get_client_id),
+                        client_session:str= Depends(get_client_session)
                        ):
     
     """
     ## Function
-       <b>Generate a Sitemap for Google.</b>
-
-       <b>Secure call requires</b> API key and client_id in the header (use 'client-id' in call header).
-       
+       ### Generate a Sitemap for Google.
 
     ## Return Type
-        SiteMapInfo model pointing to sitemapindex and list of files, e.g.,
+       SiteMapInfo model pointing to sitemapindex and list of files, e.g.,
+       
             {
                "siteMapIndex": "X:\\AWS_S3\\AWSProd PEP-Web-Google/sitemapindex.xml",
                "siteMapList": [
@@ -797,13 +773,15 @@ async def admin_sitemap(response: Response,
        /v2/Admin/Sitemap/?size=100&max_records=500
 
     ## Notes
+       ### Requires API key
+       ### Requires client_id in the header (use 'client-id' in call header)
+       ### Requires Admin Level User Session
        
     ## Potential Errors
-       NA
+       N/A
     
     """
     import opasSiteMap
-
     # Need to move these to localsecrets on AWS, then remove this
     try:
         SITEMAP_OUTPUT_FILE = path + localsecrets.PATH_SEPARATOR + "sitemap" # don't include xml extension here, it's added
@@ -812,35 +790,106 @@ async def admin_sitemap(response: Response,
         SITEMAP_OUTPUT_FILE = ".." + localsecrets.PATH_SEPARATOR + "sitemap"             # don't include xml extension here, it's added
         SITEMAP_INDEX_FILE = ".." + localsecrets.PATH_SEPARATOR + "sitemapindex.xml"
    
-    try:
-        # returns a list of the sitemap files (since split)
-        sitemap_list = opasSiteMap.metadata_export(SITEMAP_OUTPUT_FILE, total_records=max_records, records_per_file=size)
-        sitemap_index = opasSiteMap.opas_sitemap_index(output_file=SITEMAP_INDEX_FILE, sitemap_list=sitemap_list)
-        ret_val = models.SiteMapInfo(siteMapIndex=SITEMAP_INDEX_FILE, siteMapList=sitemap_list)
-        #ret_val = {
-                   #"SiteMapIndex" : SITEMAP_INDEX_FILE, 
-                   #"SiteMapList" : sitemap_list
-                   #}
-
-    except Exception as e:
-        ret_val=f"Sitemap Error: {e}"
-        logger.error(ret_val)
-        raise HTTPException(
-            status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=ret_val
-        )
-
+    localtest = r"c:\\"
+    if client_session is not None:
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+        # see if user is an admin or if this is a localtest
+        if ocd.verify_admin(session_info) or path[0:3] == localtest[0:3]:
+            try:
+                # returns a list of the sitemap files (since split)
+                sitemap_list = opasSiteMap.metadata_export(SITEMAP_OUTPUT_FILE, total_records=max_records, records_per_file=size)
+                sitemap_index = opasSiteMap.opas_sitemap_index(output_file=SITEMAP_INDEX_FILE, sitemap_list=sitemap_list)
+                ret_val = models.SiteMapInfo(siteMapIndex=SITEMAP_INDEX_FILE, siteMapList=sitemap_list)
+        
+            except Exception as e:
+                ret_val=f"Sitemap Error: {e}"
+                logger.error(ret_val)
+                raise HTTPException(
+                    status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, 
+                    detail=ret_val
+                )
+        else:
+            ret_val=f"Sitemap Error: Admin access required"
+            logger.error(ret_val)
+            raise HTTPException(
+                status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
+                detail=ret_val
+            )
+            
     return ret_val
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Api/LiveDoc", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_DOCUMENTATION)
+async def api_live_doc(api_key: APIKey = Depends(get_api_key)):
+    """
+    ## Function
+       ### This returns an HTML page with interactive api documentation.
+
+    ## Return Type
+       HTML
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+       /v2/Api/LiveDoc/
+
+    ## Notes
+       ### Requires API key.
+        
+    ## Potential Errors
+        N/A
+
+    """
+    # This is especially useful if/when we turn off the free documentation by changing the app call to:
+        #app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    # or for downloading the doc.
+    
+    response = get_swagger_ui_html(openapi_url="/v2/Api/OpenapiSpec", title="docs")
+
+    return response
+
+#-----------------------------------------------------------------------------
+@app.get("/v2/Api/OpenapiSpec", tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_OPEN_API)
+async def api_openapi_spec(api_key: APIKey = Depends(get_api_key)):
+    """
+    ## Function
+       ### This returns openapi documentation in JSON that can be loaded to Swagger
+
+    ## Return Type
+       Open API spec in JSON
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+       /v2/Api/OpenapiSpec/
+
+    ## Notes
+       ### Requires API key
+
+    ## Potential Errors
+       N/A
+
+    """
+    #Also a good demo of the simplicity to add APIKey to any endpoint. The APIKey
+    #can be added to the header (see postman example), in the interactive documentation
+    #it's just a matter of pressing the lock icon and filling out the form.  It can also
+    #be supplied as a query parameter in the endpoint call or a cookie.
+
+    response = JSONResponse(get_openapi(title="FastAPI", version=1, routes=app.routes))
+    return response
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Api/Status/", response_model=models.APIStatusItem, response_model_exclude_unset=True, tags=["API documentation"], summary=opasConfig.ENDPOINT_SUMMARY_API_STATUS)
 async def api_status(response: Response, 
-                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                     request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST)
                     ):
     """
     ## Function
-       <b>Return the status of the API to check if it's online/available.
-       This is a low overhead function and suitable as a heartbeat check.</b>
+       ### Return the status of the API to check if it's online/available.
+       
+       <b>This is a low overhead function and suitable as a heartbeat check.</b>
 
     ## Return Type
        models.APIStatusItem
@@ -850,6 +899,12 @@ async def api_status(response: Response,
 
     ## Sample Call
          /v2/Api/Status/
+
+    ## Notes
+       N/A
+       
+    ## Potential Errors
+       N/A
 
     """
     try:
@@ -877,7 +932,7 @@ async def client_save_configuration(response: Response,
                                     ):
     """
     ## Function
-       <b>Persistently store any "global" (not tied to a specific user) settings for the client app.</b>
+       ### Persistently store any "global" (not tied to a specific user) settings for the client app.
 
        A client can store multiple settings under different names. As of the 2021.02.13.Alpha, a client
        can save multiple settings in a single call.  The list of settings, when converted to JSON, look like this:
@@ -920,8 +975,6 @@ async def client_save_configuration(response: Response,
        It's important to note that each of the settings are stored separately in the underlying database
        under the configName specified.  They are not stored as a set, and can be retrieved individually,
        or in other combinations.
-        
-       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
 
     ## Return Type
        models.ClientConfigList
@@ -930,10 +983,11 @@ async def client_save_configuration(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Client/Configuration/
+        /v2/Client/Configuration/
 
     ## Notes
-         NA
+       ### Requires API key
+       ### Requires client_id in the header (use 'client-id' in call header)
 
     ## Potential Errors
        If one of the configNames already exists for that client app (based on that client_id),
@@ -990,11 +1044,10 @@ async def client_update_configuration(response: Response,
 
     """
     ## Function
-       <b>Update global configuration settings for the client.  Identical in all other ways to the POST call,
-       in this case, if the configname already exists for that client app, the previous settings
-       are overwritten.</b>
-
-       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
+       ### Update global configuration settings for the client.
+       
+       Identical in all other ways to the POST call, in this case, if the configname already exists for that client app, the previous settings
+       are overwritten.
 
     ## Return Type
        models.ClientConfigList (one or more configs)
@@ -1006,10 +1059,11 @@ async def client_update_configuration(response: Response,
          /v2/Client/Configuration/
 
     ## Notes
-         NA
-
+       ### Requires API key
+       ### Requires client_id in the header (use 'client-id' in call header)
+       
     ## Potential Errors
-       NA
+       N/A
 
     """
     #  api_key needs to be supplied, e.g., in the header
@@ -1080,8 +1134,6 @@ async def client_get_configuration(response: Response,
        Client-specific Administrative function to store the global settings for the client app.
        A client can store multiple settings under different names.
 
-       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
-
        TODO: Consider whether to require logging in as an admin to use this feature.
         (first need to consider whether the app would also be logged into the central auth (e.g., PaDS)
         is made, since the only admin login is local login!)
@@ -1100,10 +1152,11 @@ async def client_get_configuration(response: Response,
          /v2/Client/Configuration/?configname="test_client_test_1, test_client_test_2"
 
     ## Notes
-         NA
-
+       ### Requires API key
+       ### Requires client_id in the header (use 'client-id' in call header)
+       
     ## Potential Errors
-       NA
+       N/A
 
     """
     # maybe no session id when they get this, so don't check here
@@ -1151,8 +1204,6 @@ async def client_del_configuration(response: Response,
     ## Function
        <b>Delete the specified configuration or configurations (settings) for the specified client_id</b>
 
-       <b>Requires</b> API key and client_id in the header (use 'client-id' in call header).
-
     ## Return Type
        models.ClientConfigList (one or more configs, the ones deleted) 
 
@@ -1167,10 +1218,11 @@ async def client_del_configuration(response: Response,
          /v2/Client/Configuration/?configname="test_client_test_1, test_client_test_2"
 
     ## Notes
-         NA
-
+       ### Requires API key
+       ### Requires client_id in the header (use 'client-id' in call header)
+       
     ## Potential Errors
-       NA
+       N/A
 
     """
     
@@ -1218,11 +1270,13 @@ def session_login_basic(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         /v2/Session/BasicLogin/
+        /v2/Session/BasicLogin/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     session_id = session_info.session_id
@@ -1274,12 +1328,14 @@ def session_login(response: Response,
        This endpoint is working.
     
     ## Sample Call
-         /v2/Session/BasicLogin/
-    
+        /v2/Session/BasicLogin/
+
     ## Notes
-    
+       N/A
+       
     ## Potential Errors
-    
+       N/A
+
     """
     # for debugging client call
     opasDocPermissions.verify_header(request, "Login")
@@ -1362,8 +1418,10 @@ def session_logout_user(response: Response,
          /v2/Session/Logout/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
 
@@ -1407,7 +1465,7 @@ async def session_status(response: Response,
        2020-09-09 - client-session (id) is not longer needed except if extended admin information is required
 
     ## Potential Errors
-       NA
+       N/A
 
     """
     global text_server_ver # solr ver
@@ -1512,10 +1570,10 @@ async def session_whoami(response: Response,
          /v2/Session/WhoAmI/
 
     ## Notes
-       NA
-
+       N/A
+       
     ## Potential Errors
-       NA
+       N/A
 
     """
     opasDocPermissions.verify_header(request, "WhoAmI") # for debugging client call
@@ -1536,17 +1594,17 @@ async def session_whoami(response: Response,
 @app.post("/v2/Database/AdvancedSearch/", response_model=Union[models.DocumentList, models.ErrorReturn], response_model_exclude_unset=True, response_model_exclude_none=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_ADVANCED)  #  removed for now: response_model=models.DocumentList, 
 async def database_advanced_search(response: Response, 
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                                   apimode: str=Header(None, title="API mode", description="Set the api mode to 'debug' or 'production' (default)"), 
+                                   apimode: str=Header(None, title=opasConfig.TITLE_API_MODE, description=opasConfig.DESCRIPTION_API_MODE), 
                                    # Request body parameters - allows full specification of parameters in the body
                                    solrqueryspec: models.SolrQuerySpec=Body(None, embed=True),
                                    # Query parameters
-                                   advanced_query: str=Query(None, title="Advanced Query (Solr Syntax)", description="Advanced Query in Solr syntax (see schema names)"),
-                                   filter_query: str=Query(None, title="Advanced Query (Solr Syntax)", description="Advanced Query in Solr syntax (see schema names)"),
-                                   return_fields: str=Query(None, title="Fields to return", description="Comma separated list of field names"),
-                                   highlight_fields: str=Query("text_xml", title="Fields to return for highlighted matches", description="Comma separated list of field names"),
-                                   def_type: str=Query("lucene", title="edisMax, disMax, lucene (standard) or None (lucene)", description="Query analyzer"),
+                                   advanced_query: str=Query(None, title=opasConfig.TITLE_ADVANCEDSEARCHQUERY, description=opasConfig.DESCRIPTION_ADVANCEDSEARCHQUERY),
+                                   filter_query: str=Query(None, title=opasConfig.TITLE_ADVANCEDSEARCHFILTERQUERY, description=opasConfig.DESCRIPTION_ADVANCEDSEARCHFILTERQUERY),
+                                   return_fields: str=Query(None, title=opasConfig.TITLE_RETURN_FIELDS, description=opasConfig.DESCRIPTION_RETURN_FIELDS),
+                                   highlight_fields: str=Query("text_xml", title=opasConfig.TITLE_HIGHLIGHT_FIELDS, description=opasConfig.DESCRIPTION_HIGHLIGHT_FIELDS),
+                                   def_type: str=Query("lucene", title=opasConfig.TITLE_DEF_TYPE, description=opasConfig.DESCRIPTION_DEF_TYPE),
                                    facet_fields: str=Query(None, title=opasConfig.TITLE_FACETFIELDS, description=opasConfig.DESCRIPTION_FACETFIELDS), 
-                                   sort: str=Query("score desc", title="Field names to sort by", description="Comma separated list of field names, optionally each with direction (desc or asc)"),
+                                   sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                    limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                    offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                                    client_id:int=Depends(get_client_id), 
@@ -1723,6 +1781,12 @@ async def database_advanced_search(response: Response,
 
     ## Status
        Status: Still in Development and testing
+
+    ## Notes
+       N/A
+       
+    ## Potential Errors
+       N/A
 
     """
     opasDocPermissions.verify_header(request, "AdvancedSearch") # for debugging client call
@@ -1986,7 +2050,9 @@ async def database_extendedsearch(response: Response,
            
 
     ## Notes
-
+       ### Requires API key
+       ### Requires client_id in the header (use 'client-id' in call header)
+        
     ## Potential Errors
        APP NEEDS TO BE AUTHENTICATED with API_KEY for access.
        Otherwise, returns error.
@@ -2130,6 +2196,7 @@ async def database_glossary_search_v2(response: Response,
        ```
 
     ## Potential Errors
+       N/A
     
     """
     opasDocPermissions.verify_header(request, "database_glossary_search_v2") # for debugging client call
@@ -2231,7 +2298,7 @@ async def database_search(response: Response,
                              ):
     """
     ## Function
-       <b>Search the database per one or more of the fields specified.</b>
+       ### Search the database per one or more of the fields specified.
 
        Some of the fields should probably be deprecated, but for now, they support PEP-Easy,
        as configured to use the GVPi based PEP Server
@@ -2242,7 +2309,7 @@ async def database_search(response: Response,
        models.DocumentList or models.ErrorReturn
 
     ## Status
-       Status: Working; [potentially this will be deprecated in favor of the post version in the Release Ver.]
+       Status: Working
 
        - in perpetual development to extend and improve features
           - smarttext now detects title search under much more restrictive inputs
@@ -2257,8 +2324,10 @@ async def database_search(response: Response,
           - 2020-09-10 removed returnFields...covered in querySpec for POST version
 
     ## Limitations
+       N/A
 
     ## Potential Errors
+       N/A
 
     """
     ts = time.time()
@@ -2445,8 +2514,10 @@ def database_searchanalysis(response: Response,
        6/2020 - The returnfields parameter was removed as not useful here.
 
     ## Limitations
+       N/A
 
     ## Potential Errors
+       N/A
 
     """
 
@@ -2608,10 +2679,11 @@ async def database_smartsearch(response: Response,
     2) Search any schema field, use Solr type notation, but one schema field per entry. 
     art_type: ART or COM
 
-
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     opasDocPermissions.verify_header(request, "SmartSearch") # for debugging client call
@@ -2682,10 +2754,13 @@ async def database_morelikethis(response: Response,
        Status: Working, but in perpetual development to improve
 
     ## Sample Call
+       N/A
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     opasDocPermissions.verify_header(request, "MoreLikeThis") # for debugging client call
@@ -2774,8 +2849,10 @@ def database_mostviewed(response: Response,
          /v2/Database/MostViewed/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     ts = time.time()
@@ -2933,8 +3010,10 @@ def database_mostcited(response: Response,
          /v2/Database/MostCited/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
 
@@ -3067,8 +3146,10 @@ async def open_url(response: Response,
          /v2/Database/OpenURL/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     ts = time.time()
@@ -3271,6 +3352,9 @@ async def database_term_counts(response: Response,
                }
              }
 
+    ## Example Calls
+       N/A
+
     ## Notes
     
     **** IMPORTANT: See Potential errors below ***
@@ -3279,8 +3363,6 @@ async def database_term_counts(response: Response,
 
     IMPORTANT: Note this API call still uses SolyPy rather than PySolr as the rest of the API does.  The error
                handling is different between the two libraries
-
-    ## Example Calls
 
     """
     ts = time.time()
@@ -3295,6 +3377,10 @@ async def database_term_counts(response: Response,
             param_error = True
             statusMsg = f"Bad Request: Field {termfield} underfined"
 
+    if termlist is None:
+        param_error = True
+        statusMsg = f"Bad Request: No termlist specified"
+        
     if param_error == False:
         results = {}  # results = {field1:{term:value, term:value, term:value}, field2:{term:value, term:value, term:value}}
         terms = [x.strip() for x in termlist.split(",")]
@@ -3416,8 +3502,10 @@ def database_who_cited_this(response: Response,
          /v2/Database/WhoCitedThis/?citedid=IJP.077.0217A
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
 
@@ -3484,8 +3572,10 @@ def database_whatsnew(response: Response,
          /v2/Database/WhatsNew/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     ts = time.time()
@@ -3572,8 +3662,10 @@ def database_word_wheel(response: Response,
        http://localhost:9100/v2/WordWheel?phleb
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     ret_val = None
@@ -3656,8 +3748,10 @@ def metadata_books(response: Response,
          {url}/v2/Metadata/Books/?sourcecode=SE
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
 
@@ -3701,8 +3795,10 @@ def metadata_contents_sourcecode(response: Response,
          /v2/Metadata/Contents/IJP/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
@@ -3768,8 +3864,10 @@ def metadata_contents(SourceCode: str,
          http://development.org:9100/v2/Metadata/Contents/IJP/77/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
@@ -3835,8 +3933,10 @@ def metadata_journals(response: Response,
        /v2/Metadata/Journals/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     log_endpoint(request, client_id=client_id, level="debug")
@@ -3885,8 +3985,10 @@ def metadata_videos(response: Response,
          /v2/Metadata/Videos/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     if streams:
@@ -3935,7 +4037,8 @@ def metadata_volumes(response: Response,
                  and moreover, don't make sense when you have more than one journal being returned
 
     ## Potential Errors
-
+       N/A
+       
     """
     ocd = opasCentralDBLib.opasCentralDB()
     log_endpoint(request, client_id=client_id, level="debug")
@@ -4005,14 +4108,14 @@ def metadata_by_sourcetype_sourcecode(response: Response,
        Use param in v2 for sourcecode rather than path variable.
 
     ## Sample Call
-         http://localhost:9100/v1/Metadata/Books/IPL
+        http://localhost:9100/v1/Metadata/Books/IPL
 
     ## Notes
-       Depends on:
+        Depends on:
           vw_api_productbase for videos
 
     ## Potential Errors
-
+        N/A
 
     """
     opasDocPermissions.verify_header(request, "metadata_by_sourcetype_sourcecode") # for debugging client call
@@ -4068,8 +4171,10 @@ def authors_index(response: Response,
        http://localhost:9100/v2/Authors/Index/Tuck/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     ret_val = None
@@ -4137,8 +4242,10 @@ def authors_publications(response: Response,
        http://localhost:8000/v2/Authors/Publications/maslow, a.*/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
+       N/A
 
     """
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
@@ -4201,6 +4308,7 @@ def documents_abstracts(response: Response,
         PEP Easy 1.03Beta expects HTML abstract return (it doesn't specify a format)
 
     ## Potential Errors
+        N/A
 
     """
     opasDocPermissions.verify_header(request, "documents_abstracts")  # for debugging client call
@@ -4270,7 +4378,7 @@ def documents_abstracts(response: Response,
     return ret_val
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Documents/Concordance", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_CONCORDANCE, response_model_exclude_unset=True)  # the current PEP API
+@app.get("/v2/Documents/Concordance/", response_model=models.Documents, tags=["Documents"], summary=opasConfig.ENDPOINT_SUMMARY_CONCORDANCE, response_model_exclude_unset=True)  # the current PEP API
 def documents_concordance(response: Response,
                           request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                           paralangid: str=Query(None, title=opasConfig.TITLE_DOCUMENT_CONCORDANCE_ID, description=opasConfig.DESCRIPTION_DOCUMENT_CONCORDANCE_ID), # return controls 
@@ -4294,7 +4402,8 @@ def documents_concordance(response: Response,
          http://localhost:9100/v2/Documents/Document/IJP.077.0217A/
 
     ## Notes
-
+       N/A
+       
     ## Potential Errors
        THE USER NEEDS TO BE AUTHENTICATED to return a para.
 
@@ -4652,7 +4761,8 @@ def documents_downloads(response: Response,
          http://localhost:9100/v2/Documents/Downloads/PDFORIG/IJP.077.0217A/
 
     ## Notes
-
+        N/A
+       
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
     """
@@ -4986,13 +5096,13 @@ async def documents_image_fetch(response: Response,
     ## Status
        This endpoint is working.
 
-
     ## Sample Call
          http://localhost:9100/v1/Documents/Image/AIM.036.0275A.FIG001/
          http://development.org:9100/v/Documents/Image/AIM.036.0275A.FIG001
 
     ## Notes
-
+        N/A
+        
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
     """

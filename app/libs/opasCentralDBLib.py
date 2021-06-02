@@ -1884,8 +1884,10 @@ class opasCentralDB(object):
         Find if this is an admin, and return user info for them.
         Returns a user object
         """
-        #TODO - Use PaDS to verify admin status!
-        ret_val = False
+        if session_info.admin:
+            ret_val = True
+        else:
+            ret_val = False
             
         return ret_val   
 
