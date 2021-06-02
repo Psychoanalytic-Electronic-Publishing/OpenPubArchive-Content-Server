@@ -46,7 +46,7 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0321.1"
+__version__     = "2021.0602.1"
 __status__      = "Development"
 
 import sys
@@ -1853,10 +1853,10 @@ class opasCentralDB(object):
                     cursor.close()
         
                 except Exception as e:
-                    logger.warning(f"Error saving document view: {e}")
+                    logger.warning(f"Error saving document {document_id} view {view_type} for session {session_id} : {e}")
                     
         except Exception as e:
-            logger.warning(f"Error checking document view type: {e}")
+            logger.warning(f"Error checking document view type {view_type}: {e}")
 
         self.close_connection(caller_name="record_document_view") # make sure connection is closed
 
