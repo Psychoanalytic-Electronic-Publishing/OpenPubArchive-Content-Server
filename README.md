@@ -1,8 +1,8 @@
 # OpenPubArchive - Open Publications Archive (Content) Server (OPAS)
- 
+
 Software for producing and providing a content server with a database of searchable archives of academic publications (including journals, books and transcribed videos).
 
-The purpose of this project is to produce software to provide a searchable archive of academic publications on the web.  The supplied version is based on the requirements for academic publications in the area of Psychoanalysis, but it should be easily generalizable to any academic area.  Specifically, this software is designed and developed based on the requirements of Psychoanalytic Electronic Publishing (PEP), a non-profit company, who currently operate www.PEP-Web.org via commercial software to publish journals and books in the subject domain of Psychoanalysis. This project was completely sponsored by PEP.  
+The purpose of this project is to produce software to provide a searchable archive of academic publications on the web.  The supplied version is based on the requirements for academic publications in the area of Psychoanalysis, but it should be easily generalizable to any academic area.  Specifically, this software is designed and developed based on the requirements of Psychoanalytic Electronic Publishing (PEP), a non-profit company, who currently operate www.PEP-Web.org via commercial software to publish journals and books in the subject domain of Psychoanalysis. This project was completely sponsored by PEP.
 
 PEP originally used v1 of the API in this project to provide an API around it's original journal database, which was written by Global Village Publishing and based on DTSearch.  When PEP needed to replace that system, we decided to develop and make the content server open source.
 
@@ -20,9 +20,9 @@ All references to the distribution below use the main folder, openpubarchive, as
    `./app/main.py`
 2) An app (Python 3) for a clean full load of PEP XML text (KBD3 DTD) into Solr with some metadata loaded into the MySQL compatible database
    `./app/opasDataLoader/opasDataLoader.py`
-3) An app (Python 3) for updating MySQL and Solr with metadata about documents and statistical data about document usage, to be run each time after a clean load of data using opasDataLoader, and weekly or more often to update the data. 
+3) An app (Python 3) for updating MySQL and Solr with metadata about documents and statistical data about document usage, to be run each time after a clean load of data using opasDataLoader, and weekly or more often to update the data.
    `./app/opasDataUpdateStat/opasDataUpdateStat.py`
-4) A Python 3 app for copying the api_client_configs table from a staging DB (MySQL) to the Productin DB (MySQL) to transfer settings when "pushing" admin configurations from Stage to Production
+4) A Python 3 app for copying the api_client_configs table from a staging DB (MySQL) to the Production DB (MySQL) to transfer settings when "pushing" admin configurations from Stage to Production
    `./app/opasPushSettings/opasPushSettingsToProduction.py`
 
 ## Getting Started
@@ -31,102 +31,98 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-- Python 3.  
+- Python 3.
 - Python 3 compatible libraries per requirements.txt files within the main APP folder and component subfolders where needed
 - [FastAPI](https://fastapi.tiangolo.com/) provides a fast, modern, API infrastructure, with a OpenAPI front end for trying out the endpoints.
-- [Solr 8.x or newer](http://lucene.apache.org/solr/).  
+- [Solr 8.x or newer](http://lucene.apache.org/solr/).
 - A [MySQL](https://dev.mysql.com/downloads/) compatible database for data recording and some configuration data, e.g., MySQL or AWS RDS
 * solrpy A convenience Python library for Solr. - original library used--still used for one feature, but due to some problems, switched to pysolr.
 * pysolr A convenience Python library for Solr. - Main library used.
 * Python Web framework - [FastAPI](https://github.com/tiangolo/fastapi) (see [Requirements.txt] in APP for complete list)
 * [XSLT](https://lxml.de/xpathxslt.html) via LXML for coding source files and transforming them
 * [XML/DTD](http://peparchive.org/pepa1dtd/pepkbd3.dtd) The initial (base) version of the server schemas and imports is based on PEP's KBD3 DTD which is the document markup implemented in books and articles in PEP-Web.  It can readily be adapted for other DTDs though.
+* (Optional) [Docker](https://docs.docker.com/get-docker/)
 
 
 ### General Install Instructions
 
-#TODO DevOPS.
 
 1. Download the OpenPubArchive-Content-Server (API) source
    Go to a local folder where you want to install in a subfolder, and run:
 
-   `git https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server.git`
+   `git clone https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server.git .`
 
 2. Install Solr
-    The repository contains a sample docker-compose.yml file if you would like to install via that.  
+    The repository contains a sample [docker-compose.yml](https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server/blob/Stage/docker-compose.yml) file if you would like to install using Docker. It can be executed by running `docker-compose up`
     The PEP schemas for three Solr cores (pepwebdocs, pepwebauthors, pepwebglossary are included).  The compose file points to a local folder where you can persist the solr database (if you point to wherever you put folder ./solrCoreConfigurations/data, when Solr is started, the schemas will load automatically.)
-    
-```
-    version: '3.3'
-    services:
-      solr:
-          image: solr:latest
-          environment:
-              SOLR_JAVA_MEM: "-Xms1g -Xmx1g"
-          volumes:
-              - ./solrCoreConfigurations/data:/var/solr/data/
-          ports:
-              - "8983:8983"
-          command: solr-foreground
-          entrypoint: "docker-entrypoint.sh"
-          restart: always
 
-
-    # Names our volume
-    volumes:
-      solrdata:
-          driver: local
-          driver_opts:
-              type: bind
-              device: ./solrCoreConfigurations/data
-```
 3. Install or Set up a MySQL compatible database (e.g., MySQL or RDS)
     a. On AWS, PEP uses RDS.
 5. Load the SQL schemafile into MySQL.  It can be found in the ./sql folder
-6. Install the OPAS app and FastAPI environment (see the included Dockerfile, which starts the API Server)
-   1. Configure the Dockerfile to point to where you want the data volume to be. Make sure the provided schemas are in the data volume referenced, or copy them there in scripts.
-   2. Rename the supplied localsecrets file, `localsecrets_fillin_and_change_name_to_localsecrets` to `localsecrets.py`
-   3. Customize the localsecrets.py file to point to the Solr and MySQL database and provide the usernames and passwords that provide full access.
+6. Run the OPAS app
+    1. Rename the supplied localsecrets file, `localsecrets_fillin_and_change_name_to_localsecrets` to `localsecrets.py`
+    1. Customize the localsecrets.py file to point to the Solr and MySQL database and provide the usernames and passwords that provide full access.
+    1. Build and run
+        - With Docker:
+            1. Build docker image
+            `docker build -t opas-api .`
+            1. Run docker image
+            `docker run opas-api`
+        - Without Docker:
+            1. Create virtual environment and install dependencies
+                ```
+                Windows:
+                install.bat
+                Unix:
+                sh install.sh
+                ```
+            1. Run app
+                ```
+                Windows:
+                app\serverstart.bat
+                Unix:
+                sh app/serverstart.sh
+                ```
 
 ### Schema
 
 There is currently no "sample schema" set provided.  The schemas are included in the repository but are fairly complex and are all very specific to PEP's data.  At the project close, we shall aim to develop a sample schema set.
 
 The current schemas provided are the PEP-Web schemas:
-1. pep-web-docs - the main document (book, article and transcribed video) solr core/database 
+1. pep-web-docs - the main document (book, article and transcribed video) solr core/database
 2. pep-web-glossary - the pep consolidated glossary solr core/database used by the glossary endpoint.
 3. pep-web-authors - a database of article authors in a solr core/database
-
-### Installing
-
-#TODO DevOPS.  
-
-A step by step series of examples shall be provided (eventually here) that tell you how to get a development env running without giving direct security info here.
 
 ## Running the tests
 
 The source includes a set of tests intended to detect broken features during development using the pytest platform.  It is, of course, schema dependent.
 
-To test the Python API/Server code, there are both docstring tests and unittests. 
+To test the Python API/Server code, there are both docstring tests and unittests.
 
 To run the unittests, you must first set the python environment to the env folder and then run the tests.  E.g., from the App folder:
 
 ```
+Windows:
 .\env\scripts\activate
 .\env\scripts\python -m unittest discover tests
+
+Unix systems:
+source ./env/bin/activate
+cd app
+python -m unittest discover tests
 ```
 
-From Windows you can also just run the batch file `testsuite.bat` to do all of the above for testing.
+From Windows you can also just run the batch file `app/testsuite.bat` to do all of the above for testing or `sh app/testsuite.sh` for unix systems.
 
 ## Versioning
 
-We use a simple date + build number version numbers during Version 1 development: 
+We use a simple date + build number version numbers during Version 1 development:
 
-We will prefix the date to [SemVer](http://semver.org/) standards for versioning with the first release version. 
+We will prefix the date to [SemVer](http://semver.org/) standards for versioning with the first release version.
 
-For the versions available, see the [tags on this repository](https://githuhttps://github.com/Psychoanalytic-Electronic-Publishing/openpubarchive/tags). 
+For the versions available, see the [tags on this repository](https://githuhttps://github.com/Psychoanalytic-Electronic-Publishing/openpubarchive/tags).
 
-A changelog with more details than github can be found in CHANGELOG.MD: 
+A changelog with more details than github can be found in CHANGELOG.MD:
 
 ## Authors
 

@@ -5,13 +5,3 @@ python -m venv .\env
 pip install --trusted-host pypi.python.org -r /app/requirements.txt
 rem if it complains pip is not up to date
 python -m pip install --upgrade pip
-
-# on, webfaction
-python3 -m venv ./env
-source ./env/bin/activate
-pip3 install --trusted-host pypi.python.org -r requirements.txt
-rem if it complains pip is not up to date
-pip3 install --upgrade pip
-
-
-
