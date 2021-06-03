@@ -867,7 +867,7 @@ class opasCentralDB(object):
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
                 curs.execute(sqlSelect, (newer_than_date))
             except Exception as e:
-                logger.error(f"DB Error getting articles newer than: {e}")
+                logger.error(f"DB Error getting articles newer than {days_back} days back, date {newer_than_date}: {e}")
             else:
                 records = curs.fetchall()
                 ret_val = [a['art_id'] for a in records]

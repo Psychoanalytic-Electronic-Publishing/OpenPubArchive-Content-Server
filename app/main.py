@@ -327,7 +327,7 @@ def get_client_session(response: Response,
 
     if session_id is None or len(session_id) < 12:
         # don't report these errors
-        msg = f"Client:[{client_id}] sessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
+        msg = f"Client:[{client_id}] SessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
         if re.search("GW\.000|SE\.000", request.url._url) is None:
             logger.error(msg)
         raise HTTPException(
@@ -802,14 +802,14 @@ async def admin_sitemap(response: Response,
                 ret_val = models.SiteMapInfo(siteMapIndex=SITEMAP_INDEX_FILE, siteMapList=sitemap_list)
         
             except Exception as e:
-                ret_val=f"Sitemap Error: {e}"
+                ret_val=f"AdminError: Sitemap Error: {e}"
                 logger.error(ret_val)
                 raise HTTPException(
                     status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, 
                     detail=ret_val
                 )
         else:
-            ret_val=f"Sitemap Error: Admin access required"
+            ret_val=f"AdminError: Unauthorized.  Admin access required for SiteMap."
             logger.error(ret_val)
             raise HTTPException(
                 status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
@@ -1091,10 +1091,10 @@ async def client_update_configuration(response: Response,
                                                   client_configuration=configuration,
                                                   replace=True)
     except Exception as e:
-        logger.error(f"Trapped error saving client config: {e}")
+        logger.error(f"ConfigError: Trapped error saving client config: {e}")
 
     if status_code not in (200, 201):
-        logger.error(f"HTTPException Called: {status_code}: {msg}")
+        logger.error(f"ConfigError: HTTPException Called: {status_code}: {msg}")
         raise HTTPException(
             status_code=status_code, # HTTP_xxx
             detail=msg
@@ -1297,7 +1297,7 @@ def session_login_basic(response: Response,
             )
             
     else:
-        logger.error(f"Bad login")
+        logger.error(f"LoginError: Bad login")
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST,
             detail=ERR_MSG_SESSION_ID_ERROR
@@ -1387,7 +1387,7 @@ def session_login(response: Response,
                                                    scope = None
                                                    )
     except ValidationError as e:
-        logger.error(e.json())             
+        logger.error(f"LoginError: Validation error: {e.json()}")             
         detail = ERR_MSG_VALIDATION_ERROR + f" {e}"
         # Solr Error
         raise HTTPException(
@@ -1582,7 +1582,7 @@ async def session_whoami(response: Response,
     if client_session is not None:
         ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     else:
-        logger.error(f"WhoAmI Bad Request: Client-Session ID not provided")
+        logger.error(f"WhoAmIError: Client-Session ID not provided")
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST,
             detail=ERR_MSG_SESSION_ID_ERROR
@@ -2070,7 +2070,7 @@ async def database_extendedsearch(response: Response,
             from configLib.opasCoreConfig import EXTENDED_CORES
             solr_core2 = EXTENDED_CORES.get(solrcore.lower(), None)
         except Exception as e:
-            detail=ERR_MSG_CORE_SPEC_ERROR + f" {e}"
+            detail=ERR_MSG_CORE_SPEC_ERROR + f"CoreSpecError: {e}"
             logger.error(detail)
             raise HTTPException(
                 status_code=httpCodes.HTTP_400_BAD_REQUEST, 
@@ -2078,8 +2078,8 @@ async def database_extendedsearch(response: Response,
             )
         else:
             if solr_core2 is None:
-                detail="Bad Extended Request. Core not specified."
-                logger.warning(detail)
+                detail="CoreSpecError: Bad Extended Request. Core not specified."
+                logger.error(detail)
                 raise HTTPException(
                     status_code=httpCodes.HTTP_400_BAD_REQUEST, 
                     detail=detail
@@ -2535,7 +2535,7 @@ def database_searchanalysis(response: Response,
                                              endyear=endyear
                                            )
     if errors:
-        detail = ERR_MSG_QUERY_FRAGMENT # "Query had too few characters or was unbalanced."
+        detail = f"SearchAnalysisError: {ERR_MSG_QUERY_FRAGMENT}" # Query had too few characters or was unbalanced."
         logger.error(detail)
         
         raise HTTPException(
@@ -2939,7 +2939,7 @@ def database_mostviewed(response: Response,
                                                                               )
 
             if ret_val is None:
-                status_message = f"Solr error for request (no return)"
+                status_message = f"MostViewedError: Bad request"
                 logger.error(status_message)
                 raise HTTPException(
                     status_code=httpCodes.HTTP_400_BAD_REQUEST, 
@@ -2948,7 +2948,7 @@ def database_mostviewed(response: Response,
                 
         except Exception as e:
             ret_val = None
-            status_message = f" {e}"
+            status_message = f"MostViewedError: Exception: {e}"
             logger.error(status_message)
             raise HTTPException(
                 status_code=httpCodes.HTTP_400_BAD_REQUEST, 
@@ -2957,7 +2957,7 @@ def database_mostviewed(response: Response,
         else:
             if isinstance(ret_val, models.ErrorReturn):
                 detail = ret_val.error + " - " + ret_val.error_description                
-                logger.error(f"{detail}")
+                logger.error(f"MostViewedError: {detail}")
                 raise HTTPException(
                     status_code=ret_val.httpcode, 
                     detail = detail
@@ -3086,14 +3086,14 @@ def database_mostcited(response: Response,
 
         if isinstance(ret_val, models.ErrorReturn): 
             detail = ret_val.error + " - " + ret_val.error_description                
-            logger.error(f"{detail}")
+            logger.error(f"MostCitedError: {detail}")
             raise HTTPException(
                 status_code=ret_val.httpcode, 
                 detail = detail
             )
 
         if ret_val is None:
-            detail = ERR_MSG_SEARCH_RETURNED_NONE + f" Status: {ret_status}"
+            detail = "MostCitedError: " + ERR_MSG_SEARCH_RETURNED_NONE + f" Status: {ret_status}"
             logger.error(detail)
             raise HTTPException(
                 status_code=httpCodes.HTTP_400_BAD_REQUEST, 
@@ -3208,7 +3208,7 @@ async def open_url(response: Response,
                                                         )
     if errors:
         detail = ERR_MSG_QUERY_FRAGMENT # "Query had too few characters or was unbalanced."
-        logger.error(detail)
+        logger.error(f"OpenURLError: {detail}")
         raise HTTPException(
             status_code=opasConfig.httpCodes.HTTP_425_TOO_EARLY,
             detail=detail
@@ -3684,13 +3684,13 @@ def database_word_wheel(response: Response,
                                                    start_at=startat)
         except ConnectionRefusedError as e:
             status_message = f"The server is not running or is currently not accepting connections: {e}"
-            logger.error(status_message)
+            logger.error(f"WordWheelError: {status_message}")
             raise HTTPException(
                 status_code=httpCodes.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=status_message
             )
         except Exception as e:
-            status_message = f"Internal Server Error: {e}"
+            status_message = f"InternalServerError: {e}"
             logger.error(status_message)
             raise HTTPException(
                 status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -3701,9 +3701,9 @@ def database_word_wheel(response: Response,
             response.status_code = httpCodes.HTTP_200_OK
     else:
         if word is not None:
-            status_message = f"Unsupported Core: {core}"
+            status_message = f"WordWheelError: Unsupported Core: {core}"
         else:
-            status_message = f"No word supplied."
+            status_message = f"WordWheelError: No word supplied."
         logger.error(status_message)
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST,
@@ -3883,7 +3883,7 @@ def metadata_contents(SourceCode: str,
         # fill in additional return structure status info
         # client_host = request.client.host
     except Exception as e:
-        status_message = "Error: {}".format(e)
+        status_message = f"MetadataError: {e}"
         logger.error(status_message)
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST,
@@ -4131,7 +4131,7 @@ def metadata_by_sourcetype_sourcecode(response: Response,
                                                                                 limit=limit,
                                                                                 offset=offset)
     except Exception as e:
-        status_message = "Error: {}".format(e)
+        status_message = f"MetadataError: {e}"
         response.status_code = httpCodes.HTTP_400_BAD_REQUEST
         logger.error(status_message)
         raise HTTPException(
@@ -4186,7 +4186,7 @@ def authors_index(response: Response,
         author_name_to_check = authorNamePartial.lower()  # work with lower case only, since Solr is case sensitive.
         ret_val = opasPySolrLib.authors_get_author_info(author_name_to_check, limit=limit, offset=offset)
     except ConnectionRefusedError as e:
-        status_message = f"The server is not running or is currently not accepting connections: {e}"
+        status_message = f"AuthorsIndexError: The server is not running or is currently not accepting connections: {e}"
         logger.error(status_message)
         raise HTTPException(
             status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -4194,7 +4194,7 @@ def authors_index(response: Response,
         )
 
     except Exception as e:
-        status_message = f"Error: {e}"
+        status_message = f"AuthorsIndexError: {e}"
         logger.error(status_message)
         raise HTTPException(
             status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -4256,7 +4256,7 @@ def authors_publications(response: Response,
         ret_val = opasPySolrLib.authors_get_author_publications(author_name_to_check, limit=limit, offset=offset)
     except Exception as e:
         response.status_code=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR
-        status_message = f"Internal Server Error: {e}"
+        status_message = f"AuthorsPublicationsError: Internal Server Error: {e}"
         logger.error(status_message)
         raise HTTPException(
             status_code=response.status_code,
@@ -4329,7 +4329,7 @@ def documents_abstracts(response: Response,
                                                             )
     except Exception as e:
         response.status_code=httpCodes.HTTP_400_BAD_REQUEST
-        status_message = f"{response.status_code}: {e}"
+        status_message = f"AbstractsError: {response.status_code}: {e}"
         logger.error(status_message)
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS_ABSTRACTS,
                                     session_info=session_info, 
@@ -4426,7 +4426,7 @@ def documents_concordance(response: Response,
                                                                      )
     except Exception as e:
         response.status_code=httpCodes.HTTP_400_BAD_REQUEST
-        status_message = f"Para Fetch Error: {e}"
+        status_message = f"ConcordanceError: Para Fetch: {e}"
         logger.error(status_message)
         ret_val = None
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
@@ -4655,7 +4655,7 @@ def documents_document_fetch(response: Response,
         
         except Exception as e:
             response.status_code=httpCodes.HTTP_400_BAD_REQUEST
-            status_message = f"{client_id}:{session_id}: Document Fetch Error: {e}"
+            status_message = f"DocumentFetchError: {client_id}/{session_id}: {e}"
             logger.error(status_message)
             ret_val = None
             raise HTTPException(
@@ -4805,12 +4805,12 @@ def documents_downloads(response: Response,
                                                              flex_fs=flex_fs,
                                                             )    
 
-    error_status_message = f" The requested document {documentID} could not be returned."
+    error_status_message = f"DocumentDownloadError: The requested document {documentID} could not be returned. "
 
     if filename is None:
         response.status_code = status.httpcode
-        status_message = status.error_description + error_status_message
-        logger.error(status_message + f"Doc Prep failed, returning no file name, Session: {session_info}.")
+        status_message = error_status_message + status.error_description + f" ({status.httpcode})"
+        logger.error(status_message + f" Session: {session_info.session_id}.")
         ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                     session_info=session_info, 
                                     params=request.url._url,
@@ -4825,7 +4825,7 @@ def documents_downloads(response: Response,
             # We need users name
             # user needs to have a name!
             if user_name is None or len(user_name) == 0:
-                error_status_message = "Username must be assigned for download of originals"
+                error_status_message = "DocumentDownloadError: Username must be assigned for download of originals"
                 logger.error(error_status_message)
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
                 raise HTTPException(status_code=response.status_code,
@@ -4845,7 +4845,7 @@ def documents_downloads(response: Response,
     
                 except Exception as e:
                     response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                    status_message = f" The requested original document {filename} could not be returned"
+                    status_message = f"DocumentDownloadError: The requested original document {filename} could not be returned"
                     extended_status_message = f"{status_message}:{e}"
                     logger.error(extended_status_message)
                     ocd.record_session_endpoint(api_endpoint_id=endpoint,
@@ -4860,7 +4860,7 @@ def documents_downloads(response: Response,
                 else:
                     status_message = opasCentralDBLib.API_STATUS_SUCCESS
                     # temp
-                    status_message = "Successful Download of PDFOrig" # opasCentralDBLib.API_STATUS_SUCCESS
+                    status_message = "DocumentDownload: Successful Download of PDFOrig" # opasCentralDBLib.API_STATUS_SUCCESS
                     logger.debug(status_message)
                     ocd.record_document_view(document_id=documentID,
                                              session_info=session_info,
@@ -4884,7 +4884,7 @@ def documents_downloads(response: Response,
 
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = f" The requested document {filename} could not be returned."
+                status_message = f"DocumentDownloadError: The requested document {filename} could not be returned."
                 extended_status_message = f"{status_message}:{e}"
                 logger.error(extended_status_message)
                 ocd.record_session_endpoint(api_endpoint_id=endpoint,
@@ -4923,7 +4923,7 @@ def documents_downloads(response: Response,
 
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = f" The requested document {filename} could not be returned."
+                status_message = f"DocumentDownloadError: The requested document {filename} could not be returned."
                 extended_status_message = f"{status_message}:{e}"
                 logger.error(extended_status_message)
                 ocd.record_session_endpoint(api_endpoint_id=endpoint,
@@ -5032,7 +5032,7 @@ def documents_glossary_term(response: Response,
 
     except Exception as e:
         response.status_code = httpCodes.HTTP_400_BAD_REQUEST
-        status_message = f"View Glossary Error: {e}"
+        status_message = f"ViewGlossaryTermError: {e}"
         logger.error(status_message)
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
                                     session_info=session_info, 
@@ -5196,7 +5196,7 @@ async def documents_image_fetch(response: Response,
                     doc_id = opasGenSupportLib.DocumentID(filename).document_id
                     counter = 0
                     while doc_id is None: # non-conforming image filename
-                        logger.error(f"Nonconforming image filename {filename}, can't get article id from it")
+                        logger.error(f"ImageFetchError: Nonconforming image filename {filename}, can't get article id from it")
                         counter += 1
                         filename = select_new_image()
                         doc_id = opasGenSupportLib.DocumentID(filename).document_id
@@ -5204,7 +5204,7 @@ async def documents_image_fetch(response: Response,
                             break
                         
                         if counter > 10:
-                            logger.error(f"{counter} nonconforming image filenames found in expert pick images.  Quitting.")
+                            logger.error(f"ImageFetchError: {counter} nonconforming image filenames found in expert pick images.  Quitting.")
                             break # should never get that high
                         
                     graphic_item = models.GraphicItem(documentID = doc_id, graphic = filename)
@@ -5212,7 +5212,7 @@ async def documents_image_fetch(response: Response,
                     
                 except Exception as e:
                     response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                    status_message = f" The requested document {filename} could not be returned {e}"
+                    status_message = f"ImageFetchError: The requested document {filename} could not be returned {e}"
                     raise HTTPException(status_code=response.status_code,
                                         detail=status_message)
                     

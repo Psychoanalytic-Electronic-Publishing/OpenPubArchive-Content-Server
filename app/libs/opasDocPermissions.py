@@ -532,11 +532,11 @@ def get_access_limitations(doc_id,
         ret_val.accessLimitedClassifiedAsCurrentContent = False
         
         if session_info is None:
-            logger.warning(f"Document permissions for {doc_id} -- no session info")
+            # logger.warning(f"Document permissions for {doc_id} -- no session info")
             ret_val.accessLimitedCode = 401 # no session
             session_id = "No Session Info"
             # not logged in
-            # use all the defaults
+            # use all the defaults above, log error below.
         else:
             # for debugging display at return
             try:
@@ -701,7 +701,8 @@ def get_access_limitations(doc_id,
                                     ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
                                     logger.debug(f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr}. Opas Reason: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}")
                                 else:
-                                    logger.warning(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}") # limited...get it elsewhere
+                                    # changed from warning to info 2021-06-02 to reduce normal logging
+                                    logger.info(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}") # limited...get it elsewhere
                                     ret_val.accessLimited = True
                                     if ret_val.accessLimitedClassifiedAsCurrentContent:
                                         # embargoed
@@ -769,7 +770,7 @@ def get_pads_session_info(session_id=None,
                 pads_session_info = get_pads_session_info(client_id=client_id, retry=False, request=request)
                 pads_session_info.pads_status_response = status_code
             else:
-                msg = f"PaDS error {pads_session_info.status_code}"
+                msg = f"PaDSError: {pads_session_info.status_code}"
                 logger.error(msg)
                 pads_session_info = models.PadsSessionInfo()
                 pads_session_info.pads_status_response = status_code
@@ -781,7 +782,7 @@ def get_pads_session_info(session_id=None,
                 pads_session_info = models.PadsSessionInfo(**pads_session_info)
                 pads_session_info.pads_status_response = status_code
             except Exception as e:
-                msg = f"PaDS response processing error {e}"
+                msg = f"PaDSError: response processing error {e}"
                 logger.error(msg)
                 pads_session_info = models.PadsSessionInfo(**pads_session_info)
                 pads_session_info.pads_status_response = status_code

@@ -1378,14 +1378,14 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             #else: # no session info, omit abstract
                                 #omit_abstract = True
 
-                        # this would print a message about logging in and not display an abstrac if omit_abstract were true,
+                        # this would print a message about logging in and not display an abstract if omit_abstract were true,
                         # but then Google could not index
                         documentListItem = opasQueryHelper.get_excerpt_from_search_result(result,
                                                                                           documentListItem,
                                                                                           solr_query_spec.returnFormat,
                                                                                           omit_abstract=False)
     
-                    documentListItem.kwic = "" # need this, so it doesn't default to Nonw
+                    documentListItem.kwic = "" # need this, so it doesn't default to None
                     documentListItem.kwicList = []
                     # no kwic list when full-text is requested.
                     kwic_list = []
@@ -2478,7 +2478,7 @@ def prep_document_download(document_id,
     try:
         results = solr_docs2.search(query, **args)
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Solr Search Error: {e}")
     else:
         try:
             art_info = results.docs[0]
@@ -2528,8 +2528,8 @@ def prep_document_download(document_id,
                                 filename = flex_fs.get_download_filename(filespec=document_id, path=localsecrets.PDF_ORIGINALS_PATH, year=pub_year, ext=".pdf")    
                                 ret_val = filename
                             else:
-                                err_msg = "Prep for Download: File system setup error."
-                                logger.error(err_msg)
+                                err_msg = "Prep PDFORIG for Download: File system setup error."
+                                #logger.error(err_msg) # eliminate double log? 2021-06-02
                                 status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
                                                              error_description=err_msg
                                                            )
@@ -2560,22 +2560,22 @@ def prep_document_download(document_id,
                             filename = opasxmllib.html_to_epub(html_string, document_id, document_id)
                             ret_val = filename
                         else:
-                            err_msg = f"Format {ret_format} not supported"
-                            logger.warning(err_msg)
+                            err_msg = f"Download format {ret_format} not supported"
+                            #logger.warning(err_msg) # eliminate double log? 2021-06-02
                             ret_val = None
                             status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
                                                          error_description=err_msg
                                                        )
         
                     except Exception as e:
-                        logger.error("Prep for Download: Can't convert data: %s", e)
+                        err_msg = f"Prep for Download: Can't convert data: {e}"
                         ret_val = None
                         status = models.ErrorReturn( httpcode=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
-                                                     error_description="Can't convert document data"
+                                                     error_description=err_msg
                                                    )
                 else: # access is limited
-                    err_msg = f"No permission to download document {document_id} for user"
-                    logger.warning(err_msg)
+                    err_msg = f"No permission to download document {document_id} for user {session_info}"
+                    #logger.warning(err_msg) # eliminate double log? 2021-06-02
                     status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
                                                  error_description=err_msg
                                                )
