@@ -123,7 +123,7 @@ class FlexFileSystem(object):
                 self.fs = None
                 
         except Exception as e:
-            logger.error(f"FlexFileSystem initiation error ({e})")
+            logger.error(f"FlexFileSystemError: initiation error ({e})")
 
     def find(self, name, path_root=None):
         """
@@ -204,7 +204,7 @@ class FlexFileSystem(object):
                     #ret_obj.build_date = fileinfo_dict["buildDate"] = time.time()
                     #ret_val = self.fs.info(filespec)
                 except Exception as e:
-                    logger.error(f"File access error: {e}")
+                    logger.error(f"FlexFileSystemError: File access error: {e}")
             else: # local FS
                 filespec = self.fullfilespec(filespec=filespec, path=path) # "pep-graphics/embedded-graphics"
                 #stat = os.stat(filespec)
@@ -220,7 +220,7 @@ class FlexFileSystem(object):
             ret_obj.fileinfo = fileinfo_dict
 
         except Exception as e:
-            logger.error(f"File access error: ({e})")
+            logger.error(f"FlexFileSystemError: File access error: ({e})")
         
         return ret_obj
     #-----------------------------------------------------------------------------
@@ -238,7 +238,7 @@ class FlexFileSystem(object):
             else:
                 ret_val = os.path.exists(filespec)
         except Exception as e:
-            logger.error(f"File access error: ({e})")
+            logger.error(f"FlexFileSystemError: File access error: ({e})")
         
         return ret_val        
 
@@ -260,7 +260,7 @@ class FlexFileSystem(object):
                     ret_val = filespec
                     
         except Exception as e:
-            logger.error(f"File access error: ({e})")
+            logger.error(f"FlexFileSystemError: File access error: ({e})")
         
         return ret_val        
 
@@ -276,7 +276,7 @@ class FlexFileSystem(object):
         ret_val = False
         filespec = self.fullfilespec(path=path, filespec=filespec) 
         if self.exists(filespec, path):
-            logger.error(f"File {filespec} already exists...exiting.")
+            logger.error(f"FlexFileSystemError: File {filespec} already exists...exiting.")
             ret_val = False
         else:
             try:
@@ -288,7 +288,7 @@ class FlexFileSystem(object):
                         out.write(data)
 
             except Exception as e:
-                logger.error(f"File write/access error: ({e})")
+                logger.error(f"FlexFileSystemError: File write/access error: ({e})")
             else:
                 ret_val = True
         
@@ -313,7 +313,7 @@ class FlexFileSystem(object):
             else:
                 ret_val = os.path.exists(filespec)
         except Exception as e:
-            logger.error(f"File access error: ({e})")
+            logger.error(f"FlexFileSystemError: File access error: ({e})")
         
         if ret_val:
             try:
@@ -322,7 +322,7 @@ class FlexFileSystem(object):
                 else:
                     os.remove(filespec)
             except Exception as e:
-                logger.error(f"Can't remove file: ({e})")
+                logger.error(f"FlexFileSystemError: Can't remove file: ({e})")
                 ret_val = False
             else:
                 ret_val = True
@@ -349,7 +349,7 @@ class FlexFileSystem(object):
             else:
                 os.rename(filespec1full, filespec2full)
         except Exception as e:
-            logger.error(f"Can't rename file, File access error: ({e})")
+            logger.error(f"FlexFileSystemError: Can't rename file, File access error: ({e})")
         else:
             ret_val = True
         
@@ -433,7 +433,7 @@ class FlexFileSystem(object):
                     if not insensitive:
                         # fail if they don't match
                         if base != name or ext != base_ext:
-                            logger.error(f"File insensitive match {base} vs {name} found insensitive match but not sensitive match.")
+                            logger.error(f"FlexFileSystemError: File insensitive match {base} vs {name} found insensitive match but not sensitive match.")
                             ret_val = None
 
                     return (ret_val)
@@ -496,19 +496,19 @@ class FlexFileSystem(object):
                 else:
                     f = open(image_filename, "rb")
             except Exception as e:
-                logger.error("getImageBinary: Open Error: %s", e)
+                logger.error("GetImageBinaryError: Open: %s", e)
                 
             try:
                 image_bytes = f.read()
                 f.close()    
             except OSError as e:
-                logger.error("getImageBinary: Read Error: %s", e)
+                logger.error("GetImageBinaryError: Read: %s", e)
             except Exception as e:
-                logger.error("getImageBinary: Error: %s", e)
+                logger.error("GetImageBinaryError: Exception: %s", e)
             else:
                 ret_val = image_bytes
         else:
-            logger.error("Image File ID %s not found", filespec)
+            logger.error("GetImageBinaryError: Image File ID %s not found", filespec)
       
         return ret_val
     #-----------------------------------------------------------------------------
@@ -535,17 +535,17 @@ class FlexFileSystem(object):
                 else:
                     f = open(filespec, "r", encoding="utf-8")
             except Exception as e:
-                logger.error("Open Error: %s", e)
+                logger.error("GetFileError: Open: %s", e)
                 
             try:
                 ret_val = f.read()
                 f.close()    
             except OSError as e:
-                logger.error("Read Error: %s", e)
+                logger.error("GetFileError: Read: %s", e)
             except Exception as e:
-                logger.error("Error: %s", e)
+                logger.error("GetFileError: Exception: %s", e)
         else:
-            logger.error("File %s not found", filespec)
+            logger.error("GetFileError: File %s not found", filespec)
       
         return ret_val
     

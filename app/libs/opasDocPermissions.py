@@ -161,13 +161,13 @@ def fix_userinfo_invalid_nones(response_data):
         if response_data["UserName"] is None:
             response_data["UserName"] = "NotLoggedIn"
     except Exception as e:
-        logger.error(f"PaDS UserName Data Exception: {e}")
+        logger.error(f"DocPermissionsError: PaDS UserName Data Exception: {e}")
 
     try:
         if response_data["UserType"] is None:
             response_data["UserType"] = "Unknown"
     except Exception as e:
-        logger.error(f"PaDS UserType Data Exception: {e}")
+        logger.error(f"DocPermissionsError: PaDS UserType Data Exception: {e}")
 
     return response_data
 
@@ -176,7 +176,7 @@ def fix_pydantic_invalid_nones(response_data):
         if response_data["ReasonStr"] is None:
             response_data["ReasonStr"] = ""
     except Exception as e:
-        logger.error(f"Exception: {e}")
+        logger.error(f"DocPermissionsError: Exception: {e}")
 
     return response_data
 
@@ -233,7 +233,7 @@ def get_authserver_session_info(session_id,
     session_info.pads_user_info = pads_user_info
     if status_code == 401: # could be just no session_id, but also could have be returned by PaDS if it doesn't recognize it
         if session_info.pads_session_info.pads_status_response > 500:
-            msg = "PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned"
+            msg = "DocPermissionsError: PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned"
             logger.error(msg)
         # session is not logged in
         # session_info.confirmed_unauthenticated = True
@@ -280,7 +280,7 @@ def get_authserver_session_userinfo(session_id, client_id):
         try:
             response = requests.get(full_URL, headers={"Content-Type":"application/json"})
         except Exception as e:
-            msg = f"No user info from authorization server {e}. Non-logged in user for sessionId: {session_id} client-id {client_id}."
+            msg = f"AuthServerUserinfoError: No user info from authorization server {e}. Non-logged in user for sessionId: {session_id} client-id {client_id}."
             logger.error(msg)
         else:
             status_code = response.status_code
@@ -304,7 +304,7 @@ def save_session_info_to_db(session_info):
     else:
         logger.debug(f"Session {session_id} already found in db. Updating...")
         if session_info.username != db_session_info.username and db_session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
-            msg = f"MISMATCH! Two Usernames with same session_id. OLD(DB): {db_session_info}; NEW(SESSION): {session_info}"
+            msg = f"AuthServerSessionInfoError: MISMATCH! Two Usernames with same session_id. OLD(DB): {db_session_info}; NEW(SESSION): {session_info}"
             print (msg)
             logger.error(msg)
         
@@ -343,9 +343,9 @@ def authserver_login(username=PADS_TEST_ID,
     try:
         pads_response = requests.post(full_URL, headers={"Content-Type":"application/json"}, json={"UserName":f"{username}", "Password":f"{password}"})
     except Exception as e:
-        msg = f"PaDS Authorization server not available. {e}"
+        msg = f"PaDSError: Authorization server not available. {e}"
         logger.error(msg)
-        print (f"****WATCH_THIS****: {msg}")
+        if opasConfig.LOCAL_TRACE: print (f"****WATCH_THIS****: {msg}")
         # set up response with default model
         pads_session_info = models.PadsSessionInfo()
         if session_id is not None:
@@ -358,21 +358,21 @@ def authserver_login(username=PADS_TEST_ID,
             pads_response = fix_pydantic_invalid_nones(pads_response)
             if isinstance(pads_response, str):
                 pads_session_info = models.PadsSessionInfo()
-                logger.error(f"Pads returned error string: {pads_response}")
+                logger.error(f"PaDSError: returned error string: {pads_response}")
             else:
                 try:
                     pads_session_info = models.PadsSessionInfo(**pads_response)
                 except Exception as e:
-                    logger.error(f"Pads return assignment error: {e}")
+                    logger.error(f"PaDSError: return assignment error: {e}")
                     pads_session_info = models.PadsSessionInfo()
         elif status_code > 403: 
             if retry == True:
                 # try once without the session ID
-                msg = f"PaDS login returned {status_code}. Trying without session id."
+                msg = f"PaDSError: Login returned {status_code}. Trying without session id."
                 logger.error(msg)
                 pads_session_info = authserver_login(username=username, password=password, client_id=client_id, retry=False)
             else:
-                msg = f"Authorization System Issue. PaDS login returned {status_code}. Already retried (failed), or retry not selected."
+                msg = f"PaDSError: Authorization System Issue. PaDS login returned {status_code}. Already retried (failed), or retry not selected."
                 logger.error(msg)
                 pads_session_info = models.PadsSessionInfo()
                 pads_session_info.pads_status_response = status_code
@@ -383,17 +383,17 @@ def authserver_login(username=PADS_TEST_ID,
                 pads_response = fix_pydantic_invalid_nones(pads_response)
                 if isinstance(pads_response, str):
                     pads_session_info = models.PadsSessionInfo()
-                    msg = f"Pads returned error string: {pads_response}"
+                    msg = f"PaDSError: Returned error string: {pads_response}"
                     logger.error(msg)
                 else:
                     try:
                         pads_session_info = models.PadsSessionInfo(**pads_response)
                     except Exception as e:
-                        msg = f"Pads return assignment error: {e}"
+                        msg = f"PaDSError: Return assignment error: {e}"
                         logger.error(msg)
                         pads_session_info = models.PadsSessionInfo()
             except Exception as e:
-                logger.error(f"PaDS response processing error {e}")
+                logger.error(f"PaDSError: Response processing error {e}")
                 pads_session_info = models.PadsSessionInfo(**pads_session_info)
                 pads_session_info.pads_status_response = status_code
                 pads_session_info.pads_disposition = msg 
@@ -412,7 +412,7 @@ def authserver_logout(session_id, request: Request=None, response: Response=None
         if response.ok:
             ret_val = True
         else:
-            logger.error(f"Error logging out for sessionId: {session_id} from PaDS: {response.json()}")
+            logger.error(f"PaDSError: Logging out for sessionId: {session_id} from PaDS: {response.json()}")
     else:
         logger.warning("No SessionId supplied.")
 
@@ -439,10 +439,10 @@ def authserver_permission_check(session_id,
     try: # permit request to PaDS
         response = requests.get(full_URL, headers=headers)
     except Exception as e:
-        logger.error(f"PaDS request session {session_id} exception part 1: {full_URL}")
-        logger.error(f"PaDS request session {session_id} exception part 2: {response}")
-        logger.error(f"PaDS request session {session_id} exception part 3: {e}")
-        logger.error(f"PaDS request session {session_id} exception part 4: headers {headers}")
+        logger.error(f"PaDSError: Request session {session_id} exception part 1: {full_URL}")
+        logger.error(f"PaDSError: Request session {session_id} exception part 2: {response}")
+        logger.error(f"PaDSError: Request session {session_id} exception part 3: {e}")
+        logger.error(f"PaDSError: Request session {session_id} exception part 4: headers {headers}")
         # just return no access
         ret_resp = models.PadsPermitInfo(SessionId = session_id,
                                          DocID = doc_id,
@@ -458,7 +458,7 @@ def authserver_permission_check(session_id,
                 
             if response.status_code == 503:
                 # PaDS down, fake it for now
-                msg = f"Permits response error {e}. Temporarily return data."
+                msg = f"PaDSError: Permits response error {e}. Temporarily return data."
                 logger.error(msg)
                 ret_resp = models.PadsPermitInfo(SessionId = session_id,
                                                  DocID = doc_id,
@@ -492,7 +492,7 @@ def authserver_permission_check(session_id,
                     logger.info(msg)
                     
         except Exception as e:
-            msg = f"Permits response error {e}. Composing no access response."
+            msg = f"PaDSError: Permits response error {e}. Composing no access response."
             logger.error(msg)
             ret_val = False
             ret_resp = models.PadsPermitInfo(SessionId=session_id,
@@ -579,9 +579,9 @@ def get_access_limitations(doc_id,
                             ret_val.accessLimited = False # you can access it!!!
                             # "This current content is available for you to access"
                             ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE 
-                            logger.debug("Optimization - session info used to authorize PEPArchive document")
+                            logger.debug("Optimization - session info used to authorize PEPCurrent document")
                     except Exception as e:
-                        logger.error(f"PEPCurrent document error checking permission: {e}")
+                        logger.error(f"PaDSError: PEPCurrent document permission: {e}")
 
             elif classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE):
                 ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_DESCRIPTION 
@@ -598,7 +598,7 @@ def get_access_limitations(doc_id,
                             ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE
                             logger.debug("Optimization - session info used to authorize PEPArchive document")
                     except Exception as e:
-                        logger.error(f"PEPArchive document error checking permission: {e}")
+                        logger.error(f"PaDSError: PEPArchive document permission: {e}")
 
             elif classification in (opasConfig.DOCUMENT_ACCESS_TOC):
                 open_access = True
@@ -608,7 +608,7 @@ def get_access_limitations(doc_id,
                 #"This content is currently free to all users."
                 ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
             else:
-                logger.error(f"Unknown classification: {classification}")
+                logger.error(f"AccessError: Unknown classification: {classification}")
 
             # **************************************
             # Now check for access, or cached access
@@ -633,7 +633,7 @@ def get_access_limitations(doc_id,
                                                                                 request=request)
                         except Exception as e:
                             # PaDS could be down, local development
-                            logger.error(f"PaDS Access Exception: {e}")
+                            logger.error(f"PaDSError: Access Exception: {e}")
                             if localsecrets.BASEURL == "development.org:9100":
                                 resp = models.PadsPermitInfo(Permit=True, HasArchiveAccess=True, HasCurrentAccess=True)
                                 # so it doesn't have to check this later
@@ -719,14 +719,15 @@ def get_access_limitations(doc_id,
                     logger.debug(f"No PaDS check needed: Document {doc_id} is open access")
         
             except Exception as e:
-                logger.error(f"Issue checking document permission. Possibly not logged in {e}")
+                logger.error(f"AccessError: Issue checking document permission. Possibly not logged in {e}")
                 pass # can't be checked, will be unauthorized.
 
     except Exception as e:
-        logger.error(f"General exception {e} trying ascertain access limitations.")
+        logger.error(f"AccessError: General exception {e} trying ascertain access limitations.")
 
     if fulltext_request and ret_val.accessLimited:
-        logger.error(f"Full-text access for {doc_id} denied ({ret_val.accessLimitedCode}). Sess:{session_id}: Access:{ret_val.accessLimitedReason}")
+        # happens anytime someone views an abstract in Document mode because they don't have an account. Perfectly legal. Changed to info (from error)
+        logger.info(f"Full-text access for {doc_id} denied ({ret_val.accessLimitedCode}). Sess:{session_id}: Access:{ret_val.accessLimitedReason}")
 
     return ret_val
 
@@ -760,7 +761,7 @@ def get_pads_session_info(session_id=None,
             pads_session_info = requests.get(full_URL)
             
     except Exception as e:
-        logger.error(f"PaDS Authorization server not available. {e}")
+        logger.error(f"PaDSError: Authorization server not available. {e}")
         pads_session_info = models.PadsSessionInfo()
     else:
         status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below)

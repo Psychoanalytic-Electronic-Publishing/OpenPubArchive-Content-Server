@@ -86,35 +86,18 @@ def is_empty(arg):
     else:
         return False
 
-##-----------------------------------------------------------------------------
-#def get_field_data_len(arg):
-    #syn = r"(?P<field>[^\:]*?)\:(?P<rest>.*)"
-    #m = re.match(syn, arg, flags=re.IGNORECASE)
-    #if m:
-        #mgr = m.group("rest")
-        #ret_val = len(mgr)
-    #else:
-        #mgr = ""
-        #ret_val = len(arg)
-        
-    ##print (f"Field Len: {ret_val} / {mgr} / {arg}")
-    #return ret_val
-
 #-----------------------------------------------------------------------------
 def check_search_args(**kwargs):
     ret_val = {}
     errors = False
     for kw in kwargs:
-        #print(kw, ":", kwargs[kw])
         arg = kwargs[kw]
         if arg is not None and "text" in kw:
             # check query and remove proximity if boolean
             try:
                 if are_brackets_balanced(arg):
                     ret_val[kw] = remove_proximity_around_booleans(arg)
-                    #print (f"After remove_proximity: {ret_val[kw]}")
                 else:
-                    #print (f"After remove_proximity: {ret_val[kw]}")
                     ret_val[kw] = 422
                     errors = True
 
@@ -123,8 +106,8 @@ def check_search_args(**kwargs):
                     ret_val[kw] = arg.lower()
                 
             except Exception as e:
-                logger.error(f"fulltext cleanup error {e}")
-                print (f"Cleanup error: {e}")
+                logger.error(f"FulltextCleanupError: {e}")
+                if opasConfig.LOCAL_TRACE: print (f"FulltextCleanupError: {e}")
                 errors = True
         else: # for now, just return.  Later more checks
             ret_val[kw] = arg
@@ -660,46 +643,6 @@ def get_term_list_spec(termlist):
                 ret_val += f" {boolean_connector} {sub_clause}"
 
     return ret_val        
-
-#def dequote(fulltext1):
-    #"""
-    #>>> test1='body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)'
-    #>>> dequote(test1)
-    #' && body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)'
-    
-    #>>> test2 = 'text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:("basic || principles"~25)'
-    #>>> dequote(test2)
-    #' && text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:(basic || principles)'
-    
-    #>>> test3 = 'text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:("basic OR principles"~25)'
-    #>>> dequote(test3)
-    #' && text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:(basic || principles)'
-    
-    #"""
-    #quote_wrapper = '\s*(.*\:)?\(\"(.*)\"(~[1-9][0-9]*)\)|\s*(\&\&)?\s*(.*\:)?\((.*)\)'
-    
-    #clauses = fulltext1.split(" && ")
-    #items = []
-    #for clause in clauses:
-        ## print (f"Clause:{clause}")
-        #m = re.findall(quote_wrapper, clause, flags=re.I)
-        #for n in m:
-            #items.append([x for x in n if len(x) > 0 and x != "&&"])
-        ## print (items)
-    
-    #new_search = ""
-    #for item in items:
-        #m = re.search("\&\&|\|\||\sAND\s|\sOR\s", item[1], flags=re.I)
-        #if m is not None:
-            #new_search += f' && {item[0]}({item[1]})'
-        #else:
-            #try:
-                #new_search += f' && {item[0]}("{item[1]}"{item[2]})'
-            #except Exception as e:
-                #logger.warning (f"Dequote Exception {e}")               
-
-    ## print (f"New Search: {new_search[4:]}")
-    #return new_search       
 
 def remove_proximity_around_booleans(query_str):
     """

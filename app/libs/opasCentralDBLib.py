@@ -1631,12 +1631,12 @@ class opasCentralDB(object):
         try:
             client_id_int = int(client_id)
         except Exception as e:
-            msg = f"Client ID should be a string containing an int {e}"
+            msg = f"ClientConfigError: Client ID should be a string containing an int {e}"
             logger.error(msg)
             ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
             if client_configuration_item is None:
-                msg = "No client configuration item model provided to save."
+                msg = "ClientConfigError: No client configuration item model provided to save."
                 logger.error(msg)
                 ret_val = httpCodes.HTTP_400_BAD_REQUEST
             else:
@@ -1650,7 +1650,7 @@ class opasCentralDB(object):
                     session_id = session_id
                 except Exception as e:
                     # no session open!
-                    msg = "No session is open / Not authorized"
+                    msg = "ClientConfigError: No session is open / Not authorized"
                     logger.error(msg)
                     ret_val = 401 # not authorized
                 else:
@@ -1663,7 +1663,7 @@ class opasCentralDB(object):
                             try:
                                 config_json = json.dumps(configSettings, indent=2)  # expand json in table! 2021-03-21
                             except Exception as e:
-                                logger.warning(f"Error converting configuration to json {e}.")
+                                logger.error(f"ClientConfigError: Error converting configuration to json {e}.")
                                 return ret_val
                 
                             sql = f"""{sql_action} INTO 
@@ -1697,11 +1697,11 @@ class opasCentralDB(object):
             
                     except Exception as e:
                         if sql_action == "REPLACE":
-                            msg = f"Error updating (replacing) client config: {e}"
+                            msg = f"ClientConfigError: Error updating (replacing) client config: {e}"
                             logger.error(msg)
                             ret_val = 400
                         else: # insert
-                            msg = f"Error saving client config: {e}"
+                            msg = f"ClientConfigError: Error saving client config: {e}"
                             logger.error(msg)
                             ret_val = 409
             
@@ -1914,26 +1914,26 @@ class opasCentralDB(object):
         try:
             ret_val = dbc.execute(querytxt, queryparams)
         except self.db.DataError as e:
-            logger.error(f"Art: {contextStr}. DB Data Error {e} ({querytxt})")
+            logger.error(f"DBError: Art: {contextStr}. DB Data Error {e} ({querytxt})")
             raise self.db.DataError(e)
         except self.db.OperationalError as e:
-            logger.error(f"Art: {contextStr}. DB Operation Error {e} ({querytxt})")
+            logger.error(f"DBError: Art: {contextStr}. DB Operation Error {e} ({querytxt})")
             raise self.db.OperationalError(e)
         except self.db.IntegrityError as e:
-            logger.error(f"Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
+            logger.error(f"DBError: Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
             raise self.db.IntegrityError(e)
         except self.db.InternalError as e:
-            logger.error(f"Art: {contextStr}. DB Internal Error {e} ({querytxt})")
+            logger.error(f"DBError: Art: {contextStr}. DB Internal Error {e} ({querytxt})")
             raise self.db.InternalError(e)
             # raise RuntimeError, gErrorLog.logSevere("Art: %s.  DB Intr. Error (%s)" % (contextStr, querytxt))
         except self.db.ProgrammingError as e:
-            logger.error(f"DB Programming Error {e} ({querytxt})")
+            logger.error(f"DBError: DB Programming Error {e} ({querytxt})")
             raise self.db.ProgrammingError(e)
         except self.db.NotSupportedError as e:
-            logger.error(f"DB Feature Not Supported Error {e} ({querytxt})")
+            logger.error(f"DBError: DB Feature Not Supported Error {e} ({querytxt})")
             raise self.db.NotSupportedError(e)
         except Exception as e:
-            logger.error(f"error: %s" % (e))
+            logger.error(f"DBError: Exception: %s" % (e))
             raise Exception(e)
     
         # close cursor

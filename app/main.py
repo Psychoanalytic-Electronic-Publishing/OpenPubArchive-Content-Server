@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0602/v2.1.5" # semver versioning now added after date.
+__version__     = "2021.0603/v2.1.7" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -2333,7 +2333,6 @@ async def database_search(response: Response,
     ts = time.time()
     opasDocPermissions.verify_header(request, "Search") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session)
-    #print (f"Call to database_search: SM:{smarttext} FT:{fulltext1} PTXT:{paratext} AU:{author} TI:{title} SY:{startyear} EY:{endyear}")
     errors, mod_args = opasQueryHelper.check_search_args( smarttext=smarttext,
                                                           fulltext1=fulltext1,
                                                           paratext=paratext,
@@ -2596,7 +2595,6 @@ def database_searchanalysis(response: Response,
                                             )
 
     logger.debug("Done with search analysis.")
-    # print (f"Search analysis called: {solr_query_params}")
 
     return ret_val
 
@@ -3669,7 +3667,6 @@ def database_word_wheel(response: Response,
 
     """
     ret_val = None
-    # print (f"Called WordWheel: {word}")
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     if core in ["docs", "authors"] and word is not None:
@@ -4773,7 +4770,7 @@ def documents_downloads(response: Response,
     user_name = session_info.username
     
     if client_id is None or client_session is None:
-        print ("Error")
+        logger.error(f"DocumentDownloadError: Client {client_id} Session: {client_session} ")
 
     if retFormat.upper() == "EPUB":
         file_format = 'EPUB'
@@ -5012,7 +5009,7 @@ def documents_glossary_term(response: Response,
                     pass
                 logger.debug("Glossary View Request (termIdentifier/return_format): %s/%s", termIdentifier, return_format)
             except Exception as e:
-                status_message = f"View Glossary Error: Error splitting term: {e}"
+                status_message = f"GlossaryViewError: Error splitting term: {e}"
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST
                 logger.error(status_message)
                 raise HTTPException(
@@ -5032,7 +5029,7 @@ def documents_glossary_term(response: Response,
 
     except Exception as e:
         response.status_code = httpCodes.HTTP_400_BAD_REQUEST
-        status_message = f"ViewGlossaryTermError: {e}"
+        status_message = f"GlossaryViewTermError: {e}"
         logger.error(status_message)
         ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DOCUMENTS,
                                     session_info=session_info, 
@@ -5262,10 +5259,10 @@ async def documents_image_fetch(response: Response,
 
 if __name__ == "__main__":
     from localsecrets import CONFIG
-    print(f"Server Running ({localsecrets.BASEURL}:{localsecrets.API_PORT_MAIN})")
-    print (f"Running in Python {sys.version_info[0]}.{sys.version_info[1]}")
+    print(f"Server Running: ({localsecrets.BASEURL}:{localsecrets.API_PORT_MAIN})")
+    print (f"Running in Python: {sys.version_info[0]}.{sys.version_info[1]}")
     print (f"Configuration used: {CONFIG}")
-    print (f"Version:{__version__}")
+    print (f"Version: {__version__}")
     
     uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=False, log_level="warning")
     # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)

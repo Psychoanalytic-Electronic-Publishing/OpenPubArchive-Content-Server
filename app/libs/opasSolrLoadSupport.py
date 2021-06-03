@@ -240,13 +240,13 @@ class ArticleInfo(object):
             self.art_vol_str = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvol/node()', default_return=None)
             m = re.match("(\d+)([A-Z]*)", self.art_vol_str)
             if m is None:
-                logger.error(f"Bad Vol # in element content: {self.art_vol_str}")
+                logger.error(f"ArticleInfoError: Bad Vol # in element content: {self.art_vol_str}")
                 m = re.match("(\d+)([A-z\-\s]*)", vol_actual)
                 if m is not None:
                     self.art_vol_int = m.group(1)
-                    logger.error(f"Recovered Vol # from actual attr: {self.art_vol_int}")
+                    logger.error(f"ArticleInfoError: Recovered Vol # from actual attr: {self.art_vol_int}")
                 else:
-                    raise ValueError("Severe Error in art_vol")
+                    raise ValueError("ArticleInfoError: Severe Error in art_vol")
             else:
                 self.art_vol_int = m.group(1)
                 if len(m.groups()) == 2:
@@ -288,12 +288,11 @@ class ArticleInfo(object):
             self.src_title_full = None
             self.src_type = "book"
             self.src_embargo = None
-            logger.warning("Error: Source %s not found in source info db.  Assumed to be an offsite book.  Or you can add to the api_productbase table in the RDS/MySQL DB", self.src_code)
+            logger.error("ArticleInfoError: Source %s not found in source info db.  Assumed to be an offsite book.  Or you can add to the api_productbase table in the RDS/MySQL DB", self.src_code)
         except Exception as err:
-            logger.error("Error: Problem with this files source info. File skipped. (%s)", err)
+            logger.error("ArticleInfoError: Problem with this files source info. File skipped. (%s)", err)
             #processingErrorCount += 1
             return
-
             
         self.art_issue = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artiss/node()', default_return=None)
         self.art_issue_title = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artissinfo/isstitle/node()', default_return=None)
@@ -531,7 +530,7 @@ class ArticleInfo(object):
                 safe_src_title_full = ''
 
         except Exception as e:
-            logger.error(f"Source title escape error: {e}")
+            logger.error(f"ArticleInfoError: Source title escape error: {e}")
             safe_src_title_full = ''
             
         try:
@@ -542,7 +541,7 @@ class ArticleInfo(object):
                 safe_art_title = ''
 
         except Exception as e:
-            logger.error(f"Art title escape error: {e}")
+            logger.error(f"ArticleInfoError: Art title escape error: {e}")
             safe_art_title = ''
 
         try:
@@ -553,7 +552,7 @@ class ArticleInfo(object):
                 safe_art_pgrg = ''
 
         except Exception as e:
-            logger.error(f"Art PgRg escape error: {e}")
+            logger.error(f"ArticleInfoError: Art PgRg escape error: {e}")
             safe_art_pgrg = ''
             
         # Usually we put the abbreviated title here, but that won't always work here.
@@ -667,10 +666,10 @@ def get_file_dates_solr(solrcore, filename=None):
     try:
         results = solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp", rows=max_rows)
     except Exception as e:
-        msg = f"Solr Query Error {e}"
+        msg = f"FileDatesError: Solr Query: {e}"
         logger.error(msg)
         # let me know whatever the logging is!
-        print (msg)
+        if opasConfig.LOCAL_TRACE: print (msg)
     else:
         if results.hits > 0:
             ret_val = results.docs
@@ -755,7 +754,7 @@ def process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLConten
         ret_val = True
 
     except Exception as err:
-        logger.error("Solr call exception %s", err)
+        logger.error("GlossaryError: Solr exception %s", err)
 
     return ret_val    
 #------------------------------------------------------------------------------------------------------
@@ -1094,9 +1093,9 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
         solrcon.add([new_rec], commit=False)
     except Exception as err:
         #processingErrorCount += 1
-        errStr = "Solr Docs core error for %s: %s" % (artInfo.art_id, err)
+        errStr = "SolrDocsError: Art:%s: Err:%s" % (artInfo.art_id, err)
         logger.error(errStr)
-        print (errStr)
+        if opasConfig.LOCAL_TRACE: print (errStr)
         # ret_val = False
     else:
         ret_val = True # ok!
@@ -1220,13 +1219,13 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
                 response_update = solrAuthor.add(adoc)
                 
                 if not re.search('"status":0', response_update):
-                    msg = "Solr save error for author core for %s: %s (%s)" % (artInfo.art_id, err, response_update)
+                    msg = "AuthorCoreError: Save error for %s: %s (%s)" % (artInfo.art_id, err, response_update)
                     logger.error(msg)
-                    print (msg)
+                    if opasConfig.LOCAL_TRACE: print (msg)
             except Exception as err:
                 #processingErrorCount += 1
-                errStr = "Solr Author core error for %s: %s" % (artInfo.art_id, err)
-                print (errStr)
+                errStr = "AuthorCoreError: Exception for %s: %s" % (artInfo.art_id, err)
+                if opasConfig.LOCAL_TRACE: print (errStr)
                 logger.error(errStr)
             else:
                 ret_val = True # ok!
@@ -1234,8 +1233,8 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
 
     except Exception as err:
         #processingErrorCount += 1
-        errStr = "Error for %s: %s" % (artInfo.art_id, err)
-        print (errStr)
+        errStr = "AuthorCoreError: Exception for %s: %s" % (artInfo.art_id, err)
+        if opasConfig.LOCAL_TRACE: print (errStr)
         logger.error(errStr)
 
     return ret_val
@@ -1306,10 +1305,9 @@ def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry, verbose=None):
     try:
         res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_param_dict)
     except Exception as e:
-        errStr = f"api_biblioxml table insert (returned {res}) error {e}"
+        errStr = f"AddToBiblioDBError: insert (returned {res}) error {e}"
         logger.error(errStr)
-        if verbose:
-            print (errStr)
+        if opasConfig.LOCAL_TRACE: print (errStr)
         
     else:
         ret_val = True
@@ -1407,9 +1405,9 @@ def add_article_to_api_articles_table(ocd, art_info, verbose=None):
     try:
         res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_param_dict)
     except Exception as e:
-        errStr = f"api_articles table insert error {e}"
+        errStr = f"AddToArticlesDBError: insert error {e}"
         logger.error(errStr)
-        print (errStr)
+        if opasConfig.LOCAL_TRACE: print (errStr)
     else:
         ret_val = True
         
@@ -1417,9 +1415,9 @@ def add_article_to_api_articles_table(ocd, art_info, verbose=None):
         ocd.db.commit()
         ocd.close_connection(caller_name="processArticles")
     except pymysql.Error as e:
-        errStr = f"SQL Database -- Commit failed! {e}"
+        errStr = f"SQLDatabaseError: Commit failed! {e}"
         logger.error(errStr)
-        print (errStr)
+        if opasConfig.LOCAL_TRACE: print (errStr)
         ret_val = False
     
     return ret_val  # return True for success
@@ -1465,9 +1463,9 @@ def add_to_tracker_table(ocd, art_id, verbose=None):
         ocd.db.commit()
         ocd.close_connection(caller_name=caller_name)
     except pymysql.Error as e:
-        errStr = f"SQL Database -- Commit failed! {e}"
+        errStr = f"SQLDatabaseError: Commit failed! {e}"
         logger.error(errStr)
-        print (errStr)
+        if opasConfig.LOCAL_TRACE: print (errStr)
         ret_val = False
     
     return ret_val  # return True for success

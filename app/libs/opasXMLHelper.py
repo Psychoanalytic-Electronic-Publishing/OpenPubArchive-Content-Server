@@ -53,14 +53,13 @@ Various support functions having to do with XML conversion (e.g., to HTML, ePub,
                 # All doctests currently pass
 
     #2020.0812.1 - Cleaned up some error print messages.
-
+    #2021.0603.1 - Added labels to errors to assist with Cloudwatch.  
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0812.1"
-__status__      = "Development"
-
+__version__     = "2020.0812.2"
+__status__      = "Development"     # Note: Still needs conversion of prints to 3.0 syntax
 
 import sys
 # sys.path.append('../libs')
@@ -89,7 +88,7 @@ from localsecrets import APIURL
 from ebooklib import epub
 from io import StringIO, BytesIO
 
-show_dbg_messages = False
+show_dbg_messages = False    # local control of extra messages
 stop_on_exceptions = False
 
 #-----------------------------------------------------------------------------
@@ -131,7 +130,7 @@ def xml_remove_tags_from_xmlstr(xmlstr, remove_tags=[]):
         ret_val = etree.tostring(root)
         ret_val = ret_val.decode("UTF8")
     except Exception as e:
-        logger.error(f"Could not remove tags {remove_tags}. Exception {e}")
+        logger.error(f"XMLError: Could not remove tags {remove_tags}. Exception {e}")
 
     return ret_val
 
@@ -143,7 +142,7 @@ def xml_remove_tags(root, remove_tags=[]):
             for n in remove_these:
                 n.getparent().remove(n)
     except Exception as e:
-        logger.error(f"Error removing requested tags: {e}")
+        logger.error(f"XMLError: Error removing requested tags: {e}")
         ret_val = False
         
     return ret_val
@@ -299,7 +298,7 @@ class XSLT_Transformer(object):
                 try:
                     self.transformer_tree=etree.parse(self.file_spec)
                 except Exception as e:
-                    err =  f"Parse error for XSLT file {self.file_spec}.  Error {e}"
+                    err =  f"XMLError: Parse error for XSLT file {self.file_spec}.  Error {e}"
                     if stop_on_exceptions:
                         raise Exception(err)
                     else:
@@ -309,7 +308,7 @@ class XSLT_Transformer(object):
                         # save it to class dict by name
                         self.__class__.transformers[transformer_name] = etree.XSLT(self.transformer_tree)
                     except Exception as e:
-                        err = f"Transform definition error for XSLT file {self.file_spec}.  Error {e}"
+                        err = f"XMLError: Transform definition error for XSLT file {self.file_spec}.  Error {e}"
                         if stop_on_exceptions:
                             raise Exception(err)
                         else:
@@ -317,7 +316,7 @@ class XSLT_Transformer(object):
                     else:
                         break;
         if not os.path.exists(self.file_spec):
-            err = f"XSLT file {self.file_spec} missing for all folders in STYLE path."
+            err = f"XMLError: XSLT file {self.file_spec} missing for all folders in STYLE path."
             if stop_on_exceptions:
                 raise FileNotFoundError(err)
             else:
@@ -1501,7 +1500,8 @@ def get_running_head(source_title=None, pub_year=None, vol=None, issue=None, pgr
         s = opasConfig.running_head_fmts[ret_format]
         ret_val = s.format(pub_year=pub_year, source_title=source_title, vol=vol, issue=issue, pgrg=pgrg)
     except Exception as e:
-        print (f"Exception: {e}")
+        if opasConfig.LOCAL_TRACE: print (f"GetRunningHeadError: {e}")
+        logger.error(f"GetRunningHeadError: {e}")
         ret_val = f"({pub_year}). {source_title}{vol}{issue}{pgrg}"
         
     return ret_val
@@ -1553,7 +1553,9 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
             if isinstance(xml_text, list) and xml_text != "[]":
                 xml_text = xml_text[0]
         except Exception as e:
-            logger.error("Problem extracting full-text: ", e)
+            msg = f"TextProcessingError: Extracting full-text: {e}"
+            logger.error(msg)
+            if opasConfig.LOCAL_TRACE: print(msg)
             
         if xml_text is not None and xml_text != "[]":
             try:
@@ -1564,8 +1566,8 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
             except Exception as e:
                 # return this error, so it will be displayed (for now) instead of the document
                 ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-                logger.error(ret_val)
-                print (f"Error processing this text: {xml_text}")
+                logger.error(f"TextProcessingError: {e}")
+                if opasConfig.LOCAL_TRACE: print(f"TextProcessingError: {xml_text}")
                 if stop_on_exceptions:
                     raise Exception(ret_val)
             else:
@@ -1584,11 +1586,12 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                     except Exception as e:
                         # return this error, so it will be displayed (for now) instead of the document
                         ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-                        logger.error(ret_val)
-                        ret_val = xml_text
-                        print (f"Error processing this text: {xml_text}.  Transformer: {transformer_name}")
+                        logger.error(f"TextProcessingError: {ret_val}")
+                        if opasConfig.LOCAL_TRACE: print (f"TextProcessingError: {e}. Transformer: {transformer_name} Text {xml_text}")
                         if stop_on_exceptions:
                             raise Exception(ret_val)
+                        # Note: why this, eliminates text return above
+                        ret_val = xml_text
                     else:
                         ret_val = str(transformed_data)
                         # do substitutes

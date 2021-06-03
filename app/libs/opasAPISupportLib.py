@@ -37,7 +37,6 @@ import string
 sys.path.append('./solrpy')
 sys.path.append('./libs/configLib')
 
-# print(os.getcwd())
 import http.cookies
 import re
 import secrets
@@ -738,11 +737,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
         if return_status != (200, "OK"):
             raise Exception(return_status(1))
     else: # get from mySQL
-        #if src_type == 'book': # debug trap
-            #print ("BOOK!!!!!")
-            #pass
         try:
-            # print(src_type, src_code, src_name, limit, offset)
             # note...this sorts by title as only current option
             total_count, source_info_dblist = ocd.get_sources(src_type = src_type, src_code=src_code, src_name=src_name, limit=limit, offset=offset)
             if source_info_dblist is not None:
@@ -914,7 +909,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
     try:
         source_info_list = models.SourceInfoList(sourceInfo = source_info_struct)
     except ValidationError as e:
-        logger.error("SourceInfoList Validation Error:")
+        logger.error("MetadataGetSourceValidationError:")
         logger.error(e.json())        
 
     ret_val = source_info_list
@@ -983,7 +978,7 @@ def documents_get_abstracts(document_id,
             documents = models.Documents(documents = document_list.documentList)
         else:
             err = document_list
-            logger.error(err.error_description)
+            logger.error(f"DocumentGetAbstractError: {err.error_description}")
             raise HTTPException(
                 status_code=err.error,
                 detail=err.error_description
