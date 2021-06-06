@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0603/v2.1.7" # semver versioning now added after date.
+__version__     = "2021.0606/v2.1.8" # semver versioning now added after date.
 __status__      = "Beta"
 
 """

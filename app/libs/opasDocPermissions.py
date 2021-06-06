@@ -181,7 +181,7 @@ def fix_pydantic_invalid_nones(response_data):
     return response_data
 
 def get_authserver_session_info(session_id,
-                                client_id,
+                                client_id=opasConfig.NO_CLIENT_ID,
                                 pads_session_info=None,
                                 request=None):
     """
@@ -206,14 +206,25 @@ def get_authserver_session_info(session_id,
     
     """
     ts = time.time()
+    
+    if client_id == opasConfig.NO_CLIENT_ID:
+        logger.warning(f"Session info call for Session ID: {session_id} included no (None) client ID.")
+    
     if pads_session_info is None or session_id is None:
         # not supplied, so fetch
         pads_session_info = get_pads_session_info(session_id=session_id,
                                                   client_id=client_id,
                                                   retry=False, 
                                                   request=request)
-        session_info = models.SessionInfo(session_id=pads_session_info.SessionId, api_client_id=client_id)
-        session_id = session_info.session_id
+        try:
+            session_info = models.SessionInfo(session_id=pads_session_info.SessionId, api_client_id=client_id)
+        except Exception as e:
+            msg = f"PaDS session info caused error {e}.  SessID: {session_id} client_id: {client_id} req: {request}"
+            if opasConfig.LOCAL_TRACE:
+                print (f"GetAuthserverSessionInfo: {msg}")
+            logger.error(msg)
+        else:    
+            session_id = session_info.session_id
     else:
         session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
         
@@ -745,6 +756,9 @@ def get_pads_session_info(session_id=None,
     """
     msg = ""
     
+    if client_id == opasConfig.NO_CLIENT_ID:
+        logger.warning(f"Session info call for Session ID: {session_id} included no (None) client ID.")
+    
     if session_id is not None:
         full_URL = base + f"/v1/Authenticate/IP/" + f"?SessionID={session_id}"
     else:
@@ -766,6 +780,7 @@ def get_pads_session_info(session_id=None,
     else:
         status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below)
         if status_code > 403: # e.g., (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, httpCodes.HTTP_503_SERVICE_UNAVAILABLE):
+            logger.warning(f"PaDS session_info status_code is {status_code}")
             # try once without the session ID
             if retry == True:
                 pads_session_info = get_pads_session_info(client_id=client_id, retry=False, request=request)

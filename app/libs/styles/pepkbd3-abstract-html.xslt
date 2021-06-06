@@ -1,17 +1,27 @@
 <?xml version="1.0"?>
 <!-- ============================================================= -->
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
-<!--     BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML   -->
-<!--  DATE:      Jan 9, 2020                                       -->
+<!--  BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML      -->
+<!--  DATE:      2021-06-06                                        -->
 <!--  Revisions:                                                   
-        2019-11-25: fix lang attribute insertion  
-        2019-12-09: add xml to html video callout conversion  
-        2019-12-10: set video callout to newest Wistia player which 
+        2021-06-06: Enabled first tbl production by eliminating body// prefix.
+                    this seems to work to solve the tbl attributes to be
+                    dumped as text, and properly adds the tag with them.
+                    
+        2021-06-03: Removed tbl from productions, not needed and
+                    then Table comes through
+                    
+        2020-01-09: Added conditionals to footer detection to mark first
+                    paragraph correctly.
+                    
+        2019-12-10: Set video callout to newest Wistia player which 
                     allows seek by captions!
                     added link to banner icon to search volume
-                      (required an additon to PEPEasy to support it.
-        2020-01-09  Added conditionals to footer detection to mark first
-                     paragraph correctly.  
+                    (required an additon to PEPEasy to support it.
+                    
+        2019-12-09: add xml to html video callout conversion
+        
+        2019-11-25: fix lang attribute insertion  
 -->
 <!-- ============================================================= -->
 <!--
@@ -493,7 +503,7 @@
   <!--  Tables are already in XHTML, and can simply be copied
         through                                                      -->
   
-  <xsl:template match="body//tbl">
+  <xsl:template match="tbl">
     <!-- other labels are displayed as blocks -->
     <div class="table nrs">
       <xsl:call-template name="assign-styles"/>
@@ -557,7 +567,7 @@
   </xsl:template>
   
   <xsl:template match="
-      table | tbl | thead | tbody | tfoot |
+      table | thead | tbody | tfoot |
       col | colgroup | tr | th | td">
     <xsl:copy>
       <xsl:apply-templates select="@*" mode="table-copy"/> 

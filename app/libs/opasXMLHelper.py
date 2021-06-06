@@ -330,6 +330,7 @@ g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML, opasConfig.XSLT_
 g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOTEXT_EXCERPT, opasConfig.XSLT_XMLTOTEXT_EXCERPT)
 g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML_EXCERPT, opasConfig.XSLT_XMLTOHTML_EXCERPT)
 g_transformer.set_transformer(opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT, opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
+#g_transformer.set_transformer("testtransform", "testtransform.xslt")
 
 ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n")  # TODO - Move to module globals to optimize
 
@@ -1194,58 +1195,11 @@ def get_first_page_excerpt_from_doc_root(elem_or_xmlstr, ret_format="HTML"):
     return ret_val
 
 #-----------------------------------------------------------------------------
-def xml_elem_or_str_to_excerpt(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLTOTEXT_EXCERPT):
-    """
-    NOT CURRENTLY USED in OPAS (2020-09-14)
-
-    Use xslt to extract a formatted excerpt
-    """
-    ret_val = None
-    try:
-        if isinstance(elem_or_xmlstr, list) and elem_or_xmlstr != "[]":
-            elem_or_xmlstr = elem_or_xmlstr[0]
-    except Exception as e:
-        logger.error("Problem extracting full-text: ", e)
-
-    if isinstance(elem_or_xmlstr, str):
-        try:
-            # make sure it's not HTML already
-            if re.match("<!DOCTYPE html .*", elem_or_xmlstr, re.IGNORECASE):
-                logger.error("Warning - Data is HTML already:", e)
-            xmlstr = remove_encoding_string(elem_or_xmlstr)
-            source_data = etree.fromstring(xmlstr)
-        except Exception as e:
-            # return this error, so it will be displayed (for now) instead of the document
-            ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-            logger.error(ret_val)
-            raise Exception(ret_val)
-    else: # it's already etree (#TODO perhaps check?)
-        source_data = elem_or_xmlstr
-
-    if source_data is not None and source_data != "[]":
-        try:
-            #xslt_file = etree.parse(xslt_file)
-            #xslt_transformer = etree.XSLT(xslt_file)
-            transformer = g_transformer.transformers.get(transformer_name, None)
-            # transform the doc or fragment
-            transformed_data = transformer(source_data)
-            
-        except Exception as e:
-            # return this error, so it will be displayed (for now) instead of the document
-            ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this excerpt right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-            logger.error(ret_val)
-            ret_val = elem_or_xmlstr
-            raise Exception(ret_val)
-        else:
-            ret_val = str(transformed_data)
-            pb = re.match("(?P<excerpt>.*?\<p class=\"pb.*?\</p\>)", ret_val, re.DOTALL)
-            if pb is not None:
-                ret_val = pb.group("excerpt") + "</html>"
-            else:
-                logger.error("No page break in data to extract excerpt")
-                   
-    return ret_val
-    
+#def xml_elem_or_str_to_excerpt(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLTOTEXT_EXCERPT):
+    #"""
+    # NOT CURRENTLY USED in OPAS (2020-09-14)
+    # Finally Removed 2021-06-03
+    #"""
     
 def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
     """
@@ -1321,6 +1275,9 @@ def xml_xpath_return_textlist(element_node, xpath, default_return=list()):
     return ret_val    
 
 def xml_xpath_with_default(element_node, xpath, default_return=None):
+    """
+    Not used assessed as of 2020-06-03
+    """
     ret_val = default_return
     try:
         ret_val = element_node.xpath(xpath)
@@ -1333,7 +1290,7 @@ def xml_xpath_with_default(element_node, xpath, default_return=None):
         
 def xml_xpath_return_textsingleton(element_node, xpath, default_return=""):
     """
-    Return text of element specified by xpath)
+    Return text of element specified by xpath
     
     >>> root = etree.fromstring(test_xml)
     >>> xml_xpath_return_textsingleton(root, "p[@id=2]/node()", None)
@@ -1596,6 +1553,15 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                         ret_val = str(transformed_data)
                         # do substitutes
                         ret_val = ret_val.replace("%24OPAS_IMAGE_URL;", APIURL + opasConfig.IMAGE_API_LINK)
+                        # only for the updated Gavant xslt
+                        if opasConfig.GAVANTXSLT:
+                            ret_val = ret_val.replace("%24OPAS_JOURNAL_NAME;", "IJP")
+                            ret_val = ret_val.replace("%24OPAS_CLIENT_ID;", "2") # need to fix
+                            ret_val = ret_val.replace("%24OPAS_SESSION_ID;", "") # need to fix
+                            ret_val = ret_val.replace("%24OPAS_CONCORDANCE_ENABLED;", "true")
+                            ret_val = ret_val.replace("%24OPAS_GLOSSARY_TERM_FORMATTING_ENABLED;", "true")
+                            ret_val = ret_val.replace("%24OPAS_IS_BOOK;", "true")
+                        
     return ret_val
 
 def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=None, stylesheet=opasConfig.CSS_STYLESHEET): #  e.g., "./libs/styles/pep-html-preview.css"

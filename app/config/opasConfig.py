@@ -37,18 +37,24 @@ ALL_EXCEPT_JOURNAL_CODES = BOOK_CODES_ALL + VIDEOSTREAM_CODES_ALL
 DEFAULT_DATA_LANGUAGE_ENCODING = "en"
 CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr", "de-de", "it-it")
 EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT = 13000 # lower numbers are faster, but don't read the last n files before making a random selection
-
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.
+GAVANTXSLT = False
 STYLE_PATH = r"./libs/styles;../libs/styles"
-XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
+if not GAVANTXSLT:
+    XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
+else:
+    XSLT_XMLTOHTML = r"xmlToHtml2021.xslt"                                      # used for dynamic conversion to HTML; trying to update 2021-06-03 
+                                                                                # with Gavant improvements, *** but not working here 2021-06-05 yet ****
+                                                                                # but needed the doctype code back in and lots of other fixes including params
+    
 XSLT_XMLTOTEXT_EXCERPT = r"pepkbd3-abstract-text.xslt"
-XSLT_XMLTOHTML_EXCERPT = r"pepkbd3-abstract-html.xslt"
+XSLT_XMLTOHTML_EXCERPT = r"pepkbd3-abstract-html.xslt"                       # used for load only
 XSLT_XMLTOHTML_GLOSSARY_EXCERPT = r"pepkbd3-glossary-excerpt-html.xslt" 
-TRANSFORMER_XMLTOHTML = "XML_TO_HTML" 
-TRANSFORMER_XMLTOHTML_EXCERPT = "EXCERPT_HTML"
-TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"
-TRANSFORMER_XMLTOHTML_GLOSSARY_EXCERPT = "EXCERPT_GLOSSARY"
+TRANSFORMER_XMLTOHTML = "XML_TO_HTML"                                        # used for dynamic conversion to HTML (maps to XSLT_XMLTOHTML)
+TRANSFORMER_XMLTOHTML_EXCERPT = "EXCERPT_HTML"                               # used for TOC instances on load (maps to XSLT_XMLTOHTML_EXCERPT)
+TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"                               # NOT CURRENTLY USED in OPAS (2020-09-14)
+TRANSFORMER_XMLTOHTML_GLOSSARY_EXCERPT = "EXCERPT_GLOSSARY"                  # NOT CURRENTLY USED in OPAS (2020-09-14)
 
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
 MAX_RECORDS_FOR_ACCESS_INFO_RETURN = 100

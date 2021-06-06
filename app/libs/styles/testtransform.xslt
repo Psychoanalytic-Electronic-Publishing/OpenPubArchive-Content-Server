@@ -1,63 +1,47 @@
 <?xml version="1.0"?>
 <!-- ============================================================= -->
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
-<!--  BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML      -->
-<!--  DATE:      2021-06-06                                        -->
+<!--     BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML   -->
+<!--  DATE:      Jan 9, 2020                                       -->
 <!--  Revisions:                                                   
-        
-        TODO:
-          - I've yet to remove the irrelevant JATS rules
-          - Decide if the data-pagehelper attributes are helpful 
-            for page return
-
-        2021-06-06  - enabled first tbl production by eliminating body// prefix.
-                      this seems to work to solve the tbl attributes to be
-                      dumped as text, and properly adds the tag with them.
-        2021-06-03  - Removed tbl from group production, not needed and
-                      then Table comes through
-        2020-10-10  - Substituted font-awesome icon for info, flag, 
-                      and book icons.  Also arrow after biblio
-        2020-09-07  - Added GW/SE language attributes so they are included
-                      in the HTML
-        2020-04-21  - Some cleanup (removed commented code) 
-                    - added experimental code to mark top level elements 
-                      to permit easy page returns (for delivering a page 
-                      or set of pages to the client app while keeping the 
-                      html intact)
-                    - removed some id prefixes (not sure why they were 
-                      being used)
-        2020-02-22  Changed doctype generation to exclude ns from being 
-                    included and generic html (5) instead of 4 loose.
-        2020-01-09  Added conditionals to footer detection to mark first
-                     paragraph correctly.  
+        2019-11-25: fix lang attribute insertion  
+        2019-12-09: add xml to html video callout conversion  
         2019-12-10: set video callout to newest Wistia player which 
                     allows seek by captions!
                     added link to banner icon to search volume
                       (required an additon to PEPEasy to support it.
-        2019-12-09: add xml to html video callout conversion  
-        2019-11-25: fix lang attribute insertion  
-        2019-08:   Misc fixes
-                    - Fixed functions by adding fn namespace missing 
-                      from declaration
-                    - Added some cases of list types found.
+        2020-01-09  Added conditionals to footer detection to mark first
+                     paragraph correctly.  
 -->
 <!-- ============================================================= -->
 <!--
-   
+    The design of the conversion from PEP KBD3 to HTML is to use class for 
+    the tag name, in either a div, p, or span element, depending on how we 
+    whether it's a block element, a char element, or a division.  
+    
+    The attributes are placed in HTML5 attributes, named data-x where x is the 
+    original attribute name.  
+
+    - at least for this first pass! - 2019-04-24
+    - this is by no means a complete conversion of the 
+       whole DTD, just sampling as a quick test.
+    - the class tagging is just temporary to keep track of what I add
+    - 2019-08
+      - Fixed functions by adding fn namespace missing from declaration
+      - Added some cases of list types found.
+    TBD:
+    - I've yet to remove the irrelevant JATS rules
+    - I haven't implemented or even checked on many structures like tables, figures, footnotes ... 
+    - Bib processing is basically per JATs and not what we'd want (e.g., not sure why they do it as a table)
 -->
 
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
-  xmlns:xlink="http://www.w3.org/1999/xlink">
-  <!--  xmlns:fn="http://www.w3.org/2005/xpath-functions" -->
+  xmlns:fn="http://www.w3.org/2005/xpath-functions" 
+  xmlns:xlink="http://www.w3.org/1999/xlink" >
 
-  <!--  Commented out next line site seems to have availability problems -->
-  <!--  <xsl:import href="http://www.w3.org/2003/entities/2007/entitynamesmap.xsl"/>-->
-  
-  <xsl:output method="html" encoding="UTF-8" indent="yes" />
-  
-  <!--  <xsl:output doctype-public="-//W3C//DTD HTML 4.01 Transitional//EN"
+  <xsl:output doctype-public="-//W3C//DTD HTML 4.01 Transitional//EN"
     doctype-system="http://www.w3.org/TR/html4/loose.dtd" encoding="UTF-8"/>
--->  
+
   <!-- Space is preserved in all elements allowing #PCDATA -->
   <xsl:preserve-space
     elements="body 
@@ -90,14 +74,13 @@
   <!-- ============================================================= -->
 
   <xsl:template match="/">
-    <xsl:text disable-output-escaping='yes'>&lt;!DOCTYPE html&gt;</xsl:text>
-    <xsl:text>&#13;</xsl:text>
-    <html>
+    <html class="pepkbd3html u20190807">
       <!-- HTML header -->
       <xsl:call-template name="make-html-header"/>
       <!--      <xsl:call-template name="make-article"/>-->
       <xsl:apply-templates/>
       <div id="putciteashere"></div>
+      
     </html>
   </xsl:template>
 
@@ -120,34 +103,13 @@
     </head>
   </xsl:template>
 
-  <!-- EXPERIMENTAL 20200421-->
-  <xsl:template name="data-pagehelper">
-    <xsl:if test="descendant::pb">
-      <xsl:attribute name="data-pagehelper">pageend</xsl:attribute>
-    </xsl:if>
-    <xsl:if test="not(preceding-sibling::*) and following-sibling::*">
-    <xsl:attribute name="data-pagehelper2">firstchild</xsl:attribute>
-    </xsl:if>
-  </xsl:template>
-  <!-- /EXPERIMENTAL CODE-->
-  
+
   <!-- ============================================================= -->
   <!--  TOP LEVEL                                                    -->
   <!-- ============================================================= -->
   <!--Config Variables-->
-  <!--The domains are placeholders...the server will change them per the localsecrets configuration file.
-      The OPAS_SERVER_DOMAIN will be changed to the API Server URL and the 
-      For example, for testing, the domain will be changed to: 
-          http://development.org:9100
-       and the opas image URL mapped to: 
-          http://development.org:9100/v2/Documents/Downloads/Images
-          
-      NOTE: In this latest 2020/03/11 revision, only imageurl is referenced/used. 
-            However, if Domain is needed anywhere, it can be used and will 
-            be supplied/substituted by the server
-  -->
-  <xsl:variable name="domain" select="'$OPAS_SERVER_DOMAIN;'" />
-  <xsl:variable name="imageurl" select="'$OPAS_IMAGE_URL;'" />
+  <xsl:variable name="domain" select="'http://development.org:9100/'" />
+  <xsl:variable name="artimageurl" select="'v1/Documents/Downloads/Images/'" />
     
   <!--Global Variables-->
   <!--  used with translate to convert between case, since this is for XSLT 1.0 -->
@@ -179,10 +141,11 @@
   <xsl:variable name="artstartpg">
     <xsl:value-of select="substring-before(($artpgrg), '-')"/>
   </xsl:variable>
+
   
   <xsl:template match="pepkbd3">
     <body>
-      <div class="pepkbd3" data-ver="2012-08-13.FULL">
+      <div class="pepkbd3" data-ver="2020-08-12.ABS">
         <xsl:call-template name="assign-lang"/>
         <xsl:call-template name="make-article"/>
       </div>
@@ -198,33 +161,7 @@
       <xsl:apply-templates select="." mode="id"/>
     </xsl:variable>
 
-    <div id="front" class="frontmatter">
-      <xsl:apply-templates select="front | front-stub" mode="metadata"/>
-      <p class="banner">
-        <a class="anchor" name="{$document-id}" id="{$document-id}"/>
-        <a class="toc-link" href="/#/ArticleList/?journal={$journal-code}">
-           <!--<img src="./images/banner{$journal-code}Logo.gif" alt=""/>-->
-          <img>
-            <xsl:attribute name="src">
-              <xsl:value-of select="concat($imageurl, 'banner', $journal-code, 'Logo.gif')"/>
-            </xsl:attribute>
-            <xsl:attribute name="alt">Journal Logo</xsl:attribute>
-          </img>
-        </a>
-      </p>
-      <div class='pubinfotop'><xsl:value-of select="'[[RunningHead]]'"/></div>
- 
-      <xsl:for-each select="artinfo">
-        <div id="{$this-article}-artinfo" class="artinfo" data-arttype="{@arttype}" data-journal="{@j}">
-        
-          <xsl:apply-templates mode="metadata" select="arttitle"/>
-          <xsl:apply-templates mode="metadata" select="artsub"/>
-          <xsl:apply-templates mode="metadata" select="artauth"/>
-          <xsl:apply-templates mode="metadata" select="artkwds"/>
-          
-          <!--<xsl:apply-templates/>-->
-        </div>
-      </xsl:for-each>
+    <div id="{$this-article}-front" class="front">
     </div>
 
     <!-- abs -->
@@ -236,7 +173,7 @@
     
     <!-- body -->
     <xsl:for-each select="body">
-      <div id="body" class="body">
+      <div id="{$this-article}-body" class="body">
         <xsl:call-template name="assign-lang"/>
         <xsl:apply-templates/>
       </div>
@@ -245,7 +182,6 @@
     <!-- summaries -->
     <xsl:for-each select="summaries">
       <div id="{$this-article}-summaries" class="summaries">
-        <xsl:call-template name="data-pagehelper"/>
         <xsl:call-template name="assign-lang"/>
         <xsl:apply-templates/>
       </div>
@@ -253,139 +189,26 @@
     
     <!-- body -->
     <xsl:for-each select="bib">
-      <div id="{$this-article}-bib" class="biblio">
+    </xsl:for-each>
+
+    <!-- grp (***)  -->
+    <xsl:for-each select="grp">
+      <div id="grp-{$this-article}-{@id}" class="grp sec" data-name="{@name}">
         <xsl:apply-templates/>
       </div>
     </xsl:for-each>
-
   </xsl:template>
 
   <!-- ============================================================= -->
   <!--  "artinfo" for the document metadata                          -->
   <!-- ============================================================= -->  
   <xsl:template match="artinfo">
-    <!-- First: journal and article metadata -->
-    <div class="metadata two-column table">
-      <div class="row">
-        <!-- Cell 1: journal information -->
-        <!-- Cell 2: Article information -->
-        <xsl:for-each select="artinfo">
-            <h4 class="generated">
-              <xsl:text>Article Information</xsl:text>
-            </h4>
-        </xsl:for-each>
-      </div>
-    </div>
-
-    <hr class="part-rule"/>
-
-    <!-- change context to front/article-meta (again) -->
-    <xsl:for-each select="article-meta | self::front-stub">
-      <div class="metadata centered">
-        <xsl:apply-templates mode="metadata" select="title-group"/>
-      </div>
-      <!-- contrib-group, aff, aff-alternatives, author-notes -->
-      <xsl:apply-templates mode="metadata" select="contrib-group"/>
-      <!-- back in article-meta or front-stub context -->
-      <xsl:if test="aff | aff-alternatives | author-notes">
-        <div class="metadata two-column table nrsmbee">
-          <div class="row">
-            <div class="cell empty"/>
-            <div class="cell">
-              <div class="metadata-group">
-                <xsl:apply-templates mode="metadata" select="aff | aff-alternatives | author-notes"/>
-              </div>
-            </div>
-          </div>
-        </div>
-      </xsl:if>
-
-      <!-- end of dealing with abstracts -->
-    </xsl:for-each>
-    <xsl:for-each select="notes">
-      <div class="metadata">
-        <xsl:apply-templates mode="metadata" select="."/>
-      </div>
-    </xsl:for-each>
-    <!-- end of big front-matter pull -->
   </xsl:template>
 
   <!-- In order of appearance... -->
 
-  <xsl:template match="email" mode="metadata">
-    <xsl:call-template name="metadata-labeled-entry">
-      <xsl:with-param name="label">Email</xsl:with-param>
-      <xsl:with-param name="contents">
-        <xsl:apply-templates select="."/>
-      </xsl:with-param>
-    </xsl:call-template>
-  </xsl:template>
-
-
-  <xsl:template match="url" mode="metadata">
-    <xsl:call-template name="metadata-labeled-entry">
-      <xsl:with-param name="label">URL</xsl:with-param>
-      <xsl:with-param name="contents">
-        <xsl:apply-templates select="."/>
-      </xsl:with-param>
-    </xsl:call-template>
-  </xsl:template>
-
-  <xsl:template match="grp" mode="metadata">
-    <xsl:call-template name="metadata-labeled-entry">
-      <xsl:with-param name="label">URL</xsl:with-param>
-      <xsl:with-param name="contents">
-        <xsl:apply-templates select="."/>
-      </xsl:with-param>
-    </xsl:call-template>
-  </xsl:template>
-
-  <xsl:template match="artvol" mode="metadata">
-    <xsl:call-template name="metadata-labeled-entry">
-      <xsl:with-param name="label">Artvol</xsl:with-param>
-    </xsl:call-template>
-  </xsl:template>
-
-  <xsl:template match="artyear" mode="metadata">
-    <xsl:call-template name="metadata-labeled-entry">
-      <xsl:with-param name="label">Artyear</xsl:with-param>
-    </xsl:call-template>
-  </xsl:template>
-  
-  <xsl:template match="artbkinfo" mode="metadata">
-    <div class="metadata-entry artbookinfo">
-      <xsl:if test="@extract">
-        <xsl:attribute name="data-extract">
-          <xsl:value-of select="@extract"/>
-        </xsl:attribute>
-      </xsl:if>
-      <xsl:if test="@prev">
-        <xsl:attribute name="data-prev">
-          <xsl:value-of select="@prev"/>
-        </xsl:attribute>
-      </xsl:if>
-      <xsl:if test="@next">
-        <xsl:attribute name="data-next">
-          <xsl:value-of select="@next"/>
-        </xsl:attribute>
-      </xsl:if>
-    </div>
-  </xsl:template>
-
-  <xsl:template match="artiss" mode="metadata">
-    <xsl:call-template name="metadata-labeled-entry">
-      <xsl:with-param name="label">Artiss</xsl:with-param>
-    </xsl:call-template>
-  </xsl:template>
-
-  <xsl:template match="artpgrg" mode="metadata">
-    <xsl:call-template name="metadata-labeled-entry">
-      <xsl:with-param name="label">Artpgrg</xsl:with-param>
-    </xsl:call-template>
-  </xsl:template>
-
-  <xsl:template match="arttitle" mode="metadata">
-    <p class="title">
+  <xsl:template match="arttitle">
+    <p class="title arttitle">
       <a href="/#/ArticleList/?journal={$journal-code}&amp;vol={$artvol}&amp;page={$artstartpg}">
         <xsl:apply-templates select="(text())[not(self::ftnx)]"/>
         <xsl:apply-templates select="i"/>
@@ -394,175 +217,13 @@
     </p>
   </xsl:template>
 
-  <xsl:template match="artsub" mode="metadata">
-    <p class="artsub">
-      <xsl:value-of select="."/>
-    </p>
-  </xsl:template>
-
-  <xsl:template match="artkwds" mode="metadata">
-    <div class="artkwds">
-      <xsl:for-each select="//impx[@type='KEYWORD']">
-        <xsl:value-of select="."/>
-        <xsl:if test="position() != last()">
-          <xsl:text>, </xsl:text>
-        </xsl:if>
-        <!--        <xsl:apply-templates />-->
-      </xsl:for-each>
-    </div>
-  </xsl:template>
-  
-  <xsl:template match="artauth" mode="metadata">
-    <div class="artauth">
-      <div class="authorwrapper title_author" data-class="artauth">
-        <xsl:for-each select="aut">
-          <span>
-            <xsl:apply-templates mode="metadata" select="."/>
-          </span>
-          <xsl:choose>
-            <xsl:when test="position() = last() -1 ">
-              <xsl:text> and </xsl:text>
-            </xsl:when>
-            <xsl:when test="position() = last()">
-              <xsl:text> </xsl:text>
-              <span class="peppopup newauthortip">
-                <i class="fas fa-info-circle"></i>  
-                <br></br>
-                <xsl:text>&#xa;</xsl:text>
-                <div class="peppopuptext" id="autaffinfo" hidden="True">
-                  <div id="autcontent" class="autcontent">
-                    <p class="autaffname">
-                      <xsl:apply-templates mode="metadata" select="nfirst"/>
-                      <xsl:apply-templates mode="metadata" select="nlast"/>
-                    </p>
-                    <xsl:apply-templates mode="metadata" select="../autaff"/>
-                    <p class="autaffbio">
-                      <span class="autaffname" data-class="nbio">
-                        <xsl:apply-templates mode="metadata" select="nfirst"/>
-                        <xsl:apply-templates mode="metadata" select="nlast"/>
-                      </span>
-                      &#160; <!--&nbsp;-->
-                      <xsl:apply-templates mode="metadata" select="nbio"/>
-                    </p>
-                  </div>
-                </div>
-              </span>
-            </xsl:when>
-            <xsl:otherwise>
-              <xsl:text>, </xsl:text>
-            </xsl:otherwise>
-          </xsl:choose>
-        </xsl:for-each>
-      </div>
-    </div>
-  </xsl:template>
-
-  <xsl:template match="autaff" mode="metadata">
-    <div data-class="autaff">
-      <xsl:if test="@affid">
-        <xsl:attribute name="data-affid">
-          <xsl:value-of select="@affid"/>
-        </xsl:attribute>
-      </xsl:if>
-      <xsl:apply-templates mode="metadata" select="addr"/>
-    </div>
-  </xsl:template>
-  
-  <!--PEPKBD3 Author Information-->
-  <xsl:template match="aut" mode="metadata">
-    <span class="title_author" data-listed="{@listed}" data-authindexid="{@authindexid}" data-role="{@role}" data-alias="{@alias}" data-asis="{@asis}">
-      <a class="author" href="#/Search/?author={@authindexid}">
-        <xsl:apply-templates mode="metadata" select="nfirst"/>
-        <xsl:apply-templates mode="metadata" select="nlast"/>
-      </a>
-      <xsl:apply-templates mode="metadata" select="ndeg"/>
-    </span>
-    <xsl:text>&#13;</xsl:text>
-  </xsl:template>
-
-  <xsl:template match="ln" mode="metadata">
-    <span data-class="ln">
-      <xsl:apply-templates/><br/>
-    </span>
-  </xsl:template>
     
-  <xsl:template match="addr" mode="metadata">
-    <p class="autaffaddr" data-class="addr">
-      <xsl:apply-templates mode="metadata"/>
-    </p>
-  </xsl:template>
-  
-  <xsl:template match="nbio" mode="metadata">
-    <span data-class="nbio">
-      <xsl:apply-templates mode="metadata"/>
-    </span>
-  </xsl:template>
-  
-  <xsl:template match="webx">
+  <xsl:template match="webx" mode="metadata">
     <span class="webx" data-type="{@type}" data-url="{@url}">
       <xsl:value-of select="."/>
     </span>
   </xsl:template>
-  
-  <xsl:template match="cr">
-    <br/>
-  </xsl:template>  
-  
-  <xsl:template match="nfirst" mode="metadata">
-    <xsl:text>&#10;</xsl:text> <!-- newline character -->
-    <span class="nfirst" data-type="{@type}" data-initials="{@initials}">
-      <xsl:value-of select="."/>
-    </span>
-    <xsl:text> </xsl:text> <!-- space character -->
-  </xsl:template>
 
-
-  <xsl:template match="nlast" mode="metadata">
-    <span class="nlast">
-      <xsl:value-of select="."/>
-    </span>
-  </xsl:template>
-
-
-  <xsl:template match="ndeg" mode="metadata">
-    <xsl:choose>
-      <xsl:when test="@other"> <!-- then i test if the attr exists -->
-        <span class="ndeg" data-dgr="{@dgr}" data-other="{@other}">
-          <xsl:text> </xsl:text> <!-- space character -->
-          <xsl:value-of select="@other"/>
-        </span>
-      </xsl:when>
-      <xsl:otherwise>
-        <span class="ndeg" data-dgr="{@dgr}" data-other="{@other}">
-          <xsl:text> </xsl:text> <!-- space character -->
-          <xsl:value-of select="@dgr"/>
-        </span>
-      </xsl:otherwise>
-    </xsl:choose>
-    <xsl:text> </xsl:text> <!-- space character -->
-  </xsl:template>
-
-  <xsl:template match="videoplayer">
-    <xsl:if test="'1'='1'">
-      <!--This is the new Wistia player-\-it allows seeking in the transcript, press the arrow on the captions, or use the "Search Video" on the cc menu.
-          This works for old and new videos!
-      -->
-      <div class="wistia_responsive_padding" style="padding:56.25% 0 0 0;position:relative;">
-        <div class="wistia_responsive_wrapper" style="height:100%;left:0;position:absolute;top:0;width:100%;">
-          <iframe src="https://fast.wistia.net/embed/iframe/{@videoid}?videoFoam=true" allowtransparency="true" frameborder="0" scrolling="no" class="wistia_embed" name="wistia_embed" width="100%" height="100%" allowfullscreen="allowfullscreen" mozallowfullscreen="mozallowfullscreen" webkitallowfullscreen="webkitallowfullscreen" oallowfullscreen="oallowfullscreen" msallowfullscreen="msallowfullscreen"></iframe></div>
-      </div>
-      <script src="https://fast.wistia.net/assets/external/E-v1.js" async="async"></script>      
-    </xsl:if>
-  </xsl:template>
-  
-  <xsl:template match="pgx">
-    <span class="pgx" data-type="pagelink" data-r="{@rx}">
-      <a class="pgx" href="#/Document/{@rx}">
-        <xsl:value-of select="."/>
-      </a>
-    </span>
-  </xsl:template>
-  
   <xsl:template match="xref" mode="metadata-inline">
     <!-- These are not expected to appear in mixed content, so
       brackets are provided -->
@@ -581,16 +242,15 @@
 
   <xsl:template match="ftr">
     <xsl:text>&#13;</xsl:text>
-    <div class="footer above-border" data-class="ftr">
+    <div class="footer above-border">
       <xsl:apply-templates/>
     </div>
   </xsl:template>  
   
   <xsl:template match="ftn">
-        <p class="ftn" data-class="ftn_group">
-          <xsl:attribute name="id">
-            <xsl:value-of select="@id"/>
-          </xsl:attribute>
+    <div class="ftn_group">
+      <div class="ftn" id="@id" label="@label"> 
+        <p class="ftn">
           <span class="ftnlabel">
             <sup>
               <xsl:value-of select="@label"/>
@@ -599,240 +259,14 @@
           <xsl:value-of select="."/>
 <!--          <xsl:apply-templates/>-->
         </p>  
-
+      </div> 
+    </div>
   </xsl:template>
   
-  <xsl:template match="aff" mode="metadata">
-    <xsl:call-template name="metadata-entry">
-      <xsl:with-param name="contents">
-        <xsl:call-template name="named-anchor"/>
-        <xsl:apply-templates/>
-      </xsl:with-param>
-    </xsl:call-template>
-  </xsl:template>
-
-  <xsl:template match="role" mode="metadata">
-    <xsl:call-template name="metadata-entry"/>
-  </xsl:template>
-
-  <xsl:template match="title" mode="metadata">
-    <xsl:apply-templates select="."/>
-  </xsl:template>
-
   <!-- ============================================================= -->
   <!--  REGULAR (DEFAULT) MODE                                       -->
   <!-- ============================================================= -->
 
-  <!--  Additional author info in document authsectinfo
-        Note this works right, but PEP-Easy loads the wrong 
-        info due to the fixed popup id in javascript 
-        the 
-  -->
-  <xsl:template match="hauth">
-    <div data-class="hauth">
-      <xsl:for-each select="aut">
-        <span>
-          <xsl:apply-templates mode="metadata" select="."/>
-        </span>
-        <xsl:choose>
-          <xsl:when test="position() = last() -1 ">
-            <xsl:text> and </xsl:text>
-          </xsl:when>
-          <xsl:when test="position() = last()">
-            <span class="peppopup hauthortip">
-            <i class="fas fa-info-circle"></i>  
-            <xsl:text></xsl:text>
-              <br></br>
-              <div class="peppopuptext" id="hautaffinfo" hidden="True">
-                <div id="hautcontent" class="hautcontent">
-                  <p class="autaffname">
-                    <xsl:apply-templates mode="metadata" select="nfirst"/>
-                    <xsl:apply-templates mode="metadata" select="nlast"/>
-                  </p>
-                  <xsl:apply-templates mode="metadata" select="autaff"/>
-                  <p class="autaffbio">
-                    <span class="autaffname" data-class="nbio">
-                      <xsl:apply-templates mode="metadata" select="nfirst"/>
-                      <xsl:apply-templates mode="metadata" select="nlast"/>
-                    </span>
-                    &#160; <!--&nbsp;-->
-                    <xsl:apply-templates mode="metadata" select="nbio"/>
-                  </p>
-                </div>
-              </div>
-            </span>
-          </xsl:when>
-          <xsl:otherwise>
-            <xsl:text>, </xsl:text>
-          </xsl:otherwise>
-        </xsl:choose>
-      </xsl:for-each>
-    </div>      
-  </xsl:template>
-
-  <xsl:template match="figure">
-    <p class="figure" id="{@id}">
-      <xsl:call-template name="data-pagehelper"/>
-      <xsl:apply-templates/>
-      <!--      <xsl:apply-templates select="graphic"/>-->
-      <!--      <xsl:apply-templates/>-->
-    </p>
-  </xsl:template>
-  
-  <xsl:template match="caption">
-    <p class="figtitle caption">
-      <xsl:call-template name="data-pagehelper"/>
-      <xsl:value-of select="."/>
-    </p>
-  </xsl:template>
-  
-  <xsl:template match="graphic">
-    <xsl:apply-templates/>
-    <p class="figure">
-      <img alt="{@xlink:href}">
-        <xsl:if test="@align">
-          <xsl:attribute name="style">
-            <xsl:value-of select="@align"/>
-          </xsl:attribute>
-        </xsl:if>
-        <xsl:for-each select="alt-text">
-          <xsl:attribute name="alt">
-            <xsl:value-of select="normalize-space(string(.))"/>
-          </xsl:attribute>
-        </xsl:for-each>
-        <!--<xsl:call-template name="assign-src"/>  (This was for JATS)-->
-        <xsl:for-each select="@source">
-          <xsl:attribute name="src">
-            <xsl:variable name="image">
-              <xsl:value-of select="."/>
-            </xsl:variable>
-            <!--<xsl:value-of select="concat('g/', $image, '.jpg')"/>-->
-            <!--Use api call to grab image-->
-            <xsl:value-of select="concat($imageurl, $image)"/>
-            <!--          <xsl:value-of select="."/>-->
-          </xsl:attribute>
-        </xsl:for-each>      
-      </img>
-    </p>
-  </xsl:template>
-  
-<!--
-    <xsl:template match="*" mode="drop-title">
-       <xsl:apply-templates select="."/>
-    </xsl:template>
-
-    <xsl:template match="title | sec-meta" mode="drop-title"/>
--->
-
-  <xsl:template match="app">
-    <div class="section app">
-      <xsl:call-template name="named-anchor"/>
-      <xsl:apply-templates select="." mode="label"/>
-      <xsl:apply-templates/>
-    </div>
-  </xsl:template>
-
-
-<!--  <xsl:template match="bib" name="ref-list">
-    <div class="section bib">
-      <xsl:call-template name="named-anchor"/>
-      <xsl:apply-templates select="." mode="label"/>
-      <xsl:apply-templates select="*[not(self::be | self::ref-list)]"/>
-      <xsl:if test="be">
-        <div class="ref-list table">
-          <xsl:apply-templates select="be"/>
-        </div>
-      </xsl:if>
-      <xsl:apply-templates select="ref-list"/>
-    </div>
-  </xsl:template>
--->
-
-  <!-- ============================================================= -->
-  <!--  Titles                                                       -->
-  <!-- ============================================================= -->
-
-  <xsl:template name="main-title"
-    match="
-      abstract/title | body/*/title |
-      back/title | back[not(title)]/*/title">
-    <xsl:param name="contents">
-      <xsl:apply-templates/>
-    </xsl:param>
-    <xsl:if test="normalize-space(string($contents))">
-      <!-- coding defensively since empty titles make glitchy HTML -->
-      <h2 class="main-title">
-        <xsl:copy-of select="$contents"/>
-      </h2>
-    </xsl:if>
-  </xsl:template>
-
-  <xsl:template name="section-title"
-    match="
-      abstract/*/title | body/*/*/title |
-      back[title]/*/title | back[not(title)]/*/*/title">
-    <xsl:param name="contents">
-      <xsl:apply-templates/>
-    </xsl:param>
-    <xsl:if test="normalize-space(string($contents))">
-      <!-- coding defensively since empty titles make glitchy HTML -->
-      <h3 class="section-title">
-        <xsl:copy-of select="$contents"/>
-      </h3>
-    </xsl:if>
-  </xsl:template>
-
-
-  <xsl:template name="subsection-title"
-    match="
-      abstract/*/*/title | body/*/*/*/title |
-      back[title]/*/*/title | back[not(title)]/*/*/*/title">
-    <xsl:param name="contents">
-      <xsl:apply-templates/>
-    </xsl:param>
-    <xsl:if test="normalize-space(string($contents))">
-      <!-- coding defensively since empty titles make glitchy HTML -->
-      <h4 class="subsection-title">
-        <xsl:copy-of select="$contents"/>
-      </h4>
-    </xsl:if>
-  </xsl:template>
-
-
-  <xsl:template name="block-title" priority="2"
-    match="
-      list/title | def-list/title | boxed-text/title |
-      verse-group/title | glossary/title | gloss-group/title | kwd-group/title">
-    <xsl:param name="contents">
-      <xsl:apply-templates/>
-    </xsl:param>
-    <xsl:if test="normalize-space(string($contents))">
-      <!-- coding defensively since empty titles make glitchy HTML -->
-      <h4 class="block-title">
-        <xsl:copy-of select="$contents"/>
-      </h4>
-    </xsl:if>
-  </xsl:template>
-
-
-  <!-- default: any other titles found -->
-  <xsl:template match="title">
-    <xsl:if test="normalize-space(string(.))">
-      <h3 class="title nrsmbee">
-        <xsl:apply-templates/>
-      </h3>
-    </xsl:if>
-  </xsl:template>
-
-
-<!--  <xsl:template match="subtitle">
-    <xsl:if test="normalize-space(string(.))">
-      <h5 class="subtitle">
-        <xsl:apply-templates/>
-      </h5>
-    </xsl:if>
-  </xsl:template>
--->
 
   <!-- ============================================================= -->
   <!--  Figures, lists and block-level objectS                       -->
@@ -849,33 +283,12 @@
   <xsl:template match="h1|h2|h3|h4|h5|h6">
     <xsl:copy>
       <xsl:call-template name="assign-lang"/>
-      <xsl:if test="@align">
-        <xsl:attribute name="style">
-          <xsl:value-of select="concat('text-align:',  @align)"/>
-          <!--        <xsl:value-of select="@align"/>  -->
-        </xsl:attribute>
-      </xsl:if>
-      <xsl:call-template name="data-pagehelper"/>
+      <xsl:call-template name="assign-styles"/>
       <xsl:call-template name="named-anchor"/>
       <xsl:apply-templates/>
     </xsl:copy>
   </xsl:template>
 
-  <xsl:template match="glossary | gloss-group">
-    <!-- gloss-group is from 2.3 -->
-    <div class="glossary">
-      <xsl:call-template name="named-anchor"/>
-      <xsl:apply-templates select="label | title"/>
-      <xsl:if test="not(normalize-space(string(title)))">
-        <xsl:call-template name="block-title">
-          <xsl:with-param name="contents">
-            <span class="generated">Glossary</span>
-          </xsl:with-param>
-        </xsl:call-template>
-      </xsl:if>
-      <xsl:apply-templates select="*[not(self::label | self::title)]"/>
-    </div>
-  </xsl:template>
 
   <xsl:template match="glossary/glossary | gloss-group/gloss-group">
     <!-- the same document shouldn't have both types -->
@@ -915,7 +328,6 @@
 
     <xsl:template match="list[@type = 'DASH' or @type = 'DIAMOND' or @type = 'ASTERISK']" mode="list">
     <xsl:variable name="style">
-      <xsl:call-template name="data-pagehelper"/>
       <xsl:choose>
         <xsl:when test="@type = 'DASH'">dash</xsl:when>
         <xsl:when test="@type = 'DIAMOND'">diamond</xsl:when>
@@ -954,7 +366,7 @@
   
   <xsl:template match="n">
     <xsl:apply-templates select="@content-type"/>
-    <p class="pagenumber">
+    <p class="n pagenumber">
       <xsl:if test="@nextpgnum">
         <xsl:attribute name="data-nextpgnum">
           <xsl:value-of select="@nextpgnum"/>
@@ -969,14 +381,14 @@
     </p>  
   </xsl:template>
   
+  
   <xsl:template match="pb">
-    <div class="pagebreak" data-class="pb">
+    <p class="pb pagebreak">
       <xsl:call-template name="named-anchor"/>
       <xsl:apply-templates select="@content-type"/>
       <xsl:apply-templates/>
-    </div>
+    </p>
   </xsl:template>
-
 
   <xsl:template match="bx">
     <span class="peppopup bibtip" data-type="velcro" data-element="{@r}" data-maxwidth="300" data-direction="southeast">
@@ -988,24 +400,11 @@
   
  
   <xsl:template match="impx"> <!--when not in metadata mode --> 
-    <xsl:choose>
-      <xsl:when test="@rx"> <!-- for the generated links -->
-        <span class="peppopup glosstip impx" data-type="{@type}" data-docid="{@rx}" data-grpname="{@grpname}">
-          <xsl:value-of select="."/>
-        </span>
-      </xsl:when>
-      <xsl:otherwise> <!-- sometimes impx is manually tagged -->
-        <span class="impx" data-type="{@type}">
-          <xsl:value-of select="."/>
-        </span>
-      </xsl:otherwise>
-    </xsl:choose>
   </xsl:template>
 
   <xsl:template match="poem">
+    <xsl:call-template name="assign-lang"/>
     <div class="poem">
-      <xsl:call-template name="data-pagehelper"/>
-      <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
     </div>
@@ -1013,7 +412,6 @@
   
   <xsl:template match="quote">
     <div class="quote">
-      <xsl:call-template name="data-pagehelper"/>
       <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
@@ -1022,16 +420,14 @@
   
   <xsl:template match="dream">
     <div class="dream">
-      <xsl:call-template name="data-pagehelper"/>
       <xsl:call-template name="assign-lang"/>
-       <xsl:call-template name="assign-id"/>  
+      <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
     </div>
   </xsl:template>
 
   <xsl:template match="dialog">
     <div class="dialog">
-      <xsl:call-template name="data-pagehelper"/>
       <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="assign-id"/>
       <xsl:apply-templates/>
@@ -1041,22 +437,6 @@
   <xsl:template match="p | p2">
     <p class="para">
       <xsl:call-template name="assign-lang"/>
-      <xsl:call-template name="data-pagehelper"/>
-      <xsl:if test="@lgrid">
-        <xsl:attribute name="data-lgrid">
-          <xsl:value-of select="@lgrid"/>
-        </xsl:attribute>
-      </xsl:if>
-      <xsl:if test="@lgrx">
-        <xsl:attribute name="data-lgrx">
-          <xsl:value-of select="@lgrx"/>
-        </xsl:attribute>
-      </xsl:if>
-      <xsl:if test="@lgrtype">
-        <xsl:attribute name="data-lgrtype">
-          <xsl:value-of select="@lgrtype"/>
-        </xsl:attribute>
-      </xsl:if>
       <xsl:choose>
         <xsl:when test="ancestor::ftr and not(preceding-sibling::*)">
           <xsl:attribute name="class">ftr first</xsl:attribute>
@@ -1064,11 +444,14 @@
         <xsl:when test="ancestor::ftr">
           <xsl:attribute name="class">ftr</xsl:attribute>
         </xsl:when>
+        <xsl:when test="not(preceding-sibling::*)">
+          <xsl:attribute name="class">first</xsl:attribute>
+        </xsl:when>
       </xsl:choose>
       <xsl:if test="name() = 'p2'">
         <!--        if you want to concatenate to the attribute class-->
         <!--          <xsl:value-of select="concat('continued',  ' ', @class)"/>-->
-        <xsl:attribute name="class">paracont</xsl:attribute>
+        <xsl:attribute name="class">p2 paracont</xsl:attribute>
       </xsl:if>
       
       <xsl:call-template name="assign-id"/>
@@ -1077,159 +460,17 @@
     </p>
   </xsl:template>
 
-  <xsl:template match="note">
-    <div class="note" id='{@id}'>
-      <xsl:call-template name="data-pagehelper"/>
-      <xsl:if test="@label">
-        <xsl:attribute name="label">
-          <xsl:value-of select="@label"/>
-        </xsl:attribute>
-      </xsl:if>
-      <xsl:apply-templates/>
-    </div>
-  </xsl:template>
-  
-  <xsl:template match="dictentrygrp">
-    <div class="dictentrygrp" id='{@id}'>
-      <xsl:apply-templates/>
-    </div>
-  </xsl:template>
-  
-  <xsl:template match="dictalso">
-    <p class="dictentrygrp-dictalso">
-      <i class="far fa-flag"></i>
-<!--      <img>
-        <xsl:attribute name="src">
-          <xsl:value-of select="concat($imageurl, 'flag.gif')"/>
-        </xsl:attribute>
-      </img>
--->      <xsl:text> </xsl:text>
-      <xsl:apply-templates/>
-    </p>
-  </xsl:template>
-  
-   <xsl:template match="dictalso/term">
-    <span class="dictentrygrp-dictalso-term smallcaps">
-      <!-- xslt 1.0-->
-      <xsl:value-of select="translate(@lang, $lowercase,$uppercase)"/>           
-      <xsl:text>: </xsl:text>
-      <xsl:apply-templates/>
-      <xsl:text>; </xsl:text>
-    </span>
-  </xsl:template>
-  
-  <xsl:template match="def">
-    <div class="def-def body">
-      <xsl:apply-templates/>
-    </div>
-  </xsl:template>
-
-  <xsl:template match="defrest">
-    <div class="seemore">
-      <xsl:text>&#13;</xsl:text>
-      <details>
-        <summary>...excerpted...click for more...</summary>
-        <div class="def-def body">
-          <xsl:apply-templates/>
-          <a class="seemore">
-            <xsl:attribute name="href">
-              <xsl:value-of select="../../@id"/>
-            </xsl:attribute>
-            Open full glossary entry in main window...
-          </a>
-        </div>
-      </details>      
-    </div>    
-  </xsl:template>
-  
-  <xsl:template match="term">
-    <div class="dictentrygrp-term">
-      <xsl:call-template name="assign-id"/>
-      <p>
-        <xsl:apply-templates/>
-      </p>
-    </div>
-  </xsl:template>
 
   <xsl:template match="src">
     <p class="dictentry-src">
       <xsl:call-template name="assign-id"/>
-      <i class="fas fa-book-open"></i>
-      <!--      <img src="images/book.gif" alt="" />-->
+      <img src="images/book.gif" alt="" />
       <xsl:text> </xsl:text>
       <xsl:apply-templates/>
     </p>
   </xsl:template> 
 
 
-  <xsl:template match="be">
-        <p class="bibentry" id="{@id}">
-          <span class="ref-content cell">
-            <xsl:apply-templates/>
-          </span>
-          <xsl:if test="@rx"> <!--matched reference id-->
-            <a class="bibx" >
-              <xsl:attribute name="href">
-                <xsl:value-of select="concat('#', '/Document/',@rx)"/>
-              </xsl:attribute>
-              <!--              <xsl:text> [→]</xsl:text>-->
-              <i class="fas fa-arrow-circle-right"></i>
-            </a>
-          </xsl:if>
-        </p>
-  </xsl:template>
-  
-  
-  <xsl:template match="be/a">
-    <xsl:text>&#13;</xsl:text>
-    <span class="bibauthor a">
-      <xsl:apply-templates/>
-    </span>
-  </xsl:template>
-  
-  
-  <xsl:template match="a/l">
-    <span class="bibauthorlastname l">
-      <xsl:apply-templates/>
-    </span>
-  </xsl:template>
-  
-  
-  <xsl:template match="be/y">
-    <xsl:text>&#13;</xsl:text>
-    <span class="bibyear y">
-      <xsl:apply-templates/>
-    </span>
-  </xsl:template>
-  
-  
-  <xsl:template match="be/t">
-    <xsl:text>&#13;</xsl:text>
-    <span class="bibtitle t">
-      <xsl:apply-templates/>
-    </span>
-  </xsl:template>
-  
-  
-  <xsl:template match="be/j">
-    <xsl:text>&#xA0;</xsl:text>
-    <span class="bibjournal j">
-      <xsl:apply-templates/>
-    </span>
-  </xsl:template>
-
-
-  <xsl:template match="be/bp">
-    <span class="bibpublisher bp">
-      <xsl:apply-templates/>
-    </span>
-  </xsl:template>
-
-  <xsl:template match="be/pp">
-    <span class="bibpages pp">
-      <xsl:apply-templates/>
-    </span>
-  </xsl:template>
   
 
   <xsl:template match="p/label">
@@ -1252,10 +493,10 @@
   <!--  Tables are already in XHTML, and can simply be copied
         through                                                      -->
   
-  <xsl:template match="tbl">
-    <!-- other labels are displayed as blocks -->
+<!--  <xsl:template match="body//tbl">
+    <!-\- other labels are displayed as blocks -\->
     <div class="table nrs">
-      <xsl:call-template name="data-pagehelper"/>
+      <xsl:call-template name="assign-styles"/>
       <xsl:attribute name="id">
         <xsl:value-of select="@id"/>
       </xsl:attribute>
@@ -1268,21 +509,21 @@
       <xsl:attribute name="data-ewide">
         <xsl:value-of select="@ewide"/>
       </xsl:attribute>
-<!--      <xsl:apply-templates select="@*" mode="table-copy"/>-->
+      <xsl:apply-templates select="@*" mode="table-copy"/>
       <xsl:apply-templates/>
     </div>
   </xsl:template>
-  
+-->  
   <xsl:template match="row">
     <!-- other labels are displayed as blocks -->
-    <tr class="tablerow row">
+    <tr class="tablerow row nrs">
       <xsl:apply-templates/>
     </tr>
   </xsl:template>
   
   <xsl:template match="entry">
     <!-- other labels are displayed as blocks -->
-    <td class="tableentry entry">
+    <td class="tableentry entry nrs">
       <xsl:apply-templates/>
     </td>
   </xsl:template>
@@ -1975,7 +1216,18 @@
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
-
+  
+  <xsl:template name="assign-styles">
+    <xsl:choose>
+      <xsl:when test="@align">
+        <xsl:attribute name="align">
+           <!--          <xsl:value-of select="concat('text-align:',  @align)"/>-->
+          <xsl:value-of select="@align"/>  
+        </xsl:attribute>
+      </xsl:when>
+    </xsl:choose>
+  </xsl:template>
+  
   <xsl:template name="assign-lang">
     <xsl:choose>
       <xsl:when test="@lang">
