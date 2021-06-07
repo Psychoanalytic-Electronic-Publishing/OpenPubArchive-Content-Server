@@ -158,31 +158,31 @@ def find_client_id(request: Request,
 
     return ret_val
 
-def fix_userinfo_invalid_nones(response_data):
+def fix_userinfo_invalid_nones(response_data, caller_name="DocPermissionsError"):
     try:
         if response_data["UserName"] is None:
             response_data["UserName"] = "NotLoggedIn"
     except Exception as e:
-        logger.error(f"DocPermissionsError: PaDS UserName Data Exception: {e}")
+        logger.error(f"{caller_name}: PaDS UserName Data Exception: {e}")
 
     try:
         if response_data["UserType"] is None:
             response_data["UserType"] = "Unknown"
     except Exception as e:
-        logger.error(f"DocPermissionsError: PaDS UserType Data Exception: {e}")
+        logger.error(f"{caller_name}: PaDS UserType Data Exception: {e}")
 
     return response_data
 
-def fix_pydantic_invalid_nones(response_data):
+def fix_pydantic_invalid_nones(response_data, caller_name="DocPermissionsError"):
     try:
         if response_data["ReasonStr"] is None:
             response_data["ReasonStr"] = ""
     except Exception as e:
-        logger.error(f"DocPermissionsError: Exception: {e}")
+        logger.error(f"{caller_name}: Exception: {e}")
 
     return response_data
 
-def validate_client_id(client_id, caller_name="unknown"):
+def validate_client_id(client_id, caller_name="DocPermissionsError"):
     if client_id is None:
         client_id == opasConfig.NO_CLIENT_ID
         logger.error(f"{caller_name}: Client ID error: Client ID is None")
@@ -223,12 +223,13 @@ def get_authserver_session_info(session_id,
     
     """
     ts = time.time()
+    caller_name = "GetAuthserverSessionInfo"
     
     if client_id == opasConfig.NO_CLIENT_ID:
-        logger.warning(f"Session info call for Session ID: {session_id} included no (None) client ID.")
+        logger.warning(f"{caller_name}: Session ID: {session_id} Client ID was None")
     else:
         # make sure it's ok, this is causing problems on production
-        client_id = validate_client_id(client_id)
+        client_id = validate_client_id(client_id, caller_name=caller_name)
         
     if pads_session_info is None or session_id is None:
         # not supplied, so fetch
@@ -240,15 +241,15 @@ def get_authserver_session_info(session_id,
             try:
                 session_info = models.SessionInfo(session_id=pads_session_info.SessionId, api_client_id=client_id)
             except Exception as e:
-                msg = f"PaDS session info caused error {e}.  SessID: {session_id} client_id: {client_id} req: {request}"
+                msg = f"{caller_name}: Error {e}.  SessID: {session_id} client_id: {client_id} req: {request}"
                 if opasConfig.LOCAL_TRACE:
-                    print (f"GetAuthserverSessionInfo: {msg}")
+                    print (msg)
                 logger.error(msg)
                 session_info = models.SessionInfo(session_id="unknown", api_client_id=client_id)
             else:    
                 session_id = session_info.session_id
         except Exception as e:
-            logger.error(f"Error getting pads_session_info {e}")
+            logger.error(f"{caller_name}: Error getting pads_session_info {e}")
             session_info = models.SessionInfo(session_id="unknown", api_client_id=client_id)
             
     #else:
@@ -265,20 +266,20 @@ def get_authserver_session_info(session_id,
         try:
             session_info.has_subscription = pads_session_info.HasSubscription
         except Exception as e:
-            logger.error("GetAuthServerError:HasSubscription not supplied by PaDS")
+            logger.error(f"{caller_name}: HasSubscription not supplied by PaDS")
             session_info.has_subscription = False
 
         try:
             session_info.is_valid_login = pads_session_info.IsValidLogon
             session_info.authenticated = pads_session_info.IsValidLogon
         except Exception as e:
-            logger.error("GetAuthServerError:IsValidLogon not supplied by PaDS")
+            logger.error(f"{caller_name}: IsValidLogon not supplied by PaDS")
             session_info.is_valid_login = False
 
         try:
             session_info.is_valid_username = pads_session_info.IsValidUserName
         except Exception as e:
-            logger.error("GetAuthServerError:IsValidUsername not supplied by PaDS")
+            logger.error(f"{caller_name}: IsValidUsername not supplied by PaDS")
             session_info.is_valid_username = False
         
         # session_info.confirmed_unauthenticated = False
@@ -291,7 +292,7 @@ def get_authserver_session_info(session_id,
     session_info.pads_user_info = pads_user_info
     if status_code == 401: # could be just no session_id, but also could have be returned by PaDS if it doesn't recognize it
         if session_info.pads_session_info.pads_status_response > 500:
-            msg = "GetAuthServerError: PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned"
+            msg = f"{caller_name}: PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned"
             logger.error(msg)
         # session is not logged in
         # session_info.confirmed_unauthenticated = True
@@ -330,6 +331,8 @@ def get_authserver_session_userinfo(session_id, client_id):
     Send PaDS the session ID and see if that's associated with a user yet.
     """
     ret_val = None
+    caller_name = "AuthServerUserinfoError"
+    
     status_code = 401
     msg = f"get_user_info for session {session_id} from client {client_id}"
     logger.debug(msg)
@@ -338,7 +341,7 @@ def get_authserver_session_userinfo(session_id, client_id):
         try:
             response = requests.get(full_URL, headers={"Content-Type":"application/json"})
         except Exception as e:
-            msg = f"AuthServerUserinfoError: No user info from authorization server {e}. Non-logged in user for sessionId: {session_id} client-id {client_id}."
+            msg = f"{caller_name}: No user info from authorization server {e}. Non-logged in user for sessionId: {session_id} client-id {client_id}."
             logger.error(msg)
         else:
             status_code = response.status_code
@@ -392,6 +395,8 @@ def authserver_login(username=PADS_TEST_ID,
       
     """
     msg = ""
+    caller_name = "AuthServerLogin"
+    
     logger.info(f"Logging in user {username} with session_id {session_id}")
     if session_id is not None:
         full_URL = base + f"/v1/Authenticate/?SessionId={session_id}"
@@ -401,7 +406,7 @@ def authserver_login(username=PADS_TEST_ID,
     try:
         pads_response = requests.post(full_URL, headers={"Content-Type":"application/json"}, json={"UserName":f"{username}", "Password":f"{password}"})
     except Exception as e:
-        msg = f"PaDSError: Authorization server not available. {e}"
+        msg = f"{caller_name}: Authorization server not available. {e}"
         logger.error(msg)
         if opasConfig.LOCAL_TRACE: print (f"****WATCH_THIS****: {msg}")
         # set up response with default model
@@ -413,24 +418,24 @@ def authserver_login(username=PADS_TEST_ID,
         status_code = pads_response.status_code # save it for a bit (we replace pads_session_info below)
         if pads_response.ok:
             pads_response = pads_response.json()
-            pads_response = fix_pydantic_invalid_nones(pads_response)
+            pads_response = fix_pydantic_invalid_nones(pads_response, caller_name="AuthserverLogin")
             if isinstance(pads_response, str):
                 pads_session_info = models.PadsSessionInfo()
-                logger.error(f"PaDSError: returned error string: {pads_response}")
+                logger.error(f"{caller_name}: returned error string: {pads_response}")
             else:
                 try:
                     pads_session_info = models.PadsSessionInfo(**pads_response)
                 except Exception as e:
-                    logger.error(f"PaDSError: return assignment error: {e}")
+                    logger.error(f"{caller_name}: return assignment error: {e}")
                     pads_session_info = models.PadsSessionInfo()
         elif status_code > 403: 
             if retry == True:
                 # try once without the session ID
-                msg = f"PaDSError: Login returned {status_code}. Trying without session id."
+                msg = f"{caller_name}: Login returned {status_code}. Trying without session id."
                 logger.error(msg)
                 pads_session_info = authserver_login(username=username, password=password, client_id=client_id, retry=False)
             else:
-                msg = f"PaDSError: Authorization System Issue. PaDS login returned {status_code}. Already retried (failed), or retry not selected."
+                msg = f"{caller_name}: Auth System Issue. Login returned {status_code}. Retry (failed), or Retry not selected."
                 logger.error(msg)
                 pads_session_info = models.PadsSessionInfo()
                 pads_session_info.pads_status_response = status_code
@@ -441,17 +446,17 @@ def authserver_login(username=PADS_TEST_ID,
                 pads_response = fix_pydantic_invalid_nones(pads_response)
                 if isinstance(pads_response, str):
                     pads_session_info = models.PadsSessionInfo()
-                    msg = f"PaDSError: Returned error string: {pads_response}"
+                    msg = f"{caller_name}: Returned error string: {pads_response}"
                     logger.error(msg)
                 else:
                     try:
                         pads_session_info = models.PadsSessionInfo(**pads_response)
                     except Exception as e:
-                        msg = f"PaDSError: Return assignment error: {e}"
+                        msg = f"{caller_name}: Return assignment error: {e}"
                         logger.error(msg)
                         pads_session_info = models.PadsSessionInfo()
             except Exception as e:
-                logger.error(f"PaDSError: Response processing error {e}")
+                logger.error(f"{caller_name}: Response processing error {e}")
                 pads_session_info = models.PadsSessionInfo(**pads_session_info)
                 pads_session_info.pads_status_response = status_code
                 pads_session_info.pads_disposition = msg 
@@ -460,6 +465,8 @@ def authserver_login(username=PADS_TEST_ID,
 
 def authserver_logout(session_id, request: Request=None, response: Response=None):
     ret_val = False
+    caller_name = "AuthServerLogout"
+    
     if session_id is not None:
         if response is not None:
             response.delete_cookie(key=opasConfig.OPASSESSIONID,path="/",
@@ -470,9 +477,9 @@ def authserver_logout(session_id, request: Request=None, response: Response=None
         if response.ok:
             ret_val = True
         else:
-            logger.error(f"PaDSError: Logging out for sessionId: {session_id} from PaDS: {response.json()}")
+            logger.error(f"{caller_name}: Error Logging out for sessionId: {session_id} from PaDS: {response.json()}")
     else:
-        logger.warning("No SessionId supplied.")
+        logger.warning(f"{caller_name}: No SessionId supplied.")
 
     return ret_val
 
@@ -482,9 +489,11 @@ def authserver_permission_check(session_id,
                                 reason_for_check=None,
                                 request=None):
     ret_val = False
+    caller_name = "AuthServerPermision"
+    
     ret_resp = None
     if reason_for_check is None:
-        logger.warning("fulltext_request info not supplied")
+        logger.warning(f"{caller_name}: fulltext_request info not supplied")
         
     full_URL = base + f"/v1/Permits?SessionId={session_id}&DocId={doc_id}&DocYear={doc_year}&ReasonForCheck={reason_for_check}"
 
@@ -497,10 +506,10 @@ def authserver_permission_check(session_id,
     try: # permit request to PaDS
         response = requests.get(full_URL, headers=headers)
     except Exception as e:
-        logger.error(f"PaDSError: Request session {session_id} exception part 1: {full_URL}")
-        logger.error(f"PaDSError: Request session {session_id} exception part 2: {response}")
-        logger.error(f"PaDSError: Request session {session_id} exception part 3: {e}")
-        logger.error(f"PaDSError: Request session {session_id} exception part 4: headers {headers}")
+        logger.error(f"{caller_name}: Request session {session_id} exception part 1: {full_URL}")
+        logger.error(f"{caller_name}: Request session {session_id} exception part 2: {response}")
+        logger.error(f"{caller_name}: Request session {session_id} exception part 3: {e}")
+        logger.error(f"{caller_name}: Request session {session_id} exception part 4: headers {headers}")
         # just return no access
         ret_resp = models.PadsPermitInfo(SessionId = session_id,
                                          DocID = doc_id,
@@ -516,7 +525,7 @@ def authserver_permission_check(session_id,
                 
             if response.status_code == 503:
                 # PaDS down, fake it for now
-                msg = f"PaDSError: Permits response error {e}. Temporarily return data."
+                msg = f"{caller_name}: Permits response error {e}. Temporarily return data."
                 logger.error(msg)
                 ret_resp = models.PadsPermitInfo(SessionId = session_id,
                                                  DocID = doc_id,
@@ -550,7 +559,7 @@ def authserver_permission_check(session_id,
                     logger.info(msg)
                     
         except Exception as e:
-            msg = f"PaDSError: Permits response error {e}. Composing no access response."
+            msg = f"{caller_name}: Permits response error {e}. Composing no access response."
             logger.error(msg)
             ret_val = False
             ret_resp = models.PadsPermitInfo(SessionId=session_id,
@@ -577,6 +586,8 @@ def get_access_limitations(doc_id,
                There are still side effects on session_info
        
     """
+    caller_name = "AuthServerPermision"
+    
     try:
         open_access = False
         ret_val = models.AccessLimitations()
@@ -639,7 +650,7 @@ def get_access_limitations(doc_id,
                             ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE 
                             logger.debug("Optimization - session info used to authorize PEPCurrent document")
                     except Exception as e:
-                        logger.error(f"PaDSError: PEPCurrent document permission: {e}")
+                        logger.error(f"{caller_name}: PEPCurrent document permission: {e}")
 
             elif classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE):
                 ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_DESCRIPTION 
@@ -656,7 +667,7 @@ def get_access_limitations(doc_id,
                             ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE
                             logger.debug("Optimization - session info used to authorize PEPArchive document")
                     except Exception as e:
-                        logger.error(f"PaDSError: PEPArchive document permission: {e}")
+                        logger.error(f"{caller_name}: PEPArchive document permission: {e}")
 
             elif classification in (opasConfig.DOCUMENT_ACCESS_TOC):
                 open_access = True
@@ -666,7 +677,7 @@ def get_access_limitations(doc_id,
                 #"This content is currently free to all users."
                 ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
             else:
-                logger.error(f"AccessError: Unknown classification: {classification}")
+                logger.error(f"{caller_name}: Unknown classification: {classification}")
 
             # **************************************
             # Now check for access, or cached access
@@ -691,7 +702,7 @@ def get_access_limitations(doc_id,
                                                                                 request=request)
                         except Exception as e:
                             # PaDS could be down, local development
-                            logger.error(f"PaDSError: Access Exception: {e}")
+                            logger.error(f"{caller_name}: Access Exception: {e}")
                             if localsecrets.BASEURL == "development.org:9100":
                                 resp = models.PadsPermitInfo(Permit=True, HasArchiveAccess=True, HasCurrentAccess=True)
                                 # so it doesn't have to check this later
@@ -777,11 +788,11 @@ def get_access_limitations(doc_id,
                     logger.debug(f"No PaDS check needed: Document {doc_id} is open access")
         
             except Exception as e:
-                logger.error(f"AccessError: Issue checking document permission. Possibly not logged in {e}")
+                logger.error(f"{caller_name}: Issue checking document permission. Possibly not logged in {e}")
                 pass # can't be checked, will be unauthorized.
 
     except Exception as e:
-        logger.error(f"AccessError: General exception {e} trying ascertain access limitations.")
+        logger.error(f"{caller_name}: General exception {e} trying ascertain access limitations.")
 
     if fulltext_request and ret_val.accessLimited:
         # happens anytime someone views an abstract in Document mode because they don't have an account. Perfectly legal. Changed to info (from error)
@@ -802,9 +813,10 @@ def get_pads_session_info(session_id=None,
     Get the PaDS session model, and get a new session ID from the auth server if needed 
     """
     msg = ""
+    caller_name = "GetPaDSSessionInfo"
     
     if client_id == opasConfig.NO_CLIENT_ID:
-        logger.warning(f"Session info call for Session ID: {session_id} included no (None) client ID.")
+        logger.warning(f"{caller_name}: Session info call for Session ID: {session_id} included no (None) client ID.")
     
     if session_id is not None:
         full_URL = base + f"/v1/Authenticate/IP/" + f"?SessionID={session_id}"
@@ -817,23 +829,23 @@ def get_pads_session_info(session_id=None,
         if user_ip is not None:
             headers = { opasConfig.X_FORWARDED_FOR:user_ip }
             pads_session_info = requests.get(full_URL, headers)
-            logger.info(f"X_FORWARDED_FOR from authenticateIP: {user_ip}")
+            logger.info(f"{caller_name}: X_FORWARDED_FOR from authenticateIP: {user_ip}")
         else:
             pads_session_info = requests.get(full_URL)
             
     except Exception as e:
-        logger.error(f"PaDSError: Authorization server not available. {e}")
+        logger.error(f"{caller_name}: Authorization server not available. {e}")
         pads_session_info = models.PadsSessionInfo()
     else:
         status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below)
         if status_code > 403: # e.g., (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, httpCodes.HTTP_503_SERVICE_UNAVAILABLE):
-            logger.warning(f"PaDS session_info status_code is {status_code}")
+            logger.warning(f"{caller_name}: PaDS session_info status_code is {status_code}")
             # try once without the session ID
             if retry == True:
                 pads_session_info = get_pads_session_info(client_id=client_id, retry=False, request=request)
                 pads_session_info.pads_status_response = status_code
             else:
-                msg = f"PaDSError: {pads_session_info.status_code}"
+                msg = f"{caller_name}: {pads_session_info.status_code}"
                 logger.error(msg)
                 pads_session_info = models.PadsSessionInfo()
                 pads_session_info.pads_status_response = status_code
@@ -841,11 +853,11 @@ def get_pads_session_info(session_id=None,
         else:
             try:
                 pads_session_info = pads_session_info.json()
-                pads_session_info = fix_pydantic_invalid_nones(pads_session_info)
+                pads_session_info = fix_pydantic_invalid_nones(pads_session_info, caller_name=caller_name)
                 pads_session_info = models.PadsSessionInfo(**pads_session_info)
                 pads_session_info.pads_status_response = status_code
             except Exception as e:
-                msg = f"PaDSError: response processing error {e}"
+                msg = f"{caller_name}: Response processing error {e}"
                 logger.error(msg)
                 pads_session_info = models.PadsSessionInfo(**pads_session_info)
                 pads_session_info.pads_status_response = status_code

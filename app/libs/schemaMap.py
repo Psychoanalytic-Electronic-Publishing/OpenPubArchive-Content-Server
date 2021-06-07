@@ -94,6 +94,26 @@ USER2SOLR_MAP = {
     "summaries": "(p_summaries)",
 }
 
+# use this to add "equivalent" field names to help users.
+USERVARIATION2SOLR_MAP = {
+    "author" : "authors",
+    "abstract" : "abstract_xml",
+    "heading": "headings",
+    "quote": "quotes",
+    "dream": "dreams",
+    "poem": "poems",
+    "note": "notes",
+    "dialog": "dialogs",
+    "panel": "panels",
+    "caption": "captions",
+    "biblios": "references",
+    "appendixes": "(p_appxs)",
+    "summaries": "(p_summaries)",
+    "type": "art_type",
+    "code": "sourcecode",
+    "bibliography": "references",
+}
+
 FIELD2USER_MAP = {
     "art_author" : "author",
     "art_authors_text" : "author",
@@ -107,6 +127,11 @@ FIELD2USER_MAP = {
     "art_cited_20" : "cited, cited in the last 20 years",
 }
 
+def boolean_ops_to_symbols(query_string):
+    ret_val = query_string
+    ret_val = re.sub("\sOR\s", " || ", ret_val)
+    ret_val = re.sub("\sAND\s", " && ", ret_val)
+    return ret_val
 
 # reverse it for the SOLR2USER conversion
 for key, val in USER2SOLR_MAP.items():
@@ -120,6 +145,7 @@ def solr2user(solr_key_name):
     >>> solr2user("(p_body OR p_summaries OR p_appxs)")
     'doc'
     """
+    solr_key_name = boolean_ops_to_symbols(solr_key_name)
     ret_val = SOLR2USER_MAP.get(solr_key_name, solr_key_name)
     return ret_val
     
@@ -128,18 +154,32 @@ def user2solr(user_key_name):
     Convert a user to a Solr schema name
     
     >>> user2solr("doc")
-    '(p_body OR p_summaries OR p_appxs)'
+    '(p_body || p_summaries || p_appxs)'
     
     """
     ret_val = USER2SOLR_MAP.get(user_key_name, user_key_name)
     return ret_val
 
+def userVariatons2solr(user_key_name):
+    """
+    Convert a user variation of a standard name to a standard Solr schema name
+    
+    >>> userVariatons2solr("author")
+    'authors'
+    
+    """
+    ret_val = USERVARIATION2SOLR_MAP.get(user_key_name, user_key_name)
+    return ret_val
+
 def user2solrReplace(query):
     """
+    ### NOT USED CURRENTLY
+    
     Find the parent and convert it; problem is this will only work for a single parent query
     
     >>> query = "{!parent which='art_level:1'} (art_level:2 AND parent_tag:doc AND para:('successful therapy' AND methods))"
     >>> user2solrReplace(query)
+    "{!parent which='art_level:1'} (art_level:2 AND parent_tag:(p_body || p_summaries || p_appxs) AND para:('successful therapy' AND methods))"
     
     """
     ret_val = query

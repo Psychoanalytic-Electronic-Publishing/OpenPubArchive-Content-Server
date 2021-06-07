@@ -53,8 +53,9 @@ rx_doi = "((h.*?://)?(.*?/))?(?P<doi>(10\.[0-9]{4,4}/[A-z0-9\.\-/]+)|(doi.org/[A
 # SS_ = "authors|dialogs|dreams|headings|keywords|notes|panels|poems|quotes|references|source|sourcecode|text|volume|year|art_*"
 SS_SEARCH_FIELDS = "[a-z_]*"
 rx_solr_field = f"(?P<schema_field>^{SS_SEARCH_FIELDS})\:(?P<schema_value>([^:]*$))" # only one field permitted
+rx_solr_field2 = f"(?P<schema_field>^{SS_SEARCH_FIELDS})\:(?P<schema_value>(.*$))"
 # rx_syntax = "(?P<schema_field>^[a-z]{3,9})\:\:(?P<schema_value>.+$)"
-advanced_syntax = f"(?P<schema_field>^adv)\:\:(?P<schema_value>.+$)"
+advanced_syntax = f"(?P<schema_field>^(adv|solr))\:\:(?P<schema_value>.+$)"
 
 pat_prefix_amps = re.compile("^\s*&& ")
 
@@ -417,7 +418,6 @@ def has_names_only(phrase: str):
     
     return ret_val
                
-                
 if __name__ == "__main__":
     global options  # so the information can be used in support functions
     options = None

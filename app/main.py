@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0606/v2.1.9" # semver versioning now added after date.
+__version__     = "2021.0607/v2.1.10" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -3880,7 +3880,7 @@ def metadata_contents(SourceCode: str,
         # fill in additional return structure status info
         # client_host = request.client.host
     except Exception as e:
-        status_message = f"MetadataError: {e}"
+        status_message = f"{SourceCode} / {year} {SourceVolume} {moreinfo} MetadataError: {e}"
         logger.error(status_message)
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST,
@@ -4764,13 +4764,14 @@ def documents_downloads(response: Response,
        USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
     """
     ts = time.time()
+    caller_name = "DocumentDownloadError"
     opasDocPermissions.verify_header(request, "documents_downloads") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session)
+    log_endpoint(request, client_id=client_id, session_id=client_session) # just for debug/info
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     user_name = session_info.username
     
     if client_id is None or client_session is None:
-        logger.error(f"DocumentDownloadError: Client {client_id} Session: {client_session} ")
+        logger.error(f"{caller_name}: Client {client_id} Session: {client_session} ")
 
     if retFormat.upper() == "EPUB":
         file_format = 'EPUB'
@@ -4802,7 +4803,7 @@ def documents_downloads(response: Response,
                                                              flex_fs=flex_fs,
                                                             )    
 
-    error_status_message = f"DocumentDownloadError: The requested document {documentID} could not be returned. "
+    error_status_message = f"{caller_name}: The requested document {documentID} could not be returned (in {file_format}). "
 
     if filename is None:
         response.status_code = status.httpcode
@@ -4822,7 +4823,7 @@ def documents_downloads(response: Response,
             # We need users name
             # user needs to have a name!
             if user_name is None or len(user_name) == 0:
-                error_status_message = "DocumentDownloadError: Username must be assigned for download of originals"
+                error_status_message = f"{caller_name}: Username must be assigned for download of originals"
                 logger.error(error_status_message)
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
                 raise HTTPException(status_code=response.status_code,
@@ -4842,7 +4843,7 @@ def documents_downloads(response: Response,
     
                 except Exception as e:
                     response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                    status_message = f"DocumentDownloadError: The requested original document {filename} could not be returned"
+                    status_message = f"{caller_name}: The requested original document {filename} could not be returned"
                     extended_status_message = f"{status_message}:{e}"
                     logger.error(extended_status_message)
                     ocd.record_session_endpoint(api_endpoint_id=endpoint,
@@ -4881,7 +4882,7 @@ def documents_downloads(response: Response,
 
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = f"DocumentDownloadError: The requested document {filename} could not be returned."
+                status_message = f"{caller_name}: The requested document {filename} could not be returned."
                 extended_status_message = f"{status_message}:{e}"
                 logger.error(extended_status_message)
                 ocd.record_session_endpoint(api_endpoint_id=endpoint,
@@ -4920,7 +4921,7 @@ def documents_downloads(response: Response,
 
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = f"DocumentDownloadError: The requested document {filename} could not be returned."
+                status_message = f"{caller_name}: The requested document {filename} could not be returned."
                 extended_status_message = f"{status_message}:{e}"
                 logger.error(extended_status_message)
                 ocd.record_session_endpoint(api_endpoint_id=endpoint,
