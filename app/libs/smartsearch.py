@@ -5,12 +5,14 @@ from optparse import OptionParser
 import logging
 import opasGenSupportLib as opasgenlib
 
-from configLib.opasCoreConfig import solr_docs2, CORES # solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
+# from configLib.opasCoreConfig import solr_docs2, CORES # solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
 import opasConfig
 import smartsearchLib
 
 logger = logging.getLogger(__name__)
 
+from opasSchemaInfoLib import SchemaInfo
+docschemainfo = SchemaInfo()
 
 def smart_search(smart_search_text):
     """

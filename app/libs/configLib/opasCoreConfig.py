@@ -27,6 +27,7 @@ COMMITLIMIT = 1000  # commit the load to Solr every X articles
 
 # for pysolr! (solrpy is now limited to a variant of term search and used only in opasSolrPyLib.py)
 if SOLRUSER is not None and SOLRPW is not None:
+    solr_call = pysolr.Solr(SOLRURL, auth=(SOLRUSER, SOLRPW))
     solr_docs2 = pysolr.Solr(SOLRURL + SOLR_DOCS, auth=(SOLRUSER, SOLRPW))
     #solr_docs_term_search = pysolr.Solr(SOLRURL + SOLR_DOCS, "/terms", auth=(SOLRUSER, SOLRPW))
     solr_gloss2 = pysolr.Solr(SOLRURL + SOLR_GLOSSARY, auth=(SOLRUSER, SOLRPW))
@@ -34,6 +35,7 @@ if SOLRUSER is not None and SOLRPW is not None:
     #solr_authors_term_search2 = pysolr.Solr(solr_authors, "/terms", auth=(SOLRUSER, SOLRPW))
     solr_like_this2 = pysolr.Solr(solr_authors2, "/mlt", auth=(SOLRUSER, SOLRPW))
 else: #  no user and password needed
+    solr_call = pysolr.Solr(SOLRURL)
     solr_docs2 = pysolr.Solr(SOLRURL + SOLR_DOCS)
     #solr_docs_term_search = solr_docs2  # term_index = solr_docs2.suggest_terms(term_field, term_partial.lower())
     solr_gloss2 = pysolr.Solr(SOLRURL + SOLR_GLOSSARY)
