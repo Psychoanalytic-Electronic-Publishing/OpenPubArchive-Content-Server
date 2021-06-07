@@ -154,6 +154,8 @@ def find_client_id(request: Request,
     else:
         ret_val = opasConfig.NO_CLIENT_ID # no client id
 
+    ret_val = validate_client_id(ret_val, caller_name="FindClientID")
+
     return ret_val
 
 def fix_userinfo_invalid_nones(response_data):
@@ -179,6 +181,21 @@ def fix_pydantic_invalid_nones(response_data):
         logger.error(f"DocPermissionsError: Exception: {e}")
 
     return response_data
+
+def validate_client_id(client_id, caller_name="unknown"):
+    if client_id is None:
+        client_id == opasConfig.NO_CLIENT_ID
+        logger.error(f"{caller_name}: Client ID error: Client ID is None")
+    else: 
+        try:
+            client_id = int(client_id)
+        except Exception as e:
+            logger.error(f"{caller_name}: Client ID error: Type = {type(client_id)}, val:{client_id}.  Returning no client ID.  Can't convert {e}")
+            client_id = opasConfig.NO_CLIENT_ID
+        else:
+            logger.debug(f"{caller_name}: Client ID error: Type = {type(client_id)}, val:{client_id}")
+
+    return client_id            
 
 def get_authserver_session_info(session_id,
                                 client_id=opasConfig.NO_CLIENT_ID,
@@ -209,31 +226,61 @@ def get_authserver_session_info(session_id,
     
     if client_id == opasConfig.NO_CLIENT_ID:
         logger.warning(f"Session info call for Session ID: {session_id} included no (None) client ID.")
-    
+    else:
+        # make sure it's ok, this is causing problems on production
+        client_id = validate_client_id(client_id)
+        
     if pads_session_info is None or session_id is None:
         # not supplied, so fetch
-        pads_session_info = get_pads_session_info(session_id=session_id,
-                                                  client_id=client_id,
-                                                  retry=False, 
-                                                  request=request)
         try:
-            session_info = models.SessionInfo(session_id=pads_session_info.SessionId, api_client_id=client_id)
+            pads_session_info = get_pads_session_info(session_id=session_id,
+                                                      client_id=client_id,
+                                                      retry=False, 
+                                                      request=request)
+            try:
+                session_info = models.SessionInfo(session_id=pads_session_info.SessionId, api_client_id=client_id)
+            except Exception as e:
+                msg = f"PaDS session info caused error {e}.  SessID: {session_id} client_id: {client_id} req: {request}"
+                if opasConfig.LOCAL_TRACE:
+                    print (f"GetAuthserverSessionInfo: {msg}")
+                logger.error(msg)
+                session_info = models.SessionInfo(session_id="unknown", api_client_id=client_id)
+            else:    
+                session_id = session_info.session_id
         except Exception as e:
-            msg = f"PaDS session info caused error {e}.  SessID: {session_id} client_id: {client_id} req: {request}"
-            if opasConfig.LOCAL_TRACE:
-                print (f"GetAuthserverSessionInfo: {msg}")
-            logger.error(msg)
-        else:    
-            session_id = session_info.session_id
-    else:
-        session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
+            logger.error(f"Error getting pads_session_info {e}")
+            session_info = models.SessionInfo(session_id="unknown", api_client_id=client_id)
+            
+    #else:
+        #session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
         
+    # This section is causing errors--I believe it's because PaDS is calling the API without real user info
     if pads_session_info is not None:
+        if pads_session_info.SessionId is not None:
+            session_info = models.SessionInfo(session_id=pads_session_info.SessionId, api_client_id=client_id)
+        else:
+            session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
+            
         start_time = pads_session_info.session_start_time if pads_session_info.session_start_time is not None else datetime.datetime.now()
-        session_info.has_subscription = pads_session_info.HasSubscription
-        session_info.is_valid_login = pads_session_info.IsValidLogon
-        session_info.is_valid_username = pads_session_info.IsValidUserName
-        session_info.authenticated = pads_session_info.IsValidLogon
+        try:
+            session_info.has_subscription = pads_session_info.HasSubscription
+        except Exception as e:
+            logger.error("GetAuthServerError:HasSubscription not supplied by PaDS")
+            session_info.has_subscription = False
+
+        try:
+            session_info.is_valid_login = pads_session_info.IsValidLogon
+            session_info.authenticated = pads_session_info.IsValidLogon
+        except Exception as e:
+            logger.error("GetAuthServerError:IsValidLogon not supplied by PaDS")
+            session_info.is_valid_login = False
+
+        try:
+            session_info.is_valid_username = pads_session_info.IsValidUserName
+        except Exception as e:
+            logger.error("GetAuthServerError:IsValidUsername not supplied by PaDS")
+            session_info.is_valid_username = False
+        
         # session_info.confirmed_unauthenticated = False
         session_info.session_start = start_time
         session_info.session_expires_time = start_time + datetime.timedelta(seconds=pads_session_info.SessionExpires)
@@ -244,7 +291,7 @@ def get_authserver_session_info(session_id,
     session_info.pads_user_info = pads_user_info
     if status_code == 401: # could be just no session_id, but also could have be returned by PaDS if it doesn't recognize it
         if session_info.pads_session_info.pads_status_response > 500:
-            msg = "DocPermissionsError: PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned"
+            msg = "GetAuthServerError: PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned"
             logger.error(msg)
         # session is not logged in
         # session_info.confirmed_unauthenticated = True
