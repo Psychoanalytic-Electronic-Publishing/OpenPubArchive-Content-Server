@@ -6,9 +6,6 @@ Tests of the new 2020-08-23 CRUD endpoints for storage of global admin configura
 """
 import unittest
 import requests
-import models
-import json
-import http
 
 from unitTestConfig import base_plus_endpoint_encoded, session_id, headers, session_id, UNIT_TEST_CLIENT_ID
 from localsecrets import API_KEY, API_KEY_NAME

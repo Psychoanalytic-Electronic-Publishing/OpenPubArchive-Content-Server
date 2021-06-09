@@ -1,30 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW, CONFIG
 
-#  This test module is in development...
-
-import opasDocPermissions
+import unittest
 import requests
 import re
 
-import logging
-logger = logging.getLogger(__name__)
-
-import unittest
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW, CONFIG
-
-from unitTestConfig import base_api, base_plus_endpoint_encoded, UNIT_TEST_CLIENT_ID
-
-pads_session_info = opasDocPermissions.authserver_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
-session_info = opasDocPermissions.get_authserver_session_info(session_id=pads_session_info.SessionId, client_id=UNIT_TEST_CLIENT_ID, pads_session_info=pads_session_info)
-# Confirm that the request-response cycle completed successfully.
-sessID = session_info.session_id
-headers = {f"client-session":f"{sessID}",
-           "client-id": UNIT_TEST_CLIENT_ID
-           }
+from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestDocumentImageFetch(unittest.TestCase):
     """

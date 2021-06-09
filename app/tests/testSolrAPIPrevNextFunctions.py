@@ -18,7 +18,7 @@ class TestSolrAPIPrevNextFunctions(unittest.TestCase):
     """
     def test_1A_meta_contents_for_source(self):
         """
-        Test with moreinfo = 1should produce
+        Test with moreinfo == 1 should produce
             ['documentList']['responseInfo']['supplementalInfo'][infosource] = 'volumes_min_max'
               max = 11
               min = 1

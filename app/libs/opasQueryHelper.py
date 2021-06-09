@@ -1030,7 +1030,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             logger.warning(f"SmartSearch result explanation is not defined {e}")
             
         if schema_field is not None:
-            if schema_field == "solr":
+            if schema_field == "solr": # adv comes back as schema_field "solr" as does if they use "solr::"
                 schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
                 if opasgenlib.not_empty(schema_value):
                     search_q += f"&& {schema_value} "
@@ -1248,9 +1248,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 boolean_connector = query.connector
                 if artLevel == 2:
                     if query.parent is None:
-                        solr_parent = schemaMap.user2solr("doc") # default
+                        solr_parent = schemaMap.user2solrparent("doc") # default
                     else:
-                        solr_parent = schemaMap.user2solr(query.parent)
+                        solr_parent = schemaMap.user2solrparent(query.parent)
     
                     if last_parent is None:
                         last_parent = solr_parent

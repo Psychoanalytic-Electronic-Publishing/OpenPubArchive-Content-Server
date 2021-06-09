@@ -181,7 +181,7 @@ def smart_search(smart_search_text):
                     # found a field, maybe. Check it.  Keep going if not a field name
                     if ret_val["schema_field"] not in docschemainfo.doc_fields:
                         # try to translate it
-                        alt_name = schemaMap.userVariatons2solr(ret_val["schema_field"])
+                        alt_name = schemaMap.user2solrfieldname(ret_val["schema_field"])
                         if alt_name not in docschemainfo.doc_fields:
                             # not a proper schema field, so reset ret_val
                             ret_val = {}

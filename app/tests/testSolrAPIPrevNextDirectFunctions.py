@@ -7,7 +7,6 @@ Tests of the OPAS functions which depend on the Solr API.  (Direct, rather than 
 #2020-08-24 Changed numeric counts to symbols from unitTestConfig
 
 import unittest
-import opasAPISupportLib
 import opasPySolrLib
 from opasCentralDBLib import opasCentralDB
 import unitTestConfig

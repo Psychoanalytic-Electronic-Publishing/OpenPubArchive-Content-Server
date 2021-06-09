@@ -1,0 +1,65 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import unittest
+import requests
+
+from unitTestConfig import base_plus_endpoint_encoded, headers
+
+class TestDatabaseSearchAbstractReturn(unittest.TestCase):
+    def test_01_search_abstract_on(self):
+        # Send a request to the API server and store the response.
+        # ### OR #####
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=collebianco&abstract=true')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        abstr = response_set[0].get("abstract", None)
+        assert(abstr is not None)
+
+    def test_01_search_abstract_on_xml(self):
+        # Send a request to the API server and store the response.
+        # ### OR #####
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=collebianco&abstract=true&formatrequested=XML')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        abstr = response_set[0].get("abstract", None)
+        assert("pepkbd3" in abstr)
+
+    def test_01_search_abstract_off(self):
+        # Send a request to the API server and store the response.
+        # ### OR #####
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=collebianco&abstract=false')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        abstr = response_set[0].get("abstract", None)
+        assert(abstr is None)
+
+    def test_01_search_abstract_default_off(self):
+        # Send a request to the API server and store the response.
+        # ### OR #####
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=collebianco')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        abstr = response_set[0].get("abstract", None)
+        assert(abstr is None)
+        
+
+if __name__ == '__main__':
+    unittest.main()
+    

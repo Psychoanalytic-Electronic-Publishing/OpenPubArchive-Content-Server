@@ -783,6 +783,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
         art_lang = ['en']
     
     body_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//body", default_return=None)
+    appxs_xml = opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//appxs", default_return=None)
 
     # see if this is an offsite article
     if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE:
@@ -1004,6 +1005,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 #"art_cited_10" : cited_counts.count10,
                 #"art_cited_20" : cited_counts.count20,
                 "body_xml" : body_xml[0],
+                "appxs_xml": appxs_xml, # list
                 "authors" :  artInfo.author_list, # artInfo.art_all_authors,
                 "art_authors" : artInfo.author_list,
                 "art_authors_count" : artInfo.art_authors_count,

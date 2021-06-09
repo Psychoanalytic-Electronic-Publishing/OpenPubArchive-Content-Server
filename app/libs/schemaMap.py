@@ -74,10 +74,10 @@ SORT_FIELD_MAP = {
     "score": ('score', 'desc') # make sure there's a default sort direction of desc when they say score.
 }
 
-SOLR2USER_MAP = {}
+SOLRPARENT2USER_MAP = {}
 
-# Map client names to schema names
-USER2SOLR_MAP = {
+# Map client names to schema parent names for level 2 items
+USER2SOLRPARENT_MAP = {
     "doc" : "(p_body || p_summaries || p_appxs)",
     "body" : "(p_body)",
     "abstract" : "(p_abstract)",
@@ -95,10 +95,10 @@ USER2SOLR_MAP = {
 }
 
 # use this to add "equivalent" field names to help users.
-USERVARIATION2SOLR_MAP = {
+USER2SOLRFIELDNAME_MAP = {
     "author" : "authors",
     "abstract" : "abstract_xml",
-    "heading": "headings",
+    "heading": "headings_xml",
     "quote": "quotes",
     "dream": "dreams",
     "poem": "poems",
@@ -106,12 +106,36 @@ USERVARIATION2SOLR_MAP = {
     "dialog": "dialogs",
     "panel": "panels",
     "caption": "captions",
+    "bibs": "references",
     "biblios": "references",
-    "appendixes": "(p_appxs)",
-    "summaries": "(p_summaries)",
+    "bibliographies": "references",
+    "body": "body_xml",
+    "appxs": "appxs_xml",
+    "appendixes": "appxs_xml",
+    "summaries": "summaries_xml",
     "type": "art_type",
     "code": "sourcecode",
     "bibliography": "references",
+    "page_count" : "art_pgcount",
+    "table_count" : "art_tblcount" ,
+    "figure_count" : "art_figcount" ,
+    "abstract_count" : "art_abs_count" ,
+    "keyword_count" : "art_kwds_count" , 
+    "footnote_count" : "art_ftns_count" , 
+    "term_count" : "art_terms_count", 
+    "quote_count" : "art_quotes_count", 
+    "dream_count" : "art_dreams_count" , 
+    "dialog_count" : "art_dialogs_count", 
+    "note_count" : "art_notes_count", 
+    "poem_count" : "art_poems_count", 
+    "citaton_count" : "art_citations_count", 
+    "heading_count" : "art_headings_count", 
+    "paragraph_count" : "art_paras_count", 
+    "character_count" : "art_chars_count", 
+    "nonspace_count" : "art_chars_no_spaces_count", 
+    "word_count" : "art_words_count", 
+    "author_count" : "art_authors_count", 
+    "reference_count" : "art_reference_count"
 }
 
 FIELD2USER_MAP = {
@@ -121,7 +145,6 @@ FIELD2USER_MAP = {
     "art_pepsource" : "source",
     "art_sourcecode" : "source",
     "text_xml" : "text",
-    "text" : "text",
     "art_cited_5" : "cited, cited in the last 5 years",
     "art_cited_10" : "cited, cited in the last 10 years",
     "art_cited_20" : "cited, cited in the last 20 years",
@@ -134,41 +157,41 @@ def boolean_ops_to_symbols(query_string):
     return ret_val
 
 # reverse it for the SOLR2USER conversion
-for key, val in USER2SOLR_MAP.items():
+for key, val in USER2SOLRPARENT_MAP.items():
     # Map schema names back to client names
-    SOLR2USER_MAP[val] = key
+    SOLRPARENT2USER_MAP[val] = key
     
-def solr2user(solr_key_name):
+def solrparent2user(solr_key_name):
     """
     Convert a solr to a user schema name
     
-    >>> solr2user("(p_body OR p_summaries OR p_appxs)")
+    >>> solrparent2user("(p_body OR p_summaries OR p_appxs)")
     'doc'
     """
     solr_key_name = boolean_ops_to_symbols(solr_key_name)
-    ret_val = SOLR2USER_MAP.get(solr_key_name, solr_key_name)
+    ret_val = SOLRPARENT2USER_MAP.get(solr_key_name, solr_key_name)
     return ret_val
     
-def user2solr(user_key_name):
+def user2solrparent(user_key_name):
     """
     Convert a user to a Solr schema name
     
-    >>> user2solr("doc")
+    >>> user2solrparent("doc")
     '(p_body || p_summaries || p_appxs)'
     
     """
-    ret_val = USER2SOLR_MAP.get(user_key_name, user_key_name)
+    ret_val = USER2SOLRPARENT_MAP.get(user_key_name, user_key_name)
     return ret_val
 
-def userVariatons2solr(user_key_name):
+def user2solrfieldname(user_key_name):
     """
-    Convert a user variation of a standard name to a standard Solr schema name
+    Convert a user variation of a standard field name to a standard Solr schema name
     
-    >>> userVariatons2solr("author")
+    >>> user2solrfieldname("author")
     'authors'
     
     """
-    ret_val = USERVARIATION2SOLR_MAP.get(user_key_name, user_key_name)
+    ret_val = USER2SOLRFIELDNAME_MAP.get(user_key_name, user_key_name)
     return ret_val
 
 def user2solrReplace(query):
@@ -187,7 +210,7 @@ def user2solrReplace(query):
     pm = parent_rgx.search(query)
     if pm is not None:
         parent = pm.group("ptag")
-        ret_val = query.replace(parent, user2solr(parent))
+        ret_val = query.replace(parent, user2solrparent(parent))
     return ret_val
     
     

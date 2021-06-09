@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0607/v2.1.10" # semver versioning now added after date.
+__version__     = "2021.0609/v2.1.11" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -4102,7 +4102,7 @@ def metadata_by_sourcetype_sourcecode(response: Response,
     ## Status
        This endpoint is working.  This is v1 only.  Deprecated as of v2, but still active.
        
-       Use param in v2 for sourcecode rather than path variable.
+       In v2, the endpoint uses a param for sourcecode rather than the path variable.
 
     ## Sample Call
         http://localhost:9100/v1/Metadata/Books/IPL
@@ -5078,25 +5078,22 @@ async def documents_image_fetch(response: Response,
                                 ):
     """
     ## Function
-       <b>Returns a binary image per the GVPi server</b>
-       if download == 1 then the file is returned as a downloadable file to the client/browser.
-       Otherwise, it's returned as binary data, and displays in the browser.  This is in fact
-          how it works to display images in articles.
+       <b>Returns image data - see return type for options</b>
           
        Use * to return a random image each day.  The first fetch may take 7 or so seconds.  The rest of the day
          it will be instantaneous.
 
     ## Return Type
-       Binary data if download=0
-       a downloaded image if download=1,
-       or a pair of IDs "articleID", "figureID" if download=2
+       If
+         download=0: Returns Binary data
+         download=1: Downloads the image
+         download=2: Returns a pair of IDs "articleID", "figureID"
 
     ## Status
        This endpoint is working.
 
     ## Sample Call
          http://localhost:9100/v1/Documents/Image/AIM.036.0275A.FIG001/
-         http://development.org:9100/v/Documents/Image/AIM.036.0275A.FIG001
 
     ## Notes
         N/A

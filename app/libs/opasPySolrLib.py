@@ -840,7 +840,7 @@ def search_analysis( query_list,
                         m = re.match(".*parent_tag:\((?P<parent_tag>.*)\).*?(?P<field>[A-z_]+)\:\((?P<terms>.*)\)\)?\)?", query_parsed[i])
                         if m is not None:
                             query_parsed[i] = m.groupdict(default="")
-                            query_parsed[i]['parent_tag'] = schemaMap.solr2user(query_parsed[i]['parent_tag'])
+                            query_parsed[i]['parent_tag'] = schemaMap.solrparent2user(query_parsed[i]['parent_tag'])
                             query_parsed[i]['terms'] = query_parsed[i]['terms'].strip("()")
 
             except Exception as e:

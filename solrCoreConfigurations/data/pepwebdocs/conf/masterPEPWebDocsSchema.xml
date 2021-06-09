@@ -2,6 +2,10 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2021-06-09 Realized when I removed para collection for non SE/GW, we lost the ability to search appendixes.  
+               Added in appxs_xml to capture these (along with the others like body_xml, references_xml)
+               Set the special fields like dreams headings, etc. to stored so they can be retrieved if we want.
+
     2021-05-25 Disabled the ngrm fields again in favor of using the new SQL fields, which 
                SQL like searches from this spaces-removed field, easy for wildcard use, without using {!complexphrase} processing 
                Also allows prefix searching quickly.
@@ -440,7 +444,7 @@
   -->
   <field name="art_product_key" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   
-  <field name="headings_xml" type="text_simple" indexed="true" stored="false" multiValued="true"/>
+  <field name="headings_xml" type="text_simple" indexed="true" stored="true" multiValued="true"/>
   <!-- Revision info for document; #TODO change to string perhaps and remove indexing -->
   <field name="meta_xml" type="text_simple" indexed="true" stored="true"/>
   <!--cgrp_era2 are pep corrections.  Added 2020-08-30 -->
@@ -453,18 +457,22 @@
   <field name="body_xml" type="text_general" indexed="true" stored="false" multiValued="false"/> 
   <field name="body_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/> 
   <copyField source="body_xml" dest="body_xml_syn"/>
+  <!--added in 2021-06-09 since lost appendixes when we removed most subpara searches.-->
+  <field name="appxs_xml" type="text_general" indexed="true" stored="false" multiValued="true"/> 
+  <field name="appxs_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/> 
+  <copyField source="appxs_xml" dest="appxs_xml_syn"/>
   
-  <field name="quotes_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="quotes_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="quotes_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
-  <field name="dialogs_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="dialogs_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="dialogs_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
-  <field name="notes_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="notes_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="notes_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
-  <field name="panels_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="panels_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="panels_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
-  <field name="dreams_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="dreams_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="dreams_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
-  <field name="poems_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="poems_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="poems_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
   <copyField source="quotes_xml" dest="quotes_xml_syn"/>
   <copyField source="dialogs_xml" dest="dialogs_xml_syn"/>
