@@ -53,14 +53,13 @@ Various support functions having to do with XML conversion (e.g., to HTML, ePub,
                 # All doctests currently pass
 
     #2020.0812.1 - Cleaned up some error print messages.
-
+    #2021.0603.1 - Added labels to errors to assist with Cloudwatch.  
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2020.0812.1"
-__status__      = "Development"
-
+__version__     = "2020.0812.2"
+__status__      = "Development"     # Note: Still needs conversion of prints to 3.0 syntax
 
 import sys
 # sys.path.append('../libs')
@@ -84,12 +83,12 @@ import lxml.html as lhtml
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 
 import opasConfig
-from localsecrets import APIURL, IMAGE_API_LINK
+from localsecrets import APIURL
 
 from ebooklib import epub
 from io import StringIO, BytesIO
 
-show_dbg_messages = False
+show_dbg_messages = False    # local control of extra messages
 stop_on_exceptions = False
 
 #-----------------------------------------------------------------------------
@@ -131,7 +130,7 @@ def xml_remove_tags_from_xmlstr(xmlstr, remove_tags=[]):
         ret_val = etree.tostring(root)
         ret_val = ret_val.decode("UTF8")
     except Exception as e:
-        logger.error(f"Could not remove tags {remove_tags}. Exception {e}")
+        logger.error(f"XMLError: Could not remove tags {remove_tags}. Exception {e}")
 
     return ret_val
 
@@ -143,7 +142,7 @@ def xml_remove_tags(root, remove_tags=[]):
             for n in remove_these:
                 n.getparent().remove(n)
     except Exception as e:
-        logger.error(f"Error removing requested tags: {e}")
+        logger.error(f"XMLError: Error removing requested tags: {e}")
         ret_val = False
         
     return ret_val
@@ -299,7 +298,7 @@ class XSLT_Transformer(object):
                 try:
                     self.transformer_tree=etree.parse(self.file_spec)
                 except Exception as e:
-                    err =  f"Parse error for XSLT file {self.file_spec}.  Error {e}"
+                    err =  f"XMLError: Parse error for XSLT file {self.file_spec}.  Error {e}"
                     if stop_on_exceptions:
                         raise Exception(err)
                     else:
@@ -309,7 +308,7 @@ class XSLT_Transformer(object):
                         # save it to class dict by name
                         self.__class__.transformers[transformer_name] = etree.XSLT(self.transformer_tree)
                     except Exception as e:
-                        err = f"Transform definition error for XSLT file {self.file_spec}.  Error {e}"
+                        err = f"XMLError: Transform definition error for XSLT file {self.file_spec}.  Error {e}"
                         if stop_on_exceptions:
                             raise Exception(err)
                         else:
@@ -317,7 +316,7 @@ class XSLT_Transformer(object):
                     else:
                         break;
         if not os.path.exists(self.file_spec):
-            err = f"XSLT file {self.file_spec} missing for all folders in STYLE path."
+            err = f"XMLError: XSLT file {self.file_spec} missing for all folders in STYLE path."
             if stop_on_exceptions:
                 raise FileNotFoundError(err)
             else:
@@ -331,6 +330,7 @@ g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML, opasConfig.XSLT_
 g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOTEXT_EXCERPT, opasConfig.XSLT_XMLTOTEXT_EXCERPT)
 g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML_EXCERPT, opasConfig.XSLT_XMLTOHTML_EXCERPT)
 g_transformer.set_transformer(opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT, opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
+#g_transformer.set_transformer("testtransform", "testtransform.xslt")
 
 ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n")  # TODO - Move to module globals to optimize
 
@@ -416,7 +416,7 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
     ('Boulanger, G.', ['Boulanger, Ghislaine'])
     
     """
-    ret_val = ("", [])
+    ret_val = ("", [], [])
     if isinstance(author_xmlstr, lxml.etree._Element):
         author_xmlstr = etree.tostring(author_xmlstr, with_tail=False, encoding="unicode") 
 
@@ -446,6 +446,7 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
 
         author_count = len(author_xml_list)
         author_list = []
+        author_bibliographic_list = []
         authors_bib_style = ""
         curr_author_number = 0
         for n in author_xml_list:
@@ -481,15 +482,16 @@ def authors_citation_from_xmlstr(author_xmlstr, listed=True):
                 
     
             author_list.append(author_name)
+            author_bibliographic_list.append(author_name_inits)
             if authors_bib_style == "":
                 authors_bib_style = author_name_inits
-            else:   
+            else:
                 if curr_author_number == author_count:
                     authors_bib_style += " &amp; " + author_name_inits
                 else:
                     authors_bib_style += ", " + author_name_inits
 
-            ret_val = (authors_bib_style, author_list)
+            ret_val = (authors_bib_style, author_list, author_bibliographic_list)
 
     return ret_val
 
@@ -497,7 +499,7 @@ def get_html_citeas(authors_bib_style, art_year, art_title, art_pep_sourcetitle_
     """
     NOT CURRENTLY USED in OPAS (2020-09-14)
     """
-    ret_val = f"""<p class="citeas"><span class="authors">{authors_bib_style}</span> (<span class="year">{art_year}</span>) <span class="title">{art_title}</span>. <span class="sourcetitle">{art_pep_sourcetitle_full}</span> <span class="pgrg">{art_vol}</span>:<span class="pgrg">{art_pgrg}</span></p>"""
+    ret_val = f"""<p class="citeas"><span class="authors">{authors_bib_style}</span> (<span class="year">{art_year}</span>) <span class="title">{art_title}</span>. <span class="sourcetitle">{art_pep_sourcetitle_full}</span> <span class="vol">{art_vol}</span>:<span class="pgrg">{art_pgrg}</span></p>"""
     return ret_val
 
 def xmlstr_to_etree(xmlstr):
@@ -1193,58 +1195,11 @@ def get_first_page_excerpt_from_doc_root(elem_or_xmlstr, ret_format="HTML"):
     return ret_val
 
 #-----------------------------------------------------------------------------
-def xml_elem_or_str_to_excerpt(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLTOTEXT_EXCERPT):
-    """
-    NOT CURRENTLY USED in OPAS (2020-09-14)
-
-    Use xslt to extract a formatted excerpt
-    """
-    ret_val = None
-    try:
-        if isinstance(elem_or_xmlstr, list) and elem_or_xmlstr != "[]":
-            elem_or_xmlstr = elem_or_xmlstr[0]
-    except Exception as e:
-        logger.error("Problem extracting full-text: ", e)
-
-    if isinstance(elem_or_xmlstr, str):
-        try:
-            # make sure it's not HTML already
-            if re.match("<!DOCTYPE html .*", elem_or_xmlstr, re.IGNORECASE):
-                logger.error("Warning - Data is HTML already:", e)
-            xmlstr = remove_encoding_string(elem_or_xmlstr)
-            source_data = etree.fromstring(xmlstr)
-        except Exception as e:
-            # return this error, so it will be displayed (for now) instead of the document
-            ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-            logger.error(ret_val)
-            raise Exception(ret_val)
-    else: # it's already etree (#TODO perhaps check?)
-        source_data = elem_or_xmlstr
-
-    if source_data is not None and source_data != "[]":
-        try:
-            #xslt_file = etree.parse(xslt_file)
-            #xslt_transformer = etree.XSLT(xslt_file)
-            transformer = g_transformer.transformers.get(transformer_name, None)
-            # transform the doc or fragment
-            transformed_data = transformer(source_data)
-            
-        except Exception as e:
-            # return this error, so it will be displayed (for now) instead of the document
-            ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this excerpt right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-            logger.error(ret_val)
-            ret_val = elem_or_xmlstr
-            raise Exception(ret_val)
-        else:
-            ret_val = str(transformed_data)
-            pb = re.match("(?P<excerpt>.*?\<p class=\"pb.*?\</p\>)", ret_val, re.DOTALL)
-            if pb is not None:
-                ret_val = pb.group("excerpt") + "</html>"
-            else:
-                logger.error("No page break in data to extract excerpt")
-                   
-    return ret_val
-    
+#def xml_elem_or_str_to_excerpt(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLTOTEXT_EXCERPT):
+    #"""
+    # NOT CURRENTLY USED in OPAS (2020-09-14)
+    # Finally Removed 2021-06-03
+    #"""
     
 def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
     """
@@ -1320,6 +1275,9 @@ def xml_xpath_return_textlist(element_node, xpath, default_return=list()):
     return ret_val    
 
 def xml_xpath_with_default(element_node, xpath, default_return=None):
+    """
+    Not used assessed as of 2020-06-03
+    """
     ret_val = default_return
     try:
         ret_val = element_node.xpath(xpath)
@@ -1332,7 +1290,7 @@ def xml_xpath_with_default(element_node, xpath, default_return=None):
         
 def xml_xpath_return_textsingleton(element_node, xpath, default_return=""):
     """
-    Return text of element specified by xpath)
+    Return text of element specified by xpath
     
     >>> root = etree.fromstring(test_xml)
     >>> xml_xpath_return_textsingleton(root, "p[@id=2]/node()", None)
@@ -1499,7 +1457,8 @@ def get_running_head(source_title=None, pub_year=None, vol=None, issue=None, pgr
         s = opasConfig.running_head_fmts[ret_format]
         ret_val = s.format(pub_year=pub_year, source_title=source_title, vol=vol, issue=issue, pgrg=pgrg)
     except Exception as e:
-        print (f"Exception: {e}")
+        if opasConfig.LOCAL_TRACE: print (f"GetRunningHeadError: {e}")
+        logger.error(f"GetRunningHeadError: {e}")
         ret_val = f"({pub_year}). {source_title}{vol}{issue}{pgrg}"
         
     return ret_val
@@ -1551,7 +1510,9 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
             if isinstance(xml_text, list) and xml_text != "[]":
                 xml_text = xml_text[0]
         except Exception as e:
-            logger.error("Problem extracting full-text: ", e)
+            msg = f"TextProcessingError: Extracting full-text: {e}"
+            logger.error(msg)
+            if opasConfig.LOCAL_TRACE: print(msg)
             
         if xml_text is not None and xml_text != "[]":
             try:
@@ -1562,8 +1523,8 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
             except Exception as e:
                 # return this error, so it will be displayed (for now) instead of the document
                 ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-                logger.error(ret_val)
-                print (f"Error processing this text: {xml_text}")
+                logger.error(f"TextProcessingError: {e}")
+                if opasConfig.LOCAL_TRACE: print(f"TextProcessingError: {xml_text}")
                 if stop_on_exceptions:
                     raise Exception(ret_val)
             else:
@@ -1582,15 +1543,25 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                     except Exception as e:
                         # return this error, so it will be displayed (for now) instead of the document
                         ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
-                        logger.error(ret_val)
-                        ret_val = xml_text
-                        print (f"Error processing this text: {xml_text}.  Transformer: {transformer_name}")
+                        logger.error(f"TextProcessingError: {ret_val}")
+                        if opasConfig.LOCAL_TRACE: print (f"TextProcessingError: {e}. Transformer: {transformer_name} Text {xml_text}")
                         if stop_on_exceptions:
                             raise Exception(ret_val)
+                        # Note: why this, eliminates text return above
+                        ret_val = xml_text
                     else:
                         ret_val = str(transformed_data)
                         # do substitutes
-                        ret_val = ret_val.replace("%24OPAS_IMAGE_URL;", APIURL + IMAGE_API_LINK)
+                        ret_val = ret_val.replace("%24OPAS_IMAGE_URL;", APIURL + opasConfig.IMAGE_API_LINK)
+                        # only for the updated Gavant xslt
+                        if opasConfig.GAVANTXSLT:
+                            ret_val = ret_val.replace("%24OPAS_JOURNAL_NAME;", "IJP")
+                            ret_val = ret_val.replace("%24OPAS_CLIENT_ID;", "2") # need to fix
+                            ret_val = ret_val.replace("%24OPAS_SESSION_ID;", "") # need to fix
+                            ret_val = ret_val.replace("%24OPAS_CONCORDANCE_ENABLED;", "true")
+                            ret_val = ret_val.replace("%24OPAS_GLOSSARY_TERM_FORMATTING_ENABLED;", "true")
+                            ret_val = ret_val.replace("%24OPAS_IS_BOOK;", "true")
+                        
     return ret_val
 
 def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=None, stylesheet=opasConfig.CSS_STYLESHEET): #  e.g., "./libs/styles/pep-html-preview.css"

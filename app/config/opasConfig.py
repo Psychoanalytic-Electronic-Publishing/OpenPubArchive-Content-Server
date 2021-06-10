@@ -3,6 +3,8 @@ import logging
 #import datetime
 import tempfile
 import os
+from schemaMap import PREDEFINED_SORTS
+
 #import urllib.request
 # from enum import Enum, EnumMeta, IntEnum
 
@@ -21,9 +23,9 @@ import starlette.status as httpCodes # HTTP_ codes, e.g.
 # BASELOGFILENAME = "opasAPI"
 # logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message)s'
-logging.basicConfig(format=FORMAT, level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 LOG_CALL_TIMING = True
-OUTPUT_LOCAL_DEBUGGER = True
+LOCAL_TRACE = False                 # turn this on to see the queries easily.
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
@@ -35,18 +37,24 @@ ALL_EXCEPT_JOURNAL_CODES = BOOK_CODES_ALL + VIDEOSTREAM_CODES_ALL
 DEFAULT_DATA_LANGUAGE_ENCODING = "en"
 CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr", "de-de", "it-it")
 EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT = 13000 # lower numbers are faster, but don't read the last n files before making a random selection
-
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.
+GAVANTXSLT = False
 STYLE_PATH = r"./libs/styles;../libs/styles"
-XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
+if not GAVANTXSLT:
+    XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
+else:
+    XSLT_XMLTOHTML = r"xmlToHtml2021.xslt"                                      # used for dynamic conversion to HTML; trying to update 2021-06-03 
+                                                                                # with Gavant improvements, *** but not working here 2021-06-05 yet ****
+                                                                                # but needed the doctype code back in and lots of other fixes including params
+    
 XSLT_XMLTOTEXT_EXCERPT = r"pepkbd3-abstract-text.xslt"
-XSLT_XMLTOHTML_EXCERPT = r"pepkbd3-abstract-html.xslt"
+XSLT_XMLTOHTML_EXCERPT = r"pepkbd3-abstract-html.xslt"                       # used for load only
 XSLT_XMLTOHTML_GLOSSARY_EXCERPT = r"pepkbd3-glossary-excerpt-html.xslt" 
-TRANSFORMER_XMLTOHTML = "XML_TO_HTML" 
-TRANSFORMER_XMLTOHTML_EXCERPT = "EXCERPT_HTML"
-TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"
-TRANSFORMER_XMLTOHTML_GLOSSARY_EXCERPT = "EXCERPT_GLOSSARY"
+TRANSFORMER_XMLTOHTML = "XML_TO_HTML"                                        # used for dynamic conversion to HTML (maps to XSLT_XMLTOHTML)
+TRANSFORMER_XMLTOHTML_EXCERPT = "EXCERPT_HTML"                               # used for TOC instances on load (maps to XSLT_XMLTOHTML_EXCERPT)
+TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"                               # NOT CURRENTLY USED in OPAS (2020-09-14)
+TRANSFORMER_XMLTOHTML_GLOSSARY_EXCERPT = "EXCERPT_GLOSSARY"                  # NOT CURRENTLY USED in OPAS (2020-09-14)
 
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
 MAX_RECORDS_FOR_ACCESS_INFO_RETURN = 100
@@ -208,9 +216,16 @@ VALS_DOWNLOADFORMAT = {DICTLEN_KEY: 4, 'html': 'HTML', 'pdf': 'PDF', 'pdfo': 'PD
 VALS_YEAROPTIONS = {DICTLEN_KEY: 2, '5': '5', '10': '10', '20': '20', 'al': 'all'}
 
 
-# parameter descriptions for documentation; depends on definitions above in help text
+# parameter descriptions for OpenAPI documentation; (Some depend on definitions in help text above)
 DESCRIPTION_ADMINCONFIG = "Global settings by an administrator for the specific client app"
 DESCRIPTION_ADMINCONFIGNAME = "Name for the global settings (configuration) for the specific client app"
+DESCRIPTION_ADVANCEDSEARCH = "Advanced Query in Solr syntax (see schema names)"
+DESCRIPTION_API_MODE = "Set the api mode to 'debug' or 'production' (default)"
+DESCRIPTION_DEF_TYPE = "Query analyzer"
+DESCRIPTION_ADVANCEDSEARCHQUERY = "Advanced Query in Solr syntax (see schema names)"
+DESCRIPTION_ADVANCEDSEARCHFILTERQUERY ="Advanced Query in Solr syntax (see schema names)"
+DESCRIPTION_HIGHLIGHT_FIELDS = "Comma separated list of field names for highlight return"
+DESCRIPTION_RETURN_FIELDS = "Comma separated list of field names for data return"
 DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review."
 DESCRIPTION_AUTHOR = "Author name, use wildcard * for partial entries (e.g., Johan*)"
 DESCRIPTION_AUTHORNAMEORPARTIAL = "The author name or a partial name (regex type wildcards [.*] permitted EXCEPT at the end of the string--the system will try that automatically)"
@@ -230,12 +245,18 @@ DESCRIPTION_DOCUMENT_CONCORDANCE_RX = "String with single or list of Paragraph l
 DESCRIPTION_ENDDATE = "Find records on or before this date (input date as 2020-08-10 or 20200810)"
 DESCRIPTION_ENDYEAR = "Find documents published on or before this year (e.g, 2001)" 
 DESCRIPTION_FACETFIELDS = "List of fields for which to return facet info. Field art_sourcetype, for example, will give results counts by type (journal, book, videostream)."
+DESCRIPTION_FACETLIMIT = "Maximum number of facet values to return"
+DESCRIPTION_FACETMINCOUNT = "Minimum count to return a facet"
+DESCRIPTION_FACETOFFSET = "Offset that can be used for paging through a facet"
 DESCRIPTION_FIRST_PAGE = "Document's first page"
-DESCRIPTION_FULLTEXT1 = "Words or phrases (in quotes) across the document (booleans search is not paragraph level). Field specifications are allowed."
+DESCRIPTION_LAST_PAGE = "Document's last page"
+DESCRIPTION_FACETQUERY = 'Facet field(s) limiter using Solr query syntax and facet names, e.g. art_sourcetitleabbr:("Int. J. Psychoanal." OR "Int. Rev. Psycho-Anal." OR "Brit. J. Psychother.").'
+DESCRIPTION_FULLTEXT1 = "Find Words (or phrases in quotes) across the document (Boolean search is not paragraph level.) Field specifications--e.g., art_authors:(authorname)--are allowed."
 DESCRIPTION_FULLTEXT1_V1 = "Words or phrases (in quotes) in a paragraph in the document."
 DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to return the document. Specify which type of identifier using query param termidtype."
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_ISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals of all kinds and on all media–print and electronic."
+DESCRIPTION_EISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals as electronic (the same as issn in PEP schema)"
 DESCRIPTION_ISBN = "International Standard Book Number. 10 digits up to the end of 2006, now always consist of 13 digits"
 DESCRIPTION_ISSUE = "The issue number if the source has one"
 DESCRIPTION_LIMIT = "Maximum number of items to return."
@@ -260,11 +281,11 @@ DESCRIPTION_REPORT_MATCHSTR="Report specific match string (params for session-vi
 DESCRIPTION_RETURNFORMATS = "The format of the returned full-text (e.g., abstract or document data).  One of: 'HTML', 'XML', 'TEXTONLY'.  The default is HTML."
 DESCRIPTION_RETURN_ABSTRACTS = "Return abstracts in the documentList (Boolean: true or false)"
 DESCRIPTION_SEARCHPARAM = "This is a document request, including search parameters, to show hits"
-DESCRIPTION_SITEMAP_PATH = "Folder or S3 Bucket to put the sitemap"
+DESCRIPTION_SITEMAP_PATH = f"Folder or S3 Bucket to put the sitemap"
 DESCRIPTION_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
 DESCRIPTION_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
 DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that."
-DESCRIPTION_SORT ="Comma separated list of field names to sort by."
+DESCRIPTION_SORT =f"Comma separated list of field names to sort by {tuple(PREDEFINED_SORTS.keys())}."
 DESCRIPTION_SOURCECODE = "The 2-12 character PEP Code (e.g., APA, ANIJP-FR, CPS, PEPTOPAUTHVS), or a Boolean list of codes (e.g., APA OR CPS) or a comma separated list (e.g.: APA, IJP, CPS)"
 DESCRIPTION_SOURCECODE_METADATA_BOOKS = "The 2-3 character PEP Code for the book series (e.g., SE, GW, IPL, NLP, ZBK), or the PEP Code and specific volume number of a book in the series (e.g., GW001, SE006, NLP014, ZBK047 (classic book, specific book assigned number) or * for all."
 DESCRIPTION_SOURCECODE_METADATA_JOURNALS = "The FULL 2-8 character PEP Code of the journal source for matching documents (e.g., APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE) or * for all."
@@ -280,10 +301,10 @@ DESCRIPTION_SIMILARCOUNT = "Return this many similar documents for each document
 DESCRIPTION_TERMCOUNT_METHOD = '1=Alternate method for termcounts, allows full wildcards (requires solrpy installed). Default (=0) only supports wildcard at end of string "*"' 
 DESCRIPTION_TERMFIELD = "Enter a single field to examine for all terms where a field is not specified in termlist (e.g., text, authors, keywords)."
 DESCRIPTION_TERMLIST = "Comma separated list of terms, you can specify a field before each as field:term or just enter the term and the default field will be checked."
-DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification"
+DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, and synonynm specification (Post Only)"
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
 DESCRIPTION_TRANSLATIONS = "Return a list of documents which are translations of this document in field translationSet"
-DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
+# DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
 DESCRIPTION_VIEWCOUNT = "Include documents (not abstracts) viewed this many or more times (or X TO Y times). Optionally specify viewperiod, IN (lastweek|lastmonth|last6months|last12months|lastcalendaryear), or in parameter viewperiod"  
 DESCRIPTION_VIEWCOUNT_INT = "Include documents (not abstracts) viewed this many or more times. Must be an integer."  
 DESCRIPTION_VIEWPERIOD = "One of a few preset time frames for which to evaluate viewcount; 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months."
@@ -293,8 +314,12 @@ DESCRIPTION_WORDFIELD = "The field for which to look up the prefix for matching 
 DESCRIPTION_YEAR = "The year for which to return data"
 DESCRIPTION_TERMIDTYPE = f"Source type (One of: ID, Name, Group)"
 
+# title definitions only show in the alternative interactive API 
+TITLE_API_MODE = "API mode"
 TITLE_ADMINCONFIG = "Administrative global settings"
 TITLE_ADMINCONFIGNAME = "Configuration Name"
+TITLE_ADVANCEDSEARCHQUERY = "Advanced Query (Solr Syntax)"
+TITLE_ADVANCEDSEARCHFILTERQUERY = "Advanced Filter Query (Solr Syntax)"
 TITLE_ARTICLETYPE = "Filter by the type of article" 
 TITLE_AUTHOR = "Author name"
 TITLE_AUTHORNAMEORPARTIAL = "Author name or partial/regex"
@@ -304,6 +329,7 @@ TITLE_CLIENT_ID = "Client App Numeric ID"
 TITLE_CLIENT_SESSION = "GUID/UUID for client session"
 TITLE_CORE = "Core to use"
 TITLE_DAYSBACK = "Days Back"
+TITLE_DEF_TYPE = "edisMax, disMax, lucene (standard) or None (lucene)"
 TITLE_DOWNLOAD = "Download response as CSV"
 TITLE_DOCUMENT_CONCORDANCE_ID = "Paragraph language ID"
 TITLE_DOCUMENT_CONCORDANCE_RX = "Paragraph language IDs"
@@ -311,8 +337,13 @@ TITLE_DOCUMENT_ID = "Document ID (e.g., IJP.077.0217A)"
 TITLE_ENDDATE = "End date"
 TITLE_ENDYEAR = "End year"
 TITLE_FACETFIELDS = "List of field names for faceting"
+TITLE_FACETQUERY = "Facet field(s) limiter using Solr query syntax and facet names"
+TITLE_FACETLIMIT = "Maximum number of facet values to return"
+TITLE_FACETMINCOUNT = "Minimum count to return a facet"
+TITLE_FACETOFFSET = "Offset that can be used for paging through a facet"
 TITLE_FULLTEXT1 = "Document-wide search"
 TITLE_FULLTEXT1_V1 = "Paragraph based search"
+TITLE_HIGHLIGHT_FIELDS = "Fields to return for highlighted matches"
 TITLE_IMAGEID = "Image ID (unique)"
 TITLE_ISSUE = "Issue Number"
 TITLE_LIMIT = "Document return limit"
@@ -334,12 +365,13 @@ TITLE_PUBLICATION_PERIOD = "Number of Years to include"
 TITLE_REPORT_MATCHSTR="Report specific match string"
 TITLE_REQUEST = "HTTP Request" 
 TITLE_RETURN_ABSTRACTS_BOOLEAN = "Return an abstract with each match (true/false)"
+TITLE_RETURN_FIELDS = "Fields for data return"
 TITLE_RETURNFORMATS = "Document return format"
 TITLE_SEARCHPARAM = "Document request from search results"
 TITLE_SITEMAP_PATH = "Where to put the sitemap"
 TITLE_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
 TITLE_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
-TITLE_SORT = "Field names to sort by"
+TITLE_SORT = f"Field names to sort by {tuple(PREDEFINED_SORTS.keys())}."
 TITLE_SOURCECODE = "Series code"
 TITLE_SOURCELANGCODE = "Source language code"
 TITLE_SOURCENAME = "Series name"
@@ -356,9 +388,9 @@ TITLE_TERMCOUNT_METHOD = '1=Alternate method for termcounts (req. solrpy lib ins
 TITLE_TERMFIELD = "Default field for which to get term counts"
 TITLE_TERMLIST = "List of terms"
 TITLE_TRANSLATIONS = "If true, return a list of documents which are translations"
-TITLE_QTERMLIST = "Opas Model SolrQeryTermList"
+TITLE_QTERMLIST = "Opas Model SolrQeryTermList (Post Only)"
 TITLE_TITLE = "Document Title"
-TITLE_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
+# TITLE_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
 TITLE_VIEWCOUNT = "Include documents viewed this many times or more within the view period"
 TITLE_VIEWPERIOD = "One of the preset timeframes within which to evaluate viewcount"
 TITLE_VOLUMENUMBER = "Volume Number"
@@ -379,17 +411,19 @@ ENDPOINT_SUMMARY_DELETE_CONFIGURATION = "Delete the specified named configuratio
 ENDPOINT_SUMMARY_SAVE_CONFIGURATION = "Save a named configuration by the client app (must not exist)."
 ENDPOINT_SUMMARY_SAVEORREPLACE_CONFIGURATION = "Save (or replace) the named configuration by the client app"
 ENDPOINT_SUMMARY_GET_CONFIGURATION = "Get the named client app configuration"
-ENDPOINT_SUMMARY_DOCUMENTATION = "Return a HTML page for the interactive API documentation"
+ENDPOINT_SUMMARY_DOCUMENTATION = "Return a HTML page with the interactive API documentation. Requires API Key."
 ENDPOINT_SUMMARY_DOCUMENT_DOWNLOAD = "Download a document"
 ENDPOINT_SUMMARY_DOCUMENT_SUBMIT = "document_submission"
 ENDPOINT_SUMMARY_DOCUMENT_VIEW = "Return a full document if open access or the current user is subscribed"
-ENDPOINT_SUMMARY_EXTENDED_SEARCH = "Extends search for more Solr like flexibility. Requires API Token"
+ENDPOINT_SUMMARY_EXTENDED_SEARCH = "Extends search for more Solr like flexibility. Requires API Key."
 ENDPOINT_SUMMARY_GLOSSARY_SEARCH = "Search the PEP Glossary"
+ENDPOINT_SUMMARY_GLOSSARY_SEARCH_POST = "Search the PEP Glossary, allowing POST of a qtermlist, for more precise specification"
 ENDPOINT_SUMMARY_GLOSSARY_VIEW = "Return a glossary entry for the terms"
 ENDPOINT_SUMMARY_IMAGE_DOWNLOAD = "Download an image"
 ENDPOINT_SUMMARY_JOURNALS = "Return a list of available journals"
 ENDPOINT_SUMMARY_LICENSE_STATUS = "get_license_status.  Used in v1 for login (maybe oauth?)"
 ENDPOINT_SUMMARY_LOGIN = "Login a user (less secure method)"
+ENDPOINT_SUMMARY_LOGLEVEL = "Admin function to change logging level"
 ENDPOINT_SUMMARY_LOGIN_BASIC = "Login a user more securely"
 ENDPOINT_SUMMARY_LOGOUT = "Logout the user who is logged in"
 ENDPOINT_SUMMARY_MOST_CITED = "Return the most cited journal articles published in this time period (5, 10, 20, or ALL years)"
@@ -403,7 +437,8 @@ ENDPOINT_SUMMARY_SEARCH_MORE_LIKE_THESE = "Full Search implementation, but expan
 ENDPOINT_SUMMARY_SEARCH_PARAGRAPHS = "Search at the paragraph (lowest) level by paragraph scope (doc, dreams, ...)"
 ENDPOINT_SUMMARY_SEARCH_V1 = "Search at the paragraph level by document zone (API v1 backwards compatible)"
 ENDPOINT_SUMMARY_SEARCH_V2 = "Full search implementation, at the document or paragraph level"
-ENDPOINT_SUMMARY_SEARCH_V3 = "Full search implementation, at the document or paragraph level with body (termlist)"
+ENDPOINT_SUMMARY_SEARCH_POST = "Full search implementation, at the document or paragraph level with body (termlist)"
+ENDPOINT_SUMMARY_SITEMAP = "Admin function to generate sitemap for search engines"
 ENDPOINT_SUMMARY_OPENURL = "Search implementation using openURL .1 parameters"
 ENDPOINT_SUMMARY_API_STATUS = "Return the API version and status"
 ENDPOINT_SUMMARY_SERVER_STATUS = "Return the server status and more"
@@ -442,18 +477,6 @@ TEMPDIRECTORY = tempfile.gettempdir()
 VIEW_MOSTVIEWED_DOWNLOAD_COLUMNS = "textref, lastweek, lastmonth, last6months, last12months, lastcalyear"
 VIEW_MOSTCITED_DOWNLOAD_COLUMNS = "art_citeas_text, count5, count10, count20, countAll"
 
-# VIEW_PERIOD_LASTWEEK = "lastweek"
-# VIEW_PERIOD_LASTMONTH = "lastmonth"
-# VIEW_PERIOD_LAST6MONTHS = "last6months"
-# VIEW_PERIOD_LAST12MONTHS = "last12months"
-# VIEW_PERIOD_LASTCALYEAR = "lastcalendaryear"
-
-# VIEW_DBNAME_LASTWEEK = "vw_stat_docviews_lastweek"
-# VIEW_DBNAME_LASTMONTH = "vw_stat_docviews_lastmonth"
-# VIEW_DBNAME_LAST6MONTHS = "vw_stat_docviews_lastsixmonths"
-# VIEW_DBNAME_LAST12MONTHS = "vw_stat_docviews_last12months"
-# VIEW_DBNAME_LASTCALYEAR = "vw_stat_docviews_lastcalyear"
-
 #Schema Field Name Suffix for Synonym Searching
 SYNONYM_SUFFIX = "_syn"
 # Must not have spaces
@@ -468,7 +491,9 @@ DEFAULT_MORE_LIKE_THIS_COUNT = 0
 
 # DOCUMENT_ITEM_SUMMARY_FIELDS ="art_id, art_title, art_title_xml, art_subtitle_xml, art_author_id, art_authors, art_citeas_xml, art_info_xml, art_sourcecode, art_sourcetitleabbr, art_sourcetitlefull, art_sourcetype, art_level, para_art_id,parent_tag, para, art_vol, art_type, art_vol_title, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_lang, art_doi, art_issn, art_origrx, art_qual, art_kwds, art_cited_all, art_cited_5, art_cited_10, art_cited_20, art_views_lastcalyear, art_views_last1mos, art_views_last6mos, art_views_last12mos, art_views_lastweek, reference_count, file_last_modified, timestamp, score"
 
-DOCUMENT_ITEM_SUMMARY_FIELDS ="""
+# This is the default return, used most of the time.
+# Adding count type fields (2021/5/19) which might be useful to a client
+DOCUMENT_ITEM_SUMMARY_FIELDS =""" 
  art_id, 
  art_title, 
  art_title_xml, 
@@ -495,7 +520,8 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_pgrg, 
  art_lang, 
  art_doi, 
- art_issn, 
+ art_issn,
+ art_isbn,
  art_origrx, 
  art_qual, 
  art_kwds, 
@@ -508,7 +534,15 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_views_last6mos, 
  art_views_last12mos, 
  art_views_lastweek, 
- reference_count, 
+ reference_count,
+ art_fig_count,
+ art_tbl_count,
+ art_kwds_count,
+ art_words_count,
+ art_citations_count,
+ art_ftns_count,
+ art_notes_count,
+ art_dreams_count,
  file_last_modified,
  file_classification,
  timestamp, 
@@ -542,7 +576,8 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
  art_pgrg, 
  art_lang, 
  art_doi, 
- art_issn, 
+ art_issn,
+ art_isbn,
  art_origrx, 
  art_qual, 
  art_kwds, 
@@ -580,7 +615,8 @@ DOCUMENT_ITEM_TOC_FIELDS = """
  art_pgrg, 
  art_lang, 
  art_doi, 
- art_issn, 
+ art_issn,
+ art_isbn,
  art_origrx, 
  art_qual, 
  art_kwds,
@@ -669,17 +705,6 @@ running_head_fmts = {
     'textonly': "({pub_year}). {source_title}{vol}{issue}{pgrg}"
 }
 
-# specify fields for sort, the variable allows ASC and DESC to be varied during calls.
-SORT_BIBLIOGRAPHIC = "art_authors_citation_str {0}, art_year {0}, art_title_str {0}"
-SORT_YEAR = "art_year {0}"
-SORT_AUTHOR = "art_authors_citation_str {0}"
-SORT_TITLE = "art_title_str {0}"
-SORT_SOURCE = "art_sourcetitlefull_str {0}"
-SORT_CITATIONS = "art_cited_5 {0}"
-SORT_VIEWS = "art_views_last6mos {0}"
-SORT_TOC = "art_sourcetitlefull_str {0}, art_year {0}, art_iss {0}, art_pgrg {0}"
-SORT_SCORE = "score {0}"
-
 MAX_SOURCE_LEN = 14
 # search description fields to communicate about the search
 KEY_SEARCH_TYPE = "search_type"
@@ -700,7 +725,6 @@ SEARCH_TYPE_LITERAL = "literal"
 SEARCH_TYPE_TITLE = "title"
 SEARCH_TYPE_PARAGRAPH = "paragraph search"
 SEARCH_TYPE_ID = "locator"
-SEARCH_TYPE_ARTICLE_FIELDS = "article fields"
 # SEARCH_TYPE_ADVANCED = "solradvanced"
 SEARCH_TYPE_FIELDED = "document field"
 SEARCH_TYPE_DOI = "doi"
@@ -715,30 +739,17 @@ SEARCH_FIELD_PGRG = "art_pgrg"
 SEARCH_FIELD_RELATED = "art_qual"
 SEARCH_FIELD_RELATED_EXPANDED = "related"
 
+IMAGE_API_LINK = "/v2/Documents/Image/" # API Call for images
+
 SS_BROADEN_SEARCH_FIELD_RELATED = (SEARCH_FIELD_RELATED, SEARCH_FIELD_LOCATOR) # technique can be used generally to expand search based on field specified
 
 SS_BROADEN_DICT = {SEARCH_FIELD_RELATED: SS_BROADEN_SEARCH_FIELD_RELATED,
                    SEARCH_FIELD_RELATED_EXPANDED: SS_BROADEN_SEARCH_FIELD_RELATED,
                   }
 
-# Dict = sort key to use, fields, default direction if one is not specified.
-PREDEFINED_SORTS = {
-    "bibliographic": (SORT_BIBLIOGRAPHIC, "asc"),
-    "year":(SORT_YEAR, "desc"),
-    "author":(SORT_AUTHOR, "asc"),
-    "title":(SORT_TITLE, "asc"),
-    "source":(SORT_SOURCE, "asc"),
-    "citations":(SORT_CITATIONS, "desc"),
-    "views":(SORT_VIEWS, "desc"),
-    "toc":(SORT_TOC, "asc"),
-    "score":(SORT_SCORE, "desc"),
-    # legacy/historical naming for sorts
-    "citecount":(SORT_CITATIONS, "desc"), 
-    "rank":(SORT_SCORE, "desc"), 
-    }
-
 #PEPWEB_ABSTRACT_MSG1 = """
 #This is a summary or excerpt from the full text of the article. PEP-Web provides full-text search of the complete articles for
 #current and archive content, but only the abstracts are displayed for current content, due to contractual obligations with the
 #journal publishers. For details on how to read the full text of 2017 and more current articles see the publishers official website 
 #"""
+

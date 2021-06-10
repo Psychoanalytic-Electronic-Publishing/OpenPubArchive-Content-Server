@@ -91,11 +91,11 @@ def pysolrerror_processing(e):
                     http_error_num = int(http_error)
                     ret_val.httpcode = http_error_num
             except Exception as e:
-                logger.error(f"Error parsing Solr error {e.args} PySolr error {e}")
+                logger.error(f"PySolrError: Exception {e} Parsing error {e.args}")
             else:
                 ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
     except Exception as e2:
-        logger.error(f"PySolr error {e} processing error {e2}")
+        logger.error(f"PySolrError: {e} Processing exception {e2}")
 
     return ret_val    
 
@@ -107,7 +107,6 @@ def remove_nuisance_word_hits(result_str):
     
     """
     ret_val = rcx_remove_nuisance_words.sub("\g<word>", result_str)
-    # print (ret_val)
     return ret_val 
     
 #-----------------------------------------------------------------------------
@@ -117,8 +116,6 @@ def list_all_matches(search_result):
     """
     # makes it easier to see matches in a large result
     ret_val = re.findall(f"{opasConfig.HITMARKERSTART}.*{opasConfig.HITMARKEREND}", search_result)
-    #for hit in ret_val:
-        #print (hit)
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -126,8 +123,6 @@ def list_all_matches_with_loc(search_result):
     # makes it easier to see matches in a large result
     ret_val = []
     for m in re.compile(f"{opasConfig.HITMARKERSTART}.*{opasConfig.HITMARKEREND}").finditer(search_result):
-        #print (m.start(), m.group())
-        # ret_val.append((m.start(), m.group()))
         start_char = max(m.start()-20, 0)
         end_char = m.end()+30
         ret_val.append(search_result[start_char:end_char])
@@ -264,7 +259,7 @@ def split_article_id(article_id):
                 elif b[:2] in [19, 20]:
                     journal, year, vol, page = a, b, c, d
             except Exception as e:
-                logger.error(f"Split Article ID error: can not split ID {article_id} ({e})")
+                logger.error(f"SplitArticleIDError: can not split ID {article_id} ({e})")
         else:
             vol = remove_leading_zeros(vol)
             page = remove_leading_zeros(page)
@@ -470,7 +465,7 @@ def check_solr_docs_connection():
         try:
             results = solr_docs2.search(query, **args)
         except Exception as e:
-            logger.error(f"Solr Connection Error: {e}")
+            logger.error(f"SolrConnectionError: {e}")
         else:
             if len(results.docs) > 0:
                 ret_val = True
@@ -507,7 +502,7 @@ def document_get_info(document_id, fields="art_id, art_sourcetype, art_year, fil
             logger.info(f"Solr Query: q={query}")
             results = solr_docs2.search(query, **args)
         except Exception as e:
-            logger.error(f"Solr Retrieval Error: {e}")
+            logger.error(f"SolrRetrievalError: {e}")
         else:
             if len(results.docs) == 0:
                 return ret_val
@@ -515,7 +510,7 @@ def document_get_info(document_id, fields="art_id, art_sourcetype, art_year, fil
                 try:
                     ret_val = results.docs[0]
                 except Exception as e:
-                    logger.error(f"Solr Result Error: {e}")
+                    logger.error(f"SolrResultError: {e}")
 
     return ret_val
 
@@ -642,7 +637,7 @@ def get_term_index(term_partial,
                                           )
     except Exception as e:
         # error
-        logger.error("Specified core does not have a term index configured ({e})")
+        logger.error(f"TermIndexError: Specified core does not have a term index configured ({e})")
 
     else:
         response_info = models.ResponseInfo( limit=limit,
@@ -682,10 +677,10 @@ def get_match_count(solrcore, query="*:*", qf="*:*"):
     try:
         results = solrcore.search(query, fl="art_id, file_name, file_last_modified, timestamp", rows=1)
     except Exception as e:
-        msg = f"Solr Query Error {e}"
+        msg = f"SolrQueryError: {e}"
         logger.error(msg)
         # let me know whatever the logging is!
-        print (msg)
+        if opasConfig.LOCAL_TRACE: print (msg)
     else:
         ret_val = results.hits
     
@@ -813,18 +808,6 @@ def search_analysis( query_list,
         RetList = models.TermIndex
 
     for query_item in query_list:
-        # get rid of illegal stuff
-        # boolean_subs = [termpair.strip() for termpair in re.split("\s+\|\||\&\&|[ ]\s+", query_item)]
-        # boolean_subs = [termpair.strip() for termpair in re.split("\s*\|\||\&\&|AND|OR\s*", query_item)]
-        # for clause in query_item:
-            #clauses = n.split(":")
-            #if len(clauses) == 1:
-                #term_clause = clauses[0]
-            #else:
-                #field_clause = clauses[0]
-                #term_clause = clauses[1]
-            #subfield_clauses = shlex.split(term_clause)
-
         try:
             # remove outer parens added during query parsing
             query_item = opasQueryHelper.remove_outer_parens(query_item)
@@ -842,8 +825,6 @@ def search_analysis( query_list,
             
         except Exception as e:
             # try to return an error message for now.
-            # logger.error(HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=e))
-            # raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Bad Search syntax")
             return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
 
         if "!parent" in query_item:
@@ -859,7 +840,7 @@ def search_analysis( query_list,
                         m = re.match(".*parent_tag:\((?P<parent_tag>.*)\).*?(?P<field>[A-z_]+)\:\((?P<terms>.*)\)\)?\)?", query_parsed[i])
                         if m is not None:
                             query_parsed[i] = m.groupdict(default="")
-                            query_parsed[i]['parent_tag'] = schemaMap.solr2user(query_parsed[i]['parent_tag'])
+                            query_parsed[i]['parent_tag'] = schemaMap.solrparent2user(query_parsed[i]['parent_tag'])
                             query_parsed[i]['terms'] = query_parsed[i]['terms'].strip("()")
 
             except Exception as e:
@@ -1039,15 +1020,12 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     ret_status = (200, "OK") # default is like HTTP_200_OK
     # count_anchors = 0
 
-    if 1:
+    if 1: # just to allow folding
         if solr_query_spec.solrQueryOpts is None: # initialize a new model
             solr_query_spec.solrQueryOpts = models.SolrQueryOpts()
     
         if solr_query_spec.solrQuery is None: # initialize a new model
             solr_query_spec.solrQuery = models.SolrQuery()
-    
-        #if authenticated is None:
-            #authenticated = solr_query_spec.a
     
         if extra_context_len is not None:
             solr_query_spec.solrQueryOpts.hlFragsize = extra_context_len
@@ -1122,10 +1100,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     
         # q must be part of any query; this appears to be the cause of the many solr syntax errors seen. 
         if solr_query_spec.solrQuery.searchQ is None or solr_query_spec.solrQuery.searchQ == "":
-            logger.error(f">>>>>> solr_query_spec.solrQuery.searchQ is {solr_query_spec.solrQuery.searchQ}.  Filter: {solr_query_spec.solrQuery.filterQ} The endpoint request was: {req_url}")
+            logger.error(f"QuerySpecificationError: searchQ is {solr_query_spec.solrQuery.searchQ}.  Filter: {solr_query_spec.solrQuery.filterQ} Endpoint was: {req_url}")
             solr_query_spec.solrQuery.searchQ = "*.*"
-    
-        ## one last cleaning
+        
+        # one last cleaning
         #solr_query_spec.solrQuery.searchQ = solr_query_spec.solrQuery.searchQ.replace(" && *:*", "")
         #solr_query_spec.solrQuery.filterQ = solr_query_spec.solrQuery.filterQ.replace(" && *:*", "")
 
@@ -1146,9 +1124,17 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             if "summaries_xml" not in solr_query_spec.returnFields:
                 return_fields = return_fields + ", summaries_xml"
 
+        if type(solr_query_spec.solrQuery.facetQ) == str: # sometimes coming in as Query(None)
+            if solr_query_spec.solrQuery.facetQ is not None:
+                filterQ = solr_query_spec.solrQuery.filterQ + " && (" + solr_query_spec.solrQuery.facetQ + ")"
+            else:
+                filterQ = solr_query_spec.solrQuery.filterQ
+        else:
+            filterQ = solr_query_spec.solrQuery.filterQ
+            
         solr_param_dict = { 
                             # "q": solr_query_spec.solrQuery.searchQ,
-                            "fq": solr_query_spec.solrQuery.filterQ,
+                            "fq": filterQ,
                             "q.op": solr_query_spec.solrQueryOpts.qOper, 
                             # "debugQuery": solr_query_spec.solrQueryOpts.queryDebug or localsecrets.SOLR_DEBUG,
                             # "defType" : solr_query_spec.solrQueryOpts.defType,
@@ -1156,7 +1142,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             "facet" : facet,
                             "facet.field" : solr_query_spec.facetFields, #["art_lang", "art_authors"],
                             "facet.mincount" : solr_query_spec.facetMinCount,
-                            
                             "mlt" : mlt,
                             "mlt.fl" : mlt_fl,
                             "mlt.count" : mlt_count,
@@ -1181,18 +1166,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         }
 
     except Exception as e:
-        logger.error(f"Solr Param Assignment Error {e}")
-
-    # add additional facet parameters from faceSpec
-    #for key, value in solr_query_spec.facetSpec.items():
-        #if key[0:1] != "f":
-            #continue
-        #else:
-            #solr_param_dict[key] = value
-    
-    # Solr sometimes returns an SAX Parse error because of Nones!
-    # just in case, get rid of all Nones
-    # solr_param_dict = {k: v for k, v in solr_param_dict.items() if v is not None}
+        logger.error(f"SolrParamError: {e}")
 
     #allow core parameter here
     if solr_core is None:
@@ -1200,7 +1174,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             try:
                 solr_core = EXTENDED_CORES.get(solr_query_spec.core, None)
             except Exception as e:
-                detail=f"Bad Extended Request. Core Specification Error. {e}"
+                detail=f"CoreSpecificationError: Bad Extended Request. {e}"
                 logger.error(detail)
                 ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
             else:
@@ -1215,12 +1189,12 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         try:
             solr_core = EXTENDED_CORES.get(solr_core, None)
         except Exception as e:
-            detail=f"Bad Extended Request. Core Specification Error. {e}"
+            detail=f"CoreSpecificationError: Bad Extended Request. {e}"
             logger.error(detail)
             ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
         else:
             if solr_core is None:
-                detail=f"Bad Extended Request. Unknown core specified."
+                detail=f"CoreSpecificationError: Bad Extended Request. No core specified."
                 logger.warning(detail)
                 ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
 
@@ -1228,6 +1202,11 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         # PySolr does not like None's, so clean them
         solr_param_dict = cleanNullTerms(solr_param_dict)
 
+        if opasConfig.LOCAL_TRACE:
+            print (f"+****Solr Query: q:{query}, fq:{filterQ}")
+            #print (f"+****Solr facets:{solr_param_dict.get('facet.field', 'No facets to return')}" )
+            print (f"+****Solr Facet Query: q:{solr_query_spec.solrQuery.facetQ}")
+                       
         # ####################################################################################
         # THE SEARCH!
         results = solr_docs2.search(query, **solr_param_dict)
@@ -1236,15 +1215,15 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     except SAXParseException as e:
         ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Search syntax error", error_description=f"{e.getMessage()}")
         ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) 
-        logger.error(f"Solr Runtime Search Error (parse): {ret_val}. Params sent: {solr_param_dict}")
+        logger.error(f"SolrSAXParseExceptionError: Search Error (parse): {ret_val}. Params sent: {solr_param_dict}")
 
     except AttributeError as e:
-        logger.error(f"Attribute Error: {e}")
+        logger.error(f"SolrAttributeExceptionError: Attribute Error: {e}")
            
     except pysolr.SolrError as e:
         error = "pySolr.SolrError"
         error_num = 400
-        error_description=f"There's an error in your input (no reason supplied)"
+        error_description=f"PySolrError: There's an error in your input ({e})"
         # {ret_status[1].reason}:{ret_status[1].body}
         ret_status = (error_num, {"reason": error, "body": error_description})
         ret_val = models.ErrorReturn(httpcode=400, error=error, error_description=error_description)
@@ -1253,7 +1232,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             pass # take defaults
         elif e.args is not None:
             # defaults, before trying to decode error
-            error_description = "Search Error"
+            error_description = "PySolrError: Search Error"
             error = 400
             try:
                 err = e.args
@@ -1267,13 +1246,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     http_error = m.group("err")
                     http_error_num = int(http_error)
             except Exception as e:
-                logger.error(f"Error parsing Solr error {e.args}")
+                logger.error(f"PySolrError: Error parsing Solr error {e.args}")
                 ret_status = (error_num, e.args)
             else:
                 ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
                 ret_status = (error_num, {"reason": error, "body": error_description})
 
-        logger.error(f"PySolr Solr Runtime Search Error (syntax): {ret_status}. Params sent: {solr_param_dict}")
+        logger.error(f"PySolrError: Syntax: {ret_status}. Params sent: {solr_param_dict}")
         
     except Exception as e:
         try:
@@ -1286,12 +1265,12 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
         finally:
             ret_val = models.ErrorReturn(httpcode=error_code, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-            logger.error(f"Solr Runtime Search Error (syntax): {ret_status}. Params sent: {solr_param_dict}")
+            logger.error(f"PySolrError: Syntax: {ret_status}. Params sent: {solr_param_dict}")
                                 
     else: #  search was ok
         try:
             logger.info(f"Search Ok. Result Size:{results.hits}; Search:{solr_query_spec.solrQuery.searchQ}; Filter:{solr_query_spec.solrQuery.filterQ}")
-            scopeofquery = [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ]
+            scopeofquery = solr_query_spec.solrQuery # [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ, solr_query_spec.solrQuery.facetQ]
     
             if ret_status[0] == 200: 
                 documentItemList = []
@@ -1328,13 +1307,12 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     documentID = documentListItem.documentID
                     if documentID is None:
                         # there's a problem with this records
-                        logger.error(f"Record Decode Error, incomplete record, skipping. Possible corrupt solr database: {result}")
+                        logger.error(f"DocumentError: Incomplete record, skipping. Possible corrupt solr database: {result}")
                         continue
                     # sometimes, we don't need to check permissions
                     # Always check if fullReturn is selected
                     # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)
                     if record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
-                        #print(f"Precheck: Session info archive access: {session_info.authorized_peparchive}")
                         access = opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
                                                                      classification=documentListItem.accessClassification, 
                                                                      year=documentListItem.year,
@@ -1353,11 +1331,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             documentListItem.accessLimitedDescription = access.accessLimitedDescription
                             documentListItem.accessLimitedPubLink = access.accessLimitedPubLink
 
-                        #print(f"Postcheck: Session info archive access: {session_info.authorized_peparchive}")
-                        #if 1: # result == results.docs[-1]:
-                            ## last one in set
-                            #print (f"Description: {documentListItem.accessLimitedDescription} Reason: {documentListItem.accessLimitedReason} Current: {documentListItem.accessLimitedClassifiedAsCurrentContent}")
-    
                     documentListItem.score = result.get("score", None)               
                     try:
                         text_xml = results.highlighting[documentID].get("text_xml", None)
@@ -1374,13 +1347,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                 text_xml = result["text_xml"]
                             except:
                                 text_xml = result.get("para", None)
-    
+                    
                     #if text_xml is None: # PySolrLib doesn't put text in highlight unless there was a term search, so get it here.
                         #text_xml = result.get("text_xml", None)
     
                     if text_xml is not None and type(text_xml) != list:
                         text_xml = [text_xml]
-    
+                       
                     # do this before we potentially clear text_xml if no full text requested below
                     if solr_query_spec.abstractReturn:
                         # we don't want to ever do this (Google!) 2021-04-29 (delete later, if the urge passes)
@@ -1393,14 +1366,14 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             #else: # no session info, omit abstract
                                 #omit_abstract = True
 
-                        # this would print a message about logging in and not display an abstrac if omit_abstract were true,
+                        # this would print a message about logging in and not display an abstract if omit_abstract were true,
                         # but then Google could not index
                         documentListItem = opasQueryHelper.get_excerpt_from_search_result(result,
                                                                                           documentListItem,
                                                                                           solr_query_spec.returnFormat,
                                                                                           omit_abstract=False)
     
-                    documentListItem.kwic = "" # need this, so it doesn't default to Nonw
+                    documentListItem.kwic = "" # need this, so it doesn't default to None
                     documentListItem.kwicList = []
                     # no kwic list when full-text is requested.
                     kwic_list = []
@@ -1427,10 +1400,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         kwic = " . . . ".join(kwic_list)  # how its done at GVPi, for compatibility (as used by PEPEasy)
                         # we don't need fulltext
                         text_xml = None
-                        #print ("Document Length: {}; Matches to show: {}".format(len(textXml), len(kwicList)))
-                    #else: # either fulltext requested, or no document, we don't need kwic
-                        #kwic_list = []
-                        #kwic = ""  # this has to be "" for PEP-Easy, or it hits an object error.  
     
                     if kwic != "": documentListItem.kwic = kwic
                     if kwic_list != []: documentListItem.kwicList = kwic_list
@@ -1456,7 +1425,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         #  e.g., http://development.org:9100/v2/Documents/Document/JCP.001.0246A/?return_format=XML&search=%27?fulltext1="Evenly%20Suspended%20Attention"~25&limit=10&facetmincount=1&facetlimit=15&sort=score%20desc%27
                         # documentListItem.document = opasxmllib.xml_remove_tags_from_xmlstr(documentListItem.document,['impx'])
                         if documentListItem.document == None:
-                            errmsg = f"Document fetch failed! ({solr_query_spec.solrQuery.searchQ}"
+                            errmsg = f"DocumentError: Fetch failed! ({solr_query_spec.solrQuery.searchQ}"
                             logger.error(errmsg)
                             documentListItem.termCount = 0
                         
@@ -1486,6 +1455,17 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                         stat["art_views_last6mos"] = count3
                         stat["art_views_last12mos"] = count4
     
+                    # count fields (relatively new, 2021)
+                    stat["reference_count"] = result.get("art_ref_count", 0)
+                    stat["art_fig_count"] = result.get("art_fig_count", 0)
+                    stat["art_tbl_count"] = result.get("art_tbl_count", 0)
+                    stat["art_kwds_count"] = result.get("art_kwds_count", 0)
+                    stat["art_words_count"] = result.get("art_words_count", 0)
+                    stat["art_citations_count"] = result.get("art_citations_count", 0)
+                    stat["art_ftns_count"] = result.get("art_ftns_count", 0)
+                    stat["art_notes_count"] = result.get("art_notes_count", 0)
+                    stat["art_dreams_count"] = result.get("art_dreams_count", 0)
+
                     if stat == {}:
                         stat = None
     
@@ -1593,7 +1573,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             ret_val = documentList
             
         except Exception as e:
-            logger.error(f"Problem with query results processing {e}")
+            logger.error(f"QueryResultsError: Problem processing results {e}")
             
 
     return ret_val, ret_status
@@ -1632,11 +1612,10 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
         srcList = solr_docs2.search(query, **args)
 
     except Exception as e:
-        logger.error("metadataGetVideos Error: {}".format(e))
+        #logger.error(f"metadataGetVideosError: {e}")
         ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-        ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-        logger.error(f"Solr Runtime Search Error (syntax): {e.httpcode}. Params sent: {solr_param_dict}")
-        logger.error(e.body)
+        return_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
+        logger.error(f"metadataGetVideosError: {e.httpcode}. Params sent: {solr_param_dict} Body: {e.body}")
     else:
         # count = len(srcList.results)
         total_count = srcList.raw_response['response']['numFound']
@@ -1853,7 +1832,7 @@ def database_get_whats_new(days_back=14,
         results = solr_docs2.search(query, **args)
 
     except Exception as e:
-        logger.error(f"Solr Search Exception: {e}")
+        logger.error(f"WhatsNewError: {e}")
         response_info = models.ResponseInfo( count = 0,
                                              fullCount = 0,
                                              limit = limit,
@@ -1874,6 +1853,7 @@ def database_get_whats_new(days_back=14,
         num_found = results.raw_response['response']['numFound']
         whats_new_list_items = []
         row_count = 0
+        eligible_entry_full_count = 0
         already_seen = []
         for result in results.docs:
             document_id = result.get("art_id", None)
@@ -1891,8 +1871,7 @@ def database_get_whats_new(days_back=14,
                 continue
             
             # see if this is already been in the article tracker
-            
-    
+                
             volume = result.get("art_vol", None)
             issue = result.get("art_iss", "")
             year = result.get("art_year", None)
@@ -1906,6 +1885,11 @@ def database_get_whats_new(days_back=14,
                 continue
             else:
                 already_seen.append(display_title)
+
+            eligible_entry_full_count += 1
+            if row_count > limit:
+                continue
+
             volume_url = "/v1/Metadata/Contents/%s/%s" % (PEPCode, issue)
     
             item = models.WhatsNewListItem( documentID = result.get("art_id", None),
@@ -1922,7 +1906,7 @@ def database_get_whats_new(days_back=14,
 
             whats_new_list_items.append(item)
             
-            row_count += 1
+            row_count += 1 # number of rows added
             #if row_count > limit:
                 #break
     
@@ -1936,11 +1920,11 @@ def database_get_whats_new(days_back=14,
             limited_whats_new_list = whats_new_list_items
         
         response_info = models.ResponseInfo( count = len(results.docs),
-                                             fullCount = num_found,
+                                             fullCount = eligible_entry_full_count,
                                              limit = limit,
                                              offset = offset,
                                              listType="newlist",
-                                             fullCountComplete = limit >= num_found,
+                                             fullCountComplete = limit >= eligible_entry_full_count,
                                              request=f"{req_url}",
                                              timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
                                              )
@@ -1992,7 +1976,7 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
 
     # q must be part of any query; this appears to be the cause of the many solr syntax errors seen. 
     if solr_query_spec.solrQuery.searchQ is None or solr_query_spec.solrQuery.searchQ == "":
-        logger.error(f">>>>>> solr_query_spec.solrQuery.searchQ is {solr_query_spec.solrQuery.searchQ}.  Filter: {solr_query_spec.solrQuery.filterQ} The endpoint request was: {req_url}")
+        logger.error(f"SearchStatDownloadError: searchQ: {solr_query_spec.solrQuery.searchQ}.  Filter: {solr_query_spec.solrQuery.filterQ} Endpoint: {req_url}")
         solr_query_spec.solrQuery.searchQ = "*.*"
 
     query = solr_query_spec.solrQuery.searchQ
@@ -2011,7 +1995,7 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
         solr_param_dict = cleanNullTerms(solr_param_dict)
         
     except Exception as e:
-        logger.error(f"Solr Param Assignment Error {e}")
+        logger.error(f"SolrParamAssignmentError: {e}")
 
     #allow core parameter here
     solr_query_spec.core = "pepwebdocs"
@@ -2031,16 +2015,16 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
     except solr.SolrException as e:
         if e is None:
             ret_val = models.ErrorReturn(httpcode=httpCodes.HTTP_400_BAD_REQUEST, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error without a reason")
-            logger.error(f"Solr Runtime Search Error: {e.reason}")
-            logger.error(e.body)
+            logger.error(f"SolrRuntimeError: {e.reason} Body: {e.body}")
+            # logger.error(e.body)
         elif e.reason is not None:
             ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Solr engine returned an unknown error", error_description=f"Solr engine returned error {e.httpcode} - {e.reason}")
-            logger.error(f"Solr Runtime Search Error: {e.reason}")
-            logger.error(e.body)
+            logger.error(f"SolrRuntimeError: {e.reason} Body: {e.body}")
+            # logger.error(e.body)
         else:
             ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-            logger.error(f"Solr Runtime Search Error: {e.httpcode}")
-            logger.error(e.body)
+            logger.error(f"SolrRuntimeError: {e.httpcode} Body: {e.body}")
+            # logger.error(e.body)
         
         ret_status = (e.httpcode, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
 
@@ -2119,7 +2103,7 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
             ret_val = documentList
             
         except Exception as e:
-            logger.error(f"problem with query {e}")
+            logger.error(f"SolrResultsError: Exception: {e}")
             
     logger.info(f"Download Stats Document Return Time: {time.time() - start_time}")
     return ret_val, ret_status
@@ -2178,7 +2162,7 @@ def metadata_get_next_and_prev_articles(art_id=None,
         results = solr_docs2.search(query, **args)
 
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"MetadataGetArtError: {e}")
     else:
         # find the doc
         count = 0
@@ -2233,12 +2217,12 @@ def metadata_get_next_and_prev_vols(source_code=None,
     
     query = "bk_subdoc:false"
     if source_code is None:
-        logger.error("No source code (e.g., journal code) provided;")
+        logger.error("MetadataGetVolsError: No source code (e.g., journal code) provided;")
     else:
         query += f" && art_sourcecode:{source_code}"
 
         if source_vol is None:
-            logger.error("No vol number provided;")
+            logger.error("MetadataGetVolsError: No vol number provided;")
         else:
             source_vol_int = int(source_vol)
             next_source_vol_int = source_vol_int + 1
@@ -2267,7 +2251,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
                 facet_pivot = results.facets["facet_pivot"][facet_pivot_fields]
                 #ret_val = [(piv['value'], [n["value"] for n in piv["pivot"]]) for piv in facet_pivot]
             except Exception as e:
-                logger.error(f"Error: {e}")
+                logger.error(f"MetadataGetVolsError: Exception: {e}")
             else:
                 prev_vol = None
                 match_vol = None
@@ -2432,7 +2416,7 @@ def metadata_get_volumes(source_code=None,
 
                 
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"MetadataGetVolsError: {e}")
     else:
         response_info.count = len(volume_item_list)
         response_info.fullCount = len(volume_item_list)
@@ -2482,7 +2466,7 @@ def prep_document_download(document_id,
     try:
         results = solr_docs2.search(query, **args)
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"PrepDownloadError: Solr Search Exception: {e}")
     else:
         try:
             art_info = results.docs[0]
@@ -2498,7 +2482,7 @@ def prep_document_download(document_id,
                 else:
                     doc = docs
             except Exception as e:
-                logger.error("Download Request: Empty return: %s", e)
+                logger.error("PrepDownloadError: Empty return: %s", e)
             else:
                 doi = art_info.get("art_doi", None)
                 pub_year = art_info.get("art_year", None)
@@ -2532,8 +2516,8 @@ def prep_document_download(document_id,
                                 filename = flex_fs.get_download_filename(filespec=document_id, path=localsecrets.PDF_ORIGINALS_PATH, year=pub_year, ext=".pdf")    
                                 ret_val = filename
                             else:
-                                err_msg = "Prep for Download: File system setup error."
-                                logger.error(err_msg)
+                                err_msg = "Prep PDFORIG for Download: File system setup error."
+                                #logger.error(err_msg) # eliminate double log? 2021-06-02
                                 status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
                                                              error_description=err_msg
                                                            )
@@ -2564,22 +2548,22 @@ def prep_document_download(document_id,
                             filename = opasxmllib.html_to_epub(html_string, document_id, document_id)
                             ret_val = filename
                         else:
-                            err_msg = f"Format {ret_format} not supported"
-                            logger.warning(err_msg)
+                            err_msg = f"Download format {ret_format} not supported"
+                            #logger.warning(err_msg) # eliminate double log? 2021-06-02
                             ret_val = None
                             status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
                                                          error_description=err_msg
                                                        )
         
                     except Exception as e:
-                        logger.error("Prep for Download: Can't convert data: %s", e)
+                        err_msg = f"Prep for Download: Can't convert data: {e}"
                         ret_val = None
                         status = models.ErrorReturn( httpcode=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
-                                                     error_description="Can't convert document data"
+                                                     error_description=err_msg
                                                    )
                 else: # access is limited
-                    err_msg = f"No permission to download document {document_id} for user"
-                    logger.warning(err_msg)
+                    err_msg = f"No permission to download document {document_id} for user {session_info}"
+                    #logger.warning(err_msg) # eliminate double log? 2021-06-02
                     status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
                                                  error_description=err_msg
                                                )
@@ -2648,7 +2632,7 @@ def get_fulltext_from_search_results(result,
                 temp_xml = temp_xml[0]
                 
             except Exception as e:
-                logger.error(f"Page extraction from document failed. Error: {e}.  Keeping entire document.")
+                logger.error(f"GetFulltextError: Page extraction from document failed. Error: {e}.  Keeping entire document.")
             else: # ok
                 text_xml = temp_xml
     
@@ -2675,13 +2659,13 @@ def get_fulltext_from_search_results(result,
         # remove nuisance stop words from matches
         text_xml = remove_nuisance_word_hits(text_xml)
     except Exception as e:
-        print (f"Error removing nuisance hits: {e}")
+        logger.error(f"GetFulltextError: Error removing nuisance hits: {e}")
 
     try:
         documentListItem.hitList = list_all_matches_with_loc(text_xml)
         documentListItem.hitCount = len(documentListItem.hitList)
     except Exception as e:
-        print (f"Error saving hits and count: {e}")
+        logger.error(f"GetFulltextError: Error saving hits and count: {e}")
     
     try:
         matches = re.findall(f"class='searchhit'|{opasConfig.HITMARKERSTART}", text_xml)
@@ -2703,17 +2687,16 @@ def get_fulltext_from_search_results(result,
         try:
             text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
         except Exception as e:
-            logger.error(f"Could not convert to HTML {e}; returning native format")
+            logger.error(f"GetFulltextError: Could not convert to HTML {e}; returning native format")
             text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
         else:
             try:
                 global count_anchors
                 count_anchors = 0
-                # print (f"Hitmarkers: {opasConfig.HITMARKERSTART}, {opasConfig.HITMARKEREND}, Count_Anchors: {count_anchors}")
                 text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
                 text_xml = re.sub("\[\[RunningHead\]\]", f"{heading}", text_xml, count=1)
             except Exception as e:
-                logger.error(f"Could not do substitution {e}")
+                logger.error(f"GetFulltextError: Could not do anchor substitution {e}")
 
         if child_xml is not None:
             child_xml = opasxmllib.xml_str_to_html(child_xml)

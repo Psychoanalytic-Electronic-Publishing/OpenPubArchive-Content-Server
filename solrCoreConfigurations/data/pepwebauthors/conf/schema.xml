@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+    PEP Author Database Schema
+    for core PEPWebAuthors
+    
+    2019-07-*:  Added string_ci, to allow case insensitive search    
+    2020-04-11: Added:
+                  strings type, boolean, booleans because it was required online going to Solr 8.5
+                  (cores would not load without that.)
+
+    
+   Schema version attribute note: 
+   
+   The default values for each property depend on the underlying FieldType class, which in turn may depend on the version 
+   attribute of the <schema/>. Keep version to standard values.
+    
+-->
+<!-- Schema name just for labeling, the managed-schema file name is what Solr looks for -->
+<schema name="pepwebauthors" version="1.61">
+
+  <!-- This is the schema for a database of authors extracted from PEP-Web articles (all types) -->
+  <!-- This will give us new types of searches against the database -->
+
+  <!-- the ID will be unique for each AuthorArticle combination; the authorID + the articleID  -->
+  <uniqueKey>id</uniqueKey>
+  <!-- ********************************* -->
+  <!-- commonly used field names -->
+  <!-- Redundant with names following patterns, but it's nice to have Fields
+       which exist in all the dbs -->
+  <!-- ********************************* -->
+  <!-- Metadata fields -->
+  <!-- containing file info -->
+  <!-- <field name="fileAbsolutePath" type="string" indexed="true" stored="true"/> -->
+  <field name="file_size" type="pint" indexed="true" stored="true"/>
+  <!-- Store whether its PEPArchive, PEPCurrent, etc. -->
+  <field name="file_classification" type="string" indexed="true" stored="true"/>
+  <field name="file_last_modified" type="pdate" indexed="true" stored="true"/>
+  <field name="file_name" type="string" indexed="true" stored="true"/>
+
+  <field name="timestamp" type="pdate" indexed="true" stored="true" multiValued="false"/>
+
+  <!-- ID = PEP articleID + authorID  is Unique-->
+  <field name="id" type="string" indexed="true" stored="true"/>
+  <!-- this will be the biblio reference document authors -->
+  <field name="authors" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+  <!-- this will be the article title -->
+  <field name="title" type="text_simple" indexed="true" stored="true" multiValued="true"/>
+  <!-- this is probably not of interest, but leave for now-->
+  <field name="format" type="string" indexed="true" stored="true"/>
+  <!-- version is required to do atomic updates, though I still can't get them to work. -->
+  <field name="_version_" type="plong" indexed="false" stored="false"/>
+  <!-- field "text" full-text of the citation for the article-->
+  <field name="text" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+
+  <!-- ********************************* -->
+  <!-- Containing Article metadata -->
+  <!-- Article Level prefix art_ -->
+  <!-- ********************************* -->
+  <!--art_author_id is not unique, nor is art_id.  id is the unique combo.-->
+  <field name="art_id" type="string" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_author_id" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_author_bio" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_author_listed" type="string_ci" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_author_pos_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_author_role" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_author_affil_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_sourcetitlefull" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_sourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_year_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <!--full xml text of this singular author info-->
+  <field name="art_author_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <!-- this will be a full-text reference to the  citing document -->
+  <field name="art_citeas_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  
+
+  <!-- Naming exception for now, this the full-text biblio reference -->
+  <!-- <field name="reference_xml" type="text_general" indexed="true" stored="true" multiValued="false"/> -->
+
+  <!-- Uncomment the dynamicField definition to catch any other fields
+   that may have been declared in the DIH configuration.
+   This allows to speed up prototyping.
+  -->
+  <!-- <dynamicField name="*" type="string" indexed="true" stored="true" multiValued="true"/> -->
+
+  <!-- The String case insensitive field.
+       From: http://pietervogelaar.nl/solr-3-5-search-case-insensitive-on-a-string-field-for-exact-match
+
+      With this field type case is preserved for stored values, but a case insensitive field will
+      be provided to search on. Caveat: case insensitive wildcard search cannot be done since
+      wild card phrases bypass the query analyzer and will not be lowercased before matching
+      against the index. This means that the characters in wildcard phrases must be lowercase in
+      order to match.       
+  -->
+    <fieldType name="string_ci" class="solr.TextField" sortMissingLast="true" omitNorms="true">
+    <analyzer type="query">
+        <tokenizer class="solr.KeywordTokenizerFactory"/>
+        <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>  
+
+  <!-- A basic text field that has reasonable, generic
+   cross-language defaults: it tokenizes with StandardTokenizer,
+   and down cases. It does not deal with stopwords or other issues.
+   See other examples for alternative definitions.
+  -->
+  <fieldType name="text_simple" class="solr.TextField" positionIncrementGap="100">
+    <analyzer>
+      <!-- nrs added HTMLStripCharFilterFactory -->
+      <charFilter class="solr.HTMLStripCharFilterFactory"/>
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <!-- A general text field that has reasonable, generic
+       cross-language defaults: it tokenizes with StandardTokenizer,
+       removes stop words from case-insensitive "stopwords.txt"
+       (empty by default), and down cases.  At query time only, it
+       also applies synonyms.
+  -->
+  <fieldType name="text_general" class="solr.TextField" positionIncrementGap="100" multiValued="true">
+    <analyzer type="index">
+      <!-- nrs added HTMLStripCharFilterFactory -->
+      <charFilter class="solr.HTMLStripCharFilterFactory"/>
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />
+      <!-- in this example, we will only use synonyms at query time
+      <filter class="solr.SynonymGraphFilterFactory" synonyms="index_synonyms.txt" ignoreCase="true" expand="false"/>
+      <filter class="solr.FlattenGraphFilterFactory"/>
+      -->
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+    <analyzer type="query">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" />
+      <filter class="solr.SynonymGraphFilterFactory" synonyms="synonyms.txt" ignoreCase="true" expand="true"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <!-- The StrField type is not analyzed, but indexed/stored verbatim. -->
+  <fieldType name="string" class="solr.StrField" sortMissingLast="true" docValues="true" />
+  <fieldType name="strings" class="solr.StrField" sortMissingLast="true" multiValued="true" docValues="true" />
+  
+  <!-- boolean type: "true" or "false" -->
+  <fieldType name="boolean" class="solr.BoolField" sortMissingLast="true"/>
+  <fieldType name="booleans" class="solr.BoolField" sortMissingLast="true" multiValued="true"/>
+  
+  <fieldType name="pint" class="solr.IntPointField" docValues="true"/>
+  <fieldType name="pfloat" class="solr.FloatPointField" docValues="true"/>
+  <fieldType name="plong" class="solr.LongPointField" docValues="true"/>
+  <fieldType name="pdouble" class="solr.DoublePointField" docValues="true"/>
+
+  <fieldType name="pints" class="solr.IntPointField" docValues="true" multiValued="true"/>
+  <fieldType name="pfloats" class="solr.FloatPointField" docValues="true" multiValued="true"/>
+  <fieldType name="plongs" class="solr.LongPointField" docValues="true" multiValued="true"/>
+  <fieldType name="pdoubles" class="solr.DoublePointField" docValues="true" multiValued="true"/>
+  <fieldType name="random" class="solr.RandomSortField" indexed="true"/>
+
+  <!-- The format for this date field is of the form 1995-12-31T23:59:59Z, and
+       is a more restricted form of the canonical representation of dateTime
+       http://www.w3.org/TR/xmlschema-2/#dateTime
+       The trailing "Z" designates UTC time and is mandatory.
+       Optional fractional seconds are allowed: 1995-12-31T23:59:59.999Z
+       All other components are mandatory.
+
+       Expressions can also be used to denote calculations that should be
+       performed relative to "NOW" to determine the value, ie...
+
+             NOW/HOUR
+                ... Round to the start of the current hour
+             NOW-1DAY
+                ... Exactly 1 day prior to now
+             NOW/DAY+6MONTHS+3DAYS
+                ... 6 months and 3 days in the future from the start of
+                    the current day
+
+    -->
+  <!-- KD-tree versions of date fields -->
+  <fieldType name="pdate" class="solr.DatePointField" docValues="true"/>
+  <fieldType name="pdates" class="solr.DatePointField" docValues="true" multiValued="true"/>
+
+  <!--Binary data type. The data should be sent/retrieved in as Base64 encoded Strings -->
+  <fieldType name="binary" class="solr.BinaryField"/>
+
+
+  <!-- since fields of this type are by default not stored or indexed,
+     any data added to them will be ignored outright.  -->
+  <fieldType name="ignored" stored="false" indexed="false" multiValued="true" class="solr.StrField" />
+
+
+</schema>

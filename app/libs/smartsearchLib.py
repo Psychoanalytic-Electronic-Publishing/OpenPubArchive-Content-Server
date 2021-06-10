@@ -53,19 +53,29 @@ rx_doi = "((h.*?://)?(.*?/))?(?P<doi>(10\.[0-9]{4,4}/[A-z0-9\.\-/]+)|(doi.org/[A
 # SS_ = "authors|dialogs|dreams|headings|keywords|notes|panels|poems|quotes|references|source|sourcecode|text|volume|year|art_*"
 SS_SEARCH_FIELDS = "[a-z_]*"
 rx_solr_field = f"(?P<schema_field>^{SS_SEARCH_FIELDS})\:(?P<schema_value>([^:]*$))" # only one field permitted
+rx_solr_field2 = f"(?P<schema_field>^{SS_SEARCH_FIELDS})\:(?P<schema_value>(.*$))"
 # rx_syntax = "(?P<schema_field>^[a-z]{3,9})\:\:(?P<schema_value>.+$)"
-advanced_syntax = f"(?P<schema_field>^adv)\:\:(?P<schema_value>.+$)"
+advanced_syntax = f"(?P<schema_field>^(adv|solr))\:\:(?P<schema_value>.+$)"
 
 pat_prefix_amps = re.compile("^\s*&& ")
 
+rx_str_is_quotedstring = r"^\s*(\"|\')(?!^\1).*\1\s*$" # outer quote or single quotes, none of the same ones inside
+pat_str_is_quotedstring = re.compile(rx_str_is_quotedstring, flags=re.I)
+
 rx_quoted_str_has_wildcards = r"(\"|\').*(\*|\?).*\1"
+pat_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
 pat_quoted_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
+rx_quoted_str_has_booleans = r"(\"|\').*\b(AND|OR|NOT)\b.*\1"
+pat_quoted_str_has_booleans = re.compile(rx_quoted_str_has_booleans)
+
 rx_str_has_wildcards = r".*(\*|\?).*"
 pat_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
 pat_str_has_fuzzy_search = re.compile(rx_fuzzy_search, flags=re.I)
 pat_str_has_wildcards = re.compile(rx_quoted_str_has_wildcards, flags=re.I)
 rx_str_has_author_id = r"[A-z]+[,]?\s[A-z]\.?\b"
 pat_str_has_author_id = re.compile(rx_str_has_author_id, flags=re.I)
+rx_str_has_author_name = r"[A-z]+\s[A-z]+\b"
+pat_str_has_author_name = re.compile(rx_str_has_author_name, flags=re.I)
 cores = CORES
 
 class SearchEvaluation(object):
@@ -90,20 +100,53 @@ def all_words_start_upper_case(search_str):
 
     return ret_val
 
+def is_quoted_str(search_str):
+    """
+    Test if string which has a substring in quotes, that has wildcards.
+    
+    >>> is_quoted_str(r"'test* 12?'")
+    True
+    
+    >>> is_quoted_str(r"'test** 12?  '")
+    True
+    """
+    ret_val = False
+    if pat_str_is_quotedstring.search(search_str):
+        ret_val = True
+
+    return ret_val
+
 def quoted_str_has_wildcards(search_str):
     """
     Test if string which has a substring in quotes, that has wildcards.
     
-    >>> result = quoted_str_has_wildcards(r"'test* 12?'")
-    >>> result is not None
+    >>> quoted_str_has_wildcards(r"'test* 12?'")
     True
     
-    >>> result = quoted_str_has_wildcards(r"'test** 12?  '")
-    >>> result is not None
+    >>> quoted_str_has_wildcards(r"'test** 12?  '")
     True
     """
     ret_val = False
     if pat_quoted_str_has_wildcards.search(search_str):
+        ret_val = True
+
+    return ret_val
+
+def quoted_str_has_booleans(search_str):
+    """
+    Test if string which has a substring in quotes, that has wildcards.
+    
+    >>> quoted_str_has_booleans(r'"David Tuckett" OR "Peter Fonagy"')
+    True
+    
+    >>> quoted_str_has_booleans(r'"David Tuckett" AND "Peter Fonagy"')
+    True
+
+    >>> quoted_str_has_booleans(r'"David Tuckett" "Peter Fonagy"')
+    False
+    """
+    ret_val = False
+    if pat_quoted_str_has_booleans.search(search_str):
         ret_val = True
 
     return ret_val
@@ -150,6 +193,8 @@ def str_has_wildcards(search_str):
 
 def str_has_author_id(search_str):
     """
+    # Match an author id, but no wildcards permitted
+    
     >>> str_has_author_id("Tuckett, D.")
     True
     >>> str_has_author_id("Tuckett, David")
@@ -163,7 +208,25 @@ def str_has_author_id(search_str):
     >>> str_has_author_id("   Tuckett D Fonagy")
     True
     """
-    if pat_str_has_author_id.search(search_str):
+    if pat_str_has_author_id.search(search_str) and not str_has_wildcards(search_str):
+        return True
+    else:
+        return False
+
+def str_is_author_mastname(search_str):
+    """
+    Checks the database list of mastnames to see if the string matches exactly.
+    
+    >>> str_is_author_mastname("Vaughan Bell")
+    True
+    >>> str_is_author_mastname("David Tuckett")
+    True
+    >>> str_is_author_mastname("Tuckett Fonagy")
+    False
+    """
+    if is_value_in_field(search_str,
+                         field="art_authors_mast_list_strings",
+                         limit=1):
         return True
     else:
         return False
@@ -263,7 +326,24 @@ def is_value_in_field(value,
     return ret_val
 
 #-----------------------------------------------------------------------------
-def name_id_list(names_mess):
+def get_list_of_name_ids(names_mess):
+    """
+      >>> test="Goldberg, E.L. and Myers,W.A. and Zeifman,I."
+      >>> get_list_of_name_ids(test)
+      ['Goldberg, E.', 'Myers, W.', 'Zeifman, I.']
+      >>> test="Eugene L. Goldberg, Wayne A. Myers and Israel Zeifman"
+      >>> get_list_of_name_ids(test)
+      ['Goldberg, E.', 'Myers, W.', 'Zeifman, I.']
+      >>> test="Goldberg,E.L. and Zeifman,I."
+      >>> get_list_of_name_ids(test)
+      ['Goldberg, E.', 'Zeifman, I.']
+      >>> test="Goldberg,E.L."
+      >>> get_list_of_name_ids(test)
+      ['Goldberg, E.']
+      >>> test="Eugene L. Goldberg, Wayne A. Myers and Israel Zeifman (1974)"
+      >>> get_list_of_name_ids(test)
+      ['Goldberg, E.', 'Myers, W.', 'Zeifman, I.']
+    """
     ret_val = []
     names = HumanNames(names_mess)
     try:
@@ -281,9 +361,25 @@ def name_id_list(names_mess):
     return ret_val
         
 #-----------------------------------------------------------------------------
-def author_name_to_wildcard(author_list_str: str):
-    ret_val = re.sub(" and ", " && ", author_list_str, re.IGNORECASE)
-    ret_val = re.sub(",(\s[A-Z]\.){1,2}([\s,]?)", '* ', ret_val, flags=re.IGNORECASE)
+def get_list_of_author_names_with_wildcards(author_list_str: str):
+    """
+      >>> test="Goldberg, E.L."
+      >>> get_list_of_author_names_with_wildcards(test)
+      ['Goldberg*, E*']
+    """
+    ret_val = []
+    names = HumanNames(author_list_str)
+    try:
+        for n in names.human_names:
+            if n.last != "":
+                name_id = n.last + f"*, {n.first[0]}*"
+                ret_val.append(name_id)
+            else:
+                ret_val.append(n.first)
+            
+    except Exception as e:
+        logger.warning(f"name parse: {names_mess} {e}")
+        print (e)
 
     return ret_val
 
@@ -295,36 +391,21 @@ def dict_clean_none_terms(d: dict):
       if v is not None
    }
 
-WORDS_NOT_CAPITALIZED = ["the", "and", "but", "in", "for", "a", "an", "at", "by", "to", "etc"]
-
 #-----------------------------------------------------------------------------
-def word_is_noun(word: str, stop_words=WORDS_NOT_CAPITALIZED):
-    ret_val = False
-
-    if len(word) > 3:
-        if word not in stop_words:
-            if word[0].isupper() and not word[1].isupper() and not word[2].isupper():
-                ret_val = True
-            else:
-                ret_val = False
-
-    return ret_val
-
-#-----------------------------------------------------------------------------
-def names_only(phrase: str):
+def has_names_only(phrase: str):
     """
-    >>> names_only("The Rain in Spain")
+    >>> has_names_only("The Rain in Spain")
     False
-    >>> names_only("Edward Scissorhands")
+    >>> has_names_only("Edward Scissorhands")
     True
-    >>> names_only("Tuckett and Fonagy")
+    >>> has_names_only("Tuckett and Fonagy")
     True
     """
     # try to build a list of names, and check them individually
     ret_val = False
     new_q = ""
     hnames = HumanNames(phrase)
-    names = name_id_list(phrase)
+    names = get_list_of_name_ids(phrase)
     for name in names:
         try:
             if is_value_in_field(name, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION):
@@ -336,29 +417,7 @@ def names_only(phrase: str):
             logger.warning(f"Value error for {name}. {e}")
     
     return ret_val
-#-----------------------------------------------------------------------------
-def proper_nouns_or_names(phrase: str, stop_words=WORDS_NOT_CAPITALIZED):
-    """
-    See if the words longer than 2 chars and non-numeric start with a capital, but are not all capitals
-    
-    >>> proper_nouns_or_names("The Rain in Spain")
-    True
-    >>> proper_nouns_or_names("Edward Scissorhands")
-    True
-    
-    >>> proper_nouns_or_names("Every dog has its Day")
-    False
-    """
-    ret_val = True
-    for word in phrase:
-        if word not in stop_words:
-            if not word_is_noun(word):
-                ret_val = False
-                break
-
-    return ret_val
-                
-                
+               
 if __name__ == "__main__":
     global options  # so the information can be used in support functions
     options = None

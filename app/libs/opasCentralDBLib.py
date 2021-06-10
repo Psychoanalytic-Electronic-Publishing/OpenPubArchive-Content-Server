@@ -46,7 +46,7 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2020-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0321.1"
+__version__     = "2021.0602.1"
 __status__      = "Development"
 
 import sys
@@ -867,7 +867,7 @@ class opasCentralDB(object):
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
                 curs.execute(sqlSelect, (newer_than_date))
             except Exception as e:
-                logger.error(f"DB Error getting articles newer than: {e}")
+                logger.error(f"DB Error getting articles newer than {days_back} days back, date {newer_than_date}: {e}")
             else:
                 records = curs.fetchall()
                 ret_val = [a['art_id'] for a in records]
@@ -1631,12 +1631,12 @@ class opasCentralDB(object):
         try:
             client_id_int = int(client_id)
         except Exception as e:
-            msg = f"Client ID should be a string containing an int {e}"
+            msg = f"ClientConfigError: Client ID should be a string containing an int {e}"
             logger.error(msg)
             ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
             if client_configuration_item is None:
-                msg = "No client configuration item model provided to save."
+                msg = "ClientConfigError: No client configuration item model provided to save."
                 logger.error(msg)
                 ret_val = httpCodes.HTTP_400_BAD_REQUEST
             else:
@@ -1650,7 +1650,7 @@ class opasCentralDB(object):
                     session_id = session_id
                 except Exception as e:
                     # no session open!
-                    msg = "No session is open / Not authorized"
+                    msg = "ClientConfigError: No session is open / Not authorized"
                     logger.error(msg)
                     ret_val = 401 # not authorized
                 else:
@@ -1663,7 +1663,7 @@ class opasCentralDB(object):
                             try:
                                 config_json = json.dumps(configSettings, indent=2)  # expand json in table! 2021-03-21
                             except Exception as e:
-                                logger.warning(f"Error converting configuration to json {e}.")
+                                logger.error(f"ClientConfigError: Error converting configuration to json {e}.")
                                 return ret_val
                 
                             sql = f"""{sql_action} INTO 
@@ -1697,11 +1697,11 @@ class opasCentralDB(object):
             
                     except Exception as e:
                         if sql_action == "REPLACE":
-                            msg = f"Error updating (replacing) client config: {e}"
+                            msg = f"ClientConfigError: Error updating (replacing) client config: {e}"
                             logger.error(msg)
                             ret_val = 400
                         else: # insert
-                            msg = f"Error saving client config: {e}"
+                            msg = f"ClientConfigError: Error saving client config: {e}"
                             logger.error(msg)
                             ret_val = 409
             
@@ -1853,10 +1853,10 @@ class opasCentralDB(object):
                     cursor.close()
         
                 except Exception as e:
-                    logger.warning(f"Error saving document view: {e}")
+                    logger.warning(f"Error saving document {document_id} view {view_type} for session {session_id} : {e}")
                     
         except Exception as e:
-            logger.warning(f"Error checking document view type: {e}")
+            logger.warning(f"Error checking document view type {view_type}: {e}")
 
         self.close_connection(caller_name="record_document_view") # make sure connection is closed
 
@@ -1884,8 +1884,10 @@ class opasCentralDB(object):
         Find if this is an admin, and return user info for them.
         Returns a user object
         """
-        #TODO - Use PaDS to verify admin status!
-        ret_val = False
+        if session_info.admin:
+            ret_val = True
+        else:
+            ret_val = False
             
         return ret_val   
 
@@ -1912,26 +1914,26 @@ class opasCentralDB(object):
         try:
             ret_val = dbc.execute(querytxt, queryparams)
         except self.db.DataError as e:
-            logger.error(f"Art: {contextStr}. DB Data Error {e} ({querytxt})")
+            logger.error(f"DBError: Art: {contextStr}. DB Data Error {e} ({querytxt})")
             raise self.db.DataError(e)
         except self.db.OperationalError as e:
-            logger.error(f"Art: {contextStr}. DB Operation Error {e} ({querytxt})")
+            logger.error(f"DBError: Art: {contextStr}. DB Operation Error {e} ({querytxt})")
             raise self.db.OperationalError(e)
         except self.db.IntegrityError as e:
-            logger.error(f"Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
+            logger.error(f"DBError: Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
             raise self.db.IntegrityError(e)
         except self.db.InternalError as e:
-            logger.error(f"Art: {contextStr}. DB Internal Error {e} ({querytxt})")
+            logger.error(f"DBError: Art: {contextStr}. DB Internal Error {e} ({querytxt})")
             raise self.db.InternalError(e)
             # raise RuntimeError, gErrorLog.logSevere("Art: %s.  DB Intr. Error (%s)" % (contextStr, querytxt))
         except self.db.ProgrammingError as e:
-            logger.error(f"DB Programming Error {e} ({querytxt})")
+            logger.error(f"DBError: DB Programming Error {e} ({querytxt})")
             raise self.db.ProgrammingError(e)
         except self.db.NotSupportedError as e:
-            logger.error(f"DB Feature Not Supported Error {e} ({querytxt})")
+            logger.error(f"DBError: DB Feature Not Supported Error {e} ({querytxt})")
             raise self.db.NotSupportedError(e)
         except Exception as e:
-            logger.error(f"error: %s" % (e))
+            logger.error(f"DBError: Exception: %s" % (e))
             raise Exception(e)
     
         # close cursor

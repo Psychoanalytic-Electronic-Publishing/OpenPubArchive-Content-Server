@@ -37,7 +37,6 @@ import string
 sys.path.append('./solrpy')
 sys.path.append('./libs/configLib')
 
-# print(os.getcwd())
 import http.cookies
 import re
 import secrets
@@ -189,7 +188,7 @@ def split_article_id(article_id):
                 elif b[:2] in [19, 20]:
                     journal, year, vol, page = a, b, c, d
             except Exception as e:
-                logger.error(f"Split Article ID error: can not split ID {article_id} ({e})")
+                logger.error(f"SplitArticleIDError: can not split ID {article_id} ({e})")
         else:
             vol = remove_leading_zeros(vol)
             page = remove_leading_zeros(page)
@@ -726,7 +725,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
         src_type_in = src_type # save it for logging
         src_type = opasConfig.normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
         if src_type == None:
-            err = f"Bad source type: {src_type_in}"
+            err = f"SourceTypeError: {src_type_in}"
             logger.error(err)
             raise Exception(err)
 
@@ -738,11 +737,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
         if return_status != (200, "OK"):
             raise Exception(return_status(1))
     else: # get from mySQL
-        #if src_type == 'book': # debug trap
-            #print ("BOOK!!!!!")
-            #pass
         try:
-            # print(src_type, src_code, src_name, limit, offset)
             # note...this sorts by title as only current option
             total_count, source_info_dblist = ocd.get_sources(src_type = src_type, src_code=src_code, src_name=src_name, limit=limit, offset=offset)
             if source_info_dblist is not None:
@@ -838,12 +833,12 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                                                       embargoYears = source.get("embargo")
                                                       ) 
                 except ValidationError as e:
-                    logger.error("metadataGetSourceByType SourceInfoListItem Validation Error:")
-                    logger.error(e.json())
+                    logger.error(f"ValidationError: metadataGetSourceByType SourceInfoListItem: {e.json()}")
+                    #logger.error(e.json())
                     err = 1
     
             except Exception as e:
-                logger.error("metadataGetSourceByType: Exception: %s", e)
+                logger.error(f"MetadataGetSourceInfoError: {e}")
                 err = 1
     
             if err == 0:
@@ -873,8 +868,8 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 response_info.count = 1
     
             except ValidationError as e:
-                logger.error("metadataGetSourceByType SourceInfoListItem Book Validation Error:")
-                logger.error(e.json())
+                logger.error(f"MetadataGetSourceValidationError: {e.json()}")
+                #logger.error(e.json())
                 err = 1
         
         elif src_code in opasConfig.VIDEOSTREAM_CODES_ALL:  # workaround for getting codes 
@@ -899,8 +894,8 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 response_info.count = 1
     
             except ValidationError as e:
-                logger.error("metadataGetSourceByType SourceInfoListItem Video Validation Error:")
-                logger.error(e.json())
+                logger.error(f"MetadataGetSourceValidationError: Video Validation Error {e.json()}")
+                #logger.error(e.json())
                 err = 1
 
     try:
@@ -908,13 +903,13 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                                                       responseSet = source_info_listitems
                                                       )
     except ValidationError as e:
-        logger.error("models.SourceInfoStruct Validation Error:")
-        logger.error(e.json())        
+        logger.error(f"MetadataGetSourceValidationError: models.SourceInfoStruct {e.json()}")
+        #logger.error(e.json())        
 
     try:
         source_info_list = models.SourceInfoList(sourceInfo = source_info_struct)
     except ValidationError as e:
-        logger.error("SourceInfoList Validation Error:")
+        logger.error("MetadataGetSourceValidationError:")
         logger.error(e.json())        
 
     ret_val = source_info_list
@@ -983,7 +978,7 @@ def documents_get_abstracts(document_id,
             documents = models.Documents(documents = document_list.documentList)
         else:
             err = document_list
-            logger.error(err.error_description)
+            logger.error(f"DocumentGetAbstractError: {err.error_description}")
             raise HTTPException(
                 status_code=err.error,
                 detail=err.error_description

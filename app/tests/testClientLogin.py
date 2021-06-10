@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Third-party imports...
-#from nose.tools import assert_true
-
 import sys
 import os.path
 import logging
@@ -19,18 +16,11 @@ else: # python running from should be within folder app
     sys.path.append('./config')
 
 import unittest
-import requests
-# from requests.utils import requote_uri
-# import urllib
 
 from starlette.testclient import TestClient
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
-
-import timeit
-import opasDocPermissions
-import json
 
 from main import app
 client = TestClient(app)

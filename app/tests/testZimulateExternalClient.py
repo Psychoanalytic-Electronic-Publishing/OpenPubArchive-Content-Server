@@ -3,30 +3,18 @@
 
 import unittest
 import requests
-import logging
-logger = logging.getLogger(__name__)
-import localsecrets
-from localsecrets import use_server
-import opasConfig
 
-if use_server == 0:
-    base_api = "http://development.org:9100" #  local server (Scilab)
-else:
-    base_api = "http://stage-api.pep-web.rocks" # remote AWS server (one of them)
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 
-def base_plus_endpoint_encoded(endpoint):
-    ret_val = base_api + endpoint
-    return ret_val
+import opasDocPermissions
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, BOOKCOUNT, ALL_SOURCES_COUNT
 
-UNIT_TEST_CLIENT_ID = "2"
-session_id = "159F6437-7615-46A5-9876-7E28DBDF193A"
-headers = {"client-session":session_id,
-           "client-id": UNIT_TEST_CLIENT_ID,
-           "Content-Type":"application/json",
-           localsecrets.API_KEY_NAME: localsecrets.API_KEY}
-
-#import unitTestConfig
-#from unitTestConfig import base_plus_endpoint_encoded, headers
+# login
+pads_session_info = opasDocPermissions.authserver_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
+session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id=UNIT_TEST_CLIENT_ID, pads_session_info=pads_session_info)
+# Confirm that the request-response cycle completed successfully.
+session_id = pads_session_info.SessionId
+headers = {f"client-session":f"{session_id}","client-id": UNIT_TEST_CLIENT_ID}
 
 class TestZimulateExternalClient(unittest.TestCase):
     """
@@ -62,14 +50,14 @@ class TestZimulateExternalClient(unittest.TestCase):
         # test return
         r = response.json()
         print (f"Book Count: {r['sourceInfo']['responseInfo']['fullCount']}")
-        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.BOOKCOUNT)
+        assert(r['sourceInfo']['responseInfo']['fullCount'] >= BOOKCOUNT)
 
     def test_7_meta_get_sourcenames(self):
         """
         List of names for a specific source
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/IJPSP/')
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/?sourcecode=IJPSP')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
@@ -82,14 +70,14 @@ class TestZimulateExternalClient(unittest.TestCase):
         List of names for a specific source
         /v2/Metadata/{SourceType}/{SourceCode}/
         """
-        full_URL = base_plus_endpoint_encoded('/v2/Metadata/*/*/')
+        full_URL = base_plus_endpoint_encoded('/v1/Metadata/*/*/')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
         count = r['sourceInfo']['responseInfo']['count']
         print (f"Count {count}")
-        assert(count >= unitTestConfig.ALL_SOURCES_COUNT)
+        assert(count >= ALL_SOURCES_COUNT)
 
     def test_9_pubs_authornames(self):
         """

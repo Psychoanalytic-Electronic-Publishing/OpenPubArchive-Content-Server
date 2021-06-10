@@ -9,10 +9,8 @@ import opasFileSupport
 
 from unitTestConfig import base_plus_endpoint_encoded, headers
 
-class TestFileSystemFunctions(unittest.TestCase):
+class TestOpasFileSupport(unittest.TestCase):
     """
-    Tests
-    
     Note: tests are performed in alphabetical order, hence the function naming
           with forced order in the names.
     

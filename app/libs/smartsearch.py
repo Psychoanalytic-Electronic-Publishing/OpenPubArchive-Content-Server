@@ -5,12 +5,15 @@ from optparse import OptionParser
 import logging
 import opasGenSupportLib as opasgenlib
 
-from configLib.opasCoreConfig import solr_docs2, CORES # solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
+# from configLib.opasCoreConfig import solr_docs2, CORES # solr_authors2, solr_gloss2, solr_docs_term_search, solr_authors_term_search
 import opasConfig
 import smartsearchLib
 
 logger = logging.getLogger(__name__)
 
+from opasSchemaInfoLib import SchemaInfo
+docschemainfo = SchemaInfo()
+import schemaMap
 
 def smart_search(smart_search_text):
     """
@@ -32,15 +35,40 @@ def smart_search(smart_search_text):
             Tuckett and Fonagy 1972
             Tuckett and Fonagy (1972)
             
+    >>> ret_dict = smart_search("009:1015")
+    >>> del ret_dict['smart_search']
+    >>> ret_dict
+    {'vol': '9', 'pgrg': '1015', 'search_type': 'vol and page range'}
+    
+    >>> ret_dict = smart_search("authors:Tuckett, D.")
+    >>> del ret_dict['smart_search']
+    >>> ret_dict
+    {'schema_field': 'authors', 'schema_value': 'Tuckett, D.', 'search_type': 'document field'}
+    
+    >>> ret_dict = smart_search("the_author:Tuckett, D.")
+    >>> del ret_dict['smart_search']
+    >>> ret_dict
+    {'schema_field': 'authors', 'schema_value': 'Tuckett, D.', 'search_type': 'document field'}
+    
+    >>> ret_dict = smart_search("the cat in the hat was that")
+    >>> del ret_dict['smart_search']
+    >>> ret_dict
+    {'search_type': 'paragraph search', 'schema_value': '"the cat in the hat was that"~25'}
+    
+    >>> ret_dict = smart_search("solr::art_authors_text:[tuckett and fonagy]")
+    >>> del ret_dict['smart_search']
+    >>> ret_dict
+    {'search_type': 'ADVANCED', 'schema_field': 'solr', 'schema_value': 'art_authors_text:[tuckett and fonagy]'}
+    
     >>> ret_dict = smart_search("Freud, S. ( 1938), Some elementary lessons in psycho-analysis, Standard Edition. 23:279-286. pp. London: Hogarth Press, 1964.")
     >>> del ret_dict['smart_search']
     >>> ret_dict
-    {'author_list': 'Freud, S.', 'yr': '1938', 'vol': '23', 'pgrg': '279-286', 'search_type': 'pattern authors year vol pgrg'}
+    {'author_list': ['Freud, S.'], 'yr': '1938', 'vol': '23', 'pgrg': '279-286', 'search_type': 'authors year vol pgrg'}
 
     >>> ret_dict = smart_search("009:1015")
     >>> del ret_dict['smart_search']
     >>> ret_dict
-    {'vol': '9', 'pgrg': '1015', 'search_type': 'pattern vol and page range'}
+    {'vol': '9', 'pgrg': '1015', 'search_type': 'vol and page range'}
     
     >>> ret_dict = smart_search("Tuckett")
     >>> del ret_dict['smart_search']
@@ -50,32 +78,17 @@ def smart_search(smart_search_text):
     >>> ret_dict = smart_search("Kohut, H. & Wolf, E. S. (1978)")
     >>> del ret_dict['smart_search']
     >>> ret_dict
-    {'author_list': 'Kohut, H. & Wolf, E. S.', 'yr': '1978', 'search_type': 'pattern authors and year'}
-    
-    >>> ret_dict = smart_search("authors:Tuckett, D.")
-    >>> del ret_dict['smart_search']
-    >>> ret_dict
-    {'schema_field': 'authors', 'schema_value': 'Tuckett, D.', 'search_type': 'pattern article fields'}
+    {'author_list': ['Kohut, H. & Wolf, E. S.'], 'yr': '1978', 'search_type': 'authors and year'}
     
     >>> ret_dict = smart_search("Tuckett 1982")
     >>> del ret_dict['smart_search']
     >>> ret_dict
-    {'author_list': 'Tuckett', 'yr': '1982', 'search_type': 'pattern authors and year'}
-    
-    >>> ret_dict = smart_search("solr::art_authors_text:[tuckett and fonagy]")
-    >>> del ret_dict['smart_search']
-    >>> ret_dict
-    {'schema_field': 'solr', 'schema_value': 'art_authors_text:[tuckett and fonagy]', 'search_type': 'pattern advanced query syntax'}
-    
-    >>> ret_dict = smart_search("the cat in the hat was that")
-    >>> del ret_dict['smart_search']
-    >>> ret_dict
-    {'search_type': 'paragraph search', 'schema_value': '"the cat in the hat was that"~25'}
+    {'author_list': ['Tuckett'], 'yr': '1982', 'search_type': 'authors and year'}
     
     >>> ret_dict = smart_search("'the cat in the hat was that'")
     >>> del ret_dict['smart_search']
     >>> ret_dict
-    {'search_type': 'literal search', 'schema_value': "'the cat in the hat was that'"}
+    {'search_type': 'literal', 'schema_value': "'the cat in the hat was that'"}
     
     >>> tst = []
     >>> tst.append("Emerson, R. W. (1836), An essay on nature. In: The Selected Writings of Ralph Waldo Emerson, ed. W. H. Gilman. New York: New American Library, 1965, pp. 186-187.")
@@ -86,10 +99,10 @@ def smart_search(smart_search_text):
     >>> ret = []
     >>> for n in tst: ret.append(smart_search(n))
     >>> for n in ret: del n['smart_search'];print(n)
-    {'author_list': 'Emerson, R. W.', 'yr': '1836', 'search_type': 'pattern authors and year'}
-    {'author_list': 'Rapaport, D. and Gill, M. M.', 'yr': '1959', 'vol': '40', 'pgrg': '153-162', 'search_type': 'pattern authors year vol pgrg'}
-    {'author_list': 'Freud, S.', 'yr': '1938', 'vol': '23', 'pgrg': '279-286', 'search_type': 'pattern authors year vol pgrg'}
-    {'author_list': 'Waelder, R.', 'yr': '1962', 'vol': '10', 'pgrg': '617-637', 'search_type': 'pattern authors year vol pgrg'}
+    {'author_list': ['Emerson, R. W.'], 'yr': '1836', 'search_type': 'pattern authors and year'}
+    {'author_list': ['Rapaport, D. and Gill, M. M.'], 'yr': '1959', 'vol': '40', 'pgrg': '153-162', 'search_type': 'pattern authors year vol pgrg'}
+    {'author_list': ['Freud, S.'], 'yr': '1938', 'vol': '23', 'pgrg': '279-286', 'search_type': 'pattern authors year vol pgrg'}
+    {'author_list': ['Waelder, R.'], 'yr': '1962', 'vol': '10', 'pgrg': '617-637', 'search_type': 'pattern authors year vol pgrg'}
     """
     # recognize Smart Search inputs
     ret_val = {}
@@ -137,9 +150,10 @@ def smart_search(smart_search_text):
     if ret_val == {}: # (opasConfig.SEARCH_TYPE_ADVANCED, "ADVANCED")
         # this is not much different than search_type_fielded, except the Solr query will be cleaner and perhaps more flexible.
         #  but I'll leave fielded in for now, because for a simple field search the syntax is a little better.
-        if re.match(smartsearchLib.advanced_syntax, smart_search_text):
-            ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = smart_search_text[5:] 
-            ret_val[opasConfig.KEY_SEARCH_TYPE] ="ADVANCED"
+        m = re.match(smartsearchLib.advanced_syntax, smart_search_text)
+        if m is not None:
+            ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = m.group(3)
+            ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.ADVANCED
             ret_val[opasConfig.KEY_SEARCH_FIELD] = "solr"
             ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH]}"
             ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for advanced search: {ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH]} "
@@ -163,6 +177,18 @@ def smart_search(smart_search_text):
             m = re.match(rx_str, smart_search_text)
             if m is not None:
                 ret_val = {**ret_val, **m.groupdict()}
+                if label == opasConfig.SEARCH_TYPE_FIELDED:
+                    # found a field, maybe. Check it.  Keep going if not a field name
+                    if ret_val["schema_field"] not in docschemainfo.doc_fields:
+                        # try to translate it
+                        alt_name = schemaMap.user2solrfieldname(ret_val["schema_field"])
+                        if alt_name not in docschemainfo.doc_fields:
+                            # not a proper schema field, so reset ret_val
+                            ret_val = {}
+                            continue
+                        else:
+                            ret_val["schema_field"] = alt_name
+                            
                 ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched {label}: {smart_search_text}"
                 ret_val[opasConfig.KEY_SEARCH_TYPE] = f"{label}"
                 break
@@ -185,17 +211,18 @@ def smart_search(smart_search_text):
                 ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHOR_CITATION
                 ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHOR_CITATION 
                 ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{words}"
-                ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for authors cited: ({words})"
+                ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles by authors: ({words})"
 
             if ret_val == {}:
-                if 0 != smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION, match_type="boolean"):
-                    # boolean name search
-                    if words[0].isupper() and has_bool: 
-                        # see if it's a list of names
-                        ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHOR_CITATION
-                        ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHOR_CITATION 
-                        ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{words}"
-                        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched authors cited: (boolean query: {words})"
+                if ":" not in words:
+                    if smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_AUTHOR_CITATION, match_type="boolean") != 0:
+                        # boolean name search
+                        if words[0].isupper() and has_bool: 
+                            # see if it's a list of names
+                            ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHOR_CITATION
+                            ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHOR_CITATION 
+                            ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{words}"
+                            ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched by authors: (boolean query: {words})"
 
             if ret_val == {}:
                 if 0 != smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TITLE, match_type="ordered") == 1: # unique match only
@@ -216,7 +243,7 @@ def smart_search(smart_search_text):
                 if smartsearchLib.all_words_start_upper_case(smart_search_text):
                     # try to build a list of names, and check them individually
                     new_q = ""
-                    names = smartsearchLib.name_id_list(smart_search_text)
+                    names = smartsearchLib.get_list_of_name_ids(smart_search_text)
                     for name in names:
                         try:
                             res = smartsearchLib.is_value_in_field(name, core="docs", field=opasConfig.SEARCH_FIELD_AUTHORS, match_type="adjacent")
@@ -236,6 +263,7 @@ def smart_search(smart_search_text):
                         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_AUTHORS
                         ret_val[opasConfig.KEY_SEARCH_FIELD] = opasConfig.SEARCH_FIELD_AUTHORS 
                         ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{new_q}"
+                        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched author names"
                     else:
                         #  join the names
                         name_conjunction = " && ".join(names)
@@ -289,6 +317,26 @@ def smart_search(smart_search_text):
         ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles with text: {smart_search_text}"
 
     ret_val = smartsearchLib.dict_clean_none_terms(ret_val)
+    
+    # parse author list
+    author_list = ret_val.get("author_list")
+    if author_list is not None:
+        working_author_list = re.sub(" and ", ", ", author_list, re.I)
+        try:
+            alist = opasgenlib.get_author_list_not_comma_separated(working_author_list)
+            ret_val["author_list"] = alist
+        except Exception as e:
+            logging.warning(f"Can't parse and replace author list {e}")
+    
+        if alist == []:
+            # try and?
+            try:
+                alist = opasgenlib.get_author_list_and_separated(author_list)
+                ret_val["author_list"] = alist
+            except Exception as e:
+                logging.warning(f"Can't parse and replace author list {e}")
+            
+        ret_val["author_list"] = smartsearchLib.get_list_of_name_ids(author_list)
     return ret_val
 
 if __name__ == "__main__":

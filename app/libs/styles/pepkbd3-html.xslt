@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <!-- ============================================================= -->
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
-<!--     BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML   -->
-<!--  DATE:      2020-10-10                                       -->
+<!--  BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML      -->
+<!--  DATE:      2021-06-06                                        -->
 <!--  Revisions:                                                   
         
         TODO:
@@ -10,6 +10,11 @@
           - Decide if the data-pagehelper attributes are helpful 
             for page return
 
+        2021-06-06  - enabled first tbl production by eliminating body// prefix.
+                      this seems to work to solve the tbl attributes to be
+                      dumped as text, and properly adds the tag with them.
+        2021-06-03  - Removed tbl from group production, not needed and
+                      then Table comes through
         2020-10-10  - Substituted font-awesome icon for info, flag, 
                       and book icons.  Also arrow after biblio
         2020-09-07  - Added GW/SE language attributes so they are included
@@ -1247,7 +1252,7 @@
   <!--  Tables are already in XHTML, and can simply be copied
         through                                                      -->
   
-  <xsl:template match="body//tbl">
+  <xsl:template match="tbl">
     <!-- other labels are displayed as blocks -->
     <div class="table nrs">
       <xsl:call-template name="data-pagehelper"/>
@@ -1311,7 +1316,7 @@
   </xsl:template>
   
   <xsl:template match="
-      table | tbl | thead | tbody | tfoot |
+      table | thead | tbody | tfoot |
       col | colgroup | tr | th | td">
     <xsl:copy>
       <xsl:apply-templates select="@*" mode="table-copy"/> 

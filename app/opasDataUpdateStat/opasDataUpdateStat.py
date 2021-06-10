@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0205.1"
+__version__     = "2021.0603/v1.1.5"
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -126,7 +126,7 @@ class opasCentralDBMini(object):
                 logger.debug(f"Database opened by ({caller_name}) Specs: {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT}")
                 self.connected = True
             except Exception as e:
-                err_str = f"Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})"
+                err_str = f"opasDataUpdateStatDBError: Cannot connect to database {localsecrets.DBNAME} for host {localsecrets.DBHOST},  user {localsecrets.DBUSER} port {localsecrets.DBPORT} ({e})"
                 print(err_str)
                 logger.error(err_str)
                 self.connected = False
@@ -145,7 +145,7 @@ class opasCentralDBMini(object):
                     logger.debug(f"Database close request, but not open ({caller_name})")
                     
             except Exception as e:
-                logger.error(f"caller: {caller_name} the db is not open ({e})")
+                logger.error(f"opasDataUpdateStatDBError: caller: {caller_name} the db is not open ({e})")
 
         # make sure to mark the connection false in any case
         self.connected = False           
@@ -247,7 +247,7 @@ class opasCentralDBMini(object):
                     citation_table = cursor.fetchall()
                     cursor.close()
                 else:
-                    logger.error("Cursor execution failed.  Can't fetch.")
+                    logger.error("opasDataUpdateStatDBError: Cursor execution failed.  Can't fetch.")
                     
             except MemoryError as e:
                 print(("Memory error loading table: {}".format(e)))
@@ -278,7 +278,7 @@ def load_unified_article_stat():
         try:
             doc_id = n.get("cited_document_id", None)
         except Exception as e:
-            logger.error("no document id")
+            logger.error("opasDataUpdateStatLoadError: no document id")
         else:
             unified_article_stat[doc_id] = ArticleStat(
                 art_cited_5 = n.get("count5", 0), 
@@ -399,10 +399,10 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                             solr_docs2.commit()
                             errStr = f"Updated {update_count} records with citation data"
                             print (errStr)
-                            logger.warning(errStr)
+                            logger.info(errStr)
                         
                     except Exception as err:
-                        errStr = f"Solr call exception for update on {doc_id}: {err}"
+                        errStr = f"opasDataUpdateStatUpdateError: Solr call exception for update on {doc_id}: {err}"
                         print (errStr)
                         skipped_as_update_error += 1
                         logger.error(errStr)
@@ -413,7 +413,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
     try:
         solr_docs2.commit()
     except Exception as e:
-        msg = f"Final commit error {e}"
+        msg = f"opasDataUpdateStatUpdateError: Final commit error {e}"
         print(msg)
         logger.error(msg)
 

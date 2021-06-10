@@ -6,7 +6,11 @@ logger = logging.getLogger()
 
 import unittest
 import requests
-from unitTestConfig import base_plus_endpoint_encoded, headers
+import localsecrets
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+
+# Login!
+sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ID2, password=localsecrets.PADS_TEST_PW2)
 
 class TestAdminLogLevel(unittest.TestCase):
     """
@@ -20,7 +24,7 @@ class TestAdminLogLevel(unittest.TestCase):
     #TODO: Later these will need to be done while logged in.
     
     def test00_loglevel_warning(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?Level=WARN')
+        full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?level=WARN')
         response = requests.put(full_URL, headers=headers)
         assert(response.ok == True)
         # these don't get affected by the level.

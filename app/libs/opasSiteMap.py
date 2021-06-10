@@ -36,7 +36,7 @@ import opasPySolrLib
 SITEMAP_LOC = r"development.org"
 SITEMAP_DATE = "2021-04-24"
 
-def opas_sitemap_index(output_file="../sitemapindex", sitemap_list=[]):
+def opas_sitemap_index(output_file=localsecrets.SITEMAP_PATH, sitemap_list=[]):
    """
    Create a site index
    Call metadata_export to populate the index files.

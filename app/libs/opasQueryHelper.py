@@ -86,35 +86,18 @@ def is_empty(arg):
     else:
         return False
 
-##-----------------------------------------------------------------------------
-#def get_field_data_len(arg):
-    #syn = r"(?P<field>[^\:]*?)\:(?P<rest>.*)"
-    #m = re.match(syn, arg, flags=re.IGNORECASE)
-    #if m:
-        #mgr = m.group("rest")
-        #ret_val = len(mgr)
-    #else:
-        #mgr = ""
-        #ret_val = len(arg)
-        
-    ##print (f"Field Len: {ret_val} / {mgr} / {arg}")
-    #return ret_val
-
 #-----------------------------------------------------------------------------
 def check_search_args(**kwargs):
     ret_val = {}
     errors = False
     for kw in kwargs:
-        #print(kw, ":", kwargs[kw])
         arg = kwargs[kw]
         if arg is not None and "text" in kw:
             # check query and remove proximity if boolean
             try:
                 if are_brackets_balanced(arg):
                     ret_val[kw] = remove_proximity_around_booleans(arg)
-                    #print (f"After remove_proximity: {ret_val[kw]}")
                 else:
-                    #print (f"After remove_proximity: {ret_val[kw]}")
                     ret_val[kw] = 422
                     errors = True
 
@@ -123,8 +106,8 @@ def check_search_args(**kwargs):
                     ret_val[kw] = arg.lower()
                 
             except Exception as e:
-                logger.error(f"fulltext cleanup error {e}")
-                print (f"Cleanup error: {e}")
+                logger.error(f"FulltextCleanupError: {e}")
+                if opasConfig.LOCAL_TRACE: print (f"FulltextCleanupError: {e}")
                 errors = True
         else: # for now, just return.  Later more checks
             ret_val[kw] = arg
@@ -152,7 +135,7 @@ def cleanup_solr_query(solrquery):
     'body_xml:"Evenly Suspended Attention"~25 && body_xml:tuckett'
     
     >>> cleanup_solr_query('body_xml:"Even and Attention"~25 && body_xml:tuckett')   
-    'body_xml:(Even && Attention) && body_xml:tuckett'
+    'body_xml:"Even and Attention"~25 && body_xml:tuckett'
     
     """
     ret_val = solrquery.strip()
@@ -183,13 +166,15 @@ def cleanup_solr_query(solrquery):
 def remove_outer_parens(s):
     """
     If there are outer parens when we don't need them, get rid of them
+    Only one set
     
     >>> a = "(1910-1920)"
     >>> remove_outer_parens(a)
+    '1910-1920'
     
     """
     ret_val = s
-    m = re.match("\s*\(+(?P<inside_data>.*)\)+\s*", s)
+    m = re.match("\s*\((?P<inside_data>.*)\)\s*", s)
     if m:
         ret_val = m.group("inside_data")
     
@@ -305,11 +290,11 @@ def parse_to_query_term_list(str_query):
       
       NOTE: this is only used by testSearchSyntax to produce term_lists!
       
-    >>> str = "dreams_xml:mother and father and authors:David Tuckett and Nadine Levinson"
+    >>> str = "dreams_xml:mother AND father AND authors:David Tuckett AND Nadine Levinson"
     >>> parse_to_query_term_list(str)
     [SolrQueryTerm(connector=' && ', subClause=[], field='dreams_xml', words='mother && father', parent=None, synonyms=False, synonyms_suffix='_syn'), SolrQueryTerm(connector='AND', subClause=[], field='authors', words='David Tuckett && Nadine Levinson', parent=None, synonyms=False, synonyms_suffix='_syn')]
 
-    >>> str = "dreams_xml:(mother and father)"
+    >>> str = "dreams_xml:(mother AND father)"
     >>> parse_to_query_term_list(str)
     [SolrQueryTerm(connector=' && ', subClause=[], field='dreams_xml', words='(mother && father)', parent=None, synonyms=False, synonyms_suffix='_syn')]
     
@@ -357,7 +342,7 @@ class QueryTextToSolr():
       parentheses for grouping the above
     
     >>> qs = QueryTextToSolr()
-    >>> qs.boolConnectorsToSymbols("a and band")
+    >>> qs.bool_ops_to_symbols("a and band")
     'a && band'
     
     >>> qs.markup("dog -mouse", field_label="text_xml")
@@ -414,7 +399,7 @@ class QueryTextToSolr():
                 logger.error(f"Processing error: {e}")
         return ret_val    
 
-    def boolConnectorsToSymbols(self, str_input):
+    def bool_ops_to_symbols(self, str_input):
         ret_val = str_input
         if isinstance(str_input, str):
             if opasgenlib.not_empty(ret_val) and not opasgenlib.in_quotes(ret_val):
@@ -424,12 +409,21 @@ class QueryTextToSolr():
         
         return ret_val
         
+    def remove_spaces(self, str_input):
+        ret_val = self.bool_ops_to_symbols(str_input)
+        ret_val = ret_val.replace(" ", "")
+        ret_val = ret_val.replace("||", " || ")
+        ret_val = ret_val.replace("&&", " && ")
+        ret_val = ret_val.replace("NOT", " NOT ") # upper case a must
+        
+        return ret_val
+
     def markup(self, str_input, field_label=None, field_thesaurus=None, quoted=False):
         
         bordered = opasgenlib.parens_outer(str_input) or opasgenlib.in_quotes(str_input) or opasgenlib.one_term(str_input) or opasgenlib.in_brackets(str_input)
 
         if quoted == False:
-            str_input_mod = self.boolConnectorsToSymbols(str_input)
+            str_input_mod = self.bool_ops_to_symbols(str_input)
             # str_input_mod = self.wrap_clauses(str_input_mod)
             if field_label is not None:
                 if not bordered: 
@@ -441,11 +435,11 @@ class QueryTextToSolr():
         else:
             if field_label is not None:
                 if not bordered:
-                    ret_val = self.boolConnectorsToSymbols(f'{field_label}:"({str_input})"')
+                    ret_val = self.bool_ops_to_symbols(f'{field_label}:"({str_input})"')
                 else:
-                    ret_val = self.boolConnectorsToSymbols(f'{field_label}:"{str_input}"')
+                    ret_val = self.bool_ops_to_symbols(f'{field_label}:"{str_input}"')
             else:
-                ret_val = self.boolConnectorsToSymbols(f'"{str_input}"')
+                ret_val = self.bool_ops_to_symbols(f'"{str_input}"')
 
         # watch for - inside parens
         ret_val = re.sub(r"\(\-([A-Z]+)", "-(\g<1>", ret_val)
@@ -523,6 +517,40 @@ def orclause_paren_wrapper(search_clause):
 
     return ret_val
 
+def page_arg_parser(pgrg=None, pgstart=None, pgend=None):
+    """
+    """
+    ret_val = None
+
+    if pgrg is not None:
+        try:
+            pgrg_parsed = pgrg.split("-")
+            pgstart = pgrg_parsed[0]
+            if len(pgstart) > 0:
+                pgstart = pgstart.strip()
+            else:
+                pgstart = "*"
+
+            try:
+                pgend = pgrg_parsed[1]
+                if len(pgend) > 0:
+                    pgend = pgend.strip()
+                else:
+                    pgend = None
+            except Exception as e:
+                pgend = None
+        except Exception as e:
+            logger.warning(f"Bad pgrg: {pgrg} ({e})")
+        
+    if pgstart and pgend is not None:
+        ret_val = f"({pgstart}-{pgend})"
+    elif pgstart is not None:
+        ret_val = f"({pgstart}-*) || {pgstart}"
+    elif pgend is not None:
+        ret_val = f"(*-{pgend})"
+        
+    return ret_val
+
 def year_arg_parser(year_arg):
     """
     Look for full start/end year ranges submitted in a single field.
@@ -535,9 +563,9 @@ def year_arg_parser(year_arg):
         1970
 
     >>> year_arg_parser("=1955")
-    '&& ( art_year_int:=1955 )'
+    '&& ( art_year_int:(=1955) )'
     >>> year_arg_parser("1970")
-    '&& ( art_year_int:1970 )'
+    '&& ( art_year_int:(1970) )'
     >>> year_arg_parser("-1990")
     '&& ( art_year_int:[* TO 1990] )'
     >>> year_arg_parser("1980-")
@@ -616,46 +644,6 @@ def get_term_list_spec(termlist):
 
     return ret_val        
 
-#def dequote(fulltext1):
-    #"""
-    #>>> test1='body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)'
-    #>>> dequote(test1)
-    #' && body_xml:("Evenly Suspended Attention"~25) && body_xml:(tuckett)'
-    
-    #>>> test2 = 'text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:("basic || principles"~25)'
-    #>>> dequote(test2)
-    #' && text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:(basic || principles)'
-    
-    #>>> test3 = 'text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:("basic OR principles"~25)'
-    #>>> dequote(test3)
-    #' && text:("Evenly Suspended Attention"~25) && body_xml:(tuckett) && body_xml:(basic || principles)'
-    
-    #"""
-    #quote_wrapper = '\s*(.*\:)?\(\"(.*)\"(~[1-9][0-9]*)\)|\s*(\&\&)?\s*(.*\:)?\((.*)\)'
-    
-    #clauses = fulltext1.split(" && ")
-    #items = []
-    #for clause in clauses:
-        ## print (f"Clause:{clause}")
-        #m = re.findall(quote_wrapper, clause, flags=re.I)
-        #for n in m:
-            #items.append([x for x in n if len(x) > 0 and x != "&&"])
-        ## print (items)
-    
-    #new_search = ""
-    #for item in items:
-        #m = re.search("\&\&|\|\||\sAND\s|\sOR\s", item[1], flags=re.I)
-        #if m is not None:
-            #new_search += f' && {item[0]}({item[1]})'
-        #else:
-            #try:
-                #new_search += f' && {item[0]}("{item[1]}"{item[2]})'
-            #except Exception as e:
-                #logger.warning (f"Dequote Exception {e}")               
-
-    ## print (f"New Search: {new_search[4:]}")
-    #return new_search       
-
 def remove_proximity_around_booleans(query_str):
     """
     Clients like PEP-Web (Gavant) send fulltext1 as a proximity string.
@@ -669,7 +657,7 @@ def remove_proximity_around_booleans(query_str):
 
     >>> a = 'body_xml:"Even and Attention"~25 && body_xml:tuckett'
     >>> remove_proximity_around_booleans(a)
-    'body_xml:(Even and Attention) && body_xml:tuckett'
+    'body_xml:"Even and Attention"~25 && body_xml:tuckett'
     
     """
     srch_ptn = r'\"([A-z\s0-9\!\@\*\~\-\&\|\[\]]+)\"~25'
@@ -754,8 +742,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   fulltext1=None,          # term, phrases, and boolean connectors with optional fields for full-text search
                                   smarttext=None,          # experimental detection of search parameters
                                   paratext=None,           # search paragraphs as child of scope
+                                  facetquery=None,         # Solr query syntax to apply against the facet fields
                                   parascope=None,          # parent_tag of the para, i.e., scope of the para ()
                                   art_level: int=None,     # Level of record (top or child, as artlevel)
+                                  document_id=None,        # new 2021-05-18 for openurl
                                   like_this_id=None,       # for morelikethis
                                   cited_art_id=None,       # for who cited this
                                   similar_count:int=0,     # Turn on morelikethis for the set
@@ -768,10 +758,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   source_lang_code=None,   # source language code
                                   vol=None,                # match only this volume (integer)
                                   issue=None,              # match only this issue (integer)
+                                  pgrg=None,
+                                  pgstart=None,
+                                  pgend=None, 
                                   author=None,             # author last name, optional first, middle.  Wildcards permitted
                                   title=None,
                                   articletype=None,        # types of articles: article, abstract, announcement, commentary, errata, profile, report, or review
-                                  datetype=None,           # not implemented
+                                  # datetype=None,           # not implemented from API v1
                                   startyear=None,          # can contain complete range syntax
                                   endyear=None,            # year only.
                                   citecount: str=None,     # can include both the count and the count period, e.g., 25 in 10 or 25 in ALL
@@ -834,8 +827,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     >>> search = parse_search_query_parameters(journal="IJP", vol=57, author="Tuckett")
     >>> search.solrQuery.analyzeThis
-    '(art_authors_text:(Tuckett) || art_authors_citation:(Tuckett))'
-    
+    '((art_authors_text:Tuckett) || (art_authors_citation_list_strings_sql:(Tuckett) || art_authors_ids_strings_sql:(Tuckett) || art_authors_mast_list_strings_sql:(Tuckett)))'
+
     """
     artLevel = 1 # Doc query, sets to 2 if clauses indicate child query
     search_q_prefix = ""
@@ -978,7 +971,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     
     if sort is not None:
         s = sort
-        mat = "(" + "|".join(opasConfig.PREDEFINED_SORTS.keys()) + ")"
+        mat = "(" + "|".join(schemaMap.PREDEFINED_SORTS.keys()) + ")"
         m = re.match(f"{mat}(\s(asc|desc))?", s, flags=re.IGNORECASE)
         if m: #  one of the predefined sorts was used.
             try:
@@ -986,18 +979,38 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 direction = m.group(2)
                 if direction is None:
                     try:
-                        direction = opasConfig.PREDEFINED_SORTS[sort_key][1]
+                        direction = schemaMap.PREDEFINED_SORTS[sort_key][1]
                     except KeyError:
                         direction = "DESC" # default
                     except Exception as e:
                         logger.error(f"PREDEFINED_SORTS lookup error {e}")
                         direction = "DESC" # default
                 
-                sort = opasConfig.PREDEFINED_SORTS[sort_key][0].format(direction)
+                sort = schemaMap.PREDEFINED_SORTS[sort_key][0].format(direction)
+
             except Exception as e:
-                logger.warning(f"Predefined sort key {s} not found. Trying it directly against the database.")
+                logger.warning(f"PREDEFINED_SORTS sort key {s} not found. Trying it directly against the database.")
         else:
-            logger.debug(f"No match with predefined sort key; Passing sort through: {s}")
+            mat = "(" + "|".join(schemaMap.SORT_FIELD_MAP.keys()) + ")"
+            m = re.match(f"{mat}(\s(asc|desc))?", s, flags=re.IGNORECASE)
+            if m: #  one of the predefined sorts was used.
+                try:
+                    sort_key = m.group(1).lower()
+                    direction = m.group(2)
+                    if direction is None:
+                        try:
+                            direction = schemaMap.SORT_FIELD_MAP[sort_key][1]
+                        except KeyError:
+                            direction = "DESC" # default
+                        except Exception as e:
+                            logger.error(f"SORT_FIELD_MAP lookup error {e}")
+                            direction = "DESC" # default
+                    
+                    sort = schemaMap.SORT_FIELD_MAP[sort_key][0] + " " + direction
+                except Exception as e:
+                    logger.warning(f"SORT_FIELD_MAP sort key {s} not found. Trying it directly against the database.")
+            else:
+                logger.debug(f"No match with predefined sort key; Passing sort through: {s}")
     #else:
         #sort = f"{opasConfig.DEFAULT_SOLR_SORT_FIELD} {opasConfig.DEFAULT_SOLR_SORT_DIRECTION}"
 
@@ -1017,7 +1030,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
             logger.warning(f"SmartSearch result explanation is not defined {e}")
             
         if schema_field is not None:
-            if schema_field == "solr":
+            if schema_field == "solr": # adv comes back as schema_field "solr" as does if they use "solr::"
                 schema_value = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
                 if opasgenlib.not_empty(schema_value):
                     search_q += f"&& {schema_value} "
@@ -1091,8 +1104,31 @@ def parse_search_query_parameters(search=None,             # url based parameter
         
                 art_authors = search_dict.get("author_list")
                 if art_authors is not None:
-                    if author is None:
-                        author = art_authors
+                    try:
+                        #lastnames = [x[1] for x in art_authors]
+                        #authorids = [x for x in art_authors]
+                        authorids = art_authors
+                    except Exception as e:
+                        logging.warning(f"Error getting author names: {e}")
+                    else:
+                        authors_bool = ""
+                        for n in authorids:
+                            n_nospaces = re.sub(" ", "", n)
+                            if authors_bool == "":
+                                authors_bool = f'("{n}" '
+                                authors_bool_nospaces = f'({n_nospaces}* ' # author id with no spaces
+                            else:
+                                authors_bool += f'&& "{n}" '
+                                authors_bool_nospaces += f'&& {n_nospaces}* ' # author id with no spaces
+                                
+                        if authors_bool != "":
+                            authors_bool += ")"
+                            authors_bool_nospaces += ")"
+                            # _nospaces for special space removed solr schema fields, of type string_sql
+                            filter_q += f"&& (art_authors:({authors_bool}) || art_authors_ids_strings_sql:({authors_bool_nospaces}) || art_authors_citation_list_strings_sql:({authors_bool_nospaces}) || art_authors_mast_list_strings_sql:({authors_bool_nospaces})) "
+                            
+                    #if author is None:
+                        #author = art_authors
                 
                 art_author = search_dict.get("author")
                 if art_author is not None:
@@ -1159,6 +1195,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if art_level is not None:
         filter_q = f"&& art_level:{art_level} "  # for solr filter fq
         
+    if document_id is not None:
+        filter_q += f"&& art_id:({document_id}) "
+        
     if paratext is not None:
         # set up parameters as a solrQueryTermList to share that processing
         try:
@@ -1209,9 +1248,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
                 boolean_connector = query.connector
                 if artLevel == 2:
                     if query.parent is None:
-                        solr_parent = schemaMap.user2solr("doc") # default
+                        solr_parent = schemaMap.user2solrparent("doc") # default
                     else:
-                        solr_parent = schemaMap.user2solr(query.parent)
+                        solr_parent = schemaMap.user2solrparent(query.parent)
     
                     if last_parent is None:
                         last_parent = solr_parent
@@ -1287,8 +1326,6 @@ def parse_search_query_parameters(search=None,             # url based parameter
             fulltext1 = fulltext1.replace("text_xml_offsite:", "text_xml_offsite_syn:")
             
         analyze_this = f"&& {fulltext1} "
-        #if smart_to_fulltext1 is not None:
-            #analyze_this += f"&& {smart_to_fulltext1} "
             
         if artLevel == 1:
             search_q += analyze_this
@@ -1384,27 +1421,40 @@ def parse_search_query_parameters(search=None,             # url based parameter
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
+    page_range = page_arg_parser(pgrg=pgrg, pgstart=pgstart, pgend=pgend)
+    if opasgenlib.not_empty(page_range):
+        pgrg = qparse.markup(page_range, "art_pgrg") # convert AND/OR/NOT, set up field query
+        analyze_this = f"&& {pgrg} "
+        filter_q += analyze_this
+        search_analysis_term_list.append(analyze_this)  # Not collecting this!
+
     if opasgenlib.not_empty(author):
-        author = author
-        # author comes in inside quotes, due to issue #410 regarding faceting.
-        # they can use booleans though, the client strips them in that case
-        # but without a boolean connector, without being stripped, they cannot use a wild card on a name
-        # So, strip if
-        #  only one word
-        #  not an author ID
-        #  has wildcards
-        if smartsearchLib.str_has_one_word(author) or smartsearchLib.quoted_str_has_wildcards(author) and not smartsearchLib.str_has_author_id(author):
-            author = strip_outer_matching_chars(author, '\"')
+        #author = strip_outer_matching_chars(author, '\"')
+        if smartsearchLib.is_quoted_str(author) and not smartsearchLib.quoted_str_has_wildcards(author):
+            if smartsearchLib.str_has_one_word(author) \
+               or smartsearchLib.quoted_str_has_wildcards(author) \
+               and not (smartsearchLib.str_has_author_id(author) \
+                        or smartsearchLib.quoted_str_has_booleans):
+                author = strip_outer_matching_chars(author, '\"')
+            else:
+                # only do this test if necessary, it would be the slowest of the four
+                if smartsearchLib.str_is_author_mastname(author):
+                    author = strip_outer_matching_chars(author, '\"')
+                else: # leave the quotes on.
+                    pass # allow me to watch these for now.
             
         # if there's or and or not in lowercase, need to uppercase them
         # author = " ".join([x.upper() if x in ("or", "and", "not") else x for x in re.split("\s+(and|or|not)\s+", author)])
         # art_authors_citation:("tuckett, D.") OR art_authors_text:("tuckett, David")
-        author_or_corrected = orclause_paren_wrapper(author)
-            
-        author_text = qparse.markup(author_or_corrected, "art_authors_text", quoted=False) # convert AND/OR/NOT, set up field query
-        author_cited = qparse.markup(author_or_corrected, "art_authors_citation", quoted=False)
-        author_mast = qparse.markup(author_or_corrected, "art_authors_mast", quoted=False)
-        analyze_this = f'&& ({author_text} || {author_cited} || {author_mast})' # search analysis
+        # author_or_corrected = orclause_paren_wrapper(author)
+        author_text = qparse.markup(author, "art_authors_text", quoted=False) # convert AND/OR/NOT, set up field query
+        author_wild = qparse.remove_spaces(strip_outer_matching_chars(author, '\"'))
+        #author_wildcard_search = f'&& (({author_text}) || (art_authors_citation_list_ngrm:("{author}")) || (art_authors_citation_list_strings_sql:({author_wild}) || art_authors_ids_strings_sql:({author_wild}) || art_authors_mast_list_strings_sql:({author_wild}))) '
+        author_wildcard_search = f'&& (({author_text}) || (art_authors_citation_list_strings_sql:({author_wild}) || art_authors_ids_strings_sql:({author_wild}) || art_authors_mast_list_strings_sql:({author_wild}))) '
+        analyze_this = author_wildcard_search
+        #author_cited = qparse.markup(author_or_corrected, "art_authors_citation", quoted=False)
+        #author_mast = qparse.markup(author_or_corrected, "art_authors_mast", quoted=False)
+        #analyze_this = f'&& ({author_text} || {author_cited} || {author_mast})' # search analysis
         filter_q += analyze_this        # query filter qf
         search_analysis_term_list.append(analyze_this)  
         query_term_list.append(author)       
@@ -1417,9 +1467,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
         search_analysis_term_list.append(analyze_this)
         query_term_list.append(articletype)       
         
-    if opasgenlib.not_empty(datetype):
-        #TODO for now, lets see if we need this. (We might not)
-        pass
+    #if opasgenlib.not_empty(datetype):
+        ##TODO for now, lets see if we need this. (We might not)
+        #pass
 
     if startyear is not None and endyear is None:
         # Only startyear specified, can use =. >, <, or - for range
@@ -1583,6 +1633,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
     solr_query_spec.solrQuery.searchQ = search_q
     solr_query_spec.solrQuery.searchQPrefix = search_q_prefix
     solr_query_spec.solrQuery.filterQ = filter_q
+    solr_query_spec.solrQuery.facetQ = facetquery
     solr_query_spec.solrQuery.semanticDescription = search_result_explanation
     solr_query_spec.solrQuery.analyzeThis = analyze_this
     solr_query_spec.solrQuery.searchAnalysisTermList = search_analysis_term_list
@@ -1606,7 +1657,7 @@ def set_return_fields(solr_query_spec: models.SolrQuerySpec,
     if solr_query_spec.returnFieldSet is not None:
         solr_query_spec.returnFieldSet = solr_query_spec.returnFieldSet.upper()
         
-    if solr_query_spec.returnFieldSet == "DEFAULT":
+    if solr_query_spec.returnFieldSet == "DEFAULT": # keyword default
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
     elif solr_query_spec.returnFieldSet == "TOC":
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_TOC_FIELDS
@@ -1618,7 +1669,7 @@ def set_return_fields(solr_query_spec: models.SolrQuerySpec,
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_STAT_FIELDS
     elif solr_query_spec.returnFieldSet == "CONCORDANCE":
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_CONCORDANCE_FIELDS
-    else: #  true default!
+    else: #  true default, if not specified
         solr_query_spec.returnFieldSet = "DEFAULT"
         solr_query_spec.returnFields = opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
 
@@ -1959,7 +2010,8 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             if result.get("art_doi", None): documentListItem.doi = result.get("art_doi", None)
             documentListItem.issue = result.get("art_iss", None)
             documentListItem.issn = result.get("art_issn", None)
-            # documentListItem.isbn = result.get("art_isbn", None) # no isbn in solr stored data, only in products table
+            documentListItem.isbn = result.get("art_isbn", None)
+            
             # see if using art_title instead is a problem for clients...at least that drops the footnote
             documentListItem.title = result.get("art_title", "")  
             # documentListItem.title = result.get("art_title_xml", "")  
@@ -1983,6 +2035,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             citeas = force_string_return_from_various_return_types(citeas)
             documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
             documentListItem.documentRefHTML = citeas
+            
             # para level is ok, default to archive
             try:
                 if documentListItem.docLevel >= 2:
@@ -2112,7 +2165,7 @@ if __name__ == "__main__":
         paratext="hij", author="klm", title="nop", startyear="1922", endyear="2020"
     )
     
-    print (ret)
+    print (f"check_search_args returns: {ret}")
     
     import doctest
     doctest.testmod()

@@ -17,8 +17,6 @@ ocd = opasCentralDBLib.opasCentralDB()
 
 class TestMostFromDb(unittest.TestCase):
     """
-    Tests
-    
     Note: tests are performed in alphabetical order, hence the function naming
           with forced order in the names.
     

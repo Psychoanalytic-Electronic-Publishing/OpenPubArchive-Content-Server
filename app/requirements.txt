@@ -43,7 +43,7 @@ passlib==1.7.2
 Pillow==8.1.2
 #
 pycparser==2.20
-pydantic==1.6.1
+pydantic==1.6.2
 PyJWT==1.7.1
 PyMySQL==0.10.0
 #
