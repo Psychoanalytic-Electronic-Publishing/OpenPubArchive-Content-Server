@@ -1853,6 +1853,7 @@ def database_get_whats_new(days_back=14,
         num_found = results.raw_response['response']['numFound']
         whats_new_list_items = []
         row_count = 0
+        eligible_entry_full_count = 0
         already_seen = []
         for result in results.docs:
             document_id = result.get("art_id", None)
@@ -1870,8 +1871,7 @@ def database_get_whats_new(days_back=14,
                 continue
             
             # see if this is already been in the article tracker
-            
-    
+                
             volume = result.get("art_vol", None)
             issue = result.get("art_iss", "")
             year = result.get("art_year", None)
@@ -1885,6 +1885,11 @@ def database_get_whats_new(days_back=14,
                 continue
             else:
                 already_seen.append(display_title)
+
+            eligible_entry_full_count += 1
+            if row_count > limit:
+                continue
+
             volume_url = "/v1/Metadata/Contents/%s/%s" % (PEPCode, issue)
     
             item = models.WhatsNewListItem( documentID = result.get("art_id", None),
@@ -1901,7 +1906,7 @@ def database_get_whats_new(days_back=14,
 
             whats_new_list_items.append(item)
             
-            row_count += 1
+            row_count += 1 # number of rows added
             #if row_count > limit:
                 #break
     
@@ -1915,11 +1920,11 @@ def database_get_whats_new(days_back=14,
             limited_whats_new_list = whats_new_list_items
         
         response_info = models.ResponseInfo( count = len(results.docs),
-                                             fullCount = num_found,
+                                             fullCount = eligible_entry_full_count,
                                              limit = limit,
                                              offset = offset,
                                              listType="newlist",
-                                             fullCountComplete = limit >= num_found,
+                                             fullCountComplete = limit >= eligible_entry_full_count,
                                              request=f"{req_url}",
                                              timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
                                              )

@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0609/v2.1.11" # semver versioning now added after date.
+__version__     = "2021.0610/v2.1.12" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -626,14 +626,15 @@ async def reports(response: Response,
         orderby_clause = "ORDER BY last_update DESC"
         header = ["user id",
                   "session id",
-                  "session_start",
+                  "session start",
                   "session end",
                   "item of interest",
                   "endpoint",
                   "params",
                   "status code",
                   "status message",
-                  "last update"]
+                  "last update",
+                  "session activity id"]
     elif report == models.ReportTypeEnum.userSearches:
         standard_filter = "endpoint rlike '.*Search' "
         if matchstr is not None:
@@ -648,7 +649,8 @@ async def reports(response: Response,
                   "params",
                   "status code",
                   "status message",
-                  "last update"]
+                  "last update",
+                  "session activity id"]
     elif report == models.ReportTypeEnum.documentViews:
         standard_filter = "1 = 1 " 
         report_view = "vw_reports_document_views"

@@ -40,7 +40,7 @@ class TestDatabaseWhatsNew(unittest.TestCase):
         """
         """
         # request login to the API server
-        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=10&limit=5')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=10&limit=99')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -48,8 +48,8 @@ class TestDatabaseWhatsNew(unittest.TestCase):
         response_info = r["whatsNew"]["responseInfo"]
         response_set = r["whatsNew"]["responseSet"] 
         print (r)
-        assert(response_info["limit"] == 5)
-        assert(response_info["count"] >= 3)
+        assert(response_info["limit"] == 99)
+        assert(response_info["count"] == response_info["fullCount"])
 
 
 if __name__ == '__main__':

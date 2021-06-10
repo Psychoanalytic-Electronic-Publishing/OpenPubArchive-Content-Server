@@ -102,7 +102,7 @@ class TestMost(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         #  let's fail
         r = response.json()
-        assert(reD.sponse.ok == False)
+        assert(response.ok == False)
 
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=videos&viewperiod=4&limit=5')
         response = requests.get(full_URL, headers=headers)
