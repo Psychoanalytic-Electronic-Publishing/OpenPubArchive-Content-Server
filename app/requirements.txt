@@ -1,6 +1,7 @@
 # Updated 2021-03-11 to for pdfrw
 # Updated 2021-03-18 requests-2.25.1 urllib3-1.26.4 botocore-1.20.31 boto3-1.17.31 
 #      many more need updating, but postponing for later.  Pillow was needed due to security bug
+# Updated 2021-06-10 more Dependabot alerts, urllib3, Pillow, and FastAPI
 #
 aiofiles==0.5.0
 #
@@ -19,7 +20,7 @@ docutils==0.15.2
 #
 EbookLib==0.17.1
 #
-fastapi==0.61.0
+fastapi==0.65.2
 fsspec==0.8.0
 future==0.18.2
 h11==0.9.0
@@ -40,7 +41,7 @@ pandas==1.1.1
 pytz==2020.1
 #
 passlib==1.7.2
-Pillow==8.1.2
+Pillow>=8.2.0
 #
 pycparser==2.20
 pydantic==1.6.2
@@ -63,7 +64,7 @@ s3transfer==0.3.3
 six==1.15.0
 #
 #
-starlette==0.13.6
+starlette>=0.14.2
 #
 urllib3==1.25.10
 uvicorn==0.11.8

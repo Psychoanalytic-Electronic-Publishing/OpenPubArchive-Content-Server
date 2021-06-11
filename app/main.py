@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0610/v2.1.12" # semver versioning now added after date.
+__version__     = "2021.0611/v2.1.14" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -5263,6 +5263,8 @@ if __name__ == "__main__":
     print (f"Running in Python: {sys.version_info[0]}.{sys.version_info[1]}")
     print (f"Configuration used: {CONFIG}")
     print (f"Version: {__version__}")
+    import fastapi
+    print (f"FastAPI Version {fastapi.__version__}")
     
     uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=False, log_level="warning")
     # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
