@@ -1,3 +1,4 @@
+# Updated 2021-06-10 more Dependabot alerts, urllib3, Pillow, and FastAPI
 bcrypt==3.2.0
 certifi==2020.6.20
 cffi==1.14.2
@@ -13,4 +14,4 @@ pysolr==3.9.0
 requests==2.24.0
 six==1.15.0
 sshtunnel==0.1.5
-urllib3==1.25.10
+urllib3>=1.26.5
