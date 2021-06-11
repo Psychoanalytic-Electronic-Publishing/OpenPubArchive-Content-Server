@@ -235,7 +235,7 @@ file.
 ***
 
 *INTERACTIVE DOCS USAGE NOTE*: For those using the interactive Docs interface
-to test out endpoints, the built-in feature has one significant issue: the 
+to test out endpoints, the built-in feature has a significant issue: the 
 input field widths are too small for some of our potential parameter values.
 A workaround for this is to get a browser extension called `Stylebot`, which
 will let you add a local CSS rule to fix that. Add this rule for the URL
@@ -248,6 +248,15 @@ where the docs are located for you:
             
 
 and that will enlarge the fields persistently.
+
+*INTERACTIVE DOCS USAGE NOTE2*: For those using the interactive Docs interface
+to test out endpoints, the built-in feature has a second significant issue: 
+When using GET and the interactive documentation to try out several of the endpoints
+notably the search endpoints, you must clear the "Request Body" field before submitting.
+The "Request Body" field only applies to POST, but the code is shared for maintenance
+and efficiency, but this trips up the interface for interactive docs.  The "Request Body"
+is used with POST to provide a data structure input with more resolution than the endpoint parameters.
+
 ***    
    """,
         version = f"{__version__}",
@@ -2198,7 +2207,8 @@ async def database_glossary_search_v2(response: Response,
        ```
 
     ## Potential Errors
-       N/A
+       When using GET and the interactive documentation to try out this endpoint, you must clear the "Request Body" field before submitting.
+       The "Request Body" field only applies to POST, but the code is shared, which trips up the interface for interactive docs.
     
     """
     opasDocPermissions.verify_header(request, "database_glossary_search_v2") # for debugging client call
@@ -2326,7 +2336,8 @@ async def database_search(response: Response,
           - 2020-09-10 removed returnFields...covered in querySpec for POST version
 
     ## Limitations
-       N/A
+       When using GET and the interactive documentation to try out this endpoint, you must clear the "Request Body" field before submitting.
+       The "Request Body" field only applies to POST, but the code is shared, which trips up the interface for interactive docs.
 
     ## Potential Errors
        N/A
@@ -2515,7 +2526,8 @@ def database_searchanalysis(response: Response,
        6/2020 - The returnfields parameter was removed as not useful here.
 
     ## Limitations
-       N/A
+       When using GET and the interactive documentation to try out this endpoint, you must clear the "Request Body" field before submitting.
+       The "Request Body" field only applies to POST, but the code is shared, which trips up the interface for interactive docs.
 
     ## Potential Errors
        N/A
