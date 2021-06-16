@@ -1,8 +1,51 @@
 """
 This file contains standard messages and pages to be used by the server
 """
-
+# Note fpdf does not support type in lists, or much styling!
 COPYRIGHT_PAGE_HTML = """
+<html>
+<body>
+  <section>
+  <font color=#000000>
+    <h2 style="color:black;">Authorized Users</h2>
+    <p>For use only by [[username]]. Reproduction prohibited. Usage subject to PEP terms &amp; conditions
+(see <a href='https://terms.pep-web.org'>terms.pep-web.org</a>).</p>
+  </section>
+  <section>
+    <h2>PEP-Web Copyright</h2>
+    <p><strong>Copyright.</strong> The PEP-Web Archive is protected by
+United States copyright laws and international treaty provisions.</p>
+    <ol>
+     <li>All copyright (electronic and other) of the text, images, and photographs of the
+publications appearing on PEP-Web is retained by the original
+publishers of the Journals, Books, and Videos. Saving the
+exceptions noted below, no portion of any of the text, images,
+photographs, or videos may be reproduced or stored in any form
+without prior permission of the Copyright owners.</li>
+     <li>Authorized Uses.
+Authorized Users may make all use of the Licensed Materials
+as is consistent with the Fair Use Provisions of United States and
+international law. Nothing in this Agreement is intended to limit
+in any way whatsoever any Authorized User's rights under the
+Fair Use provisions of United States or international law to use
+the Licensed Materials.</li>
+     <li>During the term of any subscription the Licensed Materials may be used for
+    purposes of research, education or other non-commercial use as follows:
+       <ol style="list-style-type:lower-alpha">
+        <li>Digitally Copy. Authorized Users may download and digitally copy a reasonable
+portion of the Licensed Materials for their own use only.
+        </li>
+        <li>Print Copy. Authorized Users may print (one copy per user) reasonable potions
+of the Licensed Materials for their own use only.
+        </li>
+       </ol>
+    </ol>
+</section>
+</body>
+</html>
+"""
+
+OLD_COPYRIGHT_PAGE_HTML = """
                     <div class="copyrightpage">
                         <h1 class="main_title">PEP-Web Copyright</h1>
                         <!--UserInfoHere-->

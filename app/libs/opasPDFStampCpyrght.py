@@ -2,19 +2,24 @@
 # Adding a watermark to a multi-page PDF
 import sys
 import os
+
 import logging
 logger = logging.getLogger(__name__)
 
 from pdfrw import PdfReader, PdfWriter, PageMerge
-from fpdf import FPDF
+from fpdf import FPDF, HTMLMixin
 #from xhtml2pdf import pisa             # for HTML 2 PDF conversion
 import opasXMLHelper as opasxmllib
-from stdMessageLib import COPYRIGHT_PAGE_HTML
+import stdMessageLib
+import opasConfig
+
 COPYRIGHT_PAGE = "pepwebcopyrightpage.pdf"
+# copyright_usage = f"For use only by {username}. Reproduction prohibited. Usage subject to PEP terms & conditions (see <a href='https://terms.pep-web.org'>terms.pep-web.org</a>)."
+
 import tempfile
 import ntpath
 
-class PDF(FPDF):
+class PDF(FPDF, HTMLMixin):
     def header(self):
         # Logo
         # Arial bold 15
@@ -53,6 +58,37 @@ def get_append_page(new_page_filename):
     new_page = PdfReader(new_page_filename)
     return new_page.pages[0]
 
+def write_copyright_page(username="PEP"):
+    """
+    This is very limited styling using fpdf2
+    Should try to replace fpdf2 here with weasyprint to properly print the HTML
+    
+    NOT YET USED.
+    
+    >>> filename = write_copyright_page(username="Neil Shapiro")
+    >>> print (filename)
+    
+    """
+    try:
+        file_base = next(tempfile._get_candidate_names()) + ".pdf"
+        copyright_file = os.path.join(tempfile.gettempdir(), file_base)
+        pdf = PDF()
+        pdf.username_to_set = username
+        pdf.add_page()
+        pdf.set_font("Times", size=12)
+        pdf.set
+        pdf.set_text_color(0,0,0)
+        #pdf.write_html(COPYRIGHT_PAGE_HTML)
+        copypage = stdMessageLib.COPYRIGHT_PAGE_HTML.replace("[[username]]", username)
+        pdf.write_html(copypage)
+        pdf.output(copyright_file, 'F')
+    except Exception as e:
+        logger.error(f"Error writing PDF Copyright File: {e}")
+    else:
+        logger.debug(f"Wrote PDF Copyright File: {copyright_file}")
+    
+    return copyright_file
+
 def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
     # generate 'watermark' merge file
     try:
@@ -85,6 +121,8 @@ def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
     try:
         output_file = os.path.join(tempfile.gettempdir(), input_file_basename + f"{sep}{suffix}.pdf")
         logger.debug(f"Writing Stamped Copyright Output File: {output_file}")
+        if opasConfig.LOCAL_TRACE:
+            print(f"Writing Stamped Copyright Output File: {output_file}")
         watermark_file = headerfooterfile
         
         # define the reader and writer objects
@@ -103,7 +141,16 @@ def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
         #writer_output.addpage(get_append_page("./libs/" + COPYRIGHT_PAGE))
         # add final copyright page
         writer = PdfWriter(trailer=PdfReader(output_file))
-        append_page = get_append_page("./libs/" + COPYRIGHT_PAGE) # append at end
+        try:
+            append_page = get_append_page("./libs/" + COPYRIGHT_PAGE) # append at end
+        except Exception as e:
+            logger.error(f"Could not access copyright page in libs (error:{e})")
+            try:
+                append_page = get_append_page("./app/libs/" + COPYRIGHT_PAGE) # append at end
+            except Exception as e:
+                logger.error(f"Could not access copyright page in ./app/libs either.  using original file (error:{e})")
+                output_file = input_file
+            
         writer.pagearray.append(append_page)
         # final write
         writer.write(output_file)
@@ -132,10 +179,11 @@ if __name__ == "__main__":
     # add ch to logger
     logger.addHandler(ch)
     
-    #import doctest
-    #doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
-    #doctest.testmod()    
-    stampcopyright("Neil Shapiro", input_file="../IJP.077.0217A.pdf")
+    import doctest
+    doctest.testmod(optionflags=doctest.ELLIPSIS|doctest.NORMALIZE_WHITESPACE)
+    
+    # doctest.testmod()    
+    # stampcopyright("Neil Shapiro", input_file="../IJP.077.0217A.pdf")
     print ("Fini. Tests complete.")
     
     

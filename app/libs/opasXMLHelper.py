@@ -1603,9 +1603,11 @@ def html_to_epub(htmlstr,
     book.set_language(lang)
     
     try:
-        download_info = f"<p><b>Copyrighted Material. For use only by {session_info.username}. Reproduction prohibited. Usage subject to PEP terms & conditions (see <a href='https://terms.pep-web.org'>terms.pep-web.org</a>).</b></p>"
+        username = session_info.username
+        #download_info = f"<p><b>Copyrighted Material. For use only by {session_info.username}. Reproduction prohibited. Usage subject to PEP terms & conditions (see <a href='https://terms.pep-web.org'>terms.pep-web.org</a>).</b></p>"
     except:
-        download_info = "<p><b>Copyrighted Material. Reproduction prohibited. For use only by PEP-Web registered users. (see <a href='https://terms.pep-web.org'>terms.pep-web.org</a>)</b></p>"
+        username = "PEP-Web subscriber"
+        #download_info = "<p><b>Copyrighted Material. Reproduction prohibited. For use only by PEP-Web registered users. (see <a href='https://terms.pep-web.org'>terms.pep-web.org</a>)</b></p>"
 
     authors = authors.replace(" &amp; ", " & ")
     book.add_author(authors)   
@@ -1627,7 +1629,8 @@ def html_to_epub(htmlstr,
 
     c1.set_content(htmlstr)
     copyright_text = stdMessageLib.COPYRIGHT_PAGE_HTML
-    copyright_text = copyright_text.replace("<!--UserInfoHere-->", download_info)
+    copyright_text = copyright_text.replace("[[username]]", username)
+    # copyright_text = copyright_text.replace("<!--UserInfoHere-->", download_info)
     # copyright page / chapter
     c2 = epub.EpubHtml(title='Copyright',
                        file_name='copyright.xhtml')
