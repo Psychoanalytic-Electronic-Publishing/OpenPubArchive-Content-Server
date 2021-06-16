@@ -12,6 +12,7 @@ from fpdf import FPDF, HTMLMixin
 import opasXMLHelper as opasxmllib
 import stdMessageLib
 import opasConfig
+import localsecrets
 
 COPYRIGHT_PAGE = "pepwebcopyrightpage.pdf"
 # copyright_usage = f"For use only by {username}. Reproduction prohibited. Usage subject to PEP terms & conditions (see <a href='https://terms.pep-web.org'>terms.pep-web.org</a>)."
@@ -42,9 +43,9 @@ class PDF(FPDF, HTMLMixin):
         try:
             # Position at 1.5 cm from bottom
             self.set_y(-9)
-            self.set_x(27)
+            self.set_x(10)
             # Arial italic 8
-            self.set_font('Helvetica', 'B', 5) # font size 6, B for bold
+            self.set_font('Helvetica', 'B', 5) # font size 5, B for bold
             header_copyright = f"Copyrighted Material. For use only by {self.username_to_set}. Reproduction prohibited. Usage subject to PEP terms & conditions (see terms.pep-web.org)."
             # use same header text as footer, depending on page size, more reliable in footer
             self.cell(w=0, h=10, txt=header_copyright, border=0, ln=0, link="http://terms.pep-web.org")
@@ -76,7 +77,6 @@ def write_copyright_page(username="PEP"):
         pdf.username_to_set = username
         pdf.add_page()
         pdf.set_font("Times", size=12)
-        pdf.set
         pdf.set_text_color(0,0,0)
         #pdf.write_html(COPYRIGHT_PAGE_HTML)
         copypage = stdMessageLib.COPYRIGHT_PAGE_HTML.replace("[[username]]", username)
@@ -90,6 +90,13 @@ def write_copyright_page(username="PEP"):
     return copyright_file
 
 def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
+    def new_page():
+        fpdf = FPDF()
+        fpdf.add_page()
+        fpdf.set_font("helvetica", size=36)
+        fpdf.text(50, 50, "Hello!")
+        reader = PdfReader(fdata=bytes(fpdf.output()))
+        return reader.pages[0]    
     # generate 'watermark' merge file
     try:
         headerfooterfile_base = next(tempfile._get_candidate_names()) + ".pdf"
@@ -103,6 +110,8 @@ def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
         logger.error(f"Error writing PDF HeaderFooter File: {e}")
     else:
         logger.debug(f"Wrote PDF HeaderFooter File: {headerfooterfile}")
+        if 1: # opasConfig.LOCAL_TRACE:
+            print (f"Wrote PDF HeaderFooter File: {headerfooterfile}")
         
     # now merge with download file
     #pisa.showLogging() # debug only
@@ -121,10 +130,13 @@ def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
     try:
         output_file = os.path.join(tempfile.gettempdir(), input_file_basename + f"{sep}{suffix}.pdf")
         logger.debug(f"Writing Stamped Copyright Output File: {output_file}")
-        if opasConfig.LOCAL_TRACE:
+        if 1: # opasConfig.LOCAL_TRACE:
             print(f"Writing Stamped Copyright Output File: {output_file}")
         watermark_file = headerfooterfile
         
+        append_page_path = localsecrets.PDF_ORIGINALS_PATH + localsecrets.PATH_SEPARATOR + COPYRIGHT_PAGE
+        append_page = get_append_page(append_page_path) # append at end
+
         # define the reader and writer objects
         reader_input = PdfReader(input_file)
         writer_output = PdfWriter()
@@ -136,24 +148,23 @@ def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
             merger = PageMerge(reader_input.pages[current_page])
             merger.add(watermark).render()
     
+        #reader_input.pages.append(append_page)
+        reader_input.pages.append(new_page())
         # write the modified content to disk
         writer_output.write(output_file, reader_input)
         #writer_output.addpage(get_append_page("./libs/" + COPYRIGHT_PAGE))
         # add final copyright page
-        writer = PdfWriter(trailer=PdfReader(output_file))
-        try:
-            append_page = get_append_page("./libs/" + COPYRIGHT_PAGE) # append at end
-        except Exception as e:
-            logger.error(f"Could not access copyright page in libs (error:{e})")
-            try:
-                append_page = get_append_page("./app/libs/" + COPYRIGHT_PAGE) # append at end
-            except Exception as e:
-                logger.error(f"Could not access copyright page in ./app/libs either.  using original file (error:{e})")
-                output_file = input_file
-            
-        writer.pagearray.append(append_page)
-        # final write
-        writer.write(output_file)
+        # writer = PdfWriter(trailer=PdfReader(output_file))
+        #try:
+            #append_page_path = localsecrets.PDF_ORIGINALS_PATH + localsecrets.PATH_SEPARATOR + COPYRIGHT_PAGE
+            #append_page = get_append_page(append_page_path) # append at end
+        #except Exception as e:
+            #logger.error(f"Could not access copyright page in {append_page_path} (error:{e})")
+        #else:
+            #writer_output.pagearray.append(append_page)
+
+        ## final write
+        #writer_output.write(output_file)
     except Exception as e:
         logger.error(f"Could not add copyright page for user {username} to {suffix} PDF; returning without marks (error:{e})")
         output_file = input_file

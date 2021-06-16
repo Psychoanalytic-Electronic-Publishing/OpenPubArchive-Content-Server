@@ -2538,7 +2538,8 @@ def prep_document_download(document_id,
                             doc = opasxmllib.remove_encoding_string(doc)
                             html_string = opasxmllib.xml_str_to_html(doc)
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
-                            html_string = re.sub("</html>", f"{COPYRIGHT_PAGE_HTML}</html>", html_string, count=1)                        
+                            copyright_page = COPYRIGHT_PAGE_HTML.replace("[[username]]", session_info.username)
+                            html_string = re.sub("</html>", f"{copyright_page}</html>", html_string, count=1)                        
                             # open output file for writing (truncated binary)
                             filename = document_id + ".PDF" 
                             output_filename = os.path.join(tempfile.gettempdir(), filename)
