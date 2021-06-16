@@ -134,8 +134,6 @@ def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
             print(f"Writing Stamped Copyright Output File: {output_file}")
         watermark_file = headerfooterfile
         
-        append_page_path = localsecrets.PDF_ORIGINALS_PATH + localsecrets.PATH_SEPARATOR + COPYRIGHT_PAGE
-        append_page = get_append_page(append_page_path) # append at end
 
         # define the reader and writer objects
         reader_input = PdfReader(input_file)
@@ -147,24 +145,31 @@ def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
         for current_page in range(len(reader_input.pages)):
             merger = PageMerge(reader_input.pages[current_page])
             merger.add(watermark).render()
-    
-        #reader_input.pages.append(append_page)
-        reader_input.pages.append(new_page())
+
+        if 0: # doesn't work
+            append_page_path = localsecrets.PDF_ORIGINALS_PATH + localsecrets.PATH_SEPARATOR + COPYRIGHT_PAGE
+            append_page = get_append_page(append_page_path) # append at end
+            reader_input.pages.append(append_page)
+        
         # write the modified content to disk
         writer_output.write(output_file, reader_input)
-        #writer_output.addpage(get_append_page("./libs/" + COPYRIGHT_PAGE))
-        # add final copyright page
-        # writer = PdfWriter(trailer=PdfReader(output_file))
-        #try:
-            #append_page_path = localsecrets.PDF_ORIGINALS_PATH + localsecrets.PATH_SEPARATOR + COPYRIGHT_PAGE
-            #append_page = get_append_page(append_page_path) # append at end
-        #except Exception as e:
-            #logger.error(f"Could not access copyright page in {append_page_path} (error:{e})")
-        #else:
-            #writer_output.pagearray.append(append_page)
-
-        ## final write
-        #writer_output.write(output_file)
+        
+        if 0: # doesn't work...work on this later
+            #  add final copyright page
+            writer = PdfWriter(trailer=PdfReader(output_file))
+            try:
+                append_page_path = localsecrets.PDF_ORIGINALS_PATH + localsecrets.PATH_SEPARATOR + COPYRIGHT_PAGE
+                append_page = get_append_page(append_page_path) # append at end
+                writer.pagearray.append(append_page)
+                writer.pagearray.append(new_page())
+            except Exception as e:
+                logger.error(f"Could not access copyright page in {append_page_path} (error:{e})")
+            else:
+                print ("Success writing new page")
+    
+            # final write
+            writer.write(output_file)
+        
     except Exception as e:
         logger.error(f"Could not add copyright page for user {username} to {suffix} PDF; returning without marks (error:{e})")
         output_file = input_file
