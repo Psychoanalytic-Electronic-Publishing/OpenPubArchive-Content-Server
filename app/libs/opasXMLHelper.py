@@ -1564,7 +1564,15 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                         
     return ret_val
 
-def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=None, stylesheet=opasConfig.CSS_STYLESHEET): #  e.g., "./libs/styles/pep-html-preview.css"
+def html_to_epub(htmlstr,
+                 output_filename_base,
+                 art_id,
+                 lang="en",
+                 authors="PEP",
+                 html_title=None,
+                 citeas=None,
+                 session_info=None,
+                 stylesheet=opasConfig.CSS_STYLESHEET): #  e.g., "./libs/styles/pep-html-preview.css"
     """
     uses ebooklib
     
@@ -1581,9 +1589,10 @@ def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=No
         title = root.xpath("//title/text()")
         title = title[0]
     except:
-        title = art_id
+        title = html_title
         
-    headings = root.xpath("//*[self::h1|h2|h3]")
+    headings = root.xpath("//*[self::h1|h2|h3|h4|h5]")
+    keywords = root.xpath("//div[@class='artkwds']/text()")
 
         
     basename = os.path.basename(output_filename_base)
@@ -1591,24 +1600,46 @@ def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=No
     book = epub.EpubBook()
     book.set_identifier(basename)
     book.set_title(html_title)
-    book.set_language('en')
+    book.set_language(lang)
     
-    book.add_author('PEP')    
-    book.add_metadata('DC', 'description', 'This is description for my book')
+    try:
+        download_info = f"<p><b>Copyrighted Material. For use only by {session_info.username}. Reproduction prohibited. Usage subject to PEP terms & conditions (see <a href='https://terms.pep-web.org'>terms.pep-web.org</a>).</b></p>"
+    except:
+        download_info = "<p><b>Copyrighted Material. Reproduction prohibited. For use only by PEP-Web registered users. (see <a href='https://terms.pep-web.org'>terms.pep-web.org</a>)</b></p>"
+
+    authors = authors.replace(" &amp; ", " & ")
+    book.add_author(authors)   
+    try:
+        keywords = keywords[0]
+        book.add_metadata('DC', 'keywords', keywords)
+    except:
+        keywords = None
+
+    if citeas is not None:
+        book.add_metadata('DC', 'description', citeas)
+    else:
+        book.add_metadata('DC', 'description', html_title)
 
     # main chapter
-    c1 = epub.EpubHtml(title=title,
+    c1 = epub.EpubHtml(title=html_title,
                        file_name= art_id + '.xhtml',
                        lang=lang)
 
     c1.set_content(htmlstr)
-    
+    copyright_text = stdMessageLib.COPYRIGHT_PAGE_HTML
+    copyright_text = copyright_text.replace("<!--UserInfoHere-->", download_info)
     # copyright page / chapter
     c2 = epub.EpubHtml(title='Copyright',
                        file_name='copyright.xhtml')
-    c2.set_content(stdMessageLib.COPYRIGHT_PAGE_HTML)   
+    c2.set_content(copyright_text)
+    
+    citeas_insert = f"<div><h1>Article Citation</h1><p>{citeas}</p></div>"
+    c3 = epub.EpubHtml(title='Cite As',
+                       file_name='citeas.xhtml')
+    c3.set_content(citeas_insert)
     
     book.add_item(c1)
+    book.add_item(c3)    
     book.add_item(c2)    
     
     style = 'body { font-family: Times, Times New Roman, serif; }'
@@ -1626,15 +1657,13 @@ def html_to_epub(htmlstr, output_filename_base, art_id, lang="en", html_title=No
                             media_type="text/css",
                             content=style)
     book.add_item(nav_css)    
-    
-    book.toc = (epub.Link(title, 'Introduction', 'intro'),
-                (
-                    epub.Section(title),
-                    (c1, c2)
-                )
-                )    
+    book.toc = ((c1, c3, c2))
+    #book.toc = (epub.Link('copyright.xhtml', 'Copyright', "copyright"),
+                #epub.Link(art_id + '.xhtml', title, art_id),
+                #(epub.Section(title), (c1, ) )
+                #)    
 
-    book.spine = ['nav', c1, c2]
+    book.spine = ['nav', c1, c3, c2]
     book.add_item(epub.EpubNcx())
     book.add_item(epub.EpubNav())    
     filename = os.path.join(opasConfig.TEMPDIRECTORY, basename + '.epub')

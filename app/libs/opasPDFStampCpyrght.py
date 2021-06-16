@@ -18,26 +18,28 @@ class PDF(FPDF):
     def header(self):
         # Logo
         # Arial bold 15
-        try:
-            header_copyright = f"Copyrighted Material. For use only by {self.username_to_set}. Reproduction prohibited. Usage subject to PEP terms & conditions (see terms.pep-web.org)."
-            self.set_font('Helvetica', 'B', 6) # font size 6, B for bold
-            self.set_y(22)
-            self.set_x(18)
-            self.cell(w=0, h=10, txt=header_copyright, border=0, ln=0, link="http://terms.pep-web.org")
-            self.set_y(25)
-            self.image('peplogosmall.jpg', x=10, y=25, w=4) # position, 10, 8, size 9
-            # Line break
-            self.ln(20)
-        except Exception as e:
-            logger.error(f"Cannot add Copyright Header: {e}")
+        pass # skip for now
+        #try:
+            #header_copyright = f"Copyrighted Material. For use only by {self.username_to_set}. Reproduction prohibited. Usage subject to PEP terms & conditions (see terms.pep-web.org)."
+            #self.set_font('Helvetica', 'B', 4) # font size 6, B for bold
+            #self.set_y(2) # self.set_y(22)
+            #self.set_x(18)
+            #self.cell(w=0, h=10, txt=header_copyright, border=0, ln=0, link="http://terms.pep-web.org")
+            ##self.set_y(25)
+            ##self.image('peplogosmall.jpg', x=10, y=25, w=4) # position, 10, 8, size 9
+            ## Line break
+            #self.ln(20)
+        #except Exception as e:
+            #logger.error(f"Cannot add Copyright Header: {e}")
 
     # Page footer
     def footer(self):
         try:
             # Position at 1.5 cm from bottom
-            self.set_y(-15)
+            self.set_y(-9)
+            self.set_x(27)
             # Arial italic 8
-            self.set_font('Helvetica', 'B', 6) # font size 6, B for bold
+            self.set_font('Helvetica', 'B', 5) # font size 6, B for bold
             header_copyright = f"Copyrighted Material. For use only by {self.username_to_set}. Reproduction prohibited. Usage subject to PEP terms & conditions (see terms.pep-web.org)."
             # use same header text as footer, depending on page size, more reliable in footer
             self.cell(w=0, h=10, txt=header_copyright, border=0, ln=0, link="http://terms.pep-web.org")
@@ -51,7 +53,7 @@ def get_append_page(new_page_filename):
     new_page = PdfReader(new_page_filename)
     return new_page.pages[0]
 
-def stampcopyright(username, input_file, top=True, bottom=True):
+def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
     # generate 'watermark' merge file
     try:
         headerfooterfile_base = next(tempfile._get_candidate_names()) + ".pdf"
@@ -75,8 +77,13 @@ def stampcopyright(username, input_file, top=True, bottom=True):
         logger.info(f"Error removing extension: {e}")
         
     output_file = None
+    if suffix != "":
+        sep = "-"
+    else:
+        sep = ""
+        
     try:
-        output_file = os.path.join(tempfile.gettempdir(), input_file_basename + "-pepweb.pdf")
+        output_file = os.path.join(tempfile.gettempdir(), input_file_basename + f"{sep}{suffix}.pdf")
         logger.debug(f"Writing Stamped Copyright Output File: {output_file}")
         watermark_file = headerfooterfile
         
@@ -93,13 +100,15 @@ def stampcopyright(username, input_file, top=True, bottom=True):
     
         # write the modified content to disk
         writer_output.write(output_file, reader_input)
+        #writer_output.addpage(get_append_page("./libs/" + COPYRIGHT_PAGE))
         # add final copyright page
-        #writer = PdfWriter(trailer=PdfReader(output_file))
-        #writer.pagearray.append(get_append_page(COPYRIGHT_PAGE)) # append at end
+        writer = PdfWriter(trailer=PdfReader(output_file))
+        append_page = get_append_page("./libs/" + COPYRIGHT_PAGE) # append at end
+        writer.pagearray.append(append_page)
         # final write
-        #writer.write(output_file)
+        writer.write(output_file)
     except Exception as e:
-        logger.error(f"Could not add copyright info for user {username} to Original PDF; returning without marks (error:{e})")
+        logger.error(f"Could not add copyright page for user {username} to {suffix} PDF; returning without marks (error:{e})")
         output_file = input_file
     else:
         logger.debug(f"Copyright info added for user {username} to Original PDF")

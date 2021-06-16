@@ -106,7 +106,7 @@ class TimePeriod(Enum):
     alltime = 'all'
 
 #-------------------------------------------------------
-# Error Return classes [may not be used, switched to exceptions]
+# Error Return classes (Can also return "No Error", 200 httpcode)
 #-------------------------------------------------------
 class ErrorReturn(BaseModel):
     httpcode: int = Field(200, title="HTTP code")

@@ -5,7 +5,7 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0611/v2.1.14" # semver versioning now added after date.
+__version__     = "2021.0615/v2.1.15" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -4821,8 +4821,9 @@ def documents_downloads(response: Response,
 
     if filename is None:
         response.status_code = status.httpcode
-        status_message = error_status_message + status.error_description + f" ({status.httpcode})"
-        logger.error(status_message + f" Session: {session_info.session_id}.")
+        status_message = error_status_message
+        if status.error_description is not None:
+            logger.error(error_status_message + ":" + status.error_description)
         ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                     session_info=session_info, 
                                     params=request.url._url,
@@ -4848,7 +4849,7 @@ def documents_downloads(response: Response,
                         fileurl = flex_fs.fs.url(filename)
                         filename = wget.download(fileurl)
     
-                    stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename)
+                    stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename, suffix="original")
                     response.status_code = httpCodes.HTTP_200_OK
                     ret_val = FileResponse(path=stamped_file,
                                            status_code=response.status_code,
@@ -4887,7 +4888,7 @@ def documents_downloads(response: Response,
                                                 )
         elif file_format == 'PDF':
             try:
-                stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename)
+                stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename, suffix="pepweb")
                 response.status_code = httpCodes.HTTP_200_OK
                 ret_val = FileResponse(path=stamped_file,
                                        status_code=response.status_code,

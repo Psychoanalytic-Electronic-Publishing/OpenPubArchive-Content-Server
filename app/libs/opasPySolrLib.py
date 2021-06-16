@@ -2454,12 +2454,12 @@ def prep_document_download(document_id,
         return str
 
     ret_val = None
-    status = httpCodes.HTTP_200_OK
+    status = models.ErrorReturn(httpcode=httpCodes.HTTP_200_OK) # no error
 
     query = "art_id:%s" % (document_id)
     args = {
              "fl": """art_id, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
-                      art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi,
+                      art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi, art_title, art_authors, art_authors_mast, art_lang,
                       art_issn, file_classification"""
     }
 
@@ -2486,6 +2486,17 @@ def prep_document_download(document_id,
             else:
                 doi = art_info.get("art_doi", None)
                 pub_year = art_info.get("art_year", None)
+                art_title = art_info.get("art_title", None)
+                art_lang = art_info.get("art_lang", "en")
+                art_citeas_xml = art_info.get("art_citeas_xml", None)
+                art_authors_mast = art_info.get("art_authors_mast", "PEP")
+                art_authors = art_authors_mast
+                    
+                if art_citeas_xml is not None:
+                    art_citeas = opasxmllib.xml_elem_or_str_to_text(art_citeas_xml)
+                else:
+                    art_citeas = ""
+                    
                 file_classification = art_info.get("file_classification", None)
                 
                 access = opasDocPerm.get_access_limitations( doc_id=document_id,
@@ -2545,7 +2556,14 @@ def prep_document_download(document_id,
                             html_string = opasxmllib.xml_str_to_html(doc)
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                             html_string = add_epub_elements(html_string)
-                            filename = opasxmllib.html_to_epub(html_string, document_id, document_id)
+                            filename = opasxmllib.html_to_epub(htmlstr=html_string,
+                                                               output_filename_base=document_id,
+                                                               art_id=document_id,
+                                                               lang=art_lang, 
+                                                               authors=art_authors, 
+                                                               html_title=art_title,
+                                                               citeas=art_citeas, 
+                                                               session_info=session_info)
                             ret_val = filename
                         else:
                             err_msg = f"Download format {ret_format} not supported"
