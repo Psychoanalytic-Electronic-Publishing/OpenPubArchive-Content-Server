@@ -20,9 +20,11 @@ import tempfile
 import logging
 logger = logging.getLogger(__name__)
 import time
+from fastapi import HTTPException
+from errorMessages import *
 from datetime import datetime
 # import datetime as dtime
-from operator import itemgetter
+# from operator import itemgetter
 
 import sys
 sys.path.append('./solrpy')
@@ -1131,6 +1133,11 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                 filterQ = solr_query_spec.solrQuery.filterQ
         else:
             filterQ = solr_query_spec.solrQuery.filterQ
+            
+        # extend related documents search (art_qual) to unmarked documents that are explicitly referenced in ID
+        # TODO: (Possible) Should this also do this in the query param?
+        if "art_qual:" in filterQ:
+            filterQ = re.sub("art_qual:\(\"?(?P<tgtid>.*)\"?\)", "(art_qual:(\g<tgtid>) || art_id:(\g<tgtid>))", filterQ)
             
         solr_param_dict = { 
                             # "q": solr_query_spec.solrQuery.searchQ,
@@ -2534,24 +2541,43 @@ def prep_document_download(document_id,
                                                            )
                                 ret_val = None
                         elif ret_format.upper() == "PDF":
-                            pisa.showLogging() # debug only
-                            doc = opasxmllib.remove_encoding_string(doc)
                             html_string = opasxmllib.xml_str_to_html(doc)
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                             copyright_page = COPYRIGHT_PAGE_HTML.replace("[[username]]", session_info.username)
-                            html_string = re.sub("</html>", f"{copyright_page}</html>", html_string, count=1)                        
-                            # open output file for writing (truncated binary)
+                            html_string = re.sub("</html>", f"{copyright_page}</html>", html_string, count=1)
+                            if art_lang == "zh":
+                                # add some spaces in the chinese text to permit wrapping:
+                                html_string = re.sub('\。', '。 ', html_string)
+                                html_string = re.sub('\，', '， ', html_string)
+                                html_string = re.sub('\“', ' “', html_string)
+                                #if 0: #old way
+                                    #lines = html_string.split("\n")
+                                    #new_str = ""
+                                    #for line in lines:
+                                        #line = opasgenlib.split_long_lines(line, max_len, '\。', "。 \n")
+                                        #line = opasgenlib.split_long_lines(line, max_len, '\，', "， \n")
+                                        #line = opasgenlib.split_long_lines(line, max_len, '\“', "\n “")
+                                        #new_str += line + "\n"
+                                    #html_string = new_str
+                                html_string = html_string.replace("</head>", opasConfig.PDF_CHINESE_STYLE + "</head>")
+                            else:
+                                html_string = html_string.replace("</head>", opasConfig.PDF_EXTENDED_FONT + "</head>")
+                            # html_string.encode("UTF-8")
                             filename = document_id + ".PDF" 
                             output_filename = os.path.join(tempfile.gettempdir(), filename)
+                            pisa.showLogging() # debug only
+                            # doc = opasxmllib.remove_encoding_string(doc)
+                            # open output file for writing (truncated binary)
                             result_file = open(output_filename, "w+b")
-                            # convert HTML to PDF
                             # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
                             pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
-                                                        dest=result_file)           # file handle to receive result
+                                                        dest=result_file,
+                                                        encoding="UTF-8")           # file handle to receive result
                             # close output file
-                            result_file.close()                 # close output file
+                            result_file.close()                 
                             # return True on success and False on errors
                             ret_val = output_filename
+                                
                         elif ret_format.upper() == "EPUB":
                             doc = opasxmllib.remove_encoding_string(doc)
                             html_string = opasxmllib.xml_str_to_html(doc)
@@ -2577,6 +2603,10 @@ def prep_document_download(document_id,
                     except Exception as e:
                         err_msg = f"Prep for Download: Can't convert data: {e}"
                         ret_val = None
+                        #raise HTTPException(
+                            #status_code=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
+                            #detail=err_msg # or use ERR_MSG_PROBLEM_CONVERTING_TO_PDF
+                        #)
                         status = models.ErrorReturn( httpcode=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
                                                      error_description=err_msg
                                                    )

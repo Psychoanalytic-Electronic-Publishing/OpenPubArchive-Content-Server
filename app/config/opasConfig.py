@@ -4,6 +4,7 @@ import logging
 import tempfile
 import os
 from schemaMap import PREDEFINED_SORTS
+import localsecrets
 
 #import urllib.request
 # from enum import Enum, EnumMeta, IntEnum
@@ -753,3 +754,36 @@ SS_BROADEN_DICT = {SEARCH_FIELD_RELATED: SS_BROADEN_SEARCH_FIELD_RELATED,
 #journal publishers. For details on how to read the full text of 2017 and more current articles see the publishers official website 
 #"""
 
+# Note the STSong-Light is a built in font for Pisa
+PDF_CHINESE_STYLE = """
+<style>
+   @page {
+          margin-top: 12mm;
+          margin-bottom: 12mm;
+   }
+ 
+   body, p  {
+              font-language-override: "zh";
+              font-family: STSong-Light;
+              padding-right: 20%;
+              margin-left: 5mm;
+              margin-right: 8mm;
+            }	
+</style>
+"""
+
+# Make sure font is defined:
+try:
+    pdf_font = localsecrets.PDF_EXTENDED_FONT_LOCATION
+except Exception as e:
+    logging.error("PDF_EXTENDED_FONT_LOCATION not yet defined.")
+    pdf_font = 'E:\\usr3\\GitHub\\openpubarchive\\examples\\Roboto-Regular.ttf'
+    
+# PDF Font to support Turkish and English (Extended Character Font)
+PDF_EXTENDED_FONT = """
+<style>
+    @font-face {font-family: Roboto; src: url(%s)}
+    body, p {   
+                font-family: 'Roboto' }	
+</style>
+""" % localsecrets.PDF_EXTENDED_FONT_LOCATION

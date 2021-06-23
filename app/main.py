@@ -5,7 +5,8 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0616/v2.1.17b" # semver versioning now added after date.
+
+__version__     = "2021.0623/v2.1.19" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -513,21 +514,21 @@ async def admin_set_loglevel(response: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Admin/Reports/{report}", response_model=models.Report, tags=["Admin"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
-async def reports(response: Response, 
-                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                  report: models.ReportTypeEnum=Path(..., title="Report Requested", description="One of the predefined report names"),
-                  sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
-                  userid:str=Query(None, title="Global User ID", description="Filter by this common (global) system userid"), 
-                  startdate: str=Query(None, title=opasConfig.TITLE_STARTDATE, description=opasConfig.DESCRIPTION_STARTDATE), 
-                  enddate: str=Query(None, title=opasConfig.TITLE_ENDDATE, description=opasConfig.DESCRIPTION_ENDDATE),
-                  matchstr: str=Query(None, title=opasConfig.TITLE_REPORT_MATCHSTR, description=opasConfig.DESCRIPTION_REPORT_MATCHSTR), 
-                  limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                  offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                  download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
-                  client_id:int=Depends(get_client_id), 
-                  client_session:str= Depends(get_client_session), 
-                  api_key: APIKey = Depends(get_api_key)
-                  ):
+async def admin_reports(response: Response, 
+                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                        report: models.ReportTypeEnum=Path(..., title="Report Requested", description="One of the predefined report names"),
+                        sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
+                        userid:str=Query(None, title="Global User ID", description="Filter by this common (global) system userid"), 
+                        startdate: str=Query(None, title=opasConfig.TITLE_STARTDATE, description=opasConfig.DESCRIPTION_STARTDATE), 
+                        enddate: str=Query(None, title=opasConfig.TITLE_ENDDATE, description=opasConfig.DESCRIPTION_ENDDATE),
+                        matchstr: str=Query(None, title=opasConfig.TITLE_REPORT_MATCHSTR, description=opasConfig.DESCRIPTION_REPORT_MATCHSTR), 
+                        limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                        download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
+                        client_id:int=Depends(get_client_id), 
+                        client_session:str= Depends(get_client_session), 
+                        api_key: APIKey = Depends(get_api_key)
+                       ):
     """
     ## Function
       <b>Returns a report in JSON per the Reports</b>
@@ -625,7 +626,8 @@ async def reports(response: Response,
                   "session id",
                   "document id",
                   "view type",
-                  "last update"]
+                  "last update",
+                  "document activity id"]
         
     elif report == models.ReportTypeEnum.sessionLog:
         standard_filter = "1 = 1 " 
@@ -659,7 +661,7 @@ async def reports(response: Response,
                   "status code",
                   "status message",
                   "last update",
-                  "session activity id"]
+                  "search activity id"]
     elif report == models.ReportTypeEnum.documentViews:
         standard_filter = "1 = 1 " 
         report_view = "vw_reports_document_views"
@@ -3119,31 +3121,31 @@ def database_mostcited(response: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Database/OpenURL/", response_model=Union[models.DocumentList, models.ErrorReturn], response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_OPENURL)
-async def open_url(response: Response, 
-                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                   #moreinfo: bool=Query(False, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO),
-                   client_id:int=Depends(get_client_id), 
-                   client_session:str= Depends(get_client_session), 
-                   #open_url arg reference: https://biblio.ugent.be/publication/760060/file/760063
-                   issn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_ISSN), 
-                   eissn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_EISSN), 
-                   isbn: str=Query(None, title=opasConfig.TITLE_ISBN, description=opasConfig.DESCRIPTION_ISBN), 
-                   title: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
-                   stitle: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
-                   atitle: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
-                   aufirst: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
-                   aulast: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
-                   volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
-                   issue: str=Query(None, title=opasConfig.TITLE_ISSUE, description=opasConfig.DESCRIPTION_ISSUE),
-                   spage: int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_FIRST_PAGE),
-                   epage: int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_LAST_PAGE),
-                   pages: str=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
-                   artnum: str=Query(None, title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDSINGLE), # return controls 
-                   date: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
-                   sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                   limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                   ):
+async def database_open_url(response: Response, 
+                            request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                            #moreinfo: bool=Query(False, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO),
+                            client_id:int=Depends(get_client_id), 
+                            client_session:str= Depends(get_client_session), 
+                            #open_url arg reference: https://biblio.ugent.be/publication/760060/file/760063
+                            issn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_ISSN), 
+                            eissn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_EISSN), 
+                            isbn: str=Query(None, title=opasConfig.TITLE_ISBN, description=opasConfig.DESCRIPTION_ISBN), 
+                            title: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
+                            stitle: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
+                            atitle: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
+                            aufirst: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
+                            aulast: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
+                            volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
+                            issue: str=Query(None, title=opasConfig.TITLE_ISSUE, description=opasConfig.DESCRIPTION_ISSUE),
+                            spage: int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_FIRST_PAGE),
+                            epage: int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_LAST_PAGE),
+                            pages: str=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
+                            artnum: str=Query(None, title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDSINGLE), # return controls 
+                            date: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
+                            sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                            limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                            offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                            ):
     """
     ## Function
        <b>Search the database per OpenURL 0.1 paramaters.</b>

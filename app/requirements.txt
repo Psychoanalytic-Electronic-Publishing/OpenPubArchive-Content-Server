@@ -72,4 +72,4 @@ watchtower==0.8.0
 webencodings==0.5.1
 websockets==8.1
 wget==3.2
-xhtml2pdf==0.2.4
+xhtml2pdf>=0.2.5
