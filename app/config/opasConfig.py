@@ -771,13 +771,14 @@ PDF_CHINESE_STYLE = """
             }	
 </style>
 """
-
+PDF_EXTENDED_FONT_FILE = '../fonts/Roboto-Regular.ttf'
 # Make sure font is defined:
 try:
-    pdf_font = localsecrets.PDF_EXTENDED_FONT_LOCATION
+    pdf_font = PDF_EXTENDED_FONT_FILE
 except Exception as e:
-    logging.error("PDF_EXTENDED_FONT_LOCATION not yet defined.")
-    pdf_font = 'E:\\usr3\\GitHub\\openpubarchive\\examples\\Roboto-Regular.ttf'
+    logging.error("PDF_EXTENDED_FONT_FILE not yet defined.")
+    # try current folder relative
+    pdf_font = './fonts/Roboto-Regular.ttf'
     
 # PDF Font to support Turkish and English (Extended Character Font)
 PDF_EXTENDED_FONT = """
@@ -786,4 +787,4 @@ PDF_EXTENDED_FONT = """
     body, p {   
                 font-family: 'Roboto' }	
 </style>
-""" % localsecrets.PDF_EXTENDED_FONT_LOCATION
+""" % PDF_EXTENDED_FONT_FILE

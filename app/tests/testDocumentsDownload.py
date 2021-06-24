@@ -74,6 +74,13 @@ class TestdocumentsDownload(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
        
+    def test_2B_PDF_Download2(self):
+        # has grraphics
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/anijp-tr.008.0017a/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+       
     def test_3_EPUB_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/IJPSP.009.0324A/')
         response = requests.get(full_URL, headers=headers)

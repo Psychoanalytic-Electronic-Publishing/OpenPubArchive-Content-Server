@@ -2479,9 +2479,9 @@ def prep_document_download(document_id,
             art_info = results.docs[0]
             docs = art_info.get("text_xml", art_info.get("art_excerpt", None))
         except IndexError as e:
-            logger.warning("Download Request: No matching document for %s.  Error: %s", document_id, e)
+            logger.error("Download Request: No matching document for %s.  Error: %s", document_id, e)
         except KeyError as e:
-            logger.warning("Download Request: No full-text content found for %s.  Error: %s", document_id, e)
+            logger.error("Download Request: No full-text content found for %s.  Error: %s", document_id, e)
         else:
             try:    
                 if isinstance(docs, list):
