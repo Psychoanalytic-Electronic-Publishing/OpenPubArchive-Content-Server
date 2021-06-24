@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0416.1" 
+__version__     = "2021.0623.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -71,6 +71,7 @@ import re
 import os
 import os.path
 import pathlib
+from opasFileSupport import FileInfo
 
 import time
 import datetime as dtime
@@ -341,6 +342,11 @@ def main():
             exit(0)
         else:
             options.forceRebuildAllFiles = True
+    elif options.file_only is not None:
+        fileinfo = FileInfo()
+        filespec = options.file_only
+        fileinfo.mapLocalFS(filespec)
+        filenames = [fileinfo]
     else:
         pat = fr"(.*?){loaderConfig.file_match_pattern}"
         filenames = []
@@ -620,6 +626,8 @@ if __name__ == "__main__":
                       #help="Logfile name with full path where events should be logged")
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
                       help="Don't check whether to proceed.")
+    parser.add_option("--only", dest="file_only", default=None,
+                      help="File spec for a single file to process.")
     parser.add_option("--includeparas", action="store_true", dest="include_paras", default=False,
                       help="Don't separately store paragraphs except for sources using concordance (GW/SE).")
     parser.add_option("--halfway", action="store_true", dest="halfway", default=False,

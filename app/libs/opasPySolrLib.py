@@ -1137,7 +1137,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         # extend related documents search (art_qual) to unmarked documents that are explicitly referenced in ID
         # TODO: (Possible) Should this also do this in the query param?
         if "art_qual:" in filterQ:
-            filterQ = re.sub("art_qual:\(\"?(?P<tgtid>.*)\"?\)", "(art_qual:(\g<tgtid>) || art_id:(\g<tgtid>))", filterQ)
+            filterQ = re.sub('art_qual:\(\"?(?P<tgtid>[^\"]*?)\"?\)', '(art_qual:(\g<tgtid>) || art_id:(\g<tgtid>))', filterQ)
             
         solr_param_dict = { 
                             # "q": solr_query_spec.solrQuery.searchQ,
