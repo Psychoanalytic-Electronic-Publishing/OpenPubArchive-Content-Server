@@ -1,0 +1,195 @@
+body{
+    margin-left: 8%;
+    margin-right: 8%;
+    background-color: #f8f8f8;
+    color: black;
+    }
+
+
+a {
+    text-decoration: none !important;
+}
+
+.title_author {
+  text-align: center;
+  font-weight: bold;
+}
+
+p.title {
+  font-size: x-large;
+  font-weight: bold;
+  text-align: center;
+  display: block;
+  font-weight: bold; 
+  text-decoration: none !important;
+}
+
+p.pagenumber {
+  text-align: center;
+}
+
+p.bibentry {
+  padding-left: 22px ;
+  text-indent: -22px ;
+}
+
+p.figure {
+  text-align: center;
+}
+
+div.poem {
+  text-indent: 22px ;
+  color: midnightblue;
+  font-size:smaller;
+}
+
+div.quote {
+  text-indent: 22px ;
+  font-size:smaller;
+  font-style: italics;
+}
+
+.ftn {
+  color: purple;
+  font-size: small;
+  display: block;
+  margin-left: +.25in;
+  text-indent: -.25in;
+  font-weight: lighter;
+  vertical-align: super;
+}
+
+footer {
+  color: #990066;
+  font-size: small;
+}
+
+fd, nm {
+  color: navy;
+}
+
+revisions {
+  color: teal;
+  font-size: smaller;
+}
+
+ce {
+  display: table-cell;
+}
+
+ta {
+  display: table;
+}
+
+ro {
+  display: table-row;
+}
+
+.be {
+  margin-top: 12pt;
+  margin-bottom: 12pt;
+}
+
+j {
+  font-size: larger;
+  font-weight: bolder;
+  background-color: yellow;
+}
+
+.bxe {
+  font-weight: bold;
+  font-size: larger;
+}
+
+list {
+  list-style-type: decimal;
+}
+
+li {
+  display: list-item;
+  list-style-type: decimal;
+}
+
+li:before {
+  content: attr(label) "    ";
+  font-weight: bold;
+}
+
+artqual:after {
+  content: attr(rx);
+}
+
+.title_author {
+  text-align: center;
+  font-weight: bold;
+}
+
+.autaff {
+  display: block;
+  text-align: center;
+}
+
+h1, h2, h3, h4, h5, h6, figx {
+    display: block;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    font-family: helvetica, sans-serif;
+    font-weight: bold;
+    color: black;
+    font-weight: bold;
+    color: midnightblue;
+}
+
+h1 {
+  font-weight: bold;
+  font-size: larger;
+  display: block;
+}
+
+h2 {
+  font-weight: bold;
+  font-size: large;
+}
+
+h3 {
+  font-weight: bold;
+  font-size: medium;
+}
+
+h4 {
+  font-weight: bold;
+  font-size: smaller;
+}
+
+h5 {
+  font-weight: bold;
+  font-size: smaller;
+}
+
+h6 {
+  font-weight: bold;
+  font-size: smaller;
+}
+
+span.peppopup {
+  font-size: normal;
+  display: none;
+}
+
+span.bibauthor {
+  font-weight: bold;    
+}
+
+span.bibyear:before {
+    content: " (";    
+}
+
+span.bibyear:after {
+    content: ") ";    
+}
+
+.footer {
+    font-size:smaller;
+    font-weight:lighter;
+    color: maroon;    
+}

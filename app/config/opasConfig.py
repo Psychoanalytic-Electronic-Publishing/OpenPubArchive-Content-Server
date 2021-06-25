@@ -3,8 +3,14 @@ import logging
 #import datetime
 import tempfile
 import os
+import os.path
+from pathlib import Path
+import re
+from urllib.parse import urlparse
+
 from schemaMap import PREDEFINED_SORTS
 import localsecrets
+import opasFileSupport
 
 #import urllib.request
 # from enum import Enum, EnumMeta, IntEnum
@@ -771,20 +777,63 @@ PDF_CHINESE_STYLE = """
             }	
 </style>
 """
-PDF_EXTENDED_FONT_FILE = '../fonts/Roboto-Regular.ttf'
+
+FONT_FILENAME = "Roboto-Regular.ttf"
+PDF_STYLE_SHEET = "pep-pdf.css"              # "pep-html-preview.css"
+SUBPATH = 'fonts'                            # sub to app
+STYLEPATH = os.path.join("libs", "styles")
+
+# PDF_EXTENDED_FONT_FILE = f"url('{PATHCHECK1}')"
+# PDF_EXTENDED_FONT_ALT = f"url('{PATHCHECK2}')"
 # Make sure font is defined:
-try:
-    pdf_font = PDF_EXTENDED_FONT_FILE
-except Exception as e:
-    logging.error("PDF_EXTENDED_FONT_FILE not yet defined.")
-    # try current folder relative
-    pdf_font = './fonts/Roboto-Regular.ttf'
+def get_file_path(filename, subpath):
+    ret_val = None
+    try:
+        pathmod = Path()
+        path = pathmod.absolute()
+        full_file_path = os.path.join(path, subpath, filename)
+        if not Path(full_file_path).is_file():
+            parentpath = path.parent.absolute()
+            full_file_path = os.path.join(parentpath, subpath, filename)
+            if not Path(full_file_path).is_file():
+                logging.error(f"{full_font_path} not found. Current Path: {full_file_path} ")
+
+    except Exception as e:
+        # try current folder relative
+        full_file_path = r"E:/usr3/GitHub/openpubarchive/app/fonts/Roboto-Regular.ttf"
     
-# PDF Font to support Turkish and English (Extended Character Font)
-PDF_EXTENDED_FONT = """
+    else:
+        #ret_val = f"url('{full_font_path}')"
+        ret_val = full_file_path
+        
+    return ret_val
+    
+def fetch_resources(uri, rel):
+    path = None
+    if ".ttf" in uri:
+        path = get_file_path(FONT_FILENAME, SUBPATH)
+        #print (f"Returning Font Location: {path}")
+    elif ".css" in uri:
+        path = get_file_path(uri, STYLEPATH)
+        #print (f"Returning style Location: {path}")
+    elif "http" in uri:
+        a = urlparse(uri)
+        #print(a.path)                    # Output: /kyle/09-09-201315-47-571378756077.jpg
+        filename = os.path.basename(a.path)
+        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
+        path = fs.get_image_filename(filename)
+        #print (f"Returning Location of image: {path}")
+
+    #print (f"Fetch Resources for '{uri}': '{path}'")
+    return path
+
+PDF_OTHER_STYLE = r"""
+<link rel="stylesheet" type="text/css" href="%s"/>
 <style>
-    @font-face {font-family: Roboto; src: url(%s)}
+    @font-face {font-family: Roboto; src: url('%s');}
     body, p {   
                 font-family: 'Roboto' }	
 </style>
-""" % PDF_EXTENDED_FONT_FILE
+""" % (fetch_resources(PDF_STYLE_SHEET, None), fetch_resources(FONT_FILENAME, None))
+
+#print (f"PDF Style: '{PDF_OTHER_STYLE}'")

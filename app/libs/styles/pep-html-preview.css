@@ -28,7 +28,9 @@ merchantability or fitness for any particular purpose.
 body{
     margin-left: 8%;
     margin-right: 8%;
-    background-color: #f8f8f8}
+    background-color: #f8f8f8;
+    color: red;
+    }
 
 
 div > *:first-child{

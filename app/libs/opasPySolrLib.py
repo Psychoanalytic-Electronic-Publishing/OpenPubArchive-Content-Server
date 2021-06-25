@@ -2543,6 +2543,7 @@ def prep_document_download(document_id,
                         elif ret_format.upper() == "PDF":
                             html_string = opasxmllib.xml_str_to_html(doc)
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
+                            html_string = re.sub("()", f"", html_string, count=1) # in running head, missing issue
                             copyright_page = COPYRIGHT_PAGE_HTML.replace("[[username]]", session_info.username)
                             html_string = re.sub("</html>", f"{copyright_page}</html>", html_string, count=1)
                             if art_lang == "zh":
@@ -2561,18 +2562,23 @@ def prep_document_download(document_id,
                                     #html_string = new_str
                                 html_string = html_string.replace("</head>", opasConfig.PDF_CHINESE_STYLE + "</head>")
                             else:
-                                html_string = html_string.replace("</head>", opasConfig.PDF_EXTENDED_FONT + "</head>")
+                                # PDF Font to support Turkish and English (Extended Character Font)
+                                html_string = html_string.replace("</head>", opasConfig.PDF_OTHER_STYLE + "</head>")
+                                
                             # html_string.encode("UTF-8")
                             filename = document_id + ".PDF" 
                             output_filename = os.path.join(tempfile.gettempdir(), filename)
                             pisa.showLogging() # debug only
+                            #print (f"In Print Module.  Folder {os.getcwd()}")
+                            #print (f"{opasConfig.PDF_EXTENDED_FONT}")
                             # doc = opasxmllib.remove_encoding_string(doc)
                             # open output file for writing (truncated binary)
                             result_file = open(output_filename, "w+b")
                             # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
                             pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
                                                         dest=result_file,
-                                                        encoding="UTF-8")           # file handle to receive result
+                                                        encoding="UTF-8",
+                                                        link_callback=opasConfig.fetch_resources)           # file handle to receive result
                             # close output file
                             result_file.close()                 
                             # return True on success and False on errors
