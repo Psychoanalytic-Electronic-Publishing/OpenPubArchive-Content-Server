@@ -1,18 +1,18 @@
 body{
     margin-left: 8%;
     margin-right: 8%;
-    background-color: #f8f8f8;
     color: black;
     }
 
-
 a {
     text-decoration: none !important;
+    color: midnightblue;
 }
 
 .title_author {
   text-align: center;
   font-weight: bold;
+  color: midnightblue;
 }
 
 p.title {
@@ -24,8 +24,14 @@ p.title {
   text-decoration: none !important;
 }
 
+.autaff {
+  display: block;
+  text-align: center;
+}
+
 p.pagenumber {
   text-align: center;
+  color: midnightblue;
 }
 
 p.bibentry {
@@ -37,7 +43,7 @@ p.figure {
   text-align: center;
 }
 
-div.poem {
+.poem, .quote, .dream, .note, .dialog, .panel, .caption, .summaries .abstract {
   text-indent: 22px ;
   color: midnightblue;
   font-size:smaller;
@@ -47,21 +53,6 @@ div.quote {
   text-indent: 22px ;
   font-size:smaller;
   font-style: italics;
-}
-
-.ftn {
-  color: purple;
-  font-size: small;
-  display: block;
-  margin-left: +.25in;
-  text-indent: -.25in;
-  font-weight: lighter;
-  vertical-align: super;
-}
-
-footer {
-  color: #990066;
-  font-size: small;
 }
 
 fd, nm {
@@ -119,15 +110,6 @@ artqual:after {
   content: attr(rx);
 }
 
-.title_author {
-  text-align: center;
-  font-weight: bold;
-}
-
-.autaff {
-  display: block;
-  text-align: center;
-}
 
 h1, h2, h3, h4, h5, h6, figx {
     display: block;
@@ -191,5 +173,16 @@ span.bibyear:after {
 .footer {
     font-size:smaller;
     font-weight:lighter;
-    color: maroon;    
+    color: #4b4e54;    
 }
+
+.ftn {
+  font-size: small;
+  display: block;
+  margin-left: +.25in;
+  text-indent: -.25in;
+  font-weight: lighter;
+  vertical-align: super;
+  color: #4b4e54;    
+}
+
