@@ -818,20 +818,25 @@ def fetch_resources(uri, rel):
         path = get_file_path(uri, STYLEPATH)
         # print (f"Returning style Location: {path}")
     elif "http" in uri:
-        a = urlparse(uri)
-        m = re.search("src=.*/Documents/Image/(.*)[\"\']", a.path)
-        try:
-            if m is not None:
-                filename = m.group(1)
-                filename = os.path.basename(urllib.parse.unquote(filename))
+        if localsecrets.CONFIG == "Local":
+            a = urlparse(uri)
+            m = re.search("src=.*/Documents/Image/(.*)[\"\']", a.path)
+            try:
+                if m is not None:
+                    print ("Found <img> and source.")
+                    filename = m.group(1)
+                    filename = os.path.basename(urllib.parse.unquote(filename))
+                else:
+                    filename = os.path.basename(urllib.parse.unquote(a.path))
+            except Exception as e:
+                logging.error(f"Can't get filename from url: {a.path} ({e})")
             else:
-                filename = os.path.basename(urllib.parse.unquote(a.path))
-        except Exception as e:
-            logging.error(f"Can't get filename from url: {a.path} ({e})")
+                print (f"PDF Image Filename: {filename}")
+                fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
+                path = fs.get_image_filename(filename)
         else:
-            print (f"PDF Image Filename: {filename}")
-            fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
-            path = fs.get_image_filename(filename)
+            path = uri
+            print (f"fetch resources trying path: {uri}")
     
     # for now, to watch uri's on web.
     logging.error(f"Fetch Resources for '{uri}': '{path}'")
