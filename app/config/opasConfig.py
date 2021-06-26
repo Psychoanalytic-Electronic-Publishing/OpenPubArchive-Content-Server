@@ -819,11 +819,18 @@ def fetch_resources(uri, rel):
         # print (f"Returning style Location: {path}")
     elif "http" in uri:
         a = urlparse(uri)
-        print(a.path)                    # Output: /kyle/09-09-201315-47-571378756077.jpg
-        filename = os.path.basename(urllib.parse.unquote(a.path))
-        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
-        path = fs.get_image_filename(filename)
-        print (f"Returning Location of image: {path}")
+        m = re.search("src=.*/Documents/Image/(.*)[\"\']", a.path)
+        try:
+            if m is not None:
+                filename = m.group(1)
+                filename = os.path.basename(urllib.parse.unquote(filename))
+            else:
+                filename = os.path.basename(urllib.parse.unquote(a.path))
+        except Exception as e:
+            logging.error(f"Can't get filename from url: {a.path} ({e})")
+        else:
+            fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
+            path = fs.get_image_filename(filename)
     
     # for now, to watch uri's on web.
     logging.info(f"Fetch Resources for '{uri}': '{path}'")
