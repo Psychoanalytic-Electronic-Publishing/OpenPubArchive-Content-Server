@@ -829,11 +829,12 @@ def fetch_resources(uri, rel):
         except Exception as e:
             logging.error(f"Can't get filename from url: {a.path} ({e})")
         else:
+            print (f"PDF Image Filename: {filename}")
             fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
             path = fs.get_image_filename(filename)
     
     # for now, to watch uri's on web.
-    logging.info(f"Fetch Resources for '{uri}': '{path}'")
+    logging.error(f"Fetch Resources for '{uri}': '{path}'")
     return path
 
 PDF_OTHER_STYLE = r"""
