@@ -824,8 +824,9 @@ def fetch_resources(uri, rel):
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
         path = fs.get_image_filename(filename)
         print (f"Returning Location of image: {path}")
-
-    #print (f"Fetch Resources for '{uri}': '{path}'")
+    
+    # for now, to watch uri's on web.
+    logging.info(f"Fetch Resources for '{uri}': '{path}'")
     return path
 
 PDF_OTHER_STYLE = r"""
