@@ -6,6 +6,7 @@ import os
 import os.path
 from pathlib import Path
 import re
+import urllib.parse
 from urllib.parse import urlparse
 
 from schemaMap import PREDEFINED_SORTS
@@ -812,17 +813,17 @@ def fetch_resources(uri, rel):
     path = None
     if ".ttf" in uri:
         path = get_file_path(FONT_FILENAME, SUBPATH)
-        #print (f"Returning Font Location: {path}")
+        # print (f"Returning Font Location: {path}")
     elif ".css" in uri:
         path = get_file_path(uri, STYLEPATH)
-        #print (f"Returning style Location: {path}")
+        # print (f"Returning style Location: {path}")
     elif "http" in uri:
         a = urlparse(uri)
-        #print(a.path)                    # Output: /kyle/09-09-201315-47-571378756077.jpg
-        filename = os.path.basename(a.path)
+        print(a.path)                    # Output: /kyle/09-09-201315-47-571378756077.jpg
+        filename = os.path.basename(urllib.parse.unquote(a.path))
         fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
         path = fs.get_image_filename(filename)
-        #print (f"Returning Location of image: {path}")
+        print (f"Returning Location of image: {path}")
 
     #print (f"Fetch Resources for '{uri}': '{path}'")
     return path

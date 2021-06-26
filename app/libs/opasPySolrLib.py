@@ -2551,15 +2551,6 @@ def prep_document_download(document_id,
                                 html_string = re.sub('\。', '。 ', html_string)
                                 html_string = re.sub('\，', '， ', html_string)
                                 html_string = re.sub('\“', ' “', html_string)
-                                #if 0: #old way
-                                    #lines = html_string.split("\n")
-                                    #new_str = ""
-                                    #for line in lines:
-                                        #line = opasgenlib.split_long_lines(line, max_len, '\。', "。 \n")
-                                        #line = opasgenlib.split_long_lines(line, max_len, '\，', "， \n")
-                                        #line = opasgenlib.split_long_lines(line, max_len, '\“', "\n “")
-                                        #new_str += line + "\n"
-                                    #html_string = new_str
                                 html_string = html_string.replace("</head>", opasConfig.PDF_CHINESE_STYLE + "</head>")
                             else:
                                 # PDF Font to support Turkish and English (Extended Character Font)
@@ -2573,6 +2564,9 @@ def prep_document_download(document_id,
                             #print (f"{opasConfig.PDF_EXTENDED_FONT}")
                             # doc = opasxmllib.remove_encoding_string(doc)
                             # open output file for writing (truncated binary)
+                            with open(r"C:\Users\nrsha\Downloads\testout.html", 'w', encoding="utf8") as fo:
+                                fo.write(html_string)
+                            
                             result_file = open(output_filename, "w+b")
                             # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
                             pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert

@@ -9,6 +9,10 @@ a {
     color: midnightblue;
 }
 
+a.id {
+  font-weight: bolder;
+}
+
 .title_author {
   text-align: center;
   font-weight: bold;
@@ -21,7 +25,7 @@ p.title {
   text-align: center;
   display: block;
   font-weight: bold; 
-  text-decoration: none !important;
+  text-decoration: none;
 }
 
 .autaff {
@@ -43,25 +47,19 @@ p.figure {
   text-align: center;
 }
 
-.poem, .quote, .dream, .note, .dialog, .panel, .caption, .summaries .abstract {
-  text-indent: 22px ;
-  color: midnightblue;
-  font-size:smaller;
+.caption {
+  text-align: center;
 }
 
-div.quote {
+.poem, .quote, .dream, .note, .dialog, .panel, .summaries .abstract {
   text-indent: 22px ;
-  font-size:smaller;
-  font-style: italics;
+  color: midnightblue;
+  font-size: small;
+  font-style: italic;
 }
 
 fd, nm {
   color: navy;
-}
-
-revisions {
-  color: teal;
-  font-size: smaller;
 }
 
 ce {
@@ -81,71 +79,41 @@ ro {
   margin-bottom: 12pt;
 }
 
-j {
-  font-size: larger;
-  font-weight: bolder;
-  background-color: yellow;
-}
-
 .bxe {
   font-weight: bold;
   font-size: larger;
 }
 
-list {
-  list-style-type: decimal;
-}
-
-li {
-  display: list-item;
-  list-style-type: decimal;
-}
-
-li:before {
-  content: attr(label) "    ";
-  font-weight: bold;
-}
-
-artqual:after {
-  content: attr(rx);
-}
-
-
 h1, h2, h3, h4, h5, h6, figx {
     display: block;
     margin-top: 2em;
     margin-bottom: 1em;
-    font-family: helvetica, sans-serif;
-    font-weight: bold;
     color: black;
-    font-weight: bold;
-    color: midnightblue;
 }
 
 h1 {
-  font-weight: bold;
+  font-weight: bolder;
   font-size: larger;
-  display: block;
 }
 
 h2 {
-  font-weight: bold;
+  font-weight: bolder;
   font-size: large;
 }
 
 h3 {
-  font-weight: bold;
+  font-weight: bolder;
   font-size: medium;
 }
 
 h4 {
-  font-weight: bold;
-  font-size: smaller;
+  font-weight: bolder;
+  font-size: small;
 }
 
 h5 {
   font-weight: bold;
-  font-size: smaller;
+  font-size: small;
 }
 
 h6 {
@@ -153,25 +121,44 @@ h6 {
   font-size: smaller;
 }
 
-span.peppopup {
-  font-size: normal;
-  display: none;
-}
+/*span.peppopup {*/
+  /*font-size: normal;*/
+  /*display: none;*/
+/*}*/
 
 span.bibauthor {
   font-weight: bold;    
+  font-style: italic;
+  color: midnightblue;
+}
+
+span.bibjournal {
+  font-style: italic;
+  color: midnightblue;
+}
+
+span.bibpages {
+  font-weight: bold;    
+  font-style: italic;
+  color: midnightblue;
+}
+
+span.bibyear {
+    color: midnightblue;
 }
 
 span.bibyear:before {
+    font-style: italic;
     content: " (";    
 }
 
 span.bibyear:after {
+    font-style: italic;
     content: ") ";    
 }
 
 .footer {
-    font-size:smaller;
+    font-size:small;
     font-weight:lighter;
     color: #4b4e54;    
 }
@@ -184,5 +171,13 @@ span.bibyear:after {
   font-weight: lighter;
   vertical-align: super;
   color: #4b4e54;    
+}
+
+.peppopuptext {
+  display: none;
+}
+
+.revisions {
+  display: none;
 }
 
