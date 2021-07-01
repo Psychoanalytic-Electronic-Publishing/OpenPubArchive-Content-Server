@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0626/v2.1.27" # semver versioning now added after date.
+__version__     = "2021.0701/v2.1.29" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -21,7 +21,7 @@ schema and functionality dependent on PEP's needs (who is funding development).
 
 To Install (at least in windows)
   rem python 3.7 required
-  python -m venv .\venv
+  python -m venv .\env
   .\venv\Scripts\activate.bat
   pip install --trusted-host pypi.python.org -r /app/requirements.txt
   rem if it complains pip is not up to date

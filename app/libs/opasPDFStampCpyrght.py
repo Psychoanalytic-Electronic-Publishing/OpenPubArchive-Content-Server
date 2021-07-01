@@ -130,7 +130,7 @@ def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
     try:
         output_file = os.path.join(tempfile.gettempdir(), input_file_basename + f"{sep}{suffix}.pdf")
         logger.debug(f"Writing Stamped Copyright Output File: {output_file}")
-        if 1: # opasConfig.LOCAL_TRACE:
+        if opasConfig.LOCAL_TRACE:
             print(f"Writing Stamped Copyright Output File: {output_file}")
         watermark_file = headerfooterfile
         

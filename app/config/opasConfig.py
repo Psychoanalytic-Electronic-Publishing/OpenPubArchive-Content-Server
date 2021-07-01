@@ -779,7 +779,6 @@ PDF_CHINESE_STYLE = """
 </style>
 """
 
-FONT_FILENAME = "Roboto-Regular.ttf"
 PDF_STYLE_SHEET = "pep-pdf.css"              # "pep-html-preview.css"
 SUBPATH = 'fonts'                            # sub to app
 STYLEPATH = os.path.join("libs", "styles")
@@ -812,7 +811,7 @@ def get_file_path(filename, subpath):
 def fetch_resources(uri, rel):
     path = None
     if ".ttf" in uri:
-        path = get_file_path(FONT_FILENAME, SUBPATH)
+        path = get_file_path(uri, SUBPATH)
         # print (f"Returning Font Location: {path}")
     elif ".css" in uri:
         path = get_file_path(uri, STYLEPATH)
@@ -842,13 +841,22 @@ def fetch_resources(uri, rel):
     logging.debug(f"Fetch Resources for '{uri}': '{path}'")
     return path
 
+FONT_FILENAME = "Roboto-Regular.ttf"
 PDF_OTHER_STYLE = r"""
 <link rel="stylesheet" type="text/css" href="%s"/>
 <style>
     @font-face {font-family: Roboto; src: url('%s');}
+    @font-face {font-family: Roboto; font-style: italic; src: url('%s');}
+    @font-face {font-family: Roboto; font-weight: bold; src: url('%s');}
+    @font-face {font-family: Roboto; font-weight: bold; font-style: italic; src: url('%s');}
     body, p {   
                 font-family: 'Roboto' }	
 </style>
-""" % (fetch_resources(PDF_STYLE_SHEET, None), fetch_resources(FONT_FILENAME, None))
+""" % (fetch_resources(PDF_STYLE_SHEET, None),
+       fetch_resources('Roboto-Regular.ttf', None),
+       fetch_resources('Roboto-Italic.ttf', None),
+       fetch_resources('Roboto-Bold.ttf', None),
+       fetch_resources('Roboto-BoldItalic.ttf', None),
+       )
 
 #print (f"PDF Style: '{PDF_OTHER_STYLE}'")
