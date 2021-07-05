@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0701/v2.1.29" # semver versioning now added after date.
+__version__     = "2021.0705/v2.1.30" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -523,7 +523,8 @@ async def admin_reports(response: Response,
                         enddate: str=Query(None, title=opasConfig.TITLE_ENDDATE, description=opasConfig.DESCRIPTION_ENDDATE),
                         matchstr: str=Query(None, title=opasConfig.TITLE_REPORT_MATCHSTR, description=opasConfig.DESCRIPTION_REPORT_MATCHSTR), 
                         limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                        sortorder: str=Query("DESC", title=opasConfig.TITLE_SORTORDER, description=opasConfig.DESCRIPTION_SORTORDER),
                         download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
                         client_id:int=Depends(get_client_id), 
                         client_session:str= Depends(get_client_session), 
@@ -566,7 +567,12 @@ async def admin_reports(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     if session_info.admin != True:
         # watch to see if PaDS is using the reports as an admin or non-admin user, if admin, change reports to admin only
-        logger.warning(f"Report {report} request by non-admin user ({session_info.username}).")
+        ret_val = f"Report {report} request by non-admin user ({session_info.username})."
+        logger.error(ret_val)
+        raise HTTPException(
+            status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
+            detail=ret_val
+        )       
     else:
         logger.info(f"Report {report} request by admin user ({session_info.username}).")
 
@@ -576,6 +582,15 @@ async def admin_reports(response: Response,
     standard_filter = "1"
     limited_count = 0
     ret_val = None
+    if sortorder in ["asc","desc","ASC","DESC"]:
+        sortorder = sortorder.upper()
+    else:
+        ret_val = f"Unkown sort order supplied: {sortorder}.  Ignored."
+        logger.error(ret_val)
+        raise HTTPException(
+            status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+            detail=ret_val
+        )
 
     if sessionid is not None:
         sessionid_condition = f" AND session_id={sessionid}"
@@ -621,7 +636,7 @@ async def admin_reports(response: Response,
         if matchstr is not None:
             extra_condition = f" AND type RLIKE '{matchstr}'"
         report_view = "vw_reports_document_activity"
-        orderby_clause = "ORDER BY last_update DESC"
+        orderby_clause = f"ORDER BY last_update {sortorder}"
         header = ["user id",
                   "session id",
                   "document id",
@@ -634,7 +649,7 @@ async def admin_reports(response: Response,
         report_view = "vw_reports_session_activity"
         if matchstr is not None:
             extra_condition = f" AND params RLIKE '{matchstr}'"
-        orderby_clause = "ORDER BY last_update DESC"
+        orderby_clause = f"ORDER BY last_update {sortorder}"
         header = ["user id",
                   "session id",
                   "session start",
@@ -646,12 +661,13 @@ async def admin_reports(response: Response,
                   "status message",
                   "last update",
                   "session activity id"]
+    
     elif report == models.ReportTypeEnum.userSearches:
         standard_filter = "endpoint rlike '.*Search' "
         if matchstr is not None:
             extra_condition = f" AND params RLIKE '{matchstr}'"
         report_view = "vw_reports_user_searches"
-        orderby_clause = "ORDER BY last_update DESC"
+        orderby_clause = f"ORDER BY last_update {sortorder}"
         header = ["user id", 
                   "session id",
                   "session start",
@@ -662,10 +678,11 @@ async def admin_reports(response: Response,
                   "status message",
                   "last update",
                   "search activity id"]
+    
     elif report == models.ReportTypeEnum.documentViews:
         standard_filter = "1 = 1 " 
         report_view = "vw_reports_document_views"
-        orderby_clause = "ORDER BY views DESC"
+        orderby_clause = f"ORDER BY views {sortorder}"
         header = ["document id",
                   "view type",
                   "view count"]
