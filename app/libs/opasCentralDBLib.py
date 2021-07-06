@@ -1853,7 +1853,7 @@ class opasCentralDB(object):
                     cursor.close()
         
                 except Exception as e:
-                    logger.warning(f"Error saving document {document_id} view {view_type} for session {session_id} : {e}")
+                    logger.warning(f"Error saving document {document_id} view {view_type} for session {session_id} and user_id {user_id}: {e}")
                     
         except Exception as e:
             logger.warning(f"Error checking document view type {view_type}: {e}")
