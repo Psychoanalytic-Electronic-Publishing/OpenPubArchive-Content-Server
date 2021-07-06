@@ -77,10 +77,10 @@ def main():
                 client_config_settings = curr_client_config_list_item.configSettings
                 logger.info(f"{config}: {client_config_settings}")
                 if options.preview_bool:
-                    logger.info(f"Preview mode...if non-preview Will copy `{config}` to Production DB")
+                    print(f"Preview mode...when non-preview it would copy `{config}` to Production DB")
                 else:
                     try:
-                        logger.info(f"replacing prod {config}:{production_config.configList[0].configSettings}")
+                        print(f"Replacing prod {config}:{production_config.configList[0].configSettings}")
                         production_ocd.save_client_config_item(session_id=curr_client_config_list_item.session_id,
                                                                client_id=curr_client_config_list_item.api_client_id, 
                                                                client_configuration_item=curr_client_config_list_item,

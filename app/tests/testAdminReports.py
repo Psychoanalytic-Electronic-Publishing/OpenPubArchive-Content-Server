@@ -4,10 +4,14 @@
 import logging
 logger = logging.getLogger()
 
-import unittest
 import requests
-from unitTestConfig import base_plus_endpoint_encoded, headers
-from localsecrets import API_KEY_NAME, API_KEY
+import unittest
+from localsecrets import API_KEY_NAME, API_KEY, PADS_TEST_ID, PADS_TEST_PW, PDF_ORIGINALS_PATH, PADS_TEST_ID2, PADS_TEST_PW2
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+
+# Login!
+sessID, headers, session_info = test_login(username=PADS_TEST_ID2, password=PADS_TEST_PW2)
+
 
 class TestReports(unittest.TestCase):
     """

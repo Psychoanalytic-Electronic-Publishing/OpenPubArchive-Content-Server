@@ -3,7 +3,15 @@ import logging
 #import datetime
 import tempfile
 import os
+import os.path
+from pathlib import Path
+import re
+import urllib.parse
+from urllib.parse import urlparse
+
 from schemaMap import PREDEFINED_SORTS
+import localsecrets
+import opasFileSupport
 
 #import urllib.request
 # from enum import Enum, EnumMeta, IntEnum
@@ -286,6 +294,7 @@ DESCRIPTION_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
 DESCRIPTION_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
 DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and searches based on that."
 DESCRIPTION_SORT =f"Comma separated list of field names to sort by {tuple(PREDEFINED_SORTS.keys())}."
+DESCRIPTION_SORTORDER = f"Sort order, either DESC or ASC for descending/ascending."
 DESCRIPTION_SOURCECODE = "The 2-12 character PEP Code (e.g., APA, ANIJP-FR, CPS, PEPTOPAUTHVS), or a Boolean list of codes (e.g., APA OR CPS) or a comma separated list (e.g.: APA, IJP, CPS)"
 DESCRIPTION_SOURCECODE_METADATA_BOOKS = "The 2-3 character PEP Code for the book series (e.g., SE, GW, IPL, NLP, ZBK), or the PEP Code and specific volume number of a book in the series (e.g., GW001, SE006, NLP014, ZBK047 (classic book, specific book assigned number) or * for all."
 DESCRIPTION_SOURCECODE_METADATA_JOURNALS = "The FULL 2-8 character PEP Code of the journal source for matching documents (e.g., APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE) or * for all."
@@ -372,6 +381,7 @@ TITLE_SITEMAP_PATH = "Where to put the sitemap"
 TITLE_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
 TITLE_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
 TITLE_SORT = f"Field names to sort by {tuple(PREDEFINED_SORTS.keys())}."
+TITLE_SORTORDER = f"Sort order, either DESC or ASC for descending/ascending."
 TITLE_SOURCECODE = "Series code"
 TITLE_SOURCELANGCODE = "Source language code"
 TITLE_SOURCENAME = "Series name"
@@ -753,3 +763,102 @@ SS_BROADEN_DICT = {SEARCH_FIELD_RELATED: SS_BROADEN_SEARCH_FIELD_RELATED,
 #journal publishers. For details on how to read the full text of 2017 and more current articles see the publishers official website 
 #"""
 
+# Note the STSong-Light is a built in font for Pisa
+PDF_CHINESE_STYLE = """
+<style>
+   @page {
+          margin-top: 12mm;
+          margin-bottom: 12mm;
+   }
+ 
+   body, p  {
+              font-language-override: "zh";
+              font-family: STSong-Light;
+              padding-right: 20%;
+              margin-left: 5mm;
+              margin-right: 8mm;
+            }	
+</style>
+"""
+
+PDF_STYLE_SHEET = "pep-pdf.css"              # "pep-html-preview.css"
+SUBPATH = 'fonts'                            # sub to app
+STYLEPATH = os.path.join("libs", "styles")
+
+# PDF_EXTENDED_FONT_FILE = f"url('{PATHCHECK1}')"
+# PDF_EXTENDED_FONT_ALT = f"url('{PATHCHECK2}')"
+# Make sure font is defined:
+def get_file_path(filename, subpath):
+    ret_val = None
+    try:
+        pathmod = Path()
+        path = pathmod.absolute()
+        full_file_path = os.path.join(path, subpath, filename)
+        if not Path(full_file_path).is_file():
+            parentpath = path.parent.absolute()
+            full_file_path = os.path.join(parentpath, subpath, filename)
+            if not Path(full_file_path).is_file():
+                logging.error(f"{full_font_path} not found. Current Path: {full_file_path} ")
+
+    except Exception as e:
+        # try current folder relative
+        full_file_path = r"E:/usr3/GitHub/openpubarchive/app/fonts/Roboto-Regular.ttf"
+    
+    else:
+        #ret_val = f"url('{full_font_path}')"
+        ret_val = full_file_path
+        
+    return ret_val
+    
+def fetch_resources(uri, rel):
+    path = None
+    if ".ttf" in uri:
+        path = get_file_path(uri, SUBPATH)
+        # print (f"Returning Font Location: {path}")
+    elif ".css" in uri:
+        path = get_file_path(uri, STYLEPATH)
+        # print (f"Returning style Location: {path}")
+    elif "http" in uri:
+        if localsecrets.CONFIG == "Local":
+            a = urlparse(uri)
+            m = re.search("src=.*/Documents/Image/(.*)[\"\']", a.path)
+            try:
+                if m is not None:
+                    #print ("Found <img> and source.")
+                    filename = m.group(1)
+                    filename = os.path.basename(urllib.parse.unquote(filename))
+                else:
+                    filename = os.path.basename(urllib.parse.unquote(a.path))
+            except Exception as e:
+                logging.error(f"Can't get filename from url: {a.path} ({e})")
+            else:
+                #print (f"PDF Image Filename: {filename}")
+                fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
+                path = fs.get_image_filename(filename)
+        else:
+            path = uri
+            #print (f"fetch resources trying path: {uri}")
+    
+    # for now, to watch uri's on web.
+    logging.debug(f"Fetch Resources for '{uri}': '{path}'")
+    return path
+
+FONT_FILENAME = "Roboto-Regular.ttf"
+PDF_OTHER_STYLE = r"""
+<link rel="stylesheet" type="text/css" href="%s"/>
+<style>
+    @font-face {font-family: Roboto; src: url('%s');}
+    @font-face {font-family: Roboto; font-style: italic; src: url('%s');}
+    @font-face {font-family: Roboto; font-weight: bold; src: url('%s');}
+    @font-face {font-family: Roboto; font-weight: bold; font-style: italic; src: url('%s');}
+    body, p {   
+                font-family: 'Roboto' }	
+</style>
+""" % (fetch_resources(PDF_STYLE_SHEET, None),
+       fetch_resources('Roboto-Regular.ttf', None),
+       fetch_resources('Roboto-Italic.ttf', None),
+       fetch_resources('Roboto-Bold.ttf', None),
+       fetch_resources('Roboto-BoldItalic.ttf', None),
+       )
+
+#print (f"PDF Style: '{PDF_OTHER_STYLE}'")

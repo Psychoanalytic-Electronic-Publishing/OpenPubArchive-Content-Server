@@ -788,6 +788,15 @@ def another_citation_parser(arg):
     ret_val2 = re.findall(pat2, arg, flags=re.I)
     return ret_val1, ret_val2
     
+def split_long_lines(line, maxlen, splitter_ptn, joiner_ptn):
+    if len(line) > maxlen:
+        ret_val = joiner_ptn.join(re.split(splitter_ptn, line))
+        #print (f"Split Line of len {len(line)}: {line}")
+    else:
+        ret_val = line 
+        #print (f"No split for line of len {len(line)}: {line}")
+        
+    return ret_val
 
 # -------------------------------------------------------------------------------------------------------
 # run it!

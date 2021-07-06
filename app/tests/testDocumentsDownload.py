@@ -54,62 +54,70 @@ class TestdocumentsDownload(unittest.TestCase):
         assert(opasFileSupport.file_exists(document_id, year="2001", ext=".PDF") == False)
             
     
-    def test_1_Download(self):
+    def test_1_PDFOrig_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/IJP.077.0217A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-    def test_2_Download(self):
+    def test_2_PDF_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IFP.017.0240A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-    def test_2B_Download(self):
+    def test_2B_PDF_Download(self):
         # has grraphics
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/APA.007.0035A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
        
-
-    def test_3_Download(self):
+    def test_2B_PDF_Download2(self):
+        # has grraphics
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/anijp-tr.008.0017a/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+       
+    def test_3_EPUB_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/IJPSP.009.0324A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-    def test_4_Download(self):
+    def test_4_HTML_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/HTML/IJPSP.009.0324A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-    def test_5_Download(self):
+    def test_5_Most_Cited_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Database/MostCited/?download=true')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-    def test_6_Download(self):
+    def test_6_Most_Viewed_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Database/MostViewed/?download=true')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-    def test_7_Download(self):
+    def test_7a_PDFOrig_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/ANIJP-DE.001.0107A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
+
+    def test_8_PDFOrig_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/IJP.041.0335A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
 
-    def test_8_Download(self):
+    def test_9_PDFOrig_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/ANIJP-CHI.001.0018A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.

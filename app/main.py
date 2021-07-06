@@ -5,7 +5,8 @@ __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
-__version__     = "2021.0611/v2.1.14" # semver versioning now added after date.
+
+__version__     = "2021.0705/v2.1.30" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -20,7 +21,7 @@ schema and functionality dependent on PEP's needs (who is funding development).
 
 To Install (at least in windows)
   rem python 3.7 required
-  python -m venv .\venv
+  python -m venv .\env
   .\venv\Scripts\activate.bat
   pip install --trusted-host pypi.python.org -r /app/requirements.txt
   rem if it complains pip is not up to date
@@ -513,21 +514,22 @@ async def admin_set_loglevel(response: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Admin/Reports/{report}", response_model=models.Report, tags=["Admin"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
-async def reports(response: Response, 
-                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                  report: models.ReportTypeEnum=Path(..., title="Report Requested", description="One of the predefined report names"),
-                  sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
-                  userid:str=Query(None, title="Global User ID", description="Filter by this common (global) system userid"), 
-                  startdate: str=Query(None, title=opasConfig.TITLE_STARTDATE, description=opasConfig.DESCRIPTION_STARTDATE), 
-                  enddate: str=Query(None, title=opasConfig.TITLE_ENDDATE, description=opasConfig.DESCRIPTION_ENDDATE),
-                  matchstr: str=Query(None, title=opasConfig.TITLE_REPORT_MATCHSTR, description=opasConfig.DESCRIPTION_REPORT_MATCHSTR), 
-                  limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                  offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                  download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
-                  client_id:int=Depends(get_client_id), 
-                  client_session:str= Depends(get_client_session), 
-                  api_key: APIKey = Depends(get_api_key)
-                  ):
+async def admin_reports(response: Response, 
+                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                        report: models.ReportTypeEnum=Path(..., title="Report Requested", description="One of the predefined report names"),
+                        sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
+                        userid:str=Query(None, title="Global User ID", description="Filter by this common (global) system userid"), 
+                        startdate: str=Query(None, title=opasConfig.TITLE_STARTDATE, description=opasConfig.DESCRIPTION_STARTDATE), 
+                        enddate: str=Query(None, title=opasConfig.TITLE_ENDDATE, description=opasConfig.DESCRIPTION_ENDDATE),
+                        matchstr: str=Query(None, title=opasConfig.TITLE_REPORT_MATCHSTR, description=opasConfig.DESCRIPTION_REPORT_MATCHSTR), 
+                        limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                        sortorder: str=Query("DESC", title=opasConfig.TITLE_SORTORDER, description=opasConfig.DESCRIPTION_SORTORDER),
+                        download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
+                        client_id:int=Depends(get_client_id), 
+                        client_session:str= Depends(get_client_session), 
+                        api_key: APIKey = Depends(get_api_key)
+                       ):
     """
     ## Function
       <b>Returns a report in JSON per the Reports</b>
@@ -565,7 +567,12 @@ async def reports(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     if session_info.admin != True:
         # watch to see if PaDS is using the reports as an admin or non-admin user, if admin, change reports to admin only
-        logger.warning(f"Report {report} request by non-admin user ({session_info.username}).")
+        ret_val = f"Report {report} request by non-admin user ({session_info.username})."
+        logger.error(ret_val)
+        raise HTTPException(
+            status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
+            detail=ret_val
+        )       
     else:
         logger.info(f"Report {report} request by admin user ({session_info.username}).")
 
@@ -575,6 +582,15 @@ async def reports(response: Response,
     standard_filter = "1"
     limited_count = 0
     ret_val = None
+    if sortorder in ["asc","desc","ASC","DESC"]:
+        sortorder = sortorder.upper()
+    else:
+        ret_val = f"Unkown sort order supplied: {sortorder}.  Ignored."
+        logger.error(ret_val)
+        raise HTTPException(
+            status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+            detail=ret_val
+        )
 
     if sessionid is not None:
         sessionid_condition = f" AND session_id={sessionid}"
@@ -620,19 +636,20 @@ async def reports(response: Response,
         if matchstr is not None:
             extra_condition = f" AND type RLIKE '{matchstr}'"
         report_view = "vw_reports_document_activity"
-        orderby_clause = "ORDER BY last_update DESC"
+        orderby_clause = f"ORDER BY last_update {sortorder}"
         header = ["user id",
                   "session id",
                   "document id",
                   "view type",
-                  "last update"]
+                  "last update",
+                  "document activity id"]
         
     elif report == models.ReportTypeEnum.sessionLog:
         standard_filter = "1 = 1 " 
         report_view = "vw_reports_session_activity"
         if matchstr is not None:
             extra_condition = f" AND params RLIKE '{matchstr}'"
-        orderby_clause = "ORDER BY last_update DESC"
+        orderby_clause = f"ORDER BY last_update {sortorder}"
         header = ["user id",
                   "session id",
                   "session start",
@@ -644,12 +661,13 @@ async def reports(response: Response,
                   "status message",
                   "last update",
                   "session activity id"]
+    
     elif report == models.ReportTypeEnum.userSearches:
         standard_filter = "endpoint rlike '.*Search' "
         if matchstr is not None:
             extra_condition = f" AND params RLIKE '{matchstr}'"
         report_view = "vw_reports_user_searches"
-        orderby_clause = "ORDER BY last_update DESC"
+        orderby_clause = f"ORDER BY last_update {sortorder}"
         header = ["user id", 
                   "session id",
                   "session start",
@@ -659,11 +677,12 @@ async def reports(response: Response,
                   "status code",
                   "status message",
                   "last update",
-                  "session activity id"]
+                  "search activity id"]
+    
     elif report == models.ReportTypeEnum.documentViews:
         standard_filter = "1 = 1 " 
         report_view = "vw_reports_document_views"
-        orderby_clause = "ORDER BY views DESC"
+        orderby_clause = f"ORDER BY views {sortorder}"
         header = ["document id",
                   "view type",
                   "view count"]
@@ -3119,31 +3138,31 @@ def database_mostcited(response: Response,
 
 #-----------------------------------------------------------------------------
 @app.get("/v2/Database/OpenURL/", response_model=Union[models.DocumentList, models.ErrorReturn], response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_OPENURL)
-async def open_url(response: Response, 
-                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                   #moreinfo: bool=Query(False, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO),
-                   client_id:int=Depends(get_client_id), 
-                   client_session:str= Depends(get_client_session), 
-                   #open_url arg reference: https://biblio.ugent.be/publication/760060/file/760063
-                   issn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_ISSN), 
-                   eissn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_EISSN), 
-                   isbn: str=Query(None, title=opasConfig.TITLE_ISBN, description=opasConfig.DESCRIPTION_ISBN), 
-                   title: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
-                   stitle: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
-                   atitle: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
-                   aufirst: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
-                   aulast: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
-                   volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
-                   issue: str=Query(None, title=opasConfig.TITLE_ISSUE, description=opasConfig.DESCRIPTION_ISSUE),
-                   spage: int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_FIRST_PAGE),
-                   epage: int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_LAST_PAGE),
-                   pages: str=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
-                   artnum: str=Query(None, title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDSINGLE), # return controls 
-                   date: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
-                   sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
-                   limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
-                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                   ):
+async def database_open_url(response: Response, 
+                            request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                            #moreinfo: bool=Query(False, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO),
+                            client_id:int=Depends(get_client_id), 
+                            client_session:str= Depends(get_client_session), 
+                            #open_url arg reference: https://biblio.ugent.be/publication/760060/file/760063
+                            issn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_ISSN), 
+                            eissn: str=Query(None, title=opasConfig.TITLE_ISSN, description=opasConfig.DESCRIPTION_EISSN), 
+                            isbn: str=Query(None, title=opasConfig.TITLE_ISBN, description=opasConfig.DESCRIPTION_ISBN), 
+                            title: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
+                            stitle: str=Query(None, title=opasConfig.TITLE_SOURCENAME, description=opasConfig.DESCRIPTION_SOURCENAME, min_length=2),  
+                            atitle: str=Query(None, title=opasConfig.TITLE_TITLE, description=opasConfig.DESCRIPTION_TITLE),
+                            aufirst: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
+                            aulast: str=Query(None, title=opasConfig.TITLE_AUTHOR, description=opasConfig.DESCRIPTION_AUTHOR), 
+                            volume: str=Query(None, title=opasConfig.TITLE_VOLUMENUMBER, description=opasConfig.DESCRIPTION_VOLUMENUMBER), 
+                            issue: str=Query(None, title=opasConfig.TITLE_ISSUE, description=opasConfig.DESCRIPTION_ISSUE),
+                            spage: int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_FIRST_PAGE),
+                            epage: int=Query(None, title=opasConfig.TITLE_FIRST_PAGE, description=opasConfig.DESCRIPTION_LAST_PAGE),
+                            pages: str=Query(None, title=opasConfig.TITLE_PAGEREQUEST, description=opasConfig.DESCRIPTION_PAGEREQUEST),
+                            artnum: str=Query(None, title=opasConfig.TITLE_DOCUMENT_ID, description=opasConfig.DESCRIPTION_DOCIDSINGLE), # return controls 
+                            date: str=Query(None, title=opasConfig.TITLE_STARTYEAR, description=opasConfig.DESCRIPTION_STARTYEAR), 
+                            sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                            limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                            offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                            ):
     """
     ## Function
        <b>Search the database per OpenURL 0.1 paramaters.</b>
@@ -4821,8 +4840,9 @@ def documents_downloads(response: Response,
 
     if filename is None:
         response.status_code = status.httpcode
-        status_message = error_status_message + status.error_description + f" ({status.httpcode})"
-        logger.error(status_message + f" Session: {session_info.session_id}.")
+        status_message = error_status_message
+        if status.error_description is not None:
+            logger.error(error_status_message + ":" + status.error_description)
         ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                     session_info=session_info, 
                                     params=request.url._url,
@@ -4848,7 +4868,7 @@ def documents_downloads(response: Response,
                         fileurl = flex_fs.fs.url(filename)
                         filename = wget.download(fileurl)
     
-                    stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename)
+                    stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename, suffix="original")
                     response.status_code = httpCodes.HTTP_200_OK
                     ret_val = FileResponse(path=stamped_file,
                                            status_code=response.status_code,
@@ -4887,7 +4907,7 @@ def documents_downloads(response: Response,
                                                 )
         elif file_format == 'PDF':
             try:
-                stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename)
+                stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename, suffix="pepweb")
                 response.status_code = httpCodes.HTTP_200_OK
                 ret_val = FileResponse(path=stamped_file,
                                        status_code=response.status_code,

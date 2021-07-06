@@ -1,0 +1,183 @@
+body{
+    margin-left: 8%;
+    margin-right: 8%;
+    color: black;
+    }
+
+a {
+    text-decoration: none !important;
+    color: midnightblue;
+}
+
+a.id {
+  font-weight: bolder;
+}
+
+.title_author {
+  text-align: center;
+  font-weight: bold;
+  color: midnightblue;
+}
+
+p.title {
+  font-size: x-large;
+  font-weight: bold;
+  text-align: center;
+  display: block;
+  font-weight: bold; 
+  text-decoration: none;
+}
+
+.autaff {
+  display: block;
+  text-align: center;
+}
+
+p.pagenumber {
+  text-align: center;
+  color: midnightblue;
+}
+
+p.bibentry {
+  padding-left: 22px ;
+  text-indent: -22px ;
+}
+
+p.figure {
+  text-align: center;
+}
+
+.caption {
+  text-align: center;
+}
+
+.poem, .quote, .dream, .note, .dialog, .panel, .summaries .abstract {
+  text-indent: 22px ;
+  color: midnightblue;
+  font-size: small;
+  font-style: italic;
+}
+
+fd, nm {
+  color: navy;
+}
+
+ce {
+  display: table-cell;
+}
+
+ta {
+  display: table;
+}
+
+ro {
+  display: table-row;
+}
+
+.be {
+  margin-top: 12pt;
+  margin-bottom: 12pt;
+}
+
+.bxe {
+  font-weight: bold;
+  font-size: larger;
+}
+
+h1, h2, h3, h4, h5, h6, figx {
+    display: block;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    color: black;
+}
+
+h1 {
+  font-weight: bolder;
+  font-size: larger;
+}
+
+h2 {
+  font-weight: bolder;
+  font-size: large;
+}
+
+h3 {
+  font-weight: bolder;
+  font-size: medium;
+}
+
+h4 {
+  font-weight: bolder;
+  font-size: small;
+}
+
+h5 {
+  font-weight: bold;
+  font-size: small;
+}
+
+h6 {
+  font-weight: bold;
+  font-size: smaller;
+}
+
+/*span.peppopup {*/
+  /*font-size: normal;*/
+  /*display: none;*/
+/*}*/
+
+span.bibauthor {
+  font-weight: bold;    
+  font-style: italic;
+  color: midnightblue;
+}
+
+span.bibjournal {
+  font-style: italic;
+  color: midnightblue;
+}
+
+span.bibpages {
+  font-weight: bold;    
+  font-style: italic;
+  color: midnightblue;
+}
+
+span.bibyear {
+    color: midnightblue;
+}
+
+span.bibyear:before {
+    font-style: italic;
+    content: " (";    
+}
+
+span.bibyear:after {
+    font-style: italic;
+    content: ") ";    
+}
+
+.footer {
+    font-size:small;
+    font-weight:lighter;
+    color: #4b4e54;    
+}
+
+.ftn {
+  font-size: small;
+  display: block;
+  margin-left: +.25in;
+  text-indent: -.25in;
+  font-weight: lighter;
+  vertical-align: super;
+  color: #4b4e54;    
+}
+
+.peppopuptext {
+  display: none;
+}
+
+.revisions {
+  display: none;
+}
+

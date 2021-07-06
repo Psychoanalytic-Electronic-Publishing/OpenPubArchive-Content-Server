@@ -20,9 +20,11 @@ import tempfile
 import logging
 logger = logging.getLogger(__name__)
 import time
+from fastapi import HTTPException
+from errorMessages import *
 from datetime import datetime
 # import datetime as dtime
-from operator import itemgetter
+# from operator import itemgetter
 
 import sys
 sys.path.append('./solrpy')
@@ -1131,6 +1133,11 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                 filterQ = solr_query_spec.solrQuery.filterQ
         else:
             filterQ = solr_query_spec.solrQuery.filterQ
+            
+        # extend related documents search (art_qual) to unmarked documents that are explicitly referenced in ID
+        # TODO: (Possible) Should this also do this in the query param?
+        if "art_qual:" in filterQ:
+            filterQ = re.sub('art_qual:\(\"?(?P<tgtid>[^\"]*?)\"?\)', '(art_qual:(\g<tgtid>) || art_id:(\g<tgtid>))', filterQ)
             
         solr_param_dict = { 
                             # "q": solr_query_spec.solrQuery.searchQ,
@@ -2454,12 +2461,12 @@ def prep_document_download(document_id,
         return str
 
     ret_val = None
-    status = httpCodes.HTTP_200_OK
+    status = models.ErrorReturn(httpcode=httpCodes.HTTP_200_OK) # no error
 
     query = "art_id:%s" % (document_id)
     args = {
              "fl": """art_id, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
-                      art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi,
+                      art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi, art_title, art_authors, art_authors_mast, art_lang,
                       art_issn, file_classification"""
     }
 
@@ -2472,9 +2479,9 @@ def prep_document_download(document_id,
             art_info = results.docs[0]
             docs = art_info.get("text_xml", art_info.get("art_excerpt", None))
         except IndexError as e:
-            logger.warning("Download Request: No matching document for %s.  Error: %s", document_id, e)
+            logger.error("Download Request: No matching document for %s.  Error: %s", document_id, e)
         except KeyError as e:
-            logger.warning("Download Request: No full-text content found for %s.  Error: %s", document_id, e)
+            logger.error("Download Request: No full-text content found for %s.  Error: %s", document_id, e)
         else:
             try:    
                 if isinstance(docs, list):
@@ -2486,6 +2493,17 @@ def prep_document_download(document_id,
             else:
                 doi = art_info.get("art_doi", None)
                 pub_year = art_info.get("art_year", None)
+                art_title = art_info.get("art_title", None)
+                art_lang = art_info.get("art_lang", "en")
+                art_citeas_xml = art_info.get("art_citeas_xml", None)
+                art_authors_mast = art_info.get("art_authors_mast", "PEP")
+                art_authors = art_authors_mast
+                    
+                if art_citeas_xml is not None:
+                    art_citeas = opasxmllib.xml_elem_or_str_to_text(art_citeas_xml)
+                else:
+                    art_citeas = ""
+                    
                 file_classification = art_info.get("file_classification", None)
                 
                 access = opasDocPerm.get_access_limitations( doc_id=document_id,
@@ -2523,29 +2541,56 @@ def prep_document_download(document_id,
                                                            )
                                 ret_val = None
                         elif ret_format.upper() == "PDF":
-                            pisa.showLogging() # debug only
-                            doc = opasxmllib.remove_encoding_string(doc)
                             html_string = opasxmllib.xml_str_to_html(doc)
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
-                            html_string = re.sub("</html>", f"{COPYRIGHT_PAGE_HTML}</html>", html_string, count=1)                        
-                            # open output file for writing (truncated binary)
+                            html_string = re.sub("\(\)", f"", html_string, count=1) # in running head, missing issue
+                            copyright_page = COPYRIGHT_PAGE_HTML.replace("[[username]]", session_info.username)
+                            html_string = re.sub("</html>", f"{copyright_page}</html>", html_string, count=1)
+                            if art_lang == "zh":
+                                # add some spaces in the chinese text to permit wrapping:
+                                html_string = re.sub('\。', '。 ', html_string)
+                                html_string = re.sub('\，', '， ', html_string)
+                                html_string = re.sub('\“', ' “', html_string)
+                                html_string = html_string.replace("</head>", opasConfig.PDF_CHINESE_STYLE + "</head>")
+                            else:
+                                # PDF Font to support Turkish and English (Extended Character Font)
+                                html_string = html_string.replace("</head>", opasConfig.PDF_OTHER_STYLE + "</head>")
+                                
+                            # html_string.encode("UTF-8")
                             filename = document_id + ".PDF" 
                             output_filename = os.path.join(tempfile.gettempdir(), filename)
+                            pisa.showLogging() # debug only
+                            #print (f"In Print Module.  Folder {os.getcwd()}")
+                            #print (f"{opasConfig.PDF_EXTENDED_FONT}")
+                            # doc = opasxmllib.remove_encoding_string(doc)
+                            # open output file for writing (truncated binary)
+                            #with open(r"C:\Users\nrsha\Downloads\testout.html", 'w', encoding="utf8") as fo:
+                                #fo.write(html_string)
+                            
                             result_file = open(output_filename, "w+b")
-                            # convert HTML to PDF
                             # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
                             pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
-                                                        dest=result_file)           # file handle to receive result
+                                                        dest=result_file,
+                                                        encoding="UTF-8",
+                                                        link_callback=opasConfig.fetch_resources)           # file handle to receive result
                             # close output file
-                            result_file.close()                 # close output file
+                            result_file.close()                 
                             # return True on success and False on errors
                             ret_val = output_filename
+                                
                         elif ret_format.upper() == "EPUB":
                             doc = opasxmllib.remove_encoding_string(doc)
                             html_string = opasxmllib.xml_str_to_html(doc)
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                             html_string = add_epub_elements(html_string)
-                            filename = opasxmllib.html_to_epub(html_string, document_id, document_id)
+                            filename = opasxmllib.html_to_epub(htmlstr=html_string,
+                                                               output_filename_base=document_id,
+                                                               art_id=document_id,
+                                                               lang=art_lang, 
+                                                               authors=art_authors, 
+                                                               html_title=art_title,
+                                                               citeas=art_citeas, 
+                                                               session_info=session_info)
                             ret_val = filename
                         else:
                             err_msg = f"Download format {ret_format} not supported"
@@ -2558,6 +2603,10 @@ def prep_document_download(document_id,
                     except Exception as e:
                         err_msg = f"Prep for Download: Can't convert data: {e}"
                         ret_val = None
+                        #raise HTTPException(
+                            #status_code=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
+                            #detail=err_msg # or use ERR_MSG_PROBLEM_CONVERTING_TO_PDF
+                        #)
                         status = models.ErrorReturn( httpcode=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
                                                      error_description=err_msg
                                                    )
