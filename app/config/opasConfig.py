@@ -489,6 +489,7 @@ VIEW_MOSTCITED_DOWNLOAD_COLUMNS = "art_citeas_text, count5, count10, count20, co
 
 #Schema Field Name Suffix for Synonym Searching
 SYNONYM_SUFFIX = "_syn"
+SYNONYM_FIELDS = ["body_xml", "text", "para", "title", "appxs_xml", "quotes_xml", "dialogs_xml", "notes_xml", "panels_xml", "dreams_xml", "poems_xml", "references_xml"]
 # Must not have spaces
 DOCUMENT_VIEW_FACET_LIST = "glossary_group_terms,terms_highlighted,art_kwds_str"
 # GLOSSARY_VIEW_FACET_LIST = "glossary_group_terms,terms_highlighted,art_kwds_str"

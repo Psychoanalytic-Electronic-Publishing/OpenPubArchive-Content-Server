@@ -158,7 +158,15 @@ def cleanup_solr_query(solrquery):
 
     # one last cleaning, watch for && *:*
     ret_val = ret_val.replace(" && *:*", "")
-    
+       
+    return ret_val
+
+def synonym_field_rename(query_text, synonym_fields=opasConfig.SYNONYM_FIELDS):
+    ret_val = query_text
+    for synonym_field in synonym_fields:
+        synonym_field_pre = synonym_field + ":"
+        synonym_field_post = synonym_field + opasConfig.SYNONYM_SUFFIX + ":" #  e.g., _syn
+        ret_val = ret_val.replace(synonym_field_pre, synonym_field_post)
     
     return ret_val
 
@@ -1142,41 +1150,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
                         
                 word_search = search_dict.get("wordsearch")
                 if word_search is not None:
-                    if 0: # to turn on paragraph level 2 searches, but the simulation using proximity
-                          # 25 words is what GVPi did and that matches better.
-                        if paratext is None:
-                            paratext = word_search
-                    else:
-                        art_level = 1
-                        # if it already has a field name, it won't be a word search. so add body_xml as default
-                        field_name = "body_xml"
-                        if synonyms:
-                            field_name += "_syn"
-                        if 1:
-                            search_q += f'&& {field_name}:({word_search}) '
-                        else:
-                            # is it in quotes?
-                            m = re.match('([\"\'])(?P<q1>.*)([\"\'])', word_search)
-                            if m:
-                                q1 = m.group("q1")
-                            else:
-                                q1 = word_search
-                                
-                            if opasgenlib.not_empty(q1):
-                                # unquoted string
-                                m = re.search('\|{2,2}|\&{2,2}|\sand\s|\sor\s', q1, flags=re.IGNORECASE)
-                                if m: # boolean, pass through
-    
-                                    search_q += f"&& {q1} "
-                                else:
-                                    # if it already has a field name, it won't be a word search. so add body_xml as default
-                                    field_name = "body_xml"
-                                    if synonyms:
-                                        field_name += "_syn"
-                                    if re.search("\"|\'", word_search):
-                                        search_q += f'&& {field_name}:({word_search}) '
-                                    else:
-                                        search_q += f'&& {field_name}:"{word_search}"~25 '
+                    art_level = 1
+                    # if it already has a field name, it won't be here as a word search. so add body_xml as default
+                    field_name = "body_xml"
+                    if synonyms:
+                        field_name += opasConfig.SYNONYM_SUFFIX
+
+                    search_q += f'&& {field_name}:({word_search}) '
 
                 search_type = search_dict.get(opasConfig.KEY_SEARCH_TYPE)
                 if search_type == opasConfig.SEARCH_TYPE_LITERAL:
@@ -1187,10 +1167,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
                     search_q += f'&& {boolean_str}'
                 elif search_type == opasConfig.SEARCH_TYPE_PARAGRAPH:
                     search_q += f'&& {search_dict.get(KEY_SEARCH_VALUE)}'
-                #else:
-                    ## not sure what to search
-                    #search_q += f'&& {smarttext}'
-                    
+                elif search_type == opasConfig.SEARCH_TYPE_WORDSEARCH:
+                    pass # nothing else to do here, but don't want to hit else in this case
+                else: # allow trapping during debug
+                    logger.debug(f"search_type passthrough: {search_type}")                   
 
     if art_level is not None:
         filter_q = f"&& art_level:{art_level} "  # for solr filter fq
@@ -1322,10 +1302,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
             logger.warning(f"fulltext parameter {fulltext1} has ':'")
 
         if synonyms:
-            fulltext1 = fulltext1.replace("text:", "text_syn:")
-            fulltext1 = fulltext1.replace("para:", "para_syn:")
-            fulltext1 = fulltext1.replace("title:", "title_syn:")
-            fulltext1 = fulltext1.replace("text_xml_offsite:", "text_xml_offsite_syn:")
+            # add synonym field suffix opasConfig.SYNONYM_SUFFIX
+            fulltext1 = synonym_field_rename(fulltext1)
             
         analyze_this = f"&& {fulltext1} "
             
