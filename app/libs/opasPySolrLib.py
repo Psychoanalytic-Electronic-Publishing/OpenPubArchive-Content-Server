@@ -1253,13 +1253,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     http_error = m.group("err")
                     http_error_num = int(http_error)
             except Exception as e:
-                logger.error(f"PySolrError: Error parsing Solr error {e.args}")
+                logger.error(f"PySolrError: Error parsing Solr error {e.args} Query: {query}")
                 ret_status = (error_num, e.args)
             else:
                 ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
                 ret_status = (error_num, {"reason": error, "body": error_description})
 
-        logger.error(f"PySolrError: Syntax: {ret_status}. Params sent: {solr_param_dict}")
+        logger.error(f"PySolrError: Syntax: {ret_status}. Query: {query} Params sent: {solr_param_dict}")
         
     except Exception as e:
         try:
@@ -1272,7 +1272,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
         finally:
             ret_val = models.ErrorReturn(httpcode=error_code, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-            logger.error(f"PySolrError: Syntax: {ret_status}. Params sent: {solr_param_dict}")
+            logger.error(f"PySolrError: Syntax: {ret_status}. Query: {query} Params sent: {solr_param_dict}")
                                 
     else: #  search was ok
         try:

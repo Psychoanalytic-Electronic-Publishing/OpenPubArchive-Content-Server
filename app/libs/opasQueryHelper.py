@@ -1318,6 +1318,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
         #  if there are no field specs in the fulltext spec
         if ":" not in fulltext1:
             fulltext1 = qparse.markup(fulltext1, "text")
+        else:
+            logger.warning(f"fulltext parameter {fulltext1} has ':'")
 
         if synonyms:
             fulltext1 = fulltext1.replace("text:", "text_syn:")
@@ -1338,6 +1340,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
     
     if title is not None:
         title = title.strip()
+        # field name not allowed here, strip : or else solr thinks it's a field name
+        # use re.sub to allow us to remove others if necessary later.
+        title = re.sub('[:]', ' ', title)
         if title != '':
             title = qparse.markup(title, "title")
             if synonyms:
@@ -1430,6 +1435,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if opasgenlib.not_empty(author):
         #author = strip_outer_matching_chars(author, '\"')
+        # strip : or else solr thinks it's a field name; re.sub allows us to add other chars later.
+        author = re.sub('[:]', ' ', author)
+        
         if smartsearchLib.is_quoted_str(author) and not smartsearchLib.quoted_str_has_wildcards(author):
             if smartsearchLib.str_has_one_word(author) \
                or smartsearchLib.quoted_str_has_wildcards(author) \
