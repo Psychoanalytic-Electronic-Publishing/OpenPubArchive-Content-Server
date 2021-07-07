@@ -399,7 +399,7 @@
   <field name="bib_title" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="bib_journaltitle" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="references_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
-  <field name="references__xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
+  <field name="references_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
   <copyField source="references_xml" dest="references_xml_syn"/>
 
   <field name="caption_text_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>

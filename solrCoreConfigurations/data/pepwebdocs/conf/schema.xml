@@ -2,6 +2,9 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2021-07-07 Added synonyms (_syn) to references_xml, that seems pretty important if searching titles of articles in that
+               area, and it's one of the fields called out in the UI
+
     2021-06-09 Realized when I removed para collection for non SE/GW, we lost the ability to search appendixes.  
                Added in appxs_xml to capture these (along with the others like body_xml, references_xml)
                Set the special fields like dreams headings, etc. to stored so they can be retrieved if we want.
@@ -396,6 +399,8 @@
   <field name="bib_title" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="bib_journaltitle" type="string" indexed="true" uninvertible="true" stored="false" multiValued="true" docValues="false"/> 
   <field name="references_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
+  <field name="references_xml_syn" type="text_general_syn" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="references_xml" dest="references_xml_syn"/>
 
   <field name="caption_text_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
   <field name="caption_title_xml" type="text_general" indexed="true" stored="true" multiValued="true"/>
