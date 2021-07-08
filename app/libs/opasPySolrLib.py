@@ -1682,9 +1682,14 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         # specified only volume
         field="art_vol"
         search_val = vol
+        # get rid of alpha chars
+        search_val_num = ''.join(filter(str.isnumeric, search_val)) 
+        
     else:  #Just do year
         field="art_year"
         search_val = year  #  was "*", thats an error, fixed 2019-12-19
+        # get rid of alpha chars
+        search_val_num = ''.join(filter(str.isnumeric, search_val)) 
 
     try:
         code = pep_code.upper()
@@ -1693,7 +1698,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     else:
         pep_code = code
 
-    query = f"art_sourcecode:{pep_code} && {field}:{search_val}"
+    query = f"art_sourcecode:{pep_code} && ({field}:{search_val} || {field}:{search_val_num})"
     logger.info(f"Solr Query: q:{query}")
     
     fields = """art_id,
@@ -2288,7 +2293,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
                         if match_vol_idx < pivot_len - 1:
                             next_vol_idx = match_vol_idx + 1
                             next_vol = facet_pivot[0]['pivot'][next_vol_idx]
-                            next_vol_year = facet_pivot[0]['value']
+                            next_vol_year = next_vol['value'] # facet_pivot[0]['value']
                             next_vol = next_vol['pivot'][0]
                             next_vol['year'] = next_vol_year
                     else:

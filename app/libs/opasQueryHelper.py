@@ -1299,7 +1299,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
         if ":" not in fulltext1:
             fulltext1 = qparse.markup(fulltext1, "text")
         else:
-            logger.warning(f"fulltext parameter {fulltext1} has ':'")
+            if opasConfig.LOCAL_TRACE:
+                logger.debug(f"fulltext parameter {fulltext1} has ':'")
 
         if synonyms:
             # add synonym field suffix opasConfig.SYNONYM_SUFFIX

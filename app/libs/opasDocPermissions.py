@@ -129,7 +129,6 @@ def find_client_id(request: Request,
            if not there, gets it from query param;
            if not there, defaults to 0 (server is client)
     """
-    #client_id = int(request.headers.get("client-id", '0'))
     ret_val = 0
     client_id = request.headers.get(opasConfig.CLIENTID, None)
     client_id_qparam = request.query_params.get(opasConfig.CLIENTID, None)
@@ -154,7 +153,22 @@ def find_client_id(request: Request,
     else:
         ret_val = opasConfig.NO_CLIENT_ID # no client id
 
-    ret_val = validate_client_id(ret_val, caller_name="FindClientID")
+    try:
+        if not isinstance(ret_val, int):
+            if isinstance(ret_val, str):
+                try:
+                    ret_val = int(ret_val)
+                except:
+                    logger.error(f"client_id is str, but is not convertible to int.  Defaulting to NO_CLIENT_ID ({opasConfig.NO_CLIENT_ID})")
+                    ret_val = opasConfig.NO_CLIENT_ID
+            else:
+                logger.error(f"client_id is not int or str.  Defaulting to NO_CLIENT_ID ({opasConfig.NO_CLIENT_ID})")
+                ret_val = opasConfig.NO_CLIENT_ID
+    except Exception as e:
+        logger.error(f"client_id instance check failed. {e} - {type(ret_val)}")       
+        ret_val = opasConfig.NO_CLIENT_ID
+    else:
+        ret_val = validate_client_id(ret_val, caller_name="FindClientID")
 
     return ret_val
 
@@ -184,7 +198,7 @@ def fix_pydantic_invalid_nones(response_data, caller_name="DocPermissionsError")
 
 def validate_client_id(client_id, caller_name="DocPermissionsError"):
     if client_id is None:
-        client_id == opasConfig.NO_CLIENT_ID
+        client_id = opasConfig.NO_CLIENT_ID
         logger.error(f"{caller_name}: Client ID error: Client ID is None")
     else: 
         try:
@@ -229,7 +243,23 @@ def get_authserver_session_info(session_id,
         logger.warning(f"{caller_name}: Session ID: {session_id} Client ID was None")
     else:
         # make sure it's ok, this is causing problems on production
-        client_id = validate_client_id(client_id, caller_name=caller_name)
+        # see if it's an int?
+        try:
+            if not isinstance(client_id, int):
+                if isinstance(client_id, str):
+                    try:
+                        client_id = int(client_id)
+                    except:
+                        logger.error(f"client_id is str, but is not convertible to int.  Defaulting to NO_CLIENT_ID ({opasConfig.NO_CLIENT_ID})")
+                        client_id = opasConfig.NO_CLIENT_ID
+                else:
+                    logger.error(f"client_id is not int.  Type is {type(client_id)}. Defaulting to NO_CLIENT_ID ({opasConfig.NO_CLIENT_ID})")
+                    client_id = opasConfig.NO_CLIENT_ID
+        except Exception as e:
+            logger.error(f"client_id instance check failed. {e}")       
+            client_id = opasConfig.NO_CLIENT_ID
+        else:
+            client_id = validate_client_id(client_id, caller_name=caller_name)
         
     if pads_session_info is None or session_id is None:
         # not supplied, so fetch
@@ -816,7 +846,7 @@ def get_pads_session_info(session_id=None,
     caller_name = "GetPaDSSessionInfo"
     
     if client_id == opasConfig.NO_CLIENT_ID:
-        logger.warning(f"{caller_name}: Session info call for Session ID: {session_id} included no (None) client ID.")
+        logger.info(f"{caller_name}: Session info call for Session ID: {session_id} Client ID was NO_CLIENT_ID ({opasConfig.NO_CLIENT_ID}).")
     
     if session_id is not None:
         full_URL = base + f"/v1/Authenticate/IP/" + f"?SessionID={session_id}"

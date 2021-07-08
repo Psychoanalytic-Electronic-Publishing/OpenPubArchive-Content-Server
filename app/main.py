@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0707/v2.1.33" # semver versioning now added after date.
+__version__     = "2021.0708/v2.1.34" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -337,12 +337,15 @@ def get_client_session(response: Response,
 
     if session_id is None or len(session_id) < 12:
         # don't report these errors
-        msg = f"Client:[{client_id}] SessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
-        if re.search("GW\.000|SE\.000", request.url._url) is None:
-            logger.error(msg)
-        raise HTTPException(
-            status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
-            detail=ERR_MSG_PASSWORD + f" {msg}", 
+        if session_id == "":
+            session_id = "DUMMYA01234567890"
+        else:
+            msg = f"Client:[{client_id}] SessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
+            if re.search("GW\.000|SE\.000", request.url._url) is None:
+                logger.error(msg)
+            raise HTTPException(
+                status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
+                detail=ERR_MSG_PASSWORD + f" {msg}", 
         )
         
     return session_id       
@@ -5107,8 +5110,8 @@ async def documents_image_fetch(response: Response,
                                 insensitive: bool=Query(True, title="Filename case ignored"),  
                                 client_id:int=Depends(get_client_id),
                                 #seed:str=Query(None, title="Seed String to help randomize daily expert pick", description="Use the date, for example, to avoid caching from a prev. date. "),
-                                reselect:bool=Query(False, title="Force a new random image selection")  
-                                #client_session:str= Depends(get_client_session)
+                                reselect:bool=Query(False, title="Force a new random image selection"),  
+                                client_session:str= Depends(get_client_session)
                                 ):
     """
     ## Function
@@ -5166,8 +5169,9 @@ async def documents_image_fetch(response: Response,
 
     endpoint = opasCentralDBLib.API_DOCUMENTS_IMAGE
     if download != 0 and download != 2:
-        client_session = get_client_session(response, request, 
-                                            client_id=client_id) 
+        # removed and put back in endpoint; I think the errors I'm seeing in production are due to this call
+        #client_session = get_client_session(response, request, 
+                                            #client_id=client_id) 
         # this is when we need a session id
         opasDocPermissions.verify_header(request, "DocumentImage") # for debugging client call
         ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
