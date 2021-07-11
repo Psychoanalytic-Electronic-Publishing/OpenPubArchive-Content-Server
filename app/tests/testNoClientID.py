@@ -69,7 +69,7 @@ class TestSearchBooleans(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         print (r)
-        assert(response.ok == False)
+        assert(response.ok == True) # ok now for no client id
 
 if __name__ == '__main__':
     unittest.main()

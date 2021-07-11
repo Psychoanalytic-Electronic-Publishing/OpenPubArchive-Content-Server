@@ -863,3 +863,135 @@ PDF_OTHER_STYLE = r"""
        )
 
 #print (f"PDF Style: '{PDF_OTHER_STYLE}'")
+
+class ArticleID(object): 
+    """
+    Article IDs are at the core of the system.  In PEP's design, article IDs are meaningful, and can be broken apart to learn about the content metadata.
+      But when designed as such, the structure of the article IDs may be different in different systems, so it needs to be configurable as possible.
+      This routine in opasConfig is a start of allowing that to be defined as part of the customization. 
+
+    >>> a = ArticleID("AJRPP.004.0007A")
+    >>> print (a.ainfo)
+    {'journal_code': 'AJRPP', 'vol_str': '004', 'vol_nbr': '004', 'vol_suffix': '', 'vol_wildcard': '', 'issue_nbr': '', 'page': '0007A', 'roman': '', 'page_nbr': '0007', 'page_suffix': 'A', 'page_wildcard': ''}
+    >>> a = ArticleID("AJRPP.004A.0007A")
+    >>> print (a.volume_spec)
+    004A
+    >>> a = ArticleID("AJRPP.004S.R0007A")
+    >>> print (a.volume_suffix)
+    S
+    >>> a = ArticleID("AJRPP.004S(1).R0007A")
+    >>> print (a.issue_nbr)
+    1
+    >>> a.volume_nbr
+    4
+    >>> a.roman_prefix
+    'R'
+    >>> a.isroman
+    True
+    >>> print (a.article_id)
+    AJRPP.004S(1).R0007A
+    >>> a.isroman
+    True
+    >>> a.page_nbr
+    7
+    >>> a.std_article_id
+    'AJRPP.004S.R0007A'
+    >>> a = ArticleID("AJRPP.*.*")
+    >>> a.std_article_id
+    'AJRPP.*.*'
+    >>> a = ArticleID("IJP.034.*")
+    >>> a.std_article_id
+    'IJP.034.*'
+    >>> a = ArticleID("IJP.*.0001A")
+    >>> a.std_article_id
+    'IJP.*.0001A'
+    
+    
+    """
+    def __init__(self, article_id):
+        self.is_article_id = False
+        self.regex_article_id =  "(?P<journal_code>[A-Z\-]{2,13})\.(?P<vol_str>(((?P<vol_nbr>[0-9]{3,4})(?P<vol_suffix>[A-Z]?))|(?P<vol_wildcard>\*)))(\((?P<issue_nbr>[0-9]{1,3})\))?\.(?P<page>((?P<roman>R?)(((?P<page_nbr>([0-9]{4,4}))(?P<page_suffix>[A-Z]?))|(?P<page_wildcard>\*))))"
+        self.article_id = article_id
+        self.std_article_id = None
+        self.journal_code = None
+        self.volume_spec  = None
+        self.volume_suffix  = None
+        self.volume_wildcard  = None
+        self.volume_nbr  = None
+        self.volume_nbr_str  = None
+        self.issue_code = None
+        self.issupplement = False
+        self.issue_nbr =  0
+        # page info
+        self.page = None
+        self.page_nbr_str = None
+        self.page_nbr = 0
+        self.page_wildcard  = None
+        self.roman_prefix  = ""
+        self.isroman = False
+        self.page_suffix  = None
+
+        m = re.match(self.regex_article_id, article_id, flags=re.IGNORECASE)
+        if m is not None:
+            self.ainfo = m.groupdict("")
+            self.journal_code = self.ainfo.get("journal_code")
+            self.volume_spec = self.ainfo.get("vol_str")
+            self.volume_suffix = self.ainfo.get("vol_suffix", "")
+            self.volume_wildcard = self.ainfo.get("vol_wildcard")
+            self.volume_nbr = self.ainfo.get("vol_nbr") 
+            if self.volume_nbr != '': # default for groupdict is ''
+                self.volume_nbr = int(self.volume_nbr)
+                # make sure str is at least 3 places via zero fill
+                self.volume_nbr_str = format(self.volume_nbr, '03')
+            else:
+                self.volume_nbr = 0
+            if self.volume_wildcard != '':
+                self.volume_nbr_str = self.volume_wildcard
+                
+            self.issue_code  = self.ainfo.get("vol_suffix")
+            self.issupplement = self.issue_code == "S"
+            self.issue_nbr = self.ainfo.get("issue_nbr") # default for groupdict is ''
+            if self.issue_nbr != '':
+                self.issue_nbr = int(self.issue_nbr)
+            else:
+                self.issue_nbr = 0
+            # page info
+            self.page = self.ainfo.get("page")
+            self.page_nbr_str = self.ainfo.get("page_nbr")
+            self.page_nbr = self.page_nbr_str 
+            if self.page_nbr != '':
+                self.page_nbr = int(self.page_nbr)
+                self.page_nbr_str = format(self.page_nbr, '04')
+            else:
+                self.page_nbr = 0
+            self.page_wildcard = self.ainfo.get("page_wildcard")
+            if self.page_wildcard != '':
+                self.page_nbr_str = self.page
+                
+            self.roman_prefix = self.ainfo.get("roman", "")
+            self.isroman = self.roman_prefix.upper() == "R"
+            self.page_suffix = self.ainfo.get("page_suffix", "A")
+            self.std_article_id = f"{self.journal_code}.{self.volume_nbr_str}{self.volume_suffix}"
+            if self.volume_wildcard == '':
+                if self.page_wildcard == '':
+                    self.std_article_id += f".{self.roman_prefix}{self.page_nbr_str}{self.page_suffix}"
+                else:
+                    self.std_article_id += f".*"
+            else:
+                self.std_article_id += f".*"
+
+            # always should be uppercase
+            self.std_article_id = self.std_article_id.upper()
+            self.is_article_id = True
+            
+# -------------------------------------------------------------------------------------------------------
+# test it!
+
+if __name__ == "__main__":
+    import sys
+    print ("Running in Python %s" % sys.version_info[0])
+   
+    import doctest
+    doctest.testmod()    
+    print ("opasConfig Tests Completed")
+            

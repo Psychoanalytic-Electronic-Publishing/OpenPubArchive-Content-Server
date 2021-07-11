@@ -192,11 +192,24 @@ def strip_outer_matching_chars(s, outer_char):
     """
     If a string has the same characters wrapped around it, remove them.
     Make sure the pair match.
+    
+    >>> a = "xthe rain in spainx"
+    strip_outer_matching_chars(a, "x")
+    the rain in spain
+    >>> a = ""
+    
+    
     """
-    s = s.strip()
-    if (s[0] == s[-1]) and s.startswith(outer_char):
-        return s[1:-1]
-    return s
+    ret_val = s
+    if len(s) > 2:
+        try:
+            s = s.strip()
+            if (s[0] == s[-1]) and s.startswith(outer_char):
+                ret_val = s[1:-1]
+        except Exception as e:
+            logger.error(f"Can't remove outer chars from: {s}. Error: {e}")
+
+    return ret_val
 ##-----------------------------------------------------------------------------
 #def search_qualifiers(searchstr, field_label, field_thesaurus=None, paragraph_len=25):
     #"""
@@ -1298,9 +1311,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
         #  if there are no field specs in the fulltext spec
         if ":" not in fulltext1:
             fulltext1 = qparse.markup(fulltext1, "text")
-        else:
-            if opasConfig.LOCAL_TRACE:
-                logger.debug(f"fulltext parameter {fulltext1} has ':'")
+        #else:
+            #if opasConfig.LOCAL_TRACE:
+                #logger.debug(f"fulltext parameter {fulltext1} has ':'")
 
         if synonyms:
             # add synonym field suffix opasConfig.SYNONYM_SUFFIX

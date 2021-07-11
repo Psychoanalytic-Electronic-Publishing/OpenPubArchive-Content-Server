@@ -46,6 +46,22 @@ class TestMetadataContents(unittest.TestCase):
         assert(r['documentList']['responseSet'][6]["issueSeqNbr"] == "64")
         assert(r['documentList']['responseSet'][6]["pgStart"] == "104")
         
+    def test_1C_meta_contents_for_source(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Contents/APA/27S/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print(r['documentList']['responseInfo']['fullCount']) 
+        assert(r['documentList']['responseInfo']['fullCount'] >= 50)
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Contents/IJP/34S/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print(r['documentList']['responseInfo']['fullCount']) 
+        assert(r['documentList']['responseInfo']['fullCount'] >= 50)
+        
         
     def test_2_meta_contents_source_volume(self):
         """

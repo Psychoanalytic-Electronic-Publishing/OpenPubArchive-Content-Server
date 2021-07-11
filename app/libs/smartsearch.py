@@ -113,7 +113,7 @@ def smart_search(smart_search_text):
     # get rid of smart quotes
     smart_search_text = re.sub("“|”", "'", smart_search_text)
     # count words
-    has_wildcards = len(re.findall(r'\*|(\S?\?+\S)', smart_search_text))
+    # has_wildcards = len(re.findall(r'\*|(\S?\?+\S)', smart_search_text))
     #if smart_search_includes_simple_wildcards:
         #try:
             #regc = re.compile(smart_search_text)
@@ -128,9 +128,10 @@ def smart_search(smart_search_text):
         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_LITERAL
         ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{smart_search_text}"
         
-    if re.match("[A-Z\-]{2," + f"{opasConfig.MAX_JOURNALCODE_LEN}" + "}\.[0-9]{3,3}[A-Z]?\.[0-9]{4,4}[A-Z]?", smart_search_text, flags=re.IGNORECASE):
+    smart_article_id = opasConfig.ArticleID(smart_search_text)
+    if smart_article_id.is_article_id:
         # locator (articleID)
-        loc_corrected = smart_search_text.upper()
+        loc_corrected = smart_article_id.std_article_id
         if smartsearchLib.is_value_in_field(loc_corrected, opasConfig.SEARCH_FIELD_LOCATOR):
             ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: loc_corrected}
 

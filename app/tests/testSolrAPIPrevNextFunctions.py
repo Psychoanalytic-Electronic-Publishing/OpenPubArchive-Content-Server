@@ -46,7 +46,7 @@ class TestSolrAPIPrevNextFunctions(unittest.TestCase):
         print(r['documentList']['responseInfo']['supplementalInfo'])
         assert (r['documentList']['responseInfo']['supplementalInfo']["infosource"] == "volumes_adjacent")
         assert (r['documentList']['responseInfo']['supplementalInfo']["prev_vol"] == {'value': '3', 'count': 44, 'year': '2008'})
-        assert (r['documentList']['responseInfo']['supplementalInfo']["next_vol"] == {'value': '5', 'count': 48, 'year': 'IJPSP'})
+        assert (r['documentList']['responseInfo']['supplementalInfo']["next_vol"] == {'value': '5', 'count': 48, 'year': '2010'})
         assert (r['documentList']['responseInfo']['supplementalInfo']["matched_vol"] == {'value': '4', 'count': 61, 'year': '2009'})
 
     def test_1C_meta_contents_for_source(self):
@@ -63,9 +63,10 @@ class TestSolrAPIPrevNextFunctions(unittest.TestCase):
         r = response.json()
         print(r['documentList']['responseInfo']['fullCount'])
         print(r['documentList']['responseInfo']['supplementalInfo'])
+        print(r['documentList']['responseInfo']['supplementalInfo']["next_vol"])
         assert (r['documentList']['responseInfo']['supplementalInfo']["infosource"] == "volumes_adjacent")
         assert (r['documentList']['responseInfo']['supplementalInfo']["prev_vol"] == None)
-        assert (r['documentList']['responseInfo']['supplementalInfo']["next_vol"] == {'value': '2', 'count': 39, 'year': 'IJPSP'})
+        assert (r['documentList']['responseInfo']['supplementalInfo']["next_vol"] == {'value': '2', 'count': 39, 'year': '2007'})
         assert (r['documentList']['responseInfo']['supplementalInfo']["matched_vol"] == {'value': '1', 'count': 34, 'year': '2006'})
     
 if __name__ == '__main__':

@@ -1683,13 +1683,24 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         field="art_vol"
         search_val = vol
         # get rid of alpha chars
-        search_val_num = ''.join(filter(str.isnumeric, search_val)) 
-        
+        if not vol.isnumeric():
+            search_val_num = ''.join(filter(str.isnumeric, search_val))
+        else:
+            search_val_num = ''
+            
     else:  #Just do year
         field="art_year"
         search_val = year  #  was "*", thats an error, fixed 2019-12-19
         # get rid of alpha chars
-        search_val_num = ''.join(filter(str.isnumeric, search_val)) 
+        if not vol.isnumeric():
+            search_val_num = ''.join(filter(str.isnumeric, search_val))
+        else:
+            search_val_num = ''
+
+    if search_val_num != '':
+        clause_2 = f"{field}:({search_val} || {search_val_num})"
+    else:
+        clause_2 = f"{field}:{search_val}"       
 
     try:
         code = pep_code.upper()
@@ -1698,7 +1709,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     else:
         pep_code = code
 
-    query = f"art_sourcecode:{pep_code} && ({field}:{search_val} || {field}:{search_val_num})"
+    query = f"art_sourcecode:{pep_code} && {clause_2}"
     logger.info(f"Solr Query: q:{query}")
     
     fields = """art_id,
