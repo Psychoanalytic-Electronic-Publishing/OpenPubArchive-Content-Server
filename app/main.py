@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0710/v2.1.35" # semver versioning now added after date.
+__version__     = "2021.0711/v2.1.36" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -296,7 +296,8 @@ def get_client_id(response: Response,
 def get_client_session(response: Response,
                        request: Request,
                        client_session: str=Header(None, title=opasConfig.TITLE_CLIENT_SESSION, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
-                       client_id: int=Depends(get_client_id), 
+                       client_id: int=Header(0, title=opasConfig.TITLE_CLIENT_ID,
+                                             description=opasConfig.DESCRIPTION_CLIENT_ID)
                        ):
     """
     Dependency for client_session id:
@@ -309,7 +310,9 @@ def get_client_session(response: Response,
     if client_session == 'None': # Not sure where this is coming from as string, but fix it.
         client_session = None
         
+    client_id = opasDocPermissions.find_client_id(request, response)       
     session_id = opasDocPermissions.find_client_session_id(request, response, client_session)
+    
     # client_id = get_client_id(response, request, 0)
     # if there's no client session, get a session_id from PaDS without logging in
     if session_id is None:

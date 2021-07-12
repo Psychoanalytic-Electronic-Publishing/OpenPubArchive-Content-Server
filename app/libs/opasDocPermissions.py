@@ -227,27 +227,9 @@ def get_authserver_session_info(session_id,
     ts = time.time()
     caller_name = "GetAuthserverSessionInfo"
     
-    #if client_id == opasConfig.NO_CLIENT_ID:
-        #logger.warning(f"{caller_name}: Session ID: {session_id} Client ID was None")
-    #else:
-        ## make sure it's ok, this is causing problems on production
-        ## see if it's an int?
-        #try:
-            #if not isinstance(client_id, int):
-                #if isinstance(client_id, str):
-                    #try:
-                        #client_id = int(client_id)
-                    #except:
-                        #logger.error(f"client_id is str, but is not convertible to int.  Defaulting to NO_CLIENT_ID ({opasConfig.NO_CLIENT_ID})")
-                        #client_id = opasConfig.NO_CLIENT_ID
-                #else:
-                    #logger.error(f"client_id is not int.  Type is {type(client_id)}. Defaulting to NO_CLIENT_ID ({opasConfig.NO_CLIENT_ID})")
-                    #client_id = opasConfig.NO_CLIENT_ID
-        #except Exception as e:
-            #logger.error(f"client_id instance check failed. {e}")       
-            #client_id = opasConfig.NO_CLIENT_ID
-        #else:
-            #client_id = validate_client_id(client_id, caller_name=caller_name)
+    #make sure it's ok, this is causing problems on production
+    #see if it's an int?
+    client_id = validate_client_id(client_id, caller_name=caller_name)
         
     if pads_session_info is None or session_id is None:
         # not supplied, so fetch
@@ -268,8 +250,12 @@ def get_authserver_session_info(session_id,
                 session_id = session_info.session_id
         except Exception as e:
             logger.error(f"{caller_name}: Error getting pads_session_info {e}")
-            session_info = models.SessionInfo(session_id="unknown", api_client_id=client_id)
-            
+            client_id_type = type(client_id)
+            if client_id_type == int:
+                session_info = models.SessionInfo(session_id="unknown", api_client_id=client_id)
+            else:
+                session_info = models.SessionInfo(session_id="unknown", api_client_id=opasConfig.NO_CLIENT_ID)
+                
     #else:
         #session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
         
