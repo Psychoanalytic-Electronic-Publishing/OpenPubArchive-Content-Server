@@ -1335,6 +1335,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             documentListItem.accessLimitedCode = access.accessLimitedCode
                             documentListItem.accessLimitedClassifiedAsCurrentContent = access.accessLimitedClassifiedAsCurrentContent
                             documentListItem.accessLimitedReason = access.accessLimitedReason
+                            documentListItem.accessLimitedDebugMsg = access.accessLimitedDebugMsg
                             documentListItem.accessLimitedDescription = access.accessLimitedDescription
                             documentListItem.accessLimitedPubLink = access.accessLimitedPubLink
 
@@ -2158,20 +2159,31 @@ def metadata_get_next_and_prev_articles(art_id=None,
     # works for books, videostream vol numbers
     
     source_code, source_year, source_vol, source_page, source_page_id = split_article_id(art_id)
-    distinct_return = "art_sourcecode, art_year, art_vol, art_id"
+    article_id = opasConfig.ArticleID(articleID=art_id)
+    #source_code = article_id.sourceCode
+    #source_vol = article_id.volumeInt
+    #source_page = article_id.pageInt
+    #source_issue = article_id.issueInt
+    
+    distinct_return = "art_sourcecode, art_year, art_vol, art_id, art_iss, art_iss_seqnbr"
     next_art = {}
     prev_art = {}
     match_art = {}
     
     query = "art_level:1 "
-    if source_code is not None and source_code.isalpha():
-        query += f" && art_sourcecode:{source_code}"
+    if article_id.sourceCode is not None:
+        query += f" && art_sourcecode:{article_id.sourceCode}"
 
-    if source_vol is not None and source_vol.isalnum():
-        query += f" && art_vol:{source_vol}"
+    if article_id.volumeInt is not None:
+        query += f" && art_vol:{article_id.volumeInt}"
         
-    if source_year is not None and source_year.isalnum():
-        query += f" && art_year:{source_year}"
+    if article_id.issueInt != 0:
+        query += f" && art_iss:{article_id.issueInt}"  # just the number representation, 1-n
+    elif article_id.issueCode != '':
+        query += f" && art_iss:{article_id.issueCode}*" # could be S, or A, B, C..., but issue_code could be spelled out supplement
+        # Need to deal with FA...has Pilot and then numbers    
+        #if source_year is not None and source_year.isalnum():
+            #query += f" && art_year:{source_year}"
         
     try:
         logger.info(f"Solr Query: q={query}")
@@ -2628,7 +2640,7 @@ def prep_document_download(document_id,
                                                    )
                 else: # access is limited
                     err_msg = f"No permission to download document {document_id} for user {session_info}"
-                    #logger.warning(err_msg) # eliminate double log? 2021-06-02
+                    logger.warning(access.accessLimitedDebugMsg) # log developer info for tracing access issues
                     status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
                                                  error_description=err_msg
                                                )

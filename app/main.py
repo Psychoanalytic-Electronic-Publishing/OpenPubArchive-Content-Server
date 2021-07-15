@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0711/v2.1.36" # semver versioning now added after date.
+__version__     = "2021.0714/v2.1.37" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -3750,6 +3750,45 @@ def database_word_wheel(response: Response,
     return ret_val  # Return author information or error
 
 #-----------------------------------------------------------------------------
+@app.get("/v2/Metadata/ArticleID/", response_model=opasConfig.ArticleID, response_model_exclude_unset=True, tags=["Metadata"], summary="")
+def metadata_articleid(response: Response,
+                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
+                       articleID: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description="ArticleID to evaluate"), 
+                       diagnostics: bool=Query(False, title="Show all parsed fields", description="Show all information for article ID diagnostics"), 
+                   ):
+    """
+    ## Function
+       <b>Check if articleID is a valid articleID and break down the subinformation from it, returning in a the
+          ArticleID model (which is defined in opasConfig).  This is defined and configured in opasConfig
+          so it can be customized for variations in the ID.
+
+    ## Return Type
+       opasconfig.ArticleID
+
+    ## Status
+       This endpoint is working.
+
+    ## Sample Call
+         {url}/v2/Metadata/ArticleID/
+         
+         http://development.org:9100/v2/Metadata/ArticleID/&articleID=GW.004.0051A
+
+    ## Notes
+       N/A
+       
+    ## Potential Errors
+       N/A
+
+    """
+
+    # return the articleID model to the client to break it down for them
+    ret_val = opasConfig.ArticleID(articleID=articleID, allInfo=diagnostics)
+    
+
+    return ret_val
+
+
+#-----------------------------------------------------------------------------
 @app.get("/v2/Metadata/Books/", response_model=models.SourceInfoList, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_BOOK_NAMES)
 def metadata_books(response: Response,
                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
@@ -5305,6 +5344,6 @@ if __name__ == "__main__":
     import fastapi
     print (f"FastAPI Version {fastapi.__version__}")
     
-    uvicorn.run(app, host="development.org", port=localsecrets.API_PORT_MAIN, debug=False, log_level="warning")
+    uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=True, log_level="warning")
     # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
     print ("Now we're exiting...")

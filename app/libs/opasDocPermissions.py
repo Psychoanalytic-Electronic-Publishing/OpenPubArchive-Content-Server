@@ -730,7 +730,8 @@ def get_access_limitations(doc_id,
                                 #    the session simply never existed.
                                 ret_val.accessLimited = True
                                 session_info.authenticated = False
-                                ret_val.accessLimitedReason = f"Full text of {doc_id} unavailable. " + opasConfig.ACCESSLIMITED_401_UNAUTHORIZED
+                                msg = f"Full text of {doc_id} unavailable. " + opasConfig.ACCESSLIMITED_401_UNAUTHORIZED
+                                ret_val.accessLimitedReason = msg
                             else:
                                 # set default again based on update from PaDS query
                                 ret_val.accessLimited = True
@@ -772,10 +773,14 @@ def get_access_limitations(doc_id,
                                     ret_val.accessLimited = False
                                     ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
                                     ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-                                    logger.debug(f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr}. Opas Reason: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}")
+                                    msg = f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr}. Opas Reason: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}"
+                                    logger.debug(msg)
+                                    ret_val.accessLimitedDebugMsg = msg
                                 else:
                                     # changed from warning to info 2021-06-02 to reduce normal logging
-                                    logger.info(f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}") # limited...get it elsewhere
+                                    msg = f"Document {doc_id} unavailable.  Pads Reason: {resp.ReasonStr} Opas: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}"
+                                    logger.info(msg) # limited...get it elsewhere
+                                    ret_val.accessLimitedDebugMsg = msg
                                     ret_val.accessLimited = True
                                     if ret_val.accessLimitedClassifiedAsCurrentContent:
                                         # embargoed
@@ -786,21 +791,31 @@ def get_access_limitations(doc_id,
                                         
                     else:
                         # not full-text OR (not authenticated or accessLimited==False)
-                        logger.debug(f"No PaDS check needed: Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}")
+                        msg = f"No PaDS check needed: Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}"
+                        logger.debug(msg)
+                        ret_val.accessLimitedDebugMsg = msg
 
                 else: # It's open access!
-                    logger.debug(f"No PaDS check needed: Document {doc_id} is open access")
+                    msg = f"No PaDS check needed: Document {doc_id} is open access"
+                    logger.debug(msg)
+                    ret_val.accessLimitedDebugMsg = msg
         
             except Exception as e:
-                logger.error(f"{caller_name}: Issue checking document permission. Possibly not logged in {e}")
+                msg = f"{caller_name}: Issue checking document permission. Possibly not logged in {e}"
+                logger.error(msg)
+                ret_val.accessLimitedDebugMsg = msg
                 pass # can't be checked, will be unauthorized.
 
     except Exception as e:
-        logger.error(f"{caller_name}: General exception {e} trying ascertain access limitations.")
+        msg = f"{caller_name}: General exception {e} trying ascertain access limitations."
+        logger.error(msg)
+        ret_val.accessLimitedDebugMsg = msg
 
     if fulltext_request and ret_val.accessLimited:
         # happens anytime someone views an abstract in Document mode because they don't have an account. Perfectly legal. Changed to info (from error)
-        logger.info(f"Full-text access for {doc_id} denied ({ret_val.accessLimitedCode}). Sess:{session_id}: Access:{ret_val.accessLimitedReason}")
+        msg = f"Full-text access for {doc_id} denied ({ret_val.accessLimitedCode}). Sess:{session_id}: Access:{ret_val.accessLimitedReason}"
+        logger.info(msg)
+        ret_val.accessLimitedDebugMsg = msg
 
     return ret_val
 

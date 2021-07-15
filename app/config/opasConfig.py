@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import urllib.parse
 from urllib.parse import urlparse
+import string
 
 from schemaMap import PREDEFINED_SORTS
 import localsecrets
@@ -266,7 +267,7 @@ DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_ISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals of all kinds and on all media–print and electronic."
 DESCRIPTION_EISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals as electronic (the same as issn in PEP schema)"
 DESCRIPTION_ISBN = "International Standard Book Number. 10 digits up to the end of 2006, now always consist of 13 digits"
-DESCRIPTION_ISSUE = "The issue number if the source has one"
+DESCRIPTION_ISSUE = "The issue number if the source has one (or S, or Supplement for supplements).  If alpha will convert to equivalent number counting from A."
 DESCRIPTION_LIMIT = "Maximum number of items to return."
 DESCRIPTION_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 DESCRIPTION_MOREINFO = "Return statistics on the Archive holdings"
@@ -758,6 +759,8 @@ SS_BROADEN_DICT = {SEARCH_FIELD_RELATED: SS_BROADEN_SEARCH_FIELD_RELATED,
                    SEARCH_FIELD_RELATED_EXPANDED: SS_BROADEN_SEARCH_FIELD_RELATED,
                   }
 
+SUPPLEMENT_ISSUE_SEARCH_STR = "Supplement" # this is what will be searched in "art_iss" for supplements
+
 #PEPWEB_ABSTRACT_MSG1 = """
 #This is a summary or excerpt from the full text of the article. PEP-Web provides full-text search of the complete articles for
 #current and archive content, but only the abstracts are displayed for current content, due to contractual obligations with the
@@ -864,125 +867,218 @@ PDF_OTHER_STYLE = r"""
 
 #print (f"PDF Style: '{PDF_OTHER_STYLE}'")
 
-class ArticleID(object): 
+from pydantic import BaseModel, Field
+
+def parse_volume_code(vol_code: str, source_code: str=None): 
+    """
+    PEP Volume numbers in IDS can be numbers or suffixed by an issue code--we use them after a volume number when a journal repeats pagination
+    from issue to issue or starts the pagination over in a Supplement.
+    
+    >>> parse_volume_code("34S")
+    ('34', 'S')
+    >>> parse_volume_code("101C")
+    ('101', 'C')
+    >>> parse_volume_code("130")
+    ('130', None)
+    
+    
+    """
+    ret_val = ("*", None)
+    if vol_code is not None:
+        m = re.match("(?P<vol>[0-9]+)(?P<issuecode>[A-z]+)?", vol_code)
+        if m is not None:
+            vol = m.group("vol")
+            issuecode = m.group("issuecode") 
+            ret_val = vol, issuecode
+
+    return ret_val    
+
+def parse_issue_code(issue_code: str, source_code=None, vol=None): 
+    """
+    Issue codes are PEP unique--we use them after a volume number when a journal repeats pagination
+    from issue to issue or starts the pagination over in a Supplement.
+    
+    Source code and volume can be used to handle sources that are "exceptions" to rules (unfortunately)
+    
+    """
+    ret_val = "*"
+    if issue_code is not None and issue_code.isalpha():
+        issue_code = issue_code.upper()
+        if issue_code[0] != "S" or (source_code == "FA" and vol == 1):
+            ret_val = string.ascii_uppercase.index(issue_code[0]) # A==0, B==1
+            ret_val += 1 # now A==1
+            ret_val = str(ret_val)
+        elif issue_code[0] == 'S':
+            ret_val = SUPPLEMENT_ISSUE_SEARCH_STR # supplement
+        else:
+            ret_val = "*" # not recognized, allow any issue
+            
+    elif issue_code.isdecimal():
+        if type(issue_code) == "int":
+            ret_val = str(issue_code)
+        else:
+            ret_val = issue_code
+    return ret_val    
+
+class ArticleID(BaseModel):
     """
     Article IDs are at the core of the system.  In PEP's design, article IDs are meaningful, and can be broken apart to learn about the content metadata.
       But when designed as such, the structure of the article IDs may be different in different systems, so it needs to be configurable as possible.
       This routine in opasConfig is a start of allowing that to be defined as part of the customization. 
 
-    >>> a = ArticleID("AJRPP.004.0007A")
-    >>> print (a.ainfo)
-    {'journal_code': 'AJRPP', 'vol_str': '004', 'vol_nbr': '004', 'vol_suffix': '', 'vol_wildcard': '', 'issue_nbr': '', 'page': '0007A', 'roman': '', 'page_nbr': '0007', 'page_suffix': 'A', 'page_wildcard': ''}
-    >>> a = ArticleID("AJRPP.004A.0007A")
-    >>> print (a.volume_spec)
-    004A
-    >>> a = ArticleID("AJRPP.004S.R0007A")
-    >>> print (a.volume_suffix)
-    S
-    >>> a = ArticleID("AJRPP.004S(1).R0007A")
-    >>> print (a.issue_nbr)
-    1
-    >>> a.volume_nbr
-    4
-    >>> a.roman_prefix
-    'R'
-    >>> a.isroman
-    True
-    >>> print (a.article_id)
-    AJRPP.004S(1).R0007A
-    >>> a.isroman
-    True
-    >>> a.page_nbr
-    7
-    >>> a.std_article_id
-    'AJRPP.004S.R0007A'
-    >>> a = ArticleID("AJRPP.*.*")
-    >>> a.std_article_id
-    'AJRPP.*.*'
-    >>> a = ArticleID("IJP.034.*")
-    >>> a.std_article_id
-    'IJP.034.*'
-    >>> a = ArticleID("IJP.*.0001A")
-    >>> a.std_article_id
-    'IJP.*.0001A'
+    >>> a = ArticleID(articleID="AJRPP.004.0007A")
+    >>> print (a.articleInfo)
+    {'source_code': 'AJRPP', 'vol_str': '004', 'vol_numeric': '004', 'vol_suffix': '', 'vol_wildcard': '', 'issue_nbr': '', 'page': '0007A', 'roman': '', 'page_numeric': '0007', 'page_suffix': 'A', 'page_wildcard': ''}
     
+    >>> a = ArticleID(articleID="AJRPP.004A.0007A")
+    >>> print (a.volumeNbrStr)
+    004
+    >>> a = ArticleID(articleID="AJRPP.004S.R0007A")
+    >>> print (a.volumeSuffix)
+    S
+    >>> a = ArticleID(articleID="AJRPP.004S(1).R0007A")
+    >>> print (a.issueInt)
+    1
+    >>> a.volumeInt
+    4
+    >>> a.romanPrefix
+    'R'
+    >>> a.isRoman
+    True
+    >>> print (a.articleID)
+    AJRPP.004S.R0007A
+    >>> a.isRoman
+    True
+    >>> a.pageInt
+    7
+    >>> a.standardized
+    'AJRPP.004S.R0007A'
+    >>> a = ArticleID(articleID="AJRPP.*.*")
+    >>> a.standardized
+    'AJRPP.*.*'
+    >>> a = ArticleID(articleID="IJP.034.*")
+    >>> a.standardized
+    'IJP.034.*'
+    >>> a = ArticleID(articleID="IJP.*.0001A")
+    >>> a.standardized
+    'IJP.*.*'
     
     """
-    def __init__(self, article_id):
-        self.is_article_id = False
-        self.regex_article_id =  "(?P<journal_code>[A-Z\-]{2,13})\.(?P<vol_str>(((?P<vol_nbr>[0-9]{3,4})(?P<vol_suffix>[A-Z]?))|(?P<vol_wildcard>\*)))(\((?P<issue_nbr>[0-9]{1,3})\))?\.(?P<page>((?P<roman>R?)(((?P<page_nbr>([0-9]{4,4}))(?P<page_suffix>[A-Z]?))|(?P<page_wildcard>\*))))"
-        self.article_id = article_id
-        self.std_article_id = None
-        self.journal_code = None
-        self.volume_spec  = None
-        self.volume_suffix  = None
-        self.volume_wildcard  = None
-        self.volume_nbr  = None
-        self.volume_nbr_str  = None
-        self.issue_code = None
-        self.issupplement = False
-        self.issue_nbr =  0
-        # page info
-        self.page = None
-        self.page_nbr_str = None
-        self.page_nbr = 0
-        self.page_wildcard  = None
-        self.roman_prefix  = ""
-        self.isroman = False
-        self.page_suffix  = None
-
-        m = re.match(self.regex_article_id, article_id, flags=re.IGNORECASE)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        regex_article_id =  "(?P<source_code>[A-Z\-]{2,13})\.(?P<vol_str>(((?P<vol_numeric>[0-9]{3,4})(?P<vol_suffix>[A-Z]?))|(?P<vol_wildcard>\*)))(\((?P<issue_nbr>[0-9]{1,3})\))?\.(?P<page>((?P<roman>R?)(((?P<page_numeric>([0-9]{4,4}))(?P<page_suffix>[A-Z]?))|(?P<page_wildcard>\*))))"
+        volumeWildcardOverride = ''
+        m = re.match(regex_article_id, self.articleID, flags=re.IGNORECASE)
         if m is not None:
-            self.ainfo = m.groupdict("")
-            self.journal_code = self.ainfo.get("journal_code")
-            self.volume_spec = self.ainfo.get("vol_str")
-            self.volume_suffix = self.ainfo.get("vol_suffix", "")
-            self.volume_wildcard = self.ainfo.get("vol_wildcard")
-            self.volume_nbr = self.ainfo.get("vol_nbr") 
-            if self.volume_nbr != '': # default for groupdict is ''
-                self.volume_nbr = int(self.volume_nbr)
+            self.articleInfo = m.groupdict("")
+            self.sourceCode = self.articleInfo.get("source_code")
+            # self.volumeStr = self.articleInfo.get("vol_str")
+            self.volumeSuffix = self.articleInfo.get("vol_suffix", "")
+            self.volumeInt = self.articleInfo.get("vol_numeric") 
+            if self.volumeInt != '': # default for groupdict is ''
+                self.volumeInt = int(self.volumeInt)
                 # make sure str is at least 3 places via zero fill
-                self.volume_nbr_str = format(self.volume_nbr, '03')
+                self.volumeNbrStr = format(self.volumeInt, '03')
             else:
-                self.volume_nbr = 0
-            if self.volume_wildcard != '':
-                self.volume_nbr_str = self.volume_wildcard
+                self.volumeInt = 0
+
+            volumeWildcardOverride = self.articleInfo.get("vol_wildcard")
+            if volumeWildcardOverride != '':
+                self.volumeNbrStr = volumeWildcardOverride
                 
-            self.issue_code  = self.ainfo.get("vol_suffix")
-            self.issupplement = self.issue_code == "S"
-            self.issue_nbr = self.ainfo.get("issue_nbr") # default for groupdict is ''
-            if self.issue_nbr != '':
-                self.issue_nbr = int(self.issue_nbr)
+            try:
+                self.issueCode  = self.articleInfo.get("vol_suffix")[0]  # sometimes it says supplement!
+            except:
+                self.issueCode  = self.articleInfo.get("vol_suffix")
+                
+            self.isSupplement = self.issueCode == "S"
+            self.issueInt = self.articleInfo.get("issue_nbr") # default for groupdict is ''
+            if self.issueInt != '':
+                self.issueInt = int(self.issueInt)
             else:
-                self.issue_nbr = 0
+                self.issueInt = 0
+            if self.issueInt == 0 and self.issueCode is not None:
+                converted = parse_issue_code(self.issueCode, source_code=self.sourceCode, vol=self.volumeInt)
+                if converted.isdecimal():
+                    self.issueCodeInt = int(converted)
+                    
             # page info
-            self.page = self.ainfo.get("page")
-            self.page_nbr_str = self.ainfo.get("page_nbr")
-            self.page_nbr = self.page_nbr_str 
-            if self.page_nbr != '':
-                self.page_nbr = int(self.page_nbr)
-                self.page_nbr_str = format(self.page_nbr, '04')
+            # page = self.articleInfo.get("page")
+            self.pageNbrStr = self.articleInfo.get("page_numeric")
+            self.pageInt = self.pageNbrStr 
+            if self.pageInt != '':
+                self.pageInt = int(self.pageInt)
+                self.pageNbrStr = format(self.pageInt, '04')
             else:
-                self.page_nbr = 0
-            self.page_wildcard = self.ainfo.get("page_wildcard")
-            if self.page_wildcard != '':
-                self.page_nbr_str = self.page
+                self.pageInt = 0
                 
-            self.roman_prefix = self.ainfo.get("roman", "")
-            self.isroman = self.roman_prefix.upper() == "R"
-            self.page_suffix = self.ainfo.get("page_suffix", "A")
-            self.std_article_id = f"{self.journal_code}.{self.volume_nbr_str}{self.volume_suffix}"
-            if self.volume_wildcard == '':
-                if self.page_wildcard == '':
-                    self.std_article_id += f".{self.roman_prefix}{self.page_nbr_str}{self.page_suffix}"
+            pageWildcard = self.articleInfo.get("page_wildcard")
+            if pageWildcard != '':
+                self.pageNbrStr = pageWildcard
+            
+            roman_prefix = self.articleInfo.get("roman", "")  
+            self.isRoman = roman_prefix.upper() == "R"
+            if self.isRoman:
+                self.romanPrefix = roman_prefix 
+                
+            self.pageSuffix = self.articleInfo.get("page_suffix", "A")
+            self.standardized = f"{self.sourceCode}.{self.volumeNbrStr}{self.volumeSuffix}"
+            if volumeWildcardOverride == '':
+                if pageWildcard == '':
+                    self.standardized += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
                 else:
-                    self.std_article_id += f".*"
+                    self.standardized += f".*"
             else:
-                self.std_article_id += f".*"
+                self.standardized += f".*"
 
             # always should be uppercase
-            self.std_article_id = self.std_article_id.upper()
-            self.is_article_id = True
+            self.standardized = self.standardized.upper()
+            self.isArticleID = True
+            self.articleID = self.standardized
+            if not self.allInfo:
+                self.articleInfo = None
+                # These show anyway so don't waste time with clear
+                #if self.pageInt == 0:
+                    #self.pageNbrStr = None
+                #if self.volumeSuffix == '':
+                    #self.volumeSuffix = None
+                #if self.pageSuffix == '':
+                    #self.pageSuffix = None
+                #if self.volumeWildcardOverride == '':
+                    #self.volumeWildcardOverride = None
+                #if self.issueCode == '':
+                    #self.issueCode = None
+                #if self.page == "*":
+                    #self.page = None
+                #if self.pageWildcard == '':
+                    #self.pageWildcard = None
+        else:
+            self.isArticleID = False
+        
+    articleID: str = Field(None, title="As submitted ID, if it's a valid ID")
+    standardized: str = Field(None, title="Standard form of article ID")
+    isArticleID: bool = Field(False, title="True if initialized value is an article ID")
+    sourceCode: str = Field(None, title="Source material assigned code (e.g., journal, book, or video source code)")
+    # volumeStr: str = Field(None, title="")
+    volumeSuffix: str = Field(None, title="")
+    # volumeWildcardOverride: str = Field(None, title="")
+    volumeInt: int = Field(0, title="")
+    volumeNbrStr: str = Field(None, title="")
+    issueCode: str = Field(None, title="")
+    isSupplement: bool = Field(False, title="")
+    issueInt: int = Field(0, title="")
+    issueCodeInt: int = Field(0, title="") 
+    # page info
+    # page: str = Field(None, title="")
+    pageNbrStr: str = Field(None, title="")
+    pageInt: int = Field(0, title="")
+    # pageWildcard: str = Field(None, title="")
+    romanPrefix: str = Field("", title="")
+    isRoman: bool = Field(False, title="")
+    pageSuffix: str = Field(None, title="")    
+    articleInfo: dict = Field(None, title="Regex result scanning input articleID")
+    allInfo: bool = Field(False, title="Show all captured information, e.g. for diagnostics")
+        
             
 # -------------------------------------------------------------------------------------------------------
 # test it!
