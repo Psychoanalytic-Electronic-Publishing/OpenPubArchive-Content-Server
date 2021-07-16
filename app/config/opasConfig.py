@@ -885,9 +885,10 @@ def parse_volume_code(vol_code: str, source_code: str=None):
     """
     ret_val = ("*", None)
     if vol_code is not None:
-        m = re.match("(?P<vol>[0-9]+)(?P<issuecode>[A-z]+)?", vol_code)
+        m = re.match("\(*(?P<vol>[0-9]+)(?P<issuecode>[A-z]+)?\)*", vol_code)
         if m is not None:
             vol = m.group("vol")
+            vol = vol.lstrip("0")
             issuecode = m.group("issuecode") 
             ret_val = vol, issuecode
 

@@ -170,11 +170,8 @@ def remove_leading_zeros(numeric_string):
         '33'
         
     """
-    ret_val = ""
-    for n in numeric_string:
-        if n != "0":
-            ret_val += n
-    
+    ret_val = numeric_string.lstrip("0")
+   
     return ret_val
          
 #----------------------------------------------------------------------------
@@ -233,52 +230,6 @@ def get_translated_article_info_by_origrx_id(art_id):
         ret_val = None
         
     return ret_val
-
-#-----------------------------------------------------------------------------
-def split_article_id(article_id):
-    """
-    >>> split_article_id("gap.005.0199a")
-    ('GAP', None, '5', '199A', None)
-
-    >>> split_article_id("rfp.075.0017a")
-    ('RFP', None, '75', '17A', None)
-
-    >>> split_article_id(None)
-    (None, None, None, None, None)
-
-    """
-    journal = year = vol = page = page_id = None
-    if article_id is not None:
-        article_id = article_id.upper()
-        
-        try:
-            journal, vol, page = article_id.split(".")
-        except Exception as e:
-            try:
-                a,b,c,d = article_id.split(".")
-                if d[0] == "P":
-                    journal, vol, page, page_id = a, b, c, d
-                elif b[:2] in [19, 20]:
-                    journal, year, vol, page = a, b, c, d
-            except Exception as e:
-                logger.error(f"SplitArticleIDError: can not split ID {article_id} ({e})")
-        else:
-            vol = remove_leading_zeros(vol)
-            page = remove_leading_zeros(page)
-        
-            if journal is not None:
-                journal = journal.upper()
-        
-            if year is not None:
-                year = page.upper()
-                
-            if page is not None:
-                page = page.upper()
-                
-            if page_id is not None:
-                page_id = page_id.upper()
-       
-    return journal, year, vol, page, page_id
 
 #-----------------------------------------------------------------------------
 def authors_get_author_info(author_partial,
@@ -486,8 +437,8 @@ def document_get_info(document_id, fields="art_id, art_sourcetype, art_year, fil
     Note: Careful about letting the caller specify fields in an endpoint,
        or they could get full-text
 
-    >>> document_get_info('PEPGRANTVS.001.0003A', fields='art_id, art_year, file_classification, score')
-    {'art_year': '2015', 'art_id': 'PEPGRANTVS.001.0003A', 'file_classification': 'free', 'score': ...}
+    >>> document_get_info('PEPGRANTVS.001.0003A', fields='art_id, art_year, file_classification, score') # doctest: +ELLIPSIS
+    {'art_id': 'PEPGRANTVS.001.0003A', 'art_year': '2015', 'file_classification': 'free', 'score': ...}
 
     """
     ret_val = {}
@@ -2158,12 +2109,7 @@ def metadata_get_next_and_prev_articles(art_id=None,
     # works for journal, videostreams have more than one year per vol.
     # works for books, videostream vol numbers
     
-    source_code, source_year, source_vol, source_page, source_page_id = split_article_id(art_id)
     article_id = opasConfig.ArticleID(articleID=art_id)
-    #source_code = article_id.sourceCode
-    #source_vol = article_id.volumeInt
-    #source_page = article_id.pageInt
-    #source_issue = article_id.issueInt
     
     distinct_return = "art_sourcecode, art_year, art_vol, art_id, art_iss, art_iss_seqnbr"
     next_art = {}
@@ -2230,7 +2176,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
     New: 2020-11-17
 
     >>> metadata_get_next_and_prev_vols(source_code="APA", source_vol="66")
-    ({'value': '65', 'count': 89, 'year': '2017'}, {'value': '66', 'count': 95, 'year': '2018'}, {'value': '67', 'count': 88, 'year': 'APA'})
+    ({'value': '65', 'count': 89, 'year': '2017'}, {'value': '66', 'count': 95, 'year': '2018'}, {'value': '67', 'count': 88, 'year': '2019'})
     
     >>> metadata_get_next_and_prev_vols(source_code="GW", source_vol="16")
     ({'value': '15', 'count': 1, 'year': '1933'}, {'value': '16', 'count': 1, 'year': '1993'}, None)

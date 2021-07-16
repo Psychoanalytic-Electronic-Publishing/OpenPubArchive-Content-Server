@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0714/v2.1.37" # semver versioning now added after date.
+__version__     = "2021.0716/v2.1.38" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -279,25 +279,61 @@ app.add_middleware(
 msg = 'Started at %s' % datetime.today().strftime('%Y-%m-%d %H:%M:%S"')
 logger.info(msg)
 
+def find_client_id(request: Request,
+                   response: Response,
+                   client_id
+                  ):
+    """
+    ALWAYS returns a client ID.
+    
+    Dependency for client_id:
+           gets it from header;
+           if not there, gets it from query param;
+           if not there, defaults to 0 (server is client)
+    """
+    ret_val = 0
+    if client_id == 0 or client_id == None:
+        ret_val = opasConfig.NO_CLIENT_ID
+        client_id = request.headers.get(opasConfig.CLIENTID, None)
+        client_id_qparam = request.query_params.get(opasConfig.CLIENTID, None)
+        client_id_cookie = request.cookies.get(opasConfig.CLIENTID, None)
+        if client_id is not None:
+            ret_val = client_id
+            msg = f"client-id from header: {ret_val} "
+            logger.debug(msg)
+        elif client_id_qparam is not None:
+            ret_val = client_id_qparam
+            msg = f"client-id from param: {ret_val} "
+            logger.debug(msg)
+        elif client_id_cookie is not None:
+            ret_val = client_id_cookie
+            msg = f"client-id from cookie: {ret_val} "
+            logger.debug(msg)
+        #else:
+            #ret_val = opasConfig.NO_CLIENT_ID # no client id (default)
+
+    if ret_val != opasConfig.NO_CLIENT_ID:
+        ret_val = opasDocPermissions.validate_client_id(ret_val, caller_name="FindClientID")
+
+    return ret_val
+
 # ############################################################################
 # Dependence routines
 # ############################################################################
 def get_client_id(response: Response,
                   request: Request,
-                  client_id: int=Header(0, title=opasConfig.TITLE_CLIENT_ID,
-                                           description=opasConfig.DESCRIPTION_CLIENT_ID)
+                  client_id: int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID)
                   ):
     """
     Dependency for client id: see find_client_id
     """
-    ret_val = opasDocPermissions.find_client_id(request, response)
+    ret_val = find_client_id(request, response, client_id)
     return ret_val
 
 def get_client_session(response: Response,
                        request: Request,
                        client_session: str=Header(None, title=opasConfig.TITLE_CLIENT_SESSION, description=opasConfig.DESCRIPTION_CLIENT_SESSION), 
-                       client_id: int=Header(0, title=opasConfig.TITLE_CLIENT_ID,
-                                             description=opasConfig.DESCRIPTION_CLIENT_ID)
+                       client_id: int=Header(0, title=opasConfig.TITLE_CLIENT_ID, description=opasConfig.DESCRIPTION_CLIENT_ID)
                        ):
     """
     Dependency for client_session id:
@@ -310,7 +346,7 @@ def get_client_session(response: Response,
     if client_session == 'None': # Not sure where this is coming from as string, but fix it.
         client_session = None
         
-    client_id = opasDocPermissions.find_client_id(request, response)       
+    client_id = find_client_id(request, response, client_id)       
     session_id = opasDocPermissions.find_client_session_id(request, response, client_session)
     
     # client_id = get_client_id(response, request, 0)
@@ -5244,7 +5280,7 @@ async def documents_image_fetch(response: Response,
             
         if filename is None:
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-            status_message = f"Error: {imageID} not found or no filename specified"
+            status_message = f"Error: {imageID} not found or no filename specified. URL requested: {request.url}"
             logger.warning(status_message)
             raise HTTPException(status_code=response.status_code,
                                 detail=status_message)

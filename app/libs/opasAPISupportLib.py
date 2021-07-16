@@ -28,7 +28,6 @@ __status__      = "Development"
 
 import os
 import os.path
-# from xml.sax import SAXParseException
 import sys
 # import shlex
 import copy
@@ -39,18 +38,18 @@ sys.path.append('./libs/configLib')
 
 import http.cookies
 import re
-import secrets
-import socket, struct
+# import secrets
+# import socket, struct
 from collections import OrderedDict
 from urllib.parse import unquote
 from urllib.error import HTTPError
-import json
-from xml.sax import SAXParseException
+# import json
+# from xml.sax import SAXParseException
 
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
 from starlette.requests import Request
 from starlette.responses import Response
-import starlette.status as httpCodes
+# import starlette.status as httpCodes
 from starlette.exceptions import HTTPException
 
 #from starlette.status import HTTP_200_OK, \
@@ -77,7 +76,7 @@ import localsecrets
 import opasFileSupport
 # opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 
-from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
+# from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
 from localsecrets import TIME_FORMAT_STR
 
 # from opasConfig import OPASSESSIONID

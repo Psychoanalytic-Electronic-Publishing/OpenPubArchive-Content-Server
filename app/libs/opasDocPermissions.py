@@ -8,8 +8,8 @@ import opasConfig
 import models
 import logging
 import localsecrets
-import urllib.parse
-import json
+# import urllib.parse
+# import json
 import sys
 # from opasAPISupportLib import save_opas_session_cookie
 sys.path.append("..") # Adds higher directory to python modules path.
@@ -29,7 +29,7 @@ if 0:
     ch.setLevel(logging.DEBUG)
     logger.addHandler(ch)
 
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
 from starlette.requests import Request
 import starlette.status as httpCodes
 
@@ -118,41 +118,6 @@ def get_user_ip(request: Request):
 
     return ret_val
     
-def find_client_id(request: Request,
-                   response: Response,
-                  ):
-    """
-    ALWAYS returns a client ID.
-    
-    Dependency for client_id:
-           gets it from header;
-           if not there, gets it from query param;
-           if not there, defaults to 0 (server is client)
-    """
-    ret_val = opasConfig.NO_CLIENT_ID
-    client_id = request.headers.get(opasConfig.CLIENTID, None)
-    client_id_qparam = request.query_params.get(opasConfig.CLIENTID, None)
-    client_id_cookie = request.cookies.get(opasConfig.CLIENTID, None)
-    if client_id is not None:
-        ret_val = client_id
-        msg = f"client-id from header: {ret_val} "
-        logger.debug(msg)
-    elif client_id_qparam is not None:
-        ret_val = client_id_qparam
-        msg = f"client-id from param: {ret_val} "
-        logger.debug(msg)
-    elif client_id_cookie is not None:
-        ret_val = client_id_cookie
-        msg = f"client-id from cookie: {ret_val} "
-        logger.debug(msg)
-    #else:
-        #ret_val = opasConfig.NO_CLIENT_ID # no client id (default)
-
-    if ret_val != opasConfig.NO_CLIENT_ID:
-        ret_val = validate_client_id(ret_val, caller_name="FindClientID")
-
-    return ret_val
-
 def fix_userinfo_invalid_nones(response_data, caller_name="DocPermissionsError"):
     try:
         if response_data["UserName"] is None:
@@ -180,7 +145,7 @@ def fix_pydantic_invalid_nones(response_data, caller_name="DocPermissionsError")
 def validate_client_id(client_id, caller_name="DocPermissionsError"):
     if client_id is None:
         client_id = opasConfig.NO_CLIENT_ID
-        logger.error(f"{caller_name}: Client ID error: Client ID is None")
+        logger.error(f"{caller_name}: Error: Client ID is None")
     else: 
         try:
             if not isinstance(client_id, int):
@@ -188,10 +153,10 @@ def validate_client_id(client_id, caller_name="DocPermissionsError"):
                     try:
                         client_id = int(client_id)
                     except:
-                        logger.error(f"client_id is str, but is not convertible to int.  Defaulting to NO_CLIENT_ID ({opasConfig.NO_CLIENT_ID})")
+                        logger.error(f"client_id is str, but not convertible to int.  Default to NO_CLIENT_ID.  Caller: {caller_name}")
                         client_id = opasConfig.NO_CLIENT_ID
                 else:
-                    logger.error(f"client_id is not int.  Type is {type(client_id)}. Defaulting to NO_CLIENT_ID ({opasConfig.NO_CLIENT_ID})")
+                    logger.error(f"client_id is not int or str.  Type is {type(client_id)}. Default to NO_CLIENT_ID. Caller: {caller_name}")
                     client_id = opasConfig.NO_CLIENT_ID
         except Exception as e:
             logger.error(f"client_id instance check failed. {e}")       
