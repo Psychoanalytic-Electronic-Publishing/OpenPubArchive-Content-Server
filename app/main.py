@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0716/v2.1.38" # semver versioning now added after date.
+__version__     = "2021.0716/v2.1.39" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -281,7 +281,7 @@ logger.info(msg)
 
 def find_client_id(request: Request,
                    response: Response,
-                   client_id
+                   client_id: int = 4 # API Interactive Docs
                   ):
     """
     ALWAYS returns a client ID.
@@ -311,7 +311,10 @@ def find_client_id(request: Request,
             logger.debug(msg)
         #else:
             #ret_val = opasConfig.NO_CLIENT_ID # no client id (default)
+    else:
+        ret_val = client_id
 
+    #  it will be fixed if necessary, in validate
     if ret_val != opasConfig.NO_CLIENT_ID:
         ret_val = opasDocPermissions.validate_client_id(ret_val, caller_name="FindClientID")
 
@@ -392,9 +395,10 @@ def get_client_session(response: Response,
 security = HTTPBasic()
 def login_via_pads(request: Request,
                    response: Response, 
-                   credentials: HTTPBasicCredentials = Depends(security)):
+                   credentials: HTTPBasicCredentials = Depends(security),
+                   client_id:int=Depends(get_client_id)
+                   ):
 
-    client_id = opasDocPermissions.find_client_id(request, response)
     # ocd = opasCentralDBLib.opasCentralDB()
     session_id = opasDocPermissions.find_client_session_id(request, response)
     # Ok, login
