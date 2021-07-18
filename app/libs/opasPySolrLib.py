@@ -2198,12 +2198,12 @@ def metadata_get_next_and_prev_vols(source_code=None,
     
     query = "bk_subdoc:false"
     if source_code is None:
-        logger.error("MetadataGetVolsError: No source code (e.g., journal code) provided;")
+        logger.error("No source code (e.g., journal code) provided;")
     else:
         query += f" && art_sourcecode:{source_code}"
 
         if source_vol is None:
-            logger.error("MetadataGetVolsError: No vol number provided;")
+            logger.error("No source vol number provided;")
         else:
             source_vol_int = int(source_vol)
             next_source_vol_int = source_vol_int + 1
@@ -2232,7 +2232,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
                 facet_pivot = results.facets["facet_pivot"][facet_pivot_fields]
                 #ret_val = [(piv['value'], [n["value"] for n in piv["pivot"]]) for piv in facet_pivot]
             except Exception as e:
-                logger.error(f"MetadataGetVolsError: Exception: {e}")
+                logger.error(f"Exception: {e}")
             else:
                 prev_vol = None
                 match_vol = None
@@ -2266,7 +2266,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
                             next_vol = next_vol['pivot'][0]
                             next_vol['year'] = next_vol_year
                     else:
-                        logger.warning(f"No volume to assess: {match_vol_idx} ")
+                        logger.warning(f"No match for source {source_code} volume: {source_vol} ")
                         
                 try:
                     del(match_vol['field'])
@@ -2282,7 +2282,9 @@ def metadata_get_next_and_prev_vols(source_code=None,
                     del(next_vol['field'])
                 except:
                     pass
-    
+    if opasConfig.LOCAL_TRACE:
+        print(f"Match Prev {prev_vol}, Curr: {match_vol}, Next: {next_vol}")
+        
     return prev_vol, match_vol, next_vol
 #-----------------------------------------------------------------------------
 

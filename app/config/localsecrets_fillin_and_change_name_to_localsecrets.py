@@ -55,16 +55,6 @@ PADS_BASED_CLIENT_IDS = [1, 2, ]
 API_KEY = "apikey"
 API_KEY_NAME = "apikeyname"
 
-# Allows different APIs depending on location of server
-CLIENT_DB = {
-    "0": {"api-client0-name": "descriptive", "api-client-key" : None},
-    "1": {"api-client1-name": "descriptive", "api-client-key": API_KEY},
-    "2": {"api-client2-name": "descriptive", "api-client-key": API_KEY},
-    "3": {"api-client3-name": "descriptive", "api-client-key" : API_KEY},
-    "666": {"api-client-name" : "unknown", "api-client-key" : None},
-}
-
-
 # *******************************************************************
 # *******************************************************************
 # defaults
@@ -81,7 +71,7 @@ PDF_ORIGINALS_PATH = None
 PDF_ORIGINALS_EXTENSION = ".pdf" #  PDF originals extension
 XML_ORIGINALS_PATH = None
 
-# Allows different APIs depending on location of server
+# Allows different API keys depending on location of server
 CLIENT_DB = {
     "0": {"api-client-name": "OpenAPI Interactive Docs Interface", "api-client-key" : None},
     "1": {"api-client-name": "pep-easy", "api-client-key": API_KEY},

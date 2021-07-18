@@ -1878,7 +1878,10 @@ class opasCentralDB(object):
                     cursor.close()
         
                 except Exception as e:
-                    logger.warning(f"Error saving document {document_id} view {view_type} for session {session_id} and user_id {user_id}: {e}")
+                    if user_id != 0:
+                        logger.warning(f"Error saving document {document_id} view {view_type} for session {session_id} and user_id {user_id}: {e}")
+                    else:
+                        logger.debug(f"Error saving document {document_id} view {view_type} for session {session_id} and user_id {user_id}: {e}")
                     
         except Exception as e:
             logger.warning(f"Error checking document view type {view_type}: {e}")
@@ -1886,24 +1889,7 @@ class opasCentralDB(object):
         self.close_connection(caller_name=fname) # make sure connection is closed
 
         return ret_val
-
-    #def get_user(self, username = None, user_id = None):
-        #"""
-        #If user exists (via username or user_id) and has an active subscription
-          #Returns userSubscriptions object and saves it to the ocd object properties.
-          
-        #Note: a user cannot login without an active subscription. 
-
-        #Specify either username or userID, not both.
-        
-        #>>> ocd = opasCentralDB()
-        #>>> ocd.get_user("demo")
-        
-        #"""
-        #ret_val = None
-
-        #return ret_val
-    
+   
     def verify_admin(self, session_info):
         """
         Find if this is an admin, and return user info for them.
