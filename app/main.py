@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0717/v2.1.40" # semver versioning now added after date.
+__version__     = "2021.0718/v2.1.41" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -350,9 +350,10 @@ def get_client_session(response: Response,
         client_session = None
         
     client_id = find_client_id(request, response, client_id=0) # client_id == 0 to force it to search header etc.
-    print(f"Client id in get_session: {client_id}")
-    
     session_id = opasDocPermissions.find_client_session_id(request, response, client_session)
+    
+    if client_id != 2:
+        logger.warning(f"Non-PEP-Web Client id in get_session: {client_id}.  Session_id is {session_id}.")
     
     # client_id = get_client_id(response, request, 0)
     # if there's no client session, get a session_id from PaDS without logging in
