@@ -106,7 +106,7 @@ def remove_nuisance_word_hits(result_str):
     """
     >>> a = '#@@@the@@@# cat #@@@in@@@# #@@@the@@@# hat #@@@is@@@# #@@@so@@@# smart'
     >>> remove_nuisance_word_hits(a)
-    
+    'the cat in the hat is so smart'
     """
     ret_val = rcx_remove_nuisance_words.sub("\g<word>", result_str)
     return ret_val 
@@ -2172,14 +2172,16 @@ def metadata_get_next_and_prev_vols(source_code=None,
                                     req_url: str=None 
                                    ):
     """
-    Return previous, matched, and next volume for the source code and year.
+    NOTE: Modified 2021-07-19 - When two volume numbers were in the same
+          year, the facet pivot was only returning one of the volume numbers.
+          Since year was just useful extra data, it was removed from the
+          facet pivot.
+    
+    Return previous, matched, and next volume for the source code and vol.
     New: 2020-11-17
 
     >>> metadata_get_next_and_prev_vols(source_code="APA", source_vol="66")
-    ({'value': '65', 'count': 89, 'year': '2017'}, {'value': '66', 'count': 95, 'year': '2018'}, {'value': '67', 'count': 88, 'year': '2019'})
-    
-    >>> metadata_get_next_and_prev_vols(source_code="GW", source_vol="16")
-    ({'value': '15', 'count': 1, 'year': '1933'}, {'value': '16', 'count': 1, 'year': '1993'}, None)
+    ({'value': '65', 'count': 89}, {'value': '66', 'count': 95}, {'value': '67', 'count': 88})
     
     >>> metadata_get_next_and_prev_vols(source_code="GW")
     (None, None, None)
@@ -2188,7 +2190,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
     (None, None, None)
     
     >>> metadata_get_next_and_prev_vols(source_code="GW", source_vol=16)
-    ({'value': '15', 'count': 1, 'year': '1933'}, {'value': '16', 'count': 1, 'year': '1993'}, None)
+    ({'value': '15', 'count': 1}, {'value': '16', 'count': 1}, {'value': '17', 'count': 1})
 
     """  
     distinct_return = "art_sourcecode, art_year, art_vol"
@@ -2211,7 +2213,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
             try:
                 logger.info(f"Solr Query: q={query}")
                 facet_fields = ["art_vol", "art_sourcecode"]
-                facet_pivot_fields = "art_sourcecode,art_year,art_vol" # important ...no spaces!
+                facet_pivot_fields = "art_sourcecode,art_vol" # important ...no spaces! Take out year
                 query += f" && art_vol:({source_vol} || {next_source_vol_int} || {prev_source_vol_int})"
         
                 args = {
@@ -2230,7 +2232,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
                 results = solr_docs2.search(query, **args)
                 logger.info(f"Solr Query: q={query}")
                 facet_pivot = results.facets["facet_pivot"][facet_pivot_fields]
-                #ret_val = [(piv['value'], [n["value"] for n in piv["pivot"]]) for piv in facet_pivot]
+
             except Exception as e:
                 logger.error(f"Exception: {e}")
             else:
@@ -2244,27 +2246,20 @@ def metadata_get_next_and_prev_vols(source_code=None,
                     pivot_len = len(facet_pivot[0]['pivot'])
                     counter = 0
                     for n in facet_pivot[0]['pivot']:
-                        if n['pivot'][0]['value'] == str(source_vol):
+                        if n['value'] == str(source_vol):
                             match_vol_idx = counter
-                            match_vol = n['pivot'][0]
-                            match_vol_year = n['value']
-                            match_vol['year'] = match_vol_year
+                            match_vol = n
+
                         counter += 1
         
                     if match_vol_idx is not None:
                         if match_vol_idx > 0:
                             prev_vol_idx = match_vol_idx - 1
                             prev_vol = facet_pivot[0]['pivot'][prev_vol_idx]
-                            prev_vol_year = prev_vol['value']
-                            prev_vol = prev_vol['pivot'][0]
-                            prev_vol['year'] = prev_vol_year
                             
                         if match_vol_idx < pivot_len - 1:
                             next_vol_idx = match_vol_idx + 1
                             next_vol = facet_pivot[0]['pivot'][next_vol_idx]
-                            next_vol_year = next_vol['value'] # facet_pivot[0]['value']
-                            next_vol = next_vol['pivot'][0]
-                            next_vol['year'] = next_vol_year
                     else:
                         logger.warning(f"No match for source {source_code} volume: {source_vol} ")
                         
