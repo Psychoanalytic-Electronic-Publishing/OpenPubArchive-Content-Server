@@ -1024,13 +1024,17 @@ class ArticleID(BaseModel):
                 
             self.pageSuffix = self.articleInfo.get("page_suffix", "A")
             self.standardized = f"{self.sourceCode}.{self.volumeNbrStr}{self.volumeSuffix}"
+            self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}"
             if volumeWildcardOverride == '':
                 if pageWildcard == '':
                     self.standardized += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
+                    self.altStandard += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
                 else:
                     self.standardized += f".*"
+                    self.altStandard += f".*"
             else:
                 self.standardized += f".*"
+                self.altStandard += f".*"
 
             # always should be uppercase
             self.standardized = self.standardized.upper()
@@ -1058,6 +1062,7 @@ class ArticleID(BaseModel):
         
     articleID: str = Field(None, title="As submitted ID, if it's a valid ID")
     standardized: str = Field(None, title="Standard form of article ID")
+    altStandard: str = Field(None, title="Standard form of article ID from 2020 (most without volume suffix)")
     isArticleID: bool = Field(False, title="True if initialized value is an article ID")
     sourceCode: str = Field(None, title="Source material assigned code (e.g., journal, book, or video source code)")
     # volumeStr: str = Field(None, title="")
