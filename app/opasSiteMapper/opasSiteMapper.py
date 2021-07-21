@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0719/v1.0.0" 
+__version__     = "2021.0721/v1.0.1" 
 __status__      = "Development"
 
 programNameShort = "opasSiteMapper"
@@ -30,6 +30,9 @@ print(
 )
 
 import sys
+import os
+import opasFileSupport
+
 sys.path.append('../libs')
 sys.path.append('../config')
 sys.path.append('../libs/configLib')
@@ -48,10 +51,13 @@ if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH
 else:
     path_separator = r"\\"
 
+MAX_FILES_TO_DELETE = 200
+
 #------------------------------------------------------------------------------------------------------
 def sitemapper( path: str=localsecrets.SITEMAP_PATH, # local path or bucket for AWS
-                size: int=10,                        # records per file
-                max_records: int=200                 # max records
+                size: int=8000,                          # records per file
+                max_records: int=200000,                 # max records
+                clear_sitemap:bool=False
                ):
     
     """
@@ -77,6 +83,7 @@ def sitemapper( path: str=localsecrets.SITEMAP_PATH, # local path or bucket for 
     'pep-web-google/sitemapindex.xml'
   
     """
+    fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root="pep-web-xml")
     import opasSiteMap
     ret_val = {
         "siteMapIndexFile": "", 
@@ -89,6 +96,20 @@ def sitemapper( path: str=localsecrets.SITEMAP_PATH, # local path or bucket for 
     except Exception as e:
         raise Exception(f"Error {e}.")
    
+    if clear_sitemap:
+        try:
+            matchlist = fs.get_matching_filelist(path=path, filespec_regex="sitemap.*", max_items=200)
+            count = 0
+            for n in matchlist:
+                count += 1
+                if count > MAX_FILES_TO_DELETE: # most files it will delete, just a precaution.
+                    break
+                else:
+                    fs.delete(filespec=n.filespec)
+                    print (f"Deleted prior sitemap file: {n.filespec}")
+        except Exception as e:
+            logger.error(f"File cleanup error {e}")
+        
     try:
         # returns a list of the sitemap files (since split)
         sitemap_list = opasSiteMap.metadata_export(SITEMAP_OUTPUT_FILE, total_records=max_records, records_per_file=size)
@@ -109,6 +130,8 @@ if __name__ == "__main__":
     parser = OptionParser(usage="%prog [options] - PEP SiteMap Generator", version=f"%prog ver. {__version__}")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
                       help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
+    parser.add_option("-c", "--clear", dest="clearsitemap", action="store_true", default=False,
+                      help="Clear prior sitemap files (delete files in path/bucket matching sitemap.*)")
     parser.add_option("-t", "--test", dest="testmode", action="store_true", default=False,
                       help="Run Doctests.  Will run a small sample of records and total output")
     parser.add_option("-r", "--recordsperfile", dest="recordsperfile", type="int", default=8000,
@@ -124,7 +147,7 @@ if __name__ == "__main__":
         doctest.testmod()
         print ("Fini. Tests complete.")
     else:
-        ret_val = sitemapper(path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords)
+        ret_val = sitemapper(path=options.bucket, size=options.recordsperfile, max_records=options.maxrecords, clear_sitemap=options.clearsitemap)
         print (ret_val["siteMapIndexFile"])
         print (ret_val["siteMapList"])
         print ("Finished!")
