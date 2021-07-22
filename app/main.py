@@ -356,7 +356,11 @@ def get_client_session(response: Response,
         direct_client_id = request.headers.get(opasConfig.CLIENTID, None)
         direct_client_session = request.headers.get(opasConfig.CLIENTSESSIONID, None)
         logger.warning(f"Dependency failure? client id in get_client_session: {client_id}.  Session_id is {session_id}.  Direct client_id: {direct_client_id} Direct session_id: {direct_client_session}")
-    
+    elif opasConfig.LOCAL_TRACE:
+        direct_client_id = request.headers.get(opasConfig.CLIENTID, None)
+        direct_client_session = request.headers.get(opasConfig.CLIENTSESSIONID, None)
+        logger.warning(f"Trace: client id in get_client_session: {client_id}.  Session_id is {session_id}.  Direct client_id: {direct_client_id} Direct session_id: {direct_client_session}")
+        
     # client_id = get_client_id(response, request, 0)
     # if there's no client session, get a session_id from PaDS without logging in
     if session_id is None:

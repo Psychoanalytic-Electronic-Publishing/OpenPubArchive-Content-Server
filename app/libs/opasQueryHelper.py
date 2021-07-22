@@ -2009,13 +2009,14 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
     if result is not None:
         try:
             documentListItem.documentID = result.get("art_id", None)
-            if documentListItem.documentID is None:
-                logger.error(f"Database error, incomplete record, can't find ID: {result}")
-
-            documentListItem.docLevel = result.get("art_level", None)
-            documentListItem.PEPCode = result.get("art_sourcecode", None)
             parent_tag = result.get("parent_tag", None)
-    
+            documentListItem.docLevel = result.get("art_level", None)
+            if documentListItem.documentID is None and parent_tag is None:
+                logger.error(f"Database error, incomplete record, can't find ID: {result}")
+            #else it's a child record
+            
+            documentListItem.PEPCode = result.get("art_sourcecode", None)
+            # Note: This cautious (if not None) load method prevents data overwriting when not necessary
             if result.get("meta_xml", None): documentListItem.documentMetaXML = result.get("meta_xml", None)
             if result.get("art_info_xml", None): documentListItem.documentInfoXML = result.get("art_info_xml", None)
             if result.get("art_pgrg", None): documentListItem.pgRg = result.get("art_pgrg", None)
@@ -2086,6 +2087,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 # this is part of a document, we should retrieve the parent info
                 top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
                 if top_level_doc is not None:
+                    logger.warning(f"Tracing Info - Record {para_art_id} was child...retrieving and merging parent info {top_level_doc}")
                     documentListItem = merge_documentListItems(documentListItem, top_level_doc)
     
             # don't set the value, if it's None, so it's not included at all in the pydantic return

@@ -34,7 +34,7 @@ import starlette.status as httpCodes # HTTP_ codes, e.g.
 FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 LOG_CALL_TIMING = True
-LOCAL_TRACE = False                 # turn this on to see the queries easily.
+LOCAL_TRACE = True                 # turn this on to see the queries easily.
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
@@ -927,15 +927,19 @@ class ArticleID(BaseModel):
       But when designed as such, the structure of the article IDs may be different in different systems, so it needs to be configurable as possible.
       This routine in opasConfig is a start of allowing that to be defined as part of the customization. 
 
-    >>> a = ArticleID(articleID="AJRPP.004.0007A")
+    >>> a = ArticleID(articleID="AJRPP.004.0007A", allInfo=True)
     >>> print (a.articleInfo)
     {'source_code': 'AJRPP', 'vol_str': '004', 'vol_numeric': '004', 'vol_suffix': '', 'vol_wildcard': '', 'issue_nbr': '', 'page': '0007A', 'roman': '', 'page_numeric': '0007', 'page_suffix': 'A', 'page_wildcard': ''}
+
+    >>> a = ArticleID(articleID="MPSA.043.0117A")
+    >>> print (a.altStandard)
+    MPSA.043?.0117A
     
     >>> a = ArticleID(articleID="AJRPP.004A.0007A")
     >>> print (a.volumeNbrStr)
     004
     >>> a = ArticleID(articleID="AJRPP.004S.R0007A")
-    >>> print (a.volumeSuffix)
+    >>> print (a.issueCode)
     S
     >>> a = ArticleID(articleID="AJRPP.004S(1).R0007A")
     >>> print (a.issueInt)
@@ -974,7 +978,29 @@ class ArticleID(BaseModel):
             self.articleInfo = m.groupdict("")
             self.sourceCode = self.articleInfo.get("source_code")
             # self.volumeStr = self.articleInfo.get("vol_str")
-            self.volumeSuffix = self.articleInfo.get("vol_suffix", "")
+            
+            # See if it has issue number numerically in ()
+            self.issueInt = self.articleInfo.get("issue_nbr") # default for groupdict is ''
+            if self.issueInt != '':
+                self.issueInt = int(self.issueInt)
+            else:
+                self.issueInt = 0
+
+            volumeSuffix = self.articleInfo.get("vol_suffix", "")
+            altVolSuffix = ""
+            if volumeSuffix != "":
+                self.issueCode  = volumeSuffix[0]  # sometimes it says supplement!
+            else:
+                self.issueCode = ""
+                if self.issueInt > 0:
+                    altVolSuffix = string.ascii_uppercase[self.issueInt-1]
+                
+            if not self.isSupplement and self.issueInt == 0 and self.issueCode != "":
+                # an issue code was specified (but not supplement or "S")
+                converted = parse_issue_code(self.issueCode, source_code=self.sourceCode, vol=self.volumeInt)
+                if converted.isdecimal():
+                    self.issueCodeInt = int(converted)
+
             self.volumeInt = self.articleInfo.get("vol_numeric") 
             if self.volumeInt != '': # default for groupdict is ''
                 self.volumeInt = int(self.volumeInt)
@@ -987,21 +1013,7 @@ class ArticleID(BaseModel):
             if volumeWildcardOverride != '':
                 self.volumeNbrStr = volumeWildcardOverride
                 
-            try:
-                self.issueCode  = self.articleInfo.get("vol_suffix")[0]  # sometimes it says supplement!
-            except:
-                self.issueCode  = self.articleInfo.get("vol_suffix")
-                
             self.isSupplement = self.issueCode == "S"
-            self.issueInt = self.articleInfo.get("issue_nbr") # default for groupdict is ''
-            if self.issueInt != '':
-                self.issueInt = int(self.issueInt)
-            else:
-                self.issueInt = 0
-            if self.issueInt == 0 and self.issueCode is not None:
-                converted = parse_issue_code(self.issueCode, source_code=self.sourceCode, vol=self.volumeInt)
-                if converted.isdecimal():
-                    self.issueCodeInt = int(converted)
                     
             # page info
             # page = self.articleInfo.get("page")
@@ -1021,20 +1033,30 @@ class ArticleID(BaseModel):
             self.isRoman = roman_prefix.upper() == "R"
             if self.isRoman:
                 self.romanPrefix = roman_prefix 
-                
+               
             self.pageSuffix = self.articleInfo.get("page_suffix", "A")
-            self.standardized = f"{self.sourceCode}.{self.volumeNbrStr}{self.volumeSuffix}"
+            self.standardized = f"{self.sourceCode}.{self.volumeNbrStr}{self.issueCode}"
             self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}"
+            if self.standardized == self.altStandard:
+                # there's no issue code in the standard one. Try adding one:
+                if altVolSuffix != "":
+                    self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}{altVolSuffix}"
+                else: # use 1 character wildcard
+                    self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}?"
+            
             if volumeWildcardOverride == '':
                 if pageWildcard == '':
                     self.standardized += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
                     self.altStandard += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
+                    #self.standardizedPlusIssueCode += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
                 else:
                     self.standardized += f".*"
                     self.altStandard += f".*"
+                    #self.standardizedPlusIssueCode += f".*"
             else:
                 self.standardized += f".*"
                 self.altStandard += f".*"
+                #self.standardizedPlusIssueCode += f".*"
 
             # always should be uppercase
             self.standardized = self.standardized.upper()
