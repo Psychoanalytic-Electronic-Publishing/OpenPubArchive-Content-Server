@@ -43,11 +43,13 @@ def verify_header(request, caller_name):
     # Double Check for missing header test--ONLY checks headers, not other avenues used by find
     client_session_from_header = request.headers.get(opasConfig.CLIENTSESSIONID, None)
     client_id_from_header = request.headers.get(opasConfig.CLIENTID, None)
-    if client_session_from_header == None:
-        logger.warning(f"***{caller_name}*** - No client-session supplied. Client-id (from header): {client_id_from_header}.")
-    else:
-        logger.debug(f"***{caller_name}*** - Client-session found. Client-id (from header): {client_id_from_header}.")
-        
+    if client_id_from_header == 2 or client_id_from_header == 3:
+        if client_session_from_header == None:
+            logger.warning(f"***{caller_name}*** - No client-session supplied. Client-id (from header): {client_id_from_header}.")
+        else:
+            logger.debug(f"***{caller_name}*** - Client-session found. Client-id (from header): {client_id_from_header}.")
+
+    return client_id_from_header, client_session_from_header    
 
 def find_client_session_id(request: Request,
                            response: Response,
@@ -87,11 +89,11 @@ def find_client_session_id(request: Request,
             logger.debug(msg)
         elif opas_session_cookie is not None and opas_session_cookie != 'None':
             msg = f"client-session from stored OPASSESSION cookie {opas_session_cookie}"
-            logger.debug(msg)
+            logger.warning(msg)
             ret_val = opas_session_cookie
         else:
-            msg = f"No client-session ID found. Returning None"
-            logger.debug(msg)
+            msg = f"No dependency client-session ID found. Returning None"
+            logger.warning(msg)
             ret_val = None
 
         if ret_val is not None and opas_session_cookie is not None and opas_session_cookie != ret_val:

@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0719/v2.1.44" # semver versioning now added after date.
+__version__     = "2021.0802/v2.1.44" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -281,7 +281,7 @@ logger.info(msg)
 
 def find_client_id(request: Request,
                    response: Response,
-                   client_id: int = 4 # API Interactive Docs
+                   client_id: int = 0
                   ):
     """
     ALWAYS returns a client ID.
@@ -308,7 +308,7 @@ def find_client_id(request: Request,
         elif client_id_cookie is not None:
             ret_val = client_id_cookie
             msg = f"client-id from cookie: {ret_val} "
-            logger.debug(msg)
+            logger.warning(msg)
         #else:
             #ret_val = opasConfig.NO_CLIENT_ID # no client id (default)
     else:
@@ -349,17 +349,8 @@ def get_client_session(response: Response,
     if client_session == 'None': # Not sure where this is coming from as string, but fix it.
         client_session = None
         
-    client_id = find_client_id(request, response, client_id=0) # client_id == 0 to force it to search header etc.
+    client_id = find_client_id(request, response) # client_id == 0 to force it to search header etc.
     session_id = opasDocPermissions.find_client_session_id(request, response, client_session)
-    
-    if client_id != 2 and client_id != 4:
-        direct_client_id = request.headers.get(opasConfig.CLIENTID, None)
-        direct_client_session = request.headers.get(opasConfig.CLIENTSESSIONID, None)
-        logger.warning(f"Dependency failure? client id in get_client_session: {client_id}.  Session_id is {session_id}.  Direct client_id: {direct_client_id} Direct session_id: {direct_client_session}")
-    elif opasConfig.LOCAL_TRACE:
-        direct_client_id = request.headers.get(opasConfig.CLIENTID, None)
-        direct_client_session = request.headers.get(opasConfig.CLIENTSESSIONID, None)
-        logger.warning(f"Trace: client id in get_client_session: {client_id}.  Session_id is {session_id}.  Direct client_id: {direct_client_id} Direct session_id: {direct_client_session}")
         
     # client_id = get_client_id(response, request, 0)
     # if there's no client session, get a session_id from PaDS without logging in
@@ -459,25 +450,19 @@ async def get_api_key(api_key_query: str = Security(api_key_query),
 # End Dependence routines
 # ############################################################################
 
-def log_endpoint(request, client_id=None, session_id=None, path_params=True, level="info"):
+def log_endpoint(request, client_id=None, session_id=None, path_params=True, level="info", trace=False):
     if client_id == 3: # PaDS, sends a lot of requests at once, so mute
         logger.debug(f"***[{client_id}:{session_id}]:{request['path']}***")
         #logger.info(urllib.parse.unquote(f"....{request.url}"))
     else:
         url = urllib.parse.unquote(f"....{request.url}")
-        if level == "info":
-            logger.info(f"*************[{client_id}:{session_id}]:{request['path']}********************************************************************************")
-            logger.info(f"************ URL: {url}")
-        elif level == "debug":
-            logger.debug(f"*************[{client_id}:{session_id}]:{request['path']}********************************************************************************")
-            logger.debug(f"************ URL: {url}")
+        if level == "info" or level == "debug" or trace:
+            logger.info(f"*************[{client_id}:{session_id}]:{url}*************")
 
 def log_endpoint_time(request, ts, level="info"): 
     if opasConfig.LOG_CALL_TIMING:
-        if level == "info":
+        if level == "info" or level == "debug":
             logger.info(f"***{request['path']} response time: {time.time() - ts}***")
-        elif level == "debug":
-            logger.debug(f"***{request['path']} response time: {time.time() - ts}***")
 
 # ############################################################################
 # EndPoints
@@ -2418,7 +2403,11 @@ async def database_search(response: Response,
 
     """
     ts = time.time()
-    opasDocPermissions.verify_header(request, "Search") # for debugging client call
+    # get client_id and session directly
+    client_id_from_header, client_session_from_header = opasDocPermissions.verify_header(request, "Search") # for debugging client call
+    if client_session_from_header != client_session and (client_session_from_header == 2 or client_session_from_header == 3):
+        logger.warning(f"*************[{client_id}:{client_session}] dependence vs direct [{client_id_from_header}:{client_session_from_header}]")
+
     log_endpoint(request, client_id=client_id, session_id=client_session)
     errors, mod_args = opasQueryHelper.check_search_args( smarttext=smarttext,
                                                           fulltext1=fulltext1,
@@ -5353,6 +5342,6 @@ if __name__ == "__main__":
     import fastapi
     print (f"FastAPI Version {fastapi.__version__}")
     
-    uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=True, log_level="warning")
+    uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=True, log_level="info")
     # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
     print ("Now we're exiting...")

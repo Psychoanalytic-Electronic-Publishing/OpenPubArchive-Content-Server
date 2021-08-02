@@ -64,7 +64,10 @@ class TestArticleID(unittest.TestCase):
             # test return
             r = response.json()
             a = opasConfig.ArticleID(**r)
-            assert(a.issueCodeInt == n[1])
+            if a.isSupplement:
+                assert(a.issueCodeInt == 0)
+            else:
+                assert(a.issueCodeInt == n[1])
             
             print (n, " = ", r)
           

@@ -38,7 +38,7 @@ from localsecrets import TIME_FORMAT_STR
 import starlette.status as httpCodes
 from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
 import opasConfig 
-from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
+# from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
 from configLib.opasCoreConfig import EXTENDED_CORES
 from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
 
@@ -48,11 +48,14 @@ import schemaMap
 import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
 import opasDocPermissions as opasDocPerm
-import smartsearch
+# import smartsearch
 import opasQueryHelper
 from xhtml2pdf import pisa             # for HTML 2 PDF conversion
 
 import pysolr
+LOG = logging.getLogger("pysolr")
+LOG.setLevel(logging.WARNING)
+
 # still using a function in solpy
 import solrpy as solr
 
