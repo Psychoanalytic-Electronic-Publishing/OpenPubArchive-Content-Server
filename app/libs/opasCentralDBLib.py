@@ -812,7 +812,7 @@ class opasCentralDB(object):
                 row = curs.fetchall()
                 ret_val = row[0][0]
         except Exception as e:
-            logger.warning("Can't retrieve count.")
+            logger.error("Can't retrieve count.")
             ret_val = 0
             
         self.close_connection(caller_name="get_select_count") # make sure connection is closed
@@ -841,7 +841,7 @@ class opasCentralDB(object):
                 row = curs.fetchall()
                 ret_val = row[0][0]
         except Exception as e:
-            logger.warning("Can't retrieve count.")
+            logger.error("Can't retrieve count.")
             ret_val = 0
             
         self.close_connection(caller_name="get_select_count") # make sure connection is closed
@@ -875,7 +875,7 @@ class opasCentralDB(object):
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
                 curs.execute(sqlSelect, (newer_than_date))
             except Exception as e:
-                logger.warning(f"DB Error getting articles newer than {days_back} days back, date {newer_than_date}: {e}")
+                logger.error(f"DB Error getting articles newer than {days_back} days back, date {newer_than_date}: {e}")
             else:
                 records = curs.fetchall()
                 ret_val = [a['art_id'] for a in records]
@@ -1137,7 +1137,7 @@ class opasCentralDB(object):
         #session = None
         if session_id is None:
             err_msg = "Parameter error: No session ID specified"
-            logger.warning(err_msg)
+            logger.error(err_msg)
         else:
             if not self.open_connection(caller_name="delete_session"): # make sure connection opens
                 logger.error("Delete session could not open database")
@@ -1172,9 +1172,9 @@ class opasCentralDB(object):
         fname = "save_session"
         ret_val = False
         if session_id is None:
-            logger.warning(f"No session ID specified")
+            logger.error(f"No session ID specified")
         elif session_info is None: # for now, required
-            logger.warning(f"No session_info specified")
+            logger.error(f"No session_info specified")
         else:
             if session_info.session_start is None:
                 session_info.session_start = datetime.now()                
@@ -1236,7 +1236,7 @@ class opasCentralDB(object):
                         logger.debug(f"Saved sessioninfo: {session_info.session_id}")
                     else:
                         msg = f"{session_id} Insert Error. Record Could not be Saved"
-                        logger.warning(msg)
+                        logger.error(msg)
                         ret_val = False
                     
                     cursor.close()
@@ -1280,7 +1280,7 @@ class opasCentralDB(object):
                 logger.debug(f"Closed {success} expired sessions")
             else:
                 ret_val = False
-                logger.warning("Could not retire sessions in DB")
+                logger.error("Could not retire sessions in DB")
 
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
@@ -1384,7 +1384,7 @@ class opasCentralDB(object):
             except:
                 if self.session_id is None:
                     # no session open!
-                    logger.warning("OCD: No session is open")
+                    logger.error("OCD: No session is open")
                     return ret_val
                 else:
                     session_id = self.session_id
@@ -1605,7 +1605,7 @@ class opasCentralDB(object):
                                     config_json = json.dumps(configSettings, indent=2)  # expand json in table! 2021-03-21
 
                                 except Exception as e:
-                                    logger.warning(f"Error converting configuration to json {e}.")
+                                    logger.error(f"Error converting configuration to json {e}.")
                                     return ret_val
                     
                                 sql = f"""{sql_action} INTO 
@@ -1733,6 +1733,11 @@ class opasCentralDB(object):
 
     def get_client_config(self, client_id: str, client_config_name: str):
         """
+        Get the requested standard client config name (template of sorts)
+        
+        Note: Session_id from client_configs is simply the session id for which the data
+              was saved.  This will be admin, and is currently of no use, even though it
+              is returned.
         
         >>> ocd = opasCentralDB()
         >>> model = models.ClientConfigList(configList=[models.ClientConfigItem(configName="demo", configSettings={"A":"123", "B":"1234"})])
@@ -1878,13 +1883,10 @@ class opasCentralDB(object):
                     cursor.close()
         
                 except Exception as e:
-                    if user_id != 0:
-                        logger.warning(f"Error saving document {document_id} view {view_type} for session {session_id} and user_id {user_id}: {e}")
-                    else:
-                        logger.debug(f"Error saving document {document_id} view {view_type} for session {session_id} and user_id {user_id}: {e}")
+                    logger.error(f"Error saving document {document_id} view {view_type} for session {session_id} and user_id {user_id}: {e}")
                     
         except Exception as e:
-            logger.warning(f"Error checking document view type {view_type}: {e}")
+            logger.error(f"Error checking document view type {view_type}: {e}")
 
         self.close_connection(caller_name=fname) # make sure connection is closed
 

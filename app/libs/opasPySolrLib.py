@@ -209,7 +209,7 @@ def get_base_article_info_by_id(art_id):
     try:
         ret_val = documentListItem = documentList.documentList.responseSet[0]
     except Exception as e:
-        logger.warning(f"Error getting article {art_id} by id: {e}")
+        logger.error(f"Error getting article {art_id} by id: {e}")
         ret_val = None
         
     return ret_val
@@ -229,7 +229,7 @@ def get_translated_article_info_by_origrx_id(art_id):
     try:
         ret_val = documentListItem = documentList.documentList.responseSet[0]
     except Exception as e:
-        logger.warning(f"Error getting article {art_id} by id: {e}")
+        logger.error(f"Error getting article {art_id} by id: {e}")
         ret_val = None
         
     return ret_val
@@ -817,7 +817,7 @@ def search_analysis( query_list,
                 except KeyError as e:
                     by_parent[n["parent_tag"]] = f"{n['terms']}"
                 except Exception as e:
-                    logger.warning(f"Error saving term clause: {e}")
+                    logger.error(f"Error saving term clause: {e}")
 
 
             for key, value in by_parent.items():
@@ -1141,7 +1141,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             else:
                 if solr_core is None:
                     detail=f"Bad Extended Request. Unknown core specified."
-                    logger.warning(detail)
+                    logger.error(detail)
                     ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
         else:
             solr_query_spec.core = "pepwebdocs"
@@ -1156,7 +1156,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         else:
             if solr_core is None:
                 detail=f"CoreSpecificationError: Bad Extended Request. No core specified."
-                logger.warning(detail)
+                logger.error(detail)
                 ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
 
     try:
@@ -1660,7 +1660,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     try:
         code = pep_code.upper()
     except:
-        logger.warning(f"Illegal PEP Code or None supplied to metadata_get_contents: {pep_code}")
+        logger.error(f"Illegal PEP Code or None supplied to metadata_get_contents: {pep_code}")
     else:
         pep_code = code
 
@@ -2693,7 +2693,7 @@ def get_fulltext_from_search_results(result,
     try:
         matches = re.findall(f"class='searchhit'|{opasConfig.HITMARKERSTART}", text_xml)
     except Exception as e:
-        logger.warning(f"Exception.  Could not count matches. {e}")
+        logger.error(f"Exception.  Could not count matches. {e}")
         documentListItem.termCount = 0
     else:
         documentListItem.termCount = len(matches)

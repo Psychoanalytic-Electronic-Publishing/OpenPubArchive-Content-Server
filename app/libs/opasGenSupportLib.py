@@ -343,7 +343,7 @@ def derive_author_mast(authorIDList):
                     authorMast += authMastName    
             except Exception as e:
                 authorMast += aut
-                logger.warning("Could not derive Author Mast name")
+                logger.error("Could not derive Author Mast name")
             
         retVal = authorMast.strip()
 
@@ -578,7 +578,7 @@ def one_term(arg):
         try:
             std_arg = str(arg)
         except Exception as e:
-            logger.warning(f"Error converting non-string term {e}. Perhaps data type issue.")
+            logger.error(f"Error converting non-string term {e}. Perhaps data type issue.")
         else:
             std_arg = None
 
@@ -589,7 +589,7 @@ def one_term(arg):
             else:
                 ret_val = False
         except Exception as e:
-            logger.warning(f"Error checking one term {e}. Perhaps data type issue.")
+            logger.error(f"Error checking one term {e}. Perhaps data type issue.")
         
     return ret_val
 

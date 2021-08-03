@@ -165,9 +165,9 @@ class BiblioEntry(object):
                 try:
                     self.year_of_publication_int = int(self.year_of_publication[0:4])
                 except ValueError as e:
-                    logger.warning("Error converting year_of_publication to int: %s / %s.  (%s)" % (self.year_of_publication, self.ref_entry_xml, e))
+                    logger.error("Error converting year_of_publication to int: %s / %s.  (%s)" % (self.year_of_publication, self.ref_entry_xml, e))
                 except Exception as e:
-                    logger.warning("Error trying to find untagged bib year in %s (%s)" % (self.ref_entry_xml, e))
+                    logger.error("Error trying to find untagged bib year in %s (%s)" % (self.ref_entry_xml, e))
             else:
                 logger.warning("Non-numeric year of pub: %s" % (self.ref_entry_xml))
 
@@ -224,7 +224,7 @@ class ArticleInfo(object):
             self.art_id = self.art_id.upper()
                 
         except Exception as err:
-            logger.warning("Issue reading file's article id. (%s)", err)
+            logger.error("Issue reading file's article id. (%s)", err)
 
         # Containing Article data
         #<!-- Common fields -->
@@ -309,7 +309,7 @@ class ArticleInfo(object):
                 art_year_for_int = re.sub("[^0-9]", "", self.art_year)
                 self.art_year_int = int(art_year_for_int)
             except ValueError as err:
-                logger.warning("Error converting art_year to int: %s", self.art_year)
+                logger.error("Error converting art_year to int: %s", self.art_year)
                 self.art_year_int = 0
 
 

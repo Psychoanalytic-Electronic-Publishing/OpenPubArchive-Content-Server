@@ -608,7 +608,7 @@ def xml_get_pages_starting_with(xmlstr, start_with, limit=1, inside="body", env=
                 frag = etree.tostring(n).decode("utf8") + "\n" # separate for monitoring the fragment
                 new_xml += frag
             except Exception as e:
-                logger.warning(f"Error converting node: {e}")
+                logger.error(f"Error converting node: {e}")
         # close the new xml string
         new_xml += f"</{env}>\n"
     except Exception as e:
@@ -693,7 +693,7 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
             offset2 = offset1 + limit
             
         except Exception as e:
-            logger.warning(f"Offset/Limit specification error: {e}")
+            logger.error(f"Offset/Limit specification error: {e}")
     
         try:
             root = xmlstr_to_etree(xmlstr)
@@ -743,7 +743,7 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
                     
             except Exception as e:
                 secondpbfrag = ""
-                logger.warning(f"Could not get ending pagebreak: {e}")
+                logger.error(f"Could not get ending pagebreak: {e}")
             
             # Now let's get the text between, or before, if offset1 == 0 (first break)
             if offset1 == 0: # get all tags before the first pb (offset passed in was 1)
@@ -764,7 +764,7 @@ def xml_get_pages(xmlstr, offset=0, limit=1, inside="body", env="body", pagebrk=
                     frag = etree.tostring(n).decode("utf8") + "\n" # separate for monitoring the fragment
                     new_xml += frag
                 except Exception as e:
-                    logger.warning(f"Error converting node: {e}")
+                    logger.error(f"Error converting node: {e}")
         
             # add the last pb
             new_xml += secondpbfrag
@@ -995,7 +995,7 @@ def xml_get_subelement_textsingleton(element_node, subelement_name, skip_tags=[]
             try:
                 ret_val = ret_val.strip()
             except Exception as e:
-                logger.warning(f"Whitepsace strip error: {ret_val} {e}")
+                logger.error(f"Whitepsace strip error: {ret_val} {e}")
 
     except Exception as err:
         logger.warning(err)
@@ -1284,7 +1284,7 @@ def xml_xpath_with_default(element_node, xpath, default_return=None):
         if ret_val is None or ret_val == []:
             ret_val = default_return
     except:
-        logger.warning("xpath error")
+        logger.error("xpath error %s", xpath)
 
     return ret_val
         

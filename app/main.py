@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0803/v2.1.45" # semver versioning now added after date.
+__version__     = "2021.0803/v2.1.46" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -300,15 +300,15 @@ def find_client_id(request: Request,
         if client_id is not None:
             ret_val = client_id
             msg = f"client-id from header: {ret_val} "
-            logger.debug(msg)
+            logger.info(msg)
         elif client_id_qparam is not None:
             ret_val = client_id_qparam
             msg = f"client-id from param: {ret_val} "
-            logger.debug(msg)
+            logger.info(msg)
         elif client_id_cookie is not None:
             ret_val = client_id_cookie
             msg = f"client-id from cookie: {ret_val} "
-            logger.warning(msg)
+            logger.info(msg)
         #else:
             #ret_val = opasConfig.NO_CLIENT_ID # no client id (default)
     else:
@@ -371,11 +371,12 @@ def get_client_session(response: Response,
                 status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
                 detail=ERR_MSG_PASSWORD + f" ({msg} - {e})", 
             )
-        else:
-            if session_id is not None:
-                opasAPISupportLib.save_opas_session_cookie(request, response, session_id)
-            else:
-                logger.debug("SessionID is None, no cookie saved.")
+        # No need to save cookie unless logging in through server, and that is handled on line 1376.
+        #else:
+            #if session_id is not None:
+                #opasAPISupportLib.save_opas_session_cookie(request, response, session_id)
+            #else:
+                #logger.debug("SessionID is None, no cookie saved.")
 
     if session_id is None or len(session_id) < 12:
         # don't report these errors
@@ -451,18 +452,35 @@ async def get_api_key(api_key_query: str = Security(api_key_query),
 # ############################################################################
 
 def log_endpoint(request, client_id=None, session_id=None, path_params=True, level="info", trace=False):
-    if client_id == 3: # PaDS, sends a lot of requests at once, so mute
-        logger.debug(f"***[{client_id}:{session_id}]:{request['path']}***")
-        #logger.info(urllib.parse.unquote(f"....{request.url}"))
+    url = urllib.parse.unquote(f"....{request.url}")
+    text = f"*************[{client_id}:{session_id}]:{url}*************"
+    if client_id == 3: # PaDS, sends a lot of requests at once, so mute unless debug mode
+        logger.debug(text)
     else:
-        url = urllib.parse.unquote(f"....{request.url}")
-        if level == "info" or level == "debug" or trace:
-            logger.info(f"*************[{client_id}:{session_id}]:{url}*************")
-
-def log_endpoint_time(request, ts, level="info"): 
+        if trace: # force it, as warning
+            logger.warning(text) # controlled logging
+        elif level == "info":
+            logger.info(text)    # controlled logging
+        elif level == "warning":
+            logger.warning(text) # controlled logging
+        elif level == "error":
+            logger.error(text)   # controlled logging
+        else:
+            logger.debug(text)            
+            
+def log_endpoint_time(request, ts, level="info", trace=False):
+    text = f"***{request['path']} response time: {time.time() - ts}***"
     if opasConfig.LOG_CALL_TIMING:
-        if level == "info" or level == "debug":
-            logger.info(f"***{request['path']} response time: {time.time() - ts}***")
+        if trace: # force it, as warning
+            logger.warning(text) # controlled logging
+        elif level == "info" or level == "debug":
+            logger.info(text)    # controlled logging
+        elif level == "warning": 
+            logger.warning(text) # controlled logging
+        elif level == "error":
+            logger.error(text)   # controlled logging
+        else:
+            logger.debug(text)            
 
 # ############################################################################
 # EndPoints
@@ -852,7 +870,7 @@ async def admin_sitemap(response: Response,
     
     """
     import opasSiteMap
-    # Need to move these to localsecrets on AWS, then remove this
+    # path variable/parameter defaults to localsecrets.SITEMAP_PATH
     try:
         SITEMAP_OUTPUT_FILE = path + localsecrets.PATH_SEPARATOR + "sitemap" # don't include xml extension here, it's added
         SITEMAP_INDEX_FILE = path + localsecrets.PATH_SEPARATOR + "sitemapindex.xml"
@@ -860,11 +878,10 @@ async def admin_sitemap(response: Response,
         SITEMAP_OUTPUT_FILE = ".." + localsecrets.PATH_SEPARATOR + "sitemap"             # don't include xml extension here, it's added
         SITEMAP_INDEX_FILE = ".." + localsecrets.PATH_SEPARATOR + "sitemapindex.xml"
    
-    localtest = r"c:\\"
     if client_session is not None:
         ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
         # see if user is an admin or if this is a localtest
-        if ocd.verify_admin(session_info) or path[0:3] == localtest[0:3]:
+        if ocd.verify_admin(session_info):
             try:
                 # returns a list of the sitemap files (since split)
                 sitemap_list = opasSiteMap.metadata_export(SITEMAP_OUTPUT_FILE, total_records=max_records, records_per_file=size)
@@ -983,7 +1000,7 @@ async def api_status(response: Response,
                                               )
 
     except ValidationError as e:
-        logger.warning("ValidationError", e.json())
+        logger.error("ValidationError", e.json())
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST,
             detail=ERR_MSG_STATUS_DATA_ISSUE + f": {e}"
@@ -1577,7 +1594,7 @@ async def session_status(response: Response,
                                                          )
 
         except ValidationError as e:
-            logger.warning("ValidationError", e.json())
+            logger.error("ValidationError", e.json())
             raise HTTPException(
                 status_code=httpCodes.HTTP_400_BAD_REQUEST,
                 detail=ERR_MSG_STATUS_DATA_ISSUE
@@ -1605,7 +1622,7 @@ async def session_status(response: Response,
                                                              )
                 
         except ValidationError as e:
-            logger.warning("ValidationError", e.json())
+            logger.error("ValidationError", e.json())
             raise HTTPException(
                 status_code=httpCodes.HTTP_400_BAD_REQUEST,
                 detail=ERR_MSG_STATUS_DATA_ISSUE
@@ -2949,7 +2966,7 @@ def database_mostviewed(response: Response,
     # exit on arg error        
     if query_arg_error is not None:
         status_message = f"Error: {query_arg_error}"
-        logger.warning(status_message)
+        logger.error(status_message)
         ret_val = None
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST, 
@@ -3480,7 +3497,7 @@ async def database_term_counts(response: Response,
                             results[termfield][key] = value
                 except Exception as e:
                     detail = f"{e} - {result.error}. {result.error_description}"
-                    logger.warning(detail)
+                    logger.error(detail)
                     # Solr Error
                     raise HTTPException(
                         status_code=result.httpcode, 
@@ -3531,7 +3548,7 @@ async def database_term_counts(response: Response,
         logger.debug(statusMsg)
 
     if param_error:
-        logging.warning(statusMsg)
+        logging.error(statusMsg)
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST, 
             detail=statusMsg
@@ -4783,8 +4800,10 @@ def documents_document_fetch(response: Response,
                                         status_message=status_message
                                         )
 
+            # prep for potential error below.
+            error_text = f"No document returned for request: {documentID} during session {session_info.session_id}"
             if ret_val is None or ret_val == {}:
-                logger.warning(f"No document returned for request: {documentID} during session {session_info.session_id}")
+                logger.error(error_text)
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=status_message
@@ -4793,7 +4812,7 @@ def documents_document_fetch(response: Response,
                 ret_val.documents.responseInfo.request = req_url
                 if access == False:
                     #  abstract returned...we don't count those currently.
-                    logger.info(f"Document request for non-logged-in or nonsubscriber user (session: {session_info.session_id}). Abstract returned instead for {documentID}.")
+                    logger.info("Full-text access not allowed--Abstract only. " + error_text)
                 else:
                     if ret_val.documents.responseInfo.count > 0:
                         #  record document view if found
@@ -4801,7 +4820,7 @@ def documents_document_fetch(response: Response,
                                                  session_info=session_info,
                                                  view_type="Document")
                     else:
-                        logger.warning(f"No document found for request: {documentID} during session {session_info.session_id}")
+                        logger.error("No document available." + error_text)
 
     log_endpoint_time(request, ts=ts)
     return ret_val
@@ -5236,7 +5255,7 @@ async def documents_image_fetch(response: Response,
         if not session_info.authenticated:
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
             status_message = "Must be logged in and authorized to download an image."
-            logger.warning(status_message)
+            logger.error(status_message)
             raise HTTPException(
                 status_code=response.status_code,
                 detail=status_message

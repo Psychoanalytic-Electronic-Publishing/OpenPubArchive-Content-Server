@@ -82,23 +82,23 @@ def find_client_session_id(request: Request,
         if client_session_qparam is not None:
             ret_val = client_session_qparam
             msg = f"client-session from param: {ret_val} "
-            logger.debug(msg)
+            logger.warning(msg) # temp, should be info
         elif client_session_cookie is not None:
             ret_val = client_session_cookie
             msg = f"client-session from client-session cookie: {ret_val} "
-            logger.debug(msg)
+            logger.warning(msg) # temp, should be info
         elif opas_session_cookie is not None and opas_session_cookie != 'None':
             msg = f"client-session from stored OPASSESSION cookie {opas_session_cookie}"
-            logger.warning(msg)
+            logger.warning(msg) # temp, should be info
             ret_val = opas_session_cookie
         else:
             msg = f"No dependency client-session ID found. Returning None"
-            logger.warning(msg)
+            logger.warning(msg) # temp, should be info
             ret_val = None
 
         if ret_val is not None and opas_session_cookie is not None and opas_session_cookie != ret_val:
             #  overwrite any saved cookie, if there is one
-            logger.debug("Saved OpasSessionID Cookie")
+            logger.warning("Saved OpasSessionID Cookie") # temp, should be debug
             response.set_cookie(
                 OPASSESSIONID,
                 value=f"{client_session}",
@@ -172,6 +172,7 @@ def get_authserver_session_info(session_id,
                                 request=None):
     """
     Return a filled-in SessionInfo object from several PaDS calls
+    Saves the session information to the SQL database (or updates it)
     
     >>> session_info = get_authserver_session_info(None, "4")
     >>> session_info.username == "NotLoggedIn"
@@ -450,7 +451,7 @@ def authserver_logout(session_id, request: Request=None, response: Response=None
         else:
             logger.error(f"{caller_name}: Error Logging out for sessionId: {session_id} from PaDS: {response.json()}")
     else:
-        logger.warning(f"{caller_name}: No SessionId supplied.")
+        logger.error(f"{caller_name}: No SessionId supplied.")
 
     return ret_val
 
@@ -802,7 +803,7 @@ def get_pads_session_info(session_id=None,
     caller_name = "GetPaDSSessionInfo"
     
     if client_id == opasConfig.NO_CLIENT_ID:
-        logger.info(f"{caller_name}: Session info call for Session ID: {session_id} Client ID was NO_CLIENT_ID ({opasConfig.NO_CLIENT_ID}).")
+        logger.warning(f"{caller_name}: Session info call for Session ID: {session_id} Client ID was NO_CLIENT_ID ({opasConfig.NO_CLIENT_ID}).")
     
     if session_id is not None:
         full_URL = base + f"/v1/Authenticate/IP/" + f"?SessionID={session_id}"
@@ -812,10 +813,10 @@ def get_pads_session_info(session_id=None,
     # user_ip is used to get the X_FORWARDED_FOR address to send to server for IP based users
     user_ip = get_user_ip(request)
     try:
-        if user_ip is not None:
+        if user_ip is not None and user_ip is not '':
             headers = { opasConfig.X_FORWARDED_FOR:user_ip }
             pads_session_info = requests.get(full_URL, headers)
-            logger.info(f"{caller_name}: X_FORWARDED_FOR from authenticateIP: {user_ip}")
+            logger.warning(f"{caller_name}: X_FORWARDED_FOR from authenticateIP: {user_ip}") # temp, should be info
         else:
             pads_session_info = requests.get(full_URL)
             
@@ -825,17 +826,17 @@ def get_pads_session_info(session_id=None,
     else:
         status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below)
         if status_code > 403: # e.g., (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, httpCodes.HTTP_503_SERVICE_UNAVAILABLE):
-            logger.warning(f"{caller_name}: PaDS session_info status_code is {status_code}")
+            error_text = f"{caller_name}: PaDS session_info status_code is {status_code}"
+            logger.error(error_text)
             # try once without the session ID
             if retry == True:
                 pads_session_info = get_pads_session_info(client_id=client_id, retry=False, request=request)
                 pads_session_info.pads_status_response = status_code
             else:
-                msg = f"{caller_name}: {pads_session_info.status_code}"
-                logger.error(msg)
+                logger.error(error_text)
                 pads_session_info = models.PadsSessionInfo()
                 pads_session_info.pads_status_response = status_code
-                pads_session_info.pads_disposition = msg 
+                pads_session_info.pads_disposition = error_text
         else:
             try:
                 pads_session_info = pads_session_info.json()

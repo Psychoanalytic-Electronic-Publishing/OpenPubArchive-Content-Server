@@ -41,6 +41,7 @@ def opas_sitemap_index(output_file=localsecrets.SITEMAP_PATH, sitemap_list=[]):
    Create a site index
    Call metadata_export to populate the index files.
    Create the index of the returned file names
+   output file is path but not name of sitemap index, which is set below.
 
    >>> SITEMAP_OUTPUT_FILE = localsecrets.SITEMAP_PATH + "/sitemap" # don't include xml extension here, it's added
    >>> SITEMAP_INDEX_FILE = localsecrets.SITEMAP_PATH + "/sitemapindex.xml"
@@ -68,10 +69,10 @@ def opas_sitemap_index(output_file=localsecrets.SITEMAP_PATH, sitemap_list=[]):
          mod_time = datetime.datetime.now().strftime(dtformat)
          enf.write(sm_index_head)
          for sitemap in sitemap_list:
-            # sitemap_base = os.path.basename(sitemap)
+            sitemap_base = os.path.basename(sitemap)
             record = f'''
                <sitemap>
-                  <loc>{localsecrets.SITEMAP_URL}{sitemap}</loc>
+                  <loc>{localsecrets.SITEMAP_URL}{sitemap_base}</loc>
                   <lastmod>{mod_time}</lastmod>
                </sitemap>\n
             '''

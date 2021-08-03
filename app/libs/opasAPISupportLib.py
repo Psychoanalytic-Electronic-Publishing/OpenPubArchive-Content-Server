@@ -253,7 +253,8 @@ def get_session_info(request: Request,
             else:
                 logger.warning(f"Session {session_id} not found in DB. Authserver says not logged in though. Session Info returned: {session_info}")
 
-            success, session_info = ocd.save_session(session_id, session_info)
+            # session info is saved in get_authserver_session_info   
+            # success, session_info = ocd.save_session(session_id, session_info)
         else:
             if session_info.authenticated == False: # not logged in
                 # better check if now they are logged in
@@ -263,18 +264,19 @@ def get_session_info(request: Request,
                 if session_info.authenticated:
                     logger.warning(f"Session {session_id} found in DB. User was not logged in; but they are now. Session Info returned: {session_info}")
                 else:
-                    logger.warning(f"Session {session_id} found in DB. User was not logged in; and they still aren't. Session Info returned: {session_info}")
-                    
-                success, session_info = ocd.save_session(session_id, session_info)
+                    logger.warning(f"Session {session_id} found in DB. User was not logged in or has logged out. Session Info returned: {session_info}")
+                
+                # session info is saved in get_authserver_session_info   
+                # success, session_info = ocd.save_session(session_id, session_info)
             else:
                 # important - because they "were" logged in, we will return a session timed out error
                 # so don't refresh it...server likes to know they were logged in
-                logger.warning(f"User was logged in.  No further checks needed.")
+                logger.warning(f"User was logged in.  No further checks needed.")  # temp, should be info
 
         if opasConfig.LOG_CALL_TIMING:
             logger.debug(f"Get/Save session info response time: {time.time() - ts}")
         
-        logger.warning("getSessionInfo: %s", session_info)
+        logger.warning("getSessionInfo: %s", session_info) # temp, should be info
         
     else:
         logger.warning("No SessionID; Default session info returned (Not Logged In)")
@@ -417,7 +419,7 @@ def database_get_most_viewed( publication_period: int=5,
                                                                request = request
                                                               )
         except Exception as e:
-            logger.warning(f"Search error {e}")
+            logger.error(f"Search error {e}")
 
     return ret_val, ret_status   
 
@@ -510,7 +512,7 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                                                                request = request
                                                               )
         except Exception as e:
-            logger.warning(f"Search error {e}")
+            logger.error(f"Search error {e}")
         
     return ret_val, ret_status   
 
@@ -584,7 +586,7 @@ def database_who_cited( publication_period: int=None,   # Limit the considered p
                                              request = request                                             
                                             )
     except Exception as e:
-        logger.warning(f"Who Cited Search error {e}")
+        logger.error(f"Who Cited Search error {e}")
         
     return ret_val, ret_status   
 
@@ -755,7 +757,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
         except Exception as e:
             errMsg = "MetadataGetSourceByType: Error getting source information.  {}".format(e)
             count = 0
-            logger.warning(errMsg)
+            logger.error(errMsg)
 
     response_info = models.ResponseInfo( count = count,
                                          fullCount = total_count,
@@ -1127,7 +1129,7 @@ def documents_get_document(document_id,
                 document_list.documentList.responseSet[0].termCount = 0
 
     except Exception as e:
-        logger.warning("get_document: No matches or error: %s", e)
+        logger.error("get_document: No matches or error: %s", e)
         # return None
     else:
         if page_limit is None:
@@ -1340,7 +1342,7 @@ def documents_get_glossary_entry(term_id,
                     else: # XML
                         document = document
                 except Exception as e:
-                    logger.warning(f"Error converting glossary content: {term_id} ({e})")
+                    logger.error(f"Error converting glossary content: {term_id} ({e})")
             else:
                 try:
                     if retFormat == "HTML":
@@ -1353,7 +1355,7 @@ def documents_get_glossary_entry(term_id,
                     logger.error(e.json())  
                 except Exception as e:
                     warning = f"Error getting contents of Glossary entry {term_id}"
-                    logger.warning(warning)
+                    logger.error(warning)
                     document = warning
                 
             documentListItem.groupID = result.get("group_id", None)
@@ -1382,9 +1384,9 @@ def documents_get_glossary_entry(term_id,
             documentListItem.document = documentListItem.term = "No matching glossary entry."
             # raise Exception(KeyError("No matching glossary entry"))
     except IndexError as e:
-        logger.warning("No matching glossary entry for %s.  Error: %s", (term_id, e))
+        logger.error("No matching glossary entry for %s.  Error: %s", (term_id, e))
     except KeyError as e:
-        logger.warning("No content or abstract found for %s.  Error: %s", (term_id, e))
+        logger.error("No content or abstract found for %s.  Error: %s", (term_id, e))
     else:
         response_info = models.ResponseInfo( count = count,
                                              fullCount = count,
@@ -1416,7 +1418,7 @@ def save_opas_session_cookie(request: Request, response: Response, session_id):
             opasSession = [x for x in response.raw_headers[0] if b"opasSessionID" in x]
             already_set = b"opasSessionID" in opasSession[0][0:13]
         except Exception as e:
-            logger.debug(f"Ok, opasSessionID not in response {e}")
+            logger.warning(f"Exception, but Ok, opasSessionID cookie not in response {e}") # temp, should be info
 
     if already_set == False and session_id is not None:
         try:
