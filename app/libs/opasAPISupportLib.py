@@ -244,32 +244,40 @@ def get_session_info(request: Request,
         ts = time.time()
         session_info = ocd.get_session_from_db(session_id)
         if session_info is None:
-            logger.warning(f"Session info for {session_id} not found.  Getting from authserver (will save on server)")
+            logger.warning(f"Session info for {session_id} not found in db.  Getting from authserver (will save on server)")
             session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
                                                                    client_id=client_id,
                                                                    request=request)
+            if session_info.authenticated:
+                logger.warning(f"Session {session_id} not found in DB. User is logged in now. Session Info returned: {session_info}")
+            else:
+                logger.warning(f"Session {session_id} not found in DB. Authserver says not logged in though. Session Info returned: {session_info}")
+
             success, session_info = ocd.save_session(session_id, session_info)
         else:
-            logger.debug(f"Session {session_id} found in DB.  Checking if already marked authenticated.")
-            if session_info.authenticated == 0: # not logged in
+            if session_info.authenticated == False: # not logged in
                 # better check if now they are logged in
                 session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
                                                                        client_id=client_id, 
                                                                        request=request)
-                logger.debug(f"User was not logged in; checked to see if they are now. Session Info returned from PaDS: {session_info}")
+                if session_info.authenticated:
+                    logger.warning(f"Session {session_id} found in DB. User was not logged in; but they are now. Session Info returned: {session_info}")
+                else:
+                    logger.warning(f"Session {session_id} found in DB. User was not logged in; and they still aren't. Session Info returned: {session_info}")
+                    
                 success, session_info = ocd.save_session(session_id, session_info)
             else:
                 # important - because they "were" logged in, we will return a session timed out error
                 # so don't refresh it...server likes to know they were logged in
-                logger.debug(f"User was logged in.  No further checks needed.")
+                logger.warning(f"User was logged in.  No further checks needed.")
 
         if opasConfig.LOG_CALL_TIMING:
             logger.debug(f"Get/Save session info response time: {time.time() - ts}")
         
-        logger.debug("getSessionInfo: %s", session_info)
+        logger.warning("getSessionInfo: %s", session_info)
         
     else:
-        logger.debug("No SessionID; Default session info returned (Not Logged In)")
+        logger.warning("No SessionID; Default session info returned (Not Logged In)")
         session_info = models.SessionInfo() # default session model
 
     return ocd, session_info

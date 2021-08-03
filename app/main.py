@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0802/v2.1.44" # semver versioning now added after date.
+__version__     = "2021.0803/v2.1.45" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -2570,8 +2570,8 @@ def database_searchanalysis(response: Response,
                             sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                             limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                             offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                            #client_id:int=Depends(get_client_id), 
-                            #client_session:str= Depends(get_client_session)
+                            client_id:int=Depends(get_client_id), 
+                            client_session:str= Depends(get_client_session)
                             ):
     """
     ## Function
@@ -3630,7 +3630,7 @@ def database_whatsnew(response: Response,
                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                       client_id:int=Depends(get_client_id), 
-                      #client_session:str= Depends(get_client_session)
+                      client_session:str= Depends(get_client_session)
                       ):  
     """
     ## Function
@@ -3693,7 +3693,7 @@ def database_word_wheel(response: Response,
                         #offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                         startat:str=Query(None, title="Start at this term/prefix (inconsistent at best)."), 
                         client_id:int=Depends(get_client_id), 
-                         #client_session:str= Depends(get_client_session)
+                        client_session:str= Depends(get_client_session)
                         ):
     """
     ## Function
@@ -4130,7 +4130,7 @@ def metadata_volumes(response: Response,
                      #limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_VOLUME_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                      #offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                      client_id:int=Depends(get_client_id), 
-                           #client_session:str= Depends(get_client_session)
+                     client_session:str= Depends(get_client_session)
                      ):
     """
     ## Function
@@ -4267,8 +4267,8 @@ def authors_index(response: Response,
                   authorNamePartial: str=Path(..., title=opasConfig.TITLE_AUTHORNAMEORPARTIAL, description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
                   limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                  client_id:int=Depends(get_client_id)
-                        #client_session:str= Depends(get_client_session)
+                  client_id:int=Depends(get_client_id), 
+                  client_session:str= Depends(get_client_session)
                   ):
     """
     ## Function
@@ -4336,8 +4336,8 @@ def authors_publications(response: Response,
                          authorNamePartial: str=Path(..., title=opasConfig.TITLE_AUTHORNAMEORPARTIAL, description=opasConfig.DESCRIPTION_AUTHORNAMEORPARTIAL), 
                          limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                          offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
-                         client_id:int=Depends(get_client_id)
-                               #client_session:str= Depends(get_client_session)
+                         client_id:int=Depends(get_client_id), 
+                         client_session:str= Depends(get_client_session)
                          ):
     """
     ## Function
@@ -5148,10 +5148,10 @@ async def documents_image_fetch(response: Response,
                                 imageID: str=Path(..., title=opasConfig.TITLE_IMAGEID, description=opasConfig.DESCRIPTION_IMAGEID),
                                 download: int=Query(0, title="Return or download", description="0 returns the binary image, 1 downloads, 2 returns the article ID"),
                                 insensitive: bool=Query(True, title="Filename case ignored"),  
-                                client_id:int=Depends(get_client_id),
                                 #seed:str=Query(None, title="Seed String to help randomize daily expert pick", description="Use the date, for example, to avoid caching from a prev. date. "),
                                 reselect:bool=Query(False, title="Force a new random image selection"),  
-                                client_session:str= Depends(get_client_session)
+                                client_id:int=Query(0, title="Client Id as Parameter"), 
+                                client_session:int=Query(0, title="Client Session as Parameter")
                                 ):
     """
     ## Function
@@ -5207,13 +5207,29 @@ async def documents_image_fetch(response: Response,
         
     log_endpoint(request, client_id=client_id)
 
+    # find client_id and client_session in one of two ways
+    if client_id == 0:
+        client_id = request.query_params.get('client-id', 0)
+
+    if client_session == 0:
+        client_session = request.query_params.get('client-session', 0)
+        
+    if client_session == 0:
+        client_id_from_header, client_session_from_header = opasDocPermissions.verify_header(request, "DocumentImage") # for debugging client call
+        if client_session_from_header is not None:
+            client_session = client_session_from_header
+        
+    if client_id == 0:
+        if client_id_from_header is not None:
+            client_id = client_id_from_header       
+
     endpoint = opasCentralDBLib.API_DOCUMENTS_IMAGE
     if download != 0 and download != 2:
         # removed and put back in endpoint; I think the errors I'm seeing in production are due to this call
         #client_session = get_client_session(response, request, 
                                             #client_id=client_id) 
         # this is when we need a session id
-        opasDocPermissions.verify_header(request, "DocumentImage") # for debugging client call
+            
         ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
         # allow viewing, but not downloading if not logged in
