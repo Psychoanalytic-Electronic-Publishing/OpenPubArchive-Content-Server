@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0803/v2.1.46" # semver versioning now added after date.
+__version__     = "2021.0803/v2.1.47" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -514,7 +514,7 @@ async def admin_set_loglevel(response: Response,
 
        The input string is case insensitive.
        
-    ## Potential Errors
+       ## Potential Errors
        N/A
     
     """
@@ -528,46 +528,52 @@ async def admin_set_loglevel(response: Response,
         if ocd.verify_admin(session_info):
             admin = True
     
-    try:
-        # not necessary, since setLevel accepts the same strings
-        # but this protects from name input errors
-        # (as does the Exception)
-        # At this point there's no reason I see to accept numeric levels
-        err = ""
+    # not necessary, since setLevel accepts the same strings
+    # but this protects from name input errors
+    # (as does the Exception)
+    # At this point there's no reason I see to accept numeric levels
+    err = ""
 
-        change = False
-        ret_val = f"Specified log level is set to: {curr_level}."
-        if admin:
-            level = level.upper()
-            if level == "DEBUG":
-                lev_int = logging.DEBUG
-            elif level == "INFO":
-                lev_int = logging.INFO
-            elif level == "WARNING" or level == "WARN":
-                lev_int = logging.WARNING
-            elif level == "ERROR":
-                lev_int = logging.ERROR
-            else:
-                err = f"Specified log level {level} not recognized. Log level still set to: {curr_level}"
+    change = False
+    ret_val = f"Specified log level is set to: {curr_level}."
+    if admin:
+        level = level.upper()
+        if level == "DEBUG":
+            lev_int = logging.DEBUG
+        elif level == "INFO":
+            lev_int = logging.INFO
+        elif level == "WARNING" or level == "WARN":
+            lev_int = logging.WARNING
+        elif level == "ERROR":
+            lev_int = logging.ERROR
         else:
-            if curr_level != level:
-                err = f"Log level can only be changed by an adminSpecified log level {level} not recognized. Log level still set to: {curr_level}"
-                raise HTTPException(httpCodes.HTTP_401_UNAUTHORIZED, detail=err)
-            else:
-                err = f"Log level set to: {curr_level}"
-            
+            err = f"Specified log level {level} not recognized. Log level still set to: {curr_level}"
+    else:
+        if curr_level != level:
+            err = f"Log level can only be changed by an adminSpecified log level {level} not recognized. Log level still set to: {curr_level}"
+            raise HTTPException(httpCodes.HTTP_401_UNAUTHORIZED, detail=err)
+        else:
+            err = f"Log level set to: {curr_level}"
+
+    try:
         if admin:
-            logger.setLevel(lev_int)
+            # see https://stackoverflow.com/questions/37703609/using-python-logging-with-aws-lambda
+            if logging.getLogger().hasHandlers:
+                # The Lambda environment pre-configures a handler logging to stderr. If a handler is already configured,
+                # `.basicConfig` does not execute. Thus we set the level directly.
+                logging.getLogger().setLevel(lev_int)
+            else:
+                logging.basicConfig(level=lev_int)            
             change = True
 
     except Exception as e:
-        err = f"Exception setting or getting LogLevel: {e}"
+        err = f"Exception setting or getting LogLevel: {e} Log level set to: {levels.get(logger.level, str(logger.level))}.  Was {curr_level}"
         logger.error(err)
         ret_val = err
     else:
         if change:
             ret_val = f"Log level set to: {levels.get(logger.level, str(logger.level))}.  Was {curr_level}" 
-
+            logger.error(ret_val) # temp, should be info
     return ret_val
 
 #-----------------------------------------------------------------------------

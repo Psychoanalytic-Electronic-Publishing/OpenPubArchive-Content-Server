@@ -240,6 +240,7 @@ def get_session_info(request: Request,
            i) Done, returns it.  No update.  
     """
     ocd = opasCentralDBLib.opasCentralDB()
+    extra_info = "User was already logged in."
     if session_id is not None and session_id != opasConfig.NO_SESSION_ID:
         ts = time.time()
         session_info = ocd.get_session_from_db(session_id)
@@ -268,15 +269,15 @@ def get_session_info(request: Request,
                 
                 # session info is saved in get_authserver_session_info   
                 # success, session_info = ocd.save_session(session_id, session_info)
-            else:
-                # important - because they "were" logged in, we will return a session timed out error
-                # so don't refresh it...server likes to know they were logged in
-                logger.warning(f"User was logged in.  No further checks needed.")  # temp, should be info
+            #else:
+                ## important - because they "were" logged in, we will return a session timed out error
+                ## so don't refresh it...server likes to know they were logged in
+                #logger.warning(f"User was logged in.  No further checks needed.")  # temp, should be info
 
         if opasConfig.LOG_CALL_TIMING:
             logger.debug(f"Get/Save session info response time: {time.time() - ts}")
         
-        logger.warning("getSessionInfo: %s", session_info) # temp, should be info
+        logger.warning(f"getSessionInfo: %s %s", extra_info, session_info) # temp, should be info
         
     else:
         logger.warning("No SessionID; Default session info returned (Not Logged In)")

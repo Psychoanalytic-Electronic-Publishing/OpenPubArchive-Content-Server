@@ -7,8 +7,12 @@ logger = logging.getLogger()
 import unittest
 import requests
 import localsecrets
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 import tempfile
+from localsecrets import API_KEY_NAME, API_KEY, PADS_TEST_ID, PADS_TEST_PW, PDF_ORIGINALS_PATH, PADS_TEST_ID2, PADS_TEST_PW2
+from unitTestConfig import base_plus_endpoint_encoded, headers, test_login
+
+# Login!
+sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ID2, password=localsecrets.PADS_TEST_PW2)
 
 class TestAdminSiteMap(unittest.TestCase):
     """

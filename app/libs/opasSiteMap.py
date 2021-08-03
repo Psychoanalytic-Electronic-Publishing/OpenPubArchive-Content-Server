@@ -55,10 +55,7 @@ def opas_sitemap_index(output_file=localsecrets.SITEMAP_PATH, sitemap_list=[]):
    
    try:
       ret_val = ""
-      sm_index_head = f'''
-         <?xml version="1.0" encoding="UTF-8"?>\n
-         <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n
-         '''
+      sm_index_head = '<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
 
       if localsecrets.CONFIG != 'Local':
          fs = s3fs.S3FileSystem(anon=False)
@@ -71,15 +68,15 @@ def opas_sitemap_index(output_file=localsecrets.SITEMAP_PATH, sitemap_list=[]):
          for sitemap in sitemap_list:
             sitemap_base = os.path.basename(sitemap)
             record = f'''
-               <sitemap>
-                  <loc>{localsecrets.SITEMAP_URL}{sitemap_base}</loc>
-                  <lastmod>{mod_time}</lastmod>
-               </sitemap>\n
+   <sitemap>
+      <loc>{localsecrets.SITEMAP_URL}{sitemap_base}</loc>
+      <lastmod>{mod_time}</lastmod>
+   </sitemap>
             '''
             enf.write(record)
             ret_val += record
       
-         enf.write("</sitemapindex>\n")
+         enf.write("\n</sitemapindex>\n")
 
    except Exception as err:
       ret_val = f"Error: {err}"
