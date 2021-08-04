@@ -816,7 +816,7 @@ def get_pads_session_info(session_id=None,
         if user_ip is not None and user_ip is not '':
             headers = { opasConfig.X_FORWARDED_FOR:user_ip }
             pads_session_info = requests.get(full_URL, headers)
-            logger.warning(f"{caller_name}: X_FORWARDED_FOR from authenticateIP: {user_ip}") # temp, should be info
+            logger.warning(f"{caller_name}: Session ID:{session_id}. X_FORWARDED_FOR from authenticateIP: {user_ip}.  PaDS Session Info: {pads_session_info}") # temp, should be info
         else:
             pads_session_info = requests.get(full_URL)
             
@@ -843,6 +843,7 @@ def get_pads_session_info(session_id=None,
                 pads_session_info = fix_pydantic_invalid_nones(pads_session_info, caller_name=caller_name)
                 pads_session_info = models.PadsSessionInfo(**pads_session_info)
                 pads_session_info.pads_status_response = status_code
+                logger.warning(f"{caller_name}: PaDS Status Ok, Final IP Session Info: {pads_session_info}") # temp, should be info or removed
             except Exception as e:
                 msg = f"{caller_name}: Response processing error {e}"
                 logger.error(msg)
