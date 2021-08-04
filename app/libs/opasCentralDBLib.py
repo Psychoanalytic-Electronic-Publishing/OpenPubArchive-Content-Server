@@ -868,14 +868,23 @@ class opasCentralDB(object):
         newer_than_date = def_date.strftime('%Y-%m-%d %H:%M:%S')
         sqlSelect = """
                         SELECT art_id FROM article_tracker
-                        WHERE date_inserted > %s
+                        WHERE date_inserted > date(%s)
         """
         if self.db is not None:
+            errmsg = f"getting articles newer than {days_back} days back, date {newer_than_date}"
             try:
                 curs = self.db.cursor(pymysql.cursors.DictCursor)
                 curs.execute(sqlSelect, (newer_than_date))
+            except ValueError as e:
+                logger.error(f"DB Value Error {e} - {errmsg}")
+            except pymysql.IntegrityError as e:
+                logger.error(f"Integrity Error {e} - {errmsg}")
+            except pymysql.InternalError as e:
+                logger.error(f"Internal Error {e} - {errmsg}")
+            except pymysql.DatabaseError as e:
+                logger.error(f"Database Error {e} - {errmsg}")
             except Exception as e:
-                logger.error(f"DB Error getting articles newer than {days_back} days back, date {newer_than_date}: {e}")
+                logger.error(f"DB Error  {e} - {errmsg}")
             else:
                 records = curs.fetchall()
                 ret_val = [a['art_id'] for a in records]

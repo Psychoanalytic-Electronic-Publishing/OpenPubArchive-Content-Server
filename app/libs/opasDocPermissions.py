@@ -313,7 +313,7 @@ def get_authserver_session_userinfo(session_id, client_id):
         try:
             response = requests.get(full_URL, headers={"Content-Type":"application/json"})
         except Exception as e:
-            msg = f"{caller_name}: No user info from authorization server {e}. Non-logged in user for sessionId: {session_id} client-id {client_id}."
+            msg = f"{caller_name}: No user info from auth server {e}. Non-logged in user for client-id {client_id}. sessionId: {session_id}"
             logger.error(msg)
         else:
             status_code = response.status_code
@@ -322,7 +322,7 @@ def get_authserver_session_userinfo(session_id, client_id):
                 padsinfo = fix_userinfo_invalid_nones(padsinfo)
                 ret_val = models.PadsUserInfo(**padsinfo)
             else:
-                logger.info(f"Non-logged in user for client-id {client_id} sessionId: {session_id}. Info from PaDS: {padsinfo}")
+                logger.warning(f"{caller_name}: Non-logged in user for client-id {client_id} sessionId: {session_id}. Info from PaDS: {padsinfo}")
             
     return ret_val, status_code # padsinfo, status_code
     
@@ -333,7 +333,7 @@ def save_session_info_to_db(session_info):
     db_session_info = ocd.get_session_from_db(session_id)
     if db_session_info is None:
         ret_val, saved_session_info = ocd.save_session(session_id, session_info)
-        logger.debug(f"Saving session info {session_id}")
+        logger.warning(f"Saving session info {session_id}") # temp, should be debug
     else:
         logger.debug(f"Session {session_id} already found in db. Updating...")
         if session_info.username != db_session_info.username and db_session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
@@ -341,7 +341,7 @@ def save_session_info_to_db(session_info):
             print (msg)
             logger.error(msg)
         
-        logger.debug(f"Updating session info {session_id}")
+        logger.warning(f"Updating session info {session_id}") # temp, should be debug
         ret_val = ocd.update_session(session_id,
                                      userID=session_info.user_id,
                                      username=session_info.username, 

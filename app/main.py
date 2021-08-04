@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0803/v2.1.47" # semver versioning now added after date.
+__version__     = "2021.0804/v2.1.48" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -550,10 +550,10 @@ async def admin_set_loglevel(response: Response,
             err = f"Specified log level {level} not recognized. Log level still set to: {curr_level}"
     else:
         if curr_level != level:
-            err = f"Log level can only be changed by an adminSpecified log level {level} not recognized. Log level still set to: {curr_level}"
+            err = f"Log level can only be changed by an admin. Log level still set to: {curr_level}"
             raise HTTPException(httpCodes.HTTP_401_UNAUTHORIZED, detail=err)
         else:
-            err = f"Log level set to: {curr_level}"
+            err = f"Log level already set to: {curr_level}"
 
     try:
         if admin:

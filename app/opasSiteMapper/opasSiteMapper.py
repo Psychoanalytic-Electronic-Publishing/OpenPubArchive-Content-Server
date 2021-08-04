@@ -31,16 +31,16 @@ print(
 
 import sys
 import os
-import opasFileSupport
+import re
+import logging
 
 sys.path.append('../libs')
 sys.path.append('../config')
 sys.path.append('../libs/configLib')
 
 import localsecrets
-import re
+import opasFileSupport
 
-import logging
 logger = logging.getLogger(programNameShort)
 
 from optparse import OptionParser
