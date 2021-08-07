@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0805/v2.1.50" # semver versioning now added after date.
+__version__     = "2021.0807/v2.1.51" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -358,19 +358,29 @@ def get_client_session(response: Response,
         # get one from PaDS, without login info
         # session_info, pads_session_info = opasDocPermissions.pads_get_session(client_id=client_id)
         logger.warning(f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID") # temp, should be debug
-        session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id,
-                                                                      client_id=client_id,
-                                                                      request=request)
-        try:
-            session_id = session_info.session_id
-        except Exception as e:
-            # We didn't get a session id
-            msg = f"SessionID not received from authserver for client {client_id} and session {client_session}.  Raising Exception 424 ({e})."
+        # New...let's try to isolate when this happens by creating an error.  We get a session from PaDS, but not if there's no client ID.
+        if client_id == opasConfig.NO_CLIENT_ID:
+            # No client id, not allowed to get session.
+            msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR
             logger.error(msg)
             raise HTTPException(
-                status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
-                detail=ERR_MSG_PASSWORD + f" ({msg} - {e})", 
+                status_code=httpCodes.HTTP_428_PRECONDITION_REQUIRED,
+                detail=ERR_MSG_CALLER_IDENTIFICATION_ERROR
             )
+        else:
+            session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id,
+                                                                          client_id=client_id,
+                                                                          request=request)
+            try:
+                session_id = session_info.session_id
+            except Exception as e:
+                # We didn't get a session id
+                msg = f"SessionID not received from authserver for client {client_id} and session {client_session}.  Raising Exception 424 ({e})."
+                logger.error(msg)
+                raise HTTPException(
+                    status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
+                    detail=ERR_MSG_PASSWORD + f" ({msg} - {e})", 
+                )
         # No need to save cookie unless logging in through server, and that is handled on line 1376.
         #else:
             #if session_id is not None:
