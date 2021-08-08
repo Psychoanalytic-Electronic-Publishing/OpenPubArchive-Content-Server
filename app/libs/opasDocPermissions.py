@@ -306,15 +306,14 @@ def get_authserver_session_userinfo(session_id, client_id):
     caller_name = "AuthServerUserinfoError"
     
     status_code = 401
-    msg = f"get_user_info for session {session_id} from client {client_id}"
-    logger.debug(msg)
+    msg = f"for session {session_id} from client {client_id}"
+    #logger.debug(msg)
     if session_id is not None:
         full_URL = base + f"/v1/Users" + f"?SessionID={session_id}"
         try:
             response = requests.get(full_URL, headers={"Content-Type":"application/json"})
         except Exception as e:
-            msg = f"{caller_name}: No user info from auth server {e}. Non-logged in user for client-id {client_id}. sessionId: {session_id}"
-            logger.error(msg)
+            logger.error(f"{caller_name}: Error from auth server user info call: {e}. Non-logged in user {msg}")
         else:
             status_code = response.status_code
             padsinfo = response.json()
@@ -322,7 +321,7 @@ def get_authserver_session_userinfo(session_id, client_id):
                 padsinfo = fix_userinfo_invalid_nones(padsinfo)
                 ret_val = models.PadsUserInfo(**padsinfo)
             else:
-                logger.warning(f"{caller_name}: Non-logged in user for client-id {client_id} sessionId: {session_id}. Info from PaDS: {padsinfo}")
+                logger.debug(f"Non-logged in user {msg}. Info from PaDS: {padsinfo}") # 2021.08.08 back to debug...seems consistent.
             
     return ret_val, status_code # padsinfo, status_code
     
