@@ -81,18 +81,18 @@ def find_client_session_id(request: Request,
         client_session_cookie = request.cookies.get(opasConfig.CLIENTSESSIONID, None)
         if client_session_qparam is not None:
             ret_val = client_session_qparam
-            msg = f"client-session from param: {ret_val} "
+            msg = f"client-session from param: {ret_val}. URL: {request.url}"
             logger.warning(msg) # temp, should be info
         elif client_session_cookie is not None:
             ret_val = client_session_cookie
-            msg = f"client-session from client-session cookie: {ret_val} "
+            msg = f"client-session from client-session cookie: {ret_val}. URL: {request.url}"
             logger.warning(msg) # temp, should be info
         elif opas_session_cookie is not None and opas_session_cookie != 'None':
-            msg = f"client-session from stored OPASSESSION cookie {opas_session_cookie}"
+            msg = f"client-session from stored OPASSESSION cookie {opas_session_cookie}. URL: {request.url} "
             logger.warning(msg) # temp, should be info
             ret_val = opas_session_cookie
         else:
-            msg = f"No dependency client-session ID found. Returning None"
+            msg = f"No dependency client-session ID found. Returning None. URL: {request.url}"
             logger.warning(msg) # temp, should be info
             ret_val = None
 
@@ -115,8 +115,12 @@ def get_user_ip(request: Request):
     if request is not None:
         ret_val = request.headers.get(opasConfig.X_FORWARDED_FOR, None)
         if ret_val is not None:
-            msg = f"X-Forwarded-For from header: {ret_val} "
-            logger.debug(msg)
+            try:
+                req_url = request.url
+                msg = f"X-Forwarded-For from header: {ret_val}. URL: {req_url}"
+                logger.debug(msg)
+            except Exception as e:
+                logger.error(f"Error: {e}")               
 
     return ret_val
     
@@ -809,13 +813,20 @@ def get_pads_session_info(session_id=None,
     else:
         full_URL = base + f"/v1/Authenticate/IP/"
 
+    req_url = "No request info."
+    if request is not None:
+        try: # just in case this generates an error
+            req_url = request.url # to log caller url
+        except Exception as e:
+            pass
+    
     # user_ip is used to get the X_FORWARDED_FOR address to send to server for IP based users
     user_ip = get_user_ip(request)
     try:
         if user_ip is not None and user_ip is not '':
             headers = { opasConfig.X_FORWARDED_FOR:user_ip }
             pads_session_info = requests.get(full_URL, headers)
-            logger.warning(f"{caller_name}: Session ID:{session_id}. X_FORWARDED_FOR from authenticateIP: {user_ip}.  PaDS Session Info: {pads_session_info}") # temp, should be info
+            logger.warning(f"{caller_name}: Session ID:{session_id}. X_FORWARDED_FOR from authenticateIP: {user_ip}. URL: {req_url} PaDS Session Info: {pads_session_info}") # temp, should be info
         else:
             pads_session_info = requests.get(full_URL)
             
@@ -842,7 +853,7 @@ def get_pads_session_info(session_id=None,
                 pads_session_info = fix_pydantic_invalid_nones(pads_session_info, caller_name=caller_name)
                 pads_session_info = models.PadsSessionInfo(**pads_session_info)
                 pads_session_info.pads_status_response = status_code
-                logger.warning(f"{caller_name}: PaDS Status Ok, Final IP Session Info: {pads_session_info}") # temp, should be info or removed
+                logger.warning(f"PaDS Status Ok, Final IP Session Info: {pads_session_info} URL: {req_url}.") # temp, should be info or removed
             except Exception as e:
                 msg = f"{caller_name}: Response processing error {e}"
                 logger.error(msg)
