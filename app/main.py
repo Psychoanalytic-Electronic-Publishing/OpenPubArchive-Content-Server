@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0807/v2.1.51" # semver versioning now added after date.
+__version__     = "2021.0808/v2.1.52" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -361,7 +361,7 @@ def get_client_session(response: Response,
         # New...let's try to isolate when this happens by creating an error.  We get a session from PaDS, but not if there's no client ID.
         if client_id == opasConfig.NO_CLIENT_ID:
             # No client id, not allowed to get session.
-            msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR
+            msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR + f" URL: {request.url._url} Headers:{request.headers} "
             logger.error(msg)
             raise HTTPException(
                 status_code=httpCodes.HTTP_428_PRECONDITION_REQUIRED,
@@ -4394,7 +4394,7 @@ def authors_publications(response: Response,
        N/A
 
     """
-    # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     log_endpoint(request, client_id=client_id)
 
     try:
