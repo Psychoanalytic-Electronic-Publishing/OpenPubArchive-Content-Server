@@ -850,9 +850,8 @@ class opasCentralDB(object):
         return ret_val # None or Session Object
                
     def get_articles_newer_than(self, days_back=7):
-        
         """
-        Check if article is newer than a given date
+        Return list of articles newer than the current date - days_back.
        
         >>> ocd = opasCentralDB()
         >>> articles = ocd.get_articles_newer_than(days_back=14) 
@@ -862,7 +861,7 @@ class opasCentralDB(object):
         """
         fname = "get_articles_newer_than"
         self.open_connection(caller_name=fname) # make sure connection is open
-        ret_val = None
+        ret_val = []
         # newer_than = datetime.utcfromtimestamp(newer_than_date).strftime(localsecrets.TIME_FORMAT_STR)
         def_date = datetime.now() - dtime.timedelta(days=days_back)
         newer_than_date = def_date.strftime('%Y-%m-%d %H:%M:%S')
@@ -887,12 +886,16 @@ class opasCentralDB(object):
                 logger.error(f"DB Error  {e} - {errmsg}")
             else:
                 records = curs.fetchall()
-                ret_val = [a['art_id'] for a in records]
-            
+                # fix 2021-09-08, None returned in some cases, but not iterable.
+                if records is not None:
+                    ret_val = [a['art_id'] for a in records]
+                else:
+                    ret_val = []
+                    
         self.close_connection(caller_name=fname) # make sure connection is closed
 
         # return session model object
-        return ret_val # None or Session Object
+        return ret_val # List of records or empty list
 
     def get_min_max_volumes(self, source_code):
         sel = f"""
