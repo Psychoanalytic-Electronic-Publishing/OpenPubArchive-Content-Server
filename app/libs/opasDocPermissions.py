@@ -98,7 +98,7 @@ def find_client_session_id(request: Request,
 
         if ret_val is not None and opas_session_cookie is not None and opas_session_cookie != ret_val:
             #  overwrite any saved cookie, if there is one
-            logger.warning("Saved OpasSessionID Cookie") # temp, should be debug
+            logger.debug("Saved OpasSessionID Cookie") 
             response.set_cookie(
                 OPASSESSIONID,
                 value=f"{client_session}",
@@ -826,7 +826,7 @@ def get_pads_session_info(session_id=None,
         if user_ip is not None and user_ip is not '':
             headers = { opasConfig.X_FORWARDED_FOR:user_ip }
             pads_session_info = requests.get(full_URL, headers)
-            logger.warning(f"{caller_name}: Session ID:{session_id}. X_FORWARDED_FOR from authenticateIP: {user_ip}. URL: {req_url} PaDS Session Info: {pads_session_info}") # temp, should be info
+            logger.info(f"{caller_name}: Session ID:{session_id}. X_FORWARDED_FOR from authenticateIP: {user_ip}. URL: {req_url} PaDS Session Info: {pads_session_info}")
         else:
             pads_session_info = requests.get(full_URL)
             
@@ -853,7 +853,7 @@ def get_pads_session_info(session_id=None,
                 pads_session_info = fix_pydantic_invalid_nones(pads_session_info, caller_name=caller_name)
                 pads_session_info = models.PadsSessionInfo(**pads_session_info)
                 pads_session_info.pads_status_response = status_code
-                logger.warning(f"PaDS Status Ok, Final IP Session Info: {pads_session_info} URL: {req_url}.") # temp, should be info or removed
+                logger.info(f"PaDS Status Ok, Final IP Session Info: {pads_session_info} URL: {req_url}.")
             except Exception as e:
                 msg = f"{caller_name}: Response processing error {e}"
                 logger.error(msg)

@@ -269,7 +269,7 @@ def get_session_info(request: Request,
                 ## so don't refresh it...server likes to know they were logged in
                 remaining_time = session_info.session_expires_time - datetime.today()
                 remaining_time_hrs = remaining_time.seconds // 3600
-                logger.info(f"User was authenticated per server database record.  Session {session_id}. Expires: {remaining_time_hrs} hrs ({session_info.session_expires_time}). DB SessionInfo: {session_info}")  # temp, should be info
+                logger.info(f"User was authenticated per server database record.  Session {session_id}. Expires: {remaining_time_hrs} hrs ({session_info.session_expires_time}). DB SessionInfo: {session_info}")
 
         if opasConfig.LOG_CALL_TIMING:
             logger.debug(f"Get/Save session info response time: {time.time() - ts}")

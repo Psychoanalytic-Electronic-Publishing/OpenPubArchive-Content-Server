@@ -81,7 +81,7 @@ from passlib.context import CryptContext
 # from pydantic import ValidationError
 
 import pymysql
-import jwt
+# import jwt
 import json
 
 #import opasAuthBasic
@@ -238,6 +238,7 @@ class opasCentralDB(object):
         self.user = user
         self.password = password
         self.database = database
+        self.unpaired_connection_count = 0
         
         self.session_id = session_id # deprecate?
         
@@ -252,9 +253,8 @@ class opasCentralDB(object):
         >>> ocd.close_connection("my name")
         """
         try:
-            status = self.db.open
+            status = self.db.open # if not already open, gens an exception, so it can be opened.
             self.connected = True
-            # this is normal, why log it?
         except:
             # not open reopen it.
             try:
@@ -262,9 +262,13 @@ class opasCentralDB(object):
                 logger.debug(f"Database opened by ({caller_name}) Specs: {self.database} for host {self.host},  user {self.user} port {self.port}")
                 self.connected = True
             except Exception as e:
-                logger.warning(f"Database connection not opened ({caller_name}) ({e})")
+                logger.error(f"Database connection could not be opened ({caller_name}) ({e})")
                 self.connected = False
+                self.db = None
                 # status = False
+        else:
+            self.unpaired_connection_count += 1
+            logger.warning(f"FYI: caller: {caller_name} the db is already open. Unpaired Open Connections: {self.unpaired_connection_count}")
         
         return self.connected
 
@@ -276,10 +280,10 @@ class opasCentralDB(object):
                     self.db = None
                     logger.debug(f"Database closed by ({caller_name})")
                 else:
-                    logger.warning(f"Database close request, but not open ({caller_name})")
+                    logger.warning(f"Database close request, but not open ({caller_name}). Connections: {self.connection_count}")
                     
             except Exception as e:
-                logger.error(f"caller: {caller_name} the db is not open ({e})")
+                logger.error(f"caller: {caller_name} the db is not open ({e}).")
 
         # make sure to mark the connection false in any case
         self.connected = False           
@@ -892,7 +896,9 @@ class opasCentralDB(object):
                 else:
                     ret_val = []
                     
-        self.close_connection(caller_name=fname) # make sure connection is closed
+            self.close_connection(caller_name=fname) # make sure connection is closed
+        else:
+            logger.warning(f"RDS DB was not successfully opened ({caller_name}). WhatsNew check skipped.")
 
         # return session model object
         return ret_val # List of records or empty list
