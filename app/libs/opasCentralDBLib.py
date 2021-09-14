@@ -268,7 +268,7 @@ class opasCentralDB(object):
                 # status = False
         else:
             self.unpaired_connection_count += 1
-            logger.warning(f"FYI: caller: {caller_name} the db is already open. Unpaired Open Connections: {self.unpaired_connection_count}")
+            logger.warning(f"FYI: DB connection already open, no action from this call. caller: {caller_name} Unpaired Open Connections: {self.unpaired_connection_count}.")
         
         return self.connected
 
@@ -278,6 +278,7 @@ class opasCentralDB(object):
                 if self.db.open:
                     self.db.close()
                     self.db = None
+                    self.unpaired_connection_count = 0
                     logger.debug(f"Database closed by ({caller_name})")
                 else:
                     logger.warning(f"Database close request, but not open ({caller_name}). Connections: {self.connection_count}")

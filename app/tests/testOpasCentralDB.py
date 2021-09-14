@@ -82,6 +82,10 @@ class TestDatabase(unittest.TestCase):
         ocd.close_connection(caller_name=fname) # no effect
         ocd.close_connection(caller_name=fname) # no effect
         assert(ocd.connected == False)
+        ocd.open_connection(caller_name=fname)  
+        assert(ocd.unpaired_connection_count == 0) # open
+        ocd.open_connection(caller_name=fname)  
+        assert(ocd.unpaired_connection_count == 1) # unpaired open
           
         
 if __name__ == '__main__':

@@ -250,7 +250,7 @@ def get_session_info(request: Request,
             session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
                                                                    client_id=client_id,
                                                                    request=request)
-            logger.warning(f"getSessionInfo: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info} Server Session Info: {session_info}")
+            logger.warning(f"getSessionInfo: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/13 removed  Server Session Info: {session_info} for brevity
             # session info is saved in get_authserver_session_info   
             # success, session_info = ocd.save_session(session_id, session_info)
         else:
