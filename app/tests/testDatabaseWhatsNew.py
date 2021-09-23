@@ -57,9 +57,11 @@ class TestDatabaseWhatsNew(unittest.TestCase):
     def test_2_whats_new(self):
         """
         (Moved from TestMosts.py)
+        Set days_back to almost a year to insure current (usually local) database has actually been
+          updated!
         """
         # request login to the API server
-        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=90')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=290')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)

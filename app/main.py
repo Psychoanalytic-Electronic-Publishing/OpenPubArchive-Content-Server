@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0913/v2.1.56" # semver versioning now added after date.
+__version__     = "2021.0914/v2.1.57" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -598,6 +598,7 @@ async def admin_reports(response: Response,
                         matchstr: str=Query(None, title=opasConfig.TITLE_REPORT_MATCHSTR, description=opasConfig.DESCRIPTION_REPORT_MATCHSTR), 
                         limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
+                        getfullcount:bool=Query(True, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD),
                         sortorder: str=Query("DESC", title=opasConfig.TITLE_SORTORDER, description=opasConfig.DESCRIPTION_SORTORDER),
                         download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
                         client_id:int=Depends(get_client_id), 
@@ -779,7 +780,11 @@ async def admin_reports(response: Response,
                  {orderby_clause}
                  """
 
-    count = ocd.get_select_count(select)
+    if getfullcount:
+        count = ocd.get_select_count(select)
+    else:
+        count = -1
+        
     if count == 0:
         raise HTTPException(
             status_code=httpCodes.HTTP_404_NOT_FOUND, 
@@ -805,14 +810,19 @@ async def admin_reports(response: Response,
             # this comes back as a list of ReportListItems
             results = ocd.get_select_as_list_of_models(select, model=models.ReportListItem)
             limited_count = len(results)
-
+            if count > 0:
+                full_count_complete_checked = limited_count >= count
+            else:
+                full_count_complete_checked = None
+                count = None
+                
             response_info = models.ResponseInfo(count = limited_count,
                                                 fullCount = count,
                                                 totalMatchCount = count,
                                                 limit = limit,
                                                 offset = offset,
                                                 listType="reportlist",
-                                                fullCountComplete = limited_count >= count,
+                                                fullCountComplete = full_count_complete_checked,
                                                 request=f"{request.url._url}",
                                                 timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
                                                 )   
@@ -3667,7 +3677,7 @@ def database_whatsnew(response: Response,
                       ):  
     """
     ## Function
-       <b>Return a list of issues for journals modified in the last week).</b>  
+       <b>Return a list of issues for journals modified in the days_back period).</b>  
 
 
     ## Return Type
@@ -3705,6 +3715,7 @@ def database_whatsnew(response: Response,
 
     except Exception as e:
         e = str(e)
+        logger.error(f"Error in database_whatsnew: {e}. Raising HTTP_400_BAD_REQUEST.")
         raise HTTPException(status_code=httpCodes.HTTP_400_BAD_REQUEST,
                             detail="Error: {}".format(e.replace("'", "\\'"))
                             )

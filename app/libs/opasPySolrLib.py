@@ -1792,6 +1792,7 @@ def database_get_whats_new(days_back=14,
     field_list = "art_id, title, art_vol, art_iss, art_year, art_sourcecode, art_sourcetitlefull, art_sourcetitleabbr, file_last_modified, timestamp, art_sourcetype"
     sort_by = "file_last_modified desc"
     ret_val = None
+    query = "" # initialized for error, added to logging in exception
     new_articles = ocd.get_articles_newer_than(days_back)
 
     # two ways to get date, slightly different meaning: timestamp:[NOW-{days_back}DAYS TO NOW] AND file_last_modified:[NOW-{days_back}DAYS TO NOW]
@@ -1810,7 +1811,7 @@ def database_get_whats_new(days_back=14,
         results = solr_docs2.search(query, **args)
 
     except Exception as e:
-        logger.error(f"WhatsNewError: {e}")
+        logger.error(f"WhatsNewError: {e} for query: {query}")
         response_info = models.ResponseInfo( count = 0,
                                              fullCount = 0,
                                              limit = limit,

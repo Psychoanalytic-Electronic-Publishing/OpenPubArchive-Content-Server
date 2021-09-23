@@ -102,6 +102,8 @@ def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
         headerfooterfile_base = next(tempfile._get_candidate_names()) + ".pdf"
         headerfooterfile = os.path.join(tempfile.gettempdir(), headerfooterfile_base)
         pdf = PDF()
+        #pdf.font_size_pt = 24
+        #pdf.font_family = "helvetica"
         pdf.username_to_set = username
         pdf.alias_nb_pages("{nb}")
         pdf.add_page()

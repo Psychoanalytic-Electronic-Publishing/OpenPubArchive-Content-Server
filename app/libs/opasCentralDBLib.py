@@ -796,34 +796,34 @@ class opasCentralDB(object):
         self.close_connection(caller_name="get_most_downloaded_crosstab") # make sure connection is closed
         return row_count, ret_val
 
-    def get_select_count(self, sqlSelect: str):
-        """
-        Generic retrieval from database, just the count
+    #def get_select_count(self, sqlSelect: str):
+        #"""
+        #Generic retrieval from database, just the count
         
-        >>> ocd = opasCentralDB()
-        >>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches;")
-        >>> count > 1000
-        True
+        #>>> ocd = opasCentralDB()
+        #>>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches;")
+        #>>> count > 1000
+        #True
         
-        """
-        self.open_connection(caller_name="get_select_count") # make sure connection is open
-        ret_val = None
+        #"""
+        #self.open_connection(caller_name="get_select_count") # make sure connection is open
+        #ret_val = None
 
-        sqlSelect = re.sub("SELECT .+? FROM", "SELECT COUNT(*) FROM", sqlSelect, count=1, flags=re.IGNORECASE)
-        try:
-            if self.db is not None:
-                curs = self.db.cursor(pymysql.cursors.Cursor)
-                curs.execute(sqlSelect)
-                row = curs.fetchall()
-                ret_val = row[0][0]
-        except Exception as e:
-            logger.error("Can't retrieve count.")
-            ret_val = 0
+        #sqlSelect = re.sub("SELECT .+? FROM", "SELECT COUNT(*) FROM", sqlSelect, count=1, flags=re.IGNORECASE)
+        #try:
+            #if self.db is not None:
+                #curs = self.db.cursor(pymysql.cursors.Cursor)
+                #curs.execute(sqlSelect)
+                #row = curs.fetchall()
+                #ret_val = row[0][0]
+        #except Exception as e:
+            #logger.error("Can't retrieve count.")
+            #ret_val = 0
             
-        self.close_connection(caller_name="get_select_count") # make sure connection is closed
+        #self.close_connection(caller_name="get_select_count") # make sure connection is closed
 
-        # return session model object
-        return ret_val # None or Session Object
+        ## return session model object
+        #return ret_val # None or Session Object
 
     def get_select_count(self, sqlSelect: str):
         """
