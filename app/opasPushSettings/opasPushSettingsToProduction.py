@@ -90,7 +90,7 @@ def main():
                     else:
                         logger.info(f"Wrote `{config}` to Production DB ({PRODUCTION_DB_HOST})")
             else:
-                logger.warning(f"Cannot find settings for {config} for client: {client_id}.")
+                logger.error(f"Cannot find settings for {config} for client: {client_id}.")
                 
      
         stage_ocd.close_connection(caller_name="opasPushSettings")

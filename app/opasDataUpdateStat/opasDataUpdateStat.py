@@ -174,7 +174,7 @@ class opasCentralDBMini(object):
         else:
             logger.fatal("Connection not available to database.")
         
-        self.close_connection(caller_name="get_most_downloaded_crosstab") # make sure connection is closed
+        self.close_connection(caller_name="get_most_viewed_crosstab") # make sure connection is closed
         return row_count, ret_val
 
     def get_citation_counts(self) -> dict:
@@ -235,7 +235,7 @@ class opasCentralDBMini(object):
         citation_table = []
         print ("Collecting citation counts from cross-tab in biblio database...this will take a minute or two...")
         try:
-            self.open_connection("collect_citation_counts")
+            self.open_connection("get_citation_counts")
             # Get citation lookup table
             try:
                 cursor = self.db.cursor(pymysql.cursors.DictCursor)
@@ -254,7 +254,7 @@ class opasCentralDBMini(object):
             except Exception as e:
                 print(("Table Query Error: {}".format(e)))
             
-            self.close_connection("collect_citation_counts")
+            self.close_connection("get_citation_counts")
             
         except Exception as e:
             print(("Database Connect Error: {}".format(e)))

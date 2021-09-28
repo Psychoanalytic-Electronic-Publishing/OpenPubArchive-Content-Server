@@ -243,7 +243,7 @@
 
     <xsl:template match="pepkbd3">
         <body>
-            <div class="pepkbd3" data-ver="2012-08-13.FULL">
+            <div class="pepkbd3" data-ver="2021-09-26.FULL">
                 <xsl:call-template name="assign-lang"/>
                 <xsl:call-template name="make-article"/>
             </div>
@@ -1080,11 +1080,30 @@
         </div>
     </xsl:template>
 
-    <xsl:template match="caption">
-        <p class="figtitle caption">
-            <xsl:value-of select="."/>
-        </p>
+    <xsl:template match="ctitle">
+      <xsl:if test="not(preceding-sibling::ctitle) and following-sibling::ctitle">
+        <span class="fignumber caption">
+          <xsl:value-of select="."/>
+          <xsl:text>. </xsl:text>
+        </span>
+      </xsl:if>
+      <xsl:if test="(preceding-sibling::ctitle)">
+        <span class="figtitle ctitle">
+          <xsl:apply-templates/><br/>
+        </span>
+      </xsl:if>
     </xsl:template>
+
+    <xsl:template match="span[@class='figtitle']">
+      <xsl:value-of select="."/>
+    </xsl:template>
+      
+    <xsl:template match="caption">
+      <span class="caption">
+        <xsl:call-template name="data-pagehelper"/>
+        <xsl:apply-templates/>
+      </span>
+    </xsl:template>   
 
     <xsl:template match="graphic">
         <xsl:apply-templates/>

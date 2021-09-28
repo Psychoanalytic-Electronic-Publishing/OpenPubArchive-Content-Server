@@ -158,7 +158,15 @@ def cleanup_solr_query(solrquery):
 
     # one last cleaning, watch for && *:*
     ret_val = ret_val.replace(" && *:*", "")
-    
+       
+    return ret_val
+
+def synonym_field_rename(query_text, synonym_fields=opasConfig.SYNONYM_FIELDS):
+    ret_val = query_text
+    for synonym_field in synonym_fields:
+        synonym_field_pre = synonym_field + ":"
+        synonym_field_post = synonym_field + opasConfig.SYNONYM_SUFFIX + ":" #  e.g., _syn
+        ret_val = ret_val.replace(synonym_field_pre, synonym_field_post)
     
     return ret_val
 
@@ -184,11 +192,24 @@ def strip_outer_matching_chars(s, outer_char):
     """
     If a string has the same characters wrapped around it, remove them.
     Make sure the pair match.
+    
+    >>> a = "xthe rain in spainx"
+    strip_outer_matching_chars(a, "x")
+    the rain in spain
+    >>> a = ""
+    
+    
     """
-    s = s.strip()
-    if (s[0] == s[-1]) and s.startswith(outer_char):
-        return s[1:-1]
-    return s
+    ret_val = s
+    if len(s) > 2:
+        try:
+            s = s.strip()
+            if (s[0] == s[-1]) and s.startswith(outer_char):
+                ret_val = s[1:-1]
+        except Exception as e:
+            logger.error(f"Can't remove outer chars from: {s}. Error: {e}")
+
+    return ret_val
 ##-----------------------------------------------------------------------------
 #def search_qualifiers(searchstr, field_label, field_thesaurus=None, paragraph_len=25):
     #"""
@@ -1142,41 +1163,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
                         
                 word_search = search_dict.get("wordsearch")
                 if word_search is not None:
-                    if 0: # to turn on paragraph level 2 searches, but the simulation using proximity
-                          # 25 words is what GVPi did and that matches better.
-                        if paratext is None:
-                            paratext = word_search
-                    else:
-                        art_level = 1
-                        # if it already has a field name, it won't be a word search. so add body_xml as default
-                        field_name = "body_xml"
-                        if synonyms:
-                            field_name += "_syn"
-                        if 1:
-                            search_q += f'&& {field_name}:({word_search}) '
-                        else:
-                            # is it in quotes?
-                            m = re.match('([\"\'])(?P<q1>.*)([\"\'])', word_search)
-                            if m:
-                                q1 = m.group("q1")
-                            else:
-                                q1 = word_search
-                                
-                            if opasgenlib.not_empty(q1):
-                                # unquoted string
-                                m = re.search('\|{2,2}|\&{2,2}|\sand\s|\sor\s', q1, flags=re.IGNORECASE)
-                                if m: # boolean, pass through
-    
-                                    search_q += f"&& {q1} "
-                                else:
-                                    # if it already has a field name, it won't be a word search. so add body_xml as default
-                                    field_name = "body_xml"
-                                    if synonyms:
-                                        field_name += "_syn"
-                                    if re.search("\"|\'", word_search):
-                                        search_q += f'&& {field_name}:({word_search}) '
-                                    else:
-                                        search_q += f'&& {field_name}:"{word_search}"~25 '
+                    art_level = 1
+                    # if it already has a field name, it won't be here as a word search. so add body_xml as default
+                    field_name = "body_xml"
+                    if synonyms:
+                        field_name += opasConfig.SYNONYM_SUFFIX
+
+                    search_q += f'&& {field_name}:({word_search}) '
 
                 search_type = search_dict.get(opasConfig.KEY_SEARCH_TYPE)
                 if search_type == opasConfig.SEARCH_TYPE_LITERAL:
@@ -1187,10 +1180,10 @@ def parse_search_query_parameters(search=None,             # url based parameter
                     search_q += f'&& {boolean_str}'
                 elif search_type == opasConfig.SEARCH_TYPE_PARAGRAPH:
                     search_q += f'&& {search_dict.get(KEY_SEARCH_VALUE)}'
-                #else:
-                    ## not sure what to search
-                    #search_q += f'&& {smarttext}'
-                    
+                elif search_type == opasConfig.SEARCH_TYPE_WORDSEARCH:
+                    pass # nothing else to do here, but don't want to hit else in this case
+                else: # allow trapping during debug
+                    logger.debug(f"search_type passthrough: {search_type}")                   
 
     if art_level is not None:
         filter_q = f"&& art_level:{art_level} "  # for solr filter fq
@@ -1318,12 +1311,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
         #  if there are no field specs in the fulltext spec
         if ":" not in fulltext1:
             fulltext1 = qparse.markup(fulltext1, "text")
+        #else:
+            #if opasConfig.LOCAL_TRACE:
+                #logger.debug(f"fulltext parameter {fulltext1} has ':'")
 
         if synonyms:
-            fulltext1 = fulltext1.replace("text:", "text_syn:")
-            fulltext1 = fulltext1.replace("para:", "para_syn:")
-            fulltext1 = fulltext1.replace("title:", "title_syn:")
-            fulltext1 = fulltext1.replace("text_xml_offsite:", "text_xml_offsite_syn:")
+            # add synonym field suffix opasConfig.SYNONYM_SUFFIX
+            fulltext1 = synonym_field_rename(fulltext1)
             
         analyze_this = f"&& {fulltext1} "
             
@@ -1338,6 +1332,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
     
     if title is not None:
         title = title.strip()
+        # field name not allowed here, strip : or else solr thinks it's a field name
+        # use re.sub to allow us to remove others if necessary later.
+        title = re.sub('[:]', ' ', title)
         if title != '':
             title = qparse.markup(title, "title")
             if synonyms:
@@ -1409,14 +1406,33 @@ def parse_search_query_parameters(search=None,             # url based parameter
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
     
+    implied_issue = None
     if opasgenlib.not_empty(vol):
+        if re.search("[\&\|\,\]]|AND|OR", vol, flags=re.I) is None:
+            # single vol specified, if it contains a suffix, parse apart
+            vol, implied_issue = opasConfig.parse_volume_code(vol)
+            if implied_issue is not None and implied_issue is not "*":
+                implied_issue = opasConfig.parse_issue_code(issue_code=implied_issue)
+                if opasgenlib.not_empty(issue) == False:
+                    issue = implied_issue
+                    implied_issue = None               
+        
         vol = qparse.markup(vol, "art_vol") # convert AND/OR/NOT, set up field query
         analyze_this = f"&& {vol} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
 
     if opasgenlib.not_empty(issue):
-        issue = qparse.markup(issue, "art_iss") # convert AND/OR/NOT, set up field query
+        # issue is a number, so if a letter is supplied, convert to numeric
+        if re.search("[\&\|\,\]]|AND|OR", issue, flags=re.I) is None:
+            # single issue specified, if it's a code, make it a number
+            issue = opasConfig.parse_issue_code(issue_code=issue)
+
+        if implied_issue is not None:
+            issue = issue + " OR " + implied_issue
+        
+        issue = qparse.markup(issue, "art_iss")  # convert AND/OR/NOT, set up field query
+            
         analyze_this = f"&& {issue} "
         filter_q += analyze_this
         search_analysis_term_list.append(analyze_this)  # Not collecting this!
@@ -1430,6 +1446,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
     if opasgenlib.not_empty(author):
         #author = strip_outer_matching_chars(author, '\"')
+        # strip : or else solr thinks it's a field name; re.sub allows us to add other chars later.
+        author = re.sub('[:]', ' ', author)
+        
         if smartsearchLib.is_quoted_str(author) and not smartsearchLib.quoted_str_has_wildcards(author):
             if smartsearchLib.str_has_one_word(author) \
                or smartsearchLib.quoted_str_has_wildcards(author) \
@@ -1990,13 +2009,14 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
     if result is not None:
         try:
             documentListItem.documentID = result.get("art_id", None)
-            if documentListItem.documentID is None:
-                logger.error(f"Database error, incomplete record, can't find ID: {result}")
-
-            documentListItem.docLevel = result.get("art_level", None)
-            documentListItem.PEPCode = result.get("art_sourcecode", None)
             parent_tag = result.get("parent_tag", None)
-    
+            documentListItem.docLevel = result.get("art_level", None)
+            if documentListItem.documentID is None and parent_tag is None:
+                logger.error(f"Database error, incomplete record, can't find ID: {result}")
+            #else it's a child record
+            
+            documentListItem.PEPCode = result.get("art_sourcecode", None)
+            # Note: This cautious (if not None) load method prevents data overwriting when not necessary
             if result.get("meta_xml", None): documentListItem.documentMetaXML = result.get("meta_xml", None)
             if result.get("art_info_xml", None): documentListItem.documentInfoXML = result.get("art_info_xml", None)
             if result.get("art_pgrg", None): documentListItem.pgRg = result.get("art_pgrg", None)
@@ -2067,6 +2087,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 # this is part of a document, we should retrieve the parent info
                 top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
                 if top_level_doc is not None:
+                    logger.warning(f"Tracing Info - Record {para_art_id} was child...retrieving and merging parent info {top_level_doc}")
                     documentListItem = merge_documentListItems(documentListItem, top_level_doc)
     
             # don't set the value, if it's None, so it's not included at all in the pydantic return

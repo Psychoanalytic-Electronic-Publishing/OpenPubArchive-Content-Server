@@ -123,6 +123,13 @@ class TestdocumentsDownload(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == False)
 
+    def test_10_Disallowed_Download(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/pi.041.0138a/')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        print (r["detail"])
+        assert(response.ok == False)
+
 
 if __name__ == '__main__':
     unittest.main()    

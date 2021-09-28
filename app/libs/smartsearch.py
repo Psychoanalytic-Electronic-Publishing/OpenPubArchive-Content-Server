@@ -113,7 +113,7 @@ def smart_search(smart_search_text):
     # get rid of smart quotes
     smart_search_text = re.sub("“|”", "'", smart_search_text)
     # count words
-    has_wildcards = len(re.findall(r'\*|(\S?\?+\S)', smart_search_text))
+    # has_wildcards = len(re.findall(r'\*|(\S?\?+\S)', smart_search_text))
     #if smart_search_includes_simple_wildcards:
         #try:
             #regc = re.compile(smart_search_text)
@@ -128,24 +128,27 @@ def smart_search(smart_search_text):
         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_LITERAL
         ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{smart_search_text}"
         
-    if re.match("[A-Z\-]{2," + f"{opasConfig.MAX_JOURNALCODE_LEN}" + "}\.[0-9]{3,3}[A-Z]?\.[0-9]{4,4}[A-Z]?", smart_search_text, flags=re.IGNORECASE):
+    smart_article_id = opasConfig.ArticleID(articleID=smart_search_text)
+    if smart_article_id.isArticleID:
         # locator (articleID)
-        loc_corrected = smart_search_text.upper()
-        if smartsearchLib.is_value_in_field(loc_corrected, opasConfig.SEARCH_FIELD_LOCATOR):
-            ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: loc_corrected}
+        if smartsearchLib.is_value_in_field(smart_article_id.standardized, opasConfig.SEARCH_FIELD_LOCATOR):
+            ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.standardized}
+        elif smartsearchLib.is_value_in_field(smart_article_id.altStandard, opasConfig.SEARCH_FIELD_LOCATOR):
+            ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.altStandard}           
 
-    # journal and issue and wildcard
-    m = re.match("(?P<journal>[A-Z\-]{2," + f"{opasConfig.MAX_JOURNALCODE_LEN}" + "})\.(?P<vol>([0-9]{3,3}[A-Z]?)|(\*))\.(?P<page>\*)", smart_search_text, flags=re.IGNORECASE)
-    if m is not None:
-        src_code = m.group("journal")
-        if src_code is not None:
-            vol_code = m.group("vol")
-            if vol_code is None:
-                vol_code = "*"
-        loc = f"{src_code}.{vol_code}.*"
-        loc_corrected = loc.upper()
+    ## TODO: Use wildcard parse in articleID per smart_article_id above
+    ## journal and issue and wildcard
+    #m = re.match("(?P<journal>[A-Z\-]{2," + f"{opasConfig.MAX_JOURNALCODE_LEN}" + "})\.(?P<vol>([0-9]{3,3}[A-Z]?)|(\*))\.(?P<page>\*)", smart_search_text, flags=re.IGNORECASE)
+    #if m is not None:
+        #src_code = m.group("journal")
+        #if src_code is not None:
+            #vol_code = m.group("vol")
+            #if vol_code is None:
+                #vol_code = "*"
+        #loc = f"{src_code}.{vol_code}.*"
+        #loc = loc.upper()
 
-        ret_val = {"art_id": loc_corrected}
+        #ret_val = {"art_id": loc}
         
     if ret_val == {}: # (opasConfig.SEARCH_TYPE_ADVANCED, "ADVANCED")
         # this is not much different than search_type_fielded, except the Solr query will be cleaner and perhaps more flexible.

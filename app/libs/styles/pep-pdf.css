@@ -14,13 +14,14 @@ a.id {
 }
 
 .title_author {
+  font-size: x-large;
   text-align: center;
   font-weight: bold;
   color: midnightblue;
 }
 
 p.title {
-  font-size: x-large;
+  font-size: xx-large;
   font-weight: bold;
   text-align: center;
   display: block;
@@ -31,9 +32,15 @@ p.title {
 .autaff {
   display: block;
   text-align: center;
+  font-size: large;
+}
+
+p {
+  font-size: large;
 }
 
 p.pagenumber {
+  font-size: medium;
   text-align: center;
   color: midnightblue;
 }
@@ -49,6 +56,7 @@ p.figure {
 
 .caption {
   text-align: center;
+  margin-left: 10px;
 }
 
 .poem, .quote, .dream, .note, .dialog, .panel, .summaries .abstract {
@@ -93,32 +101,32 @@ h1, h2, h3, h4, h5, h6, figx {
 
 h1 {
   font-weight: bolder;
-  font-size: larger;
+  font-size: xx-large;
 }
 
 h2 {
   font-weight: bolder;
-  font-size: large;
+  font-size: x-large;
 }
 
 h3 {
   font-weight: bolder;
-  font-size: medium;
+  font-size: large;
 }
 
 h4 {
   font-weight: bolder;
-  font-size: small;
+  font-size: medium;
 }
 
 h5 {
   font-weight: bold;
-  font-size: small;
+  font-size: medium;
 }
 
 h6 {
   font-weight: bold;
-  font-size: smaller;
+  font-size: small;
 }
 
 /*span.peppopup {*/
@@ -138,7 +146,7 @@ span.bibjournal {
 }
 
 span.bibpages {
-  font-weight: bold;    
+  font-weight: normal;    
   font-style: italic;
   color: midnightblue;
 }
@@ -157,14 +165,15 @@ span.bibyear:after {
     content: ") ";    
 }
 
-.footer {
-    font-size:small;
+p.ftr {
+    font-size:medium;
     font-weight:lighter;
     color: #4b4e54;    
 }
 
 .ftn {
-  font-size: small;
+  font-size: medium;
+  font-style: italic;
   display: block;
   margin-left: +.25in;
   text-indent: -.25in;

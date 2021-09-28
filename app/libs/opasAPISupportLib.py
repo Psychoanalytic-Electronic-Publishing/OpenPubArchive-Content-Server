@@ -28,7 +28,6 @@ __status__      = "Development"
 
 import os
 import os.path
-# from xml.sax import SAXParseException
 import sys
 # import shlex
 import copy
@@ -39,18 +38,18 @@ sys.path.append('./libs/configLib')
 
 import http.cookies
 import re
-import secrets
-import socket, struct
+# import secrets
+# import socket, struct
 from collections import OrderedDict
 from urllib.parse import unquote
 from urllib.error import HTTPError
-import json
-from xml.sax import SAXParseException
+# import json
+# from xml.sax import SAXParseException
 
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
 from starlette.requests import Request
 from starlette.responses import Response
-import starlette.status as httpCodes
+# import starlette.status as httpCodes
 from starlette.exceptions import HTTPException
 
 #from starlette.status import HTTP_200_OK, \
@@ -77,7 +76,7 @@ import localsecrets
 import opasFileSupport
 # opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 
-from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
+# from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
 from localsecrets import TIME_FORMAT_STR
 
 # from opasConfig import OPASSESSIONID
@@ -245,32 +244,39 @@ def get_session_info(request: Request,
         ts = time.time()
         session_info = ocd.get_session_from_db(session_id)
         if session_info is None:
-            logger.info(f"Session {session_id} not found.  Getting from authserver (will save on server)")
+            in_db = False
+            # logger.warning(f"Session info for {session_id} not found in db.  Getting from authserver (will save on server)")
+            # session info is saved in get_authserver_session_info if logged in  
             session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
                                                                    client_id=client_id,
                                                                    request=request)
-            #session_info = ocd.save_session(session_id, session_info)
+            logger.warning(f"getSessionInfo: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/13 removed  Server Session Info: {session_info} for brevity
+            # session info is saved in get_authserver_session_info   
+            # success, session_info = ocd.save_session(session_id, session_info)
         else:
-            logger.debug(f"Session {session_id} found in DB.  Checking if already marked authenticated.")
-            if session_info.authenticated == 0: # not logged in
+            in_db = True
+            # if they weren't authenticated, or the session time is expired, check again
+            if session_info.authenticated == False or session_info.session_expires_time < datetime.today(): # not logged in
                 # better check if now they are logged in
+                # session info is saved in get_authserver_session_info if logged in  
                 session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
                                                                        client_id=client_id, 
                                                                        request=request)
-                logger.debug(f"User was not logged in; checked to see if they are now. Session Info returned from PaDS: {session_info}")
-                #session_info = ocd.save_session(session_id, session_info)
+                # session info is saved in get_authserver_session_info   
+                # success, session_info = ocd.save_session(session_id, session_info)
+                logger.info(f"getSessionInfo: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/14 removed  Server Session Info: {session_info} for brevity
             else:
-                # important - because they "were" logged in, we will return a session timed out error
-                # so don't refresh it...server likes to know they were logged in
-                logger.debug(f"User was logged in.  No further checks needed.")
+                ## important - because they "were" logged in, we will return a session timed out error
+                ## so don't refresh it...server likes to know they were logged in
+                remaining_time = session_info.session_expires_time - datetime.today()
+                remaining_time_hrs = remaining_time.seconds // 3600
+                logger.info(f"User was authenticated per server database record.  Session {session_id}. Expires: {remaining_time_hrs} hrs ({session_info.session_expires_time}). DB SessionInfo: {session_info}")
 
         if opasConfig.LOG_CALL_TIMING:
-            logger.debug(f"Get/Save session info response time: {time.time() - ts}")
-        
-        logger.debug("getSessionInfo: %s", session_info)
+            logger.debug(f"Get/Save session info response time: {time.time() - ts}")       
         
     else:
-        logger.debug("No SessionID; Default session info returned (Not Logged In)")
+        logger.warning("No SessionID; Default session info returned (Not Logged In)")
         session_info = models.SessionInfo() # default session model
 
     return ocd, session_info
@@ -410,7 +416,7 @@ def database_get_most_viewed( publication_period: int=5,
                                                                request = request
                                                               )
         except Exception as e:
-            logger.warning(f"Search error {e}")
+            logger.error(f"Search error {e}")
 
     return ret_val, ret_status   
 
@@ -503,7 +509,7 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                                                                request = request
                                                               )
         except Exception as e:
-            logger.warning(f"Search error {e}")
+            logger.error(f"Search error {e}")
         
     return ret_val, ret_status   
 
@@ -577,7 +583,7 @@ def database_who_cited( publication_period: int=None,   # Limit the considered p
                                              request = request                                             
                                             )
     except Exception as e:
-        logger.warning(f"Who Cited Search error {e}")
+        logger.error(f"Who Cited Search error {e}")
         
     return ret_val, ret_status   
 
@@ -748,7 +754,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
         except Exception as e:
             errMsg = "MetadataGetSourceByType: Error getting source information.  {}".format(e)
             count = 0
-            logger.warning(errMsg)
+            logger.error(errMsg)
 
     response_info = models.ResponseInfo( count = count,
                                          fullCount = total_count,
@@ -1120,7 +1126,7 @@ def documents_get_document(document_id,
                 document_list.documentList.responseSet[0].termCount = 0
 
     except Exception as e:
-        logger.warning("get_document: No matches or error: %s", e)
+        logger.error("get_document: No matches or error: %s", e)
         # return None
     else:
         if page_limit is None:
@@ -1333,7 +1339,7 @@ def documents_get_glossary_entry(term_id,
                     else: # XML
                         document = document
                 except Exception as e:
-                    logger.warning(f"Error converting glossary content: {term_id} ({e})")
+                    logger.error(f"Error converting glossary content: {term_id} ({e})")
             else:
                 try:
                     if retFormat == "HTML":
@@ -1346,7 +1352,7 @@ def documents_get_glossary_entry(term_id,
                     logger.error(e.json())  
                 except Exception as e:
                     warning = f"Error getting contents of Glossary entry {term_id}"
-                    logger.warning(warning)
+                    logger.error(warning)
                     document = warning
                 
             documentListItem.groupID = result.get("group_id", None)
@@ -1375,9 +1381,9 @@ def documents_get_glossary_entry(term_id,
             documentListItem.document = documentListItem.term = "No matching glossary entry."
             # raise Exception(KeyError("No matching glossary entry"))
     except IndexError as e:
-        logger.warning("No matching glossary entry for %s.  Error: %s", (term_id, e))
+        logger.error("No matching glossary entry for %s.  Error: %s", (term_id, e))
     except KeyError as e:
-        logger.warning("No content or abstract found for %s.  Error: %s", (term_id, e))
+        logger.error("No content or abstract found for %s.  Error: %s", (term_id, e))
     else:
         response_info = models.ResponseInfo( count = count,
                                              fullCount = count,
@@ -1409,7 +1415,7 @@ def save_opas_session_cookie(request: Request, response: Response, session_id):
             opasSession = [x for x in response.raw_headers[0] if b"opasSessionID" in x]
             already_set = b"opasSessionID" in opasSession[0][0:13]
         except Exception as e:
-            logger.debug(f"Ok, opasSessionID not in response {e}")
+            logger.info(f"Exception, but Ok, opasSessionID cookie not in response {e}")
 
     if already_set == False and session_id is not None:
         try:

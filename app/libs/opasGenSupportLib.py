@@ -87,10 +87,10 @@ class DocumentID(object):
     IJP.007.0007A
 
     """
-    # document id regex
-    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-M]|S?)\.(?P<pageextratype>(NP)?)(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
+    # document id regex (Note:Volume ID can be year, so 4 characters 2021-07-06)
+    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,4})(?P<volsuffix>[A-M]|S?)\.(?P<pageextratype>(NP)?)(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
     # vol id regex
-    rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-M]|S?))", flags=re.I)
+    rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,4})(?P<volsuffix>[A-M]|S?))", flags=re.I)
     def __init__(self, document_id):
         #  See https://docs.google.com/document/d/1QmRG6MnM1jJOEq9irqCyoEY6Bt4U3mm8FY6TtZSt3-Y/edit#heading=h.mv7bvgdg7i7h for document ID information
         dirname, basename = os.path.split(document_id)
@@ -343,7 +343,7 @@ def derive_author_mast(authorIDList):
                     authorMast += authMastName    
             except Exception as e:
                 authorMast += aut
-                logger.warning("Could not derive Author Mast name")
+                logger.error("Could not derive Author Mast name")
             
         retVal = authorMast.strip()
 
@@ -578,7 +578,7 @@ def one_term(arg):
         try:
             std_arg = str(arg)
         except Exception as e:
-            logger.warning(f"Error converting non-string term {e}. Perhaps data type issue.")
+            logger.error(f"Error converting non-string term {e}. Perhaps data type issue.")
         else:
             std_arg = None
 
@@ -589,7 +589,7 @@ def one_term(arg):
             else:
                 ret_val = False
         except Exception as e:
-            logger.warning(f"Error checking one term {e}. Perhaps data type issue.")
+            logger.error(f"Error checking one term {e}. Perhaps data type issue.")
         
     return ret_val
 

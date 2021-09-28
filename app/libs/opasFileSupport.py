@@ -369,7 +369,7 @@ class FlexFileSystem(object):
             # remove any suffix for vol, so we don't need to separate the folders
             vol_clean = ''.join(i for i in vol if i.isdigit())
         except Exception as e:
-            logger.warning(f"Could not split filespec into path: {filespec}. ({e})")
+            logger.error(f"Could not split filespec into path: {filespec}. ({e})")
             subpath = ""
         else:
             subpath = f"/{jrnlcode}/{vol_clean}" #  pad volume to 3 digits with 0
@@ -467,7 +467,7 @@ class FlexFileSystem(object):
         #watch for case sensitive extensions on S3 and other systems
         ret_val = self.get_imagename_if_exists(namestr=ret_val, extensions=(".jpg", ".gif", ".tif"), insensitive=insensitive)
         if ret_val is None:
-            logger.warning(f"File {filespec} not found")
+            logger.error(f"File {filespec} not found")
     
         return ret_val   
     #-----------------------------------------------------------------------------

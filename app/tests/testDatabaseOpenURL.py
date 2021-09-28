@@ -80,7 +80,8 @@ class TestDatabaseOpenURL(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
-        assert(response_set[0]["authorMast"] == 'David Tuckett')
+        print (response_set[0]["authorMast"])
+        assert(response_set[0]["authorMast"][0:13] == 'David Tuckett')
 
     def test_search_volume(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/OpenURL/?volume=101')

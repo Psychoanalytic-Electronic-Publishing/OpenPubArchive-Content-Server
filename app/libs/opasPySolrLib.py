@@ -38,7 +38,7 @@ from localsecrets import TIME_FORMAT_STR
 import starlette.status as httpCodes
 from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
 import opasConfig 
-from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
+# from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
 from configLib.opasCoreConfig import EXTENDED_CORES
 from stdMessageLib import COPYRIGHT_PAGE_HTML  # copyright page text to be inserted in ePubs and PDFs
 
@@ -48,11 +48,14 @@ import schemaMap
 import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
 import opasDocPermissions as opasDocPerm
-import smartsearch
+# import smartsearch
 import opasQueryHelper
 from xhtml2pdf import pisa             # for HTML 2 PDF conversion
 
 import pysolr
+LOG = logging.getLogger("pysolr")
+LOG.setLevel(logging.WARNING)
+
 # still using a function in solpy
 import solrpy as solr
 
@@ -106,7 +109,7 @@ def remove_nuisance_word_hits(result_str):
     """
     >>> a = '#@@@the@@@# cat #@@@in@@@# #@@@the@@@# hat #@@@is@@@# #@@@so@@@# smart'
     >>> remove_nuisance_word_hits(a)
-    
+    'the cat in the hat is so smart'
     """
     ret_val = rcx_remove_nuisance_words.sub("\g<word>", result_str)
     return ret_val 
@@ -170,11 +173,8 @@ def remove_leading_zeros(numeric_string):
         '33'
         
     """
-    ret_val = ""
-    for n in numeric_string:
-        if n != "0":
-            ret_val += n
-    
+    ret_val = numeric_string.lstrip("0")
+   
     return ret_val
          
 #----------------------------------------------------------------------------
@@ -209,7 +209,7 @@ def get_base_article_info_by_id(art_id):
     try:
         ret_val = documentListItem = documentList.documentList.responseSet[0]
     except Exception as e:
-        logger.warning(f"Error getting article {art_id} by id: {e}")
+        logger.error(f"Error getting article {art_id} by id: {e}")
         ret_val = None
         
     return ret_val
@@ -229,56 +229,10 @@ def get_translated_article_info_by_origrx_id(art_id):
     try:
         ret_val = documentListItem = documentList.documentList.responseSet[0]
     except Exception as e:
-        logger.warning(f"Error getting article {art_id} by id: {e}")
+        logger.error(f"Error getting article {art_id} by id: {e}")
         ret_val = None
         
     return ret_val
-
-#-----------------------------------------------------------------------------
-def split_article_id(article_id):
-    """
-    >>> split_article_id("gap.005.0199a")
-    ('GAP', None, '5', '199A', None)
-
-    >>> split_article_id("rfp.075.0017a")
-    ('RFP', None, '75', '17A', None)
-
-    >>> split_article_id(None)
-    (None, None, None, None, None)
-
-    """
-    journal = year = vol = page = page_id = None
-    if article_id is not None:
-        article_id = article_id.upper()
-        
-        try:
-            journal, vol, page = article_id.split(".")
-        except Exception as e:
-            try:
-                a,b,c,d = article_id.split(".")
-                if d[0] == "P":
-                    journal, vol, page, page_id = a, b, c, d
-                elif b[:2] in [19, 20]:
-                    journal, year, vol, page = a, b, c, d
-            except Exception as e:
-                logger.error(f"SplitArticleIDError: can not split ID {article_id} ({e})")
-        else:
-            vol = remove_leading_zeros(vol)
-            page = remove_leading_zeros(page)
-        
-            if journal is not None:
-                journal = journal.upper()
-        
-            if year is not None:
-                year = page.upper()
-                
-            if page is not None:
-                page = page.upper()
-                
-            if page_id is not None:
-                page_id = page_id.upper()
-       
-    return journal, year, vol, page, page_id
 
 #-----------------------------------------------------------------------------
 def authors_get_author_info(author_partial,
@@ -486,8 +440,8 @@ def document_get_info(document_id, fields="art_id, art_sourcetype, art_year, fil
     Note: Careful about letting the caller specify fields in an endpoint,
        or they could get full-text
 
-    >>> document_get_info('PEPGRANTVS.001.0003A', fields='art_id, art_year, file_classification, score')
-    {'art_year': '2015', 'art_id': 'PEPGRANTVS.001.0003A', 'file_classification': 'free', 'score': ...}
+    >>> document_get_info('PEPGRANTVS.001.0003A', fields='art_id, art_year, file_classification, score') # doctest: +ELLIPSIS
+    {'art_id': 'PEPGRANTVS.001.0003A', 'art_year': '2015', 'file_classification': 'free', 'score': ...}
 
     """
     ret_val = {}
@@ -863,7 +817,7 @@ def search_analysis( query_list,
                 except KeyError as e:
                     by_parent[n["parent_tag"]] = f"{n['terms']}"
                 except Exception as e:
-                    logger.warning(f"Error saving term clause: {e}")
+                    logger.error(f"Error saving term clause: {e}")
 
 
             for key, value in by_parent.items():
@@ -1187,7 +1141,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             else:
                 if solr_core is None:
                     detail=f"Bad Extended Request. Unknown core specified."
-                    logger.warning(detail)
+                    logger.error(detail)
                     ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
         else:
             solr_query_spec.core = "pepwebdocs"
@@ -1202,7 +1156,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         else:
             if solr_core is None:
                 detail=f"CoreSpecificationError: Bad Extended Request. No core specified."
-                logger.warning(detail)
+                logger.error(detail)
                 ret_val = models.ErrorReturn(httpcode=400, error="Core specification error", error_description=detail)
 
     try:
@@ -1253,13 +1207,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     http_error = m.group("err")
                     http_error_num = int(http_error)
             except Exception as e:
-                logger.error(f"PySolrError: Error parsing Solr error {e.args}")
+                logger.error(f"PySolrError: Error parsing Solr error {e.args} Query: {query}")
                 ret_status = (error_num, e.args)
             else:
                 ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
                 ret_status = (error_num, {"reason": error, "body": error_description})
 
-        logger.error(f"PySolrError: Syntax: {ret_status}. Params sent: {solr_param_dict}")
+        logger.error(f"PySolrError: Syntax: {ret_status}. Query: {query} Params sent: {solr_param_dict}")
         
     except Exception as e:
         try:
@@ -1272,7 +1226,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             ret_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
         finally:
             ret_val = models.ErrorReturn(httpcode=error_code, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-            logger.error(f"PySolrError: Syntax: {ret_status}. Params sent: {solr_param_dict}")
+            logger.error(f"PySolrError: Syntax: {ret_status}. Query: {query} Params sent: {solr_param_dict}")
                                 
     else: #  search was ok
         try:
@@ -1335,6 +1289,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             documentListItem.accessLimitedCode = access.accessLimitedCode
                             documentListItem.accessLimitedClassifiedAsCurrentContent = access.accessLimitedClassifiedAsCurrentContent
                             documentListItem.accessLimitedReason = access.accessLimitedReason
+                            documentListItem.accessLimitedDebugMsg = access.accessLimitedDebugMsg
                             documentListItem.accessLimitedDescription = access.accessLimitedDescription
                             documentListItem.accessLimitedPubLink = access.accessLimitedPubLink
 
@@ -1682,18 +1637,34 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         # specified only volume
         field="art_vol"
         search_val = vol
+        # get rid of alpha chars
+        if not vol.isnumeric():
+            search_val_num = ''.join(filter(str.isnumeric, search_val))
+        else:
+            search_val_num = ''
+            
     else:  #Just do year
         field="art_year"
         search_val = year  #  was "*", thats an error, fixed 2019-12-19
+        # get rid of alpha chars
+        if not vol.isnumeric():
+            search_val_num = ''.join(filter(str.isnumeric, search_val))
+        else:
+            search_val_num = ''
+
+    if search_val_num != '':
+        clause_2 = f"{field}:({search_val} || {search_val_num})"
+    else:
+        clause_2 = f"{field}:{search_val}"       
 
     try:
         code = pep_code.upper()
     except:
-        logger.warning(f"Illegal PEP Code or None supplied to metadata_get_contents: {pep_code}")
+        logger.error(f"Illegal PEP Code or None supplied to metadata_get_contents: {pep_code}")
     else:
         pep_code = code
 
-    query = f"art_sourcecode:{pep_code} && {field}:{search_val}"
+    query = f"art_sourcecode:{pep_code} && {clause_2}"
     logger.info(f"Solr Query: q:{query}")
     
     fields = """art_id,
@@ -1821,6 +1792,7 @@ def database_get_whats_new(days_back=14,
     field_list = "art_id, title, art_vol, art_iss, art_year, art_sourcecode, art_sourcetitlefull, art_sourcetitleabbr, file_last_modified, timestamp, art_sourcetype"
     sort_by = "file_last_modified desc"
     ret_val = None
+    query = "" # initialized for error, added to logging in exception
     new_articles = ocd.get_articles_newer_than(days_back)
 
     # two ways to get date, slightly different meaning: timestamp:[NOW-{days_back}DAYS TO NOW] AND file_last_modified:[NOW-{days_back}DAYS TO NOW]
@@ -1839,7 +1811,7 @@ def database_get_whats_new(days_back=14,
         results = solr_docs2.search(query, **args)
 
     except Exception as e:
-        logger.error(f"WhatsNewError: {e}")
+        logger.error(f"WhatsNewError: {e} for query: {query}")
         response_info = models.ResponseInfo( count = 0,
                                              fullCount = 0,
                                              limit = limit,
@@ -2141,21 +2113,27 @@ def metadata_get_next_and_prev_articles(art_id=None,
     # works for journal, videostreams have more than one year per vol.
     # works for books, videostream vol numbers
     
-    source_code, source_year, source_vol, source_page, source_page_id = split_article_id(art_id)
-    distinct_return = "art_sourcecode, art_year, art_vol, art_id"
+    article_id = opasConfig.ArticleID(articleID=art_id)
+    
+    distinct_return = "art_sourcecode, art_year, art_vol, art_id, art_iss, art_iss_seqnbr"
     next_art = {}
     prev_art = {}
     match_art = {}
     
     query = "art_level:1 "
-    if source_code is not None and source_code.isalpha():
-        query += f" && art_sourcecode:{source_code}"
+    if article_id.sourceCode is not None:
+        query += f" && art_sourcecode:{article_id.sourceCode}"
 
-    if source_vol is not None and source_vol.isalnum():
-        query += f" && art_vol:{source_vol}"
+    if article_id.volumeInt is not None:
+        query += f" && art_vol:{article_id.volumeInt}"
         
-    if source_year is not None and source_year.isalnum():
-        query += f" && art_year:{source_year}"
+    if article_id.issueInt != 0:
+        query += f" && art_iss:{article_id.issueInt}"  # just the number representation, 1-n
+    elif article_id.issueCode != '':
+        query += f" && art_iss:{article_id.issueCode}*" # could be S, or A, B, C..., but issue_code could be spelled out supplement
+        # Need to deal with FA...has Pilot and then numbers    
+        #if source_year is not None and source_year.isalnum():
+            #query += f" && art_year:{source_year}"
         
     try:
         logger.info(f"Solr Query: q={query}")
@@ -2198,14 +2176,16 @@ def metadata_get_next_and_prev_vols(source_code=None,
                                     req_url: str=None 
                                    ):
     """
-    Return previous, matched, and next volume for the source code and year.
+    NOTE: Modified 2021-07-19 - When two volume numbers were in the same
+          year, the facet pivot was only returning one of the volume numbers.
+          Since year was just useful extra data, it was removed from the
+          facet pivot.
+    
+    Return previous, matched, and next volume for the source code and vol.
     New: 2020-11-17
 
     >>> metadata_get_next_and_prev_vols(source_code="APA", source_vol="66")
-    ({'value': '65', 'count': 89, 'year': '2017'}, {'value': '66', 'count': 95, 'year': '2018'}, {'value': '67', 'count': 88, 'year': 'APA'})
-    
-    >>> metadata_get_next_and_prev_vols(source_code="GW", source_vol="16")
-    ({'value': '15', 'count': 1, 'year': '1933'}, {'value': '16', 'count': 1, 'year': '1993'}, None)
+    ({'value': '65', 'count': 89}, {'value': '66', 'count': 95}, {'value': '67', 'count': 88})
     
     >>> metadata_get_next_and_prev_vols(source_code="GW")
     (None, None, None)
@@ -2214,7 +2194,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
     (None, None, None)
     
     >>> metadata_get_next_and_prev_vols(source_code="GW", source_vol=16)
-    ({'value': '15', 'count': 1, 'year': '1933'}, {'value': '16', 'count': 1, 'year': '1993'}, None)
+    ({'value': '15', 'count': 1}, {'value': '16', 'count': 1}, {'value': '17', 'count': 1})
 
     """  
     distinct_return = "art_sourcecode, art_year, art_vol"
@@ -2224,12 +2204,12 @@ def metadata_get_next_and_prev_vols(source_code=None,
     
     query = "bk_subdoc:false"
     if source_code is None:
-        logger.error("MetadataGetVolsError: No source code (e.g., journal code) provided;")
+        logger.error("No source code (e.g., journal code) provided;")
     else:
         query += f" && art_sourcecode:{source_code}"
 
         if source_vol is None:
-            logger.error("MetadataGetVolsError: No vol number provided;")
+            logger.error("No source vol number provided;")
         else:
             source_vol_int = int(source_vol)
             next_source_vol_int = source_vol_int + 1
@@ -2237,7 +2217,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
             try:
                 logger.info(f"Solr Query: q={query}")
                 facet_fields = ["art_vol", "art_sourcecode"]
-                facet_pivot_fields = "art_sourcecode,art_year,art_vol" # important ...no spaces!
+                facet_pivot_fields = "art_sourcecode,art_vol" # important ...no spaces! Take out year
                 query += f" && art_vol:({source_vol} || {next_source_vol_int} || {prev_source_vol_int})"
         
                 args = {
@@ -2256,9 +2236,9 @@ def metadata_get_next_and_prev_vols(source_code=None,
                 results = solr_docs2.search(query, **args)
                 logger.info(f"Solr Query: q={query}")
                 facet_pivot = results.facets["facet_pivot"][facet_pivot_fields]
-                #ret_val = [(piv['value'], [n["value"] for n in piv["pivot"]]) for piv in facet_pivot]
+
             except Exception as e:
-                logger.error(f"MetadataGetVolsError: Exception: {e}")
+                logger.error(f"Exception: {e}")
             else:
                 prev_vol = None
                 match_vol = None
@@ -2270,29 +2250,22 @@ def metadata_get_next_and_prev_vols(source_code=None,
                     pivot_len = len(facet_pivot[0]['pivot'])
                     counter = 0
                     for n in facet_pivot[0]['pivot']:
-                        if n['pivot'][0]['value'] == str(source_vol):
+                        if n['value'] == str(source_vol):
                             match_vol_idx = counter
-                            match_vol = n['pivot'][0]
-                            match_vol_year = n['value']
-                            match_vol['year'] = match_vol_year
+                            match_vol = n
+
                         counter += 1
         
                     if match_vol_idx is not None:
                         if match_vol_idx > 0:
                             prev_vol_idx = match_vol_idx - 1
                             prev_vol = facet_pivot[0]['pivot'][prev_vol_idx]
-                            prev_vol_year = prev_vol['value']
-                            prev_vol = prev_vol['pivot'][0]
-                            prev_vol['year'] = prev_vol_year
                             
                         if match_vol_idx < pivot_len - 1:
                             next_vol_idx = match_vol_idx + 1
                             next_vol = facet_pivot[0]['pivot'][next_vol_idx]
-                            next_vol_year = facet_pivot[0]['value']
-                            next_vol = next_vol['pivot'][0]
-                            next_vol['year'] = next_vol_year
                     else:
-                        logger.warning(f"No volume to assess: {match_vol_idx} ")
+                        logger.warning(f"No match for source {source_code} volume: {source_vol} ")
                         
                 try:
                     del(match_vol['field'])
@@ -2308,7 +2281,9 @@ def metadata_get_next_and_prev_vols(source_code=None,
                     del(next_vol['field'])
                 except:
                     pass
-    
+    if opasConfig.LOCAL_TRACE:
+        print(f"Match Prev {prev_vol}, Curr: {match_vol}, Next: {next_vol}")
+        
     return prev_vol, match_vol, next_vol
 #-----------------------------------------------------------------------------
 
@@ -2612,7 +2587,7 @@ def prep_document_download(document_id,
                                                    )
                 else: # access is limited
                     err_msg = f"No permission to download document {document_id} for user {session_info}"
-                    #logger.warning(err_msg) # eliminate double log? 2021-06-02
+                    logger.warning(access.accessLimitedDebugMsg) # log developer info for tracing access issues
                     status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
                                                  error_description=err_msg
                                                )
@@ -2719,7 +2694,7 @@ def get_fulltext_from_search_results(result,
     try:
         matches = re.findall(f"class='searchhit'|{opasConfig.HITMARKERSTART}", text_xml)
     except Exception as e:
-        logger.warning(f"Exception.  Could not count matches. {e}")
+        logger.error(f"Exception.  Could not count matches. {e}")
         documentListItem.termCount = 0
     else:
         documentListItem.termCount = len(matches)

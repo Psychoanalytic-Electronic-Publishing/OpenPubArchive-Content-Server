@@ -29,6 +29,7 @@ class TestConcurrency(unittest.TestCase):
             response = requests.get(full_URL, headers=headers)
             r = response.json()
             print (count, response.ok, r["sourceInfo"]["responseInfo"]["count"])
+            assert (response.ok == True)
             count += 1
 
     def test_all_three_together(self):
