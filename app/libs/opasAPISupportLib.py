@@ -1415,7 +1415,7 @@ def save_opas_session_cookie(request: Request, response: Response, session_id):
             opasSession = [x for x in response.raw_headers[0] if b"opasSessionID" in x]
             already_set = b"opasSessionID" in opasSession[0][0:13]
         except Exception as e:
-            logger.warning(f"Exception, but Ok, opasSessionID cookie not in response {e}") # temp, should be info
+            logger.info(f"Exception, but Ok, opasSessionID cookie not in response {e}")
 
     if already_set == False and session_id is not None:
         try:

@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0914/v2.1.57" # semver versioning now added after date.
+__version__     = "2021.0927/v2.1.58" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -357,7 +357,7 @@ def get_client_session(response: Response,
     if session_id is None:
         # get one from PaDS, without login info
         # session_info, pads_session_info = opasDocPermissions.pads_get_session(client_id=client_id)
-        logger.warning(f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID") # temp, should be debug
+        logger.debug(f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID")
         # New...let's try to isolate when this happens by creating an error.  We get a session from PaDS, but not if there's no client ID.
         if client_id == opasConfig.NO_CLIENT_ID:
             # No client id, not allowed to get session.
@@ -583,7 +583,7 @@ async def admin_set_loglevel(response: Response,
     else:
         if change:
             ret_val = f"Log level set to: {levels.get(logger.level, str(logger.level))}.  Was {curr_level}" 
-            logger.error(ret_val) # temp, should be info
+            logger.info(ret_val) 
     return ret_val
 
 #-----------------------------------------------------------------------------
@@ -4980,8 +4980,6 @@ def documents_downloads(response: Response,
                                         detail=error_status_message)
                 else:
                     status_message = opasCentralDBLib.API_STATUS_SUCCESS
-                    # temp
-                    status_message = "DocumentDownload: Successful Download of PDFOrig" # opasCentralDBLib.API_STATUS_SUCCESS
                     logger.debug(status_message)
                     ocd.record_document_view(document_id=documentID,
                                              session_info=session_info,
@@ -5021,8 +5019,6 @@ def documents_downloads(response: Response,
             else: # success
                 response.status_code = httpCodes.HTTP_200_OK
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
-                # temp
-                status_message = "Successful Download of PDF" # opasCentralDBLib.API_STATUS_SUCCESS
                 logger.debug(status_message)
                 ocd.record_document_view(document_id=documentID,
                                          session_info=session_info,
@@ -5060,8 +5056,6 @@ def documents_downloads(response: Response,
             else: # success
                 response.status_code = httpCodes.HTTP_200_OK
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
-                # temp
-                status_message = "Successful Download of ePub" # opasCentralDBLib.API_STATUS_SUCCESS
                 logger.debug(status_message)
                 ocd.record_document_view(document_id=documentID,
                                          session_info=session_info,

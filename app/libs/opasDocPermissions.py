@@ -82,18 +82,18 @@ def find_client_session_id(request: Request,
         if client_session_qparam is not None:
             ret_val = client_session_qparam
             msg = f"client-session from param: {ret_val}. URL: {request.url}"
-            logger.warning(msg) # temp, should be info
+            logger.info(msg) 
         elif client_session_cookie is not None:
             ret_val = client_session_cookie
             msg = f"client-session from client-session cookie: {ret_val}. URL: {request.url}"
-            logger.warning(msg) # temp, should be info
+            logger.info(msg) 
         elif opas_session_cookie is not None and opas_session_cookie != 'None':
             msg = f"client-session from stored OPASSESSION cookie {opas_session_cookie}. URL: {request.url} "
-            logger.warning(msg) # temp, should be info
+            logger.info(msg) 
             ret_val = opas_session_cookie
         else:
             msg = f"No dependency client-session ID found. Returning None. URL: {request.url}"
-            logger.warning(msg) # temp, should be info
+            logger.info(msg) 
             ret_val = None
 
         if ret_val is not None and opas_session_cookie is not None and opas_session_cookie != ret_val:
@@ -336,7 +336,7 @@ def save_session_info_to_db(session_info):
     db_session_info = ocd.get_session_from_db(session_id)
     if db_session_info is None:
         ret_val, saved_session_info = ocd.save_session(session_id, session_info)
-        logger.warning(f"Saving session info {session_id}") # temp, should be debug
+        logger.debug(f"Saving session info {session_id}")
     else:
         logger.debug(f"Session {session_id} already found in db. Updating...")
         if session_info.username != db_session_info.username and db_session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
@@ -344,7 +344,7 @@ def save_session_info_to_db(session_info):
             print (msg)
             logger.error(msg)
         
-        logger.warning(f"Updating session info {session_id}") # temp, should be debug
+        logger.debug(f"Updating session info {session_id}")
         ret_val = ocd.update_session(session_id,
                                      userID=session_info.user_id,
                                      username=session_info.username, 
