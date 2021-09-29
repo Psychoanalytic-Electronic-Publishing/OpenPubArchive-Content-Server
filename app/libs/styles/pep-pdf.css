@@ -4,6 +4,11 @@ body{
     color: black;
     }
 
+.pubinfotop {
+  font-style: italic;
+  margin-top:-.15in;
+}
+
 a {
     text-decoration: none !important;
     color: midnightblue;
@@ -129,10 +134,10 @@ h6 {
   font-size: small;
 }
 
-/*span.peppopup {*/
-  /*font-size: normal;*/
-  /*display: none;*/
-/*}*/
+span.pagebreak {
+  display:block;
+  text-align: center;
+}
 
 span.bibauthor {
   font-weight: bold;    
@@ -165,16 +170,29 @@ span.bibyear:after {
     content: ") ";    
 }
 
-p.ftr {
-    font-size:medium;
+span.footer > p:first-child, span.ftr > p:first-child {
+    display: block;
+    text-decoration-line: overline;
+    margin-bottom:-.15in;
+}
+
+span.footer > p, span.ftr > p, .ftn {
+    display: block;
     font-weight:lighter;
+    color: black;
+    text-align:left;  
+    font-size: medium;
+    font-style: italic;
+    margin-left: +.25in;
+    text-indent: -.25in;
+    font-weight: lighter;
+    vertical-align: super;
     color: #4b4e54;    
 }
 
 .ftn {
   font-size: medium;
   font-style: italic;
-  display: block;
   margin-left: +.25in;
   text-indent: -.25in;
   font-weight: lighter;

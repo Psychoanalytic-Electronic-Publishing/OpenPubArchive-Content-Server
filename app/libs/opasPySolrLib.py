@@ -2539,8 +2539,15 @@ def prep_document_download(document_id,
                             #print (f"{opasConfig.PDF_EXTENDED_FONT}")
                             # doc = opasxmllib.remove_encoding_string(doc)
                             # open output file for writing (truncated binary)
-                            #with open(r"C:\Users\nrsha\Downloads\testout.html", 'w', encoding="utf8") as fo:
-                                #fo.write(html_string)
+                            # temp debugging change to write out intermediate HTML file
+                            try:
+                                if localsecrets.DEVELOPMENT_DEBUGGING:
+                                    html_filename = document_id + ".html" 
+                                    html_out_filename  = os.path.join(tempfile.gettempdir(), html_filename)
+                                    with open(html_out_filename, 'w', encoding="utf8") as fo:
+                                        fo.write(html_string)
+                            except:
+                                pass
                             
                             result_file = open(output_filename, "w+b")
                             # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
