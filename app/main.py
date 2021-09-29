@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0927/v2.1.58" # semver versioning now added after date.
+__version__     = "2021.0929/v2.1.59" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
