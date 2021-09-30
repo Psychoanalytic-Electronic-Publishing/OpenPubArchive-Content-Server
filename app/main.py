@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.0929/v2.1.59" # semver versioning now added after date.
+__version__     = "2021.0930/v2.1.60" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -590,9 +590,10 @@ async def admin_set_loglevel(response: Response,
 @app.get("/v2/Admin/Reports/{report}", response_model=models.Report, tags=["Admin"], summary=opasConfig.ENDPOINT_SUMMARY_REPORTS)
 async def admin_reports(response: Response, 
                         request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
-                        report: models.ReportTypeEnum=Path(..., title="Report Requested", description="One of the predefined report names"),
-                        sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
-                        userid:str=Query(None, title="Global User ID", description="Filter by this common (global) system userid"), 
+                        report: models.ReportTypeEnum=Path(..., title=opasConfig.TITLE_REPORT_REQUESTED, description=opasConfig.DESCRIPTION_REPORT_REQUESTED),
+                        sessionid: str=Query(None, title=opasConfig.TITLE_SESSION_ID_FILTER, description=opasConfig.DESCRIPTION_SESSION_ID_FILTER),
+                        userid:str=Query(None, title=opasConfig.TITLE_USERID_FILTER, description=opasConfig.DESCRIPTION_USERID_FILTER),
+                        endpointidlist:str=Query(None, title=opasConfig.TITLE_ENDPOINTID_LIST, description=opasConfig.DESCRIPTION_ENDPOINTID_LIST), 
                         startdate: str=Query(None, title=opasConfig.TITLE_STARTDATE, description=opasConfig.DESCRIPTION_STARTDATE), 
                         enddate: str=Query(None, title=opasConfig.TITLE_ENDDATE, description=opasConfig.DESCRIPTION_ENDDATE),
                         matchstr: str=Query(None, title=opasConfig.TITLE_REPORT_MATCHSTR, description=opasConfig.DESCRIPTION_REPORT_MATCHSTR), 
@@ -673,6 +674,14 @@ async def admin_reports(response: Response,
     # this user id will be whatever I get from the authentication system, not the numeric userid I have
     if userid is not None:
         userid_condition = f" AND global_uid={userid}"
+        
+    if endpointidlist is not None and report == models.ReportTypeEnum.sessionLog:
+        endpoint_list_items = [x.strip() for x in endpointidlist.split(',')]
+        endpoint_tuple = tuple(endpoint_list_items)
+        endpoint_condition = f"AND endpoint_id IN {endpoint_tuple}" # note: this queries the view; table column is api_endpoint_id
+    else:
+        endpoint_condition = ""
+        
 
     try:
         if enddate is not None:
@@ -731,6 +740,7 @@ async def admin_reports(response: Response,
                   "session end",
                   "item of interest",
                   "endpoint",
+                  "endpoint id", 
                   "params",
                   "status code",
                   "status message",
@@ -776,6 +786,7 @@ async def admin_reports(response: Response,
                  {date_condition}
                  {userid_condition}
                  {sessionid_condition}
+                 {endpoint_condition}
                  {extra_condition}
                  {orderby_clause}
                  """
@@ -1113,7 +1124,7 @@ async def client_save_configuration(response: Response,
     #  return current config (old if it fails).
 
     opasDocPermissions.verify_header(request, "ClientSaveConfig") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+    #log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
@@ -1184,7 +1195,7 @@ async def client_update_configuration(response: Response,
     #  return current config (old if it fails).
 
     opasDocPermissions.verify_header(request, "ClientUpdateConfig") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+    #log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
     msg = ""
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
@@ -1274,7 +1285,7 @@ async def client_get_configuration(response: Response,
     """
     # maybe no session id when they get this, so don't check here
     # opasDocPermissions.verify_header(request, "ClientGetConfig") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+    #log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
@@ -1340,7 +1351,7 @@ async def client_del_configuration(response: Response,
     """
     
     opasDocPermissions.verify_header(request, "ClientDelConfig") # for debugging client call
-    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+    #log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
@@ -3702,8 +3713,7 @@ def database_whatsnew(response: Response,
     #opasDocPermissions.verify_header(request, "WhatsNew")
     # (Don't log calls to this endpoint)
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
-
-    log_endpoint(request, client_id=client_id, level="debug")
+    #log_endpoint(request, client_id=client_id, level="debug")
     
     try:
         # return whatsNewList
