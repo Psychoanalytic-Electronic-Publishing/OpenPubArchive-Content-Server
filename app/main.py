@@ -621,7 +621,7 @@ async def admin_reports(response: Response,
 
     ## Notes
        ### Requires API key.
-       ### Requires Admin level user  [Not Yet] #TODO: Change to admin level user, at least for some reports.
+       ### Requires Admin level user  
     
        For session-views and user-searches reports:
          matchstr does a regex search of the url (endpoint plus parameters)
