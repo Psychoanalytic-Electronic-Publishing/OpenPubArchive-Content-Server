@@ -861,6 +861,15 @@ FONT_FILENAME = "Roboto-Regular.ttf"
 PDF_OTHER_STYLE = r"""
 <link rel="stylesheet" type="text/css" href="%s"/>
 <style>
+    @page {
+        size: letter portrait;
+        @frame content_frame {
+            left: 50pt;
+            width: 512pt;
+            top: 50pt;
+            height: 692pt;
+        }
+    }
     @font-face {font-family: Roboto; src: url('%s');}
     @font-face {font-family: Roboto; font-style: italic; src: url('%s');}
     @font-face {font-family: Roboto; font-weight: bold; src: url('%s');}
