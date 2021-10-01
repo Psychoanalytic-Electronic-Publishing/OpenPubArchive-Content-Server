@@ -42,13 +42,13 @@ class PDF(FPDF, HTMLMixin):
     def footer(self):
         try:
             # Position at 1.5 cm from bottom
-            self.set_y(-9)
+            self.set_y(-11)
             self.set_x(10)
             # Arial italic 8
             self.set_font('Helvetica', 'B', 6) # font size 5, B for bold
             header_copyright = f"Copyrighted Material. For use only by {self.username_to_set}. Reproduction prohibited. Usage subject to PEP terms & conditions (see terms.pep-web.org)."
             # use same header text as footer, depending on page size, more reliable in footer
-            self.cell(w=0, h=10, txt=header_copyright, border=0, ln=0, link="http://terms.pep-web.org")
+            self.cell(w=0, h=10, txt=header_copyright, border=0, ln=0, link="http://terms.pep-web.org", align="C")
             # self.cell(0, 10, f'Original Journal Reprint -- Downloaded from PEP-Web by {self.username_to_set}', 0, 0, 'C')
         except Exception as e:
             logger.error(f"Cannot add Copyright Footer: {e}")                      
