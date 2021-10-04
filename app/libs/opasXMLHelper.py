@@ -99,7 +99,7 @@ def convert_xml_to_html_file(xmltext_str, output_filename=None):
         filename_base = "_".join([basename, suffix]) # e.g. 'mylogfile_120508_171442'        
         output_filename = filename_base + ".html"
 
-    htmlString = xml_str_to_html(xmltext_str)
+    htmlString = xml_str_to_html(xmltext_str, document_id=output_filename)
     fo = open(output_filename, "w", encoding="utf-8")
     fo.write(str(htmlString))
     fo.close()
@@ -1484,7 +1484,7 @@ def xml_file_to_xmlstr(xml_file, remove_encoding=False, resolve_entities=True, d
     
     return ret_val
 
-def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML):
+def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=""):
     """
     Convert XML to HTML per Doc level XSLT file configured as g_xslt_doc_transformer.
     
@@ -1522,7 +1522,7 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                 #sourceFile = etree.fromstring(xml_text, remove_entities=False)
             except Exception as e:
                 # return this error, so it will be displayed (for now) instead of the document
-                ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
+                ret_val = f"<p align='center'>Sorry, due to an XML error, we cannot display this document ({document_id}) right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"
                 logger.error(f"TextProcessingError: {e}")
                 if opasConfig.LOCAL_TRACE: print(f"TextProcessingError: {xml_text}")
                 if stop_on_exceptions:
