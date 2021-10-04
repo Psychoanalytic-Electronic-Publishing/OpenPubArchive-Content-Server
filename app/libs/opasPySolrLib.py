@@ -2516,7 +2516,7 @@ def prep_document_download(document_id,
                                                            )
                                 ret_val = None
                         elif ret_format.upper() == "PDF":
-                            html_string = opasxmllib.xml_str_to_html(doc)
+                            html_string = opasxmllib.xml_str_to_html(doc, document_id=document_id)
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                             html_string = re.sub("\(\)", f"", html_string, count=1) # in running head, missing issue
                             copyright_page = COPYRIGHT_PAGE_HTML.replace("[[username]]", session_info.username)
@@ -2539,8 +2539,15 @@ def prep_document_download(document_id,
                             #print (f"{opasConfig.PDF_EXTENDED_FONT}")
                             # doc = opasxmllib.remove_encoding_string(doc)
                             # open output file for writing (truncated binary)
-                            #with open(r"C:\Users\nrsha\Downloads\testout.html", 'w', encoding="utf8") as fo:
-                                #fo.write(html_string)
+                            # temp debugging change to write out intermediate HTML file
+                            try:
+                                if localsecrets.DEVELOPMENT_DEBUGGING:
+                                    html_filename = document_id + ".html" 
+                                    html_out_filename  = os.path.join(tempfile.gettempdir(), html_filename)
+                                    with open(html_out_filename, 'w', encoding="utf8") as fo:
+                                        fo.write(html_string)
+                            except:
+                                pass
                             
                             result_file = open(output_filename, "w+b")
                             # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
@@ -2555,7 +2562,7 @@ def prep_document_download(document_id,
                                 
                         elif ret_format.upper() == "EPUB":
                             doc = opasxmllib.remove_encoding_string(doc)
-                            html_string = opasxmllib.xml_str_to_html(doc)
+                            html_string = opasxmllib.xml_str_to_html(doc, document_id=document_id)
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                             html_string = add_epub_elements(html_string)
                             filename = opasxmllib.html_to_epub(htmlstr=html_string,
@@ -2709,7 +2716,7 @@ def get_fulltext_from_search_results(result,
                                                ret_format="HTML"
                                                )
         try:
-            text_xml = opasxmllib.xml_str_to_html(text_xml)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+            text_xml = opasxmllib.xml_str_to_html(text_xml, document_id=documentListItem.documentID)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
         except Exception as e:
             logger.error(f"GetFulltextError: Could not convert to HTML {e}; returning native format")
             text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
@@ -2723,7 +2730,7 @@ def get_fulltext_from_search_results(result,
                 logger.error(f"GetFulltextError: Could not do anchor substitution {e}")
 
         if child_xml is not None:
-            child_xml = opasxmllib.xml_str_to_html(child_xml)
+            child_xml = opasxmllib.xml_str_to_html(child_xml, document_id=documentListItem.documentID)
                 
     elif format_requested_ci == "textonly":
         # strip tags

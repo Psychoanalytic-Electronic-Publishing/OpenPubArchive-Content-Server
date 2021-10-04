@@ -480,7 +480,7 @@ class FlexFileSystem(object):
         
         However, if the extension is supplied, that should be accepted.
     
-        The current API implements this:
+        The GVPi API implements this:
         
         curl -X GET "http://stage.pep.gvpi.net/api/v1/Documents/Downloads/Images/aim.036.0275a.fig001.jpg" -H "accept: image/jpeg" 
         
@@ -516,7 +516,7 @@ class FlexFileSystem(object):
         """
         Return the contents of a non-binary file
 
-        The current API implements this:
+        The GVPi API implements this:
         
         curl -X GET "http://stage.pep.gvpi.net/api/v1/Documents/Downloads/Images/aim.036.0275a.fig001.jpg" -H "accept: image/jpeg" -H "Authorization: Basic cC5lLnAuYS5OZWlsUlNoYXBpcm86amFDayFsZWdhcmQhNQ=="
         

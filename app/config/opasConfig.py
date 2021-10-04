@@ -252,6 +252,7 @@ DESCRIPTION_CITEDID = "The cited document ID (e.g., IJP.077.0217A) for which to 
 DESCRIPTION_DOCUMENT_CONCORDANCE_ID = "Paragraph language ID to return for a concordance link"
 DESCRIPTION_DOCUMENT_CONCORDANCE_RX = "String with single or list of Paragraph language IDs to return for a concordance link"
 DESCRIPTION_ENDDATE = "Find records on or before this date (input date as 2020-08-10 or 20200810)"
+DESCRIPTION_ENDPOINTID_LIST = "Filter by this comma separated list of Endpoint IDs (e.g., 31,32,41)"
 DESCRIPTION_ENDYEAR = "Find documents published on or before this year (e.g, 2001)" 
 DESCRIPTION_FACETFIELDS = "List of fields for which to return facet info. Field art_sourcetype, for example, will give results counts by type (journal, book, videostream)."
 DESCRIPTION_FACETLIMIT = "Maximum number of facet values to return"
@@ -262,6 +263,7 @@ DESCRIPTION_LAST_PAGE = "Document's last page"
 DESCRIPTION_FACETQUERY = 'Facet field(s) limiter using Solr query syntax and facet names, e.g. art_sourcetitleabbr:("Int. J. Psychoanal." OR "Int. Rev. Psycho-Anal." OR "Brit. J. Psychother.").'
 DESCRIPTION_FULLTEXT1 = "Find Words (or phrases in quotes) across the document (Boolean search is not paragraph level.) Field specifications--e.g., art_authors:(authorname)--are allowed."
 DESCRIPTION_FULLTEXT1_V1 = "Words or phrases (in quotes) in a paragraph in the document."
+DESCRIPTION_GETFULLCOUNT = "Return full set size as well as the filtered set size"
 DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to return the document. Specify which type of identifier using query param termidtype."
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
 DESCRIPTION_ISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals of all kinds and on all media–print and electronic."
@@ -290,6 +292,7 @@ DESCRIPTION_REPORT_MATCHSTR="Report specific match string (params for session-vi
 DESCRIPTION_RETURNFORMATS = "The format of the returned full-text (e.g., abstract or document data).  One of: 'HTML', 'XML', 'TEXTONLY'.  The default is HTML."
 DESCRIPTION_RETURN_ABSTRACTS = "Return abstracts in the documentList (Boolean: true or false)"
 DESCRIPTION_SEARCHPARAM = "This is a document request, including search parameters, to show hits"
+DESCRIPTION_SESSION_ID_FILTER = "Filter by this Session ID"
 DESCRIPTION_SITEMAP_PATH = f"Folder or S3 Bucket to put the sitemap"
 DESCRIPTION_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
 DESCRIPTION_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
@@ -315,6 +318,7 @@ DESCRIPTION_QTERMLIST = "SolrQeryTermList model for term by term field, term, an
 DESCRIPTION_TITLE = "The title of the document (article, book, video)"
 DESCRIPTION_TRANSLATIONS = "Return a list of documents which are translations of this document in field translationSet"
 # DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
+DESCRIPTION_USERID_FILTER = "Filter by this common (global) system userid"
 DESCRIPTION_VIEWCOUNT = "Include documents (not abstracts) viewed this many or more times (or X TO Y times). Optionally specify viewperiod, IN (lastweek|lastmonth|last6months|last12months|lastcalendaryear), or in parameter viewperiod"  
 DESCRIPTION_VIEWCOUNT_INT = "Include documents (not abstracts) viewed this many or more times. Must be an integer."  
 DESCRIPTION_VIEWPERIOD = "One of a few preset time frames for which to evaluate viewcount; 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months."
@@ -353,6 +357,7 @@ TITLE_FACETMINCOUNT = "Minimum count to return a facet"
 TITLE_FACETOFFSET = "Offset that can be used for paging through a facet"
 TITLE_FULLTEXT1 = "Document-wide search"
 TITLE_FULLTEXT1_V1 = "Paragraph based search"
+TITLE_GETFULLCOUNT = "Return full unfiltered set size"
 TITLE_HIGHLIGHT_FIELDS = "Fields to return for highlighted matches"
 TITLE_IMAGEID = "Image ID (unique)"
 TITLE_ISSUE = "Issue Number"
@@ -373,11 +378,14 @@ TITLE_SPECIALOPTIONS = "Integer mapped to Option flags for special options"
 TITLE_PARAZONE1_V1 = "Zone for paragraph search"
 TITLE_PUBLICATION_PERIOD = "Number of Years to include"
 TITLE_REPORT_MATCHSTR="Report specific match string"
+TITLE_REPORT_REQUESTED="Report Requested"
+DESCRIPTION_REPORT_REQUESTED="One of the predefined report names"
 TITLE_REQUEST = "HTTP Request" 
 TITLE_RETURN_ABSTRACTS_BOOLEAN = "Return an abstract with each match (true/false)"
 TITLE_RETURN_FIELDS = "Fields for data return"
 TITLE_RETURNFORMATS = "Document return format"
 TITLE_SEARCHPARAM = "Document request from search results"
+TITLE_SESSION_ID_FILTER = "SessionID"
 TITLE_SITEMAP_PATH = "Where to put the sitemap"
 TITLE_SITEMAP_RECORDS_PER_FILE = "Number of records per file"
 TITLE_SITEMAP_MAX_RECORDS = "Max records exported to sitemap"
@@ -405,6 +413,8 @@ TITLE_TITLE = "Document Title"
 TITLE_VIEWCOUNT = "Include documents viewed this many times or more within the view period"
 TITLE_VIEWPERIOD = "One of the preset timeframes within which to evaluate viewcount"
 TITLE_VOLUMENUMBER = "Volume Number"
+TITLE_USERID_FILTER = "Global User ID"
+TITLE_ENDPOINTID_LIST = "Comma separated list of Endpoint IDs"
 TITLE_WORD = "Word prefix"
 TITLE_WORDFIELD = "Field to check word in index"
 TITLE_YEAR = "Year"
@@ -851,6 +861,15 @@ FONT_FILENAME = "Roboto-Regular.ttf"
 PDF_OTHER_STYLE = r"""
 <link rel="stylesheet" type="text/css" href="%s"/>
 <style>
+    @page {
+        size: letter portrait;
+        @frame content_frame {
+            left: 50pt;
+            width: 512pt;
+            top: 50pt;
+            height: 692pt;
+        }
+    }
     @font-face {font-family: Roboto; src: url('%s');}
     @font-face {font-family: Roboto; font-style: italic; src: url('%s');}
     @font-face {font-family: Roboto; font-weight: bold; src: url('%s');}

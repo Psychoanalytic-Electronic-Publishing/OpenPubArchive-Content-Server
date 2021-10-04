@@ -37,7 +37,7 @@ class TestDatabaseWhatsNew(unittest.TestCase):
         if response_info["count"] == 0:
             logger.warning("There are no new articles.  Could be ok.")
         else:
-            assert(response_info["count"] >= 3)
+            assert(response_info["count"] >= 1)
 
     def test_1_whats_new(self):
         """

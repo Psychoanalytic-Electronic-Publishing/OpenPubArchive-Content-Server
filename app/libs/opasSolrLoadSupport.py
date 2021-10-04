@@ -833,7 +833,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
             else:
                 excerpt_xml = opasxmllib.get_first_page_excerpt_from_doc_root(pepxml)
 
-            excerpt = opasxmllib.xml_str_to_html(excerpt_xml)
+            excerpt = opasxmllib.xml_str_to_html(excerpt_xml, document_id=artInfo.art_id)
                 
     excerpt_xml = opasxmllib.xml_elem_or_str_to_xmlstring(excerpt_xml, None)
     

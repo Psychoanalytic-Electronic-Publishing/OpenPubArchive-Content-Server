@@ -105,47 +105,51 @@ API_ENDPOINT_METHOD_PUT = "put"
 API_ENDPOINT_METHOD_POST = "post"
 API_ENDPOINT_METHOD_DELETE = "delete"
 
-# ###############################################################
+# ##########################################################################
 # API SYMBOLIC ENDPOINTS MUST MATCH API_ENDPOINTS TABLE IN DB!!!!
-# ###############################################################
-API_LOGIN = 1	        # /Login/
-API_LOGIN_STATUS = 2	#/License/Status/Login/
-API_LOGOUT = 3      	# /Logout/
-API_ALERTS = 6
-API_REPORTS = 7
-API_OPENAPISPEC = 8     # /Api/Openapispec
-API_LIVEDOC = 9         # /Api/Livedoc
-API_METADATA_BANNERS = 10	#/Metadata/Banners/
-API_METADATA_BANNERS_FOR_PEPCODE = 11	#/Metadata/Banners/{pepcode}/
-API_METADATA_SOURCEINFO = 12	#/Metadata/{sourceType}/
-API_METADATA_SOURCEINFO_FOR_PEPCODE = 13	#/Metadata/{sourceType}/{pepCode}/
-API_METADATA_VOLUME_INDEX = 14	#/Metadata/Volumes/{pepCode}/
-API_METADATA_CONTENTS = 15	#/Metadata/Contents/{pepCode}/
-API_METADATA_CONTENTS_FOR_VOL = 16	#/Metadata/Contents/{pepCode}/{pepVol}/
-API_METADATA_BOOKS = 17	#/Metadata/Contents/Books/{bookBaseDocumentID}/
-API_AUTHORS_INDEX = 20	#/Authors/Index/{authNamePartial}/
-API_AUTHORS_PUBLICATIONS = 21	#/Authors/Publications/{authNamePartial}/
-API_DOCUMENTS_ABSTRACTS = 30	#/Documents/Abstracts/{documentID}/
-API_DOCUMENTS = 31	#/Documents/{documentID}/
-API_DOCUMENTS_PDF = 32	#/Documents/Downloads/PDF/{documentID}/
-API_DOCUMENTS_PDFORIG = 33	#/Documents/Downloads/PDFORIG/{documentID}/
-API_DOCUMENTS_EPUB = 35	#/Documents/Downloads/PDF/{documentID}/
-API_DOCUMENTS_HTML = 36	#/Documents/Downloads/HTML/{documentID}/
-API_DOCUMENTS_IMAGE = 37	#/Documents/Downloads/Images/{imageID}/
-API_DOCUMENTS_CONCORDANCE = 38	    #/Documents/Paragraph/Concordance/
-API_DATABASE_SEARCHANALYSIS_FOR_TERMS = 40	#/Database/SearchAnalysis/{searchTerms}/
-API_DATABASE_SEARCH = 41	#/Database/Search/
-API_DATABASE_WHATSNEW = 42	#/Database/WhatsNew/
-API_DATABASE_MOSTCITED = 43	#/Database/MostCited/
-API_DATABASE_MOSTVIEWED = 44	#/Database/MostViewed/ (Logged only CSV downloads)
-API_DATABASE_SEARCHANALYSIS = 45	#/Database/SearchAnalysis/
-API_DATABASE_ADVANCEDSEARCH = 46	
-API_DATABASE_TERMCOUNTS = 47
-API_DATABASE_GLOSSARY_SEARCH = 48	#/Database/Search/
-API_DATABASE_EXTENDEDSEARCH = 49
-API_DATABASE_SEARCHTERMLIST = 50
-API_DATABASE_CLIENT_CONFIGURATION = 51 # /Client/Configuration
-API_DATABASE_OPENURL = 52	#/Database/OpenURL/
+# 
+# Commented values are not currently recorded in the session_endpoint table
+# ##########################################################################
+# API_LOGIN = 1	                             # /Login/
+# API_LOGIN_STATUS = 2	                     # /License/Status/Login/
+# API_LOGOUT = 3      	                     # /Logout/                
+# API_ALERTS = 6                             # No endpoint currently
+API_ADMIN_REPORTS = 7                        # /Admin/Reports
+# API_OPENAPISPEC = 8                        # /Api/Openapispec
+# API_LIVEDOC = 9                            # /Api/Livedoc
+# API_METADATA_BANNERS = 10	                 # /Metadata/Banners/
+# API_METADATA_BANNERS_FOR_PEPCODE = 11	     # /Metadata/Banners/{pepcode}/
+# API_METADATA_SOURCEINFO = 12	             # /Metadata/{sourceType}/
+# API_METADATA_SOURCEINFO_FOR_PEPCODE = 13	 # /Metadata/{sourceType}/{pepCode}/
+# API_METADATA_VOLUME_INDEX = 14	         # /Metadata/Volumes/{pepCode}/
+# API_METADATA_CONTENTS = 15	             # /Metadata/Contents/{pepCode}/
+# API_METADATA_CONTENTS_FOR_VOL = 16	     # /Metadata/Contents/{pepCode}/{pepVol}/
+# API_METADATA_BOOKS = 17	                 # /Metadata/Contents/Books/{bookBaseDocumentID}/
+# API_AUTHORS_INDEX = 20	                 # /Authors/Index/{authNamePartial}/
+# API_AUTHORS_PUBLICATIONS = 21	             # /Authors/Publications/{authNamePartial}/
+API_DOCUMENTS_ABSTRACTS = 30	             # /Documents/Abstracts/{documentID}/
+API_DOCUMENTS = 31                       	 # /Documents/{documentID}/
+API_DOCUMENTS_PDF = 32	                     # /Documents/Downloads/PDF/{documentID}/
+API_DOCUMENTS_PDFORIG = 33	                 # /Documents/Downloads/PDFORIG/{documentID}/
+API_DOCUMENTS_EPUB = 35	                     # /Documents/Downloads/PDF/{documentID}/
+API_DOCUMENTS_HTML = 36	                     # /Documents/Downloads/HTML/{documentID}/
+API_DOCUMENTS_IMAGE = 37	                 # /Documents/Image/{imageID}/?download=1
+API_DOCUMENTS_CONCORDANCE = 38	             # /Documents/Paragraph/Concordance/
+API_DOCUMENTS_GLOSSARY_TERM = 39             # /Documents/Glossary/Term 
+# API_DATABASE_SEARCHANALYSIS_FOR_TERMS = 40 # /Database/SearchAnalysis/{searchTerms}/
+API_DATABASE_SEARCH = 41	                 # /Database/Search/
+# API_DATABASE_WHATSNEW = 42	             # /Database/WhatsNew/
+API_DATABASE_MOSTCITED = 43	                 # /Database/MostCited/
+API_DATABASE_MOSTVIEWED = 44	             # /Database/MostViewed/ 
+# API_DATABASE_SEARCHANALYSIS = 45	         # /Database/SearchAnalysis/
+API_DATABASE_ADVANCEDSEARCH = 46	         # /Database/AdvancedSearch/
+# API_DATABASE_TERMCOUNTS = 47               # /Database/TermCounts/
+API_DATABASE_GLOSSARY_SEARCH = 48	         # /Database/Search/
+API_DATABASE_EXTENDEDSEARCH = 49             # /Database/ExtendedSearch/
+# API_DATABASE_SEARCHTERMLIST = 50           # No endpoint currently
+# API_DATABASE_CLIENT_CONFIGURATION = 51     # /Client/Configuration
+API_DATABASE_OPENURL = 52	                 # /Database/OpenURL/
+API_DATABASE_WHOCITEDTHIS = 53               # /Database/WhoCitedThis/
 
 #def verifyAccessToken(session_id, username, access_token):
     #return pwd_context.verify(session_id+username, access_token)
@@ -215,8 +219,6 @@ class opasCentralDB(object):
     >>> success, session_info = ocd.save_session(session_id=session_id, session_info=session_info)
     >>> None if session_info is None else session_info.authenticated
     True
-    >>> ocd.record_session_endpoint(session_info=session_info, api_endpoint_id=API_AUTHORS_INDEX, item_of_interest="IJP.001.0001A", status_message="Testing")
-    1
     >>> ocd.end_session(session_info.session_id)
     True
 

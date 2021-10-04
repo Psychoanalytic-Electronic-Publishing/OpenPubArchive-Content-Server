@@ -582,9 +582,9 @@
 
   <xsl:template match="ftr">
     <xsl:text>&#13;</xsl:text>
-    <div class="footer above-border" data-class="ftr">
+    <span class="footer ftr above-border" data-class="ftr">
       <xsl:apply-templates/>
-    </div>
+    </span>
   </xsl:template>  
   
   <xsl:template match="ftn">
@@ -973,7 +973,7 @@
   
   <xsl:template match="n">
     <xsl:apply-templates select="@content-type"/>
-    <p class="pagenumber">
+    <span class="pagenumber">
       <xsl:if test="@nextpgnum">
         <xsl:attribute name="data-nextpgnum">
           <xsl:value-of select="@nextpgnum"/>
@@ -985,15 +985,15 @@
           </xsl:attribute>
       </xsl:if>
       <xsl:apply-templates/>
-    </p>  
+    </span>  
   </xsl:template>
   
   <xsl:template match="pb">
-    <div class="pagebreak" data-class="pb">
+    <span class="pagebreak" data-class="pb">
       <xsl:call-template name="named-anchor"/>
       <xsl:apply-templates select="@content-type"/>
       <xsl:apply-templates/>
-    </div>
+    </span>
   </xsl:template>
 
 
@@ -1057,10 +1057,20 @@
     </div>
   </xsl:template>
 
-  <xsl:template match="p | p2">
+  <xsl:template match="p2">
+    <p>
+      <xsl:attribute name="class">paracont</xsl:attribute>
+      <xsl:apply-templates/>
+    </p>
+  </xsl:template>
+  
+  <xsl:template match="p">
     <p class="para">
+      <xsl:call-template name="assign-id"/>
+      <xsl:apply-templates select="@content-type"/>
       <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="data-pagehelper"/>
+      <xsl:apply-templates/>
       <xsl:if test="@lgrid">
         <xsl:attribute name="data-lgrid">
           <xsl:value-of select="@lgrid"/>
@@ -1076,23 +1086,6 @@
           <xsl:value-of select="@lgrtype"/>
         </xsl:attribute>
       </xsl:if>
-      <xsl:choose>
-        <xsl:when test="ancestor::ftr and not(preceding-sibling::*)">
-          <xsl:attribute name="class">ftr first</xsl:attribute>
-        </xsl:when>
-        <xsl:when test="ancestor::ftr">
-          <xsl:attribute name="class">ftr</xsl:attribute>
-        </xsl:when>
-      </xsl:choose>
-      <xsl:if test="name() = 'p2'">
-        <!--        if you want to concatenate to the attribute class-->
-        <!--          <xsl:value-of select="concat('continued',  ' ', @class)"/>-->
-        <xsl:attribute name="class">paracont</xsl:attribute>
-      </xsl:if>
-      
-      <xsl:call-template name="assign-id"/>
-      <xsl:apply-templates select="@content-type"/>
-      <xsl:apply-templates/>
     </p>
   </xsl:template>
 
