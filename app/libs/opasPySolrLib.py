@@ -1280,7 +1280,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)
                     # NEW 20211008 - If logged in, check permissions for full-text, or an abstract request with one return
                     documentListItem.accessChecked = False # default anyway, but to make sure it always exists
-                    documentListItem.accessLimited = True  # default anyway, but to make sure it always exists
                     if user_logged_in_bool and (get_full_text or (solr_query_spec.abstractReturn and record_count == 1)): # LIMIT_TEST_DONT_DO_THIS: # record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
                         access = opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
                                                                      classification=documentListItem.accessClassification, 

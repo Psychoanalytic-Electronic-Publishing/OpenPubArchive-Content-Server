@@ -312,7 +312,7 @@ class DocumentListItem(BaseModel):
     # these are not all currently used
     accessClassification: str = Field(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
     accessChecked: bool = Field(False, title="Access was checked. If false, accessLimited value is just defaulted to False")
-    accessLimited: bool = Field(True, title="Access is limited, preventing full-text return")
+    accessLimited: bool = Field(None, title="Access is limited, preventing full-text return. Only valid when accessChecked is True.")
     accessLimitedCode: int = Field(None, title="If an error code is returned from the server, pass it back here for ease of client processing")
     accessLimitedReason: str = Field(None, title="Explanation of user's access to this")
     accessLimitedDebugMsg: str = Field(None, title="Developer level info for tracing access issues")
