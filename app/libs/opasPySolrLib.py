@@ -896,7 +896,8 @@ def search_text(query,
                 core = None,
                 #authenticated = None,
                 session_info = None, 
-                option_flags=0
+                option_flags=0,
+                request=None
                 ):
     """
     Full-text search, via the Solr server api.
@@ -945,7 +946,8 @@ def search_text(query,
                                          offset=offset, 
                                          req_url=req_url, 
                                          #authenticated=authenticated,
-                                         session_info=session_info
+                                         session_info=session_info,
+                                         request=request
                                          )
 
     return ret_val, ret_status
@@ -962,6 +964,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                    sort=None, 
                    session_info=None,
                    solr_core="pepwebdocs", 
+                   get_full_text=False, # LIMIT_TEST
                    request=None #pass around request object, needed for ip auth
                    ):
     """
@@ -975,6 +978,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
     # count_anchors = 0
+    user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, caller_name="search_text_qs")
+    
 
     if 1: # just to allow folding
         if solr_query_spec.solrQueryOpts is None: # initialize a new model
@@ -1258,10 +1263,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     #  no session info...what to do?
                     logger.debug(f"No session info to perform optimizations {e}")
                     
+                record_count = len(results.docs)
                 for result in results.docs:
                     # reset anchor counts for full-text markup re.sub
                     # count_anchors = 0
-                    record_count = len(results.docs)
                     # authorIDs = result.get("art_authors", None)
                     documentListItem = models.DocumentListItem()
                     documentListItem = opasQueryHelper.get_base_article_info_from_search_result(result, documentListItem)
@@ -1273,7 +1278,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # sometimes, we don't need to check permissions
                     # Always check if fullReturn is selected
                     # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)
-                    if record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
+                    # NEW 20211008 - If logged in, check permissions for full-text, or an abstract request with one return
+                    documentListItem.accessChecked = False # default anyway, but to make sure it always exists
+                    documentListItem.accessLimited = True  # default anyway, but to make sure it always exists
+                    if user_logged_in_bool and (get_full_text or (solr_query_spec.abstractReturn and record_count == 1)): # LIMIT_TEST_DONT_DO_THIS: # record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
                         access = opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
                                                                      classification=documentListItem.accessClassification, 
                                                                      year=documentListItem.year,
@@ -1285,6 +1293,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                                     ) # will updated accessLimited fields in documentListItem
                         
                         if access is not None: # copy all the access info returned
+                            documentListItem.accessChecked = True
                             documentListItem.accessLimited = access.accessLimited   
                             documentListItem.accessLimitedCode = access.accessLimitedCode
                             documentListItem.accessLimitedClassifiedAsCurrentContent = access.accessLimitedClassifiedAsCurrentContent
@@ -1292,6 +1301,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             documentListItem.accessLimitedDebugMsg = access.accessLimitedDebugMsg
                             documentListItem.accessLimitedDescription = access.accessLimitedDescription
                             documentListItem.accessLimitedPubLink = access.accessLimitedPubLink
+                        else:
+                            logger.error("getaccesslimitations: Why is access none?")
 
                     documentListItem.score = result.get("score", None)               
                     try:

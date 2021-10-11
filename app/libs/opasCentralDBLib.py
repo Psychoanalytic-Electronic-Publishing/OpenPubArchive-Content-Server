@@ -150,6 +150,7 @@ API_DATABASE_EXTENDEDSEARCH = 49             # /Database/ExtendedSearch/
 # API_DATABASE_CLIENT_CONFIGURATION = 51     # /Client/Configuration
 API_DATABASE_OPENURL = 52	                 # /Database/OpenURL/
 API_DATABASE_WHOCITEDTHIS = 53               # /Database/WhoCitedThis/
+API_DATABASE_MORELIKETHIS = 54
 
 #def verifyAccessToken(session_id, username, access_token):
     #return pwd_context.verify(session_id+username, access_token)
@@ -1418,17 +1419,31 @@ class opasCentralDB(object):
             if self.db is not None:  # shouldn't need this test
                 cursor = self.db.cursor()
                 # TODO: I removed returnStatusCode from here. Remove it from the DB
-                sql = """INSERT INTO 
-                            api_session_endpoints(session_id, 
-                                                  api_endpoint_id,
-                                                  params, 
-                                                  item_of_interest, 
-                                                  return_status_code,
-                                                  api_method,
-                                                  return_added_status_message
-                                                 )
-                                                 VALUES 
-                                                 (%s, %s, %s, %s, %s, %s, %s)"""
+                if session_info.is_valid_login:
+                    sql = """INSERT INTO 
+                                api_session_endpoints(session_id, 
+                                                      api_endpoint_id,
+                                                      params, 
+                                                      item_of_interest, 
+                                                      return_status_code,
+                                                      api_method,
+                                                      return_added_status_message
+                                                     )
+                                                     VALUES 
+                                                     (%s, %s, %s, %s, %s, %s, %s)"""
+                else:
+                    # TODO: Record in a separate table.
+                    sql = """INSERT INTO 
+                                api_session_endpoints_not_logged_in(session_id, 
+                                                                    api_endpoint_id,
+                                                                    params, 
+                                                                    item_of_interest, 
+                                                                    return_status_code,
+                                                                    api_method,
+                                                                    return_added_status_message
+                                                                   )
+                                                                   VALUES 
+                                                                   (%s, %s, %s, %s, %s, %s, %s)"""
 
                 logger.debug(f"Session ID: {session_id} (client {client_id}) accessed Session Endpoint {api_endpoint_id}")
                 try:

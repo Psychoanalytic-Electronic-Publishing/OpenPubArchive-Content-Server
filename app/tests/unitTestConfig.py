@@ -80,6 +80,9 @@ def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TE
                "client-id": client_id, 
                "Content-Type":"application/json",
                localsecrets.API_KEY_NAME: localsecrets.API_KEY}
+    if session_info.is_valid_login == True:
+        headers[localsecrets.AUTH_KEY_NAME] = "true"
+    
     return sessID, headers, session_info
 
 if 1:

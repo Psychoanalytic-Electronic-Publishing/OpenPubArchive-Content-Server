@@ -14,6 +14,10 @@ from schemaMap import PREDEFINED_SORTS
 import localsecrets
 import opasFileSupport
 
+# To test idea for limiting access calls
+LIMIT_TEST_DO_THIS = True
+LIMIT_TEST_DONT_DO_THIS = False
+
 #import urllib.request
 # from enum import Enum, EnumMeta, IntEnum
 
@@ -161,7 +165,6 @@ ADVANCED = "ADVANCED"
 DOI = "DOI"
 REFERENCEFIELDS = "REFERENCEFIELDS"
 
-
 #Standard Values for parameters
 # here anything matching the first 4 characters of type matches.
 DICTLEN_KEY = 'length'
@@ -274,8 +277,8 @@ DESCRIPTION_LIMIT = "Maximum number of items to return."
 DESCRIPTION_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 DESCRIPTION_MOREINFO = "Return statistics on the Archive holdings (admins always get this.)"
 DESCRIPTION_MORELIKETHIS = "Find similar documents"
-DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (in full years: {list_values(VALS_YEAROPTIONS)})"
-DESCRIPTION_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (periods: {list_values(VALS_VIEWPERIODDICT_SOLRFIELDS)})"
+DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period [in full years: 5, 10, 20, al(l)]"
+DESCRIPTION_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (use integer: 1: lastweek,  2: lastmonth, 3: last6months, 4: last12months,  5: lastcalendaryear)"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)."
 DESCRIPTION_PAGELIMIT = "Number of pages of a document to return"
 DESCRIPTION_PAGEOFFSET = "Starting page to return for this document as an offset from the first page.)"
@@ -365,8 +368,8 @@ TITLE_LIMIT = "Document return limit"
 TITLE_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 TITLE_MOREINFO = "Return extended information"
 TITLE_MORELIKETHIS = "Enter an article ID to Find similar documents"
-TITLE_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (years: {list_values(VALS_YEAROPTIONS)})"
-TITLE_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (periods: {list_values(VALS_VIEWPERIODDICT_SOLRFIELDS)})"
+TITLE_MOST_CITED_PERIOD = f"Show articles cited at least this many times during this time period"
+TITLE_MOST_VIEWED_PERIOD = f"Show articles viewed during this period"
 TITLE_OFFSET = "Document return offset"
 TITLE_PAGELIMIT = "Number pages to return"
 TITLE_PAGEOFFSET = "Relative page number (1 is the first) to return"

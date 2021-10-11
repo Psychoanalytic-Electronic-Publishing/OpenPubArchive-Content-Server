@@ -115,7 +115,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 70)
+        assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 80)
   
     def test_search_facets2b(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=(cooper AND cooper, steven h. OR (cooper, steven))')
@@ -125,7 +125,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 70)
+        assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 80)
 
     def test_search_author_forward(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author="Moshe Spero"')

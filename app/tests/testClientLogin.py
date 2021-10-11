@@ -20,14 +20,14 @@ import unittest
 from starlette.testclient import TestClient
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_BASED_CLIENT_IDS, AUTH_KEY_NAME
 
 from main import app
 client = TestClient(app)
 
 # Login!
 sessID, headers, session_info = session_id = test_login()
-
+    
 class TestClientLogin(unittest.TestCase):
 
     def test_client_login_document_access(self):

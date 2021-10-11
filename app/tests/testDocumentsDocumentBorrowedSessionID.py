@@ -40,9 +40,11 @@ class TestDocumentsDocumentBorrowedSessionID(unittest.TestCase):
     def test_2_get_document_another_user(self):
         # login
         # session_info, pads_session_info = opasDocPermissions.pads_get_session()
+        from localsecrets import AUTH_KEY_NAME
         session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=headers["client-id"])       
         session_id = session_info.session_id        
         headers["client-session"] = session_id
+        headers[AUTH_KEY_NAME] = "true"
         full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}')
         response = requests.get(full_URL, headers=headers)
         r = response.json()

@@ -225,6 +225,7 @@ def get_session_info(request: Request,
                      user=None):
     """
     Return a sessionInfo object with all of that info, and a database handle
+    Note that non-logged in sessions are not stored in the database
 
     Get session info accesses the DB per the session_id to see if the session exists.
 
@@ -238,11 +239,17 @@ def get_session_info(request: Request,
            ii) It saves the session
         b) If it's there already: (Repeatable, quickest path)
            i) Done, returns it.  No update.  
+
+    New 2021-10-07 - Header will indicate (from client) if the user is logged in, saving queries to PaDS
+                     (Note The server still checks all permissions on full-text returns)
+
     """
+    caller_name = "getSessionInfo"
     ocd = opasCentralDBLib.opasCentralDB()
     if session_id is not None and session_id != opasConfig.NO_SESSION_ID:
         ts = time.time()
         session_info = ocd.get_session_from_db(session_id)
+        user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, caller_name=caller_name)
         if session_info is None:
             in_db = False
             # logger.warning(f"Session info for {session_id} not found in db.  Getting from authserver (will save on server)")
@@ -255,8 +262,8 @@ def get_session_info(request: Request,
             # success, session_info = ocd.save_session(session_id, session_info)
         else:
             in_db = True
-            # if they weren't authenticated, or the session time is expired, check again
-            if session_info.authenticated == False or session_info.session_expires_time < datetime.today(): # not logged in
+            # if they weren't authenticated, but headers say they are, check again
+            if session_info.authenticated == False and user_logged_in_bool: # or session_info.session_expires_time < datetime.today(): # not logged in
                 # better check if now they are logged in
                 # session info is saved in get_authserver_session_info if logged in  
                 session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
@@ -266,11 +273,16 @@ def get_session_info(request: Request,
                 # success, session_info = ocd.save_session(session_id, session_info)
                 logger.debug(f"getSessionInfo: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/14 removed  Server Session Info: {session_info} for brevity
             else:
-                ## important - because they "were" logged in, we will return a session timed out error
-                ## so don't refresh it...server likes to know they were logged in
-                remaining_time = session_info.session_expires_time - datetime.today()
-                remaining_time_hrs = remaining_time.seconds // 3600
-                logger.info(f"User was authenticated per server database record.  Session {session_id}. Expires: {remaining_time_hrs} hrs ({session_info.session_expires_time}). DB SessionInfo: {session_info}")
+                # note that user_logged_in_bool can be None
+                if session_info.authenticated == True and user_logged_in_bool == False: # or session_info.session_expires_time < datetime.today(): # not logged in
+                    # they are no longer logged in
+                    session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
+                else:
+                    ## important - because they "were" logged in, we will return a session timed out error
+                    ## so don't refresh it...server likes to know they were logged in
+                    remaining_time = session_info.session_expires_time - datetime.today()
+                    remaining_time_hrs = remaining_time.seconds // 3600
+                    logger.info(f"User was authenticated per server database record.  Session {session_id}. Expires: {remaining_time_hrs} hrs ({session_info.session_expires_time}). DB SessionInfo: {session_info}")
 
         if opasConfig.LOG_CALL_TIMING:
             logger.debug(f"Get/Save session info response time: {time.time() - ts}")       
@@ -546,6 +558,7 @@ def database_who_cited( publication_period: int=None,   # Limit the considered p
     True
 
     """
+    
     cited_in_period = opasConfig.normalize_val(cited_in_period, opasConfig.VALS_YEAROPTIONS, default='5')
 
     if sort is None:
@@ -583,7 +596,10 @@ def database_who_cited( publication_period: int=None,   # Limit the considered p
                                              request = request                                             
                                             )
     except Exception as e:
-        logger.error(f"Who Cited Search error {e}")
+        ret_status_msg = f"Who Cited Search error {e}"
+        ret_val = {}
+        ret_status = (200, ret_status_msg) 
+        logger.error(ret_status_msg)
         
     return ret_val, ret_status   
 
@@ -931,7 +947,8 @@ def documents_get_abstracts(document_id,
                             limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
                             req_url: str=None, 
                             offset=0,
-                            session_info=None
+                            session_info=None,
+                            request=None
                             ):
     """
     Returns an abstract or summary for the specified document
@@ -977,9 +994,23 @@ def documents_get_abstracts(document_id,
                                                  limit=limit,   
                                                  offset=offset, 
                                                  req_url=req_url,
-                                                 session_info=session_info
+                                                 session_info=session_info,
+                                                 request=request
                                                  )
 
+        try:
+            if opasFileSupport.file_exists(document_id=document_id, 
+                                           year=document_list.documentList.responseSet[0].year,
+                                           ext=localsecrets.PDF_ORIGINALS_EXTENSION, 
+                                           path=localsecrets.PDF_ORIGINALS_PATH):
+                document_list.documentList.responseSet[0].pdfOriginalAvailable = True
+            else:
+                document_list.documentList.responseSet[0].pdfOriginalAvailable = False
+        except Exception as e:
+            logger.debug(f"pdfOriginalAvailable check error: {e}")
+            #default is false
+            #document_list.documentList.responseSet[0].pdfOriginalAvailable = False          
+        
         if not isinstance(document_list, models.ErrorReturn):
             documents = models.Documents(documents = document_list.documentList)
         else:
@@ -1078,7 +1109,8 @@ def documents_get_document(document_id,
                                                 )
 
     document_list, ret_status = opasPySolrLib.search_text_qs(solr_query_spec,
-                                                             session_info=session_info, 
+                                                             session_info=session_info,
+                                                             get_full_text=True, 
                                                              request=request
                                                              )
 

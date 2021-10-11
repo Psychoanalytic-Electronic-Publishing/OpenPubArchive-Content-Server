@@ -81,19 +81,20 @@ class TestDocumentsAbstracts(unittest.TestCase):
         assert(response_info["fullCount"] == 36)
         
     def test_2a_get_abstract_permissions(self):
-        from localsecrets import PADS_TEST_ID, PADS_TEST_PW
+        from localsecrets import PADS_TEST_ID, PADS_TEST_PW,  AUTH_KEY_NAME
         # login
         full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={"test1"}&password={PADS_TEST_PW}')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         headers["client-session"] = r["session_id"]
+        headers[AUTH_KEY_NAME] = "true"
 
-        full_URL = base_plus_endpoint_encoded(f'/v2/Database/Search/?abstract=true&formatrequested=XML&fulltext1=art_qual%3A(%22PAQ.085.0885A%22)&synonyms=false')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/PAQ.085.0885A')
         response = requests.get(full_URL, headers=headers)
         r1 = response.json()
-        response_info = r1["documentList"]["responseInfo"]
-        response_set = r1["documentList"]["responseSet"]
-        doc_of_interest = r1["documentList"]["responseSet"][4]
+        response_info = r1["documents"]["responseInfo"]
+        response_set = r1["documents"]["responseSet"]
+        doc_of_interest = r1["documents"]["responseSet"][0]
         accessLimited = doc_of_interest["accessLimited"]
         assert (accessLimited == False)
             

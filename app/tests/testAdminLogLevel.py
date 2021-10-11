@@ -11,7 +11,7 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, sessio
 
 # Login!
 sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ID2, password=localsecrets.PADS_TEST_PW2)
-
+    
 class TestAdminLogLevel(unittest.TestCase):
     """
     Note: tests are performed in alphabetical order, hence the function naming

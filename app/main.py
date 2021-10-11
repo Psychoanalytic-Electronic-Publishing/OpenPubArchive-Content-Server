@@ -6,8 +6,8 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1002/v2.1.63" # semver versioning now added after date.
-__status__      = "Beta"
+__version__     = "2021.1011/v2.1.65" # semver versioning now added after date.
+__status__      = "Limit_Test_Branch Test"
 
 """
 Main entry module for PEP version of OPAS API
@@ -630,11 +630,15 @@ async def admin_reports(response: Response,
          
        For document-view-log matchstr does a regex search of the document type, e.g.,
          PDF
- 
-       Note as the examples above, you don't need to include special regex wildcards (it matches anywhere in the text)
+         
+       Note as the examples above, you don't need to include special regex wildcards
+         (it matches anywhere in the text)
 
     ## Potential Errors
-       N/A
+       Note document_views_report returns the current RDS database values, not the values
+         that are in the Solr database as updated during the latest Solr update. values
+         match vw_reports_document_views
+         
 
     """
     opasDocPermissions.verify_header(request, "Reports") # for debugging client call
@@ -2359,7 +2363,8 @@ async def database_glossary_search_v2(response: Response,
                                     limit=limit,
                                     offset=offset,
                                     client_session=client_session,
-                                    client_id=client_id
+                                    client_id=client_id,
+                                    override_endpoint_id=opasCentralDBLib.API_DATABASE_GLOSSARY_SEARCH
                                     )
     if ret_val != {}:
         matches = len(ret_val.documentList.responseSet)
@@ -2419,7 +2424,8 @@ async def database_search(response: Response,
                               limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                               offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                               client_id:int=Depends(get_client_id), 
-                              client_session:str= Depends(get_client_session)
+                              client_session:str= Depends(get_client_session),
+                              override_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH
                              ):
     """
     ## Function
@@ -2573,7 +2579,7 @@ async def database_search(response: Response,
 
     item_of_interest = opasAPISupportLib.get_query_item_of_interest(solrQuery=solr_query_spec.solrQuery)
     
-    ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
+    ocd.record_session_endpoint(api_endpoint_id=override_endpoint_id, # 20211008 - defaults to this search call (41)
                                 session_info=session_info,
                                 item_of_interest=item_of_interest, 
                                 params=request.url._url,
@@ -2929,7 +2935,8 @@ async def database_morelikethis(response: Response,
                                     limit=limit,
                                     offset=offset,
                                     client_id=client_id,
-                                    client_session=client_session
+                                    client_session=client_session,
+                                    override_endpoint_id=opasCentralDBLib.API_DATABASE_MORELIKETHIS
                                     )
     return ret_val
 
@@ -2960,11 +2967,12 @@ def database_mostviewed(response: Response,
     ## Function
        <b>Return a list of documents which are the most downloaded (viewed)</b>
 
-            viewperiod = 0: lastcalendaryear
+            viewperiod = 0: lastcalendaryear (also 5, preferred)
                          1: lastweek
                          2: lastmonth
                          3: last6months
-                         4: last12months                                
+                         4: last12months
+                         5: lastcalendaryear
 
     ## Return Type
        models.DocumentList (or returns response if a download is requested )
@@ -3064,7 +3072,8 @@ def database_mostviewed(response: Response,
                                                                               offset=offset,
                                                                               download=download, 
                                                                               mlt_count=similarcount, 
-                                                                              session_info=session_info
+                                                                              session_info=session_info,
+                                                                              request=request
                                                                               )
 
             if ret_val is None:
@@ -3210,7 +3219,8 @@ def database_mostcited(response: Response,
                                                                          offset=offset,
                                                                          download=False, 
                                                                          mlt_count=similarcount, 
-                                                                         session_info=session_info
+                                                                         session_info=session_info,
+                                                                         request=request
                                                                          )
 
         if isinstance(ret_val, models.ErrorReturn): 
@@ -3661,7 +3671,8 @@ def database_who_cited_this(response: Response,
                                                                 offset=offset,
                                                                 download=False, 
                                                                 mlt_count=similarcount, 
-                                                                session_info=session_info
+                                                                session_info=session_info,
+                                                                request=request
                                                                 )
 
     if isinstance(ret_val, models.ErrorReturn): 
@@ -4493,6 +4504,8 @@ def documents_abstracts(response: Response,
 
     try:
         # authenticated = opasAPISupportLib.is_session_authenticated(request, response)
+        # make sure it's upper case for consistency (added 2021-10-10)
+        documentID = documentID.upper()
         ret_val = opasAPISupportLib.documents_get_abstracts(document_id=documentID,
                                                             ret_format=return_format,
                                                             #authenticated=authenticated,
@@ -4501,7 +4514,8 @@ def documents_abstracts(response: Response,
                                                             limit=limit,
                                                             offset=offset,
                                                             sort=sort,
-                                                            session_info=session_info
+                                                            session_info=session_info,
+                                                            request=request
                                                             )
     except Exception as e:
         response.status_code=httpCodes.HTTP_400_BAD_REQUEST
@@ -4781,6 +4795,8 @@ def documents_document_fetch(response: Response,
             if translations == True:
                 specialoptions = specialoptions | 2 # add flag to return translations
 
+            # make sure it's upper case for consistency in logging (added 2021-10-10)
+            documentID = documentID.upper()
             ret_val = opasAPISupportLib.documents_get_document( documentID, 
                                                                 solr_query_params,
                                                                 ret_format=return_format,
@@ -4938,6 +4954,8 @@ def documents_downloads(response: Response,
                                              secret=localsecrets.S3_SECRET,
                                              root=localsecrets.PDF_ORIGINALS_PATH) # important to use this path, not the XML one!
 
+    # make sure it's upper case for consistency (added 2021-10-10)
+    documentID = documentID.upper()
     filename, status = opasPySolrLib.prep_document_download( documentID,
                                                              ret_format=file_format,
                                                              base_filename="opasDoc",
@@ -5422,7 +5440,16 @@ if __name__ == "__main__":
     print (f"Version: {__version__}")
     import fastapi
     print (f"FastAPI Version {fastapi.__version__}")
-    
-    uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=True, log_level="warning")
+    try:
+        if localsecrets.DEBUG_TRACE == 1:
+            print ("Debug on")
+            uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=True, log_level="warning")
+        else:
+            print ("Debug off")
+            uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=False, log_level="warning")
+    except:
+        print ("Debug off, DEBUG_TRACE not defined")
+        uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=False, log_level="warning")
+        
     # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
     print ("Now we're exiting...")

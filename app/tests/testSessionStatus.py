@@ -41,10 +41,10 @@ class TestSessionStatus(unittest.TestCase):
         print (r)
         # assert(r["user_id"] == 0)
         try:
-            if r["user_type"] != "Group": # when ip login is enabled
-                assert(r["authenticated"] == False) # was not ip authenticated
+            if r.get("user_type") != "Group": # when ip login is enabled
+                assert(r.get("authenticated") == False or r.get("authenticated") is None) # was not ip authenticated
             else:
-                assert(r["authenticated"] == True) # was ip authenticated
+                assert(r.get("authenticated") == True) # was ip authenticated
         except Exception as e:
             # must not be IP authenticated (and not logged in)
             print (f"PaDS exception: {e}")
@@ -57,7 +57,7 @@ class TestSessionStatus(unittest.TestCase):
         r = response.json()
         print (r)
         # login 
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}&client-id=4')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         print (r)

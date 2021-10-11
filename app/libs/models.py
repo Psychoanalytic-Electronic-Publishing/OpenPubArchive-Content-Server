@@ -311,6 +311,7 @@ class DocumentListItem(BaseModel):
     pdfOriginalAvailable: bool = Field(False, title="", description="")
     # these are not all currently used
     accessClassification: str = Field(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
+    accessChecked: bool = Field(False, title="Access was checked. If false, accessLimited value is just defaulted to False")
     accessLimited: bool = Field(True, title="Access is limited, preventing full-text return")
     accessLimitedCode: int = Field(None, title="If an error code is returned from the server, pass it back here for ease of client processing")
     accessLimitedReason: str = Field(None, title="Explanation of user's access to this")
