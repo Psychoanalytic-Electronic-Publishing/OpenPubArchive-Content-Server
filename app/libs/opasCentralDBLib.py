@@ -299,28 +299,32 @@ class opasCentralDB(object):
         Tested in main instance docstring
         """
         fname = "end_session"
-        ret_val = None
-        self.open_connection(caller_name=fname) # make sure connection is open
-        if self.db is not None:
-            cursor = self.db.cursor()
-            sql = """UPDATE api_sessions
-                     SET session_end = %s
-                     WHERE session_id = %s
-                  """
-            success = cursor.execute(sql,
-                                     (session_end,
-                                      session_id
-                                      )                                     
-                                    )
-            self.db.commit()
-            cursor.close()
-            if success:
-                ret_val = True
-            else:
-                logger.warning(f"Could not record close session per token={sessionToken} in DB")
-                ret_val = False
+        ret_val = False
+        session_info = self.get_session_from_db(session_id)
+        if session_info is not None:
+            self.open_connection(caller_name=fname) # make sure connection is open
+            if self.db is not None:
+                if session_id is not None:
+                    cursor = self.db.cursor()
+                    sql = """UPDATE api_sessions
+                             SET session_end = %s
+                             WHERE session_id = %s
+                          """
+                    success = cursor.execute(sql,
+                                             (session_end,
+                                              session_id
+                                              )                                     
+                                            )
+                    self.db.commit()
+                    cursor.close()
+                    if success:
+                        ret_val = True
+                    else:
+                        logger.warning(f"Could not record close session per token={session_id} in DB")
+                        ret_val = False
+    
+            self.close_connection(caller_name=fname) # make sure connection is closed
 
-        self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
 
     def get_productbase_data(self):

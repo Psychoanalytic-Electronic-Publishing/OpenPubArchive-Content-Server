@@ -965,7 +965,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                    session_info=None,
                    solr_core="pepwebdocs", 
                    get_full_text=False, # LIMIT_TEST
-                   request=None #pass around request object, needed for ip auth
+                   request=None, #pass around request object, needed for ip auth
+                   caller_name="search_text_qs"
                    ):
     """
     Full-text search, via the Solr server api.
@@ -978,8 +979,13 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
     # count_anchors = 0
-    user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, caller_name="search_text_qs")
-    
+    try:
+        session_id = session_info.session_id
+        user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name + "/ search_text_qs")
+    except Exception as e:
+        logger.warning("No Session info supplied to search_text_qs")
+        # mark as not logged in
+        user_logged_in_bool = False
 
     if 1: # just to allow folding
         if solr_query_spec.solrQueryOpts is None: # initialize a new model
@@ -1235,7 +1241,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                 
     else: #  search was ok
         try:
-            logger.info(f"Search Ok. Result Size:{results.hits}; Search:{solr_query_spec.solrQuery.searchQ}; Filter:{solr_query_spec.solrQuery.filterQ}")
+            logger.warning(f"Ok. Result Size:{results.hits}; Search:{solr_query_spec.solrQuery.searchQ}; Filter:{solr_query_spec.solrQuery.filterQ}")
             scopeofquery = solr_query_spec.solrQuery # [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ, solr_query_spec.solrQuery.facetQ]
     
             if ret_status[0] == 200: 
@@ -1280,6 +1286,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)
                     # NEW 20211008 - If logged in, check permissions for full-text, or an abstract request with one return
                     documentListItem.accessChecked = False # default anyway, but to make sure it always exists
+                    documentListItem.accessLimited = True  # default is True anyway, but to make sure it always exists
                     if user_logged_in_bool and (get_full_text or (solr_query_spec.abstractReturn and record_count == 1)): # LIMIT_TEST_DONT_DO_THIS: # record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
                         access = opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
                                                                      classification=documentListItem.accessClassification, 
@@ -1302,7 +1309,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             documentListItem.accessLimitedPubLink = access.accessLimitedPubLink
                         else:
                             logger.error("getaccesslimitations: Why is access none?")
-
+                            
                     documentListItem.score = result.get("score", None)               
                     try:
                         text_xml = results.highlighting[documentID].get("text_xml", None)
@@ -1381,7 +1388,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # ########################################################################
                     # This is the room where where full-text return HAPPENS
                     # ########################################################################
-                    if solr_query_spec.fullReturn and not documentListItem.accessLimited and not offsite:
+                    if solr_query_spec.fullReturn and (documentListItem.accessChecked and documentListItem.accessLimited == False) and not offsite:
                         documentListItem.term = f"SearchHits({solr_query_spec.solrQuery.searchQ})"
                         documentListItem = get_fulltext_from_search_results(result=result,
                                                                             text_xml=text_xml,
@@ -2498,7 +2505,7 @@ def prep_document_download(document_id,
                                                              doi=doi,
                                                              fulltext_request=True
                                                             )
-                if access.accessLimited != True:
+                if access.accessChecked == True and access.accessLimited != True:
                     try:
                         heading = opasxmllib.get_running_head( source_title=art_info.get("art_sourcetitleabbr", ""),
                                                                pub_year=pub_year,

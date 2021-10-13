@@ -2087,7 +2087,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 # this is part of a document, we should retrieve the parent info
                 top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
                 if top_level_doc is not None:
-                    logger.warning(f"Tracing Info - Record {para_art_id} was child...retrieving and merging parent info {top_level_doc}")
+                    logger.info(f"Record {para_art_id} was child...retrieving and merging parent info {top_level_doc}")
                     documentListItem = merge_documentListItems(documentListItem, top_level_doc)
     
             # don't set the value, if it's None, so it's not included at all in the pydantic return

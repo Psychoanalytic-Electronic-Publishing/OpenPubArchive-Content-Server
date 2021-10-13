@@ -30,7 +30,7 @@ class TestSecurityFunctions(unittest.TestCase):
             # PaDS ID provided has peparchive!
             # 20211008 Access to items in result list is no longer checked...only when one item is returned.
             assert(r['documentList']['responseSet'][0].get("accessChecked", None) == False)
-            assert(r['documentList']['responseSet'][0].get("accessLimited", None) == True)
+            #assert(r['documentList']['responseSet'][0].get("accessLimited", None) == True)
 
     def test_1a_timing_Pads(self):
         if session_id is None:
