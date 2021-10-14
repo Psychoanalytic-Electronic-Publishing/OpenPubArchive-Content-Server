@@ -9,6 +9,7 @@ Version: 2020-08-24
 import os.path
 import sys
 import urllib
+import requests
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
@@ -71,6 +72,9 @@ def base_plus_endpoint_encoded(endpoint, base=base_api):
 
 UNIT_TEST_CLIENT_ID = "4"
 
+ip = requests.get('https://api.ipify.org').content.decode('utf8')
+myTestSystemIP = ip
+
 def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TEST_PW, client_id=UNIT_TEST_CLIENT_ID):
     pads_session_info = opasDocPermissions.authserver_login(username=username, password=password)
     session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id=UNIT_TEST_CLIENT_ID, pads_session_info=pads_session_info)
@@ -78,7 +82,8 @@ def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TE
     sessID = session_info.session_id
     headers = {f"client-session":f"{sessID}",
                "client-id": client_id, 
-               "Content-Type":"application/json",
+               "Content-Type":"application/json", 
+               "x-forwarded-for-PEP": myTestSystemIP,
                localsecrets.API_KEY_NAME: localsecrets.API_KEY}
     if session_info.is_valid_login == True:
         headers[localsecrets.AUTH_KEY_NAME] = "true"
@@ -98,8 +103,15 @@ if 0:
     print (f"unitTestConfig harness fetched session-id {session_id} (not logging in)")
 else:
     session_id = None
-    headers = {"client-session":None,
-               "client-id": UNIT_TEST_CLIENT_ID,
-               "Content-Type":"application/json",
-               localsecrets.API_KEY_NAME: localsecrets.API_KEY}
+    if myTestSystemIP is not None:
+        headers = {f"client-session":None,
+                   "client-id": UNIT_TEST_CLIENT_ID, 
+                   "Content-Type":"application/json", 
+                   "x-forwarded-for-PEP": myTestSystemIP,
+                   localsecrets.API_KEY_NAME: localsecrets.API_KEY}
+    else:
+        headers = {"client-session":None,
+                   "client-id": UNIT_TEST_CLIENT_ID,
+                   "Content-Type":"application/json",
+                   localsecrets.API_KEY_NAME: localsecrets.API_KEY}
     

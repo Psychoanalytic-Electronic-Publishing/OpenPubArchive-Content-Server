@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1013/v2.1.68" # semver versioning now added after date.
+__version__     = "2021.1014/v2.1.69" # semver versioning now added after date.
 __status__      = "Limit_Test_Branch Test"
 
 """
@@ -349,16 +349,17 @@ def get_client_session(response: Response,
     if client_session == 'None': # Not sure where this is coming from as string, but fix it.
         client_session = None
         
-    client_id = find_client_id(request, response) # client_id == 0 to force it to search header etc.
-    session_id = opasDocPermissions.find_client_session_id(request, response, client_session)
+    if client_session is not None:
+        session_id = client_session
+    else:
+        session_id = opasDocPermissions.find_client_session_id(request, response, client_session)
         
-    # client_id = get_client_id(response, request, 0)
     # if there's no client session, get a session_id from PaDS without logging in
     if session_id is None:
         # get one from PaDS, without login info
         # session_info, pads_session_info = opasDocPermissions.pads_get_session(client_id=client_id)
-        logger.debug(f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID")
         # New...let's try to isolate when this happens by creating an error.  We get a session from PaDS, but not if there's no client ID.
+        client_id = find_client_id(request, response) # client_id == 0 to force it to search header etc.
         if client_id == opasConfig.NO_CLIENT_ID:
             # No client id, not allowed to get session.
             msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR + f" URL: {request.url._url} Headers:{request.headers} "
@@ -368,6 +369,7 @@ def get_client_session(response: Response,
                 detail=ERR_MSG_CALLER_IDENTIFICATION_ERROR
             )
         else:
+            logger.warning(f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID")
             session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id,
                                                                           client_id=client_id,
                                                                           request=request)
@@ -393,7 +395,7 @@ def get_client_session(response: Response,
         if session_id == "":
             session_id = "DUMMYA01234567890"
         else:
-            msg = f"Client:[{client_id}] SessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
+            msg = f"SessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
             if re.search("GW\.000|SE\.000", request.url._url) is None:
                 logger.error(msg)
             raise HTTPException(
