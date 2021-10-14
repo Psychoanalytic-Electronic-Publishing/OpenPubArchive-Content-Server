@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1013/v2.1.67" # semver versioning now added after date.
+__version__     = "2021.1013/v2.1.68" # semver versioning now added after date.
 __status__      = "Limit_Test_Branch Test"
 
 """
@@ -300,15 +300,15 @@ def find_client_id(request: Request,
         if client_id is not None:
             ret_val = client_id
             msg = f"client-id from header: {ret_val} "
-            logger.info(msg)
+            logger.debug(msg)
         elif client_id_qparam is not None:
             ret_val = client_id_qparam
             msg = f"client-id from param: {ret_val} "
-            logger.info(msg)
+            logger.debug(msg)
         elif client_id_cookie is not None:
             ret_val = client_id_cookie
             msg = f"client-id from cookie: {ret_val} "
-            logger.info(msg)
+            logger.debug(msg)
         #else:
             #ret_val = opasConfig.NO_CLIENT_ID # no client id (default)
     else:
@@ -5287,7 +5287,7 @@ async def documents_image_fetch(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         http://localhost:9100/v1/Documents/Image/AIM.036.0275A.FIG001/
+         http://localhost:9100/v2/Documents/Image/AIM.036.0275A.FIG001/
 
     ## Notes
         N/A

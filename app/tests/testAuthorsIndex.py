@@ -20,13 +20,13 @@ class TestAuthorsIndex(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        assert(r['authorIndex']['responseSet'][0]['publicationsURL'][0:33] == '/v1/Authors/Publications/tuckett,')
+        assert(r['authorIndex']['responseSet'][0]['publicationsURL'][0:33] == '/v2/Authors/Publications/tuckett,')
        
         full_URL = base_plus_endpoint_encoded('/v2/Authors/Index/Maslo/')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        assert(r['authorIndex']['responseSet'][0]['publicationsURL'] == '/v1/Authors/Publications/maslow, a. h./')
+        assert(r['authorIndex']['responseSet'][0]['publicationsURL'] == '/v2/Authors/Publications/maslow, a. h./')
 
         
         

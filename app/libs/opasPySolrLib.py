@@ -294,7 +294,7 @@ def authors_get_author_info(author_partial,
         for key, value in facet_pairs:
             if value > 0:
                 item = models.AuthorIndexItem(authorID = key, 
-                                              publicationsURL = "/v1/Authors/Publications/{}/".format(key),
+                                              publicationsURL = "/v2/Authors/Publications/{}/".format(key),
                                               publicationsCount = value,
                                               ) 
                 author_index_items.append(item)

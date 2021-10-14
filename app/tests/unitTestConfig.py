@@ -85,7 +85,7 @@ def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TE
     
     return sessID, headers, session_info
 
-if 1:
+if 0:
     # session_info, pads_session_info = pads_get_session(client_id=UNIT_TEST_CLIENT_ID)
     session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=UNIT_TEST_CLIENT_ID)
     session_id = session_info.session_id
@@ -96,4 +96,10 @@ if 1:
 
 
     print (f"unitTestConfig harness fetched session-id {session_id} (not logging in)")
-
+else:
+    session_id = None
+    headers = {"client-session":None,
+               "client-id": UNIT_TEST_CLIENT_ID,
+               "Content-Type":"application/json",
+               localsecrets.API_KEY_NAME: localsecrets.API_KEY}
+    

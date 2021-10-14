@@ -2025,6 +2025,67 @@ class opasCentralDB(object):
             self.close_connection(caller_name=fname) # make sure connection is open
         
         return ret_val
+    
+    #----------------------------------------------------------------------------------------
+    def temp_pads_log_call(self,
+                           caller,
+                           reason, 
+                           session_id,
+                           pads_call, # PaDS URL
+                           ip_address=None, 
+                           params=None,  # full url
+                           api_endpoint_id=0, 
+                           return_status_code=0,
+                           status_message=None):
+        """
+        Track pads calls
+        2020-08-25: Added api_endpoint_method
+        
+        """
+        fname = "track_pads_calls"
+        ret_val = None
+        if not self.open_connection(caller_name=fname): # make sure connection is open
+            logger.error("record_session_endpoint could not open database")
+        else:
+            # Workaround for None in session id
+            if session_id is None:
+                session_id = opasConfig.NO_SESSION_ID # just to record it
+                
+            if self.db is not None:  # shouldn't need this test
+                cursor = self.db.cursor()
+                sql = """INSERT INTO 
+                           temp_trackpads_calls(session_id,
+                                                reason,
+                                                caller,
+                                                pads_call,
+                                                ip_address,
+                                                params,
+                                                api_endpoint_id,
+                                                return_status_code
+                                                )
+                                                VALUES 
+                                                (%s, %s, %s, %s, %s, %s, %s, %s)"""
+                try:
+                    ret_val = cursor.execute(sql, (session_id,
+                                                   reason,
+                                                   caller,
+                                                   pads_call,
+                                                   ip_address,
+                                                   params, 
+                                                   api_endpoint_id, 
+                                                   return_status_code,
+                                                  ))
+                    self.db.commit()
+                    cursor.close()
+                except pymysql.IntegrityError as e:
+                    logger.error(f"Integrity Error {e} logging endpoint {api_endpoint_id} for session {session_id}.")
+                except Exception as e:
+                    logger.error(f"Error logging PaDS call endpoint {api_endpoint_id} for session {session_id}. Error: {e}")
+            
+            self.close_connection(caller_name=fname) # make sure connection is closed
+
+        return ret_val
+
 
 #================================================================================================================================
 
