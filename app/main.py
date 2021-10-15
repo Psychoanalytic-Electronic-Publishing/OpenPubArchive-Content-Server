@@ -6,8 +6,8 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1014/v2.1.69" # semver versioning now added after date.
-__status__      = "Limit_Test_Branch Test"
+__version__     = "2021.1015/v2.1.70" # semver versioning now added after date.
+__status__      = "Beta"
 
 """
 Main entry module for PEP version of OPAS API

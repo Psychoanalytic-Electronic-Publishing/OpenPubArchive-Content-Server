@@ -66,6 +66,10 @@ VOL_COUNT_VIDEOS = VIDEOSOURCECOUNT # no actual volumes for videos, just the sou
 VOL_COUNT_VIDEOS_PEPVS = 4
 VOL_COUNT_IJPSP = 11 #  source code ended, 11 should always be correct
 
+def get_session_info_for_test():
+    session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=UNIT_TEST_CLIENT_ID)
+    return session_info
+
 def base_plus_endpoint_encoded(endpoint, base=base_api):
     ret_val = base + endpoint
     return ret_val

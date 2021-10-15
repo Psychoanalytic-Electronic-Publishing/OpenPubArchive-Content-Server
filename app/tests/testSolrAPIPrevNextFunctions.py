@@ -9,7 +9,7 @@ import requests
 import opasAPISupportLib
 from opasCentralDBLib import opasCentralDB
 import unitTestConfig
-from unitTestConfig import base_plus_endpoint_encoded, headers, session_id, session_info
+from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestSolrAPIPrevNextFunctions(unittest.TestCase):
     """

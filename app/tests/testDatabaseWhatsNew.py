@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 import unittest
 import requests
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_info
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 
 class TestDatabaseWhatsNew(unittest.TestCase):
     """
