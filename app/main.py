@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1015/v2.1.70" # semver versioning now added after date.
+__version__     = "2021.1020/v2.1.71" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -2035,6 +2035,19 @@ async def database_extendedsearch(response: Response,
          
            with body parameters:
            
+           Related query without main document IJP.078.0335A example
+           (Added this example since the NOT within a field spec doesn't work in the regular
+            query endpoints, but works here. The problem appears to be within the
+            pysolr/solrpy library)
+           {
+             "solrcore": "pepwebdocs",
+             "solrquery": "art_qual:(IJP.076.0019A)", 
+              "solrargs": {
+                 "fq": "art_id:(NOT IJP.078.0335A)",
+                 "fl": "art_id, art_title, art_title_xml, art_subtitle_xml, art_author_id, art_authors, art_citeas_xml, art_info_xml, art_sourcecode, art_sourcetitleabbr, art_sourcetitlefull, art_sourcetype, art_level, para_art_id, parent_tag, para, art_vol, art_type, art_vol_title, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_lang, art_doi, art_issn, art_isbn, art_origrx, art_qual, art_kwds, art_cited_all, art_cited_5, art_cited_10, art_cited_20, art_views_lastcalyear, art_views_last1mos, art_views_last6mos, art_views_last12mos, art_views_lastweek, reference_count, art_fig_count, art_tbl_count, art_kwds_count, art_words_count, art_citations_count, art_ftns_count, art_notes_count, art_dreams_count, file_last_modified, file_classification, timestamp, score, id"
+              }
+           }           
+           
            {
              "solrcore":"pepwebdocs",
              "solrquery": "art_level:1",
@@ -2756,7 +2769,7 @@ def database_searchanalysis(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/SmartSearch/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"]) 
+@app.get("/v2/Database/SmartSearch/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_SMARTSEARCH) 
 async def database_smartsearch(response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
@@ -2883,7 +2896,7 @@ async def database_smartsearch(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/MoreLikeThis/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"]) 
+@app.get("/v2/Database/MoreLikeThis/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_MORELIKETHIS) 
 async def database_morelikethis(response: Response, 
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 morelikethis: str=Query(None, title=opasConfig.TITLE_MORELIKETHIS, description=opasConfig.DESCRIPTION_MORELIKETHIS),
@@ -2958,6 +2971,104 @@ async def database_morelikethis(response: Response,
                                     client_session=client_session,
                                     override_endpoint_id=opasCentralDBLib.API_DATABASE_MORELIKETHIS
                                     )
+    return ret_val
+
+#---------------------------------------------------------------------------------------------------------
+@app.get("/v2/Database/RelatedToThis/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_RELATEDTOTHIS) 
+async def database_related_to_this(response: Response, 
+                                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                                   relatedToThis: str=Query(None, title=opasConfig.TITLE_RELATEDTOTHIS, description=opasConfig.DESCRIPTION_RELATEDTOTHIS),
+                                   relatedToSchemaField: str=Query("art_qual", title=opasConfig.TITLE_RELATEDTOTHIS, description=opasConfig.DESCRIPTION_RELATEDTOTHIS),
+                                   sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                                   abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
+                                   formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                                   limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                                   client_id:int=Depends(get_client_id), 
+                                   client_session:str= Depends(get_client_session)
+                                  ):
+    """
+    ## Function
+
+    Convenience function for sending a single relatedToDocument article ID and returning related documents as determined by the relatedrx (art_qual) field.
+    All related articles other than the relatedToDocument will be returned in the list.
+
+    ## Return Type
+       models.DocumentList
+
+    ## Status
+       Status: Working
+
+    ## Sample Call
+       N/A
+
+    ## Notes
+       N/A
+       
+    ## Potential Errors
+       N/A
+
+    """
+    ts = time.time()
+    
+    ret_val = None
+    caller_name = "[v2/Database/RelatedDocuments]"
+    opasDocPermissions.verify_header(request, "RelatedDocuments") # for debugging client call
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
+    
+    try:
+        solr_query_spec = opasQueryHelper.parse_search_query_parameters(forced_searchq=f"art_id:{relatedToThis}",
+                                                                        forced_filterq=None,
+                                                                        return_field_set=opasConfig.DOCUMENT_ITEM_TOC_FIELDS,
+                                                                        sort=sort, 
+                                                                        req_url = request.url._url
+                                                                        )
+    
+        ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                             extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                             session_info=session_info, 
+                                             request=request,
+                                             caller_name=caller_name
+                                             )
+    except Exception as e:
+        logger.error(f"Exception: {e}")
+    else:
+        try:
+            responseSet = ret_val.documentList.responseSet
+            response = responseSet[0]
+            related_document_id = response.relatedrx
+            
+            solr_query_spec = opasQueryHelper.parse_search_query_parameters(forced_searchq=f"{relatedToSchemaField}:{related_document_id}",
+                                                                            forced_filterq=f"NOT art_id:{relatedToThis}",
+                                                                            return_field_set=opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
+                                                                            abstract_requested=abstract,
+                                                                            req_url = request.url._url
+                                                                            )
+        
+            ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                                 extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                                 limit=limit,
+                                                 offset=offset,
+                                                 session_info=session_info, 
+                                                 request=request,
+                                                 caller_name=caller_name
+                                                 )
+
+            #status_code = httpCodes.HTTP_200_OK
+            #status_message = opasCentralDBLib.API_STATUS_SUCCESS
+            #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_RELATEDTOTHIS,
+                                        #session_info=session_info, 
+                                        #params=request.url._url,
+                                        #item_of_interest=f"relatedToDocumentID", 
+                                        #return_status_code = status_code,
+                                        #status_message=status_message
+                                        #)
+            
+        except Exception as e:
+            logger.error(f"Exception: {e}")
+
+    log_endpoint_time(request, ts=ts, level="debug")
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
@@ -3888,7 +3999,7 @@ def database_word_wheel(response: Response,
     return ret_val  # Return author information or error
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Metadata/ArticleID/", response_model=opasConfig.ArticleID, response_model_exclude_unset=True, tags=["Metadata"], summary="")
+@app.get("/v2/Metadata/ArticleID/", response_model=opasConfig.ArticleID, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_METADATA_ARTICLEID)
 def metadata_articleid(response: Response,
                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                        articleID: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description="ArticleID to evaluate"), 
@@ -3918,11 +4029,12 @@ def metadata_articleid(response: Response,
        N/A
 
     """
-
+    # caller_name = "[v2/Metadata/ArticleID]"
+    # api_id = opasCentralDBLib.API_METADATA_ARTICLEID
+    
     # return the articleID model to the client to break it down for them
     ret_val = opasConfig.ArticleID(articleID=articleID, allInfo=diagnostics)
     
-
     return ret_val
 
 
@@ -4965,11 +5077,7 @@ def documents_downloads(response: Response,
     if client_id is None or client_session is None:
         logger.error(f"{caller_name}: Client {client_id} Session: {client_session} ")
 
-    if retFormat.upper() == "EPUB":
-        file_format = 'EPUB'
-        media_type='application/epub+zip'
-        endpoint = opasCentralDBLib.API_DOCUMENTS_EPUB
-    elif retFormat.upper() == "PDF":
+    if retFormat.upper() == "PDF":
         file_format = 'PDF'
         media_type='application/pdf'
         endpoint = opasCentralDBLib.API_DOCUMENTS_PDF
@@ -4977,7 +5085,11 @@ def documents_downloads(response: Response,
         file_format = 'PDFORIG'
         media_type='application/pdf'
         endpoint = opasCentralDBLib.API_DOCUMENTS_PDFORIG
-    else:
+    elif retFormat.upper() == "EPUB":
+            file_format = 'EPUB'
+            media_type='application/epub+zip'
+            endpoint = opasCentralDBLib.API_DOCUMENTS_EPUB
+    else: # (no HTML download below!)
         file_format = 'HTML'
         media_type='application/xhtml+xml'
         endpoint = opasCentralDBLib.API_DOCUMENTS_HTML
@@ -5105,7 +5217,7 @@ def documents_downloads(response: Response,
                                             return_status_code = response.status_code,
                                             status_message=status_message
                                             )
-        else:
+        else: # file_format =='EPUB' (no HTML download)
             try:
                 response.status_code = httpCodes.HTTP_200_OK
                 ret_val = FileResponse(path=filename,

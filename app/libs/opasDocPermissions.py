@@ -42,7 +42,7 @@ ocd = opasCentralDBLib.opasCentralDB()
 
 def user_logged_in_per_header(request, session_id=None, caller_name="unknown") -> bool:
     if request == None:
-        logger.warning(f"No request object supplied to check log-in. Returning False ({caller_name} / {session_id})")
+        logger.warning(f"No request supplied to check log-in. Returning False ({caller_name} / {session_id})")
         ret_val = False
     else:
         ret_val = request.headers.get(key=localsecrets.AUTH_KEY_NAME, default=None)
@@ -56,7 +56,6 @@ def user_logged_in_per_header(request, session_id=None, caller_name="unknown") -
             success = ocd.end_session(session_id=session_id)
             ret_val = False
         else:
-            logger.debug(f"No header info for login status ({caller_name} / {session_id})")
             the_session_info = ocd.get_session_from_db(session_id)
             if the_session_info is not None:
                 try:
@@ -73,10 +72,10 @@ def user_logged_in_per_header(request, session_id=None, caller_name="unknown") -
                                 # still logged in
                                 ret_val = True
                 except Exception as e:
-                    logger.warning(f"Can't determine login status {e}")
+                    logger.debug(f"No login status in header ({caller_name} / {session_id}). Can't determine login status {e}")
                     ret_val = False
             else: # no logged-in session found
-                logger.warning(f"Session not found in server database ({caller_name} / {session_id}).")
+                logger.debug(f"No login status in header. Session not found in server database ({caller_name} / {session_id}).")
                 ret_val = False
            
     return ret_val    
@@ -248,7 +247,7 @@ def get_authserver_session_info(session_id,
     if pads_session_info is None or session_id is None:
         # not supplied, so fetch
         try:
-            logger.warning(f"{caller_name}: calling PaDS")
+            logger.debug(f"{caller_name}: calling PaDS")
             pads_session_info = get_pads_session_info(session_id=session_id,
                                                       client_id=client_id,
                                                       retry=False, 

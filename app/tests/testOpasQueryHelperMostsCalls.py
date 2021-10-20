@@ -10,7 +10,10 @@ import opasQueryHelper
 import opasPySolrLib
 import opasAPISupportLib
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_info
+from unitTestConfig import headers, session_id, test_login
+
+# Login!
+sessID, headers, session_info = test_login()
 
 class TestOpasQueryHelperMostsCalls(unittest.TestCase):
     """

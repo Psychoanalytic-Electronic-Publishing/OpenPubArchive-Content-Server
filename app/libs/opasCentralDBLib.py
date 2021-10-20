@@ -125,12 +125,14 @@ API_ADMIN_REPORTS = 7                        # /Admin/Reports
 # API_METADATA_CONTENTS = 15	             # /Metadata/Contents/{pepCode}/
 # API_METADATA_CONTENTS_FOR_VOL = 16	     # /Metadata/Contents/{pepCode}/{pepVol}/
 # API_METADATA_BOOKS = 17	                 # /Metadata/Contents/Books/{bookBaseDocumentID}/
+# API_METADATA_ARTICLEID = 18                # /Metadata/ArticleID/
 # API_AUTHORS_INDEX = 20	                 # /Authors/Index/{authNamePartial}/
 # API_AUTHORS_PUBLICATIONS = 21	             # /Authors/Publications/{authNamePartial}/
 API_DOCUMENTS_ABSTRACTS = 30	             # /Documents/Abstracts/{documentID}/
 API_DOCUMENTS = 31                       	 # /Documents/{documentID}/
 API_DOCUMENTS_PDF = 32	                     # /Documents/Downloads/PDF/{documentID}/
 API_DOCUMENTS_PDFORIG = 33	                 # /Documents/Downloads/PDFORIG/{documentID}/
+# = 34 is open!
 API_DOCUMENTS_EPUB = 35	                     # /Documents/Downloads/PDF/{documentID}/
 API_DOCUMENTS_HTML = 36	                     # /Documents/Downloads/HTML/{documentID}/
 API_DOCUMENTS_IMAGE = 37	                 # /Documents/Image/{imageID}/?download=1
@@ -150,7 +152,8 @@ API_DATABASE_EXTENDEDSEARCH = 49             # /Database/ExtendedSearch/
 # API_DATABASE_CLIENT_CONFIGURATION = 51     # /Client/Configuration
 API_DATABASE_OPENURL = 52	                 # /Database/OpenURL/
 API_DATABASE_WHOCITEDTHIS = 53               # /Database/WhoCitedThis/
-API_DATABASE_MORELIKETHIS = 54
+API_DATABASE_MORELIKETHIS = 54               # /Database/MoreLikeThis/
+API_DATABASE_RELATEDTOTHIS = 55              # /Database/RelatedDocuments/
 
 #def verifyAccessToken(session_id, username, access_token):
     #return pwd_context.verify(session_id+username, access_token)

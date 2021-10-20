@@ -807,6 +807,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   offset=None, 
                                   # v1 parameters
                                   journal = None,
+                                  forced_searchq=None,
+                                  forced_filterq=None,
                                   req_url = None
                                   ):
     """
@@ -1612,6 +1614,11 @@ def parse_search_query_parameters(search=None,             # url based parameter
             filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)
                
+    if forced_searchq is not None:
+        search_q = forced_searchq
+    if forced_filterq is not None:
+        filter_q = forced_filterq
+
     # now clean up the final components.
     search_q = cleanup_solr_query(search_q)
     filter_q = cleanup_solr_query(filter_q)

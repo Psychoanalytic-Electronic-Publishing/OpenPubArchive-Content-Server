@@ -281,7 +281,7 @@ def get_session_info(request: Request,
                     remaining_time_hrs = remaining_time.seconds // 3600
                     logger.info(f"User was authenticated per server database record.  Session {session_id}. Expires: {remaining_time_hrs} hrs ({session_info.session_expires_time}). DB SessionInfo: {session_info}")
                 else:
-                    logger.error("Shouldn't be here now.")
+                    logger.debug(f"User is logged in (session {session_id}), but the client did not supply header info.")
 
         if opasConfig.LOG_CALL_TIMING:
             logger.debug(f"Get/Save session info response time: {time.time() - ts}")       
@@ -1166,7 +1166,7 @@ def documents_get_document(document_id,
                 document_list.documentList.responseSet[0].termCount = 0
 
     except Exception as e:
-        logger.error("get_document: No matches or error: %s", e)
+        logger.error("get_document: No matches or another error: %s", e)
         # return None
     else:
         if page_limit is None:
