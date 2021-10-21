@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1020/v2.1.71" # semver versioning now added after date.
+__version__     = "2021.1020/v2.1.72" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -2978,7 +2978,6 @@ async def database_morelikethis(response: Response,
 async def database_related_to_this(response: Response, 
                                    request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                    relatedToThis: str=Query(None, title=opasConfig.TITLE_RELATEDTOTHIS, description=opasConfig.DESCRIPTION_RELATEDTOTHIS),
-                                   relatedToSchemaField: str=Query("art_qual", title=opasConfig.TITLE_RELATEDTOTHIS, description=opasConfig.DESCRIPTION_RELATEDTOTHIS),
                                    sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
                                    abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
                                    formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
@@ -2990,8 +2989,12 @@ async def database_related_to_this(response: Response,
     """
     ## Function
 
-    Convenience function for sending a single relatedToDocument article ID and returning related documents as determined by the relatedrx (art_qual) field.
-    All related articles other than the relatedToDocument will be returned in the list.
+    Find all related documents as recorded in the Solr schema by a field with a commmon ID value.
+    The document ID of the main document of interest is specified in the relatedTothis parameter, and the endpoint looks up the value
+    in that document's relatedrx field (defined in opasConfig as RELATED_RX_FIELDNAME), and returns all matching documents,
+    EXCEPT the main document you specify.
+    
+    Returns 0 documentList records if there are no related documents or there's no data in the relatedrx field is the relatedToThis document.
 
     ## Return Type
        models.DocumentList
@@ -3000,7 +3003,7 @@ async def database_related_to_this(response: Response,
        Status: Working
 
     ## Sample Call
-       N/A
+       https://api.pep-web.org/v2/Database/RelatedToThis/?relatedToThis=IJP.078.0335A
 
     ## Notes
        N/A
@@ -3018,9 +3021,10 @@ async def database_related_to_this(response: Response,
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
     
     try:
+        return_fields = opasConfig.DOCUMENT_ITEM_TOC_FIELDS
         solr_query_spec = opasQueryHelper.parse_search_query_parameters(forced_searchq=f"art_id:{relatedToThis}",
                                                                         forced_filterq=None,
-                                                                        return_field_set=opasConfig.DOCUMENT_ITEM_TOC_FIELDS,
+                                                                        return_field_set=return_fields,
                                                                         sort=sort, 
                                                                         req_url = request.url._url
                                                                         )
@@ -3037,9 +3041,11 @@ async def database_related_to_this(response: Response,
         try:
             responseSet = ret_val.documentList.responseSet
             response = responseSet[0]
-            related_document_id = response.relatedrx
+            related_fieldname_data = response.relatedrx
+            #if "art_qual:" in filterQ:
+                #filterQ = re.sub('art_qual:\(\"?(?P<tgtid>[^\"]*?)\"?\)', '(art_qual:(\g<tgtid>) || art_id:(\g<tgtid>))', filterQ)
             
-            solr_query_spec = opasQueryHelper.parse_search_query_parameters(forced_searchq=f"{relatedToSchemaField}:{related_document_id}",
+            solr_query_spec = opasQueryHelper.parse_search_query_parameters(forced_searchq=f"{opasConfig.RELATED_RX_FIELDNAME}:{related_fieldname_data} || art_id:{related_fieldname_data}",
                                                                             forced_filterq=f"NOT art_id:{relatedToThis}",
                                                                             return_field_set=opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
                                                                             abstract_requested=abstract,

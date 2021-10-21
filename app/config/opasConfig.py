@@ -203,6 +203,9 @@ def normalize_val(val, val_dict, default=None):
     
     return ret_val
 
+# Special relatedrx field name from Solr schema
+RELATED_RX_FIELDNAME = "art_qual"
+
 # Special Options flag map:
 OPTION_1_NO_GLOSSARY_TERM_MARKUP = 1
 OPTION_2_RETURN_TRANSLATION_SET = 2
@@ -289,8 +292,7 @@ DESCRIPTION_PARATEXT = "Words or phrases (in quotes) in a paragraph in the docum
 #DESCRIPTION_PARAZONE_V1 = "scope: doc, dreams, dialogs, biblios, per the schema (all the p_ prefixed scopes are also recognized without the p_ here)"
 DESCRIPTION_PATH_SOURCETYPE = f"Source type.  One of: {list_values(VALS_SOURCE_TYPE)})"
 DESCRIPTION_PUBLICATION_PERIOD = "Number of publication years to include (counting back from current year, 0 means current year)"
-DESCRIPTION_RELATEDTOTHIS = "Enter an article ID to find all related documents per a common schema value"
-DESCRIPTION_RELATEDTOSCHEMAFIELD = "Schema field name which holds the common value for related documents" 
+DESCRIPTION_RELATEDTOTHIS = "Enter a document ID to find all related documents per a common schema value"
 DESCRIPTION_REPORT_REQUESTED="One of the predefined report names"
 DESCRIPTION_REPORT_MATCHSTR="Report specific match string (params for session-views/user-searches, e.g., /Documents/Document/AIM.023.0227A/, and type for document-activity, e.g., PDF)"
 DESCRIPTION_REQUEST = "The request object, passed in automatically by FastAPI"
@@ -369,7 +371,7 @@ TITLE_ISSUE = "Issue Number"
 TITLE_LIMIT = "Document return limit"
 TITLE_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 TITLE_MOREINFO = "Return extended information"
-TITLE_MORELIKETHIS = "Enter an article ID to Find similar documents"
+TITLE_MORELIKETHIS = "Enter an document ID to find similar documents"
 TITLE_MOST_CITED_PERIOD = f"Show articles cited at least this many times during this time period"
 TITLE_MOST_VIEWED_PERIOD = f"Show articles viewed during this period"
 TITLE_OFFSET = "Document return offset"
@@ -378,8 +380,7 @@ TITLE_PAGEOFFSET = "Relative page number (1 is the first) to return"
 TITLE_PAGEREQUEST = "Document's first page or page range"
 TITLE_PARASCOPE = "Scope for paragraph search"
 TITLE_PARATEXT = "Paragraph based search"
-TITLE_RELATEDTOTHIS = "An article ID of a document for which to find related documents"
-TITLE_RELATEDTOSCHEMAFIELD = "Schema field name which holds the common value for related documents" 
+TITLE_RELATEDTOTHIS = "A document ID for which to find related documents"
 TITLE_SMARTSEARCH = "Search input parser"
 TITLE_SPECIALOPTIONS = "Integer mapped to Option flags for special options"
 TITLE_PARAZONE1_V1 = "Zone for paragraph search"
@@ -453,7 +454,7 @@ ENDPOINT_SUMMARY_LOGIN = "Login a user (less secure method)"
 ENDPOINT_SUMMARY_LOGLEVEL = "Admin function to change logging level"
 ENDPOINT_SUMMARY_LOGIN_BASIC = "Login a user more securely"
 ENDPOINT_SUMMARY_LOGOUT = "Logout the user who is logged in"
-ENDPOINT_SUMMARY_METADATA_ARTICLEID = "Check if articleID is a valid articleID and break down the subinformation from it"
+ENDPOINT_SUMMARY_METADATA_ARTICLEID = "Check if articleID (document ID) is a valid articleID and break down the subinformation from it"
 ENDPOINT_SUMMARY_MOST_CITED = "Return the most cited journal articles published in this time period (5, 10, 20, or ALL years)"
 ENDPOINT_SUMMARY_WHO_CITED = "Return the documents which cited the document specified during this time period (5, 10, 20, or ALL years)"
 ENDPOINT_SUMMARY_MORELIKETHIS = "Finds related documents based on a field with a common value"
@@ -953,7 +954,7 @@ def parse_issue_code(issue_code: str, source_code=None, vol=None):
 
 class ArticleID(BaseModel):
     """
-    Article IDs are at the core of the system.  In PEP's design, article IDs are meaningful, and can be broken apart to learn about the content metadata.
+    Article IDs (document IDs) are at the core of the system.  In PEP's design, article IDs are meaningful, and can be broken apart to learn about the content metadata.
       But when designed as such, the structure of the article IDs may be different in different systems, so it needs to be configurable as possible.
       This routine in opasConfig is a start of allowing that to be defined as part of the customization. 
 
@@ -1113,9 +1114,9 @@ class ArticleID(BaseModel):
             self.isArticleID = False
         
     articleID: str = Field(None, title="As submitted ID, if it's a valid ID")
-    standardized: str = Field(None, title="Standard form of article ID")
-    altStandard: str = Field(None, title="Standard form of article ID from 2020 (most without volume suffix)")
-    isArticleID: bool = Field(False, title="True if initialized value is an article ID")
+    standardized: str = Field(None, title="Standard form of article (document) ID")
+    altStandard: str = Field(None, title="Standard form of article (document) ID from 2020 (most without volume suffix)")
+    isArticleID: bool = Field(False, title="True if initialized value is an article (document) ID")
     sourceCode: str = Field(None, title="Source material assigned code (e.g., journal, book, or video source code)")
     # volumeStr: str = Field(None, title="")
     volumeSuffix: str = Field(None, title="")

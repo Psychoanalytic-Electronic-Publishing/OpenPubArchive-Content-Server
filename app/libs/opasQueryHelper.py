@@ -2048,7 +2048,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 documentListItem.pgEnd = pg_end
     
             if result.get("art_origrx", None): documentListItem.origrx = result.get("art_origrx", None)
-            if result.get("art_qual", None): documentListItem.relatedrx= result.get("art_qual", None)
+            if result.get(opasConfig.RELATED_RX_FIELDNAME, None): documentListItem.relatedrx= result.get(opasConfig.RELATED_RX_FIELDNAME, None)
             documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
             documentListItem.sourceType = result.get("art_sourcetype", None)
             author_ids = result.get("art_authors", None)

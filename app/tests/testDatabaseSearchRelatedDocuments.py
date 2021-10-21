@@ -6,9 +6,9 @@ import requests
 
 from unitTestConfig import base_plus_endpoint_encoded, headers
 
-class TestDatabaseSearchMoreLikeThis(unittest.TestCase):
+class TestDatabaseSearchRelatedDocuments(unittest.TestCase):
     def test_search_relateddocuments_1a(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/RelatedToThis/?relatedToThis=IJP.078.0335A&relatedToSchemaField=art_qual&sort=score%20desc&abstract=false&formatrequested=HTML&limit=15&offset=0')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/RelatedToThis/?relatedToThis=IJP.078.0335A&sort=score%20desc&abstract=false&formatrequested=HTML&limit=15&offset=0')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -16,8 +16,8 @@ class TestDatabaseSearchMoreLikeThis(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert response_info["count"] >= 2, f"Expected Count >= 2, Count: {response_info['count']}"
         
-    def test_search_relateddocuments_1a(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Database/RelatedToThis/?relatedToThis=ZBK.025.0028A&relatedToSchemaField=art_qual&sort=score%20desc&abstract=false&formatrequested=HTML&limit=15&offset=0')
+    def test_search_relateddocuments_1b(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/RelatedToThis/?relatedToThis=ZBK.025.0028A&sort=score%20desc&abstract=false&formatrequested=HTML&limit=15&offset=0')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
@@ -25,6 +25,15 @@ class TestDatabaseSearchMoreLikeThis(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         assert response_info["count"] >= 15, f"Expected Count >= 15, Count: {response_info['count']}"
         
+    def test_search_relateddocuments_1c(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/RelatedToThis/?relatedToThis=IJP.078.0173A&sort=score%20desc&abstract=false&formatrequested=HTML&limit=15&offset=0')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        assert response_info["count"] == 0, f"Expected Count == 0, Count: {response_info['count']}"
+
 
 
 if __name__ == '__main__':
