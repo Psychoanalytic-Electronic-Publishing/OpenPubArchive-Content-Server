@@ -79,7 +79,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 200 and count1 <= 210)
+        assert count1 >= 200 and count1 <= 220, f"Expected Count >= 200 and <= 220, Count: {response_info['count']}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(affect)&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -99,7 +99,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 200 and count1 <= 210)
+        assert count1 >= 200 and count1 <= 220, f"Expected Count >= 200 and <= 220, Count: {response_info['count']}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(affect)&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -168,7 +168,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 63000 and count1 <= 64000)
+        assert(count1 >= 63000 and count1 <= 65000)
 
 if __name__ == '__main__':
     unittest.main()
