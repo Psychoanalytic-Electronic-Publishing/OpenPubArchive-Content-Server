@@ -366,7 +366,7 @@
   <field name="summaries_xml" type="text_general" indexed="true" stored="true" multiValued="true"/> <!--this is used to display-->
   <!--Precompute an extract for docs without abstracts or summaries.  Will be html -->
   <field name="art_excerpt" type="text_general" indexed="true" stored="true" multiValued="false" uninvertible="false"/> <!--this is used to display-->
-  <!--Store XML version of displayab;e summary/abstract so the client can do their own XSLT transform. 2020-08-13 -->
+  <!--Store XML version of displayable summary/abstract so the client can do their own XSLT transform. 2020-08-13 -->
   <field name="art_excerpt_xml" type="text_general" indexed="true" stored="true" multiValued="false" uninvertible="false"/> <!--this is used to display-->
 
   <!-- Added this 6/25 to allow any part of a journal name to be searched.-->

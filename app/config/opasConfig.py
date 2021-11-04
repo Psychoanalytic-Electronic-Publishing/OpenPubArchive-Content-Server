@@ -92,7 +92,7 @@ API_URL_DOCUMENTURL = "/v2/Documents/"
 
 MAX_WHATSNEW_ARTICLES_TO_CONSIDER = 1000
 
-IMAGES = "v2/Documents/Image" # from endpoint; was just images, e.g., "http://pep-web.rocks/images/bannerADPSALogo.gif
+IMAGES = "v2/Documents/Image" # from endpoint; was just images, e.g., "http://pep-web.org/images/bannerADPSALogo.gif
 HITMARKERSTART = "#@@@"  # using non html/xml default markers, so we can strip all tags but leave the hitmarkers!
 HITMARKEREND = "@@@#"
 HITMARKERSTART_OUTPUTHTML = "<span class='searchhit'>"  # to convert the non-markup HIT markers to HTML, supply values here.  These match the current PEPEasy stylesheet.
@@ -143,7 +143,7 @@ DEFAULT_LIMIT_FOR_WHATS_NEW = 5
 DEFAULT_LIMIT_FOR_VOLUME_LISTS = 10000 # 2020-04-06 raised from 100, so all volumes can be brought back at once
 DEFAULT_LIMIT_FOR_CONTENTS_LISTS = 200
 DEFAULT_LIMIT_FOR_METADATA_LISTS = 200
-DEFAULT_SOLR_SORT_FIELD = "art_cited_5" 
+DEFAULT_SOLR_SORT_FIELD = "art_cited_5"
 DEFAULT_SOLR_SORT_DIRECTION = "asc" # desc or asc
 DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 4000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
 DEFAULT_CITED_MORE_THAN = 0

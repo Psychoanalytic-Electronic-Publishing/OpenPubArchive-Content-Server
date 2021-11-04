@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1020/v2.1.72" # semver versioning now added after date.
+__version__     = "2021.1104/v2.1.73" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -369,7 +369,7 @@ def get_client_session(response: Response,
                 detail=ERR_MSG_CALLER_IDENTIFICATION_ERROR
             )
         else:
-            logger.warning(f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID")
+            logger.info(f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID")
             session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id,
                                                                           client_id=client_id,
                                                                           request=request)
@@ -532,7 +532,7 @@ async def admin_set_loglevel(response: Response,
     """
     levels = {10: "DEBUG", 20: "INFO", 30: "WARNING", 40: "ERROR", 50: "CRITICAL"}
     logger = logging.getLogger() # Get root logger
-    curr_level = levels.get(logger.level, str(logger.level))
+    curr_level = levels.get(logger.level, str(logger.level)) # return string of level if not in levels
     # see if user is an admin
     admin = False
     if client_session is not None:
@@ -569,14 +569,9 @@ async def admin_set_loglevel(response: Response,
 
     try:
         if admin:
-            # see https://stackoverflow.com/questions/37703609/using-python-logging-with-aws-lambda
-            if logging.getLogger().hasHandlers:
-                # The Lambda environment pre-configures a handler logging to stderr. If a handler is already configured,
-                # `.basicConfig` does not execute. Thus we set the level directly.
-                logging.getLogger().setLevel(lev_int)
-            else:
-                logging.basicConfig(level=lev_int)            
-            change = True
+            new_level = opasAPISupportLib.set_log_level(level_int=lev_int)
+            if new_level != curr_level:
+                change = True
 
     except Exception as e:
         err = f"Exception setting or getting LogLevel: {e} Log level set to: {levels.get(logger.level, str(logger.level))}.  Was {curr_level}"
@@ -4747,7 +4742,6 @@ def documents_concordance(response: Response,
        THE USER NEEDS TO BE AUTHENTICATED to return a para.
 
     """
-    # NOTE: Calls the code for the Glossary endpoint via function view_a_glossary_entry)
 
     caller_name = "[v2/Documents/Concordance]"
 

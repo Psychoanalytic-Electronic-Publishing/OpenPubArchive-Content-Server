@@ -92,7 +92,7 @@ def metadata_export(outputFileName="../sitemap", total_records=140000, records_p
 
    """
 
-   base_url = "https://pep-web.rocks/browse/document/"
+   base_url = "https://pep-web.org/browse/document/"
    header = '<?xml version="1.0" encoding="utf-8" ?>\n<!DOCTYPE articles SYSTEM "googlearticles.dtd">\n'
    sitemap_list = []
    file_count = 0

@@ -897,7 +897,8 @@ def search_text(query,
                 #authenticated = None,
                 session_info = None, 
                 option_flags=0,
-                request=None
+                request=None,
+                caller_name="search_text"
                 ):
     """
     Full-text search, via the Solr server api.
@@ -947,7 +948,8 @@ def search_text(query,
                                          req_url=req_url, 
                                          #authenticated=authenticated,
                                          session_info=session_info,
-                                         request=request
+                                         request=request,
+                                         caller_name=caller_name
                                          )
 
     return ret_val, ret_status
@@ -964,7 +966,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                    sort=None, 
                    session_info=None,
                    solr_core="pepwebdocs", 
-                   get_full_text=False, # LIMIT_TEST
+                   get_full_text=False, 
+                   get_child_text_only=False, # usage example: just return concordance paragraphs
                    request=None, #pass around request object, needed for ip auth
                    caller_name="search_text_qs"
                    ):
@@ -979,6 +982,11 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
     # count_anchors = 0
+    try:
+        caller_name = caller_name + "/ search_text_qs"
+    except:
+        caller_name="search_text_qs"
+        
     try:
         session_id = session_info.session_id
         user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name + "/ search_text_qs")
@@ -1335,16 +1343,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                        
                     # do this before we potentially clear text_xml if no full text requested below
                     if solr_query_spec.abstractReturn:
-                        # we don't want to ever do this (Google!) 2021-04-29 (delete later, if the urge passes)
-                        #omit_abstract = False
-                        #if opasConfig.ACCESS_ABSTRACT_RESTRICTION and documentListItem.accessLimited: # if restriction is on, AND this is restricted content
-                            #if session_info is not None:
-                                #if not session_info.authenticated:
-                                    ## experimental - remove abstract if not authenticated, per DT's requirement
-                                    #omit_abstract = True
-                            #else: # no session info, omit abstract
-                                #omit_abstract = True
-
                         # this would print a message about logging in and not display an abstract if omit_abstract were true,
                         # but then Google could not index
                         documentListItem = opasQueryHelper.get_excerpt_from_search_result(result,
@@ -1411,8 +1409,20 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     else: # by virtue of not calling that...
                         # no full-text if accessLimited or offsite article
                         # free up some memory, since it may be large
-                        result["text_xml"] = None                   
+                        result["text_xml"] = None
+                        # But if this is a call for a child paragraph, go get it
+                        if get_child_text_only: # caller_name == "documents_get_concordance_paras":
+                            documentListItem = get_fulltext_from_search_results(result=result,
+                                                                                text_xml=text_xml,
+                                                                                format_requested=solr_query_spec.returnFormat,
+                                                                                return_options=solr_query_spec.returnOptions, 
+                                                                                page=solr_query_spec.page,
+                                                                                page_offset=solr_query_spec.page_offset,
+                                                                                page_limit=solr_query_spec.page_limit,
+                                                                                documentListItem=documentListItem,
+                                                                                fulltext_children_only=True)
     
+                        
                     stat = {}
                     count_all = result.get("art_cited_all", None)
                     if count_all is not None:
@@ -2627,6 +2637,7 @@ def get_fulltext_from_search_results(result,
                                      page_limit,
                                      documentListItem: models.DocumentListItem,
                                      format_requested="HTML",
+                                     fulltext_children_only=False, 
                                      return_options=None):
 
     child_xml = None
@@ -2765,6 +2776,11 @@ def get_fulltext_from_search_results(result,
     if child_xml is not None:
         # return child para in requested format
         documentListItem.docChild['para'] = child_xml
+        if fulltext_children_only == True:
+            documentListItem.document = child_xml
+    else:
+        if fulltext_children_only == True:
+            documentListItem.document = None
 
     return documentListItem
 

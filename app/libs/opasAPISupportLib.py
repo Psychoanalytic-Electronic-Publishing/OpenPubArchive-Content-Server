@@ -116,6 +116,21 @@ def has_data(str):
 
     return ret_val
 
+def set_log_level(level_int):
+    logger = logging.getLogger()
+    logger.debug(f"Log Level: {logger.level}")
+    # see https://stackoverflow.com/questions/37703609/using-python-logging-with-aws-lambda
+    if logger.hasHandlers:
+        # The Lambda environment pre-configures a handler logging to stderr. If a handler is already configured,
+        # `.basicConfig` does not execute. Thus we set the level directly.
+        logger.setLevel(level_int)
+    else:
+        logging.basicConfig(level=level_int)
+        
+    ret_val = logger.level
+    logger.debug(f"Log Level: {logger.level}")
+    return ret_val
+    
 def get_query_item_of_interest(solrQuery):
     """
     Give a solrQuery, use that to derive a string to be logged in the endpoint_session
@@ -1252,6 +1267,8 @@ def documents_get_concordance_paras(para_lang_id,
         document_list, ret_status = search_text_qs(solr_query_spec,
                                                    session_info=session_info,
                                                    request=request,
+                                                   get_full_text=False, 
+                                                   get_child_text_only=True, 
                                                    caller_name=caller_name
                                                    )
 

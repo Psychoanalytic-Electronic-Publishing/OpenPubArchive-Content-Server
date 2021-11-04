@@ -95,8 +95,12 @@ class TestDocumentsAbstracts(unittest.TestCase):
         response_info = r1["documents"]["responseInfo"]
         response_set = r1["documents"]["responseSet"]
         doc_of_interest = r1["documents"]["responseSet"][0]
+        # Abstract requests no longer return permissions
+        accessChecked = doc_of_interest["accessChecked"]
+        assert (accessChecked == True)
         accessLimited = doc_of_interest["accessLimited"]
         assert (accessLimited == False)
+        
             
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PAQ.085.0851A/?similarcount=5&return_format=XML')
         response = requests.get(full_URL, headers=headers)
