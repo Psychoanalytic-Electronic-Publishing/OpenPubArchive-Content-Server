@@ -6,11 +6,16 @@ logger = logging.getLogger()
 
 import requests
 import unittest
-from localsecrets import API_KEY_NAME, AUTH_KEY_NAME, API_KEY, PADS_TEST_ID, PADS_TEST_PW, PDF_ORIGINALS_PATH, PADS_TEST_ID2, PADS_TEST_PW2
+import time
+from localsecrets import API_KEY_NAME, AUTH_KEY_NAME, API_KEY, PADS_TEST_ID, PADS_TEST_PW, PDF_ORIGINALS_PATH, PADS_TEST_ID2, PADS_TEST_PW2, use_server
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 
 # Login!
 sessID, headers, session_info = test_login(username=PADS_TEST_ID2, password=PADS_TEST_PW2)
+
+if use_server == 5:
+    from localsecrets import PADS_TEST_ID3, PADS_TEST_PW3
+    sessID, headers, session_info = test_login(username=PADS_TEST_ID3, password=PADS_TEST_PW3)
 
 class TestReports(unittest.TestCase):
     """
@@ -23,7 +28,10 @@ class TestReports(unittest.TestCase):
     
     def test01_session_log_report_daterange(self):
         # note api_key is required, but already in headers
-        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate=2020-10-01&enddate=2022-12-18')
+        from datetime import date, timedelta
+        dt1 = date.today() - timedelta(4)
+        dt2 = date.today()
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={dt1}&enddate={dt2}')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # these don't get affected by the level.
@@ -94,6 +102,28 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
+        
+    def test06_session_log_report_like_pads(self):
+        # note api_key is required, but already in headers
+        from datetime import date, timedelta
+        dt = date.today() - timedelta(14)
+        print('Current Date :', date.today())
+        print('14 days before Current Date :', dt)
+        ts = time.time()
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?startdate={dt}&limit=100000&offset=0&download=false&sortorder=asc')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        print (f"Watched: Admin Report Query Complete. Time={time.time() - ts}")
+        r = response.json()
+        response_info = r["report"]["responseInfo"]
+        response_set = r["report"]["responseSet"]
+        print (f'Count Retrieved: {response_info["count"]}')
+        print (f'Fullcount Retrieved: {response_info["fullCount"]}')
+        if use_server == 5:
+            assert(response_info["count"] >= 50000)
+        else:
+            assert(response_info["count"] >= 100)
+            
 
 
 if __name__ == '__main__':

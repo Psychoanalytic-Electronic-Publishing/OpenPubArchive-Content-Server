@@ -982,9 +982,11 @@ class opasCentralDB(object):
         self.open_connection(caller_name=fname) # make sure connection is open
         ret_val = None
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.DictCursor)
-            curs.execute(sqlSelect)
-            ret_val = [model(row=row) for row in curs.fetchall()]
+            rows = self.SQLSelectGenerator(sqlSelect)
+            #curs = self.db.cursor(pymysql.cursors.DictCursor)
+            #curs.execute(sqlSelect)
+            # ret_val = [model(row=row) for row in curs.fetchall()]
+            ret_val = [model(row=row) for row in rows]
             
         self.close_connection(caller_name=fname) # make sure connection is closed
 
@@ -1006,9 +1008,10 @@ class opasCentralDB(object):
         self.open_connection(caller_name=fname) # make sure connection is open
         ret_val = None
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.Cursor)
-            curs.execute(sqlSelect)
-            ret_val = curs.fetchall()
+            ret_val = self.SQLSelectGenerator(sqlSelect)
+            #curs = self.db.cursor(pymysql.cursors.Cursor)
+            #curs.execute(sqlSelect)
+            #ret_val = curs.fetchall()
             
         self.close_connection(caller_name=fname) # make sure connection is closed
 

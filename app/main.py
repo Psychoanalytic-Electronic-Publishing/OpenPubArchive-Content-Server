@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1104/v2.1.73" # semver versioning now added after date.
+__version__     = "2021.1106/v2.1.74" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -563,7 +563,6 @@ async def admin_set_loglevel(response: Response,
     else:
         if curr_level != level:
             err = f"Log level can only be changed by an admin. Log level still set to: {curr_level}"
-            raise HTTPException(httpCodes.HTTP_401_UNAUTHORIZED, detail=err)
         else:
             err = f"Log level already set to: {curr_level}"
 
@@ -698,7 +697,8 @@ async def admin_reports(response: Response,
 
     if startdate is not None:
         if enddate is not None:
-            date_condition = f" AND last_update BETWEEN {startdate} AND {enddate}"
+            # 2021-11-06 - Can't use between here if the time isn't being included. Errors when startdate and enddate are same day.
+            date_condition = f" AND last_update BETWEEN {startdate}000000 AND {enddate}235959"
         else:
             date_condition = f" AND last_update >= {startdate}"
     else:
@@ -783,6 +783,8 @@ async def admin_reports(response: Response,
         )        
 
     # Get report
+
+    # with order by for return
     select = f"""SELECT * from {report_view}
                  WHERE {standard_filter}
                  {date_condition}
@@ -793,8 +795,18 @@ async def admin_reports(response: Response,
                  {orderby_clause}
                  """
 
+    # without order by for full count
+    select_count = f"""SELECT * from {report_view}
+                       WHERE {standard_filter}
+                       {date_condition}
+                       {userid_condition}
+                       {sessionid_condition}
+                       {endpoint_condition}
+                       {extra_condition}
+"""
+
     if getfullcount:
-        count = ocd.get_select_count(select)
+        count = ocd.get_select_count(select_count) # without order by
     else:
         count = -1
         
@@ -821,6 +833,7 @@ async def admin_reports(response: Response,
             ret_val = response
         else:
             # this comes back as a list of ReportListItems
+            ts = time.time()
             results = ocd.get_select_as_list_of_models(select, model=models.ReportListItem)
             limited_count = len(results)
             if count > 0:
@@ -846,6 +859,7 @@ async def admin_reports(response: Response,
                     detail=ERR_MSG_NO_DATA_FOR_REPORT
                 )       
 
+            print (f"Watched: Admin Report Query Complete. DateCondition: {date_condition} Rows: {limited_count} Time={time.time() - ts}")
             report_struct = models.ReportStruct( responseInfo = response_info, 
                                                  responseSet = results
                                                  )
