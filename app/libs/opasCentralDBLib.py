@@ -261,39 +261,49 @@ class opasCentralDB(object):
         try:
             status = self.db.open # if not already open, gens an exception, so it can be opened.
             self.connected = True
-        except:
+        except Exception as e:
             # not open reopen it.
             try:
+                if self.db is None:
+                    was_closed = True
+                else:
+                    was_closed = False
+                    logger.error(f"Exception while checking db.open: {e}")
+                    
                 self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
-                logger.debug(f"Database opened by ({caller_name}) Specs: {self.database} for host {self.host},  user {self.user} port {self.port}")
+                # print(f"Database opened by ({caller_name}) Specs: {self.database} for host {self.host},  user {self.user} port {self.port}")
                 self.connected = True
+
             except Exception as e:
-                logger.error(f"Database connection could not be opened ({caller_name}) ({e})")
                 self.connected = False
+                print(f"Database connection could not be opened ({caller_name}) ({e})")
                 self.db = None
                 # status = False
-        else:
-            self.unpaired_connection_count += 1
-            logger.warning(f"FYI: DB connection already open, no action from this call. caller: {caller_name} Unpaired Open Connections: {self.unpaired_connection_count}.")
+        #else:
+            #self.unpaired_connection_count += 1
+            #logger.warning(f"FYI: DB connection already open, no action from this call. caller: {caller_name} Unpaired Open Connections: {self.unpaired_connection_count}.")
         
         return self.connected
 
     def close_connection(self, caller_name=""):
-        if self.db is not None:
-            try:
-                if self.db.open:
-                    self.db.close()
-                    self.db = None
-                    self.unpaired_connection_count = 0
-                    logger.debug(f"Database closed by ({caller_name})")
-                else:
-                    logger.warning(f"Database close request, but not open ({caller_name}). Connections: {self.connection_count}")
-                    
-            except Exception as e:
-                logger.error(f"caller: {caller_name} the db is not open ({e}).")
+        # try not closing!
+        pass
 
-        # make sure to mark the connection false in any case
-        self.connected = False           
+        #if self.db is not None:
+            #try:
+                #if self.db.open:
+                    #self.db.close()
+                    #self.db = None
+                    #self.unpaired_connection_count = 0
+                    #logger.debug(f"Database closed by ({caller_name})")
+                #else:
+                    #logger.warning(f"Database close request, but not open ({caller_name}). Connections: {self.connection_count}")
+                    
+            #except Exception as e:
+                #logger.error(f"caller: {caller_name} the db is not open ({e}).")
+
+        ## make sure to mark the connection false in any case
+        #self.connected = False           
 
     def end_session(self, session_id, session_end=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')):
         """
@@ -2033,65 +2043,24 @@ class opasCentralDB(object):
         return ret_val
     
     #----------------------------------------------------------------------------------------
-    def temp_pads_log_call(self,
-                           caller,
-                           reason, 
-                           session_id,
-                           pads_call, # PaDS URL
-                           ip_address=None, 
-                           params=None,  # full url
-                           api_endpoint_id=0, 
-                           return_status_code=0,
-                           status_message=None):
+    def log_pads_calls(self,
+                       caller,
+                       reason, 
+                       session_id,
+                       pads_call, # PaDS URL
+                       ip_address=None, 
+                       params=None,  # full url
+                       api_endpoint_id=0, 
+                       return_status_code=0,
+                       status_message=None):
         """
         Track pads calls
-        2020-08-25: Added api_endpoint_method
-        
+        2021-11-08 Don't log to DB table temp_trackpads_calls anymore.  Just to debug output.
         """
-        fname = "track_pads_calls"
-        ret_val = None
-        if not self.open_connection(caller_name=fname): # make sure connection is open
-            logger.error("record_session_endpoint could not open database")
-        else:
-            # Workaround for None in session id
-            if session_id is None:
-                session_id = opasConfig.NO_SESSION_ID # just to record it
-                
-            if self.db is not None:  # shouldn't need this test
-                cursor = self.db.cursor()
-                sql = """INSERT INTO 
-                           temp_trackpads_calls(session_id,
-                                                reason,
-                                                caller,
-                                                pads_call,
-                                                ip_address,
-                                                params,
-                                                api_endpoint_id,
-                                                return_status_code
-                                                )
-                                                VALUES 
-                                                (%s, %s, %s, %s, %s, %s, %s, %s)"""
-                try:
-                    ret_val = cursor.execute(sql, (session_id,
-                                                   reason,
-                                                   caller,
-                                                   pads_call,
-                                                   ip_address,
-                                                   params, 
-                                                   api_endpoint_id, 
-                                                   return_status_code,
-                                                  ))
-                    self.db.commit()
-                    cursor.close()
-                except pymysql.IntegrityError as e:
-                    logger.error(f"Integrity Error {e} logging endpoint {api_endpoint_id} for session {session_id}.")
-                except Exception as e:
-                    logger.error(f"Error logging PaDS call endpoint {api_endpoint_id} for session {session_id}. Error: {e}")
-            
-            self.close_connection(caller_name=fname) # make sure connection is closed
-
-        return ret_val
-
+        # Just output to STDOUT
+        logger.debug (f"Track Calls to PaDS ({time.time()}): Session ID: {session_id}; ip address: {ip_address}. PaDS Call: {pads_call}")
+    
+        return 
 
 #================================================================================================================================
 

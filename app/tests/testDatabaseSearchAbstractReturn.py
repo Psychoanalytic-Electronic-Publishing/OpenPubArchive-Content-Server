@@ -4,7 +4,9 @@
 import unittest
 import requests
 
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestDatabaseSearchAbstractReturn(unittest.TestCase):
     def test_01_search_abstract_on(self):

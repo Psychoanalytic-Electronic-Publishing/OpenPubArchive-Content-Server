@@ -10,10 +10,10 @@ import unittest
 import requests
 
 import opasDocPermissions
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 
-# Login!
-sessID, headers, session_info = test_login()
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestDocumentsDocumentsLoggedOut(unittest.TestCase):
     """
@@ -23,26 +23,22 @@ class TestDocumentsDocumentsLoggedOut(unittest.TestCase):
           with forced order in the names.
     
     """
-    # first do one logged in
-    def test_1_get_document(self):
+    def test_1_get_document_logged_out_verify_only_abstract_return(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171A/')
         # local, this works...but fails in the response.py code trying to convert self.status to int.
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
+        # this document should not be available
         assert(response_info["count"] == 1)
-        # this document should be available
-        assert(response_set[0]["accessLimited"] == False)
-        print (response_set)
+        assert(response_set[0]["accessLimited"] == True)
+        assert(len(response_set[0]["abstract"]) == len(response_set[0]["document"])) 
     
     # then one logged out
     def test_2_get_document_logged_out_verify_only_abstract_return(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Logout')
-        response = requests.get(full_URL, headers=headers)
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/JOAP.063.0667A')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)

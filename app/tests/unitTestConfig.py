@@ -10,6 +10,7 @@ import os.path
 import sys
 import urllib
 import requests
+import opasDocPermissions
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
@@ -20,26 +21,11 @@ else: # python running from should be within folder app
     sys.path.append('./libs')
     sys.path.append('./config')
 
-import localsecrets
-from localsecrets import use_server
-import opasDocPermissions
-
 # use the configured server.
-from localsecrets import APIURL
-# use this to test with whereever the local config points to 
+import localsecrets
+from localsecrets import use_server, PADS_TEST_ID, PADS_TEST_PW, APIURL
+
 base_api = APIURL
-# or override below.
-# base_api = "http://stage.pep.gvpi.net/api"
-#base_api = "http://127.0.0.1:9100" # local server without naming
-# base_api = "http://api.psybrarian.com" # remote AWS server (one of them)
-#if use_server == 0:
-    #base_api = "http://development.org:9100" #  local server (Scilab)
-#else:
-    #base_api = "http://stage-api.pep-web.rocks" # remote AWS server (one of them)
-
-# force local
-# base_api = "http://development.org:9100" #  local server (Scilab)
-
 ALL_SOURCES_COUNT = 189 # OFFSITE doesn't count
 # this must be set to the number of unique journals for testing to pass.
 JOURNALCOUNT = 77
@@ -66,6 +52,9 @@ VOL_COUNT_VIDEOS = VIDEOSOURCECOUNT # no actual volumes for videos, just the sou
 VOL_COUNT_VIDEOS_PEPVS = 4
 VOL_COUNT_IJPSP = 11 #  source code ended, 11 should always be correct
 
+ip = requests.get('https://api.ipify.org').content.decode('utf8')
+myTestSystemIP = ip
+
 def get_session_info_for_test():
     session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=UNIT_TEST_CLIENT_ID)
     return session_info
@@ -76,8 +65,16 @@ def base_plus_endpoint_encoded(endpoint, base=base_api):
 
 UNIT_TEST_CLIENT_ID = "4"
 
-ip = requests.get('https://api.ipify.org').content.decode('utf8')
-myTestSystemIP = ip
+# Get session, but not logged in.
+def get_headers_not_logged_in(): 
+    session_info = opasDocPermissions.get_authserver_session_info(session_id=None,
+                                                                  client_id=UNIT_TEST_CLIENT_ID)
+    session_id = session_info.session_id
+    headers = {f"client-session":f"{session_id}",
+               "client-id": UNIT_TEST_CLIENT_ID, 
+               "Content-Type":"application/json" 
+               }
+    return headers
 
 def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TEST_PW, client_id=UNIT_TEST_CLIENT_ID):
     pads_session_info = opasDocPermissions.authserver_login(username=username, password=password)

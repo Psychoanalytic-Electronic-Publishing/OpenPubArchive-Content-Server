@@ -13,10 +13,6 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, sessio
 # Login!
 sessID, headers, session_info = test_login(username=PADS_TEST_ID2, password=PADS_TEST_PW2)
 
-if use_server == 5:
-    from localsecrets import PADS_TEST_ID3, PADS_TEST_PW3
-    sessID, headers, session_info = test_login(username=PADS_TEST_ID3, password=PADS_TEST_PW3)
-
 class TestReports(unittest.TestCase):
     """
     Note: tests are performed in alphabetical order, hence the function naming

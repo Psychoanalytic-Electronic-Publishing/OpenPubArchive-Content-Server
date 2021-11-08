@@ -6,17 +6,10 @@ import unittest
 import requests
 
 import opasDocPermissions
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 
 # Login!
-pads_session_info = opasDocPermissions.authserver_login(username=PADS_TEST_ID, password=PADS_TEST_PW)
-session_info = opasDocPermissions.get_authserver_session_info(pads_session_info.SessionId, client_id=UNIT_TEST_CLIENT_ID, pads_session_info=pads_session_info)
-# Confirm that the request-response cycle completed successfully.
-sessID = session_info.session_id
-headers = {f"client-session":f"{sessID}",
-           "client-id": UNIT_TEST_CLIENT_ID
-           }
+sessID, headers, session_info = test_login()
 
 class TestDatabaseSearchLoggedIn(unittest.TestCase):
     def test_search_long_para(self):

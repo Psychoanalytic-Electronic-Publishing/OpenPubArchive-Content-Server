@@ -8,7 +8,9 @@ logger = logging.getLogger(__name__)
 import unittest
 import requests
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestDatabaseAdvancedSearch(unittest.TestCase):
     

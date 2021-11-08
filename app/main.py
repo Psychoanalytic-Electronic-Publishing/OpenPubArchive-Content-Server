@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1106/v2.1.74" # semver versioning now added after date.
+__version__     = "2021.1108/v2.1.75" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -859,7 +859,7 @@ async def admin_reports(response: Response,
                     detail=ERR_MSG_NO_DATA_FOR_REPORT
                 )       
 
-            print (f"Watched: Admin Report Query Complete. DateCondition: {date_condition} Rows: {limited_count} Time={time.time() - ts}")
+            logger.debug(f"Watched: Admin Report Query Complete. DateCondition: {date_condition} Rows: {limited_count} Time={time.time() - ts}")
             report_struct = models.ReportStruct( responseInfo = response_info, 
                                                  responseSet = results
                                                  )
@@ -5344,7 +5344,8 @@ def documents_glossary_term(response: Response,
                                                                  record_per_term=recordperterm,
                                                                  retFormat=return_format,
                                                                  session_info=session_info,
-                                                                 req_url=request.url._url
+                                                                 req_url=request.url._url,
+                                                                 request=request
                                                                  )
 
         ret_val.documents.responseInfo.request = request.url._url

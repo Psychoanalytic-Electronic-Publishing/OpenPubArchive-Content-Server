@@ -4,7 +4,10 @@
 import unittest
 import requests
 
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
+
 from opasPySolrLib import get_term_index
 
 # two libs for the same function, different restrictions

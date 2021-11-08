@@ -112,8 +112,7 @@ def stampcopyright(username, input_file, top=True, bottom=True, suffix=""):
         logger.error(f"Error writing PDF HeaderFooter File: {e}")
     else:
         logger.debug(f"Wrote PDF HeaderFooter File: {headerfooterfile}")
-        if opasConfig.LOCAL_TRACE:
-            print (f"Wrote PDF HeaderFooter File: {headerfooterfile}")
+        if opasConfig.LOCAL_TRACE: print (f"Wrote PDF HeaderFooter File: {headerfooterfile}")
         
     # now merge with download file
     #pisa.showLogging() # debug only

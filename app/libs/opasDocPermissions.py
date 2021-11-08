@@ -11,6 +11,8 @@ import localsecrets
 # import urllib.parse
 # import json
 import sys
+from fastapi import HTTPException
+
 # from opasAPISupportLib import save_opas_session_cookie
 sys.path.append("..") # Adds higher directory to python modules path.
 from config.opasConfig import OPASSESSIONID
@@ -51,9 +53,9 @@ def user_logged_in_per_header(request, session_id=None, caller_name="unknown") -
             # logger.warning(f"Loggedin=True ({caller_name} / {session_id})") #TEMP diagnostic
             ret_val = True
         elif ret_val == "false":
-            logger.warning(f"Loggedin=False ({caller_name} / {session_id})") #TEMP diagnostic
-            # make sure session is ended in database
-            success = ocd.end_session(session_id=session_id)
+            # logger.warning(f"Loggedin=False ({caller_name} / {session_id})") #TEMP diagnostic
+            # make sure session is ended in database [Why..not logged in?]
+            # success = ocd.end_session(session_id=session_id)
             ret_val = False
         else:
             the_session_info = ocd.get_session_from_db(session_id)
@@ -305,10 +307,14 @@ def get_authserver_session_info(session_id,
         session_info.session_expires_time = start_time + datetime.timedelta(seconds=pads_session_info.SessionExpires)
         session_info.pads_session_info = pads_session_info
         user_logged_in_bool = pads_session_info.IsValidLogon
+    else:
+        # not logged in 
+        user_logged_in_bool = False
+        session_info = models.SessionInfo(session_id=session_id)
         
     # either continue an existing session, or start a new one
     if request is not None:
-        if user_logged_in_bool or pads_session_info.IsValidLogon:
+        if user_logged_in_bool or session_info.is_valid_login:
             pads_user_info, status_code = get_authserver_session_userinfo(session_id, client_id, addl_log_info=" (complete session_record)")
             session_info.pads_user_info = pads_user_info
     
@@ -346,9 +352,21 @@ def get_authserver_session_info(session_id,
         session_info.user_type = "Unknown"
     if session_info.username is None:
         session_info.username = opasConfig.USER_NOT_LOGGED_IN_NAME
-            
-    # print (f"SessInfo: {session_info}")
-    logger.debug(f"***authent: {session_info.authenticated} - get_full_session_info total time: {time.time() - ts}***")
+
+    if not user_logged_in_bool:
+        if session_id is not None:
+            # save session info anyway
+            save_session_info_to_db(session_info) # now session info will contain non-logged in users
+        else:
+            msg = f"SessionID:[{session_id}] was not resolved. Raising Exception 424."
+            raise HTTPException(
+                status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
+                detail=ERR_MSG_PASSWORD + f" {msg}"
+                )
+    else:
+        # print (f"SessInfo: {session_info}")
+        logger.debug(f"***authent: {session_info.authenticated} - get_full_session_info total time: {time.time() - ts}***")
+    
     return session_info
 
 def get_authserver_session_userinfo(session_id, client_id, addl_log_info=""):
@@ -365,7 +383,7 @@ def get_authserver_session_userinfo(session_id, client_id, addl_log_info=""):
         full_URL = base + f"/v1/Users" + f"?SessionID={session_id}"
         try:
             response = requests.get(full_URL, headers={"Content-Type":"application/json"}) # Call PaDS
-            ocd.temp_pads_log_call(caller=caller_name, reason=caller_name + addl_log_info, session_id=session_id, pads_call=full_URL, return_status_code=response.status_code) # Log Call PaDS
+            ocd.log_pads_calls(caller=caller_name, reason=caller_name + addl_log_info, session_id=session_id, pads_call=full_URL, return_status_code=response.status_code) # Log Call PaDS
             
         except Exception as e:
             logger.error(f"{caller_name}: Error from auth server user info call: {e}. Non-logged in user {msg}")
@@ -389,22 +407,22 @@ def save_session_info_to_db(session_info):
         ret_val, saved_session_info = ocd.save_session(session_id, session_info)
         logger.debug(f"Saving session info {session_id}")
     else:
-        logger.debug(f"Session {session_id} already found in db. Updating...")
+        logger.debug(f"Session {session_id} already found in db.")
         if session_info.username != db_session_info.username and db_session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
             msg = f"AuthServerSessionInfoError: MISMATCH! Two Usernames with same session_id. OLD(DB): {db_session_info}; NEW(SESSION): {session_info}"
             print (msg)
             logger.error(msg)
-        
-        logger.debug(f"Updating session info {session_id}")
-        ret_val = ocd.update_session(session_id,
-                                     userID=session_info.user_id,
-                                     username=session_info.username, 
-                                     authenticated=1 if session_info.authenticated == True else 0,
-                                     authorized_peparchive=1 if session_info.authorized_peparchive == True else 0,
-                                     authorized_pepcurrent=1 if session_info.authorized_pepcurrent == True else 0,
-                                     session_end=session_info.session_expires_time,
-                                     api_client_id=session_info.api_client_id
-                                     )
+        if session_info.username != opasConfig.USER_NOT_LOGGED_IN_NAME:
+            logger.debug(f"Updating session info {session_id}")
+            ret_val = ocd.update_session(session_id,
+                                         userID=session_info.user_id,
+                                         username=session_info.username, 
+                                         authenticated=1 if session_info.authenticated == True else 0,
+                                         authorized_peparchive=1 if session_info.authorized_peparchive == True else 0,
+                                         authorized_pepcurrent=1 if session_info.authorized_pepcurrent == True else 0,
+                                         session_end=session_info.session_expires_time,
+                                         api_client_id=session_info.api_client_id
+                                         )
     
     return ret_val
 
@@ -431,7 +449,7 @@ def authserver_login(username=PADS_TEST_ID,
 
     try:
         pads_response = requests.post(full_URL, headers={"Content-Type":"application/json"}, json={"UserName":f"{username}", "Password":f"{password}"})
-        ocd.temp_pads_log_call(caller=caller_name, reason=caller_name, session_id=session_id, pads_call=full_URL, return_status_code=pads_response.status_code, params=username) # Log Call PaDS
+        ocd.log_pads_calls(caller=caller_name, reason=caller_name, session_id=session_id, pads_call=full_URL, return_status_code=pads_response.status_code, params=username) # Log Call PaDS
         
     except Exception as e:
         msg = f"{caller_name}: Authorization server not available. {e}"
@@ -502,7 +520,7 @@ def authserver_logout(session_id, request: Request=None, response: Response=None
         # call PaDS
         full_URL = base + f"/v1/Users/Logout/?SessionId={session_id}"
         response = requests.post(full_URL, headers={"Content-Type":"application/json"})
-        ocd.temp_pads_log_call(caller=caller_name, reason=caller_name, session_id=session_id, pads_call=full_URL, return_status_code=response.status_code) # Log Call PaDS
+        ocd.log_pads_calls(caller=caller_name, reason=caller_name, session_id=session_id, pads_call=full_URL, return_status_code=response.status_code) # Log Call PaDS
         if response.ok:
             ret_val = True
         else:
@@ -534,7 +552,7 @@ def authserver_permission_check(session_id,
 
     try: # permit request to PaDS
         response = requests.get(full_URL, headers=headers) # Call PaDS
-        ocd.temp_pads_log_call(caller=caller_name, reason=reason_for_check, session_id=session_id, pads_call=full_URL, return_status_code=response.status_code, params=doc_id) # Log Call PaDS
+        ocd.log_pads_calls(caller=caller_name, reason=reason_for_check, session_id=session_id, pads_call=full_URL, return_status_code=response.status_code, params=doc_id) # Log Call PaDS
         
     except Exception as e:
         logger.error(f"{caller_name}: Request session {session_id} exception part 1: {full_URL}")
@@ -893,21 +911,28 @@ def get_pads_session_info(session_id=None,
             headers = { opasConfig.X_FORWARDED_FOR:user_ip }
             pads_session_info = requests.get(full_URL, headers) # Call PaDS
             logger.debug(f"{caller_name}: Session ID:{session_id}. X_FORWARDED_FOR from authenticateIP: {user_ip}. URL: {req_url} PaDS Session Info: {pads_session_info}")
+            status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below); this is only in PaDS return of pads_session_info, not in the model.
         else:
-            pads_session_info = requests.get(full_URL) # Call PaDS
+            if session_id is not None:
+                pads_session_info = requests.get(full_URL) # Call PaDS
+                status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below)
+            else: # we need a session id, go ahead and ask Pads (separate for tracking)
+                pads_session_info = requests.get(full_URL) # Call PaDS
+                status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below)
             
     except Exception as e:
         logger.error(f"{caller_name}: Authorization server not available. {e}")
         pads_session_info = models.PadsSessionInfo()
     else:
-        status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below)
-        ocd.temp_pads_log_call(caller=caller_name, reason=caller_name, session_id=session_id, pads_call=full_URL, ip_address=user_ip, return_status_code=status_code) # Log Call PaDS
+        #status_code = pads_session_info.status_code # save it for a bit (we replace pads_session_info below)
+        ocd.log_pads_calls(caller=caller_name, reason=caller_name, session_id=session_id, pads_call=full_URL, ip_address=user_ip, return_status_code=status_code) # Log Call PaDS
 
         if status_code > 403: # e.g., (httpCodes.HTTP_500_INTERNAL_SERVER_ERROR, httpCodes.HTTP_503_SERVICE_UNAVAILABLE):
             error_text = f"{caller_name}: PaDS session_info status_code is {status_code}"
             logger.error(error_text)
             # try once without the session ID
             if retry == True:
+                # recursive call
                 pads_session_info = get_pads_session_info(client_id=client_id, retry=False, request=request)
                 pads_session_info.pads_status_response = status_code
             else:
