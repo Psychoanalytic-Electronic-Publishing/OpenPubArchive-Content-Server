@@ -707,6 +707,21 @@ def get_access_limitations(doc_id,
                     except Exception as e:
                         logger.error(f"{caller_name}: PEPCurrent document permission: {e}")
 
+            elif classification in (opasConfig.DOCUMENT_ACCESS_FUTURE): # PEPFuture
+                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_DESCRIPTION
+                ret_val.accessLimitedClassifiedAsCurrentContent = False
+                ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_FUTURE + publisherAccess # limited...get it elsewhere
+                if session_info is not None:
+                    try:
+                        # #########################################################################################
+                        # not optimization for PEP_Future.  Case by case.
+                        # #########################################################################################
+                        ret_val.accessLimited = True 
+                        ret_val.accessChecked = True
+                        ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_FUTURE_CONTENT_NOT_AVAILABLE 
+                    except Exception as e:
+                        logger.error(f"{caller_name}: PEPCurrent document permission: {e}")
+
             elif classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE):
                 ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_DESCRIPTION 
                 # ret_val.accessLimited = True # default is true

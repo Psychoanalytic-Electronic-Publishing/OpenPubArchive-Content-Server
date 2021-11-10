@@ -123,6 +123,7 @@ AUTH_ABSTRACT_VIEW_REQUEST = "AbstractView"
 # file classifications (from documents in the Solr database)
 DOCUMENT_ACCESS_FREE = "free"
 DOCUMENT_ACCESS_EMBARGOED = "current"
+DOCUMENT_ACCESS_FUTURE = "future"      # Same as current but different messages
 DOCUMENT_ACCESS_ARCHIVE = "archive"
 DOCUMENT_ACCESS_UNDEFINED = "undefined"
 DOCUMENT_ACCESS_OFFSITE = "offsite"
@@ -489,6 +490,8 @@ ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the speci
 ACCESS_SUMMARY_DESCRIPTION = "This is a summary excerpt from the full document. "
 ACCESS_SUMMARY_FORSUBSCRIBERS = "The full content of the document is available to subscribers. "
 ACCESS_SUMMARY_EMBARGOED = "The full-text content of the document is embargoed per an agreement with the publisher. "
+ACCESS_SUMMARY_FUTURE = "This journal is in the process of being added to PEP-Web.  The full-text content of the document is not yet available. "
+
 # ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
 ACCESS_SUMMARY_PUBLISHER_INFO = "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
 ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = " <a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>." # needs the left space now 2021-05-05
@@ -500,6 +503,7 @@ ACCESSLIMITED_DESCRIPTION_FREE = "This content is currently free to all users."
 ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access."
 ACCESSLIMITED_401_UNAUTHORIZED = "Your session may have timed out. Please try and login again."
 ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access."
+ACCESSLIMITED_DESCRIPTION_FUTURE_CONTENT_NOT_AVAILABLE = "This future content is not yet available for you to access."
 
 # control whether abstracts can be viewed by non-logged-in users
 ACCESS_ABSTRACT_RESTRICTION = False

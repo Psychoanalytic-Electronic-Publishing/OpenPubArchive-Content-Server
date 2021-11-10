@@ -243,10 +243,30 @@ class opasCentralDB(object):
         self.password = password
         self.database = database
         self.unpaired_connection_count = 0
-        self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
-        self.connected = self.db
+        try:
+            self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
+            self.connected = self.db.open
+        except Exception as e:
+            self.connected = False
+            logger.error(f"OpasCentralDB Init.  Could not connect to DB: {e}")
         
         self.session_id = session_id # deprecate?
+
+    def __del__(self):
+        if self.db is not None:
+            try:
+                if self.db.open:
+                    self.db.close()
+                    self.db = None
+                    print(f"Database closed by __del__")
+                else:
+                    print(f"Database close request, but not open (__del__). Connections: {self.connection_count}")
+                    
+            except Exception as e:
+                print(f"caller: __del__ the db is not open ({e}).")
+        else:
+            print(f"caller: __del__ the db object is not set.")
+        
         
     def open_connection(self, caller_name=""):
         """
