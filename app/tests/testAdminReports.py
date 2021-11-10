@@ -12,6 +12,9 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, sessio
 
 # Login!
 sessID, headers, session_info = test_login(username=PADS_TEST_ID2, password=PADS_TEST_PW2)
+# set log level to error
+full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?level=ERROR')
+response = requests.put(full_URL, headers=headers)
 
 class TestReports(unittest.TestCase):
     """

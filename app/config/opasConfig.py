@@ -14,6 +14,8 @@ from schemaMap import PREDEFINED_SORTS
 import localsecrets
 import opasFileSupport
 
+TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
+
 # To test idea for limiting access calls
 LIMIT_TEST_DO_THIS = True
 LIMIT_TEST_DONT_DO_THIS = False

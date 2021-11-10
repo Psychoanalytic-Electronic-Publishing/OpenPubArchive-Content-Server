@@ -32,7 +32,7 @@ from xml.sax import SAXParseException
 import lxml
 
 import localsecrets
-from localsecrets import TIME_FORMAT_STR
+from opasConfig import TIME_FORMAT_STR
 
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 import starlette.status as httpCodes

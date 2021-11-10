@@ -24,6 +24,7 @@ from datetime import datetime
 import calendar
 import email.utils
 import localsecrets
+import opasConfig
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
@@ -202,8 +203,8 @@ class FileInfo(object):
         Get the date that a file was last modified
         """
         self.filename = filename
-        self.timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(localsecrets.TIME_FORMAT_STR)
-        self.timestamp_obj = datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(opasConfig.TIME_FORMAT_STR)
+        self.timestamp_obj = datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
         self.fileSize = os.path.getsize(filename)
         self.buildDate = time.time()
 

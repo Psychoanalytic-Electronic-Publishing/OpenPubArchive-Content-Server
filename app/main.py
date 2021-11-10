@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1108/v2.1.75" # semver versioning now added after date.
+__version__     = "2021.1109/v2.1.76" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -134,7 +134,7 @@ from requests.auth import HTTPBasicAuth
 # import aiofiles
 # from typing import List
 
-TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
+# TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ' # moved to opasConfig
 
 from pydantic import ValidationError
 import solrpy as solr # needed for extended search
@@ -850,7 +850,7 @@ async def admin_reports(response: Response,
                                                 listType="reportlist",
                                                 fullCountComplete = full_count_complete_checked,
                                                 request=f"{request.url._url}",
-                                                timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                                timeStamp = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)                     
                                                 )   
 
             if count == 0:
@@ -1441,6 +1441,7 @@ def session_login_basic(response: Response,
                 value=f"{session_id}",
                 domain=localsecrets.COOKIE_DOMAIN
             )
+            session_info.api_direct_login = True
             
     else:
         logger.error(f"LoginError: Bad login")
@@ -1523,6 +1524,7 @@ def session_login(response: Response,
                 value=f"{session_id}",
                 domain=localsecrets.COOKIE_DOMAIN
             )
+            session_info.api_direct_login = True
             logger.debug("Successful login - saved OpasSessionID Cookie")
 
     try:
@@ -1572,15 +1574,20 @@ def session_logout_user(response: Response,
     """
 
     session_id = client_session
-    # ocd = opasCentralDBLib.opasCentralDB()
+    ocd = opasCentralDBLib.opasCentralDB()
     if session_id is not None and session_id != "":
-        # session_info = ocd.get_session_from_db(session_id)
-        # session_end_time = datetime.utcfromtimestamp(time.time())
-        response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
-        ret_val = opasDocPermissions.authserver_logout(session_id, request=request, response=response)
-        if ret_val:
-            # logged out
-            session_info = models.SessionInfo(session_id=session_id)
+        session_info = ocd.get_session_from_db(session_id)
+        session_end_time = datetime.utcfromtimestamp(time.time())
+        if session_info is not None:
+            session_info.session_end = session_end_time
+            ocd.end_session(session_id=session_id)
+
+        if session_info.api_direct_login:
+            response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
+            ret_val = opasDocPermissions.authserver_logout(session_id, request=request, response=response)
+            if ret_val:
+                # logged out
+                session_info = models.SessionInfo(session_id=session_id)
 
         #ocd, session_info = opasAPISupportLib.get_session_info(request, response,
                                                                #session_id=session_id, client_id=client_id)
@@ -3713,7 +3720,7 @@ async def database_term_counts(response: Response,
         response_info = models.ResponseInfo( listType="termindex", # this is a mistake in the GVPi API, should be termIndex
                                              scopeQuery=[f"Terms: {termlist}"],
                                              dataSource = localsecrets.DATA_SOURCE, 
-                                             timestamp=datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
+                                             timestamp=datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)
                                              )
 
         response_info.count = 0

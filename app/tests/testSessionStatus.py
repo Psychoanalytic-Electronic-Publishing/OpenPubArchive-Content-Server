@@ -71,6 +71,24 @@ class TestSessionStatus(unittest.TestCase):
         r = response.json()
         print (r)
         assert(r["username"] == PADS_TEST_ID)
+
+
+    def test_v2_other_client_logout(self):
+        headers = get_headers_not_logged_in()
+        # now check who I am
+        full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        r = response.json()
+        print (r)
+        assert(r["username"] == opasConfig.USER_NOT_LOGGED_IN_NAME)
+        #  this should logout of the database, but not send a message to PaDS
+        full_URL = base_plus_endpoint_encoded('/v2/Session/Logout/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        assert(r["authenticated"] == False)
        
 if __name__ == '__main__':
     unittest.main()    

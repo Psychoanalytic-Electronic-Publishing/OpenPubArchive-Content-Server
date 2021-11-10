@@ -116,3 +116,8 @@ else:
                    "Content-Type":"application/json",
                    localsecrets.API_KEY_NAME: localsecrets.API_KEY}
     
+def end_test_session(header):
+    from opasCentralDBLib import opasCentralDB
+    ocd = opasCentralDB()
+    ocd.end_session(session_id=headers["client-session"])
+    print ("Session End")

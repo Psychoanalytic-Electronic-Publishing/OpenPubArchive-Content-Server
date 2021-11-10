@@ -471,6 +471,8 @@ class SessionInfo(BaseModel):
     session_expires_time: datetime = Field(None, title="The limit on the user's session information without renewing")
     admin: bool = Field(False, title="True if the user has been authenticated as admin.")
     api_client_id: int = Field(0, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
+    api_direct_login: bool = Field(False, title="True if the session was logged in via the API endpoint.")
+    
     # temporary, for debug
     pads_session_info: PadsSessionInfo = None
     pads_user_info: PadsUserInfo = None

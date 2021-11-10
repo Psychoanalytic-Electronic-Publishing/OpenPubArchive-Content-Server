@@ -77,7 +77,7 @@ import opasFileSupport
 # opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
-from localsecrets import TIME_FORMAT_STR
+# from localsecrets import TIME_FORMAT_STR # moved to opasConfig
 
 # from opasConfig import OPASSESSIONID
 # import configLib.opasCoreConfig as opasCoreConfig
@@ -801,7 +801,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                                          listType = "sourceinfolist",
                                          scopeQuery = [src_type, src_code],
                                          request=f"{req_url}",
-                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)                     
                                          )
 
     source_info_listitems = []
@@ -1453,7 +1453,7 @@ def documents_get_glossary_entry(term_id,
                                              listType = "documentlist",
                                              fullCountComplete = True,
                                              request=f"{req_url}",
-                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)                     
                                              )
 
         document_list_struct = models.DocumentListStruct( responseInfo = response_info, 

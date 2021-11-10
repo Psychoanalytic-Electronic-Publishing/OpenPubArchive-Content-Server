@@ -209,7 +209,7 @@ class ArticleInfo(object):
         self.filename = ""
 
         # now, the rest of the variables we can set from the data
-        self.processed_datetime = datetime.utcfromtimestamp(time.time()).strftime(localsecrets.TIME_FORMAT_STR)
+        self.processed_datetime = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)
         try:
             self.art_id = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/@id", None)
             if self.art_id is None:

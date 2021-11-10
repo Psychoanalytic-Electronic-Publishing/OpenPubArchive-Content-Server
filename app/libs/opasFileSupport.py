@@ -24,6 +24,7 @@ import logging
 import datetime
 import time
 import pathlib
+import opasConfig
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class FileInfo(object):
         self.filetype = None
         self.etag:str = None
         self.timestamp_str:str = None
-        self.timestamp:datetime.datetime = None # datetime.datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.timestamp:datetime.datetime = None # datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
         self.date_modified:datetime.datetime = None # self.timestamp.date()
         # self.date_modified_str:str = None # str(self.date)
         self.fileinfo:dict = {}       
@@ -61,8 +62,8 @@ class FileInfo(object):
         self.filetype = fileinfo["type"]
         self.build_date = time.time() # current time
         # modified date
-        self.timestamp_str = datetime.datetime.strftime(fileinfo["LastModified"], localsecrets.TIME_FORMAT_STR)
-        self.timestamp = datetime.datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.timestamp_str = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
+        self.timestamp = datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
         self.date_modified = self.timestamp.date()
         # self.date_modified_str = str(self.date_modified)
         self.etag = fileinfo.get("Etag", None)
@@ -76,8 +77,8 @@ class FileInfo(object):
         self.build_date = self.fileinfo["build_date"] = time.time() # current time
         # modified date
         mod_date = self.fileinfo["fileSize"] = os.path.getmtime(filespec)
-        self.timestamp_str = self.fileinfo["LastModified"] = datetime.datetime.utcfromtimestamp(mod_date).strftime(localsecrets.TIME_FORMAT_STR)
-        self.timestamp = self.fileinfo["timestamp"] = datetime.datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.timestamp_str = self.fileinfo["LastModified"] = datetime.datetime.utcfromtimestamp(mod_date).strftime(opasConfig.TIME_FORMAT_STR)
+        self.timestamp = self.fileinfo["timestamp"] = datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
         self.date_modified = self.fileinfo["date"] = self.timestamp.date()
         # self.date_modified_str = str(self.date_modified)
         self.etag = self.fileinfo["Etag"] = None
@@ -196,8 +197,8 @@ class FlexFileSystem(object):
                     #ret_obj.filesize = fileinfo_dict["fileSize"] = fileinfo["Size"]
                     #ret_obj.filetype = fileinfo_dict["type"] = fileinfo["type"]
                     ## get rid of times, we only want dates
-                    #ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.strftime(fileinfo["LastModified"], localsecrets.TIME_FORMAT_STR)
-                    #ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], localsecrets.TIME_FORMAT_STR)
+                    #ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
+                    #ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], opasConfig.TIME_FORMAT_STR)
                     #ret_obj.date = fileinfo_dict["date_obj"] = fileinfo_dict["timestamp"].date()
                     #ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
                     #ret_obj.etag = fileinfo_dict["etag"] = fileinfo.get("Etag", None)
@@ -210,8 +211,8 @@ class FlexFileSystem(object):
                 #stat = os.stat(filespec)
                 ret_obj.basename = fileinfo_dict["base_filename"] = os.path.basename(filespec)
                 ret_obj.filesize = fileinfo_dict["fileSize"]  = os.path.getsize(filespec)
-                ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.utcfromtimestamp(os.path.getmtime(filespec)).strftime(localsecrets.TIME_FORMAT_STR)
-                ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], localsecrets.TIME_FORMAT_STR)
+                ret_obj.timestamp_str = fileinfo_dict["timestamp_str"] = datetime.datetime.utcfromtimestamp(os.path.getmtime(filespec)).strftime(opasConfig.TIME_FORMAT_STR)
+                ret_obj.timestamp = fileinfo_dict["timestamp"] = datetime.datetime.strptime(fileinfo_dict["timestamp_str"], opasConfig.TIME_FORMAT_STR)
                 ret_obj.date = fileinfo_dict["date"] = fileinfo_dict["timestamp"].date()
                 ret_obj.date_str = fileinfo_dict["date_str"] = str(fileinfo_dict["date"])
                 #ret_val["type"] = fileinfo["type"]
