@@ -150,7 +150,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 8450 and count1 <= 8580)
+        assert(count1 >= 8450 and count1 <= 8780)
 
     def test_search_fulltext_syn_8(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=text:(externalization)&synonyms=false')

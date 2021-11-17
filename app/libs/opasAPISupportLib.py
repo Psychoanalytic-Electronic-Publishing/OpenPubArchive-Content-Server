@@ -815,17 +815,24 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
             if counter > limit:
                 break
             try:
-                title = source.get("title")
-                authors = source.get("author")
-                pub_year = source.get("pub_year")
-                publisher = source.get("bib_abbrev")
-                book_code = None
-                # src_type = source.get("product_type")
-                start_year = source.get("yearFirst")
-                end_year = source.get("yearLast")
+                # first capture fields needed for art_citeas
                 base_code = source.get("basecode")
-                instance_count = source.get("instances", 1)
                 documentID = source.get("documentID", source.get("articleID"))
+                title = source.get("title")
+
+                publisher = source.get("bib_abbrev", source.get("bibabbrev")) # videos and books
+
+                # for books
+                authors = source.get("author")
+                pub_year = source.get("pub_year") 
+                instance_count = source.get("instances", 1)
+                book_code = None
+
+                # src_type = source.get("product_type")
+
+                # for journals
+                start_year = source.get("start_year")
+                end_year = source.get("end_year")
                 if start_year is None:
                     start_year = pub_year
                 if end_year is None:

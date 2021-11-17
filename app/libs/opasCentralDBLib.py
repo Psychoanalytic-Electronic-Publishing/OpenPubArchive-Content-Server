@@ -230,6 +230,8 @@ class opasCentralDB(object):
     > ocd.delete_session(session_id=random_session_id)
     True
     """
+    connection_count = 0
+    
     def __init__(self, session_id=None,
                  host=localsecrets.DBHOST,
                  port=localsecrets.DBPORT,
@@ -242,10 +244,11 @@ class opasCentralDB(object):
         self.user = user
         self.password = password
         self.database = database
-        self.unpaired_connection_count = 0
         try:
             self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
             self.connected = self.db.open
+            opasCentralDB.connection_count += 1
+            if opasConfig.LOCAL_DBOPEN_TRACE: print(f"Database opened by __init__ (count={opasCentralDB.connection_count})")
         except Exception as e:
             self.connected = False
             logger.error(f"OpasCentralDB Init.  Could not connect to DB: {e}")
@@ -258,14 +261,15 @@ class opasCentralDB(object):
                 if self.db.open:
                     self.db.close()
                     self.db = None
-                    print(f"Database closed by __del__")
+                    opasCentralDB.connection_count -= 1
+                    if opasConfig.LOCAL_DBOPEN_TRACE: print(f"Database closed by __del__ (count={opasCentralDB.connection_count})")
                 else:
-                    print(f"Database close request, but not open (__del__). Connections: {self.connection_count}")
+                    if opasConfig.LOCAL_DBOPEN_TRACE: print(f"Database close request, but not open (__del__). Connections: {opasCentralDB.connection_count}")
                     
             except Exception as e:
-                print(f"caller: __del__ the db is not open ({e}).")
+                logger.error(f"caller: __del__ the db is not open ({e}).")
         else:
-            print(f"caller: __del__ the db object is not set.")
+            logger.error(f"caller: __del__ the db object is not set.")
         
         
     def open_connection(self, caller_name=""):
@@ -284,25 +288,22 @@ class opasCentralDB(object):
         except Exception as e:
             # not open reopen it.
             try:
-                self.unpaired_connection_count += 1
+                opasCentralDB.connection_count += 1
                 if self.db is None:
                     was_closed = True
-                    logger.error(f"Exception {e}.  DB Connection was closed: Opening connection number: {self.unpaired_connection_count}")
+                    logger.error(f"Exception {e}.  DB Connection was closed: Opening connection number: {opasCentralDB.connection_count}")
                 else:
                     was_closed = False
-                    logger.error(f"Exception while checking db.open: {e}. Opening connection number: {self.unpaired_connection_count}")
+                    logger.error(f"Exception while checking db.open: {e}. Opening connection number: {opasCentralDB.connection_count}")
                     
                 self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
                 self.connected = True
 
             except Exception as e:
                 self.connected = False
-                print(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {self.unpaired_connection_count}")
+                print(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {opasCentralDB.connection_count}")
                 self.db = None
                 # status = False
-        #else:
-            #self.unpaired_connection_count += 1
-            #logger.warning(f"FYI: DB connection already open, no action from this call. caller: {caller_name} Unpaired Open Connections: {self.unpaired_connection_count}.")
         
         return self.connected
 
@@ -315,10 +316,10 @@ class opasCentralDB(object):
                 #if self.db.open:
                     #self.db.close()
                     #self.db = None
-                    #self.unpaired_connection_count = 0
+                    #opasCentralDB.connection_count = 0
                     #logger.debug(f"Database closed by ({caller_name})")
                 #else:
-                    #logger.warning(f"Database close request, but not open ({caller_name}). Connections: {self.connection_count}")
+                    #logger.warning(f"Database close request, but not open ({caller_name}). Connections: {opasCentralDB.connection_count}")
                     
             #except Exception as e:
                 #logger.error(f"caller: {caller_name} the db is not open ({e}).")
