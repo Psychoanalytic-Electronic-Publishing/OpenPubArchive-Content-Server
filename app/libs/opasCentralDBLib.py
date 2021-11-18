@@ -244,6 +244,7 @@ class opasCentralDB(object):
         self.user = user
         self.password = password
         self.database = database
+        self.library_version = pymysql.__version__
         try:
             self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
             self.connected = self.db.open

@@ -164,6 +164,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         print (r)
 
     def test_17_get_abstract_bad_client_id_func(self):
+        print("Test bad client ID...error expected.")
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4')
         #response = requests.get(full_URL, headers={})
         #r = response.json()

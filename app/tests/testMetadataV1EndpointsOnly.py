@@ -93,7 +93,7 @@ class TestMetadataV1EndpointsOnly(unittest.TestCase):
         assert(response.ok == True)
         # test return
         r = response.json()
-        assert(r['sourceInfo']['responseInfo']['count'] == 33)
+        assert(r['sourceInfo']['responseInfo']['count'] >= 33)
 
         full_URL = base_plus_endpoint_encoded('/v1/Metadata/*/*/?sourcename=.*international journal of psychoanalysis.*')
         response = requests.get(full_URL, headers=headers)

@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1117/v2.1.82" # semver versioning now added after date.
+__version__     = "2021.1118/v2.1.83" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -1640,6 +1640,7 @@ async def session_status(response: Response,
     hierarchical_server_ver = f"{text_server_ver}/{__version__}"
     
     if admin:
+            
         config_name = localsecrets.CONFIG
         mysql_ver = ocd.get_mysql_version()
         try:
@@ -1655,10 +1656,23 @@ async def session_status(response: Response,
                                                          opas_version = __version__, 
                                                          db_server_url = localsecrets.DBHOST,
                                                          db_server_version = mysql_ver,
-                                                         cors_regex=localsecrets.CORS_REGEX, 
-                                                         config_name = config_name,
-                                                         user_count = 0
+                                                         #cors_regex=localsecrets.CORS_REGEX, # see moreinfo
+                                                         #library_versions=library_versions,  # see moreinfo
+                                                         config_name = config_name
                                                          )
+            
+            if moreinfo:
+                import pydantic
+                import starlette
+                import pysolr
+                library_versions = {"pymysql": ocd.library_version,
+                                    "fastapi": fastapi.__version__,
+                                    "pysolr": pysolr.__version__,
+                                    "pydantic": pydantic.version.VERSION,
+                                    "starlette": starlette.__version__,
+                                   }
+                server_status_item.library_versions = library_versions
+                server_status_item.cors_regex = localsecrets.CORS_REGEX
 
         except ValidationError as e:
             logger.error("ValidationError", e.json())
@@ -5305,9 +5319,6 @@ def documents_glossary_term(response: Response,
 
     ## Sample Call
          /v2/Documents/Glossary/{termIdentifier}
-
-    ## Notes
-         In V1 (and PEP-Easy 1.0), glossary entries are fetched via the /v1/Documents endpoint rather than here.
 
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED for glossary access at the term level.  Otherwise, returns error.

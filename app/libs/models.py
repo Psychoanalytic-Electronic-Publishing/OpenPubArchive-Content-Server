@@ -511,6 +511,7 @@ class ServerStatusItem(BaseModel):
     text_server_url: str = Field(None, title="Current SOLR URL")
     cors_regex: str = Field(None, title="Current CORS Regex")
     db_server_url: str = Field(None, title="Current DB URL")
+    library_versions: dict = Field({}, title="Server Python Library Versions")
 
 #-------------------------------------------------------
 

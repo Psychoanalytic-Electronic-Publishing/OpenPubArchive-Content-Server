@@ -202,7 +202,7 @@ def validate_client_id(client_id, caller_name="DocPermissionsError"):
                     try:
                         client_id = int(client_id)
                     except:
-                        logger.error(f"client_id is str, but not convertible to int.  Default to NO_CLIENT_ID.  Caller: {caller_name}")
+                        logger.error(f"client_id is str ('{client_id}'), but not convertible to int.  Default to NO_CLIENT_ID.  Caller: {caller_name}")
                         client_id = opasConfig.NO_CLIENT_ID
                 else:
                     logger.error(f"client_id is not int or str.  Type is {type(client_id)}. Default to NO_CLIENT_ID. Caller: {caller_name}")
