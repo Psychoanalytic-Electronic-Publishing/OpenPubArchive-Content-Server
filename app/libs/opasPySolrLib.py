@@ -1896,7 +1896,7 @@ def database_get_whats_new(days_back=14,
             if row_count > limit:
                 continue
 
-            volume_url = "/v1/Metadata/Contents/%s/%s" % (PEPCode, issue)
+            volume_url = "/v2/Metadata/Contents/%s/%s/" % (PEPCode, volume)
     
             item = models.WhatsNewListItem( documentID = result.get("art_id", None),
                                             displayTitle = display_title,
