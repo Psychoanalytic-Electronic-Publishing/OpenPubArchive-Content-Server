@@ -135,7 +135,13 @@ USER2SOLRFIELDNAME_MAP = {
     "nonspace_count" : "art_chars_no_spaces_count", 
     "word_count" : "art_words_count", 
     "author_count" : "art_authors_count", 
-    "reference_count" : "art_reference_count"
+    "reference_count" : "art_reference_count",
+    "issn" : "art_issn",
+    "isbn" : "art_isbn",
+    "volume" : "art_vol",
+    "vol" : "art_vol",
+    "doi" : "art_doi",
+    "lang": "language",   
 }
 
 FIELD2USER_MAP = {

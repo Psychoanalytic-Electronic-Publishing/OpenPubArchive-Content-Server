@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1118/v2.1.84" # semver versioning now added after date.
+__version__     = "2021.1118/v2.1.85" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -1666,11 +1666,13 @@ async def session_status(response: Response,
                 import starlette
                 import pysolr
                 import fastapi
+                import lxml
                 library_versions = {"pymysql": ocd.library_version,
                                     "fastapi": fastapi.__version__,
                                     "pysolr": pysolr.__version__,
                                     "pydantic": pydantic.version.VERSION,
                                     "starlette": starlette.__version__,
+                                    "lxml":lxml.__version__,
                                    }
                 server_status_item.library_versions = library_versions
                 server_status_item.cors_regex = localsecrets.CORS_REGEX
