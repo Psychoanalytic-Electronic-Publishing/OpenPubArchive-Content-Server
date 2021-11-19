@@ -191,6 +191,12 @@ def smart_search(smart_search_text):
                             continue
                         else:
                             ret_val["schema_field"] = alt_name
+                            if ret_val["schema_field"] in ["art_sourcecode", ]:
+                                try:
+                                    ret_val["schema_value"] = ret_val["schema_value"].upper()
+                                except Exception as e:
+                                    pass
+                                
                             
                 ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched {label}: {smart_search_text}"
                 ret_val[opasConfig.KEY_SEARCH_TYPE] = f"{label}"

@@ -401,7 +401,7 @@ def get_authserver_session_userinfo(session_id, client_id, addl_log_info=""):
 def save_session_info_to_db(session_info):
     # make sure the session is recorded.
     session_id = session_info.session_id
-    # ocd = opasCentralDBLib.opasCentralDB()
+    ocd = opasCentralDBLib.opasCentralDB()
     db_session_info = ocd.get_session_from_db(session_id)
     if db_session_info is None:
         ret_val, saved_session_info = ocd.save_session(session_id, session_info)
