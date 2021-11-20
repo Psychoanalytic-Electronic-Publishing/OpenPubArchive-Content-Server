@@ -213,7 +213,7 @@
 
   <!--Added 2021-11-20 for IJPOpen, but can be used generally to embargo a specific article-->
   <field name="art_embargo" type="boolean" indexed="false" stored="true" docValues="true" default="false" multiValued="false"/>
-  <field name="art_embargotype" type="stringci" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_embargotype" type="string_ci" indexed="true" stored="true" multiValued="false" docValues="false"/>
   
   <!--......................................................................................................-->
   <!--TITLE-->

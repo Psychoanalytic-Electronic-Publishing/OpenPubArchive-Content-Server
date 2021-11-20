@@ -617,6 +617,9 @@ if __name__ == "__main__":
     parser = OptionParser(usage="%prog [options] - PEP Solr Data Loader", version=f"%prog ver. {__version__}")
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
                       help="Option to force all files to be updated on the specified cores.")
+    # redundant add option to use so compatible options to the PEPXML code for manual use
+    parser.add_option("--rebuild", action="store_true", dest="forceRebuildAllFiles", default=False,
+                      help="Option to force all files to be updated on the specified cores.")
     parser.add_option("--after", dest="created_after", default=None,
                       help="Load files created or modifed after this datetime (use YYYY-MM-DD format). (May not work on S3)")
     parser.add_option("-d", "--dataroot", dest="rootFolder", default=localsecrets.XML_ORIGINALS_PATH,
