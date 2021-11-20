@@ -234,6 +234,8 @@ class ArticleInfo(object):
         self.artinfo_xml = etree.tostring(artinfo_xml).decode("utf8")
         self.src_code = pepxml.xpath("//artinfo/@j")[0]
         self.src_code = self.src_code.upper()  # 20191115 - To make sure this is always uppercase
+        self.embargo = pepxml.xpath("//artinfo/@embargo")
+        self.embargotype = pepxml.xpath("//artinfo/@embargotype")
         
         if 1: # vol info (just if'd for folding purposes)
             vol_actual = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvol/@actual', default_return=None)
@@ -956,7 +958,9 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     
     new_rec = {
                 "id": artInfo.art_id,                                         # important =  note this is unique id for every reference
-                "art_id" : artInfo.art_id,                                    # important                                     
+                "art_id" : artInfo.art_id,                                    # important
+                "art_embargo" : artInfo.embargo,                              # limit display if true (e.g., IJPOpen removed articles)
+                "art_embargotype" : artInfo.embargotype,
                 "title" : artInfo.art_title,                                  # important
                 "title_str" : title_str, # remove all punct, this is only used for sorting
                 "art_title_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//arttitle", default_return = None),
