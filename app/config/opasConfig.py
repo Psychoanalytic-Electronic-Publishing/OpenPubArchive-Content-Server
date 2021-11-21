@@ -41,7 +41,7 @@ FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message
 logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 LOG_CALL_TIMING = True
 LOCAL_TRACE = False                   # turn this on to see the queries easily.
-LOCAL_DBOPEN_TRACE = True            # show open/close db in init/del
+LOCAL_DBOPEN_TRACE = False            # show open/close db in init/del
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001

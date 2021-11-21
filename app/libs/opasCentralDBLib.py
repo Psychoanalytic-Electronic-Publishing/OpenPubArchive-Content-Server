@@ -249,7 +249,8 @@ class opasCentralDB(object):
             self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
             self.connected = self.db.open
             opasCentralDB.connection_count += 1
-            if opasConfig.LOCAL_DBOPEN_TRACE: print(f"Database opened by __init__ (count={opasCentralDB.connection_count})")
+            if opasConfig.LOCAL_DBOPEN_TRACE:
+                if opasCentralDB.connection_count > 10: print(f"Database opened by __init__ (count={opasCentralDB.connection_count})")
         except Exception as e:
             self.connected = False
             logger.error(f"OpasCentralDB Init.  Could not connect to DB: {e}")
@@ -263,9 +264,11 @@ class opasCentralDB(object):
                     self.db.close()
                     self.db = None
                     opasCentralDB.connection_count -= 1
-                    if opasConfig.LOCAL_DBOPEN_TRACE: print(f"Database closed by __del__ (count={opasCentralDB.connection_count})")
+                    if opasConfig.LOCAL_DBOPEN_TRACE:
+                        if opasCentralDB.connection_count > 10: print(f"Database closed by __del__ (count={opasCentralDB.connection_count})")
                 else:
-                    if opasConfig.LOCAL_DBOPEN_TRACE: print(f"Database close request, but not open (__del__). Connections: {opasCentralDB.connection_count}")
+                    if opasConfig.LOCAL_DBOPEN_TRACE:
+                        if opasCentralDB.connection_count > 10: print(f"Database close request, but not open (__del__). Connections: {opasCentralDB.connection_count}")
                     
             except Exception as e:
                 logger.error(f"caller: __del__ the db is not open ({e}).")
