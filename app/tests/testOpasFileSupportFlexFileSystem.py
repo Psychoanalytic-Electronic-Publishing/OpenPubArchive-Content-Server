@@ -21,12 +21,17 @@ class TestFSFileSystem(unittest.TestCase):
         assert spec==localsecrets.IMAGE_SOURCE_PATH + localsecrets.PATH_SEPARATOR + filespec, spec
 
     def test_02(self):
-        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
+        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                            secret=localsecrets.S3_SECRET,
+                                            root=localsecrets.XML_ORIGINALS_PATH)
         filespec="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).XML"
         fileinfo = fs.fileinfo(filespec, path="_PEPFree/PEPTOPAUTHVS")
         assert fileinfo.basename == filespec
         assert fileinfo.filesize == 16719
-        fs = opasFileSupport.FlexFileSystem(root=localsecrets.IMAGE_SOURCE_PATH)
+        #  permission problems when trying to open on stage
+        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                            secret=localsecrets.S3_SECRET,
+                                            root=localsecrets.IMAGE_SOURCE_PATH)
         filespec=r"IJAPS.016.0181A.FIG002.jpg"
         fileinfo = fs.fileinfo(filespec)
         assert fileinfo.basename == filespec, fileinfo.basename 
@@ -51,7 +56,9 @@ class TestFSFileSystem(unittest.TestCase):
     def test_04(self):
         filespec="PEPTOPAUTHVS.001.0021A(bEXP_ARCH1).XML"
         # create text file
-        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.XML_ORIGINALS_PATH)
+        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                            secret=localsecrets.S3_SECRET,
+                                            root=localsecrets.XML_ORIGINALS_PATH)
         filefound = fs.find(filespec)
         assert filefound != None
         
@@ -71,6 +78,9 @@ class TestFSFileSystem(unittest.TestCase):
         
     def test_06(self):
         fs = opasFileSupport.FlexFileSystem(root=localsecrets.IMAGE_SOURCE_PATH) # must be for the image if not the root
+        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                            secret=localsecrets.S3_SECRET,
+                                            root=localsecrets.IMAGE_SOURCE_PATH)
         document_id = "IJAPS.016.0181A.FIG002.jpg"
         filename = fs.get_image_filename(filespec=document_id, path=localsecrets.IMAGE_SOURCE_PATH)
         if filename is None:

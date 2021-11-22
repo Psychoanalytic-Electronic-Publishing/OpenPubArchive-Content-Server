@@ -356,7 +356,8 @@ def get_authserver_session_info(session_id,
     if not user_logged_in_bool:
         if session_id is not None:
             # save session info anyway
-            save_session_info_to_db(session_info) # now session info will contain non-logged in users
+            if not save_session_info_to_db(session_info):  # now session info will contain non-logged in users
+                logger.debug(f"***authent: {session_info.authenticated} - Save session info failed.")
         else:
             msg = f"SessionID:[{session_id}] was not resolved. Raising Exception 424."
             raise HTTPException(
@@ -400,6 +401,7 @@ def get_authserver_session_userinfo(session_id, client_id, addl_log_info=""):
     
 def save_session_info_to_db(session_info):
     # make sure the session is recorded.
+    ret_val = False # default return
     session_id = session_info.session_id
     ocd = opasCentralDBLib.opasCentralDB()
     db_session_info = ocd.get_session_from_db(session_id)
@@ -838,6 +840,7 @@ def get_access_limitations(doc_id,
                                                                session_end=session_info.session_expires_time,
                                                                api_client_id=session_info.api_client_id
                                                                )
+                                                
                                             
                                 if pads_authorized:
                                     # "This content is available for you to access"

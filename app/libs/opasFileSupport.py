@@ -142,7 +142,7 @@ class FlexFileSystem(object):
             found_info = find_s3_file(bucket=path_root, filename=name)
             try:
                 ret_val = found_info[0].get("Key", None)
-            except:
+            except Exception as e:
                 ret_val = None
 
         return ret_val

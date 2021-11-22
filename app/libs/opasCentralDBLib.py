@@ -246,7 +246,7 @@ class opasCentralDB(object):
         self.database = database
         self.library_version = pymysql.__version__
         try:
-            self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
+            self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database) # connect_timeout=31536)
             self.connected = self.db.open
             opasCentralDB.connection_count += 1
             if opasConfig.LOCAL_DBOPEN_TRACE:
@@ -300,7 +300,7 @@ class opasCentralDB(object):
                     was_closed = False
                     logger.error(f"Exception while checking db.open: {e}. Opening connection number: {opasCentralDB.connection_count}")
                     
-                self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
+                self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database) # connect_timeout=31536)
                 self.connected = True
 
             except Exception as e:
@@ -939,6 +939,7 @@ class opasCentralDB(object):
         # newer_than = datetime.utcfromtimestamp(newer_than_date).strftime(opasConfig.TIME_FORMAT_STR)
         def_date = datetime.now() - dtime.timedelta(days=days_back)
         newer_than_date = def_date.strftime('%Y-%m-%d %H:%M:%S')
+        self.db.ping()
         sqlSelect = """
                         SELECT art_id FROM article_tracker
                         WHERE date_inserted > date(%s)
@@ -1188,7 +1189,7 @@ class opasCentralDB(object):
         Update the extra fields in the session record
         """
         fname = "update_session"
-        ret_val = None
+        ret_val = False
         self.open_connection(caller_name=fname) # make sure connection is open
         setClause = "SET "
         added = 0
@@ -1272,9 +1273,11 @@ class opasCentralDB(object):
                         logger.debug(f"Updated session record for session: {session_id}")
                     else:
                         ret_val = False # seems to be false if the record update is the same, so change to just debug notice
-                        logger.debug(f"Could not record close session per sessionID {session_id} in DB")
 
         self.close_connection(caller_name=fname) # make sure connection is closed
+        if ret_val == False:
+            logger.debug(f"Could not record close session per sessionID {session_id} in DB")
+            
         return ret_val
 
     def delete_session(self, session_id):

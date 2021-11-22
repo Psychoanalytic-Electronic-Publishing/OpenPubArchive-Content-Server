@@ -20,7 +20,10 @@ class TestOpasFileSupport(unittest.TestCase):
         # This should work whether on local or S3
         if localsecrets.S3_KEY is not None: #  test AWS
             print ("S3 FS tests")
-        fs = opasFileSupport.FlexFileSystem(root=localsecrets.XML_ORIGINALS_PATH)
+
+        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                            secret=localsecrets.S3_SECRET,
+                                            root=localsecrets.XML_ORIGINALS_PATH)
         filename = "ADPSA.001.0007A(bEXP_ARCH1).XML"
         ret_val = fs.find(filename)
         print (ret_val)
@@ -34,7 +37,9 @@ class TestOpasFileSupport(unittest.TestCase):
         # This should work whether on local or S3
         if localsecrets.S3_KEY is not None: #  test AWS
             print ("S3 FS tests")
-        fs = opasFileSupport.FlexFileSystem(root=localsecrets.XML_ORIGINALS_PATH)
+        fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY,
+                                            secret=localsecrets.S3_SECRET,
+                                            root=localsecrets.XML_ORIGINALS_PATH)
         filename = "ADPSA.001.0007A(bEXP_ARCH1).XML"
         ret_val = fs.find(filename)
         print (ret_val)
