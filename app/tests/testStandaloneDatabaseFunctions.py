@@ -30,6 +30,13 @@ class TestStandaloneDatabaseFunctions(unittest.TestCase):
     def test_get_articles_newer_than_3(self):
         data = ocd.get_articles_newer_than(days_back=5)
         print (data)
+        
+    def test_get_user_message(self):
+        data = ocd.get_user_message(msg_code="300")
+        print (data)
+        data2 = ocd.get_user_message(msg_code="IJPOPEN_REMOVED")
+        assert (data == data2)
+        
 
 if __name__ == '__main__':
     unittest.main()

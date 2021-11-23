@@ -62,6 +62,19 @@ pat_prefix_amps = re.compile("^\s*&& ")
 #}
 
 #-----------------------------------------------------------------------------
+def get_document_download_permission(documentInfoXML):
+    # added 2021-11-23 to dynamically return download permission data from XML without preloading it in Solr.
+    #   should be fast enough but otherwise 'could' be added to Solr model.
+
+    ret_val = True # Default
+    if documentInfoXML is not None:
+        if re.search('download\s*=\s*(\"|\')false(\"|\')', documentInfoXML, re.IGNORECASE):
+            ret_val = False
+        else: 
+            ret_val = True
+    return ret_val
+
+#-----------------------------------------------------------------------------
 def get_base_article_info_by_id(art_id):
     from opasPySolrLib import search_text
     
@@ -1970,7 +1983,7 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
         abstract = None
     else:
         if omit_abstract:
-            art_excerpt = opasConfig.ACCESS_ABSTRACT_RESTRICTED_MESSAGE
+            art_excerpt = ocd.get_user_message(msg_code=opasConfig.ACCESS_ABSTRACT_RESTRICTED_MESSAGE)
         
         heading = opasxmllib.get_running_head(source_title=documentListItem.sourceTitle,
                                               pub_year=documentListItem.year,
@@ -2038,7 +2051,17 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             documentListItem.issue = result.get("art_iss", None)
             documentListItem.issn = result.get("art_issn", None)
             documentListItem.isbn = result.get("art_isbn", None)
-            
+            documentListItem.embargo = result.get("art_embargo", False)
+            documentListItem.embargotype = result.get("art_embargotype", None)
+            # added 2021-11-23 to dynamically return download permission data from XML without preloading it in Solr.
+            #   should be fast enough but otherwise 'could' be added to Solr model.
+            documentListItem.downloads = get_document_download_permission(documentListItem.documentInfoXML)
+            #if documentListItem.documentInfoXML is not None:
+                #if re.search('download\s*=\s*(\"|\')false(\"|\')', documentListItem.documentInfoXML, re.IGNORECASE):
+                    #documentListItem.downloads = False
+                #else: 
+                    #documentListItem.downloads = True
+           
             # see if using art_title instead is a problem for clients...at least that drops the footnote
             documentListItem.title = result.get("art_title", "")  
             # documentListItem.title = result.get("art_title_xml", "")  

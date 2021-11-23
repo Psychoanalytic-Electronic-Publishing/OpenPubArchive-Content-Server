@@ -123,11 +123,12 @@ AUTH_ABSTRACT_VIEW_REQUEST = "AbstractView"
 
 # file classifications (from documents in the Solr database)
 DOCUMENT_ACCESS_FREE = "free"
-DOCUMENT_ACCESS_EMBARGOED = "current"
+DOCUMENT_ACCESS_CURRENT = "current"
 DOCUMENT_ACCESS_FUTURE = "future"      # Same as current but different messages
 DOCUMENT_ACCESS_ARCHIVE = "archive"
 DOCUMENT_ACCESS_UNDEFINED = "undefined"
 DOCUMENT_ACCESS_OFFSITE = "offsite"
+DOCUMENT_ACCESS_SPECIAL = "special"
 DOCUMENT_ACCESS_TOC = "toc"              # special handling tocs (free)
 # Let this be the default, e.g., when there's no data, like for paras
 DOCUMENT_ACCESS_DEFAULT = DOCUMENT_ACCESS_ARCHIVE
@@ -488,27 +489,33 @@ ENDPOINT_SUMMARY_WHATS_NEW = "Return the newest uploaded issues"
 ENDPOINT_SUMMARY_WHO_AM_I = "Return information about the current user"
 ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the specified field"
 
-ACCESS_SUMMARY_DESCRIPTION = "This is a summary excerpt from the full document. "
-ACCESS_SUMMARY_FORSUBSCRIBERS = "The full content of the document is available to subscribers. "
-ACCESS_SUMMARY_EMBARGOED = "The full-text content of the document is embargoed per an agreement with the publisher. "
-ACCESS_SUMMARY_FUTURE = "This journal is in the process of being added to PEP-Web.  The full-text content of the document is not yet available. "
+# control whether abstracts can be viewed by non-logged-in users
+ACCESS_ABSTRACT_RESTRICTION = False
+ACCESS_ABSTRACT_RESTRICTED_MESSAGE = 1220 #"You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
+
+ACCESS_SUMMARY_DESCRIPTION = 1221 # "This is a summary excerpt from the full document. "
+ACCESS_SUMMARY_FORSUBSCRIBERS = 1222 # "The full content of the document is available to subscribers. "
+ACCESS_SUMMARY_EMBARGOED = 1223 # "The full-text content of the document is embargoed per an agreement with the publisher. "
+ACCESS_SUMMARY_FUTURE = 1224 # "This journal is in the process of being added to PEP-Web.  The full-text content of the document is not yet available. "
 
 # ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
-ACCESS_SUMMARY_PUBLISHER_INFO = "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
+ACCESS_SUMMARY_PUBLISHER_INFO = 1225 # "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
+ACCESS_SUMMARY_NOT_AVAILABLE = 1226 # This content is not currently available. 
+ACCESS_SUMMARY_SPECIAL = 1227 # "It may be available, it's a case by case basis 
+
 ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = " <a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>." # needs the left space now 2021-05-05
 # ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."
 
-ACCESSLIMITED_DESCRIPTION_OFFSITE = "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
+ACCESSLIMITED_DESCRIPTION_OFFSITE = 1200 # "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
 # ACCESSLIMITED_DESCRIPTION_LIMITED = "This is a summary excerpt from the full text of the article. The full text of the document may be available on the publisher's website"
-ACCESSLIMITED_DESCRIPTION_FREE = "This content is currently free to all users."
-ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access."
-ACCESSLIMITED_401_UNAUTHORIZED = "Your session may have timed out. Please try and login again."
-ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access."
-ACCESSLIMITED_DESCRIPTION_FUTURE_CONTENT_NOT_AVAILABLE = "This future content is not yet available for you to access."
+ACCESSLIMITED_DESCRIPTION_FREE = 1201 # "This content is currently free to all users."
+ACCESSLIMITED_DESCRIPTION_AVAILABLE = 1202 # "This archive content is available for you to access."
+ACCESSLIMITED_401_UNAUTHORIZED = 401 # "Your session may have timed out. Please try and login again."
+ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = 1204 # "This current content is available for you to access."
+ACCESSLIMITED_DESCRIPTION_FUTURE_CONTENT_NOT_AVAILABLE = 1205 #"This future content is not yet available for you to access."
 
-# control whether abstracts can be viewed by non-logged-in users
-ACCESS_ABSTRACT_RESTRICTION = False
-ACCESS_ABSTRACT_RESTRICTED_MESSAGE = "You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
+# the following symbolic codes are embargo types, so the numberic equivalent is not needed.
+IJPOPEN_REMOVED = 300 # " This article was removed from IJPOpen."
 
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()
@@ -562,6 +569,8 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_doi, 
  art_issn,
  art_isbn,
+ art_embargo,
+ art_embargotype,
  art_origrx, 
  art_qual, 
  art_kwds, 

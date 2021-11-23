@@ -310,8 +310,11 @@ class DocumentListItem(BaseModel):
     termDefPartXML: str = Field(None, title="", description="")
     termDefRestXML: str = Field(None, title="", description="")
     pdfOriginalAvailable: bool = Field(False, title="", description="")
+    embargo: str = Field(False, title="Article Embargoed", description="Article level embargo mechanism") 
+    embargotype: str = Field(None, title="Article Embargo Reason", description="Article level embargo reason")
+    downloads: bool = Field(None, title="Allow print/downloadng", description="If False, downloads and printing of this document are not allowed.")
     # these are not all currently used
-    accessClassification: str = Field(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
+    accessClassification: str = Field(None, title="Document classification, e.g., Archive, Current, Free, OffSite, Special")
     accessChecked: bool = Field(False, title="Access was checked. If false, accessLimited value is just defaulted to False")
     accessLimited: bool = Field(None, title="Access is limited, preventing full-text return.  Only valid when accessChecked is True.")
     accessLimitedCode: int = Field(None, title="If an error code is returned from the server, pass it back here for ease of client processing")

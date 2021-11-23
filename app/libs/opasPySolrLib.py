@@ -1297,7 +1297,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     documentListItem.accessLimited = True  # default is True anyway, but to make sure it always exists
                     if user_logged_in_bool and (get_full_text or (solr_query_spec.abstractReturn and record_count == 1)): # LIMIT_TEST_DONT_DO_THIS: # record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
                         access = opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
-                                                                     classification=documentListItem.accessClassification, 
+                                                                     classification=documentListItem.accessClassification, # based on file_classification (where it is)
                                                                      year=documentListItem.year,
                                                                      doi=documentListItem.doi, 
                                                                      session_info=session_info, 
@@ -2467,8 +2467,8 @@ def prep_document_download(document_id,
 
     query = "art_id:%s" % (document_id)
     args = {
-             "fl": """art_id, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
-                      art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi, art_title, art_authors, art_authors_mast, art_lang,
+             "fl": """art_id, art_info_xml, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
+                      art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi, art_title, art_authors, art_authors_mast, art_lang, 
                       art_issn, file_classification"""
     }
 
@@ -2478,8 +2478,11 @@ def prep_document_download(document_id,
         logger.error(f"PrepDownloadError: Solr Search Exception: {e}")
     else:
         try:
+            documentListItem = models.DocumentListItem()
             art_info = results.docs[0]
             docs = art_info.get("text_xml", art_info.get("art_excerpt", None))
+            # set up documentListItem in case the article is embargoed. 
+            documentListItem = opasQueryHelper.get_base_article_info_from_search_result(results.docs[0], documentListItem)
         except IndexError as e:
             logger.error("Download Request: No matching document for %s.  Error: %s", document_id, e)
         except KeyError as e:
@@ -2500,6 +2503,8 @@ def prep_document_download(document_id,
                 art_citeas_xml = art_info.get("art_citeas_xml", None)
                 art_authors_mast = art_info.get("art_authors_mast", "PEP")
                 art_authors = art_authors_mast
+                art_info_xml = art_info.get("art_info_xml", None)
+                downloads = opasQueryHelper.get_document_download_permission(documentInfoXML=art_info_xml)
                     
                 if art_citeas_xml is not None:
                     art_citeas = opasxmllib.xml_elem_or_str_to_text(art_citeas_xml)
@@ -2508,14 +2513,16 @@ def prep_document_download(document_id,
                     
                 file_classification = art_info.get("file_classification", None)
                 
+                
                 access = opasDocPerm.get_access_limitations( doc_id=document_id,
                                                              classification=file_classification,
                                                              session_info=session_info,
                                                              year=pub_year,
                                                              doi=doi,
+                                                             documentListItem=documentListItem, 
                                                              fulltext_request=True
                                                             )
-                if access.accessChecked == True and access.accessLimited != True:
+                if access.accessChecked == True and access.accessLimited != True and downloads == True:
                     try:
                         heading = opasxmllib.get_running_head( source_title=art_info.get("art_sourcetitleabbr", ""),
                                                                pub_year=pub_year,

@@ -654,6 +654,14 @@ def get_access_limitations(doc_id,
         ret_val.accessLimited = True # no access by default, may be changed below.
         ret_val.accessChecked = False # Same as default, for better clarity here
         ret_val.accessLimitedClassifiedAsCurrentContent = False
+
+        # check embargo information from document if available
+        if documentListItem is not None:
+            embargoed = documentListItem.embargo
+            embargo_type = documentListItem.embargotype
+        else: # documentListItem can be None
+            embargoed = False
+            embargo_type = None
         
         if session_info is None:
             # logger.warning(f"Document permissions for {doc_id} -- no session info")
@@ -669,7 +677,7 @@ def get_access_limitations(doc_id,
                 session_id = "No Session ID"
 
             if ret_val.doi is not None:
-                publisherAccess = opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO + opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK % ret_val.doi
+                publisherAccess = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO) + opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK % ret_val.doi
                 # TODO: get the link we use to send users to publishers site when we don't have it, and no doi, and implement here.
                 #       for now, just doi
                 ret_val.accessLimitedPubLink = opasConfig.ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK % ret_val.doi
@@ -681,20 +689,20 @@ def get_access_limitations(doc_id,
                 open_access = True
                 ret_val.accessLimited = False
                 ret_val.accessChecked = True
-                ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
                 #"This content is currently free to all users."
-                ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
+                ret_val.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESSLIMITED_DESCRIPTION_FREE)
+                ret_val.accessLimitedReason = ret_val.accessLimitedDescription
                 
             elif classification in (opasConfig.DOCUMENT_ACCESS_OFFSITE):
                 # we only allow reading abstracts for offsite, accessLimited is True
-                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_DESCRIPTION
                 #"This content is currently completely limited to all users."
-                ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_OFFSITE + publisherAccess # limited...get it elsewhere
+                ret_val.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION)
+                ret_val.accessLimitedReason = ret_val.accessLimitedDescription + " " + publisherAccess # limited...get it elsewhere
         
-            elif classification in (opasConfig.DOCUMENT_ACCESS_EMBARGOED): # PEPCurrent
-                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_DESCRIPTION
+            elif classification in (opasConfig.DOCUMENT_ACCESS_CURRENT): # PEPCurrent
+                ret_val.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION)
                 ret_val.accessLimitedClassifiedAsCurrentContent = True
-                ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_EMBARGOED + publisherAccess # limited...get it elsewhere
+                ret_val.accessLimitedReason = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_EMBARGOED) + publisherAccess # limited...get it elsewhere
                 if session_info is not None:
                     try:
                         # #########################################################################################
@@ -704,15 +712,15 @@ def get_access_limitations(doc_id,
                             ret_val.accessLimited = False # you can access it!!!
                             ret_val.accessChecked = True
                             # "This current content is available for you to access"
-                            ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE 
+                            ret_val.accessLimitedReason = ocd.get_user_message(opasConfig.ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE) 
                             logger.debug("Optimization - session info used to authorize PEPCurrent document")
                     except Exception as e:
                         logger.error(f"{caller_name}: PEPCurrent document permission: {e}")
 
             elif classification in (opasConfig.DOCUMENT_ACCESS_FUTURE): # PEPFuture
-                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_DESCRIPTION
+                ret_val.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION)
                 ret_val.accessLimitedClassifiedAsCurrentContent = False
-                ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_DESCRIPTION + opasConfig.ACCESS_SUMMARY_FUTURE + publisherAccess # limited...get it elsewhere
+                ret_val.accessLimitedReason = ret_val.accessLimitedDescription + " " + ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_FUTURE) + " " + publisherAccess # limited...get it elsewhere
                 if session_info is not None:
                     try:
                         # #########################################################################################
@@ -720,14 +728,29 @@ def get_access_limitations(doc_id,
                         # #########################################################################################
                         ret_val.accessLimited = True 
                         ret_val.accessChecked = True
-                        ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_FUTURE_CONTENT_NOT_AVAILABLE 
+                        ret_val.accessLimitedReason = ocd.get_user_message(msg_code=opasConfig.ACCESSLIMITED_DESCRIPTION_FUTURE_CONTENT_NOT_AVAILABLE)
+                    except Exception as e:
+                        logger.error(f"{caller_name}: PEPCurrent document permission: {e}")
+
+            elif classification in (opasConfig.DOCUMENT_ACCESS_SPECIAL): # PEPSpecial
+                ret_val.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION)
+                ret_val.accessLimitedClassifiedAsCurrentContent = False
+                ret_val.accessLimitedReason = ret_val.accessLimitedDescription + " " + ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_SPECIAL) + " " + publisherAccess # limited...get it elsewhere
+                if session_info is not None:
+                    try:
+                        # #########################################################################################
+                        # Case by case.
+                        # #########################################################################################
+                        ret_val.accessLimited = True 
+                        ret_val.accessChecked = False
+                        ret_val.accessLimitedReason = ocd.get_user_message(msg_code=opasConfig.ACCESSLIMITED_DESCRIPTION_FUTURE_CONTENT_NOT_AVAILABLE)
                     except Exception as e:
                         logger.error(f"{caller_name}: PEPCurrent document permission: {e}")
 
             elif classification in (opasConfig.DOCUMENT_ACCESS_ARCHIVE):
-                ret_val.accessLimitedDescription = opasConfig.ACCESS_SUMMARY_DESCRIPTION 
+                ret_val.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION)
                 # ret_val.accessLimited = True # default is true
-                ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS 
+                ret_val.accessLimitedReason = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_FORSUBSCRIBERS)
                 # #########################################################################################
                 # optimization...if authorized, don't check again, unless it's a full-text request
                 # #########################################################################################
@@ -737,7 +760,7 @@ def get_access_limitations(doc_id,
                             ret_val.accessLimited = False # you can access it!!!
                             ret_val.accessChecked = True
                             # "This content is available for you to access"
-                            ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE
+                            ret_val.accessLimitedReason = ocd.get_user_message(msg_code=opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE)
                             logger.debug("Optimization - session info used to authorize PEPArchive document")
                     except Exception as e:
                         logger.error(f"{caller_name}: PEPArchive document permission: {e}")
@@ -747,9 +770,9 @@ def get_access_limitations(doc_id,
                 ret_val.accessLimited = False # you can access it!!! (All TOCs are open)
                 ret_val.accessChecked = True
                 # just like free for now
-                ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
+                ret_val.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESSLIMITED_DESCRIPTION_FREE)
                 #"This content is currently free to all users."
-                ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_FREE
+                ret_val.accessLimitedReason = ret_val.accessLimitedDescription
             else:
                 logger.error(f"{caller_name}: Unknown classification: {classification}")
 
@@ -800,7 +823,13 @@ def get_access_limitations(doc_id,
                                 #    the session simply never existed.
                                 ret_val.accessLimited = True
                                 session_info.authenticated = False
-                                msg = f"Full text of {doc_id} unavailable. " + opasConfig.ACCESSLIMITED_401_UNAUTHORIZED
+                                msg = ocd.get_user_message(msg_code=opasConfig.ACCESSLIMITED_401_UNAUTHORIZED)
+                                ret_val.accessLimitedReason = msg
+                            elif embargoed == True:
+                                ret_val.accessLimited = True
+                                msg = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_EMBARGOED)
+                                if embargo_type is not None:
+                                    msg = ocd.get_user_message(msg_code=embargo_type)
                                 ret_val.accessLimitedReason = msg
                             else:
                                 # set default again based on update from PaDS query
@@ -846,8 +875,8 @@ def get_access_limitations(doc_id,
                                     # "This content is available for you to access"
                                     ret_val.accessLimited = False
                                     ret_val.accessChecked = True
-                                    ret_val.accessLimitedDescription = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
-                                    ret_val.accessLimitedReason = opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE 
+                                    ret_val.accessLimitedDescription = ocd.get_user_message(opasConfig.ACCESSLIMITED_DESCRIPTION_AVAILABLE)
+                                    ret_val.accessLimitedReason = ret_val.accessLimitedDescription 
                                     msg = f"Document {doc_id} available.  Pads Reason: {resp.ReasonStr}. Opas Reason: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}"
                                     logger.debug(msg)
                                     ret_val.accessLimitedDebugMsg = msg
@@ -859,10 +888,13 @@ def get_access_limitations(doc_id,
                                     ret_val.accessLimited = True
                                     if ret_val.accessLimitedClassifiedAsCurrentContent:
                                         # embargoed
-                                        ret_val.accessLimitedReason = opasConfig.ACCESS_SUMMARY_EMBARGOED
+                                        ret_val.accessLimitedReason = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_EMBARGOED)
                                     else:
-                                        # non embargoed, but no access.
-                                        ret_val.accessLimitedReason = f"{ret_val.accessLimitedDescription} {ret_val.accessLimitedReason}"
+                                        # not current content, but no access.
+                                        if resp.ReasonStr is not None:
+                                            ret_val.accessLimitedReason = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_NOT_AVAILABLE) + " (The authorization system says: " + resp.ReasonStr + ")"
+                                        else:
+                                            ret_val.accessLimitedReason = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_NOT_AVAILABLE)
                                         
                     else:
                         # not full-text OR (not authenticated or accessLimited==False)

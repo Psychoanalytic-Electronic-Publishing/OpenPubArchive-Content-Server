@@ -370,6 +370,38 @@ class opasCentralDB(object):
 
         return ret_val
 
+    def get_user_message(self, msg_code, lang="EN"):
+        fname = "get_user_message"
+        ret_val = "Message not available."
+        self.open_connection(caller_name=fname) # make sure connection is open
+        if self.db is not None:
+            curs = self.db.cursor(pymysql.cursors.DictCursor)
+            try:
+                code = int(msg_code)
+            except:
+                sql = f"SELECT * from vw_api_messages where msg_sym_code='{msg_code}' and msg_language='{lang}';"
+            else:
+                sql = f"SELECT * from vw_api_messages where msg_num_code={code} and msg_language='{lang}';"
+
+            try:
+                row_count = curs.execute(sql)
+            except Exception as e:
+                logger.error(f"Connection not available to database. {e}")
+            else:
+                if row_count >= 1:
+                    try:
+                        sourceData = curs.fetchone()
+                        ret_val = sourceData["msg_text"]
+                    except Exception as e:
+                        ret_val = f"Message not available. {e}"
+                    #else: #default
+                        #ret_val = "Message not available."
+        else:
+            logger.error("Connection not available to database.")
+            
+        self.close_connection(caller_name=fname) # make sure connection is closed
+        return ret_val
+        
     def get_productbase_data(self):
         """
         Load the journal book and video product data
