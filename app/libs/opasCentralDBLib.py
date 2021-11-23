@@ -1139,6 +1139,7 @@ class opasCentralDB(object):
         ret_val = None
         if self.db is not None:
             try:
+                self.db.ping()
                 with closing(self.db.cursor(pymysql.cursors.DictCursor)) as cursor:
                     # now insert the session
                     sql = f"SELECT * FROM api_sessions WHERE session_id = '{session_id}'";
