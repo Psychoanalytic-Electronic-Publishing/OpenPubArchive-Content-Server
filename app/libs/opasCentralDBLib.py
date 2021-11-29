@@ -251,6 +251,8 @@ class opasCentralDB(object):
             opasCentralDB.connection_count += 1
             if opasConfig.LOCAL_DBOPEN_TRACE:
                 if opasCentralDB.connection_count > 10: print(f"Database opened by __init__ (count={opasCentralDB.connection_count})")
+            else:
+                logger.info(f"Database opened by __init__ (count={opasCentralDB.connection_count})")
         except Exception as e:
             self.connected = False
             logger.error(f"OpasCentralDB Init.  Could not connect to DB: {e}")
@@ -269,7 +271,9 @@ class opasCentralDB(object):
                 else:
                     if opasConfig.LOCAL_DBOPEN_TRACE:
                         if opasCentralDB.connection_count > 10: print(f"Database close request, but not open (__del__). Connections: {opasCentralDB.connection_count}")
-                    
+                    else:
+                        logger.info(f"Database close request, but not open (__del__). Connections: {opasCentralDB.connection_count}")
+
             except Exception as e:
                 logger.error(f"caller: __del__ the db is not open ({e}).")
         else:
@@ -302,6 +306,7 @@ class opasCentralDB(object):
                     
                 self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database) # connect_timeout=31536)
                 self.connected = True
+                logger.info(f"Opened connection #{opasCentralDB.connection_count}")
 
             except Exception as e:
                 self.connected = False
@@ -375,6 +380,7 @@ class opasCentralDB(object):
         ret_val = "Message not available."
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
+            self.db.ping()
             curs = self.db.cursor(pymysql.cursors.DictCursor)
             try:
                 code = int(msg_code)

@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0623.1" 
+__version__     = "2021.1129.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -67,7 +67,6 @@ sys.path.append('../libs/configLib')
 
 import time
 import random
-import pymysql
 import pysolr
 import localsecrets
 import re
@@ -81,7 +80,7 @@ import datetime as dtime
 from datetime import datetime
 import logging
 logger = logging.getLogger(programNameShort)
-import html
+# import html
 
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.
