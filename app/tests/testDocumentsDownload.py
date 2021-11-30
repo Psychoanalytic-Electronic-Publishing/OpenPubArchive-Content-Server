@@ -142,7 +142,7 @@ class TestdocumentsDownload(unittest.TestCase):
         r = response.json()
         downloads = (r["documents"]["responseSet"][0]["downloads"])
         # Confirm that the request-response cycle completed successfully.
-        assert(downloads == False)
+        assert(downloads == True)
 
     def test_12_Ok_Downloads(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IJP.041.0335A/')
@@ -157,7 +157,7 @@ class TestdocumentsDownload(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/SE.001.0073A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == False)
+        assert(response.ok == True)
 
 if __name__ == '__main__':
     unittest.main()    
