@@ -837,6 +837,13 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                     start_year = pub_year
                 if end_year is None:
                     end_year = pub_year
+
+                # general
+                # active = source.get("active")
+                pub_class = source.get("accessClassification")
+                # use standardized version of class
+                pep_release = source.get("pepversion")
+                pub_source_url = source.get("landing_page")
     
                 if src_type == "book":
                     book_code = source.get("pepcode")
@@ -863,8 +870,10 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 try:
                     item = models.SourceInfoListItem( sourceType = src_type,
                                                       PEPCode = base_code,
+                                                      accessClassification=pub_class, 
+                                                      pubSourceURL=pub_source_url,
+                                                      PEPRelease=pep_release, 
                                                       authors = authors,
-                                                      pub_year = pub_year,
                                                       documentID = documentID,
                                                       displayTitle = art_citeas,
                                                       title = title,

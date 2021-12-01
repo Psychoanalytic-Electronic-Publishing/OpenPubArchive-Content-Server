@@ -6,6 +6,7 @@ import opasAPISupportLib
 import opasConfig
 import opasQueryHelper
 import opasCentralDBLib
+import opasGenSupportLib
 import models
 import opasPySolrLib
 from opasPySolrLib import search_text
@@ -190,6 +191,33 @@ class TestStandaloneFunctions(unittest.TestCase):
         print (para)
         assert (len(para) > 0)
         # check to make sure a known value is among the data returned
+
+    def test_4_document_id_matching(self):
+        """
+        """
+        DocumentID = [
+                      ('LU-AM.005I.0025A.FIG001.jpg', 'LU-AM.005I.0025A'),  
+                      (' LU-AM.005I.0025A.FIG001.jpg ', 'LU-AM.005I.0025A'),  
+                      ('LU-AM.005I.0025A.FIG001', 'LU-AM.005I.0025A'),   
+                      ('zbk.074.r0007a', 'ZBK.074.R0007A'), 
+                      ('ANIJP-FR.27.0001.PR0027', 'ANIJP-FR.027.0001A.PR0027'), 
+                      ('anijp-fr.27.0001.pr27',  'ANIJP-FR.027.0001A.PR0027'), 
+                      ('anijp-fr.27.01.pr27', 'ANIJP-FR.027.0001A.PR0027'), 
+                      ('ANIJP-FR.27.0001.P0027', 'ANIJP-FR.027.0001A.P0027'), 
+                      ('ANIJP-FR.27.0001','ANIJP-FR.027.0001A'), 
+                      ('IJP.027C.0001','IJP.027C.0001A'), 
+                      ('IJP.027.0001','IJP.027.0001A'), 
+                      ('IJP.027.0001B    ','IJP.027.0001B'), 
+                      ('ANIJP-FR.027.0001', 'ANIJP-FR.027.0001A'), 
+                      ('IJP.027A', 'IJP.027A'), 
+                      ('IJP.27', 'IJP.027'), 
+                      ('IJP.7.7', 'IJP.007.0007A'), 
+                      ('ijp.7.7', 'IJP.007.0007A'), 
+                      ]
+        for n in DocumentID:
+            document_id = opasGenSupportLib.DocumentID(n[0])
+            print (f"[{document_id}]=={n[1]}")
+            assert (str(document_id) == n[1])
         
 if __name__ == '__main__':
     unittest.main()

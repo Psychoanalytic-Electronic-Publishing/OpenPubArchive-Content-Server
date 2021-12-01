@@ -538,6 +538,10 @@ class JournalInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a fe
     yearLast: str = Field(None, title="")
     instanceCount: int = Field(None, title="Number of document instances for this source")
     embargoYears: str = Field(None, title="")
+    # New fields 2021-11-30
+    accessClassification: str = Field(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
+    pubSourceURL: str = Field(None, title="URL of the original publication if applicable)")
+    PEPRelease: str = Field(None, title="Year this was first published in the database")
     
 class JournalInfoStruct(BaseModel):
     responseInfo: ResponseInfo
@@ -726,13 +730,16 @@ class SourceInfoListItem(BaseModel):
     instanceCount: int = Field(None, title="Number of document instances for this source")
     embargoYears: str = Field(None, title="")
     # these are not all currently used
-    accessClassification: str = Field(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
+    accessClassification: str = Field(None, title="Document classification, e.g., archive, current, free, offSite") 
     accessLimited: bool = Field(True, title="Access is limited, preventing full-text return")
     accessLimitedReason: str = Field(None, title="Explanation of user's access to this")
     accessLimitedDebugMsg: str = Field(None, title="Developer level info for tracing access issues")
     accessLimitedDescription: str = Field(None, title="Description of the access limitation applied")
     accessLimitedClassifiedAsCurrentContent: bool = Field(None, title="Access is limited by embargo to this specific content")
     accessLimitedPubLink: str = Field(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
+    # New fields 2021-11-30
+    pubSourceURL: str = Field(None, title="URL of the original publication if applicable)")
+    PEPRelease: str = Field(None, title="Year this was first published in the database")
     
 
 class SourceInfoStruct(BaseModel):
@@ -782,6 +789,9 @@ class VideoInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few 
     accessLimitedDescription: str = Field(None, title="Description of the access limitation applied")
     accessLimitedClassifiedAsCurrentContent: bool = Field(None, title="Access is limited by embargo to this specific content")
     accessLimitedPubLink: str = Field(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
+    # New fields 2021-11-30
+    pubSourceURL: str = Field(None, title="URL of the original publication if applicable)")
+    PEPRelease: str = Field(None, title="Year this was first published in the database")
 
 class VideoInfoStruct(BaseModel):
     responseInfo: ResponseInfo

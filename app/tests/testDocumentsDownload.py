@@ -131,7 +131,7 @@ class TestdocumentsDownload(unittest.TestCase):
         assert(response.ok == False)
 
     def test_11_PDFOrig_Download_Embargoed(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/IJPOpen.001.0018A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/PPC.003.0001A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == False)
