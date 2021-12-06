@@ -302,7 +302,7 @@ class opasCentralDB(object):
                 opasCentralDB.connection_count += 1
                 if self.db is None:
                     was_closed = True
-                    print (f"DB Connection was closed: Opened connection number: {opasCentralDB.connection_count} by {caller_name}")
+                    logger.debug(f"DB Connection was closed: Opened connection number: {opasCentralDB.connection_count} by {caller_name}")
                     #logger.error(f"Exception {e}.  DB Connection was closed: Opening connection number: {opasCentralDB.connection_count}")
                 else:
                     was_closed = False
@@ -311,7 +311,7 @@ class opasCentralDB(object):
                     
                 self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database) # connect_timeout=31536)
                 self.connected = True
-                logger.info(f"Opened connection #{opasCentralDB.connection_count}")
+                logger.debug(f"Opened connection #{opasCentralDB.connection_count}")
 
             except Exception as e:
                 self.connected = False
@@ -332,10 +332,8 @@ class opasCentralDB(object):
                     self.db = None
                     opasCentralDB.connection_count -= 1
                     logger.debug(f"Database closed by ({caller_name})")
-                    print(f"Database closed by ({caller_name})")
                 else:
                     logger.warning(f"Database close request, but not open ({caller_name}). Connections: {opasCentralDB.connection_count}")
-                    print(f"Database close request, but not open ({caller_name}). Connections: {opasCentralDB.connection_count}") 
                     
             except Exception as e:
                 logger.error(f"caller: {caller_name} the db is not open ({e}).")
@@ -384,14 +382,14 @@ class opasCentralDB(object):
 
     def get_user_message(self, msg_code, lang="EN"):
         fname = "get_user_message"
-        ret_val = "Message not available."
+        ret_val = ""
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
-            self.db.ping()
             curs = self.db.cursor(pymysql.cursors.DictCursor)
             try:
                 code = int(msg_code)
-            except:
+            except Exception as e:
+                logger.debug(f"msg_code argument not convertable to int {e}. Using symbolic code")
                 sql = f"SELECT * from vw_api_messages where msg_sym_code='{msg_code}' and msg_language='{lang}';"
             else:
                 sql = f"SELECT * from vw_api_messages where msg_num_code={code} and msg_language='{lang}';"
@@ -399,20 +397,37 @@ class opasCentralDB(object):
             try:
                 row_count = curs.execute(sql)
             except Exception as e:
-                logger.error(f"Connection not available to database. {e}")
-            else:
+                logger.error(f"Connection not available to database. Trying again. {e}")
+                if self.db is None:
+                    self.open_connection(caller_name=fname) # make sure connection is open
+                try:
+                    self.db.ping()
+                    row_count = curs.execute(sql)
+                except Exception as e:
+                    logger.error(f"Connection not available to database. Msg_code: {msg_code}. Second try failed. {e}")
+                    fetched = False
+                else: # success
+                    logger.error(f"Second try to query db succeeded after ping!")
+                    fetched = True
+            else: # success
+                fetched = True
+
+            if fetched:
                 if row_count >= 1:
                     try:
                         sourceData = curs.fetchone()
                         ret_val = sourceData["msg_text"]
                     except Exception as e:
                         ret_val = f"Message not available. {e}"
-                    #else: #default
-                        #ret_val = "Message not available."
+            else:
+                ret_val = f"Message not available."
         else:
             logger.error("Connection not available to database.")
             
         self.close_connection(caller_name=fname) # make sure connection is closed
+        if ret_val is None:
+            ret_val = ""
+            
         return ret_val
         
     def get_productbase_data(self):
@@ -870,7 +885,7 @@ class opasCentralDB(object):
         
         return citation_table
 
-    def get_most_viewed_crosstab(self):
+    def get_most_viewed_crosstab(self, limit=None, offset=None):
         """
          Using the opascentral api_docviews table data, as dynamically statistically aggregated into
            the view vw_stat_most_viewed return the most downloaded (viewed) documents
@@ -882,6 +897,12 @@ class opasCentralDB(object):
         """
         ret_val = []
         row_count = 0
+        limit_str = ""
+        if limit is not None:
+            limit_str = f" LIMIT {limit}"
+            if offset is not None:
+                limit_str = f"{limit_str}, {offset}"
+
         # always make sure we have the right input value
         try:
             self.open_connection(caller_name="get_most_viewed_crosstab") # make sure connection is open
@@ -889,7 +910,7 @@ class opasCentralDB(object):
             if self.db is not None:
                 with closing(self.db.cursor(pymysql.cursors.SSDictCursor)) as cursor:
                     try:
-                        sql = """SELECT DISTINCTROW * FROM vw_stat_docviews_crosstab"""
+                        sql = f"""SELECT DISTINCTROW * FROM vw_stat_docviews_crosstab{limit_str}"""
                         success = cursor.execute(sql)
                         if success:
                             ret_val = cursor.fetchall() # returns empty list if no rows
@@ -901,6 +922,7 @@ class opasCentralDB(object):
                 logger.error("Connection not available to database.")
         
             self.close_connection(caller_name="get_most_downloaded_crosstab") # make sure connection is closed
+            
         except Exception as e:           
             logger.error("Database Connect Error: {}".format(e))
             

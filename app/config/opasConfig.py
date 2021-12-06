@@ -491,31 +491,59 @@ ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the speci
 
 # control whether abstracts can be viewed by non-logged-in users
 ACCESS_ABSTRACT_RESTRICTION = False
-ACCESS_ABSTRACT_RESTRICTED_MESSAGE = 1220 #"You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
 
+# Messages - Correspond to api_messages table
+
+# the following symbolic codes are embargo types, so the numeric equivalent is not needed.
+IJPOPEN_REMOVED = 300 # " This article was removed from IJPOpen."
+ACCESS_SUMMARY_ONLY_401_UNAUTHORIZED = 401 # "The authorization system returned a 401 error.  Your session may have timed out. Please try and login again."
+ACCESS_404_DOCUMENT_NOT_FOUND = 404 
+ACCESS_CLASS_DESCRIPTION_OFFSITE = 1200 # "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
+ACCESS_CLASS_DESCRIPTION_FREE = 1201 # "This content is currently free to all users."
+ACCESS_CLASS_DESCRIPTION_ARCHIVE = 1202 # "This archive content is available for you to access."
+ACCESS_CLASS_DESCRIPTION_CURRENT_CONTENT = 1203 # This is current content.  It is embargoed per agreement with the publisher.
+ACCESS_CLASS_DESCRIPTION_SPECIAL = 1204	# This is special content.  Access is determined by source title.	EN
+ACCESS_CLASS_DESCRIPTION_TOC = 1205
+ACCESS_CLASS_DESCRIPTION_FUTURE = 1206
+#1204	ACCESS_CLASS_DESCRIPTION_SPECIAL
+#1205	ACCESS_CLASS_DESCRIPTION_TOC
+#1208	ACCESS_CLASS_DESCRIPTION_AVAILABLE
+#1210	ACCESS_OK_CURRENT_CONTENT_AVAILABLE
+#1211	ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE
+#1216	ACCESS_NOK_FUTURE_CONTENT_NOT_AVAILABLE
+#1217	ACCESS_NOK_CURRENT_CONTENT_NOT_AVAILABLE
+#1220	ACCESS_ABSTRACT_RESTRICTED_MESSAGE
+#1221	ACCESS_SUMMARY_DESCRIPTION
+#1222	ACCESS_SUMMARY_FORSUBSCRIBERS
+#1223	ACCESS_SUMMARY_ONLY_EMBARGOED
+#1224	ACCESS_SUMMARY_FUTURE
+#1225	ACCESS_SUMMARY_PUBLISHER_INFO
+#1226	ACCESS_SUMMARY_NOT_AVAILABLE
+#1227	ACCESS_SUMMARY_SPECIAL
+#1228	ACCESS_PDF_ORIGINAL_NOT_FOUND
+
+ACCESS_LIMITED_REASON_OK_CURRENT_CONTENT = 1204 # "This current content is available for you to access."
+ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE = 1205 # "This archive content is available for you to access."
+ACCESS_LIMITED_REASON_NOK_FUTURE_CONTENT = 1216 #"This future content is not yet available for you to access."
+ACCESS_LIMITED_REASON_NOK_CURRENT_CONTENT = 1217 # This is a summary excerpt from the full document.  The full-text content of the document is embargoed per an agreement with the publisher. 
+ACCESS_LIMITED_REASON_NOK_ARCHIVE_CONTENT = 1218 # in case user doesn't have access to PEP-Web archive
+ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN = 1219 # no access check and user is not logged in
+ACCESS_ABSTRACT_RESTRICTED_MESSAGE = 1220 #"You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
 ACCESS_SUMMARY_DESCRIPTION = 1221 # "This is a summary excerpt from the full document. "
 ACCESS_SUMMARY_FORSUBSCRIBERS = 1222 # "The full content of the document is available to subscribers. "
-ACCESS_SUMMARY_EMBARGOED = 1223 # "The full-text content of the document is embargoed per an agreement with the publisher. "
+ACCESS_SUMMARY_ONLY_EMBARGOED = 1223 # "The full-text content of the document is embargoed per an agreement with the publisher. "
 ACCESS_SUMMARY_FUTURE = 1224 # "This journal is in the process of being added to PEP-Web.  The full-text content of the document is not yet available. "
-
 # ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
 ACCESS_SUMMARY_PUBLISHER_INFO = 1225 # "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
-ACCESS_SUMMARY_NOT_AVAILABLE = 1226 # This content is not currently available. 
-ACCESS_SUMMARY_SPECIAL = 1227 # "It may be available, it's a case by case basis 
+ACCESS_SUMMARY_NOT_AVAILABLE = 1229 # This content is not currently available. 
+ACCESS_SUMMARY_SPECIAL = 1230 # "It may be available, it's a case by case basis 
+ACCESS_SUMMARY_PDFORIG_NOT_FOUND = 1231
+ACCESS_SUMMARY_PERMISSION_DENIED = 1235
+ACCESS_TEXT_PROCESSING_ISSUE = 1240 # error preparing file
 
 ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = " <a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>." # needs the left space now 2021-05-05
 # ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."
 
-ACCESSLIMITED_DESCRIPTION_OFFSITE = 1200 # "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
-# ACCESSLIMITED_DESCRIPTION_LIMITED = "This is a summary excerpt from the full text of the article. The full text of the document may be available on the publisher's website"
-ACCESSLIMITED_DESCRIPTION_FREE = 1201 # "This content is currently free to all users."
-ACCESSLIMITED_DESCRIPTION_AVAILABLE = 1202 # "This archive content is available for you to access."
-ACCESSLIMITED_401_UNAUTHORIZED = 401 # "Your session may have timed out. Please try and login again."
-ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = 1204 # "This current content is available for you to access."
-ACCESSLIMITED_DESCRIPTION_FUTURE_CONTENT_NOT_AVAILABLE = 1205 #"This future content is not yet available for you to access."
-
-# the following symbolic codes are embargo types, so the numberic equivalent is not needed.
-IJPOPEN_REMOVED = 300 # " This article was removed from IJPOpen."
 
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()

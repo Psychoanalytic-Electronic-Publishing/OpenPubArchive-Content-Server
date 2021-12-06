@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1130/v2.1.94" # semver versioning now added after date.
+__version__     = "2021.1206/v2.1.96" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -4929,6 +4929,8 @@ def documents_document_fetch(response: Response,
     opasDocPermissions.verify_header(request, "documents_fetch") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
+    # for qualifying any errors:
+    request_qualifier_text = f" Request: {documentID}. Session {session_info.session_id}."
 
     # check if this is a Glossary request, this is per API.v1.
     m = re.match("(ZBK\.069\..*?)?(?P<termid>(Y.0.*))", documentID)
@@ -5035,7 +5037,7 @@ def documents_document_fetch(response: Response,
             else:
                 # make sure we specify an error in the session log
                 # not sure this is the best return code, but for now...
-                status_message = "Not Found"
+                status_message = ocd.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text 
                 response.status_code = httpCodes.HTTP_404_NOT_FOUND
                 # record session endpoint in any case   
 
@@ -5047,10 +5049,8 @@ def documents_document_fetch(response: Response,
                                         status_message=status_message
                                         )
 
-            # prep for potential error below.
-            error_text = f"No document returned for request: {documentID} during session {session_info.session_id}"
             if ret_val is None or ret_val == {}:
-                logger.error(error_text)
+                logger.error(status_message)
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=status_message
@@ -5059,7 +5059,7 @@ def documents_document_fetch(response: Response,
                 ret_val.documents.responseInfo.request = req_url
                 if access == False:
                     #  abstract returned...we don't count those currently.
-                    logger.info("Full-text access not allowed--Abstract only. " + error_text)
+                    logger.info("Full-text access not allowed--Abstract only." + request_qualifier_text)
                 else:
                     if ret_val.documents.responseInfo.count > 0:
                         #  record document view if found
@@ -5067,7 +5067,7 @@ def documents_document_fetch(response: Response,
                                                  session_info=session_info,
                                                  view_type="Document")
                     else:
-                        logger.error("No document available." + error_text)
+                        logger.error("No document available." + request_qualifier_text)
 
     log_endpoint_time(request, ts=ts, level="debug")
     return ret_val
@@ -5147,13 +5147,25 @@ def documents_downloads(response: Response,
                                                              flex_fs=flex_fs,
                                                             )    
 
-    error_status_message = f"{caller_name}: The requested document {documentID} could not be returned (in {file_format}). "
+    #error_status_message = f"{caller_name}: The requested document {documentID} could not be returned (in {file_format}). {status.error_description} "
+    request_qualifier_text = f" Request: {documentID}. Session {session_info.session_id}."
 
     if filename is None:
         response.status_code = status.httpcode
-        status_message = error_status_message
+        if status.httpcode == httpCodes.HTTP_401_UNAUTHORIZED:
+            status_message = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+        elif status.httpcode == httpCodes.HTTP_422_UNPROCESSABLE_ENTITY:
+            status_message = ocd.get_user_message(opasConfig.ACCESS_TEXT_PROCESSING_ISSUE) + request_qualifier_text + f" {status.error_description}" 
+        elif status.httpcode == httpCodes.HTTP_400_BAD_REQUEST:
+            status_message = ocd.get_user_message(opasConfig.ACCESS_TEXT_PROCESSING_ISSUE) + request_qualifier_text + f" {status.error_description}" 
+        elif status.httpcode == httpCodes.HTTP_404_NOT_FOUND:
+            status_message = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+        elif status.httpcode == httpCodes.HTTP_422_UNPROCESSABLE_ENTITY:
+            status_message = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+            
+        #status_message = ocd.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
         if status.error_description is not None:
-            logger.error(error_status_message + ":" + status.error_description)
+            logger.error(status_message + ":" + status.error_description)
         # don't count--not successful (09/30/2021)
         #ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                     #session_info=session_info, 
@@ -5188,27 +5200,19 @@ def documents_downloads(response: Response,
                                            media_type=media_type)
     
                 except Exception as e:
-                    response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                    status_message = f"{caller_name}: The requested original document {filename} could not be returned"
+                    response.status_code = httpCodes.HTTP_404_NOT_FOUND 
+                    status_message = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_PDFORIG_NOT_FOUND) + request_qualifier_text 
                     extended_status_message = f"{status_message}:{e}"
                     logger.error(extended_status_message)
-                    # don't count--not successful (09/30/2021)
-                    #ocd.record_session_endpoint(api_endpoint_id=endpoint,
-                                                #session_info=session_info, 
-                                                #params=request.url._url,
-                                                #item_of_interest=f"{documentID}", 
-                                                #return_status_code = response.status_code,
-                                                #status_message=extended_status_message
-                                                #)
                     raise HTTPException(status_code=response.status_code,
-                                        detail=error_status_message)
+                                        detail=status_message)
                 else:
                     status_message = opasCentralDBLib.API_STATUS_SUCCESS
                     logger.debug(status_message)
+                    # success
                     ocd.record_document_view(document_id=documentID,
                                              session_info=session_info,
                                              view_type=file_format)
-    
                     ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                                 session_info=session_info, 
                                                 params=request.url._url,
@@ -5227,17 +5231,9 @@ def documents_downloads(response: Response,
 
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = f"{caller_name}: The requested document {filename} could not be returned."
-                extended_status_message = f"{status_message}:{e}"
+                status_message = ocd.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text + f". ({e})"
+                extended_status_message = status_message
                 logger.error(extended_status_message)
-                # don't count--not successful (09/30/2021)
-                #ocd.record_session_endpoint(api_endpoint_id=endpoint,
-                                            #session_info=session_info, 
-                                            #params=request.url._url,
-                                            #item_of_interest=f"{documentID}", 
-                                            #return_status_code = response.status_code,
-                                            #status_message=extended_status_message
-                                            #)
                 raise HTTPException(status_code=response.status_code,
                                     detail=status_message)
 
@@ -5245,6 +5241,7 @@ def documents_downloads(response: Response,
                 response.status_code = httpCodes.HTTP_200_OK
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
                 logger.debug(status_message)
+                # success
                 ocd.record_document_view(document_id=documentID,
                                          session_info=session_info,
                                          view_type=file_format)

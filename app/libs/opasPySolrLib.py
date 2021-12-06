@@ -981,6 +981,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     """
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
+    default_access_limited_message_not_logged_in = ocd.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
+    
     # count_anchors = 0
     try:
         caller_name = caller_name + "/ search_text_qs"
@@ -1317,7 +1319,17 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             documentListItem.accessLimitedPubLink = access.accessLimitedPubLink
                         else:
                             logger.error("getaccesslimitations: Why is access none?")
-                            
+                    else:
+                        if documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_CURRENT): # PEPCurrent
+                            documentListItem.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION) + ocd.get_user_message(msg_code=opasConfig.ACCESS_CLASS_DESCRIPTION_CURRENT_CONTENT)
+                            documentListItem.accessLimitedClassifiedAsCurrentContent = True
+                        documentListItem.accessChecked = False # not logged in
+                        documentListItem.accessLimited = True   
+                        documentListItem.accessLimitedCode = 200
+                        documentListItem.accessLimitedReason = default_access_limited_message_not_logged_in # ocd.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
+                        # documentListItem.accessLimitedDebugMsg = access.accessLimitedDebugMsg
+
+                        
                     documentListItem.score = result.get("score", None)               
                     try:
                         text_xml = results.highlighting[documentID].get("text_xml", None)
@@ -2472,6 +2484,8 @@ def prep_document_download(document_id,
                       art_issn, file_classification"""
     }
 
+    request_qualifier_text = f" Request: {document_id}. Session {session_info.session_id}."
+    
     try:
         results = solr_docs2.search(query, **args)
     except Exception as e:
@@ -2484,9 +2498,17 @@ def prep_document_download(document_id,
             # set up documentListItem in case the article is embargoed. 
             documentListItem = opasQueryHelper.get_base_article_info_from_search_result(results.docs[0], documentListItem)
         except IndexError as e:
-            logger.error("Download Request: No matching document for %s.  Error: %s", document_id, e)
+            err_msg = ocd.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
+            logger.error(err_msg)
+            status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
+                                         error_description=err_msg
+                                       )
         except KeyError as e:
-            logger.error("Download Request: No full-text content found for %s.  Error: %s", document_id, e)
+            err_msg = ocd.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + f" Error: Full-text not content found for {document_id}"
+            logger.error(err_msg)
+            status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
+                                         error_description=err_msg
+                                       )
         else:
             try:    
                 if isinstance(docs, list):
@@ -2627,7 +2649,7 @@ def prep_document_download(document_id,
                                                      error_description=err_msg
                                                    )
                 else: # access is limited
-                    err_msg = f"No permission to download document {document_id} for user {session_info}"
+                    err_msg = f"From Authorization Server: {access.accessLimitedDebugMsg}"
                     logger.warning(access.accessLimitedDebugMsg) # log developer info for tracing access issues
                     status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
                                                  error_description=err_msg

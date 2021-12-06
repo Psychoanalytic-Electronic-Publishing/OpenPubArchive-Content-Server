@@ -110,8 +110,12 @@ class TimePeriod(Enum):
 #-------------------------------------------------------
 class ErrorReturn(BaseModel):
     httpcode: int = Field(200, title="HTTP code")
+    session_id: str = Field(None, title="Session ID")
+    user_authenticated: bool = Field(None, title="User authenticated")
     error: str = Field(None, title="Error class or title")
     error_description: str = Field(None, title="Error description")
+    subsystem_error_description: str = Field(None, title="Error description from subsystem, e.g., from Authorization System")
+    subsystem_error_model: dict = Field(None, title="Subsystem Error details")
 
 #-------------------------------------------------------
 # Status return structure, standard part of most models
@@ -149,12 +153,14 @@ class APIStatusItem(BaseModel):
 # General Data Encapsulation classes
 #-------------------------------------------------------
 class AccessLimitations(BaseModel):
+    accessType: str = Field(None, title="Class of access")
     accessChecked: bool = Field(False, title="Access was checked. If false, accessLimited value is just defaulted to False")
     accessLimited: bool = Field(True, title="True if the data can not be provided for this user")
     accessLimitedCode: int = Field(None, title="If an error code is returned from the server, pass it back here for ease of client processing")
     accessLimitedClassifiedAsCurrentContent: bool = Field(False, title="True if the data is considered Current Content (embargoed). Note True does not mean it's limited for this user(See accessLimited for that).")
     accessLimitedReason: str = Field(None, title="Explanation of limited access status")
     accessLimitedDebugMsg: str = Field(None, title="Developer level info for tracing access issues")
+    accessLimitedAuthResponse: dict = Field(None, title="Response from authorization subsystem")
     accessLimitedDescription: str = Field(None, title="Description of why access is limited")
     accessLimitedPubLink: str = Field(None, title="Link to publisher") 
     doi: str = Field(None, title="Document Object Identifier, without base URL")
