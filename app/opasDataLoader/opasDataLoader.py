@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.1129.1" 
+__version__     = "2021.1206.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -461,7 +461,7 @@ def main():
                         issue_updates[artInfo.issue_id_str] = [art]
 
             try:
-                artInfo.file_classification = re.search("(?P<class>current|archive|future|free|offsite)", str(n.filespec), re.IGNORECASE).group("class")
+                artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
                 # set it to lowercase for ease of matching later
                 if artInfo.file_classification is not None:
                     artInfo.file_classification = artInfo.file_classification.lower()

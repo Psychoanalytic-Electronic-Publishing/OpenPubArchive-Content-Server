@@ -12,7 +12,7 @@ import opasDocPermissions
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login 
 
 # Login!
-sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ID2, password=localsecrets.PADS_TEST_PW3)
+sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ID3, password=localsecrets.PADS_TEST_PW3)
 
 class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
     """
@@ -34,9 +34,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         response_set = r["documents"]["responseSet"][0]
         assert (response_set["accessLimited"] == True)
         assert (response_set["accessClassification"] == 'current')
-        print(response_set["accessClassification"])
-        print(response_set["accessLimitedReason"])
-        print(response_set["accessLimitedDescription"])
+        print(f'Classification: {response_set["accessClassification"]}')
+        print(f'Reason: {response_set["accessLimitedReason"]}')
+        print(f'Description: {response_set["accessLimitedDescription"]}')
 
     def test_001A_get_future_document(self):
         # Try to return current content, should only return abstract
@@ -45,22 +45,28 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r["detail"])
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
         assert (response_set["accessLimited"] == True)   
+        assert (response_set["accessClassification"] == 'future')
+        print(f'Classification: {response_set["accessClassification"]}')
+        print(f'Reason: {response_set["accessLimitedReason"]}')
+        print(f'Description: {response_set["accessLimitedDescription"]}')
 
     def test_001A_get_marked_embargoed_document(self):
         # Try to return current content, should only return abstract
-        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/JPT.005.0065A/?return_format=XML")
+        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJPOPEN.004.0013A/?return_format=XML")
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r["detail"])
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
         assert (response_set["accessLimited"] == True)   
+        assert (response_set["accessClassification"] == 'future')
+        print(f'Classification: {response_set["accessClassification"]}')
+        print(f'Reason: {response_set["accessLimitedReason"]}')
+        print(f'Description: {response_set["accessLimitedDescription"]}')
 
     def test_001A_download_embargoed_document_PDF(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IJP.102.0006A/')

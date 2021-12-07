@@ -80,7 +80,9 @@ import time
 from passlib.context import CryptContext
 # from pydantic import ValidationError
 
+import mysql.connector
 import pymysql
+DICTCURSOR = pymysql.cursors.DictCursor
 # import jwt
 import json
 
@@ -383,9 +385,51 @@ class opasCentralDB(object):
     def get_user_message(self, msg_code, lang="EN"):
         fname = "get_user_message"
         ret_val = ""
+        self.db = mysql.connector.connect(user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME, host=localsecrets.DBHOST)
+        # self.open_connection(caller_name=fname) # make sure connection is open
+        if self.db is not None:
+            curs = self.db.cursor(buffered=True, dictionary=True)
+            try:
+                code = int(msg_code)
+            except Exception as e:
+                logger.debug(f"msg_code argument not convertable to int {e}. Using symbolic code")
+                sql = f"SELECT * from vw_api_messages where msg_sym_code='{msg_code}' and msg_language='{lang}';"
+            else:
+                sql = f"SELECT * from vw_api_messages where msg_num_code={code} and msg_language='{lang}';"
+
+            try:
+                curs.execute(sql)
+            except Exception as e:
+                logger.error(f"Connection not available to database. Trying again. {e}")
+            else: # success
+                fetched = True
+
+            if fetched:
+                if curs.rowcount >= 1:
+                    try:
+                        sourceData = curs.fetchone()
+                        ret_val = sourceData["msg_text"]
+                    except Exception as e:
+                        ret_val = f"Message not available. {e}"
+            else:
+                ret_val = f"Message not available."
+        else:
+            logger.error("Connection not available to database.")
+            
+        curs.close()
+        # self.close_connection(caller_name=fname) # make sure connection is closed
+        self.db.close()
+        if ret_val is None:
+            ret_val = ""
+            
+        return ret_val
+        
+    def get_user_message_hold(self, msg_code, lang="EN"):
+        fname = "get_user_message"
+        ret_val = ""
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.DictCursor)
+            curs = self.db.cursor(DICTCURSOR)
             try:
                 code = int(msg_code)
             except Exception as e:
@@ -438,12 +482,13 @@ class opasCentralDB(object):
         ret_val = {}
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.DictCursor)
+            curs = self.db.cursor(DICTCURSOR)
             sql = "SELECT * from vw_api_sourceinfodb where active=1;"
             row_count = curs.execute(sql)
             if row_count:
                 sourceData = curs.fetchall()
                 ret_val = sourceData
+            curs.close()
         else:
             logger.fatal("Connection not available to database.")
         self.close_connection(caller_name=fname) # make sure connection is closed
@@ -457,7 +502,7 @@ class opasCentralDB(object):
         ret_val = None
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
-            with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+            with closing(self.db.cursor(DICTCURSOR)) as curs:
                 sql = f"SELECT art_year from api_articles where art_id='{doc_id}';"
                 row_count = curs.execute(sql)
                 if row_count:
@@ -631,7 +676,7 @@ class opasCentralDB(object):
                       {sort_by_clause}
                       {limit_clause}
                     """
-            with closing(self.db.cursor(pymysql.cursors.DictCursor)) as cursor:
+            with closing(self.db.cursor(DICTCURSOR)) as cursor:
                 row_count = cursor.execute(sql)
                 for row in cursor:
                     yield row
@@ -793,7 +838,7 @@ class opasCentralDB(object):
                       {limit_clause}
                     """
 
-            with closing(self.db.cursor(pymysql.cursors.DictCursor)) as cursor:
+            with closing(self.db.cursor(DICTCURSOR)) as cursor:
                 row_count = cursor.execute(sql)
                 for row in cursor:
                     yield row
@@ -1013,7 +1058,7 @@ class opasCentralDB(object):
         """
         if self.db is not None:
             errmsg = f"getting articles newer than {days_back} days back, date {newer_than_date}"
-            with closing(self.db.cursor(pymysql.cursors.DictCursor)) as cursor:
+            with closing(self.db.cursor(DICTCURSOR)) as cursor:
                 try:
                     cursor.execute(sqlSelect, (newer_than_date))
                 except ValueError as e:
@@ -1057,7 +1102,7 @@ class opasCentralDB(object):
         ret_val = None
         if self.db is not None:
             try:
-                with closing(self.db.cursor(pymysql.cursors.DictCursor)) as cursor:
+                with closing(self.db.cursor(DICTCURSOR)) as cursor:
                     try:
                         cursor.execute(sel)
                     except ValueError as e:
@@ -1175,7 +1220,7 @@ class opasCentralDB(object):
         if self.db is not None:
             try:
                 self.db.ping()
-                with closing(self.db.cursor(pymysql.cursors.DictCursor)) as cursor:
+                with closing(self.db.cursor(DICTCURSOR)) as cursor:
                     # now insert the session
                     sql = f"SELECT * FROM api_sessions WHERE session_id = '{session_id}'";
                     res = cursor.execute(sql)
@@ -1732,7 +1777,7 @@ class opasCentralDB(object):
             src_title_clause = ""
             
             try:
-                curs = self.db.cursor(pymysql.cursors.DictCursor)
+                curs = self.db.cursor(DICTCURSOR)
                 if src_code is not None and src_code != "*":
                     src_code_clause = f"AND basecode = '{src_code}'"
                 if src_type is not None and src_type != "*":
@@ -1830,7 +1875,7 @@ class opasCentralDB(object):
                 else:
                     self.open_connection(caller_name=fname) # make sure connection is open
                     try:
-                        with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                        with closing(self.db.cursor(DICTCURSOR)) as curs:
                             for item in client_configuration.configList:
                                 configName = item.configName
                                 configSettings = item.configSettings
@@ -1912,7 +1957,7 @@ class opasCentralDB(object):
                 else:
                     self.open_connection(caller_name=fname) # make sure connection is open
                     try:
-                        with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                        with closing(self.db.cursor(DICTCURSOR)) as curs:
                             configName = client_configuration_item.configName
                             configSettings = client_configuration_item.configSettings
                             
@@ -2002,7 +2047,7 @@ class opasCentralDB(object):
             logging.error(msg)
             ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
-            with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+            with closing(self.db.cursor(DICTCURSOR)) as curs:
                 ret_val_list = []
                 for client_config_name in client_config_name_list:
                     sql = f"""SELECT *
@@ -2062,7 +2107,7 @@ class opasCentralDB(object):
                               WHERE client_id = {client_id_int}
                               AND config_name = '{client_config_name}'"""
             
-                    with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                    with closing(self.db.cursor(DICTCURSOR)) as curs:
                         res = curs.execute(sql)
                         if res >= 1:
                             ret_val = saved
@@ -2159,12 +2204,13 @@ class opasCentralDB(object):
             self.open_connection(caller_name=fname) # make sure connection is open
             localDisconnectNeeded = True
             
-        dbc = self.db.cursor(pymysql.cursors.DictCursor)
+        dbc = self.db.cursor(DICTCURSOR)
         try:
             ret_val = dbc.execute(querytxt, queryparams)
         except self.db.DataError as e:
             logger.error(f"DBError: Art: {contextStr}. DB Data Error {e} ({querytxt})")
-            raise self.db.DataError(e)
+            ret_val = None
+            # raise self.db.DataError(e)
         except self.db.OperationalError as e:
             logger.error(f"DBError: Art: {contextStr}. DB Operation Error {e} ({querytxt})")
             raise self.db.OperationalError(e)
@@ -2205,7 +2251,7 @@ class opasCentralDB(object):
             self.open_connection(caller_name=fname) # make sure connection is open
             localDisconnectNeeded = True
             
-        dbc = self.db.cursor(pymysql.cursors.DictCursor)
+        dbc = self.db.cursor(DICTCURSOR)
         try:
             ret_val = dbc.execute(querytxt, queryparams)
         except Exception as e:

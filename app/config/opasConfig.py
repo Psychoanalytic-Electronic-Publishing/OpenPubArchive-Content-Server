@@ -524,6 +524,8 @@ ACCESS_CLASS_DESCRIPTION_FUTURE = 1206
 
 ACCESS_LIMITED_REASON_OK_CURRENT_CONTENT = 1204 # "This current content is available for you to access."
 ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE = 1205 # "This archive content is available for you to access."
+ACCESS_LIMITED_REASON_NOK_EMBARGOED_CONTENT = 1214
+ACCESS_LIMITED_REASON_NOK_SPECIAL_CONTENT = 1215
 ACCESS_LIMITED_REASON_NOK_FUTURE_CONTENT = 1216 #"This future content is not yet available for you to access."
 ACCESS_LIMITED_REASON_NOK_CURRENT_CONTENT = 1217 # This is a summary excerpt from the full document.  The full-text content of the document is embargoed per an agreement with the publisher. 
 ACCESS_LIMITED_REASON_NOK_ARCHIVE_CONTENT = 1218 # in case user doesn't have access to PEP-Web archive

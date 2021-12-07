@@ -1297,7 +1297,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # NEW 20211008 - If logged in, check permissions for full-text, or an abstract request with one return
                     documentListItem.accessChecked = False # default anyway, but to make sure it always exists
                     documentListItem.accessLimited = True  # default is True anyway, but to make sure it always exists
-                    if user_logged_in_bool and (get_full_text or (solr_query_spec.abstractReturn and record_count == 1)): # LIMIT_TEST_DONT_DO_THIS: # record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
+                    if get_full_text or (solr_query_spec.abstractReturn and record_count == 1): # LIMIT_TEST_DONT_DO_THIS: # record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
                         access = opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
                                                                      classification=documentListItem.accessClassification, # based on file_classification (where it is)
                                                                      year=documentListItem.year,
@@ -1319,15 +1319,21 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             documentListItem.accessLimitedPubLink = access.accessLimitedPubLink
                         else:
                             logger.error("getaccesslimitations: Why is access none?")
-                    else:
-                        if documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_CURRENT): # PEPCurrent
-                            documentListItem.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION) + ocd.get_user_message(msg_code=opasConfig.ACCESS_CLASS_DESCRIPTION_CURRENT_CONTENT)
-                            documentListItem.accessLimitedClassifiedAsCurrentContent = True
-                        documentListItem.accessChecked = False # not logged in
-                        documentListItem.accessLimited = True   
-                        documentListItem.accessLimitedCode = 200
-                        documentListItem.accessLimitedReason = default_access_limited_message_not_logged_in # ocd.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
-                        # documentListItem.accessLimitedDebugMsg = access.accessLimitedDebugMsg
+                    #else:
+                        #if get_full_text or (solr_query_spec.abstractReturn and record_count == 1:
+                                             
+                        #if documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_CURRENT): # PEPCurrent
+                            #documentListItem.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION) + ocd.get_user_message(msg_code=opasConfig.ACCESS_CLASS_DESCRIPTION_CURRENT_CONTENT)
+                            #documentListItem.accessLimitedClassifiedAsCurrentContent = True
+                        #elif documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_FUTURE): 
+                            #documentListItem.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION) + ocd.get_user_message(msg_code=opasConfig.ACCESS_CLASS_DESCRIPTION_FUTURE_CONTENT)
+                            #documentListItem.accessLimitedClassifiedAsCurrentContent = False
+                        #documentListItem.accessChecked = False # not logged in
+                        #documentListItem.accessLimited = True   
+                        #documentListItem.accessLimitedCode = 200
+                        #if not user_logged_in_bool:
+                            #documentListItem.accessLimitedReason = default_access_limited_message_not_logged_in # ocd.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
+                        ## documentListItem.accessLimitedDebugMsg = access.accessLimitedDebugMsg
 
                         
                     documentListItem.score = result.get("score", None)               

@@ -842,7 +842,7 @@ def get_access_limitations(doc_id,
                                 if embargo_type is not None:
                                     msg = ocd.get_user_message(msg_code=embargo_type)
                                 else:
-                                    msg = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_ONLY_EMBARGOED)
+                                    msg = ocd.get_user_message(msg_code=opasConfig.ACCESS_LIMITED_REASON_NOK_EMBARGOED_CONTENT)
                                 ret_val.accessLimitedReason = msg
                             else:
                                 # set default again based on update from PaDS query

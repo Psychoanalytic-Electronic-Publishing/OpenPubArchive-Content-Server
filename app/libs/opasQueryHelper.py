@@ -2091,13 +2091,13 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 if documentListItem.docLevel >= 2:
                     documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_DEFAULT)
                 else:
-                    documentListItem.accessClassification = result.get("file_classification", None)
+                    documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_UNDEFINED)
             except Exception as e:
                 # don't log, at this point there are other things being logged.
                 # logger.error(f"GetBaseArticleInfo: Error in database: {e}")
                 documentListItem.accessClassification = opasConfig.DOCUMENT_ACCESS_DEFAULT
                 
-            if documentListItem.accessClassification is None:
+            if documentListItem.accessClassification == opasConfig.DOCUMENT_ACCESS_UNDEFINED:
                 logger.error(f"art_id: {documentListItem.documentID} no file_classification returned!")
                 
             documentListItem.updated=result.get("file_last_modified", None)
