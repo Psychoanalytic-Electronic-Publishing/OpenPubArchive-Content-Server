@@ -16,7 +16,6 @@ else: # python running from should be within folder app
 import unittest
 from datetime import datetime
 import opasCentralDBLib
-import pymysql
 
 from unitTestConfig import base_api, base_plus_endpoint_encoded
 
@@ -58,11 +57,12 @@ class TestSQLStructure(unittest.TestCase):
                   ]
 
         for table in tables:              
-            curs = ocd.db.cursor(pymysql.cursors.DictCursor)
+            curs = ocd.db.cursor(buffered=True, dictionary=True)
             sql = f"SELECT * from {table} LIMIT 10;" 
             try:
-                cursed = curs.execute(sql)
-                print (f"Found {cursed} rows (limit was 10)")
+                curs.execute(sql)
+                row_count = curs.rowcount
+                print (f"Found {row_count} rows (limit was 10)")
                 sourceData = curs.fetchall()
                 assert (len(sourceData) >= 1)
             except:

@@ -49,6 +49,9 @@ BOOK_CODES_ALL = ("GW", "SE", "ZBK", "NLP", "IPL")
 VIDEOSTREAM_CODES_ALL = ("AFCVS", "BPSIVS", "IJPVS", "IPSAVS", "NYPSIVS", "PCVS", "PEPGRANTVS", "PEPTOPAUTHVS", "PEPVS", "SFCPVS", "SPIVS", "UCLVS")
 ALL_EXCEPT_JOURNAL_CODES = BOOK_CODES_ALL + VIDEOSTREAM_CODES_ALL
 
+DOWNLOADS_MAX_PAGE_COUNT = 50
+DOWNLOADS_TYPES_RESTRICTED = ("book", )
+DOWNLOADS_TYPES_OVERRIDDEN = ("book", )
 # Note: language symbols to be lower case (will be converted to lowercase if not)
 DEFAULT_DATA_LANGUAGE_ENCODING = "en"
 CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr", "de-de", "it-it")

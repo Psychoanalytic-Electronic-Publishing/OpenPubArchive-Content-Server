@@ -31,7 +31,8 @@ from lxml import etree
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 import html
 
-import pymysql
+# import pymysql
+import mysql.connector
 
 import localsecrets
 # import config
@@ -1307,7 +1308,11 @@ def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry, verbose=None):
                                         );
                             """
     query_param_dict = bib_entry.__dict__
-    
+    # need to remove lists, even if they are not used.
+    del query_param_dict["author_list"]
+    del query_param_dict["author_name_list"]
+
+    res = ""
     try:
         res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_param_dict)
     except Exception as e:
@@ -1338,6 +1343,8 @@ def add_article_to_api_articles_table(ocd, art_info, verbose=None):
         print (msg)
     
     ocd.open_connection(caller_name="processArticles")
+    
+    # reduce object
   
     insert_if_not_exists = r"""REPLACE
                                INTO api_articles (
@@ -1402,14 +1409,45 @@ def add_article_to_api_articles_table(ocd, art_info, verbose=None):
                                         );
                             """
 
+    query_params = {
+        "art_id": art_info.art_id,
+        "art_doi": art_info.art_doi,
+        "art_type": art_info.art_type,
+        "art_lang":  art_info.art_lang,
+        "art_kwds":  art_info.art_kwds,
+        "art_auth_mast":  art_info.art_auth_mast,
+        "art_auth_citation": art_info.art_auth_citation, 
+        "art_title":  art_info.art_title,
+        "src_title_abbr":  art_info.src_title_abbr,  
+        "src_code":  art_info.src_code,  
+        "art_year":  art_info.art_year,
+        "art_vol_int":  art_info.art_vol_int,
+        "art_vol_str":  art_info.art_vol_str,
+        "art_vol_suffix":  art_info.art_vol_suffix,
+        "art_issue":  art_info.art_issue,
+        "art_pgrg":  art_info.art_pgrg,
+        "art_pgstart":  art_info.art_pgstart,
+        "art_pgend":  art_info.art_pgend,
+        "main_toc_id":  art_info.main_toc_id,
+        "start_sectname":  art_info.start_sectname,
+        "bk_info_xml":  art_info.bk_info_xml,
+        "bk_title":  art_info.bk_title,
+        "bk_publisher":  art_info.bk_publisher,
+        "art_citeas_xml":  art_info.art_citeas_xml,
+        "art_citeas_text":  art_info.art_citeas_text,
+        "ref_count":  art_info.ref_count,
+        "filename":  art_info.filename,
+        "filedatetime": art_info.filedatetime
+    }
+
     # string entries above must match an attr of the art_info instance.
-    query_param_dict = art_info.__dict__.copy()
+    #query_param_dict = art_info.__dict__.copy()
     # the element objects in the author_xml_list cause an error in the action query 
     # even though that dict entry is not used.  So removed in a copy.
-    query_param_dict["author_xml_list"] = None
+    #query_param_dict["author_xml_list"] = None
         
     try:
-        res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_param_dict)
+        res = ocd.do_action_query(querytxt=insert_if_not_exists, queryparams=query_params)
     except Exception as e:
         errStr = f"AddToArticlesDBError: insert error {e}"
         logger.error(errStr)
@@ -1420,7 +1458,7 @@ def add_article_to_api_articles_table(ocd, art_info, verbose=None):
     try:
         ocd.db.commit()
         ocd.close_connection(caller_name="processArticles")
-    except pymysql.Error as e:
+    except mysql.connector.Error as e:
         errStr = f"SQLDatabaseError: Commit failed! {e}"
         logger.error(errStr)
         if opasConfig.LOCAL_TRACE: print (errStr)
@@ -1468,7 +1506,7 @@ def add_to_tracker_table(ocd, art_id, verbose=None):
     try:
         ocd.db.commit()
         ocd.close_connection(caller_name=caller_name)
-    except pymysql.Error as e:
+    except mysql.connector.Error as e:
         errStr = f"SQLDatabaseError: Commit failed! {e}"
         logger.error(errStr)
         if opasConfig.LOCAL_TRACE: print (errStr)

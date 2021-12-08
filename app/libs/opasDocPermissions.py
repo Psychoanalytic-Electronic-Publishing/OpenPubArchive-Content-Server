@@ -751,7 +751,7 @@ def get_access_limitations(doc_id,
                         # #########################################################################################
                         ret_val.accessLimited = True 
                         ret_val.accessChecked = False
-                        ret_val.accessLimitedReason = ocd.get_user_message(msg_code=opasConfig.ACCESS_NOK_FUTURE_CONTENT_NOT_AVAILABLE)
+                        # ret_val.accessLimitedReason = ocd.get_user_message(msg_code=opasConfig.ACCESS_LIMITED_REASON_NOK_FUTURE_CONTENT)
                     except Exception as e:
                         logger.error(f"{caller_name}: PEPCurrent document permission: {e}")
 

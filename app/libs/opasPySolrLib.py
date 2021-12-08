@@ -2486,7 +2486,8 @@ def prep_document_download(document_id,
     query = "art_id:%s" % (document_id)
     args = {
              "fl": """art_id, art_info_xml, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
-                      art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi, art_title, art_authors, art_authors_mast, art_lang, 
+                      art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi, art_title, art_authors, art_authors_mast, art_lang,
+                      art_embargo, art_embargotype, art_pgcount, 
                       art_issn, file_classification"""
     }
 
@@ -2532,7 +2533,16 @@ def prep_document_download(document_id,
                 art_authors_mast = art_info.get("art_authors_mast", "PEP")
                 art_authors = art_authors_mast
                 art_info_xml = art_info.get("art_info_xml", None)
+                art_pgcount = art_info.get("art_pgcount", 0)
+                art_sourcetype = art_info.get("art_sourcetype", "Unknown")
                 downloads = opasQueryHelper.get_document_download_permission(documentInfoXML=art_info_xml)
+                if downloads == True:
+                    if art_pgcount >= opasConfig.DOWNLOADS_MAX_PAGE_COUNT and art_sourcetype in opasConfig.DOWNLOADS_TYPES_RESTRICTED:
+                        downloads = False
+                else: # DT said "exceptions"...
+                    # Allow DOWNLOADS_TYPES_OVERRIDDEN with fewer than DOWNLOADS_MAX_PAGE_COUNT pages to be downloaded, even if marked downloads==False
+                    if art_pgcount < opasConfig.DOWNLOADS_MAX_PAGE_COUNT and art_sourcetype in opasConfig.DOWNLOADS_TYPES_OVERRIDDEN:
+                        downloads = True
                     
                 if art_citeas_xml is not None:
                     art_citeas = opasxmllib.xml_elem_or_str_to_text(art_citeas_xml)

@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1206/v2.1.96" # semver versioning now added after date.
+__version__     = "2021.1208/v2.1.97" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -1577,20 +1577,20 @@ def session_logout_user(response: Response,
     ocd = opasCentralDBLib.opasCentralDB()
     if session_id is not None and session_id != "":
         session_info = ocd.get_session_from_db(session_id)
-        session_end_time = datetime.utcfromtimestamp(time.time())
         if session_info is not None:
-            session_info.session_end = session_end_time
-            ocd.end_session(session_id=session_id)
-
-        if session_info.api_direct_login:
-            response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
-            ret_val = opasDocPermissions.authserver_logout(session_id, request=request, response=response)
-            if ret_val:
-                # logged out
-                session_info = models.SessionInfo(session_id=session_id)
+            direct_login = session_info.api_direct_login
+            session_end_time = datetime.utcfromtimestamp(time.time())
+            if session_info is not None:
+                session_info.session_end = session_end_time
+                ocd.end_session(session_id=session_id)
+    
+            if direct_login:
+                response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
+                ret_val = opasDocPermissions.authserver_logout(session_id, request=request, response=response)
 
         #ocd, session_info = opasAPISupportLib.get_session_info(request, response,
-                                                               #session_id=session_id, client_id=client_id)
+        # logged out
+        session_info = models.SessionInfo(session_id=session_id)
     return session_info
 
 #-----------------------------------------------------------------------------
@@ -1667,7 +1667,7 @@ async def session_status(response: Response,
                 import pysolr
                 import fastapi
                 import lxml
-                library_versions = {"pymysql": ocd.library_version,
+                library_versions = {"mysql.connector": ocd.library_version,
                                     "fastapi": fastapi.__version__,
                                     "pysolr": pysolr.__version__,
                                     "pydantic": pydantic.version.VERSION,
@@ -1716,7 +1716,7 @@ async def session_status(response: Response,
     return server_status_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_AM_I)
+@app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=False, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_AM_I)
 async def session_whoami(response: Response,
                          request: Request,
                          client_id:int=Depends(get_client_id), 
@@ -1724,9 +1724,6 @@ async def session_whoami(response: Response,
                          ):
     """
     ## Function
-       <b>Temporary endpoint for debugging purposes</b>
-
-       This is only a stopgap for development
        All authentication processing is to be done in PaDS as planned
        (though it may be this stays conditionally for future iteration of local development TBD)
 
@@ -1759,7 +1756,7 @@ async def session_whoami(response: Response,
             status_code=httpCodes.HTTP_400_BAD_REQUEST,
             detail=ERR_MSG_SESSION_ID_ERROR
         )
-        
+
     return(session_info)
 
 #-----------------------------------------------------------------------------
@@ -5162,6 +5159,8 @@ def documents_downloads(response: Response,
             status_message = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
         elif status.httpcode == httpCodes.HTTP_422_UNPROCESSABLE_ENTITY:
             status_message = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+        else:
+            status_message = "Unknown/Unexpected error."
             
         #status_message = ocd.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
         if status.error_description is not None:

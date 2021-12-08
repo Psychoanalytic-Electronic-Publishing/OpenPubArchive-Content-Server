@@ -12,7 +12,7 @@ import opasDocPermissions
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login 
 
 # Login!
-sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ID3, password=localsecrets.PADS_TEST_PW3)
+sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TEST_PW)
 
 class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
     """
@@ -57,40 +57,78 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         # Try to return current content, should only return abstract
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJPOPEN.004.0013A/?return_format=XML")
         response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
-        assert (response_set["accessLimited"] == True)   
-        assert (response_set["accessClassification"] == 'future')
         print(f'Classification: {response_set["accessClassification"]}')
         print(f'Reason: {response_set["accessLimitedReason"]}')
         print(f'Description: {response_set["accessLimitedDescription"]}')
 
-    def test_001A_download_embargoed_document_PDF(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IJP.102.0006A/')
+    # Embargoed files (removed IJPOPen for example, xml flag:embargo=true)
+    def test_001B_download_embargoed_document_PDF(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IJPOPEN.004.0013A/')
         response = requests.get(full_URL, headers=headers)
-        r = response.json()
-        print (r["detail"])
+        assert(response.ok == False)
 
-    def test_001A_download_embargoed_document_PDF_ORIG(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFOrig/IJP.102.0006A/')
+    def test_001C_download_embargoed_document_PDF_ORIG(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFOrig/IJPOPEN.004.0013A/')
         response = requests.get(full_URL, headers=headers)
-        r = response.json()
-        print (r["detail"])
+        assert(response.ok == False)
+
+    def test_001C_download_embargoed_document_EPUB(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/IJPOPEN.004.0013A/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == False)
+
+    # Download restricted files (currently long books)
+    def test_001D_download_prohibited_documentPDF_ORIG_Page_Restricted(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFOrig/SE.004.R0009A/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == False)
+
+    def test_001D_download_prohibited_document_PDF(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IPL.064.0001A/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == False)
+
+    def test_001D_download_prohibited_document_PDF(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFOrig/IPL.064.0001A/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == False)
+
+    def test_001D_download_prohibited_document_EPUB(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/IPL.064.0001A/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == False)
+
+    def test_001D_download_prohibited_document_PDF_EXCEPTION(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IPL.064.0001A/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == False)
+
+    def test_001D_download_prohibited_document_PDF_EXCEPTION(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFOrig/IPL.064.0001A/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == False)
+
+    def test_001D_download_prohibited_document_EPUB_EXCEPTION(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/IPL.064.0001A/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == False)
 
     def test_001D_nonexistent_document(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/APA.064E.6666A/')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         print (r["detail"])
+        assert(response.ok == False)
 
     def test_001D_nonexistent_document_download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFOrig/APA.064E.6666A/')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         print (r["detail"])
+        assert(response.ok == False)
 
     def test_002A_Future_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/PPC.004.0026A/')
@@ -100,7 +138,7 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         assert(response.ok == False)
 
     def test_002B_Current_Download(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/IJP.102.0006A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/JICAP.020.0015A/')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         print (r["detail"])

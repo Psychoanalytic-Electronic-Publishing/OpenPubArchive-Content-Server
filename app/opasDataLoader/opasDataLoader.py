@@ -18,7 +18,7 @@ if sys.version_info[0] < 3:
 
 print(
     f""" 
-    {programNameShort} - Open Publications-Archive Server (OPAS) - Document, Authors, and References Core Loader
+        {programNameShort} - Open Publications-Archive Server (OPAS) - Document, Authors, and References Core Loader
     
         Load articles into the Docs, Authors, and Glossary Solr cores and
         load article information and bibliography entries into a MySQL database
@@ -37,6 +37,8 @@ print(
          --sub       Start with this subfolder of the root (can add sublevels to that)
          --key:      Do just one file with the specified PEP locator (e.g., --key AIM.076.0309A)
          --nocheck   Don't prompt whether to proceed after showing setting/option choices
+         --reverse   Process in reverse
+         --halfway   Stop after doing half of the files, so it can be run in both directions
 
         Example:
           Update all files from the root (default, pep-web-xml) down.  Starting two runs, one running the file list forward, the other backward.
@@ -56,7 +58,6 @@ print(
           S3 has subfolders _PEPArchive, _PEPCurrent, _PEPFree, _PEPOffsite
             to allow easy processing of one archive type at a time simply using
             the --sub option (or four concurrently for faster processing).
-
     """
 )
 
@@ -90,7 +91,8 @@ from optparse import OptionParser
 from lxml import etree
 #now uses pysolr exclusively!
 # import solrpy as solr 
-import pymysql
+# import pymysql
+import mysql.connector
 
 # import config
 # import opasConfig
@@ -446,6 +448,9 @@ def main():
     
             # save common document (article) field values into artInfo instance for both databases
             artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
+            # watch src_type for set from latest database
+            if type(artInfo.src_type) == set:
+                artInfo.src_type = "" if len(artInfo.src_type) == 0 else artInfo.src_type.pop()                
             artInfo.filedatetime = n.timestamp_str
             artInfo.filename = base
             artInfo.file_size = n.filesize
@@ -512,7 +517,7 @@ def main():
 
                     try:
                         ocd.db.commit()
-                    except pymysql.Error as e:
+                    except mysql.connector.Error as e:
                         print("SQL Database -- Biblio Commit failed!", e)
                         
                     ocd.close_connection(caller_name="processBibliographies")
