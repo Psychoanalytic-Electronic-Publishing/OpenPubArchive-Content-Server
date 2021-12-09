@@ -597,7 +597,8 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_iss, 
  art_iss_title, 
  art_newsecnm, 
- art_pgrg, 
+ art_pgrg,
+ art_pgcount,
  art_lang, 
  art_doi, 
  art_issn,
@@ -656,6 +657,7 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
  art_iss, 
  art_iss_title, 
  art_pgrg, 
+ art_pgcount,
  art_lang, 
  art_doi, 
  art_issn,
@@ -673,7 +675,7 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
 DOCUMENT_ITEM_VIDEO_FIELDS = """
 art_id,art_issn, art_sourcecode,art_authors, title, art_subtitle_xml, art_title_xml,
 art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, art_vol,art_vol_title, art_year, art_iss, art_iss_title,
-art_year, art_citeas_xml, art_pgrg, art_lang, art_origrx, art_qual, art_kwds, file_classification
+art_year, art_citeas_xml, art_pgrg, art_pgcount, art_lang, art_origrx, art_qual, art_kwds, file_classification
 """
 
 DOCUMENT_ITEM_TOC_FIELDS = """
@@ -695,6 +697,7 @@ DOCUMENT_ITEM_TOC_FIELDS = """
  art_iss_title, 
  art_newsecnm, 
  art_pgrg, 
+ art_pgcount,
  art_lang, 
  art_doi, 
  art_issn,
@@ -719,6 +722,7 @@ DOCUMENT_ITEM_META_FIELDS ="""
  art_vol,
  art_year, 
  art_pgrg,
+ art_pgcount,
  art_qual,
  file_classification, 
  score

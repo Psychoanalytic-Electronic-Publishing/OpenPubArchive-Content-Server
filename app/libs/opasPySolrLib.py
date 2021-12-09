@@ -1439,8 +1439,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                                                 page_limit=solr_query_spec.page_limit,
                                                                                 documentListItem=documentListItem,
                                                                                 fulltext_children_only=True)
-    
-                        
+                    
                     stat = {}
                     count_all = result.get("art_cited_all", None)
                     if count_all is not None:
@@ -1720,6 +1719,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                 art_iss_seqnbr,
                 art_newsecnm,
                 art_pgrg,
+                art_pgcount,
                 title,
                 art_authors,
                 art_authors_mast,
@@ -1746,6 +1746,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
             authorMast = opasgenlib.derive_author_mast(author_ids)
 
         pgRg = result.get("art_pgrg", None)
+        pgCount = result.get("art_pgcount", None)
         pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
         citeAs = result.get("art_citeas_xml", None)  
         citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
@@ -1768,6 +1769,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                                        issueSeqNbr = issue_seqnbr, 
                                        newSectionName = result.get("art_newsecnm", None),
                                        pgRg = result.get("art_pgrg", None),
+                                       pgCount=pgCount, 
                                        pgStart = pgStart,
                                        pgEnd = pgEnd,
                                        title = result.get("title", None), 
@@ -2532,17 +2534,6 @@ def prep_document_download(document_id,
                 art_citeas_xml = art_info.get("art_citeas_xml", None)
                 art_authors_mast = art_info.get("art_authors_mast", "PEP")
                 art_authors = art_authors_mast
-                art_info_xml = art_info.get("art_info_xml", None)
-                art_pgcount = art_info.get("art_pgcount", 0)
-                art_sourcetype = art_info.get("art_sourcetype", "Unknown")
-                downloads = opasQueryHelper.get_document_download_permission(documentInfoXML=art_info_xml)
-                if downloads == True:
-                    if art_pgcount >= opasConfig.DOWNLOADS_MAX_PAGE_COUNT and art_sourcetype in opasConfig.DOWNLOADS_TYPES_RESTRICTED:
-                        downloads = False
-                else: # DT said "exceptions"...
-                    # Allow DOWNLOADS_TYPES_OVERRIDDEN with fewer than DOWNLOADS_MAX_PAGE_COUNT pages to be downloaded, even if marked downloads==False
-                    if art_pgcount < opasConfig.DOWNLOADS_MAX_PAGE_COUNT and art_sourcetype in opasConfig.DOWNLOADS_TYPES_OVERRIDDEN:
-                        downloads = True
                     
                 if art_citeas_xml is not None:
                     art_citeas = opasxmllib.xml_elem_or_str_to_text(art_citeas_xml)
@@ -2560,7 +2551,7 @@ def prep_document_download(document_id,
                                                              documentListItem=documentListItem, 
                                                              fulltext_request=True
                                                             )
-                if access.accessChecked == True and access.accessLimited != True and downloads == True:
+                if access.accessChecked == True and access.accessLimited != True and documentListItem.downloads == True:
                     try:
                         heading = opasxmllib.get_running_head( source_title=art_info.get("art_sourcetitleabbr", ""),
                                                                pub_year=pub_year,

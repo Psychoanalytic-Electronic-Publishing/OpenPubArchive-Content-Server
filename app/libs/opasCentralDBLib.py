@@ -263,7 +263,7 @@ class opasCentralDB(object):
         """
         status = False
         if self.db is not None:
-            status = self.db.is_connected() # if not already open, gens an exception, so it can be opened.
+            status = self.db.is_connected() 
             
         if status:
             self.connected = True
@@ -272,11 +272,8 @@ class opasCentralDB(object):
             try:
                 opasCentralDB.connection_count += 1
                 if self.db is None:
-                    was_closed = True
                     logger.debug(f"DB Connection was closed: Opened connection number: {opasCentralDB.connection_count} by {caller_name}")
-                    #logger.error(f"Exception {e}.  DB Connection was closed: Opening connection number: {opasCentralDB.connection_count}")
                 else:
-                    was_closed = False
                     print(f"Exception while checking db.open: {e}. Opening connection number: {opasCentralDB.connection_count}")
                     logger.error(f"Exception while checking db.open: {e}. Opening connection number: {opasCentralDB.connection_count}")
                     
@@ -326,24 +323,23 @@ class opasCentralDB(object):
             if self.db is not None:
                 if session_id is not None:
                     try:
-                        cursor = self.db.cursor()
-                        sql = """UPDATE api_sessions
-                                 SET session_end = %s
-                                 WHERE session_id = %s
-                              """
-                        cursor.execute(sql, (session_end,
-                                             session_id
-                                             )                                     
-                                       )
-                        
-                        warnings = cursor.fetchwarnings()
-                        if warnings:
-                            for warning in warnings:
-                                logger.warning(warning)
-                        
-                        self.db.commit()
-                        cursor.close()
-                        ret_val = True
+                        with closing(self.db.cursor()) as cursor:
+                            sql = """UPDATE api_sessions
+                                     SET session_end = %s
+                                     WHERE session_id = %s
+                                  """
+                            cursor.execute(sql, (session_end,
+                                                 session_id
+                                                 )                                     
+                                           )
+                            
+                            warnings = cursor.fetchwarnings()
+                            if warnings:
+                                for warning in warnings:
+                                    logger.warning(warning)
+                            
+                            self.db.commit()
+                            ret_val = True
                     except Exception as e:
                         logger.error(f"Error updating session: {e}. Could not record close session per token={session_id} in DB")
                         ret_val = False
@@ -358,36 +354,40 @@ class opasCentralDB(object):
         #self.db = mysql.connector.connect(user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME, host=localsecrets.DBHOST)
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
-            curs = self.db.cursor(buffered=True, dictionary=True)
-            try:
-                code = int(msg_code)
-            except Exception as e:
-                logger.debug(f"msg_code argument not convertable to int {e}. Using symbolic code")
-                sql = f"SELECT * from vw_api_messages where msg_sym_code='{msg_code}' and msg_language='{lang}';"
-            else:
-                sql = f"SELECT * from vw_api_messages where msg_num_code={code} and msg_language='{lang}';"
-
-            try:
-                curs.execute(sql)
-            except Exception as e:
-                fetched = False
-                logger.error(f"Connection not available to database. {e}")
-                if error_recovery:
-                    ret_val = self.get_user_message(msg_code=msg_code, lang=lang, error_recovery=False)
-            else: # success
-                fetched = True
-
-            if fetched:
-                if curs.rowcount >= 1:
-                    try:
-                        sourceData = curs.fetchone()
-                        ret_val = sourceData["msg_text"]
-                    except Exception as e:
-                        ret_val = f"Message not available. {e}"
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                try:
+                    code = int(msg_code)
+                except Exception as e:
+                    logger.debug(f"msg_code argument not convertable to int {e}. Using symbolic code")
+                    sql = f"SELECT * from vw_api_messages where msg_sym_code='{msg_code}' and msg_language='{lang}';"
+                else:
+                    sql = f"SELECT * from vw_api_messages where msg_num_code={code} and msg_language='{lang}';"
+    
+                try:
+                    curs.execute(sql)
+                    warnings = curs.fetchwarnings()
+                    if warnings:
+                        for warning in warnings:
+                            logger.warning(warning)
+                            
+                except Exception as e:
+                    fetched = False
+                    logger.error(f"Connection not available to database. {e}")
+                    if error_recovery:
+                        ret_val = self.get_user_message(msg_code=msg_code, lang=lang, error_recovery=False)
+                else: # success
+                    fetched = True
+    
+                if fetched:
+                    if curs.rowcount >= 1:
+                        try:
+                            sourceData = curs.fetchone()
+                            ret_val = sourceData["msg_text"]
+                        except Exception as e:
+                            ret_val = f"Message not available. {e}"
         else:
             logger.error("Connection not available to database.")
             
-        curs.close()
         self.close_connection(caller_name=fname) # make sure connection is closed
 
         if ret_val is None:
@@ -403,16 +403,21 @@ class opasCentralDB(object):
         ret_val = {}
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
-            curs = self.db.cursor(buffered=True, dictionary=True)
-            sql = "SELECT * from vw_api_sourceinfodb where active=1;"
-            curs.execute(sql)
-            row_count = curs.rowcount
-            if row_count:
-                sourceData = curs.fetchall()
-                ret_val = sourceData
-            curs.close()
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                sql = "SELECT * from vw_api_sourceinfodb where active=1;"
+                curs.execute(sql)
+                warnings = curs.fetchwarnings()
+                if warnings:
+                    for warning in warnings:
+                        logger.warning(warning)
+                        
+                row_count = curs.rowcount
+                if row_count:
+                    sourceData = curs.fetchall()
+                    ret_val = sourceData
         else:
             logger.fatal("Connection not available to database.")
+
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
         
@@ -1048,6 +1053,11 @@ class opasCentralDB(object):
             # rows = self.SQLSelectGenerator(sqlSelect)
             curs = self.db.cursor(buffered=True, dictionary=True)
             curs.execute(sqlSelect)
+            warnings = curs.fetchwarnings()
+            if warnings:
+                for warning in warnings:
+                    logger.warning(warning)
+                    
             ret_val = [row for row in curs.fetchall()]
             #ret_val = [model(row=row) for row in rows]
             
@@ -1074,6 +1084,11 @@ class opasCentralDB(object):
             # rows = self.SQLSelectGenerator(sqlSelect)
             curs = self.db.cursor(buffered=True, dictionary=True)
             curs.execute(sqlSelect)
+            warnings = curs.fetchwarnings()
+            if warnings:
+                for warning in warnings:
+                    logger.warning(warning)
+                    
             ret_val = [model(row=row) for row in curs.fetchall()]
             #ret_val = [model(row=row) for row in rows]
             
@@ -1099,9 +1114,14 @@ class opasCentralDB(object):
         if self.db is not None:
             # don't use dicts here
             # ret_val = self.SQLSelectGenerator(sqlSelect, use_dict=False)
-            curs = self.db.cursor(buffered=True, dictionary=False)
-            curs.execute(sqlSelect)
-            ret_val = curs.fetchall()
+            with closing(self.db.cursor(buffered=True, dictionary=False)) as curs:
+                curs.execute(sqlSelect)
+                warnings = curs.fetchwarnings()
+                if warnings:
+                    for warning in warnings:
+                        logger.warning(warning)
+                
+                ret_val = curs.fetchall()
             
         self.close_connection(caller_name=fname) # make sure connection is closed
 
@@ -1312,20 +1332,19 @@ class opasCentralDB(object):
                 logger.error("Delete session could not open database")
             else: # its open
                 if self.db is not None:  # don't need this check, but leave it.
-                    cursor = self.db.cursor()
-       
-                    # now delete the session
-                    sql = """DELETE FROM api_sessions
-                             WHERE session_id = '%s'""" % session_id
-                    
-                    cursor.execute(sql)
-                    warnings = cursor.fetchwarnings()
-                    if warnings:
-                        for warning in warnings:
-                            logger.warning(warning)
-                    ret_val = self.db.commit()
-                    cursor.close()
-
+                    with closing(self.db.cursor()) as curs:
+                        # now delete the session
+                        sql = """DELETE FROM api_sessions
+                                 WHERE session_id = '%s'""" % session_id
+                        
+                        curs.execute(sql)
+                        warnings = curs.fetchwarnings()
+                        if warnings:
+                            for warning in warnings:
+                                logger.warning(warning)
+                        
+                        ret_val = self.db.commit()
+    
                     # self.sessionInfo = None
                     self.close_connection(caller_name="delete_session") # make sure connection is closed
                 else:
@@ -1624,7 +1643,6 @@ class opasCentralDB(object):
             src_title_clause = ""
             
             try:
-                curs = self.db.cursor(buffered=True, dictionary=True)
                 if src_code is not None and src_code != "*":
                     src_code_clause = f"AND basecode = '{src_code}'"
                 if src_type is not None and src_type != "*":
@@ -1645,33 +1663,29 @@ class opasCentralDB(object):
                                 {src_title_clause}
                              ORDER BY title {limit_clause}"""
                 
-                sql = "SELECT * " + sqlAll
-                curs.execute(sql)
-                res = curs.rowcount
+                with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                    sql = "SELECT * " + sqlAll
+                    curs.execute(sql)
+                    warnings = curs.fetchwarnings()
+                    if warnings:
+                        for warning in warnings:
+                            logger.warning(warning)
                     
+                    total_count = curs.rowcount
+                    ret_val = curs.fetchall()
+                    if limit_clause is not None:
+                        # do another query to count
+                        with closing(self.db.cursor()) as curs2:
+                            sqlCount = "SELECT COUNT(*) " + sqlAll
+                            curs2.execute(sqlCount)
+                            try:
+                                total_count = curs2.fetchone()[0]
+                            except:
+                                total_count  = 0
             except Exception as e:
                 msg = f"Error querying vw_api_productbase: {e}"
                 logger.error(msg)
                 # print (msg)
-            else:
-                if res:
-                    ret_val = curs.fetchall()
-                    curs.close()
-
-                    if limit_clause is not None:
-                        # do another query to count
-                        curs2 = self.db.cursor()
-                        sqlCount = "SELECT COUNT(*) " + sqlAll
-                        curs2.execute(sqlCount)
-                        try:
-                            total_count = curs2.fetchone()[0]
-                        except:
-                            total_count  = 0
-                        curs2.close()
-                    else:
-                        total_count = len(ret_val)
-                else:
-                    ret_val = None
             
         self.close_connection(caller_name=fname) # make sure connection is closed
 
@@ -1751,6 +1765,11 @@ class opasCentralDB(object):
                                                      session_id
                                                     )
                                                    )
+                                warnings = curs.fetchwarnings()
+                                if warnings:
+                                    for warning in warnings:
+                                        logger.warning(warning)
+                                
                             self.db.commit()
             
                     except Exception as e:
@@ -1833,6 +1852,10 @@ class opasCentralDB(object):
                                                      session_id
                                                     )
                                                    )
+                                warnings = curs.fetchwarnings()
+                                if warnings:
+                                    for warning in warnings:
+                                        logger.warning(warning)
 
                             # now save
                             succ = curs.execute(sql,
@@ -1842,6 +1865,12 @@ class opasCentralDB(object):
                                                  session_id
                                                 )
                                                )
+
+                            warnings = curs.fetchwarnings()
+                            if warnings:
+                                for warning in warnings:
+                                    logger.warning(warning)
+                            
                             self.db.commit()
             
                     except Exception as e:
@@ -1892,7 +1921,7 @@ class opasCentralDB(object):
             client_id_int = int(client_id)
         except Exception as e:
             msg = f"Client ID should be a string containing an int {e}"
-            logging.error(msg)
+            logger.error(msg)
             ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
             with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
@@ -1947,7 +1976,7 @@ class opasCentralDB(object):
             client_id_int = int(client_id)
         except Exception as e:
             msg = f"Client ID should be a string containing an int {e}"
-            logging.error(msg)
+            logger.error(msg)
             ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
             if saved is not None:
@@ -2055,36 +2084,34 @@ class opasCentralDB(object):
             self.open_connection(caller_name=fname) # make sure connection is open
             localDisconnectNeeded = True
             
-        dbc = self.db.cursor(buffered=True, dictionary=True)
-        try:
-            ret_val = dbc.execute(querytxt, queryparams)
-        except mysql.connector.DataError as e:
-            logger.error(f"DBError: Art: {contextStr}. DB Data Error {e} ({querytxt})")
-            ret_val = None
-            # raise self.db.DataError(e)
-        except mysql.connector.OperationalError as e:
-            logger.error(f"DBError: Art: {contextStr}. DB Operation Error {e} ({querytxt})")
-            raise mysql.connector.OperationalError(e)
-        except mysql.connector.IntegrityError as e:
-            logger.error(f"DBError: Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
-            raise mysql.connector.IntegrityError(e)
-        except mysql.connector.InternalError as e:
-            logger.error(f"DBError: Art: {contextStr}. DB Internal Error {e} ({querytxt})")
-            raise mysql.connector.InternalError(e)
-            # raise RuntimeError, gErrorLog.logSevere("Art: %s.  DB Intr. Error (%s)" % (contextStr, querytxt))
-        except mysql.connector.ProgrammingError as e:
-            logger.error(f"DBError: DB Programming Error {e} ({querytxt})")
-            raise mysql.connector.ProgrammingError(e)
-        except mysql.connector.NotSupportedError as e:
-            logger.error(f"DBError: DB Feature Not Supported Error {e} ({querytxt})")
-            raise mysql.connector.NotSupportedError(e)
-        except Exception as e:
-            logger.error(f"DBError: Exception: %s" % (e))
-            raise Exception(e)
-    
-        # close cursor
-        self.db.commit()
-        dbc.close()
+        with closing(self.db.cursor(buffered=True, dictionary=True)) as dbc:
+            try:
+                ret_val = dbc.execute(querytxt, queryparams)
+            except mysql.connector.DataError as e:
+                logger.error(f"DBError: Art: {contextStr}. DB Data Error {e} ({querytxt})")
+                ret_val = None
+                # raise self.db.DataError(e)
+            except mysql.connector.OperationalError as e:
+                logger.error(f"DBError: Art: {contextStr}. DB Operation Error {e} ({querytxt})")
+                raise mysql.connector.OperationalError(e)
+            except mysql.connector.IntegrityError as e:
+                logger.error(f"DBError: Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
+                raise mysql.connector.IntegrityError(e)
+            except mysql.connector.InternalError as e:
+                logger.error(f"DBError: Art: {contextStr}. DB Internal Error {e} ({querytxt})")
+                raise mysql.connector.InternalError(e)
+                # raise RuntimeError, gErrorLog.logSevere("Art: %s.  DB Intr. Error (%s)" % (contextStr, querytxt))
+            except mysql.connector.ProgrammingError as e:
+                logger.error(f"DBError: DB Programming Error {e} ({querytxt})")
+                raise mysql.connector.ProgrammingError(e)
+            except mysql.connector.NotSupportedError as e:
+                logger.error(f"DBError: DB Feature Not Supported Error {e} ({querytxt})")
+                raise mysql.connector.NotSupportedError(e)
+            except Exception as e:
+                logger.error(f"DBError: Exception: %s" % (e))
+                raise Exception(e)
+            else:
+                self.db.commit()
         
         if localDisconnectNeeded == True:
             # if so, commit any changesand close.  Otherwise, it's up to caller.
@@ -2102,15 +2129,12 @@ class opasCentralDB(object):
             self.open_connection(caller_name=fname) # make sure connection is open
             localDisconnectNeeded = True
             
-        dbc = self.db.cursor(buffered=True, dictionary=True)
-        try:
-            ret_val = dbc.execute(querytxt, queryparams)
-        except Exception as e:
-            raise Exception(e)
+        with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+            try:
+                ret_val = curs.execute(querytxt, queryparams)
+            except Exception as e:
+                raise Exception(e)
     
-        # close cursor
-        dbc.close()
-        
         if localDisconnectNeeded == True:
             # if so, commit any changesand close.  Otherwise, it's up to caller.
             self.db.commit()

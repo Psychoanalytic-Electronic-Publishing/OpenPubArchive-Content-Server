@@ -2040,6 +2040,8 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             if result.get("meta_xml", None): documentListItem.documentMetaXML = result.get("meta_xml", None)
             if result.get("art_info_xml", None): documentListItem.documentInfoXML = result.get("art_info_xml", None)
             if result.get("art_pgrg", None): documentListItem.pgRg = result.get("art_pgrg", None)
+            if result.get("art_pgcount", None): documentListItem.pgCount = result.get("art_pgcount", None)
+            
             art_lang = result.get("art_lang", None)
             if isinstance(art_lang, list):
                 art_lang = art_lang[0]
@@ -2119,9 +2121,24 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 if top_level_doc is not None:
                     logger.info(f"Record {para_art_id} was child...retrieving and merging parent info {top_level_doc}")
                     documentListItem = merge_documentListItems(documentListItem, top_level_doc)
-    
+
+            # New printing and downloading restrictions from 2021-12-08    
+            documentListItem.downloads = get_document_download_permission(documentInfoXML=documentListItem.documentInfoXML)
+            if documentListItem.pgCount is not None:
+                if documentListItem.downloads == True: # this disables downloading and printing per the client if the condition below is met, even though downloads=True in the XML
+                    if documentListItem.pgCount >= opasConfig.DOWNLOADS_MAX_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_TYPES_RESTRICTED:
+                        documentListItem.downloads = False
+                else: # DT said "exceptions"...this overrides the downloads=False I set in all the book instances, if they meet the exception conditons 
+                    # Allow DOWNLOADS_TYPES_OVERRIDDEN with fewer than DOWNLOADS_MAX_PAGE_COUNT pages to be downloaded, even if marked downloads==False
+                    if documentListItem.pgCount < opasConfig.DOWNLOADS_MAX_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_TYPES_OVERRIDDEN:
+                        documentListItem.downloads = True
+            else:
+                logger.info(f"{documentListItem.documentID} has no PageCount.")
+
+
             # don't set the value, if it's None, so it's not included at all in the pydantic return
             # temp workaround for art_lang change
+
         except Exception as e:
             logger.warning(f"Error in data: {e}")
 

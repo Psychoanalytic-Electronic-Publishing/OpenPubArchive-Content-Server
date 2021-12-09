@@ -448,7 +448,7 @@ def main():
     
             # save common document (article) field values into artInfo instance for both databases
             artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
-            # watch src_type for set from latest database
+            # watch src_type which comes in as a set from latest database
             if type(artInfo.src_type) == set:
                 artInfo.src_type = "" if len(artInfo.src_type) == 0 else artInfo.src_type.pop()                
             artInfo.filedatetime = n.timestamp_str

@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1208/v2.1.97" # semver versioning now added after date.
+__version__     = "2021.1208/v2.1.98" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -3767,7 +3767,7 @@ async def database_term_counts(response: Response,
         logger.debug(statusMsg)
 
     if param_error:
-        logging.error(statusMsg)
+        logger.error(statusMsg)
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST, 
             detail=statusMsg
