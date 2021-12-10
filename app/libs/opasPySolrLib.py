@@ -62,6 +62,9 @@ import solrpy as solr
 # logging.getLogger('pysolr').setLevel(logging.INFO)
 sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
+
+from config import msgdb
+
 pat_prefix_amps = re.compile("^\s*&& ")
 
 rx_nuisance_words = f"""{opasConfig.HITMARKERSTART}(?P<word>i\.e|e\.g|a|am|an|are|as|at|be|because|been|before|but|by|can|cannot|could|did|do|does|doing|down|each|for|from|further|had|has|have|having|he|her|here|hers
@@ -981,8 +984,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     """
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
-    default_access_limited_message_not_logged_in = ocd.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
-    
+    default_access_limited_message_not_logged_in = msgdb.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
+
     # count_anchors = 0
     try:
         caller_name = caller_name + "/ search_text_qs"
@@ -1216,6 +1219,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             # defaults, before trying to decode error
             error_description = "PySolrError: Search Error"
             error = 400
+            http_error_num = 0
             try:
                 err = e.args
                 error_set = err[0].split(":", 1)
@@ -2507,13 +2511,13 @@ def prep_document_download(document_id,
             # set up documentListItem in case the article is embargoed. 
             documentListItem = opasQueryHelper.get_base_article_info_from_search_result(results.docs[0], documentListItem)
         except IndexError as e:
-            err_msg = ocd.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
+            err_msg = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
             logger.error(err_msg)
             status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
                                          error_description=err_msg
                                        )
         except KeyError as e:
-            err_msg = ocd.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + f" Error: Full-text not content found for {document_id}"
+            err_msg = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + f" Error: Full-text not content found for {document_id}"
             logger.error(err_msg)
             status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
                                          error_description=err_msg

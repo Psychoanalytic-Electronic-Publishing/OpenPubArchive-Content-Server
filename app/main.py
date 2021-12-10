@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1208/v2.1.98" # semver versioning now added after date.
+__version__     = "2021.1210/v2.1.99" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -3873,8 +3873,9 @@ def database_who_cited_this(response: Response,
 def database_whatsnew(response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                       days_back: int=Query(14, title=opasConfig.TITLE_DAYSBACK, description=opasConfig.DESCRIPTION_DAYSBACK),
-                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_WHATS_NEW, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                      no_cache: bool=Query(False, title=opasConfig.TITLE_NO_CACHE, description=opasConfig.DESCRIPTION_DAYSBACK),
                       client_id:int=Depends(get_client_id), 
                       client_session:str= Depends(get_client_session)
                       ):  
@@ -3909,11 +3910,12 @@ def database_whatsnew(response: Response,
     
     try:
         # return whatsNewList
-        ret_val = opasPySolrLib.database_get_whats_new(limit=limit, 
-                                                       offset=offset,
-                                                       days_back=days_back, 
-                                                       req_url=request.url
-                                                       )
+        ret_val = whatsnewdb.get_whats_new(limit=limit, 
+                                           offset=offset,
+                                           days_back=days_back, 
+                                           req_url=request.url,
+                                           forced_update=no_cache
+                                           )
 
     except Exception as e:
         e = str(e)
@@ -5034,7 +5036,7 @@ def documents_document_fetch(response: Response,
             else:
                 # make sure we specify an error in the session log
                 # not sure this is the best return code, but for now...
-                status_message = ocd.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text 
+                status_message = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text 
                 response.status_code = httpCodes.HTTP_404_NOT_FOUND
                 # record session endpoint in any case   
 
@@ -5150,19 +5152,19 @@ def documents_downloads(response: Response,
     if filename is None:
         response.status_code = status.httpcode
         if status.httpcode == httpCodes.HTTP_401_UNAUTHORIZED:
-            status_message = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+            status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
         elif status.httpcode == httpCodes.HTTP_422_UNPROCESSABLE_ENTITY:
-            status_message = ocd.get_user_message(opasConfig.ACCESS_TEXT_PROCESSING_ISSUE) + request_qualifier_text + f" {status.error_description}" 
+            status_message = msgdb.get_user_message(opasConfig.ACCESS_TEXT_PROCESSING_ISSUE) + request_qualifier_text + f" {status.error_description}" 
         elif status.httpcode == httpCodes.HTTP_400_BAD_REQUEST:
-            status_message = ocd.get_user_message(opasConfig.ACCESS_TEXT_PROCESSING_ISSUE) + request_qualifier_text + f" {status.error_description}" 
+            status_message = msgdb.get_user_message(opasConfig.ACCESS_TEXT_PROCESSING_ISSUE) + request_qualifier_text + f" {status.error_description}" 
         elif status.httpcode == httpCodes.HTTP_404_NOT_FOUND:
-            status_message = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+            status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
         elif status.httpcode == httpCodes.HTTP_422_UNPROCESSABLE_ENTITY:
-            status_message = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+            status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
         else:
             status_message = "Unknown/Unexpected error."
             
-        #status_message = ocd.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
+        #status_message = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
         if status.error_description is not None:
             logger.error(status_message + ":" + status.error_description)
         # don't count--not successful (09/30/2021)
@@ -5200,7 +5202,7 @@ def documents_downloads(response: Response,
     
                 except Exception as e:
                     response.status_code = httpCodes.HTTP_404_NOT_FOUND 
-                    status_message = ocd.get_user_message(opasConfig.ACCESS_SUMMARY_PDFORIG_NOT_FOUND) + request_qualifier_text 
+                    status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PDFORIG_NOT_FOUND) + request_qualifier_text 
                     extended_status_message = f"{status_message}:{e}"
                     logger.error(extended_status_message)
                     raise HTTPException(status_code=response.status_code,
@@ -5230,7 +5232,7 @@ def documents_downloads(response: Response,
 
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = ocd.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text + f". ({e})"
+                status_message = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text + f". ({e})"
                 extended_status_message = status_message
                 logger.error(extended_status_message)
                 raise HTTPException(status_code=response.status_code,
@@ -5447,12 +5449,18 @@ async def documents_image_fetch(response: Response,
                                                  secret=localsecrets.S3_SECRET,
                                                  root=expert_picks_path) 
         filenames = flex_fs.get_matching_filelist(path=expert_picks_path, filespec_regex=".*\.jpg", max_items=opasConfig.EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT)
-        status_message = f"Expert Picks Image Count: {len(filenames)}"
-        logger.debug(status_message)
-        filename = random.choice(filenames)
-        filename = filename.basename
-        expert_pick_image[0] = today
-        expert_pick_image[1] = filename
+        if len(filenames) == 0:
+            filename = opasConfig.EXPERT_PICKS_DEFAULT_IMAGE
+            expert_pick_image[0] = today
+            expert_pick_image[1] = filename
+        else:
+            status_message = f"Expert Picks Image Count: {len(filenames)}"
+            logger.debug(status_message)
+            filename = random.choice(filenames)
+            filename = filename.basename
+            expert_pick_image[0] = today
+            expert_pick_image[1] = filename
+            
         return filename
         
     try:
@@ -5513,12 +5521,15 @@ async def documents_image_fetch(response: Response,
     if download == 0 or download == 2:
         if imageID == "*":
             #  load a random image.  Load a new one each day
-            today = datetime.today().strftime("%Y%m%d")
-            if expert_pick_image[0] != today or reselect:
-                select_new_image() # saves new image to expert_pick_image as a side effect
-                filename = expert_pick_image[1] 
-            else:
-                filename = expert_pick_image[1] 
+            try:
+                today = datetime.today().strftime("%Y%m%d")
+                if expert_pick_image[0] != today or reselect:
+                    select_new_image() # saves new image to expert_pick_image as a side effect
+                    filename = expert_pick_image[1] 
+                else:
+                    filename = expert_pick_image[1]
+            except Exception as e:
+                logger.error(f"Error selecting a random expert pick image.  Error: {e}")
             
         if filename is None:
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
@@ -5620,7 +5631,10 @@ if __name__ == "__main__":
     print (f"Configuration used: {CONFIG}")
     print (f"Version: {__version__}")
     import fastapi
+    from config import whatsnewdb 
     print (f"FastAPI Version {fastapi.__version__}")
+    from config import msgdb
+    
     try:
         if localsecrets.DEBUG_TRACE == 1:
             print ("Debug on")

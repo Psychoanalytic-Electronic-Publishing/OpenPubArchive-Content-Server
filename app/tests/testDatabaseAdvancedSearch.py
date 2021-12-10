@@ -19,7 +19,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         response = requests.post(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -31,7 +31,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         response = requests.post(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["fullCount"] >= 50)
@@ -43,7 +43,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         response = requests.post(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["fullCount"] >= 2)
@@ -55,7 +55,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         response = requests.post(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["fullCount"] >= 3 and response_info["fullCount"] < 6)
@@ -67,7 +67,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         response = requests.post(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["fullCount"] >= 1)
@@ -82,7 +82,7 @@ class TestDatabaseAdvancedSearch(unittest.TestCase):
         response = requests.post(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["fullCount"] >= 1)

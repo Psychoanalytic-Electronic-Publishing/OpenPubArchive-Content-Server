@@ -208,6 +208,27 @@ class SourceInfoDB(object):
         retVal = dbEntry
         return retVal
 
+class ErrorMessageDB(object):
+    def __init__(self):
+        self.message_data = {}
+        ocd = opasCentralDB()
+        recs = ocd.get_user_errormsg_data()
+        for n in recs:
+            try:
+                self.message_data[n["pepsrccode"]] = n
+            except KeyError:
+                logger.error("Missing Source Code Value in %s" % n)
+
+    def lookupSourceCode(self, sourceCode):
+        """
+        Returns the dictionary entry for the source code or None
+          if it doesn't exist.
+        """
+        dbEntry = self.sourceData.get(sourceCode, None)
+        retVal = dbEntry
+        return retVal
+    
+
 class opasCentralDB(object):
     """
     This object should be used and then discarded on an endpoint by endpoint basis in any
@@ -253,7 +274,7 @@ class opasCentralDB(object):
         
     def open_connection(self, caller_name=""):
         """
-        Opens a connection if it's not already open.
+        Opens a connection - Try Always!
         
         If already open, no changes.
         >>> ocd = opasCentralDB()
@@ -261,53 +282,31 @@ class opasCentralDB(object):
         True
         >>> ocd.close_connection("my name")
         """
-        status = False
-        if self.db is not None:
-            status = self.db.is_connected() 
-            
-        if status:
+        try:
+            opasCentralDB.connection_count += 1
+            self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
             self.connected = True
-        else:
-            # not open reopen it.
-            try:
-                opasCentralDB.connection_count += 1
-                if self.db is None:
-                    logger.debug(f"DB Connection was closed: Opened connection number: {opasCentralDB.connection_count} by {caller_name}")
-                else:
-                    print(f"Exception while checking db.open: {e}. Opening connection number: {opasCentralDB.connection_count}")
-                    logger.error(f"Exception while checking db.open: {e}. Opening connection number: {opasCentralDB.connection_count}")
-                    
-                self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
-                
-                self.connected = True
-                logger.debug(f"Opened connection #{opasCentralDB.connection_count}")
+            logger.debug(f"Opened connection #{opasCentralDB.connection_count}")
 
-            except Exception as e:
-                self.connected = False
-                print(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {opasCentralDB.connection_count}")
-                self.db = None
+        except Exception as e:
+            self.connected = False
+            logger.error(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {opasCentralDB.connection_count}")
+            self.db = None
         
         return self.connected
 
     def close_connection(self, caller_name=""):
-        # try not closing!
-        #pass
+        try:
+            self.db.close()
+            self.db = None
+            opasCentralDB.connection_count -= 1
+            logger.debug(f"Database closed by ({caller_name})")
+                
+        except Exception as e:
+            logger.error(f"caller: {caller_name} the db is not open ({e}).")
 
-        if self.db is not None:
-            try:
-                if self.db.is_connected():
-                    self.db.close()
-                    self.db = None
-                    opasCentralDB.connection_count -= 1
-                    logger.debug(f"Database closed by ({caller_name})")
-                else:
-                    logger.warning(f"Database close request, but not open ({caller_name}). Connections: {opasCentralDB.connection_count}")
-                    
-            except Exception as e:
-                logger.error(f"caller: {caller_name} the db is not open ({e}).")
-
-        # make sure to mark the connection false in any case
-        self.connected = False           
+        self.connected = False
+        return self.connected
 
     def end_session(self, session_id, session_end=datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')):
         """
@@ -348,53 +347,6 @@ class opasCentralDB(object):
 
         return ret_val
 
-    def get_user_message(self, msg_code, lang="EN", error_recovery=True):
-        fname = "get_user_message"
-        ret_val = "Message not available."
-        #self.db = mysql.connector.connect(user=localsecrets.DBUSER, password=localsecrets.DBPW, database=localsecrets.DBNAME, host=localsecrets.DBHOST)
-        self.open_connection(caller_name=fname) # make sure connection is open
-        if self.db is not None:
-            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
-                try:
-                    code = int(msg_code)
-                except Exception as e:
-                    logger.debug(f"msg_code argument not convertable to int {e}. Using symbolic code")
-                    sql = f"SELECT * from vw_api_messages where msg_sym_code='{msg_code}' and msg_language='{lang}';"
-                else:
-                    sql = f"SELECT * from vw_api_messages where msg_num_code={code} and msg_language='{lang}';"
-    
-                try:
-                    curs.execute(sql)
-                    warnings = curs.fetchwarnings()
-                    if warnings:
-                        for warning in warnings:
-                            logger.warning(warning)
-                            
-                except Exception as e:
-                    fetched = False
-                    logger.error(f"Connection not available to database. {e}")
-                    if error_recovery:
-                        ret_val = self.get_user_message(msg_code=msg_code, lang=lang, error_recovery=False)
-                else: # success
-                    fetched = True
-    
-                if fetched:
-                    if curs.rowcount >= 1:
-                        try:
-                            sourceData = curs.fetchone()
-                            ret_val = sourceData["msg_text"]
-                        except Exception as e:
-                            ret_val = f"Message not available. {e}"
-        else:
-            logger.error("Connection not available to database.")
-            
-        self.close_connection(caller_name=fname) # make sure connection is closed
-
-        if ret_val is None:
-            ret_val = ""
-            
-        return ret_val
-                
     def get_productbase_data(self):
         """
         Load the journal book and video product data
@@ -421,6 +373,31 @@ class opasCentralDB(object):
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
         
+    def get_user_errormsg_data(self):
+        """
+        Load the user errormsg data
+        """
+        fname = "get_user_errormsg_data"
+        ret_val = {}
+        self.open_connection(caller_name=fname) # make sure connection is open
+        if self.db is not None:
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                sql = f"SELECT * from vw_api_messages;"
+                curs.execute(sql)
+                warnings = curs.fetchwarnings()
+                if warnings:
+                    for warning in warnings:
+                        logger.warning(warning)
+                        
+                row_count = curs.rowcount
+                if row_count:
+                    ret_val = curs.fetchall()
+        else:
+            logger.fatal("Connection not available to database.")
+
+        self.close_connection(caller_name=fname) # make sure connection is closed
+        return ret_val
+
     def get_article_year(self, doc_id):
         """
         Load the article data for a document id

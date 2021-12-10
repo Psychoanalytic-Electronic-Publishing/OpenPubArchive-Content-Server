@@ -7,6 +7,7 @@ import opasConfig
 import opasQueryHelper
 import opasCentralDBLib
 import models
+from config import msgdb
 
 ocd = opasCentralDBLib.opasCentralDB()
 
@@ -32,9 +33,9 @@ class TestStandaloneDatabaseFunctions(unittest.TestCase):
         print (data)
         
     def test_get_user_message(self):
-        data = ocd.get_user_message(msg_code="300")
+        data = msgdb.get_user_message(msg_code="300")
         print (data)
-        data2 = ocd.get_user_message(msg_code="IJPOPEN_REMOVED")
+        data2 = msgdb.get_user_message(msg_code=300)
         assert (data == data2)
         
 

@@ -29,7 +29,7 @@ class TestSessionStatus(unittest.TestCase):
         r = response.json()
         assert(r["text_server_ok"] == True)
         assert(r["db_server_ok"] == True)
-        print (r)
+        #print (r)
 
     def test_v2_session_whoami(self):
         # Send a request to the API server and store the response.
@@ -40,7 +40,7 @@ class TestSessionStatus(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         # assert(r["user_id"] == 0)
         try:
             if r.get("user_type") != "Group": # when ip login is enabled
@@ -57,19 +57,19 @@ class TestSessionStatus(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded(f'/v2/Session/Logout')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
-        print (r)
+        #print (r)
         # login 
         full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}&client-id=4')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
-        print (r)
+        #print (r)
         headers["client-session"] = r["session_id"]
         # now check who I am
         full_URL = base_plus_endpoint_encoded('/v2/Session/WhoAmI/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         r = response.json()
-        print (r)
+        #print (r)
         assert(r["username"] == PADS_TEST_ID)
 
 
@@ -80,7 +80,7 @@ class TestSessionStatus(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         r = response.json()
-        print (r)
+        #print (r)
         assert(r["username"] == opasConfig.USER_NOT_LOGGED_IN_NAME)
         #  this should logout of the database, but not send a message to PaDS
         full_URL = base_plus_endpoint_encoded('/v2/Session/Logout/')

@@ -12,7 +12,7 @@ class TestDatabaseMoreLikeThis(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        # print (r)
+        # #print (r)
         response_info = r["documentList"]["responseInfo"]
         assert(response_info["count"] == 1)
         response_set = r["documentList"]["responseSet"] 

@@ -36,7 +36,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         r = response.json()
         assert(r["text_server_ok"] == True)
         assert(r["db_server_ok"] == True)
-        print (r)
+        #print (r)
 
     def test_2_session_whoami(self):
         # Send a request to the API server and store the response.
@@ -72,7 +72,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         response = requests.get(full_URL)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 3)
@@ -84,7 +84,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         print (f"Count: {r['documentList']['responseInfo']['count']}")
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
         if r['documentList']['responseInfo']['count'] > 0:
@@ -103,7 +103,7 @@ class TestsWithoutClientSession(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         print (f"Count: {r['documentList']['responseInfo']['count']}")
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
         print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")

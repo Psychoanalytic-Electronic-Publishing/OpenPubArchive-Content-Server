@@ -15,7 +15,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
@@ -25,7 +25,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]

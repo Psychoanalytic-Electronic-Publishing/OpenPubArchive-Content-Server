@@ -14,7 +14,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f"Count: {response_info['count']}")
@@ -26,7 +26,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f"Count: {response_info['count']}")
@@ -38,7 +38,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         #"Watching to see how long a query can be here, since the mysql part generates a list of ids OR'd together"
         qlen = len(r["documentList"]["responseInfo"]["scopeQuery"][0]["filterQ"])
         print (f"MySQL QueryLen: {qlen}")
@@ -51,7 +51,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f"Count: {response_info['count']}")
@@ -63,7 +63,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (f"Count: {response_info['count']}")
@@ -165,7 +165,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 0, f"Count: {response_info['count']}" # just make sure there's a count
@@ -176,7 +176,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 1,  f"Count: {response_info['count']}"
@@ -187,7 +187,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 1, f"Count: {response_info['count']}" # just make sure there's a count
@@ -198,7 +198,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 1, f"Count: {response_info['count']}" # just make sure there's a count
@@ -209,7 +209,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 0, f"Count: {response_info['count']}" # just make sure there's a count
@@ -220,7 +220,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 1, f"Count: {response_info['count']}" # just make sure there's a count

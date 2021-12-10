@@ -212,7 +212,7 @@ class TestClientConfig(unittest.TestCase):
                                 params={'configname': f"{test_config_name_2}"})
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         #assert (r == {'configList': [{'configName': test_config_name_2, 'configSettings': config_settings_2}]})
         assert (r["configList"][0]["configSettings"] == config_settings_2)
         print ("Get updated config2 from list OK: ", r)

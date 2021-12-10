@@ -15,7 +15,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -26,7 +26,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -39,7 +39,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -51,7 +51,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -63,7 +63,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -75,7 +75,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -87,7 +87,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -99,7 +99,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')

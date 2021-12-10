@@ -33,7 +33,7 @@ class TestSearchBooleans(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
 
     def test_02_search_fulltext1_no_client_id(self):
         
@@ -45,7 +45,7 @@ class TestSearchBooleans(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == False)
         r = response.json()
-        print (r)
+        #print (r)
         
     def test_03_search_fulltext1_no_client_id(self):
         
@@ -57,7 +57,7 @@ class TestSearchBooleans(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
 
     def test_04_search_fulltext1_no_client_id(self):
         
@@ -68,7 +68,7 @@ class TestSearchBooleans(unittest.TestCase):
                    "Content-Type":"application/json"}
         response = requests.get(full_URL, headers=headers)
         r = response.json()
-        print (r)
+        #print (r)
         assert(response.ok == True) # ok now for no client id
 
 if __name__ == '__main__':

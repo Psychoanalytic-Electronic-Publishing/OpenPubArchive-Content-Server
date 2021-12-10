@@ -20,6 +20,12 @@ TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 LIMIT_TEST_DO_THIS = True
 LIMIT_TEST_DONT_DO_THIS = False
 
+WHATS_NEW_EXPIRES_DAYS = 0
+WHATS_NEW_EXPIRES_HOURS = 8
+WHATS_NEW_EXPIRES_MINUTES = 0
+
+EXPERT_PICKS_DEFAULT_IMAGE = "IJP.100.1465A.F0002"
+
 #import urllib.request
 # from enum import Enum, EnumMeta, IntEnum
 
@@ -147,7 +153,8 @@ DEFAULT_KWIC_CONTENT_LENGTH = 50  # On each side of match (so use 1/2 of the tot
 DEFAULT_MAX_KWIC_RETURNS = 5
 DEFAULT_LIMIT_FOR_SOLR_RETURNS = 15
 DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS = 1
-DEFAULT_LIMIT_FOR_WHATS_NEW = 5
+DEFAULT_LIMIT_FOR_WHATS_NEW = 15
+DEFAULT_DAYS_BACK_FOR_WHATS_NEW = 30
 DEFAULT_LIMIT_FOR_VOLUME_LISTS = 10000 # 2020-04-06 raised from 100, so all volumes can be brought back at once
 DEFAULT_LIMIT_FOR_CONTENTS_LISTS = 200
 DEFAULT_LIMIT_FOR_METADATA_LISTS = 200
@@ -382,6 +389,7 @@ TITLE_MOREINFO = "Return extended information"
 TITLE_MORELIKETHIS = "Enter an document ID to find similar documents"
 TITLE_MOST_CITED_PERIOD = f"Show articles cited at least this many times during this time period"
 TITLE_MOST_VIEWED_PERIOD = f"Show articles viewed during this period"
+TITLE_NO_CACHE = "Get the latest updates--reload the cache"
 TITLE_OFFSET = "Document return offset"
 TITLE_PAGELIMIT = "Number pages to return"
 TITLE_PAGEOFFSET = "Relative page number (1 is the first) to return"

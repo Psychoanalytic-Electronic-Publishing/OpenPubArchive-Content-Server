@@ -20,7 +20,7 @@ class TestDatabaseTermCounts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 6)
@@ -32,7 +32,7 @@ class TestDatabaseTermCounts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         #[   {'field': 'text', 'term': 'motherhood', 'termCount': 3510},
         #    {'field': 'text', 'term': 'fatherhood', 'termCount': 946}, 
         #    {'field': 'text', 'term': 'child', 'termCount': 69933}, 
@@ -47,7 +47,7 @@ class TestDatabaseTermCounts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 3000)
