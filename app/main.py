@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1210/v2.1.99" # semver versioning now added after date.
+__version__     = "2021.1210/v2.1.100" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -275,6 +275,9 @@ app.add_middleware(
     allow_methods = ["*"],
     allow_headers = ["*"],
 )
+
+from config import whatsnewdb 
+from config import msgdb
 
 msg = 'Started at %s' % datetime.today().strftime('%Y-%m-%d %H:%M:%S"')
 logger.info(msg)
@@ -5631,9 +5634,7 @@ if __name__ == "__main__":
     print (f"Configuration used: {CONFIG}")
     print (f"Version: {__version__}")
     import fastapi
-    from config import whatsnewdb 
     print (f"FastAPI Version {fastapi.__version__}")
-    from config import msgdb
     
     try:
         if localsecrets.DEBUG_TRACE == 1:
