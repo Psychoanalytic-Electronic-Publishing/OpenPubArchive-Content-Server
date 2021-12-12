@@ -11,7 +11,7 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, sessio
 
 # Login!
 sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ID2, password=localsecrets.PADS_TEST_PW2)
-
+    
 class TestAdminLogLevel(unittest.TestCase):
     """
     Note: tests are performed in alphabetical order, hence the function naming
@@ -23,14 +23,6 @@ class TestAdminLogLevel(unittest.TestCase):
 
     #TODO: Later these will need to be done while logged in.
     
-    def test00_loglevel_warning(self):
-        full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?level=WARN')
-        response = requests.put(full_URL, headers=headers)
-        assert(response.ok == True)
-        # these don't get affected by the level.
-        r = response.json()
-        assert ("WARNING" in r) # WARNING
-
     def test01_loglevel_error(self):
         full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?level=ERROR')
         response = requests.put(full_URL, headers=headers)
@@ -46,7 +38,6 @@ class TestAdminLogLevel(unittest.TestCase):
         assert ("DEBUG" in r)
         # set client log level now!
 
-    # last test--leave it on info
     def test03_loglevel_info(self):
         full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?level=INFO')
         response = requests.put(full_URL, headers=headers)
@@ -54,6 +45,14 @@ class TestAdminLogLevel(unittest.TestCase):
         r = response.json()
         assert ("INFO" in r) 
         
+    # last test--leave it on warn
+    def test04_loglevel_warning(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Admin/LogLevel/?level=WARN')
+        response = requests.put(full_URL, headers=headers)
+        assert(response.ok == True)
+        # these don't get affected by the level.
+        r = response.json()
+        assert ("WARNING" in r) # WARNING
 
 if __name__ == '__main__':
     unittest.main()

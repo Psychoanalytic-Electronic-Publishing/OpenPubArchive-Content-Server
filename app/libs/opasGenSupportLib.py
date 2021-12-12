@@ -24,6 +24,7 @@ from datetime import datetime
 import calendar
 import email.utils
 import localsecrets
+import opasConfig
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
@@ -42,6 +43,8 @@ class DocumentID(object):
       - Now case insensitive (all resulting IDs are uppercase)
       - Tolerates missing leading zeros and corrects
     
+    >>> DocumentID(' LU-AM.005I.0025A.FIG001.jpg ')
+    LU-AM.005I.0025A
     >>> DocumentID('LU-AM.005I.0025A.FIG001.jpg')
     LU-AM.005I.0025A
     >>> DocumentID('LU-AM.005I.0025A.FIG001')
@@ -88,10 +91,10 @@ class DocumentID(object):
 
     """
     # document id regex (Note:Volume ID can be year, so 4 characters 2021-07-06)
-    rxdocidc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,4})(?P<volsuffix>[A-Z]?)\.(?P<pageextratype>(NP)?)(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", flags=re.I)
+    rxdocidc = re.compile("(?P<docid>\s*(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,4})(?P<volsuffix>[A-Z]?)\.(?P<pageextratype>(NP)?)(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?\s*", flags=re.I)
     # vol id regex
     rxvolc = re.compile("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,4})(?P<volsuffix>[A-Z]?))", flags=re.I)
-    
+
     def __init__(self, document_id):
         #  See https://docs.google.com/document/d/1QmRG6MnM1jJOEq9irqCyoEY6Bt4U3mm8FY6TtZSt3-Y/edit#heading=h.mv7bvgdg7i7h for document ID information
         dirname, basename = os.path.split(document_id)
@@ -103,7 +106,7 @@ class DocumentID(object):
         self.volume_id = None
         self.pagejump_id = None
         
-        # m = re.match("(?P<docid>(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?)\.(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?", document_id)
+        # m = re.match("(?P<docid>\s*(?P<journalcode>[A-Z\_\-]{2,15})\.(?P<volume>[0-9]{1,3})(?P<volsuffix>[A-F]?)\.(?P<pagestarttype>[R]?)(?P<pagestart>[0-9]{1,4})(?P<pagevariant>[A-Z]?))(\.P(?P<pagejumptype>[R]?)(?P<pagejump>[0-9]{1,4}))?\s*", document_id)
         m = self.rxdocidc.match(document_id)
         if m is not None:
             # use groupdict so we can set default for non participating groups
@@ -203,8 +206,8 @@ class FileInfo(object):
         Get the date that a file was last modified
         """
         self.filename = filename
-        self.timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(localsecrets.TIME_FORMAT_STR)
-        self.timestamp_obj = datetime.strptime(self.timestamp_str, localsecrets.TIME_FORMAT_STR)
+        self.timestamp_str = datetime.utcfromtimestamp(os.path.getmtime(filename)).strftime(opasConfig.TIME_FORMAT_STR)
+        self.timestamp_obj = datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
         self.fileSize = os.path.getsize(filename)
         self.buildDate = time.time()
 

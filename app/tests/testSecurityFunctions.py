@@ -12,14 +12,14 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, sessio
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW
 
 # Login!
-sessID, headers, session_info = test_login()
+session_id, headers, session_info = test_login()
 
 class TestSecurityFunctions(unittest.TestCase):
 
     def test_0a_pads_tests(self):
         # Login to PaDS with test account and then check responses to mostCited for access.
         if session_id is None:
-            logger.error(f"PaDS Login error in test: {response}")
+            logger.error(f"PaDS Login error in test")
             assert(False)
         else:
             full_URL = base_plus_endpoint_encoded('/v2/Database/MostCited/?limit=10')
@@ -28,11 +28,13 @@ class TestSecurityFunctions(unittest.TestCase):
             r = response.json()
             print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
             # PaDS ID provided has peparchive!
-            assert(r['documentList']['responseSet'][0].get("accessLimited", None) == False)
+            # 20211008 Access to items in result list is no longer checked...only when one item is returned.
+            assert(r['documentList']['responseSet'][0].get("accessChecked", None) == False)
+            #assert(r['documentList']['responseSet'][0].get("accessLimited", None) == True)
 
     def test_1a_timing_Pads(self):
         if session_id is None:
-            logger.error(f"PaDS Login error in test: {response}")
+            logger.error(f"PaDS Login error in test")
             assert(False)
         else:
             headers = '"client-session":"%s", "client-id": "4"' % session_id
@@ -48,7 +50,7 @@ class TestSecurityFunctions(unittest.TestCase):
             
     def test_1b_get_search(self):
         if session_id is None:
-            logger.error(f"PaDS Login error in test: {response}")
+            logger.error(f"PaDS Login error in test")
             assert(False)
         else:
             headers = '"client-session":"%s", "client-id": "4"' % session_id

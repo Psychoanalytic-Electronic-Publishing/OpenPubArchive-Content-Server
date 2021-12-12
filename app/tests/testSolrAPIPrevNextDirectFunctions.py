@@ -10,7 +10,7 @@ import unittest
 import opasPySolrLib
 from opasCentralDBLib import opasCentralDB
 import unitTestConfig
-from unitTestConfig import base_plus_endpoint_encoded, headers, session_id, session_info
+from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestSolrAPIPrevNextDirectFunctions(unittest.TestCase):
     """

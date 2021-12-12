@@ -31,6 +31,20 @@ span.warning {
 	color: #888;
 }
 
+.caption {
+text-align: center;
+margin-left: 10px;
+}
+
+.poem, .quote, .quote > p, .dream, .note, .dialog, .panel, .summaries .abstract {
+text-indent: 22px ;
+color: midnightblue;
+font-size: small;
+font-style: italic;
+margin-right: +.25in;
+margin-left: +.25in;
+}
+
 div.copyrightpage {
 	page-break-before: always;
 }
@@ -41,5 +55,6 @@ p.pagebreak {
 	margin-bottom: 10px;
 	padding-bottom: 10px;
 	border-bottom: 1px solid #888;
+	text-align: center;
 }
 

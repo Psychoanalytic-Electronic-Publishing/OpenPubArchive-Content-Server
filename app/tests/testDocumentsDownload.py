@@ -121,7 +121,7 @@ class TestdocumentsDownload(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/ANIJP-CHI.001.0018A/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == False)
+        assert(response.ok == True)
 
     def test_10_Disallowed_Download(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/pi.041.0138a/')
@@ -130,6 +130,34 @@ class TestdocumentsDownload(unittest.TestCase):
         print (r["detail"])
         assert(response.ok == False)
 
+    def test_11_PDFOrig_Download_Embargoed(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFORIG/PPC.003.0001A/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == False)
+
+    def test_12_No_Downloads(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/SE.001.0073A/')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        downloads = (r["documents"]["responseSet"][0]["downloads"])
+        # Confirm that the request-response cycle completed successfully.
+        assert(downloads == True)
+
+    def test_12_Ok_Downloads(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IJP.041.0335A/')
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        downloads = (r["documents"]["responseSet"][0]["downloads"])
+        # Confirm that the request-response cycle completed successfully.
+        assert(downloads == True)
+
+    def test_14_PDF_Download_Book(self):
+        # has grraphics
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/SE.001.0073A/')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
 
 if __name__ == '__main__':
     unittest.main()    

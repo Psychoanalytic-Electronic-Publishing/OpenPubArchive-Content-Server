@@ -114,7 +114,12 @@ USER2SOLRFIELDNAME_MAP = {
     "appendixes": "appxs_xml",
     "summaries": "summaries_xml",
     "type": "art_type",
-    "code": "sourcecode",
+    "code": "art_sourcecode",
+    "src": "art_sourcecode",
+    "src_code": "art_sourcecode",
+    "journal_code": "art_sourcecode",
+    "src_title": "art_sourcetitlefull",
+    "journal": "art_sourcetitlefull",
     "bibliography": "references",
     "page_count" : "art_pgcount",
     "table_count" : "art_tblcount" ,
@@ -135,7 +140,16 @@ USER2SOLRFIELDNAME_MAP = {
     "nonspace_count" : "art_chars_no_spaces_count", 
     "word_count" : "art_words_count", 
     "author_count" : "art_authors_count", 
-    "reference_count" : "art_reference_count"
+    "reference_count" : "art_reference_count",
+    "newsecnm" : "art_newsecnm",
+    "section_name" : "art_newsecnm",
+    "section_title": "art_newsecnm",
+    "issn" : "art_issn",
+    "isbn" : "art_isbn",
+    "volume" : "art_vol",
+    "vol" : "art_vol",
+    "doi" : "art_doi",
+    "lang": "language",   
 }
 
 FIELD2USER_MAP = {

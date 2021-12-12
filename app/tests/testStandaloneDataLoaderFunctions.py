@@ -20,8 +20,14 @@ class TestStandaloneDataLoaderFunctions(unittest.TestCase):
     """
 
     def test_get_most_viewed_crosstab(self):
-        rows, data = ocd.get_most_viewed_crosstab()
-        print (rows, data)
+        # this is used to load db data into Solr, so test call (not load)
+        rows, data = ocd.get_most_viewed_crosstab(limit=10)
+        count = 1
+        for m in data:
+            print (m)
+            count += 1
+            if count > 10:
+                break
     
         
 if __name__ == '__main__':

@@ -5,7 +5,9 @@
 import unittest
 import requests
 
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestDatabaseSearchSynonyms(unittest.TestCase):
     def test_search_fulltext_syn_1(self):
@@ -13,7 +15,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
@@ -23,7 +25,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
@@ -79,7 +81,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 200 and count1 <= 210)
+        assert count1 >= 200 and count1 <= 220, f"Expected Count >= 200 and <= 220, Count: {response_info['count']}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(affect)&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -88,7 +90,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 1560 and count1 <= 1600)
+        assert(count1 >= 1560 and count1 <= 1650)
 
     def test_search_fulltext_syn_5(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(affect)&synonyms=false')
@@ -99,7 +101,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 200 and count1 <= 210)
+        assert count1 >= 200 and count1 <= 220, f"Expected Count >= 200 and <= 220, Count: {response_info['count']}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(affect)&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -108,7 +110,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 1560 and count1 <= 1600)
+        assert(count1 >= 1560 and count1 <= 1650)
 
     def test_search_fulltext_syn_6(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=quotes_xml:(bisexuality)&synonyms=false')
@@ -148,7 +150,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 8450 and count1 <= 8500)
+        assert(count1 >= 8450 and count1 <= 8780)
 
     def test_search_fulltext_syn_8(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=text:(externalization)&synonyms=false')
@@ -168,7 +170,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 63000 and count1 <= 64000)
+        assert(count1 >= 63000 and count1 <= 65000)
 
 if __name__ == '__main__':
     unittest.main()

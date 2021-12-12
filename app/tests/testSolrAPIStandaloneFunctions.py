@@ -10,7 +10,9 @@ import unittest
 import opasAPISupportLib
 import opasPySolrLib
 import unitTestConfig
-from unitTestConfig import base_plus_endpoint_encoded, headers, session_id, session_info
+from unitTestConfig import base_plus_endpoint_encoded, headers
+
+session_info = unitTestConfig.get_session_info_for_test()
 
 class TestSolrAPIStandaloneFunctions(unittest.TestCase):
     """

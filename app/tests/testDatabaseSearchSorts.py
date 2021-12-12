@@ -5,7 +5,9 @@
 import unittest
 import requests
 
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestSorts(unittest.TestCase):
     def test_sort_sourcecode(self):
@@ -13,7 +15,7 @@ class TestSorts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["vol"] == '9')
@@ -21,7 +23,7 @@ class TestSorts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["vol"] == '1')
@@ -31,7 +33,7 @@ class TestSorts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["docType"] == 'SUP')
@@ -40,7 +42,7 @@ class TestSorts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["docType"] == 'ART')
@@ -50,7 +52,7 @@ class TestSorts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["stat"]["art_fig_count"] >= 1)
@@ -59,7 +61,7 @@ class TestSorts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["stat"]["art_fig_count"] == 0)
@@ -69,7 +71,7 @@ class TestSorts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["stat"]["art_words_count"] >= 20000)
@@ -78,7 +80,7 @@ class TestSorts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["stat"]["art_words_count"] <= 10000)

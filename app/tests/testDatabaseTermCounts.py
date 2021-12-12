@@ -4,7 +4,10 @@
 import unittest
 import requests
 
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
+
 from opasPySolrLib import get_term_index
 
 # two libs for the same function, different restrictions
@@ -17,7 +20,7 @@ class TestDatabaseTermCounts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 6)
@@ -29,7 +32,7 @@ class TestDatabaseTermCounts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         #[   {'field': 'text', 'term': 'motherhood', 'termCount': 3510},
         #    {'field': 'text', 'term': 'fatherhood', 'termCount': 946}, 
         #    {'field': 'text', 'term': 'child', 'termCount': 69933}, 
@@ -44,7 +47,7 @@ class TestDatabaseTermCounts(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 3000)

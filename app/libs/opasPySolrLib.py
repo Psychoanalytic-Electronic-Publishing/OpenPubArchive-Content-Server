@@ -32,7 +32,7 @@ from xml.sax import SAXParseException
 # import lxml
 
 import localsecrets
-from localsecrets import TIME_FORMAT_STR
+from opasConfig import TIME_FORMAT_STR
 
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 import starlette.status as httpCodes
@@ -62,6 +62,9 @@ import solrpy as solr
 # logging.getLogger('pysolr').setLevel(logging.INFO)
 sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
+
+from config import msgdb
+
 pat_prefix_amps = re.compile("^\s*&& ")
 
 rx_nuisance_words = f"""{opasConfig.HITMARKERSTART}(?P<word>i\.e|e\.g|a|am|an|are|as|at|be|because|been|before|but|by|can|cannot|could|did|do|does|doing|down|each|for|from|further|had|has|have|having|he|her|here|hers
@@ -294,7 +297,7 @@ def authors_get_author_info(author_partial,
         for key, value in facet_pairs:
             if value > 0:
                 item = models.AuthorIndexItem(authorID = key, 
-                                              publicationsURL = "/v1/Authors/Publications/{}/".format(key),
+                                              publicationsURL = "/v2/Authors/Publications/{}/".format(key),
                                               publicationsCount = value,
                                               ) 
                 author_index_items.append(item)
@@ -896,7 +899,9 @@ def search_text(query,
                 core = None,
                 #authenticated = None,
                 session_info = None, 
-                option_flags=0
+                option_flags=0,
+                request=None,
+                caller_name="search_text"
                 ):
     """
     Full-text search, via the Solr server api.
@@ -945,7 +950,9 @@ def search_text(query,
                                          offset=offset, 
                                          req_url=req_url, 
                                          #authenticated=authenticated,
-                                         session_info=session_info
+                                         session_info=session_info,
+                                         request=request,
+                                         caller_name=caller_name
                                          )
 
     return ret_val, ret_status
@@ -962,7 +969,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                    sort=None, 
                    session_info=None,
                    solr_core="pepwebdocs", 
-                   request=None #pass around request object, needed for ip auth
+                   get_full_text=False, 
+                   get_child_text_only=False, # usage example: just return concordance paragraphs
+                   request=None, #pass around request object, needed for ip auth
+                   caller_name="search_text_qs"
                    ):
     """
     Full-text search, via the Solr server api.
@@ -974,7 +984,21 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     """
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
+    default_access_limited_message_not_logged_in = msgdb.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
+
     # count_anchors = 0
+    try:
+        caller_name = caller_name + "/ search_text_qs"
+    except:
+        caller_name="search_text_qs"
+        
+    try:
+        session_id = session_info.session_id
+        user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name + "/ search_text_qs")
+    except Exception as e:
+        logger.warning("No Session info supplied to search_text_qs")
+        # mark as not logged in
+        user_logged_in_bool = False
 
     if 1: # just to allow folding
         if solr_query_spec.solrQueryOpts is None: # initialize a new model
@@ -1090,8 +1114,8 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             
         # extend related documents search (art_qual) to unmarked documents that are explicitly referenced in ID
         # TODO: (Possible) Should this also do this in the query param?
-        if "art_qual:" in filterQ:
-            filterQ = re.sub('art_qual:\(\"?(?P<tgtid>[^\"]*?)\"?\)', '(art_qual:(\g<tgtid>) || art_id:(\g<tgtid>))', filterQ)
+        #if "art_qual:" in filterQ:
+            #filterQ = re.sub('art_qual:\(\"?(?P<tgtid>[^\"]*?)\"?\)', '(art_qual:(\g<tgtid>) || art_id:(\g<tgtid>))', filterQ)
             
         solr_param_dict = { 
                             # "q": solr_query_spec.solrQuery.searchQ,
@@ -1195,6 +1219,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
             # defaults, before trying to decode error
             error_description = "PySolrError: Search Error"
             error = 400
+            http_error_num = 0
             try:
                 err = e.args
                 error_set = err[0].split(":", 1)
@@ -1230,7 +1255,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                 
     else: #  search was ok
         try:
-            logger.info(f"Search Ok. Result Size:{results.hits}; Search:{solr_query_spec.solrQuery.searchQ}; Filter:{solr_query_spec.solrQuery.filterQ}")
+            logger.info(f"Ok. Result Size:{results.hits}; Search:{solr_query_spec.solrQuery.searchQ}; Filter:{solr_query_spec.solrQuery.filterQ}")
             scopeofquery = solr_query_spec.solrQuery # [solr_query_spec.solrQuery.searchQ, solr_query_spec.solrQuery.filterQ, solr_query_spec.solrQuery.facetQ]
     
             if ret_status[0] == 200: 
@@ -1258,10 +1283,10 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     #  no session info...what to do?
                     logger.debug(f"No session info to perform optimizations {e}")
                     
+                record_count = len(results.docs)
                 for result in results.docs:
                     # reset anchor counts for full-text markup re.sub
                     # count_anchors = 0
-                    record_count = len(results.docs)
                     # authorIDs = result.get("art_authors", None)
                     documentListItem = models.DocumentListItem()
                     documentListItem = opasQueryHelper.get_base_article_info_from_search_result(result, documentListItem)
@@ -1273,9 +1298,12 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # sometimes, we don't need to check permissions
                     # Always check if fullReturn is selected
                     # Don't check when it's not and a large number of records are requested (but if fullreturn is requested, must check)
-                    if record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
+                    # NEW 20211008 - If logged in, check permissions for full-text, or an abstract request with one return
+                    documentListItem.accessChecked = False # default anyway, but to make sure it always exists
+                    documentListItem.accessLimited = True  # default is True anyway, but to make sure it always exists
+                    if get_full_text or (solr_query_spec.abstractReturn and record_count == 1): # LIMIT_TEST_DONT_DO_THIS: # record_count < opasConfig.MAX_RECORDS_FOR_ACCESS_INFO_RETURN or solr_query_spec.fullReturn:
                         access = opasDocPerm.get_access_limitations( doc_id=documentListItem.documentID, 
-                                                                     classification=documentListItem.accessClassification, 
+                                                                     classification=documentListItem.accessClassification, # based on file_classification (where it is)
                                                                      year=documentListItem.year,
                                                                      doi=documentListItem.doi, 
                                                                      session_info=session_info, 
@@ -1285,6 +1313,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                                                                     ) # will updated accessLimited fields in documentListItem
                         
                         if access is not None: # copy all the access info returned
+                            documentListItem.accessChecked = True
                             documentListItem.accessLimited = access.accessLimited   
                             documentListItem.accessLimitedCode = access.accessLimitedCode
                             documentListItem.accessLimitedClassifiedAsCurrentContent = access.accessLimitedClassifiedAsCurrentContent
@@ -1292,7 +1321,25 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                             documentListItem.accessLimitedDebugMsg = access.accessLimitedDebugMsg
                             documentListItem.accessLimitedDescription = access.accessLimitedDescription
                             documentListItem.accessLimitedPubLink = access.accessLimitedPubLink
+                        else:
+                            logger.error("getaccesslimitations: Why is access none?")
+                    #else:
+                        #if get_full_text or (solr_query_spec.abstractReturn and record_count == 1:
+                                             
+                        #if documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_CURRENT): # PEPCurrent
+                            #documentListItem.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION) + ocd.get_user_message(msg_code=opasConfig.ACCESS_CLASS_DESCRIPTION_CURRENT_CONTENT)
+                            #documentListItem.accessLimitedClassifiedAsCurrentContent = True
+                        #elif documentListItem.accessClassification in (opasConfig.DOCUMENT_ACCESS_FUTURE): 
+                            #documentListItem.accessLimitedDescription = ocd.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION) + ocd.get_user_message(msg_code=opasConfig.ACCESS_CLASS_DESCRIPTION_FUTURE_CONTENT)
+                            #documentListItem.accessLimitedClassifiedAsCurrentContent = False
+                        #documentListItem.accessChecked = False # not logged in
+                        #documentListItem.accessLimited = True   
+                        #documentListItem.accessLimitedCode = 200
+                        #if not user_logged_in_bool:
+                            #documentListItem.accessLimitedReason = default_access_limited_message_not_logged_in # ocd.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
+                        ## documentListItem.accessLimitedDebugMsg = access.accessLimitedDebugMsg
 
+                        
                     documentListItem.score = result.get("score", None)               
                     try:
                         text_xml = results.highlighting[documentID].get("text_xml", None)
@@ -1318,16 +1365,6 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                        
                     # do this before we potentially clear text_xml if no full text requested below
                     if solr_query_spec.abstractReturn:
-                        # we don't want to ever do this (Google!) 2021-04-29 (delete later, if the urge passes)
-                        #omit_abstract = False
-                        #if opasConfig.ACCESS_ABSTRACT_RESTRICTION and documentListItem.accessLimited: # if restriction is on, AND this is restricted content
-                            #if session_info is not None:
-                                #if not session_info.authenticated:
-                                    ## experimental - remove abstract if not authenticated, per DT's requirement
-                                    #omit_abstract = True
-                            #else: # no session info, omit abstract
-                                #omit_abstract = True
-
                         # this would print a message about logging in and not display an abstract if omit_abstract were true,
                         # but then Google could not index
                         documentListItem = opasQueryHelper.get_excerpt_from_search_result(result,
@@ -1371,7 +1408,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # ########################################################################
                     # This is the room where where full-text return HAPPENS
                     # ########################################################################
-                    if solr_query_spec.fullReturn and not documentListItem.accessLimited and not offsite:
+                    if solr_query_spec.fullReturn and (documentListItem.accessChecked and documentListItem.accessLimited == False) and not offsite:
                         documentListItem.term = f"SearchHits({solr_query_spec.solrQuery.searchQ})"
                         documentListItem = get_fulltext_from_search_results(result=result,
                                                                             text_xml=text_xml,
@@ -1394,8 +1431,19 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     else: # by virtue of not calling that...
                         # no full-text if accessLimited or offsite article
                         # free up some memory, since it may be large
-                        result["text_xml"] = None                   
-    
+                        result["text_xml"] = None
+                        # But if this is a call for a child paragraph, go get it
+                        if get_child_text_only: # caller_name == "documents_get_concordance_paras":
+                            documentListItem = get_fulltext_from_search_results(result=result,
+                                                                                text_xml=text_xml,
+                                                                                format_requested=solr_query_spec.returnFormat,
+                                                                                return_options=solr_query_spec.returnOptions, 
+                                                                                page=solr_query_spec.page,
+                                                                                page_offset=solr_query_spec.page_offset,
+                                                                                page_limit=solr_query_spec.page_limit,
+                                                                                documentListItem=documentListItem,
+                                                                                fulltext_children_only=True)
+                    
                     stat = {}
                     count_all = result.get("art_cited_all", None)
                     if count_all is not None:
@@ -1675,6 +1723,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                 art_iss_seqnbr,
                 art_newsecnm,
                 art_pgrg,
+                art_pgcount,
                 title,
                 art_authors,
                 art_authors_mast,
@@ -1701,6 +1750,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
             authorMast = opasgenlib.derive_author_mast(author_ids)
 
         pgRg = result.get("art_pgrg", None)
+        pgCount = result.get("art_pgcount", None)
         pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
         citeAs = result.get("art_citeas_xml", None)  
         citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
@@ -1723,6 +1773,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                                        issueSeqNbr = issue_seqnbr, 
                                        newSectionName = result.get("art_newsecnm", None),
                                        pgRg = result.get("art_pgrg", None),
+                                       pgCount=pgCount, 
                                        pgStart = pgStart,
                                        pgEnd = pgEnd,
                                        title = result.get("title", None), 
@@ -1869,7 +1920,7 @@ def database_get_whats_new(days_back=14,
             if row_count > limit:
                 continue
 
-            volume_url = "/v1/Metadata/Contents/%s/%s" % (PEPCode, issue)
+            volume_url = "/v2/Metadata/Contents/%s/%s/" % (PEPCode, volume)
     
             item = models.WhatsNewListItem( documentID = result.get("art_id", None),
                                             displayTitle = display_title,
@@ -2440,23 +2491,37 @@ def prep_document_download(document_id,
 
     query = "art_id:%s" % (document_id)
     args = {
-             "fl": """art_id, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
+             "fl": """art_id, art_info_xml, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
                       art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi, art_title, art_authors, art_authors_mast, art_lang,
+                      art_embargo, art_embargotype, art_pgcount, 
                       art_issn, file_classification"""
     }
 
+    request_qualifier_text = f" Request: {document_id}. Session {session_info.session_id}."
+    
     try:
         results = solr_docs2.search(query, **args)
     except Exception as e:
         logger.error(f"PrepDownloadError: Solr Search Exception: {e}")
     else:
         try:
+            documentListItem = models.DocumentListItem()
             art_info = results.docs[0]
             docs = art_info.get("text_xml", art_info.get("art_excerpt", None))
+            # set up documentListItem in case the article is embargoed. 
+            documentListItem = opasQueryHelper.get_base_article_info_from_search_result(results.docs[0], documentListItem)
         except IndexError as e:
-            logger.error("Download Request: No matching document for %s.  Error: %s", document_id, e)
+            err_msg = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
+            logger.error(err_msg)
+            status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
+                                         error_description=err_msg
+                                       )
         except KeyError as e:
-            logger.error("Download Request: No full-text content found for %s.  Error: %s", document_id, e)
+            err_msg = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + f" Error: Full-text not content found for {document_id}"
+            logger.error(err_msg)
+            status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
+                                         error_description=err_msg
+                                       )
         else:
             try:    
                 if isinstance(docs, list):
@@ -2481,14 +2546,16 @@ def prep_document_download(document_id,
                     
                 file_classification = art_info.get("file_classification", None)
                 
+                
                 access = opasDocPerm.get_access_limitations( doc_id=document_id,
                                                              classification=file_classification,
                                                              session_info=session_info,
                                                              year=pub_year,
                                                              doi=doi,
+                                                             documentListItem=documentListItem, 
                                                              fulltext_request=True
                                                             )
-                if access.accessLimited != True:
+                if access.accessChecked == True and access.accessLimited != True and documentListItem.downloads == True:
                     try:
                         heading = opasxmllib.get_running_head( source_title=art_info.get("art_sourcetitleabbr", ""),
                                                                pub_year=pub_year,
@@ -2593,7 +2660,7 @@ def prep_document_download(document_id,
                                                      error_description=err_msg
                                                    )
                 else: # access is limited
-                    err_msg = f"No permission to download document {document_id} for user {session_info}"
+                    err_msg = f"From Authorization Server: {access.accessLimitedDebugMsg}"
                     logger.warning(access.accessLimitedDebugMsg) # log developer info for tracing access issues
                     status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
                                                  error_description=err_msg
@@ -2610,6 +2677,7 @@ def get_fulltext_from_search_results(result,
                                      page_limit,
                                      documentListItem: models.DocumentListItem,
                                      format_requested="HTML",
+                                     fulltext_children_only=False, 
                                      return_options=None):
 
     child_xml = None
@@ -2748,6 +2816,11 @@ def get_fulltext_from_search_results(result,
     if child_xml is not None:
         # return child para in requested format
         documentListItem.docChild['para'] = child_xml
+        if fulltext_children_only == True:
+            documentListItem.document = child_xml
+    else:
+        if fulltext_children_only == True:
+            documentListItem.document = None
 
     return documentListItem
 

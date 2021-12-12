@@ -7,7 +7,9 @@ import unittest
 import requests
 import opasConfig
 
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestSessionWhoAmI(unittest.TestCase):
     """

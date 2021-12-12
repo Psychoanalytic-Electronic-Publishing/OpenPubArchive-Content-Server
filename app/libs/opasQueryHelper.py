@@ -32,7 +32,7 @@ from xml.sax import SAXParseException
 import lxml
 
 import localsecrets
-from localsecrets import TIME_FORMAT_STR
+from opasConfig import TIME_FORMAT_STR
 
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 import starlette.status as httpCodes
@@ -60,6 +60,19 @@ pat_prefix_amps = re.compile("^\s*&& ")
     #"docs": solr_docs,
     #"authors": solr_authors,
 #}
+
+#-----------------------------------------------------------------------------
+def get_document_download_permission(documentInfoXML):
+    # added 2021-11-23 to dynamically return download permission data from XML without preloading it in Solr.
+    #   should be fast enough but otherwise 'could' be added to Solr model.
+
+    ret_val = True # Default
+    if documentInfoXML is not None:
+        if re.search('download\s*=\s*(\"|\')false(\"|\')', documentInfoXML, re.IGNORECASE):
+            ret_val = False
+        else: 
+            ret_val = True
+    return ret_val
 
 #-----------------------------------------------------------------------------
 def get_base_article_info_by_id(art_id):
@@ -807,6 +820,8 @@ def parse_search_query_parameters(search=None,             # url based parameter
                                   offset=None, 
                                   # v1 parameters
                                   journal = None,
+                                  forced_searchq=None,
+                                  forced_filterq=None,
                                   req_url = None
                                   ):
     """
@@ -1612,6 +1627,11 @@ def parse_search_query_parameters(search=None,             # url based parameter
             filter_q += analyze_this
             search_analysis_term_list.append(analyze_this)
                
+    if forced_searchq is not None:
+        search_q = forced_searchq
+    if forced_filterq is not None:
+        filter_q = forced_filterq
+
     # now clean up the final components.
     search_q = cleanup_solr_query(search_q)
     filter_q = cleanup_solr_query(filter_q)
@@ -1963,7 +1983,7 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
         abstract = None
     else:
         if omit_abstract:
-            art_excerpt = opasConfig.ACCESS_ABSTRACT_RESTRICTED_MESSAGE
+            art_excerpt = ocd.get_user_message(msg_code=opasConfig.ACCESS_ABSTRACT_RESTRICTED_MESSAGE)
         
         heading = opasxmllib.get_running_head(source_title=documentListItem.sourceTitle,
                                               pub_year=documentListItem.year,
@@ -2020,6 +2040,8 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             if result.get("meta_xml", None): documentListItem.documentMetaXML = result.get("meta_xml", None)
             if result.get("art_info_xml", None): documentListItem.documentInfoXML = result.get("art_info_xml", None)
             if result.get("art_pgrg", None): documentListItem.pgRg = result.get("art_pgrg", None)
+            if result.get("art_pgcount", None): documentListItem.pgCount = result.get("art_pgcount", None)
+            
             art_lang = result.get("art_lang", None)
             if isinstance(art_lang, list):
                 art_lang = art_lang[0]
@@ -2031,7 +2053,17 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             documentListItem.issue = result.get("art_iss", None)
             documentListItem.issn = result.get("art_issn", None)
             documentListItem.isbn = result.get("art_isbn", None)
-            
+            documentListItem.embargo = result.get("art_embargo", False)
+            documentListItem.embargotype = result.get("art_embargotype", None)
+            # added 2021-11-23 to dynamically return download permission data from XML without preloading it in Solr.
+            #   should be fast enough but otherwise 'could' be added to Solr model.
+            documentListItem.downloads = get_document_download_permission(documentListItem.documentInfoXML)
+            #if documentListItem.documentInfoXML is not None:
+                #if re.search('download\s*=\s*(\"|\')false(\"|\')', documentListItem.documentInfoXML, re.IGNORECASE):
+                    #documentListItem.downloads = False
+                #else: 
+                    #documentListItem.downloads = True
+           
             # see if using art_title instead is a problem for clients...at least that drops the footnote
             documentListItem.title = result.get("art_title", "")  
             # documentListItem.title = result.get("art_title_xml", "")  
@@ -2041,7 +2073,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 documentListItem.pgEnd = pg_end
     
             if result.get("art_origrx", None): documentListItem.origrx = result.get("art_origrx", None)
-            if result.get("art_qual", None): documentListItem.relatedrx= result.get("art_qual", None)
+            if result.get(opasConfig.RELATED_RX_FIELDNAME, None): documentListItem.relatedrx= result.get(opasConfig.RELATED_RX_FIELDNAME, None)
             documentListItem.sourceTitle = result.get("art_sourcetitlefull", None)
             documentListItem.sourceType = result.get("art_sourcetype", None)
             author_ids = result.get("art_authors", None)
@@ -2061,13 +2093,13 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 if documentListItem.docLevel >= 2:
                     documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_DEFAULT)
                 else:
-                    documentListItem.accessClassification = result.get("file_classification", None)
+                    documentListItem.accessClassification = result.get("file_classification", opasConfig.DOCUMENT_ACCESS_UNDEFINED)
             except Exception as e:
                 # don't log, at this point there are other things being logged.
                 # logger.error(f"GetBaseArticleInfo: Error in database: {e}")
                 documentListItem.accessClassification = opasConfig.DOCUMENT_ACCESS_DEFAULT
                 
-            if documentListItem.accessClassification is None:
+            if documentListItem.accessClassification == opasConfig.DOCUMENT_ACCESS_UNDEFINED:
                 logger.error(f"art_id: {documentListItem.documentID} no file_classification returned!")
                 
             documentListItem.updated=result.get("file_last_modified", None)
@@ -2087,11 +2119,26 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 # this is part of a document, we should retrieve the parent info
                 top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
                 if top_level_doc is not None:
-                    logger.warning(f"Tracing Info - Record {para_art_id} was child...retrieving and merging parent info {top_level_doc}")
+                    logger.info(f"Record {para_art_id} was child...retrieving and merging parent info {top_level_doc}")
                     documentListItem = merge_documentListItems(documentListItem, top_level_doc)
-    
+
+            # New printing and downloading restrictions from 2021-12-08    
+            documentListItem.downloads = get_document_download_permission(documentInfoXML=documentListItem.documentInfoXML)
+            if documentListItem.pgCount is not None:
+                if documentListItem.downloads == True: # this disables downloading and printing per the client if the condition below is met, even though downloads=True in the XML
+                    if documentListItem.pgCount >= opasConfig.DOWNLOADS_MAX_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_TYPES_RESTRICTED:
+                        documentListItem.downloads = False
+                else: # DT said "exceptions"...this overrides the downloads=False I set in all the book instances, if they meet the exception conditons 
+                    # Allow DOWNLOADS_TYPES_OVERRIDDEN with fewer than DOWNLOADS_MAX_PAGE_COUNT pages to be downloaded, even if marked downloads==False
+                    if documentListItem.pgCount < opasConfig.DOWNLOADS_MAX_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_TYPES_OVERRIDDEN:
+                        documentListItem.downloads = True
+            else:
+                logger.info(f"{documentListItem.documentID} has no PageCount.")
+
+
             # don't set the value, if it's None, so it's not included at all in the pydantic return
             # temp workaround for art_lang change
+
         except Exception as e:
             logger.warning(f"Error in data: {e}")
 

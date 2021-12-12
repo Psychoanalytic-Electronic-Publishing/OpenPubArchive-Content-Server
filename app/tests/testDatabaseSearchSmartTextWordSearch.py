@@ -5,7 +5,9 @@
 import unittest
 import requests
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
     def test_1a_phrase_search_with_wildcards(self):
@@ -13,7 +15,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -24,7 +26,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -37,7 +39,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -49,7 +51,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -61,7 +63,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -73,7 +75,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -85,7 +87,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
@@ -97,7 +99,7 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')

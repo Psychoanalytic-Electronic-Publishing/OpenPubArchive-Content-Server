@@ -8,12 +8,12 @@ import unittest
 import requests
 import localsecrets
 import tempfile
-from localsecrets import API_KEY_NAME, API_KEY, PADS_TEST_ID, PADS_TEST_PW, PDF_ORIGINALS_PATH, PADS_TEST_ID2, PADS_TEST_PW2
+from localsecrets import API_KEY_NAME, AUTH_KEY_NAME, API_KEY, PADS_TEST_ID, PADS_TEST_PW, PDF_ORIGINALS_PATH, PADS_TEST_ID2, PADS_TEST_PW2
 from unitTestConfig import base_plus_endpoint_encoded, headers, test_login
 
 # Login!
 sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ID2, password=localsecrets.PADS_TEST_PW2)
-
+    
 class TestAdminSiteMap(unittest.TestCase):
     """
     Note: tests are performed in alphabetical order, hence the function naming

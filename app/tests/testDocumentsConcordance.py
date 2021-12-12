@@ -83,6 +83,11 @@ class TestDocumentsConcordance(unittest.TestCase):
         print (f"Time: {datetime.datetime.now()-ts}")
         print (para)
         assert (len(para) > 0)
+        # also test document field, that's what the client uses.
+        document_para_cordance_copy = r['documents']['responseSet'][0]['document']
+        # Confirm that the request-response cycle completed successfully.
+        assert (len(document_para_cordance_copy) > 0)
+        
 
     def test4_concordance_list(self):
         """

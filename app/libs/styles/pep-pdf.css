@@ -64,11 +64,13 @@ p.figure {
   margin-left: 10px;
 }
 
-.poem, .quote, .dream, .note, .dialog, .panel, .summaries .abstract {
+.poem, .quote, .quote > p, .dream, .note, .dialog, .panel, .summaries .abstract {
   text-indent: 22px ;
   color: midnightblue;
   font-size: small;
   font-style: italic;
+  margin-right: +.25in;
+  margin-left: +.25in;
 }
 
 fd, nm {

@@ -9,6 +9,8 @@ Version: 2020-08-24
 import os.path
 import sys
 import urllib
+import requests
+import opasDocPermissions
 
 folder = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 if folder == "tests": # testing from within WingIDE, default folder is tests
@@ -19,26 +21,11 @@ else: # python running from should be within folder app
     sys.path.append('./libs')
     sys.path.append('./config')
 
-import localsecrets
-from localsecrets import use_server
-import opasDocPermissions
-
 # use the configured server.
-from localsecrets import APIURL
-# use this to test with whereever the local config points to 
+import localsecrets
+from localsecrets import use_server, PADS_TEST_ID, PADS_TEST_PW, APIURL
+
 base_api = APIURL
-# or override below.
-# base_api = "http://stage.pep.gvpi.net/api"
-#base_api = "http://127.0.0.1:9100" # local server without naming
-# base_api = "http://api.psybrarian.com" # remote AWS server (one of them)
-#if use_server == 0:
-    #base_api = "http://development.org:9100" #  local server (Scilab)
-#else:
-    #base_api = "http://stage-api.pep-web.rocks" # remote AWS server (one of them)
-
-# force local
-# base_api = "http://development.org:9100" #  local server (Scilab)
-
 ALL_SOURCES_COUNT = 189 # OFFSITE doesn't count
 # this must be set to the number of unique journals for testing to pass.
 JOURNALCOUNT = 77
@@ -65,11 +52,29 @@ VOL_COUNT_VIDEOS = VIDEOSOURCECOUNT # no actual volumes for videos, just the sou
 VOL_COUNT_VIDEOS_PEPVS = 4
 VOL_COUNT_IJPSP = 11 #  source code ended, 11 should always be correct
 
+ip = requests.get('https://api.ipify.org').content.decode('utf8')
+myTestSystemIP = ip
+
+def get_session_info_for_test():
+    session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=UNIT_TEST_CLIENT_ID)
+    return session_info
+
 def base_plus_endpoint_encoded(endpoint, base=base_api):
     ret_val = base + endpoint
     return ret_val
 
 UNIT_TEST_CLIENT_ID = "4"
+
+# Get session, but not logged in.
+def get_headers_not_logged_in(): 
+    session_info = opasDocPermissions.get_authserver_session_info(session_id=None,
+                                                                  client_id=UNIT_TEST_CLIENT_ID)
+    session_id = session_info.session_id
+    headers = {f"client-session":f"{session_id}",
+               "client-id": UNIT_TEST_CLIENT_ID, 
+               "Content-Type":"application/json" 
+               }
+    return headers
 
 def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TEST_PW, client_id=UNIT_TEST_CLIENT_ID):
     pads_session_info = opasDocPermissions.authserver_login(username=username, password=password)
@@ -78,11 +83,15 @@ def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TE
     sessID = session_info.session_id
     headers = {f"client-session":f"{sessID}",
                "client-id": client_id, 
-               "Content-Type":"application/json",
+               "Content-Type":"application/json", 
+               "x-forwarded-for-PEP": myTestSystemIP,
                localsecrets.API_KEY_NAME: localsecrets.API_KEY}
+    if session_info.is_valid_login == True:
+        headers[localsecrets.AUTH_KEY_NAME] = "true"
+    
     return sessID, headers, session_info
 
-if 1:
+if 0:
     # session_info, pads_session_info = pads_get_session(client_id=UNIT_TEST_CLIENT_ID)
     session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=UNIT_TEST_CLIENT_ID)
     session_id = session_info.session_id
@@ -93,4 +102,22 @@ if 1:
 
 
     print (f"unitTestConfig harness fetched session-id {session_id} (not logging in)")
-
+else:
+    session_id = None
+    if myTestSystemIP is not None:
+        headers = {f"client-session":None,
+                   "client-id": UNIT_TEST_CLIENT_ID, 
+                   "Content-Type":"application/json", 
+                   "x-forwarded-for-PEP": myTestSystemIP,
+                   localsecrets.API_KEY_NAME: localsecrets.API_KEY}
+    else:
+        headers = {"client-session":None,
+                   "client-id": UNIT_TEST_CLIENT_ID,
+                   "Content-Type":"application/json",
+                   localsecrets.API_KEY_NAME: localsecrets.API_KEY}
+    
+def end_test_session(header):
+    from opasCentralDBLib import opasCentralDB
+    ocd = opasCentralDB()
+    ocd.end_session(session_id=headers["client-session"])
+    print ("Session End")

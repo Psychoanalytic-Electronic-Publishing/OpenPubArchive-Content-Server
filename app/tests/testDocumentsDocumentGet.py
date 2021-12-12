@@ -98,7 +98,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
@@ -113,7 +113,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
@@ -128,7 +128,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
@@ -143,7 +143,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
@@ -156,7 +156,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
@@ -171,7 +171,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
@@ -200,7 +200,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
@@ -213,7 +213,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)

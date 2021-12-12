@@ -77,7 +77,7 @@ import opasFileSupport
 # opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
 
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
-from localsecrets import TIME_FORMAT_STR
+# from localsecrets import TIME_FORMAT_STR # moved to opasConfig
 
 # from opasConfig import OPASSESSIONID
 # import configLib.opasCoreConfig as opasCoreConfig
@@ -116,6 +116,21 @@ def has_data(str):
 
     return ret_val
 
+def set_log_level(level_int):
+    logger = logging.getLogger()
+    logger.debug(f"Log Level: {logger.level}")
+    # see https://stackoverflow.com/questions/37703609/using-python-logging-with-aws-lambda
+    if logger.hasHandlers:
+        # The Lambda environment pre-configures a handler logging to stderr. If a handler is already configured,
+        # `.basicConfig` does not execute. Thus we set the level directly.
+        logger.setLevel(level_int)
+    else:
+        logging.basicConfig(level=level_int)
+        
+    ret_val = logger.level
+    logger.debug(f"Log Level: {logger.level}")
+    return ret_val
+    
 def get_query_item_of_interest(solrQuery):
     """
     Give a solrQuery, use that to derive a string to be logged in the endpoint_session
@@ -222,9 +237,11 @@ def get_session_info(request: Request,
                      client_id=None,
                      expires_time=None, 
                      force_new_session=False,
-                     user=None):
+                     user=None,
+                     caller_name="get_session_info"):
     """
     Return a sessionInfo object with all of that info, and a database handle
+    Note that non-logged in sessions are not stored in the database
 
     Get session info accesses the DB per the session_id to see if the session exists.
 
@@ -238,9 +255,14 @@ def get_session_info(request: Request,
            ii) It saves the session
         b) If it's there already: (Repeatable, quickest path)
            i) Done, returns it.  No update.  
+
+    New 2021-10-07 - Header will indicate (from client) if the user is logged in, saving queries to PaDS
+                     (Note The server still checks all permissions on full-text returns)
+
     """
     ocd = opasCentralDBLib.opasCentralDB()
     if session_id is not None and session_id != opasConfig.NO_SESSION_ID:
+        user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name)
         ts = time.time()
         session_info = ocd.get_session_from_db(session_id)
         if session_info is None:
@@ -250,13 +272,13 @@ def get_session_info(request: Request,
             session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
                                                                    client_id=client_id,
                                                                    request=request)
-            logger.debug(f"getSessionInfo: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/13 removed  Server Session Info: {session_info} for brevity
+            logger.debug(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/13 removed  Server Session Info: {session_info} for brevity
             # session info is saved in get_authserver_session_info   
             # success, session_info = ocd.save_session(session_id, session_info)
         else:
             in_db = True
-            # if they weren't authenticated, or the session time is expired, check again
-            if session_info.authenticated == False or session_info.session_expires_time < datetime.today(): # not logged in
+            # if they weren't authenticated, but headers say they are, check again
+            if session_info.authenticated == False and user_logged_in_bool: # or session_info.session_expires_time < datetime.today(): # not logged in
                 # better check if now they are logged in
                 # session info is saved in get_authserver_session_info if logged in  
                 session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
@@ -264,13 +286,17 @@ def get_session_info(request: Request,
                                                                        request=request)
                 # session info is saved in get_authserver_session_info   
                 # success, session_info = ocd.save_session(session_id, session_info)
-                logger.debug(f"getSessionInfo: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/14 removed  Server Session Info: {session_info} for brevity
+                logger.debug(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/14 removed  Server Session Info: {session_info} for brevity
             else:
-                ## important - because they "were" logged in, we will return a session timed out error
-                ## so don't refresh it...server likes to know they were logged in
-                remaining_time = session_info.session_expires_time - datetime.today()
-                remaining_time_hrs = remaining_time.seconds // 3600
-                logger.info(f"User was authenticated per server database record.  Session {session_id}. Expires: {remaining_time_hrs} hrs ({session_info.session_expires_time}). DB SessionInfo: {session_info}")
+                if session_info.authenticated == True and user_logged_in_bool == True:
+                    # note that user_logged_in_bool can be None
+                    ## important - because they "were" logged in, we will return a session timed out error
+                    ## so don't refresh it...server likes to know they were logged in
+                    remaining_time = session_info.session_expires_time - datetime.today()
+                    remaining_time_hrs = remaining_time.seconds // 3600
+                    logger.info(f"User was authenticated per server database record.  Session {session_id}. Expires: {remaining_time_hrs} hrs ({session_info.session_expires_time}). DB SessionInfo: {session_info}")
+                else:
+                    logger.debug(f"User is logged in (session {session_id}), but the client did not supply header info.")
 
         if opasConfig.LOG_CALL_TIMING:
             logger.debug(f"Get/Save session info response time: {time.time() - ts}")       
@@ -368,6 +394,7 @@ def database_get_most_viewed( publication_period: int=5,
 
     """
     ret_val = None
+    caller_name = "database_get_most_viewed"
     ret_status = (200, "OK") # default is like HTTP_200_OK
     period = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS.get(view_period, "last12mos")
     
@@ -413,7 +440,8 @@ def database_get_most_viewed( publication_period: int=5,
                                                                offset=offset,
                                                                req_url = req_url, 
                                                                session_info=session_info, 
-                                                               request = request
+                                                               request = request,
+                                                               caller_name=caller_name
                                                               )
         except Exception as e:
             logger.error(f"Search error {e}")
@@ -457,6 +485,7 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
     """
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
+    caller_name = "database_get_most_cited"
     
     cited_in_period = opasConfig.normalize_val(cited_in_period, opasConfig.VALS_YEAROPTIONS, default='5')
     #if str(period).lower() not in models.TimePeriod._value2member_map_:
@@ -506,7 +535,8 @@ def database_get_most_cited( publication_period: int=None,   # Limit the conside
                                                                #mlt_count=mlt_count, 
                                                                session_info=session_info, 
                                                                req_url = req_url,
-                                                               request = request
+                                                               request = request,
+                                                               caller_name=caller_name
                                                               )
         except Exception as e:
             logger.error(f"Search error {e}")
@@ -546,7 +576,9 @@ def database_who_cited( publication_period: int=None,   # Limit the considered p
     True
 
     """
+    
     cited_in_period = opasConfig.normalize_val(cited_in_period, opasConfig.VALS_YEAROPTIONS, default='5')
+    caller_name = "database_who_cited"
 
     if sort is None:
         sort = f"art_cited_{cited_in_period} desc"
@@ -580,10 +612,14 @@ def database_who_cited( publication_period: int=None,   # Limit the considered p
                                              #mlt_count=mlt_count, 
                                              session_info=session_info, 
                                              req_url = req_url, 
-                                             request = request                                             
+                                             request = request,
+                                             caller_name=caller_name
                                             )
     except Exception as e:
-        logger.error(f"Who Cited Search error {e}")
+        ret_status_msg = f"Who Cited Search error {e}"
+        ret_val = {}
+        ret_status = (200, ret_status_msg) 
+        logger.error(ret_status_msg)
         
     return ret_val, ret_status   
 
@@ -765,7 +801,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                                          listType = "sourceinfolist",
                                          scopeQuery = [src_type, src_code],
                                          request=f"{req_url}",
-                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)                     
                                          )
 
     source_info_listitems = []
@@ -779,21 +815,35 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
             if counter > limit:
                 break
             try:
-                title = source.get("title")
-                authors = source.get("author")
-                pub_year = source.get("pub_year")
-                publisher = source.get("bib_abbrev")
-                book_code = None
-                # src_type = source.get("product_type")
-                start_year = source.get("yearFirst")
-                end_year = source.get("yearLast")
+                # first capture fields needed for art_citeas
                 base_code = source.get("basecode")
-                instance_count = source.get("instances", 1)
                 documentID = source.get("documentID", source.get("articleID"))
+                title = source.get("title")
+
+                publisher = source.get("bib_abbrev", source.get("bibabbrev")) # videos and books
+
+                # for books
+                authors = source.get("author")
+                pub_year = source.get("pub_year") 
+                instance_count = source.get("instances", 1)
+                book_code = None
+
+                # src_type = source.get("product_type")
+
+                # for journals
+                start_year = source.get("start_year")
+                end_year = source.get("end_year")
                 if start_year is None:
                     start_year = pub_year
                 if end_year is None:
                     end_year = pub_year
+
+                # general
+                # active = source.get("active")
+                pub_class = source.get("accessClassification")
+                # use standardized version of class
+                pep_release = source.get("pepversion")
+                pub_source_url = source.get("landing_page")
     
                 if src_type == "book":
                     book_code = source.get("pepcode")
@@ -820,8 +870,10 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                 try:
                     item = models.SourceInfoListItem( sourceType = src_type,
                                                       PEPCode = base_code,
+                                                      accessClassification=pub_class, 
+                                                      pubSourceURL=pub_source_url,
+                                                      PEPRelease=pep_release, 
                                                       authors = authors,
-                                                      pub_year = pub_year,
                                                       documentID = documentID,
                                                       displayTitle = art_citeas,
                                                       title = title,
@@ -931,7 +983,8 @@ def documents_get_abstracts(document_id,
                             limit=opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS,
                             req_url: str=None, 
                             offset=0,
-                            session_info=None
+                            session_info=None,
+                            request=None
                             ):
     """
     Returns an abstract or summary for the specified document
@@ -977,9 +1030,23 @@ def documents_get_abstracts(document_id,
                                                  limit=limit,   
                                                  offset=offset, 
                                                  req_url=req_url,
-                                                 session_info=session_info
+                                                 session_info=session_info,
+                                                 request=request
                                                  )
 
+        try:
+            if opasFileSupport.file_exists(document_id=document_id, 
+                                           year=document_list.documentList.responseSet[0].year,
+                                           ext=localsecrets.PDF_ORIGINALS_EXTENSION, 
+                                           path=localsecrets.PDF_ORIGINALS_PATH):
+                document_list.documentList.responseSet[0].pdfOriginalAvailable = True
+            else:
+                document_list.documentList.responseSet[0].pdfOriginalAvailable = False
+        except Exception as e:
+            logger.debug(f"pdfOriginalAvailable check error: {e}")
+            #default is false
+            #document_list.documentList.responseSet[0].pdfOriginalAvailable = False          
+        
         if not isinstance(document_list, models.ErrorReturn):
             documents = models.Documents(documents = document_list.documentList)
         else:
@@ -1021,6 +1088,7 @@ def documents_get_document(document_id,
 
 
     """
+    caller_name = "documents_get_document"
     ret_val = None
     document_list = None
     ext = localsecrets.PDF_ORIGINALS_EXTENSION #  PDF originals extension
@@ -1078,8 +1146,10 @@ def documents_get_document(document_id,
                                                 )
 
     document_list, ret_status = opasPySolrLib.search_text_qs(solr_query_spec,
-                                                             session_info=session_info, 
-                                                             request=request
+                                                             session_info=session_info,
+                                                             get_full_text=True, 
+                                                             request=request,
+                                                             caller_name=caller_name
                                                              )
 
     try:
@@ -1088,7 +1158,7 @@ def documents_get_document(document_id,
             # get the first document item only
             document_list_item = document_list.documentList.responseSet[0]
             # is user authorized?
-            if document_list_item.accessLimited:
+            if document_list_item.accessChecked == False or document_list_item.accessLimited == True or document_list_item.accessLimited is None:
                 document_list_item.document = document_list_item.abstract
             else:
                 if opasFileSupport.file_exists(document_id=document_list_item.documentID, 
@@ -1104,14 +1174,15 @@ def documents_get_document(document_id,
             solr_query_spec.solrQuery.searchQ = "*:*"
             document_list, ret_status = opasPySolrLib.search_text_qs(solr_query_spec,
                                                                      session_info=session_info,
-                                                                     request=request
+                                                                     request=request,
+                                                                     caller_name=caller_name
                                                                      )
             matches = document_list.documentList.responseInfo.count
             if matches > 0:
                 # get the first document item only
                 document_list_item = document_list.documentList.responseSet[0]
                 # is user authorized?
-                if document_list_item.accessLimited:
+                if document_list_item.accessChecked == False or document_list_item.accessLimited == True or document_list_item.accessLimited is None:
                     document_list_item.document = document_list_item.abstract
                 else:
                     if opasFileSupport.file_exists(document_id=document_list_item.documentID, 
@@ -1126,7 +1197,7 @@ def documents_get_document(document_id,
                 document_list.documentList.responseSet[0].termCount = 0
 
     except Exception as e:
-        logger.error("get_document: No matches or error: %s", e)
+        logger.error("get_document: No matches or another error: %s", e)
         # return None
     else:
         if page_limit is None:
@@ -1153,7 +1224,7 @@ def documents_get_document(document_id,
                             document_list_item.translationSet = translationSet
             
             # is user authorized?
-            if document_list.documentList.responseSet[0].accessLimited:
+            if document_list.documentList.responseSet[0].accessLimited or document_list.documentList.responseSet[0].accessChecked == False or document_list.documentList.responseSet[0].accessLimited is None:
                 document_list.documentList.responseSet[0].document = document_list.documentList.responseSet[0].abstract
                 
             document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
@@ -1185,6 +1256,7 @@ def documents_get_concordance_paras(para_lang_id,
 
 
     """
+    caller_name = "documents_get_concordance_paras"
     ret_val = {}
     document_list = None
     if para_lang_rx is not None:
@@ -1210,7 +1282,10 @@ def documents_get_concordance_paras(para_lang_id,
 
         document_list, ret_status = search_text_qs(solr_query_spec,
                                                    session_info=session_info,
-                                                   request=request
+                                                   request=request,
+                                                   get_full_text=False, 
+                                                   get_child_text_only=True, 
+                                                   caller_name=caller_name
                                                    )
 
         #matches = document_list.documentList.responseInfo.count
@@ -1267,6 +1342,7 @@ def documents_get_glossary_entry(term_id,
 
 
     """
+    caller_name = "documents_get_glossary_entry"
     ret_val = {}
 
     # Name and Group are strings, and case sensitive, so search, as submitted, and uppercase as well
@@ -1305,7 +1381,8 @@ def documents_get_glossary_entry(term_id,
                                             extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
                                             limit=1,
                                             session_info=session_info,
-                                            request = request
+                                            request = request,
+                                            caller_name=caller_name
                                             )
         
     gloss_template = gloss_info.documentList.responseSet[0]
@@ -1330,7 +1407,7 @@ def documents_get_glossary_entry(term_id,
         for result in results.docs:
             document = result.get("text", None)
             documentListItem = copy.deepcopy(gloss_template)
-            if not documentListItem.accessLimited:
+            if not documentListItem.accessChecked == True and documentListItem.accessLimited == False:
                 try:
                     if retFormat == "HTML":
                         document = opasxmllib.xml_str_to_html(document)
@@ -1340,14 +1417,14 @@ def documents_get_glossary_entry(term_id,
                         document = document
                 except Exception as e:
                     logger.error(f"Error converting glossary content: {term_id} ({e})")
-            else:
+            else: # summary only
                 try:
                     if retFormat == "HTML":
                         document = opasxmllib.xml_str_to_html(document, transformer_name=opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
                     elif retFormat == "TEXTONLY":
-                        document = opasxmllib.xml_elem_or_str_to_text(document)
+                        document = opasxmllib.xml_elem_or_str_to_text(document) # TODO need summary here?  Or are we allowing full access?      
                     else: # XML
-                        document = document                   
+                        document = document # TODO need summary here? Or are we allowing full access?                 
                 except ValidationError as e:
                     logger.error(e.json())  
                 except Exception as e:
@@ -1392,7 +1469,7 @@ def documents_get_glossary_entry(term_id,
                                              listType = "documentlist",
                                              fullCountComplete = True,
                                              request=f"{req_url}",
-                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)                     
                                              )
 
         document_list_struct = models.DocumentListStruct( responseInfo = response_info, 

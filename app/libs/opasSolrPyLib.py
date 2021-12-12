@@ -38,7 +38,7 @@ import localsecrets
 
 # import opasFileSupport
 from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
-from localsecrets import TIME_FORMAT_STR
+from opasConfig import TIME_FORMAT_STR
 
 # Removed support for Py2, only Py3 supported now
 pyVer = 3

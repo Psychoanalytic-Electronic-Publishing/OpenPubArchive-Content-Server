@@ -80,7 +80,8 @@ import time
 from passlib.context import CryptContext
 # from pydantic import ValidationError
 
-import pymysql
+import mysql.connector
+# import pymysql
 # import jwt
 import json
 
@@ -125,12 +126,14 @@ API_ADMIN_REPORTS = 7                        # /Admin/Reports
 # API_METADATA_CONTENTS = 15	             # /Metadata/Contents/{pepCode}/
 # API_METADATA_CONTENTS_FOR_VOL = 16	     # /Metadata/Contents/{pepCode}/{pepVol}/
 # API_METADATA_BOOKS = 17	                 # /Metadata/Contents/Books/{bookBaseDocumentID}/
+# API_METADATA_ARTICLEID = 18                # /Metadata/ArticleID/
 # API_AUTHORS_INDEX = 20	                 # /Authors/Index/{authNamePartial}/
 # API_AUTHORS_PUBLICATIONS = 21	             # /Authors/Publications/{authNamePartial}/
 API_DOCUMENTS_ABSTRACTS = 30	             # /Documents/Abstracts/{documentID}/
 API_DOCUMENTS = 31                       	 # /Documents/{documentID}/
 API_DOCUMENTS_PDF = 32	                     # /Documents/Downloads/PDF/{documentID}/
 API_DOCUMENTS_PDFORIG = 33	                 # /Documents/Downloads/PDFORIG/{documentID}/
+# = 34 is open!
 API_DOCUMENTS_EPUB = 35	                     # /Documents/Downloads/PDF/{documentID}/
 API_DOCUMENTS_HTML = 36	                     # /Documents/Downloads/HTML/{documentID}/
 API_DOCUMENTS_IMAGE = 37	                 # /Documents/Image/{imageID}/?download=1
@@ -150,9 +153,12 @@ API_DATABASE_EXTENDEDSEARCH = 49             # /Database/ExtendedSearch/
 # API_DATABASE_CLIENT_CONFIGURATION = 51     # /Client/Configuration
 API_DATABASE_OPENURL = 52	                 # /Database/OpenURL/
 API_DATABASE_WHOCITEDTHIS = 53               # /Database/WhoCitedThis/
+API_DATABASE_MORELIKETHIS = 54               # /Database/MoreLikeThis/
+API_DATABASE_RELATEDTOTHIS = 55              # /Database/RelatedDocuments/
 
 #def verifyAccessToken(session_id, username, access_token):
     #return pwd_context.verify(session_id+username, access_token)
+    #removed 2021-12-07
     
 def verify_password(plain_password, hashed_password):
     """
@@ -202,6 +208,27 @@ class SourceInfoDB(object):
         retVal = dbEntry
         return retVal
 
+class ErrorMessageDB(object):
+    def __init__(self):
+        self.message_data = {}
+        ocd = opasCentralDB()
+        recs = ocd.get_user_errormsg_data()
+        for n in recs:
+            try:
+                self.message_data[n["pepsrccode"]] = n
+            except KeyError:
+                logger.error("Missing Source Code Value in %s" % n)
+
+    def lookupSourceCode(self, sourceCode):
+        """
+        Returns the dictionary entry for the source code or None
+          if it doesn't exist.
+        """
+        dbEntry = self.sourceData.get(sourceCode, None)
+        retVal = dbEntry
+        return retVal
+    
+
 class opasCentralDB(object):
     """
     This object should be used and then discarded on an endpoint by endpoint basis in any
@@ -216,9 +243,6 @@ class opasCentralDB(object):
     >>> session_id = session_info.session_id
     >>> session_id
     '...'
-    >>> success, session_info = ocd.save_session(session_id=session_id, session_info=session_info)
-    >>> None if session_info is None else session_info.authenticated
-    True
     >>> ocd.end_session(session_info.session_id)
     True
 
@@ -226,6 +250,8 @@ class opasCentralDB(object):
     > ocd.delete_session(session_id=random_session_id)
     True
     """
+    connection_count = 0
+    
     def __init__(self, session_id=None,
                  host=localsecrets.DBHOST,
                  port=localsecrets.DBPORT,
@@ -233,20 +259,22 @@ class opasCentralDB(object):
                  password=localsecrets.DBPW,
                  database=localsecrets.DBNAME):
 
-        self.db = None
-        self.connected = False
         self.host = host
         self.port = port
         self.user = user
         self.password = password
         self.database = database
-        self.unpaired_connection_count = 0
-        
+        self.connected = False
+        self.db = None
+        self.library_version = self.get_mysql_version()
         self.session_id = session_id # deprecate?
+
+    def __del__(self):
+        pass
         
     def open_connection(self, caller_name=""):
         """
-        Opens a connection if it's not already open.
+        Opens a connection - Try Always!
         
         If already open, no changes.
         >>> ocd = opasCentralDB()
@@ -255,71 +283,68 @@ class opasCentralDB(object):
         >>> ocd.close_connection("my name")
         """
         try:
-            status = self.db.open # if not already open, gens an exception, so it can be opened.
+            opasCentralDB.connection_count += 1
+            self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
             self.connected = True
-        except:
-            # not open reopen it.
-            try:
-                self.db = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password, database=self.database)
-                logger.debug(f"Database opened by ({caller_name}) Specs: {self.database} for host {self.host},  user {self.user} port {self.port}")
-                self.connected = True
-            except Exception as e:
-                logger.error(f"Database connection could not be opened ({caller_name}) ({e})")
-                self.connected = False
-                self.db = None
-                # status = False
-        else:
-            self.unpaired_connection_count += 1
-            logger.warning(f"FYI: DB connection already open, no action from this call. caller: {caller_name} Unpaired Open Connections: {self.unpaired_connection_count}.")
+            logger.debug(f"Opened connection #{opasCentralDB.connection_count}")
+
+        except Exception as e:
+            self.connected = False
+            logger.error(f"Database connection could not be opened ({caller_name}) ({e}). Opening connection number: {opasCentralDB.connection_count}")
+            self.db = None
         
         return self.connected
 
     def close_connection(self, caller_name=""):
-        if self.db is not None:
-            try:
-                if self.db.open:
-                    self.db.close()
-                    self.db = None
-                    self.unpaired_connection_count = 0
-                    logger.debug(f"Database closed by ({caller_name})")
-                else:
-                    logger.warning(f"Database close request, but not open ({caller_name}). Connections: {self.connection_count}")
-                    
-            except Exception as e:
-                logger.error(f"caller: {caller_name} the db is not open ({e}).")
+        try:
+            self.db.close()
+            self.db = None
+            opasCentralDB.connection_count -= 1
+            logger.debug(f"Database closed by ({caller_name})")
+                
+        except Exception as e:
+            logger.error(f"caller: {caller_name} the db is not open ({e}).")
 
-        # make sure to mark the connection false in any case
-        self.connected = False           
+        self.connected = False
+        return self.connected
 
-    def end_session(self, session_id, session_end=datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')):
+    def end_session(self, session_id, session_end=datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')):
         """
         End the session
         
         Tested in main instance docstring
         """
         fname = "end_session"
-        ret_val = None
-        self.open_connection(caller_name=fname) # make sure connection is open
-        if self.db is not None:
-            cursor = self.db.cursor()
-            sql = """UPDATE api_sessions
-                     SET session_end = %s
-                     WHERE session_id = %s
-                  """
-            success = cursor.execute(sql,
-                                     (session_end,
-                                      session_id
-                                      )                                     
-                                    )
-            self.db.commit()
-            cursor.close()
-            if success:
-                ret_val = True
-            else:
-                logger.warning(f"Could not record close session per token={sessionToken} in DB")
-                ret_val = False
+        ret_val = False
+        session_info = self.get_session_from_db(session_id)
+        if session_info is not None:
+            self.open_connection(caller_name=fname) # make sure connection is open
+            if self.db is not None:
+                if session_id is not None:
+                    try:
+                        with closing(self.db.cursor()) as cursor:
+                            sql = """UPDATE api_sessions
+                                     SET session_end = %s
+                                     WHERE session_id = %s
+                                  """
+                            cursor.execute(sql, (session_end,
+                                                 session_id
+                                                 )                                     
+                                           )
+                            
+                            warnings = cursor.fetchwarnings()
+                            if warnings:
+                                for warning in warnings:
+                                    logger.warning(warning)
+                            
+                            self.db.commit()
+                            ret_val = True
+                    except Exception as e:
+                        logger.error(f"Error updating session: {e}. Could not record close session per token={session_id} in DB")
+                        ret_val = False
+    
+            self.close_connection(caller_name=fname) # make sure connection is closed
 
-        self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
 
     def get_productbase_data(self):
@@ -330,17 +355,49 @@ class opasCentralDB(object):
         ret_val = {}
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.DictCursor)
-            sql = "SELECT * from vw_api_sourceinfodb where active=1;"
-            row_count = curs.execute(sql)
-            if row_count:
-                sourceData = curs.fetchall()
-                ret_val = sourceData
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                sql = "SELECT * from vw_api_sourceinfodb where active=1;"
+                curs.execute(sql)
+                warnings = curs.fetchwarnings()
+                if warnings:
+                    for warning in warnings:
+                        logger.warning(warning)
+                        
+                row_count = curs.rowcount
+                if row_count:
+                    sourceData = curs.fetchall()
+                    ret_val = sourceData
         else:
             logger.fatal("Connection not available to database.")
+
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
         
+    def get_user_errormsg_data(self):
+        """
+        Load the user errormsg data
+        """
+        fname = "get_user_errormsg_data"
+        ret_val = {}
+        self.open_connection(caller_name=fname) # make sure connection is open
+        if self.db is not None:
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                sql = f"SELECT * from vw_api_messages;"
+                curs.execute(sql)
+                warnings = curs.fetchwarnings()
+                if warnings:
+                    for warning in warnings:
+                        logger.warning(warning)
+                        
+                row_count = curs.rowcount
+                if row_count:
+                    ret_val = curs.fetchall()
+        else:
+            logger.fatal("Connection not available to database.")
+
+        self.close_connection(caller_name=fname) # make sure connection is closed
+        return ret_val
+
     def get_article_year(self, doc_id):
         """
         Load the article data for a document id
@@ -349,14 +406,17 @@ class opasCentralDB(object):
         ret_val = None
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.DictCursor)
-            sql = f"SELECT art_year from api_articles where art_id='{doc_id}';"
-            row_count = curs.execute(sql)
-            if row_count:
-                sourceData = curs.fetchall()
-                ret_val = sourceData[0]["art_year"]
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                sql = f"SELECT art_year from api_articles where art_id='{doc_id}';"
+                curs.execute(sql)
+                row_count = curs.rowcount
+                if row_count:
+                    sourceData = curs.fetchall()
+                    ret_val = sourceData[0]["art_year"]
+                else:
+                    logger.fatal("Connection not available to database.")
         else:
-            logger.fatal("Connection not available to database.")
+            logger.error("Connection not available to database.")
 
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
@@ -521,23 +581,31 @@ class opasCentralDB(object):
                       {sort_by_clause}
                       {limit_clause}
                     """
-            cursor = self.db.cursor(pymysql.cursors.DictCursor)
-            row_count = cursor.execute(sql)
-            for row in cursor:
-                yield row
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
+                cursor.execute(sql)
+                if cursor.rowcount:
+                    for row in cursor:
+                        yield row
                 
         self.close_connection(caller_name=fname) # make sure connection is closed
 
-    def SQLSelectGenerator(self, sql):
+    def SQLSelectGenerator(self, sql, use_dict=True):
         #execute a select query and return results as a generator
         #error handling code removed
         fname = "SQLSelectGenerator"
         self.open_connection(caller_name=fname) # make sure connection is open
-        cursor = self.db.cursor(pymysql.cursors.DictCursor)
-        cursor.execute(sql)
-   
-        for row in cursor:
-            yield row    
+        if use_dict:
+            with closing(self.db.cursor(self.db.cursor(buffered=True, dictionary=True))) as cursor:
+                cursor.execute(sql)
+                if cursor.rowcount:
+                    for row in cursor:
+                        yield row
+        else:
+            with closing(self.db.cursor()) as cursor:
+                cursor.execute(sql)
+                if cursor.rowcount:
+                    for row in cursor:
+                        yield row
 
         self.close_connection(caller_name=fname) # make sure connection is open
     
@@ -678,11 +746,14 @@ class opasCentralDB(object):
                       {limit_clause}
                     """
 
-            cursor = self.db.cursor(pymysql.cursors.DictCursor)
-            row_count = cursor.execute(sql)
-            for row in cursor:
-                yield row
-        
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
+                cursor.execute(sql)
+                if cursor.rowcount:
+                    for row in cursor:
+                        #print (f"Row: ({row})")
+                        yield row
+
+        # print ("Closing connection in generator")
         self.close_connection(caller_name=fname) # make sure connection is closed
 
     def get_citation_counts(self) -> dict:
@@ -747,16 +818,15 @@ class opasCentralDB(object):
             self.open_connection(caller_name=fname)
             # Get citation lookup table
             try:
-                cursor = self.db.cursor(pymysql.cursors.DictCursor)
-                sql = """
-                      SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
-                      """
-                success = cursor.execute(sql)
-                if success:
-                    citation_table = cursor.fetchall()
-                    cursor.close()
-                else:
-                    logger.error("Cursor execution failed.  Can't fetch.")
+                with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
+                    sql = """
+                          SELECT cited_document_id, count5, count10, count20, countAll from vw_stat_cited_crosstab; 
+                          """
+                    cursor.execute(sql)
+                    if cursor.rowcount:
+                        citation_table = cursor.fetchall()
+                    else:
+                        logger.error("Cursor execution failed.  Can't fetch citation counts.")
                     
             except MemoryError as e:
                 logger.error("Memory error loading table: {}".format(e))
@@ -771,7 +841,7 @@ class opasCentralDB(object):
         
         return citation_table
 
-    def get_most_viewed_crosstab(self):
+    def get_most_viewed_crosstab(self, limit=None, offset=None):
         """
          Using the opascentral api_docviews table data, as dynamically statistically aggregated into
            the view vw_stat_most_viewed return the most downloaded (viewed) documents
@@ -783,49 +853,37 @@ class opasCentralDB(object):
         """
         ret_val = []
         row_count = 0
+        limit_str = ""
+        if limit is not None:
+            limit_str = f" LIMIT {limit}"
+            if offset is not None:
+                limit_str = f"{limit_str}, {offset}"
+
         # always make sure we have the right input value
-        self.open_connection(caller_name="get_most_viewed_crosstab") # make sure connection is open
-        
-        if self.db is not None:
-            cursor = self.db.cursor(pymysql.cursors.DictCursor)
-            sql = """SELECT DISTINCTROW * FROM vw_stat_docviews_crosstab"""
-            row_count = cursor.execute(sql)
-            ret_val = cursor.fetchall() # returns empty list if no rows
-            cursor.close()
-        else:
-            logger.fatal("Connection not available to database.")
-        
-        self.close_connection(caller_name="get_most_downloaded_crosstab") # make sure connection is closed
-        return row_count, ret_val
-
-    #def get_select_count(self, sqlSelect: str):
-        #"""
-        #Generic retrieval from database, just the count
-        
-        #>>> ocd = opasCentralDB()
-        #>>> count = ocd.get_select_count(sqlSelect="SELECT * from vw_reports_user_searches;")
-        #>>> count > 1000
-        #True
-        
-        #"""
-        #self.open_connection(caller_name="get_select_count") # make sure connection is open
-        #ret_val = None
-
-        #sqlSelect = re.sub("SELECT .+? FROM", "SELECT COUNT(*) FROM", sqlSelect, count=1, flags=re.IGNORECASE)
-        #try:
-            #if self.db is not None:
-                #curs = self.db.cursor(pymysql.cursors.Cursor)
-                #curs.execute(sqlSelect)
-                #row = curs.fetchall()
-                #ret_val = row[0][0]
-        #except Exception as e:
-            #logger.error("Can't retrieve count.")
-            #ret_val = 0
+        try:
+            self.open_connection(caller_name="get_most_viewed_crosstab") # make sure connection is open
             
-        #self.close_connection(caller_name="get_select_count") # make sure connection is closed
-
-        ## return session model object
-        #return ret_val # None or Session Object
+            if self.db is not None:
+                with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
+                    try:
+                        sql = f"""SELECT DISTINCTROW * FROM vw_stat_docviews_crosstab{limit_str}"""
+                        success = cursor.execute(sql)
+                        if success:
+                            ret_val = cursor.fetchall() # returns empty list if no rows
+                        else:
+                            logger.error("Cursor execution failed.  Can't fetch most_viewed_crosstab.")
+                    except Exception as e:
+                        logger.error(f"Error {e}. Cursor execution failed.  Can't fetch most_viewed_crosstab.")
+            else:
+                logger.error("Connection not available to database.")
+        
+            self.close_connection(caller_name="get_most_downloaded_crosstab") # make sure connection is closed
+            
+        except Exception as e:           
+            logger.error("Database Connect Error: {}".format(e))
+            
+        row_count = len(ret_val)
+        return row_count, ret_val
 
     def get_select_count(self, sqlSelect: str):
         """
@@ -843,10 +901,13 @@ class opasCentralDB(object):
         sqlSelect = re.sub("SELECT .+? FROM", "SELECT COUNT(*) FROM", sqlSelect, count=1, flags=re.IGNORECASE)
         try:
             if self.db is not None:
-                curs = self.db.cursor(pymysql.cursors.Cursor)
-                curs.execute(sqlSelect)
-                row = curs.fetchall()
-                ret_val = row[0][0]
+                with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
+                    cursor.execute(sqlSelect)
+                    row = cursor.fetchall()
+                    ret_val = row[0][0]
+            else:
+                logger.error("Connection not available to database.")
+
         except Exception as e:
             logger.error("Can't retrieve count.")
             ret_val = 0
@@ -869,35 +930,36 @@ class opasCentralDB(object):
         fname = "get_articles_newer_than"
         self.open_connection(caller_name=fname) # make sure connection is open
         ret_val = []
-        # newer_than = datetime.utcfromtimestamp(newer_than_date).strftime(localsecrets.TIME_FORMAT_STR)
+        # newer_than = datetime.utcfromtimestamp(newer_than_date).strftime(opasConfig.TIME_FORMAT_STR)
         def_date = datetime.now() - dtime.timedelta(days=days_back)
         newer_than_date = def_date.strftime('%Y-%m-%d %H:%M:%S')
+        self.db.ping()
         sqlSelect = """
                         SELECT art_id FROM article_tracker
                         WHERE date_inserted > date(%s)
         """
         if self.db is not None:
             errmsg = f"getting articles newer than {days_back} days back, date {newer_than_date}"
-            try:
-                curs = self.db.cursor(pymysql.cursors.DictCursor)
-                curs.execute(sqlSelect, (newer_than_date))
-            except ValueError as e:
-                logger.error(f"DB Value Error {e} - {errmsg}")
-            except pymysql.IntegrityError as e:
-                logger.error(f"Integrity Error {e} - {errmsg}")
-            except pymysql.InternalError as e:
-                logger.error(f"Internal Error {e} - {errmsg}")
-            except pymysql.DatabaseError as e:
-                logger.error(f"Database Error {e} - {errmsg}")
-            except Exception as e:
-                logger.error(f"DB Error  {e} - {errmsg}")
-            else:
-                records = curs.fetchall()
-                # fix 2021-09-08, None returned in some cases, but not iterable.
-                if records is not None:
-                    ret_val = [a['art_id'] for a in records]
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
+                try:
+                    cursor.execute(sqlSelect, (newer_than_date, ))
+                except ValueError as e:
+                    logger.error(f"DB Value Error {e} - {errmsg}")
+                except mysql.connector.IntegrityError as e:
+                    logger.error(f"Integrity Error {e} - {errmsg}")
+                except mysql.connector.InternalError as e:
+                    logger.error(f"Internal Error {e} - {errmsg}")
+                except mysql.connector.DatabaseError as e:
+                    logger.error(f"Database Error {e} - {errmsg}")
+                except Exception as e:
+                    logger.error(f"DB Error  {e} - {errmsg}")
                 else:
-                    ret_val = []
+                    records = cursor.fetchall()
+                    # fix 2021-09-08, None returned in some cases, but not iterable.
+                    if records is not None:
+                        ret_val = [a['art_id'] for a in records]
+                    else:
+                        ret_val = []
                     
             self.close_connection(caller_name=fname) # make sure connection is closed
         else:
@@ -921,9 +983,24 @@ class opasCentralDB(object):
         self.open_connection(caller_name=fname) # make sure connection is open
         ret_val = None
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.DictCursor)
-            curs.execute(sel)
-            ret_val = curs.fetchall()
+            try:
+                with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
+                    try:
+                        cursor.execute(sel)
+                    except ValueError as e:
+                        logger.error(f"DB Value Error {e} - {errmsg}")
+                    except mysql.connector.IntegrityError as e:
+                        logger.error(f"Integrity Error {e} - {errmsg}")
+                    except mysql.connector.InternalError as e:
+                        logger.error(f"Internal Error {e} - {errmsg}")
+                    except mysql.connector.DatabaseError as e:
+                        logger.error(f"Database Error {e} - {errmsg}")
+                    except Exception as e:
+                        logger.error(f"DB Error  {e} - {errmsg}")
+                    else:
+                        ret_val = cursor.fetchall()
+            except Exception as e:
+                logger.error(f"DB Error {e}")
 
         self.close_connection(caller_name=fname) # make sure connection is closed
 
@@ -940,19 +1017,26 @@ class opasCentralDB(object):
         Generic retrieval from database, into dict
         
         >>> ocd = opasCentralDB()
-        >>> records = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity;")
-        >>> len(records) > 1
+        >>> rows = ocd.get_select_as_list_of_dicts(sqlSelect="SELECT * from vw_reports_session_activity;")
+        >>> len(rows) >= 1
         True
-        >>> type(records[0]) == dict
+        >>> type(rows[0]) == dict
         True
         """
         fname = "get_selection_as_list_of_dicts"
         self.open_connection(caller_name=fname) # make sure connection is open
         ret_val = None
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.DictCursor)
+            # rows = self.SQLSelectGenerator(sqlSelect)
+            curs = self.db.cursor(buffered=True, dictionary=True)
             curs.execute(sqlSelect)
-            ret_val = curs.fetchall()
+            warnings = curs.fetchwarnings()
+            if warnings:
+                for warning in warnings:
+                    logger.warning(warning)
+                    
+            ret_val = [row for row in curs.fetchall()]
+            #ret_val = [model(row=row) for row in rows]
             
         self.close_connection(caller_name=fname) # make sure connection is closed
 
@@ -970,13 +1054,20 @@ class opasCentralDB(object):
         >>> type(records[0]) == models.ReportListItem
         True
         """
-        fname = "get_selection_as_list_of_dicts"
+        fname = "get_selection_as_list_of_models"
         self.open_connection(caller_name=fname) # make sure connection is open
         ret_val = None
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.DictCursor)
+            # rows = self.SQLSelectGenerator(sqlSelect)
+            curs = self.db.cursor(buffered=True, dictionary=True)
             curs.execute(sqlSelect)
+            warnings = curs.fetchwarnings()
+            if warnings:
+                for warning in warnings:
+                    logger.warning(warning)
+                    
             ret_val = [model(row=row) for row in curs.fetchall()]
+            #ret_val = [model(row=row) for row in rows]
             
         self.close_connection(caller_name=fname) # make sure connection is closed
 
@@ -985,7 +1076,7 @@ class opasCentralDB(object):
         
     def get_select_as_list(self, sqlSelect: str):
         """
-        Generic retrieval from database, into dict
+        Generic retrieval from database
         
         >>> ocd = opasCentralDB()
         >>> records = ocd.get_select_as_list(sqlSelect="SELECT * from vw_reports_session_activity;")
@@ -998,9 +1089,16 @@ class opasCentralDB(object):
         self.open_connection(caller_name=fname) # make sure connection is open
         ret_val = None
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.Cursor)
-            curs.execute(sqlSelect)
-            ret_val = curs.fetchall()
+            # don't use dicts here
+            # ret_val = self.SQLSelectGenerator(sqlSelect, use_dict=False)
+            with closing(self.db.cursor(buffered=True, dictionary=False)) as curs:
+                curs.execute(sqlSelect)
+                warnings = curs.fetchwarnings()
+                if warnings:
+                    for warning in warnings:
+                        logger.warning(warning)
+                
+                ret_val = curs.fetchall()
             
         self.close_connection(caller_name=fname) # make sure connection is closed
 
@@ -1018,26 +1116,42 @@ class opasCentralDB(object):
         self.open_connection(caller_name=fname) # make sure connection is open
         ret_val = None
         if self.db is not None:
-            curs = self.db.cursor(pymysql.cursors.DictCursor)
-            # now insert the session
-            sql = f"SELECT * FROM api_sessions WHERE session_id = '{session_id}'";
-            res = curs.execute(sql)
-            if res == 1:
-                session = curs.fetchone()
-                try:
-                    if session["username"] is None:
-                        session["username"] = opasConfig.USER_NOT_LOGGED_IN_NAME
-                except Exception as e:
-                    session["username"] = opasConfig.USER_NOT_LOGGED_IN_NAME
-                    logger.error(f"Username is None. {e}")
-
-                # sessionRecord
-                ret_val = SessionInfo(**session)
-            else:
-                ret_val = None
-                logger.debug(f"{fname} - Session info not found in db {session_id}")
-                     
-            
+            try:
+                self.db.ping()
+                with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
+                    # now insert the session
+                    sql = f"SELECT * FROM api_sessions WHERE session_id = '{session_id}'";
+                    res = cursor.execute(sql)
+                    if res == 1:
+                        session = cursor.fetchone()
+                        try:
+                            if session["username"] is None:
+                                session["username"] = opasConfig.USER_NOT_LOGGED_IN_NAME
+                        except Exception as e:
+                            session["username"] = opasConfig.USER_NOT_LOGGED_IN_NAME
+                            logger.error(f"Username is None. {e}")
+        
+                        # sessionRecord
+                        ret_val = SessionInfo(**session)
+                    else:
+                        ret_val = None
+                        logger.debug(f"{fname} - Session info not found in db {session_id}")
+                        
+            except mysql.connector.DataError as e:
+                logger.error(f"DBError {fname}. Data Error {e} ({session_id})")
+            except mysql.connector.OperationalError as e:
+                logger.error(f"DBError {fname}. Operation Error {e} ({session_id})")
+            except mysql.connector.IntegrityError as e:
+                logger.error(f"DBError {fname}. Integrity Error {e} ({session_id})")
+            except mysql.connector.InternalError as e:
+                logger.error(f"DBError {fname}. Internal Error {e} ({session_id})")
+            except mysql.connector.ProgrammingError as e:
+                logger.error(f"DBError {fname}. Programming Error {e} ({session_id})")
+            except mysql.connector.NotSupportedError as e:
+                logger.error(f"DBError {fname}. Feature Not Supported Error {e} ({session_id})")
+            except Exception as e:
+                logger.error(f"DBError{fname}. Exception: %s" % (e))
+                
         self.close_connection(caller_name=fname) # make sure connection is closed
 
         # return session model object
@@ -1055,14 +1169,14 @@ class opasCentralDB(object):
         ret_val = "Unknown"
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
-            curs = self.db.cursor()
-            sql = "SELECT VERSION();"
-            success = curs.execute(sql)
-            if success:
-                ret_val = "Vers: " + curs.fetchone()[0]
-                curs.close()
-            else:
-                ret_val = None
+            with closing(self.db.cursor()) as cursor:
+                try:
+                    sql = "SELECT VERSION();"
+                    cursor.execute(sql)
+                    ret_val = "Vers: " + cursor.fetchone()[0]
+                except Exception as e:
+                    logging.debug(f"MySQL Version Fetch Error: {e}")
+                    ret_val = None
         else:
             logger.fatal("Connection not available to database.")
 
@@ -1073,17 +1187,21 @@ class opasCentralDB(object):
                        session_id,
                        api_client_id, 
                        userID=None,
-                       username=None, 
+                       username=None,
+                       usertype=None,
+                       hassubscription=None, 
                        authenticated: int=None,
+                       validusername=None, 
                        authorized_peparchive: int=None,
                        authorized_pepcurrent: int=None,
-                       session_end=None, 
+                       session_end=None,
+                       api_direct_login=None, 
                        userIP=None):
         """
         Update the extra fields in the session record
         """
         fname = "update_session"
-        ret_val = None
+        ret_val = False
         self.open_connection(caller_name=fname) # make sure connection is open
         setClause = "SET "
         added = 0
@@ -1100,10 +1218,29 @@ class opasCentralDB(object):
                 setClause += ", "
             setClause += f" username = '{username}'"
             added += 1
+        if usertype is not None:
+            if added > 0:
+                setClause += ", "
+            setClause += f" user_type = '{usertype}'"
+            added += 1
+        if hassubscription is not None:
+            if added > 0:
+                setClause += ", "
+            setClause += f" has_subscription = '{hassubscription}'"
+            added += 1
         if authenticated:
             if added > 0:
                 setClause += ", "
             setClause += f" authenticated = '{authenticated}'"
+            added += 1
+            if added > 0:
+                setClause += ", "
+            setClause += f" is_valid_login = '{authenticated}'"
+            added += 1
+        if validusername:
+            if added > 0:
+                setClause += ", "
+            setClause += f" is_valid_username = '{validusername}'"
             added += 1
         if authorized_peparchive:
             if added > 0:
@@ -1115,6 +1252,11 @@ class opasCentralDB(object):
                 setClause += ", "
             setClause += f" authorized_pepcurrent = '{authorized_pepcurrent}'"
             added += 1
+        if api_direct_login is not None:
+            if added > 0:
+                setClause += ", "
+            setClause += f" api_direct_login = '{api_direct_login}'"
+            added += 1
         if session_end is not None:
             if added > 0:
                 setClause += ", "
@@ -1123,30 +1265,33 @@ class opasCentralDB(object):
 
         if added > 0:
             if self.db is not None:
-                try:
-                    cursor = self.db.cursor()
-                    sql = """UPDATE api_sessions
-                             {}
-                             WHERE session_id = %s
-                          """.format(setClause)
-                    success = cursor.execute(sql, (session_id))
-                except pymysql.InternalError as error:
-                    code, message = error.args
-                    logger.error(code, message)
-                except pymysql.Error as error:
-                    logger.error(code, message)
-                else:
-                    self.db.commit()
-                
-                cursor.close()
-                if success:
-                    ret_val = True
-                    logger.debug(f"Updated session record for session: {session_id}")
-                else:
-                    ret_val = False # seems to be false if the record update is the same, so change to just debug notice
-                    logger.debug(f"Could not record close session per sessionID {session_id} in DB")
+                with closing(self.db.cursor()) as cursor:
+                    try:
+                        sql = """UPDATE api_sessions
+                                 {}
+                                 WHERE session_id = %s
+                              """.format(setClause)
+                        cursor.execute(sql, (session_id))
+                        warnings = cursor.fetchwarnings()
+                        if warnings:
+                            for warning in warnings:
+                                logger.warning(warning)
+                        ret_val = True
+                        logger.debug(f"Updated session record for session: {session_id}")
+                    except mysql.connector.InternalError as error:
+                        code, message = error.args
+                        logger.error(code, message)
+                        ret_val = False 
+                    except mysql.connector.Error as error:
+                        logger.error(code, message)
+                        ret_val = False 
+                    else:
+                        self.db.commit()
 
         self.close_connection(caller_name=fname) # make sure connection is closed
+        if ret_val == False:
+            logger.debug(f"Could not record close session per sessionID {session_id} in DB")
+            
         return ret_val
 
     def delete_session(self, session_id):
@@ -1164,16 +1309,19 @@ class opasCentralDB(object):
                 logger.error("Delete session could not open database")
             else: # its open
                 if self.db is not None:  # don't need this check, but leave it.
-                    cursor = self.db.cursor()
-       
-                    # now delete the session
-                    sql = """DELETE FROM api_sessions
-                             WHERE session_id = '%s'""" % session_id
-                    
-                    if cursor.execute(sql):
+                    with closing(self.db.cursor()) as curs:
+                        # now delete the session
+                        sql = """DELETE FROM api_sessions
+                                 WHERE session_id = '%s'""" % session_id
+                        
+                        curs.execute(sql)
+                        warnings = curs.fetchwarnings()
+                        if warnings:
+                            for warning in warnings:
+                                logger.warning(warning)
+                        
                         ret_val = self.db.commit()
-
-                    cursor.close()
+    
                     # self.sessionInfo = None
                     self.close_connection(caller_name="delete_session") # make sure connection is closed
                 else:
@@ -1198,69 +1346,76 @@ class opasCentralDB(object):
             logger.error(f"No session_info specified")
         else:
             if session_info.session_start is None:
-                session_info.session_start = datetime.now()                
+                session_info.session_start = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)
+                print (session_info.session_start)
             if not self.open_connection(caller_name=fname): # make sure connection opens
                 logger.error(f"Could not open database")
             else: # its open
                 if self.db is not None:  # don't need this check, but leave it.
-                    cursor = self.db.cursor()
-                    # now insert the session
-                    sql = """REPLACE INTO api_sessions(session_id,
-                                                       user_id, 
-                                                       admin,
-                                                       api_client_id,
-                                                       authenticated,
-                                                       authorized_peparchive,
-                                                       authorized_pepcurrent,
-                                                       has_subscription,
-                                                       is_valid_login,
-                                                       is_valid_username,
-                                                       username,
-                                                       user_type,
-                                                       session_start,
-                                                       session_end,
-                                                       session_expires_time
-            )
-            VALUES 
-              (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """ # removed session_info.confirmed_unauthenticated
-                    try:
-                        success = cursor.execute(sql, 
-                                                 (session_info.session_id, 
-                                                  session_info.user_id, 
-                                                  session_info.admin, 
-                                                  session_info.api_client_id,
-                                                  session_info.authenticated,
-                                                  session_info.authorized_peparchive,
-                                                  session_info.authorized_pepcurrent, 
-                                                  #session_info.confirmed_unauthenticated, 
-                                                  session_info.has_subscription, 
-                                                  session_info.is_valid_login, 
-                                                  session_info.is_valid_username, 
-                                                  session_info.username,
-                                                  session_info.user_type, 
-                                                  session_info.session_start, 
-                                                  session_info.session_end, 
-                                                  session_info.session_expires_time
-                                                  )
-                                                 )
-                    except pymysql.IntegrityError as e:
-                        success = False
-                        logger.error(f"Integrity Error {e}")
+                    with closing(self.db.cursor()) as cursor:
+                        # now insert the session
+                        sql = """REPLACE INTO api_sessions(session_id,
+                                                           user_id, 
+                                                           admin,
+                                                           api_client_id,
+                                                           authenticated,
+                                                           authorized_peparchive,
+                                                           authorized_pepcurrent,
+                                                           has_subscription,
+                                                           is_valid_login,
+                                                           is_valid_username,
+                                                           username,
+                                                           user_type,
+                                                           session_start,
+                                                           session_end,
+                                                           session_expires_time,
+                                                           api_direct_login
+                )
+                VALUES 
+                  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) """ # removed session_info.confirmed_unauthenticated
+                        try:
+                            cursor.execute(sql, 
+                                                     (session_info.session_id, 
+                                                      session_info.user_id, 
+                                                      session_info.admin, 
+                                                      session_info.api_client_id,
+                                                      session_info.authenticated,
+                                                      session_info.authorized_peparchive,
+                                                      session_info.authorized_pepcurrent, 
+                                                      session_info.has_subscription, 
+                                                      session_info.is_valid_login, 
+                                                      session_info.is_valid_username, 
+                                                      session_info.username,
+                                                      session_info.user_type, 
+                                                      session_info.session_start, 
+                                                      session_info.session_end, 
+                                                      session_info.session_expires_time,
+                                                      session_info.api_direct_login
+                                                      )
+                                                     )
+                            warnings = cursor.fetchwarnings()
+                            if warnings:
+                                for warning in warnings:
+                                    logger.warning(warning)
+                            success = cursor.rowcount
+
+                        except mysql.connector.IntegrityError as e:
+                            success = False
+                            logger.error(f"Integrity Error {e}")
+                            
+                        except Exception as e:
+                            success = False
+                            logger.error(f"Error: {e}")
+                           
+                        if success:
+                            ret_val = True
+                            self.db.commit()
+                            logger.debug(f"Saved sessioninfo: {session_info.session_id}")
+                        else:
+                            msg = f"{session_id} Insert Error. Record Could not be Saved"
+                            logger.error(msg)
+                            ret_val = False
                         
-                    except Exception as e:
-                        success = False
-                        logger.error(f"Error: {e}")
-                       
-                    if success:
-                        ret_val = True
-                        self.db.commit()
-                        logger.debug(f"Saved sessioninfo: {session_info.session_id}")
-                    else:
-                        msg = f"{session_id} Insert Error. Record Could not be Saved"
-                        logger.error(msg)
-                        ret_val = False
-                    
-                    cursor.close()
                     # session_info = self.get_session_from_db(session_id)
                     # self.sessionInfo = session_info
                     self.close_connection(caller_name=fname) # make sure connection is closed
@@ -1268,43 +1423,11 @@ class opasCentralDB(object):
         # return session model object
         return ret_val, session_info #True or False, and SessionInfo Object
 
-    def close_inactive_sessions(self, inactive_time=opasConfig.SESSION_INACTIVE_LIMIT):
-        """
-        Close any sessions where they've been inactive for inactive_time minutes
-        """
-        fname = "close_inactive_sessions"
-        ret_val = None
-        self.open_connection(caller_name=fname) # make sure connection is open
-
-        if self.db is not None:
-            try:
-                cursor = self.db.cursor()
-                sql = f""" UPDATE api_sessions
-                          SET session_end = NOW()
-                          WHERE session_id IN
-                          (SELECT
-                            vw_latest_session_activity.session_id
-                             FROM
-                             vw_latest_session_activity
-                             WHERE latest_activity < DATE_SUB(NOW(), INTERVAL {inactive_time} MINUTE))        
-                      """
-                success = cursor.execute(sql)
-            except pymysql.InternalError as error:
-                code, message = error.args
-                logger.error(code, message)
-            else:
-                self.db.commit()
-            
-            cursor.close()
-            if success:
-                ret_val = True
-                logger.debug(f"Closed {success} expired sessions")
-            else:
-                ret_val = False
-                logger.error("Could not retire sessions in DB")
-
-        self.close_connection(caller_name=fname) # make sure connection is closed
-        return ret_val
+    #def close_inactive_sessions(self, inactive_time=opasConfig.SESSION_INACTIVE_LIMIT):
+        #"""
+        #Close any sessions where they've been inactive for inactive_time minutes
+        #"""
+        #removed 2021-12-07
 
     def count_open_sessions(self):
         """
@@ -1325,61 +1448,30 @@ class opasCentralDB(object):
                          FROM api_sessions
                          WHERE session_end is NULL
                       """
-                success = cursor.execute(sql)
+                cursor.execute(sql)
+                result = cursor.fetchone()
+                ret_val = result[0]
+                cursor.close()
                     
-            except pymysql.InternalError as error:
+            except mysql.connector.InternalError as error:
                 code, message = error.args
                 logger.error(code, message)
-            else:
-                if success:
-                    result = cursor.fetchone()
-                    ret_val = result[0]
-                else:
-                    ret_val = 0
             
-            cursor.close()
 
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
     
-    def close_expired_sessions(self):
-        """
-        Close any sessions past the set expiration time set in the record
+    #def close_expired_sessions(self):
+        #"""
+        #Close any sessions past the set expiration time set in the record
         
-        >>> ocd = opasCentralDB()
-        >>> numb = ocd.close_expired_sessions()
-        >>> numb >= 0
-        True
-        """
-        fname = "close_expired_sessions"
-        ret_val = 0
-        self.open_connection(caller_name=fname) # make sure connection is open
-
-        if self.db is not None:
-            try:
-                cursor = self.db.cursor()
-                sql = """UPDATE api_sessions
-                         SET session_end = NOW()
-                         WHERE session_expires_time < NOW()
-                         AND session_end is NULL
-                      """
-                success = cursor.execute(sql)
-                if success:
-                    ret_val = cursor.fetchone()
-                    
-            except pymysql.InternalError as error:
-                code, message = error.args
-                logger.error(code, message)
-            else:
-                self.db.commit()
-            
-            cursor.close()
-            ret_val = int(success)
-            logger.info(f"Closed {ret_val} expired sessions")
-
-        self.close_connection(caller_name=fname) # make sure connection is closed
-        return ret_val
-    
+        #>>> ocd = opasCentralDB()
+        #>>> numb = ocd.close_expired_sessions()
+        #>>> numb >= 0
+        #True
+        #"""
+        #removed 2021-12-07
+        
     def record_session_endpoint(self,
                                 session_info=None,
                                 api_endpoint_id=0,
@@ -1416,39 +1508,52 @@ class opasCentralDB(object):
                 session_id = opasConfig.NO_SESSION_ID # just to record it
                 
             if self.db is not None:  # shouldn't need this test
-                cursor = self.db.cursor()
-                # TODO: I removed returnStatusCode from here. Remove it from the DB
-                sql = """INSERT INTO 
-                            api_session_endpoints(session_id, 
-                                                  api_endpoint_id,
-                                                  params, 
-                                                  item_of_interest, 
-                                                  return_status_code,
-                                                  api_method,
-                                                  return_added_status_message
-                                                 )
-                                                 VALUES 
-                                                 (%s, %s, %s, %s, %s, %s, %s)"""
-
-                logger.debug(f"Session ID: {session_id} (client {client_id}) accessed Session Endpoint {api_endpoint_id}")
-                try:
-                    ret_val = cursor.execute(sql, (session_id, 
-                                                   api_endpoint_id, 
-                                                   params,
-                                                   item_of_interest,
-                                                   return_status_code,
-                                                   api_endpoint_method, 
-                                                   status_message
-                                                  ))
-                    self.db.commit()
-                    cursor.close()
-                except pymysql.IntegrityError as e:
-                    logger.error(f"Integrity Error {e} logging endpoint {api_endpoint_id} for session {session_id}.")
-                    #session_info = self.get_session_from_db(session_id)
-                    #if session_info is None:
-                        #self.save_session(session_id) # recover for next time.
-                except Exception as e:
-                    logger.error(f"Error logging endpoint {api_endpoint_id} for session {session_id}. Error: {e}")
+                with closing(self.db.cursor()) as cursor:
+                    # TODO: I removed returnStatusCode from here. Remove it from the DB
+                    if session_info.authenticated:
+                        sql = """INSERT INTO 
+                                    api_session_endpoints(session_id, 
+                                                          api_endpoint_id,
+                                                          params, 
+                                                          item_of_interest, 
+                                                          return_status_code,
+                                                          api_method,
+                                                          return_added_status_message
+                                                         )
+                                                         VALUES 
+                                                         (%s, %s, %s, %s, %s, %s, %s)"""
+                    else:
+                        # TODO: Record in a separate table.
+                        sql = """INSERT INTO 
+                                    api_session_endpoints_not_logged_in(session_id, 
+                                                                        api_endpoint_id,
+                                                                        params, 
+                                                                        item_of_interest, 
+                                                                        return_status_code,
+                                                                        api_method,
+                                                                        return_added_status_message
+                                                                       )
+                                                                       VALUES 
+                                                                       (%s, %s, %s, %s, %s, %s, %s)"""
+    
+                    logger.debug(f"Session ID: {session_id} (client {client_id}) accessed Session Endpoint {api_endpoint_id}")
+                    try:
+                        ret_val = cursor.execute(sql, (session_id, 
+                                                       api_endpoint_id, 
+                                                       params,
+                                                       item_of_interest,
+                                                       return_status_code,
+                                                       api_endpoint_method, 
+                                                       status_message
+                                                      ))
+                        self.db.commit()
+                    except mysql.connector.IntegrityError as e:
+                        logger.error(f"Integrity Error {e} logging endpoint {api_endpoint_id} for session {session_id}.")
+                        #session_info = self.get_session_from_db(session_id)
+                        #if session_info is None:
+                            #self.save_session(session_id) # recover for next time.
+                    except Exception as e:
+                        logger.error(f"Error logging endpoint {api_endpoint_id} for session {session_id}. Error: {e}")
             
             self.close_connection(caller_name=fname) # make sure connection is closed
 
@@ -1483,14 +1588,10 @@ class opasCentralDB(object):
         >>> count, resp = ocd.get_sources(src_name='Psychoanalysis')
         >>> count > 30
         True
-        >>> resp[0]["basecode"]
-        'AJP'
 
         >>> count, resp = ocd.get_sources(src_name='Psychoan.*')
         >>> count >= 33
         True
-        >>> resp[0]["basecode"]
-        'ADPSA'
 
         >>> count, resp = ocd.get_sources(src_code='IJP', src_name='Psychoanalysis', limit=5)
         >>> resp[0]["basecode"]
@@ -1519,7 +1620,6 @@ class opasCentralDB(object):
             src_title_clause = ""
             
             try:
-                curs = self.db.cursor(pymysql.cursors.DictCursor)
                 if src_code is not None and src_code != "*":
                     src_code_clause = f"AND basecode = '{src_code}'"
                 if src_type is not None and src_type != "*":
@@ -1540,32 +1640,29 @@ class opasCentralDB(object):
                                 {src_title_clause}
                              ORDER BY title {limit_clause}"""
                 
-                sql = "SELECT * " + sqlAll
-                res = curs.execute(sql)
+                with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                    sql = "SELECT * " + sqlAll
+                    curs.execute(sql)
+                    warnings = curs.fetchwarnings()
+                    if warnings:
+                        for warning in warnings:
+                            logger.warning(warning)
                     
+                    total_count = curs.rowcount
+                    ret_val = curs.fetchall()
+                    if limit_clause is not None:
+                        # do another query to count
+                        with closing(self.db.cursor()) as curs2:
+                            sqlCount = "SELECT COUNT(*) " + sqlAll
+                            curs2.execute(sqlCount)
+                            try:
+                                total_count = curs2.fetchone()[0]
+                            except:
+                                total_count  = 0
             except Exception as e:
                 msg = f"Error querying vw_api_productbase: {e}"
                 logger.error(msg)
                 # print (msg)
-            else:
-                if res:
-                    ret_val = curs.fetchall()
-                    curs.close()
-
-                    if limit_clause is not None:
-                        # do another query to count
-                        curs2 = self.db.cursor()
-                        sqlCount = "SELECT COUNT(*) " + sqlAll
-                        curs2.execute(sqlCount)
-                        try:
-                            total_count = curs2.fetchone()[0]
-                        except:
-                            total_count  = 0
-                        curs2.close()
-                    else:
-                        total_count = len(ret_val)
-                else:
-                    ret_val = None
             
         self.close_connection(caller_name=fname) # make sure connection is closed
 
@@ -1617,7 +1714,7 @@ class opasCentralDB(object):
                 else:
                     self.open_connection(caller_name=fname) # make sure connection is open
                     try:
-                        with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                        with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
                             for item in client_configuration.configList:
                                 configName = item.configName
                                 configSettings = item.configSettings
@@ -1645,6 +1742,11 @@ class opasCentralDB(object):
                                                      session_id
                                                     )
                                                    )
+                                warnings = curs.fetchwarnings()
+                                if warnings:
+                                    for warning in warnings:
+                                        logger.warning(warning)
+                                
                             self.db.commit()
             
                     except Exception as e:
@@ -1699,7 +1801,7 @@ class opasCentralDB(object):
                 else:
                     self.open_connection(caller_name=fname) # make sure connection is open
                     try:
-                        with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+                        with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
                             configName = client_configuration_item.configName
                             configSettings = client_configuration_item.configSettings
                             
@@ -1727,6 +1829,10 @@ class opasCentralDB(object):
                                                      session_id
                                                     )
                                                    )
+                                warnings = curs.fetchwarnings()
+                                if warnings:
+                                    for warning in warnings:
+                                        logger.warning(warning)
 
                             # now save
                             succ = curs.execute(sql,
@@ -1736,6 +1842,12 @@ class opasCentralDB(object):
                                                  session_id
                                                 )
                                                )
+
+                            warnings = curs.fetchwarnings()
+                            if warnings:
+                                for warning in warnings:
+                                    logger.warning(warning)
+                            
                             self.db.commit()
             
                     except Exception as e:
@@ -1786,10 +1898,10 @@ class opasCentralDB(object):
             client_id_int = int(client_id)
         except Exception as e:
             msg = f"Client ID should be a string containing an int {e}"
-            logging.error(msg)
+            logger.error(msg)
             ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
-            with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
                 ret_val_list = []
                 for client_config_name in client_config_name_list:
                     sql = f"""SELECT *
@@ -1797,8 +1909,9 @@ class opasCentralDB(object):
                               WHERE client_id = {client_id_int}
                               AND config_name = '{client_config_name}'"""
         
-                    res = curs.execute(sql)
-                    if res >= 1:
+                    curs.execute(sql)
+                    row_count = curs.rowcount
+                    if row_count >= 1:
                         clientConfig = curs.fetchone()
                         ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
                     else:
@@ -1840,7 +1953,7 @@ class opasCentralDB(object):
             client_id_int = int(client_id)
         except Exception as e:
             msg = f"Client ID should be a string containing an int {e}"
-            logging.error(msg)
+            logger.error(msg)
             ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
             if saved is not None:
@@ -1849,9 +1962,10 @@ class opasCentralDB(object):
                               WHERE client_id = {client_id_int}
                               AND config_name = '{client_config_name}'"""
             
-                    with closing(self.db.cursor(pymysql.cursors.DictCursor)) as curs:
-                        res = curs.execute(sql)
-                        if res >= 1:
+                    with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                        curs.execute(sql)
+                        row_count = curs.rowcount
+                        if row_count >= 1:
                             ret_val = saved
                             self.db.commit()
                         else:
@@ -1880,31 +1994,33 @@ class opasCentralDB(object):
             return ret_val
         try:
             if view_type.lower() != "abstract" and view_type.lower() != "image/jpeg":
-                try:
-                    cursor = self.db.cursor()
-                    sql = """INSERT INTO 
-                                api_docviews(user_id, 
-                                              document_id, 
-                                              session_id, 
-                                              type, 
-                                              datetimechar
-                                             )
-                                             VALUES 
-                                              (%s, %s, %s, %s, %s)"""
-                    
-                    ret_val = cursor.execute(sql,
-                                            (user_id,
-                                             document_id,
-                                             session_id, 
-                                             view_type, 
-                                             datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
-                                             )
+                if self.db is not None:
+                    with closing(self.db.cursor()) as cursor:
+                        try:
+                            sql = """INSERT INTO 
+                                        api_docviews(user_id, 
+                                                      document_id, 
+                                                      session_id, 
+                                                      type, 
+                                                      datetimechar
+                                                     )
+                                                     VALUES 
+                                                      (%s, %s, %s, %s, %s)"""
+                            
+                            cursor.execute(sql,
+                                           (user_id,
+                                            document_id,
+                                            session_id, 
+                                            view_type, 
+                                            datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
                                             )
-                    self.db.commit()
-                    cursor.close()
-        
-                except Exception as e:
-                    logger.error(f"Error saving document {document_id} view {view_type} for session {session_id} and user_id {user_id}: {e}")
+                                           )
+                            self.db.commit()
+                            cursor.close()
+                            ret_val = True
+                
+                        except Exception as e:
+                            logger.error(f"Error saving document {document_id} view {view_type} for session {session_id} and user_id {user_id}: {e}")
                     
         except Exception as e:
             logger.error(f"Error checking document view type {view_type}: {e}")
@@ -1945,38 +2061,37 @@ class opasCentralDB(object):
             self.open_connection(caller_name=fname) # make sure connection is open
             localDisconnectNeeded = True
             
-        dbc = self.db.cursor(pymysql.cursors.DictCursor)
-        try:
-            ret_val = dbc.execute(querytxt, queryparams)
-        except self.db.DataError as e:
-            logger.error(f"DBError: Art: {contextStr}. DB Data Error {e} ({querytxt})")
-            raise self.db.DataError(e)
-        except self.db.OperationalError as e:
-            logger.error(f"DBError: Art: {contextStr}. DB Operation Error {e} ({querytxt})")
-            raise self.db.OperationalError(e)
-        except self.db.IntegrityError as e:
-            logger.error(f"DBError: Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
-            raise self.db.IntegrityError(e)
-        except self.db.InternalError as e:
-            logger.error(f"DBError: Art: {contextStr}. DB Internal Error {e} ({querytxt})")
-            raise self.db.InternalError(e)
-            # raise RuntimeError, gErrorLog.logSevere("Art: %s.  DB Intr. Error (%s)" % (contextStr, querytxt))
-        except self.db.ProgrammingError as e:
-            logger.error(f"DBError: DB Programming Error {e} ({querytxt})")
-            raise self.db.ProgrammingError(e)
-        except self.db.NotSupportedError as e:
-            logger.error(f"DBError: DB Feature Not Supported Error {e} ({querytxt})")
-            raise self.db.NotSupportedError(e)
-        except Exception as e:
-            logger.error(f"DBError: Exception: %s" % (e))
-            raise Exception(e)
-    
-        # close cursor
-        dbc.close()
+        with closing(self.db.cursor(buffered=True, dictionary=True)) as dbc:
+            try:
+                ret_val = dbc.execute(querytxt, queryparams)
+            except mysql.connector.DataError as e:
+                logger.error(f"DBError: Art: {contextStr}. DB Data Error {e} ({querytxt})")
+                ret_val = None
+                # raise self.db.DataError(e)
+            except mysql.connector.OperationalError as e:
+                logger.error(f"DBError: Art: {contextStr}. DB Operation Error {e} ({querytxt})")
+                raise mysql.connector.OperationalError(e)
+            except mysql.connector.IntegrityError as e:
+                logger.error(f"DBError: Art: {contextStr}. DB Integrity Error {e} ({querytxt})")
+                raise mysql.connector.IntegrityError(e)
+            except mysql.connector.InternalError as e:
+                logger.error(f"DBError: Art: {contextStr}. DB Internal Error {e} ({querytxt})")
+                raise mysql.connector.InternalError(e)
+                # raise RuntimeError, gErrorLog.logSevere("Art: %s.  DB Intr. Error (%s)" % (contextStr, querytxt))
+            except mysql.connector.ProgrammingError as e:
+                logger.error(f"DBError: DB Programming Error {e} ({querytxt})")
+                raise mysql.connector.ProgrammingError(e)
+            except mysql.connector.NotSupportedError as e:
+                logger.error(f"DBError: DB Feature Not Supported Error {e} ({querytxt})")
+                raise mysql.connector.NotSupportedError(e)
+            except Exception as e:
+                logger.error(f"DBError: Exception: %s" % (e))
+                raise Exception(e)
+            else:
+                self.db.commit()
         
         if localDisconnectNeeded == True:
             # if so, commit any changesand close.  Otherwise, it's up to caller.
-            self.db.commit()
             self.close_connection(caller_name=fname) # make sure connection is open
         
         return ret_val
@@ -1991,21 +2106,38 @@ class opasCentralDB(object):
             self.open_connection(caller_name=fname) # make sure connection is open
             localDisconnectNeeded = True
             
-        dbc = self.db.cursor(pymysql.cursors.DictCursor)
-        try:
-            ret_val = dbc.execute(querytxt, queryparams)
-        except Exception as e:
-            raise Exception(e)
+        with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+            try:
+                ret_val = curs.execute(querytxt, queryparams)
+            except Exception as e:
+                raise Exception(e)
     
-        # close cursor
-        dbc.close()
-        
         if localDisconnectNeeded == True:
             # if so, commit any changesand close.  Otherwise, it's up to caller.
             self.db.commit()
             self.close_connection(caller_name=fname) # make sure connection is open
         
         return ret_val
+    
+    #----------------------------------------------------------------------------------------
+    def log_pads_calls(self,
+                       caller,
+                       reason, 
+                       session_id,
+                       pads_call, # PaDS URL
+                       ip_address=None, 
+                       params=None,  # full url
+                       api_endpoint_id=0, 
+                       return_status_code=0,
+                       status_message=None):
+        """
+        Track pads calls
+        2021-11-08 Don't log to DB table temp_trackpads_calls anymore.  Just to debug output.
+        """
+        # Just output to STDOUT
+        logger.debug (f"Track Calls to PaDS ({time.time()}): Session ID: {session_id}; ip address: {ip_address}. PaDS Call: {pads_call}")
+    
+        return 
 
 #================================================================================================================================
 

@@ -64,28 +64,29 @@ class TestDatabase(unittest.TestCase):
         sources = ocd.get_sources(src_type="stream")
         assert(sources[0] >= 12)
 
-    def test_opasdb_abuse_too_many_opens(self):
-        fname = "test_code_abuse"
-        ocd = opasCentralDB()
-        assert(ocd.unpaired_connection_count == 0)
-        ocd.close_connection(caller_name=fname) # connection not yet open, no effect
-        assert(ocd.unpaired_connection_count == 0)
-        ocd.close_connection(caller_name=fname) # connection not yet open, no effect
-        assert(ocd.unpaired_connection_count == 0)
-        ocd.open_connection(caller_name=fname) # connection not yet open, opens it
-        assert(ocd.unpaired_connection_count == 0) # ok
-        ocd.open_connection(caller_name=fname) # second open!
-        assert(ocd.unpaired_connection_count == 1) # log unpaired open
-        ocd.open_connection(caller_name=fname)  
-        assert(ocd.unpaired_connection_count == 2) # another unpaired open
-        ocd.close_connection(caller_name=fname) # should close the open connection
-        ocd.close_connection(caller_name=fname) # no effect
-        ocd.close_connection(caller_name=fname) # no effect
-        assert(ocd.connected == False)
-        ocd.open_connection(caller_name=fname)  
-        assert(ocd.unpaired_connection_count == 0) # open
-        ocd.open_connection(caller_name=fname)  
-        assert(ocd.unpaired_connection_count == 1) # unpaired open
+    # no longer applicable
+    #def test_opasdb_abuse_too_many_opens(self):
+        #fname = "test_code_abuse"
+        #ocd = opasCentralDB()
+        #assert(ocd.unpaired_connection_count == 0)
+        #ocd.close_connection(caller_name=fname) # connection not yet open, no effect
+        #assert(ocd.unpaired_connection_count == 0)
+        #ocd.close_connection(caller_name=fname) # connection not yet open, no effect
+        #assert(ocd.unpaired_connection_count == 0)
+        #ocd.open_connection(caller_name=fname) # connection not yet open, opens it
+        #assert(ocd.unpaired_connection_count == 0) # ok
+        #ocd.open_connection(caller_name=fname) # second open!
+        #assert(ocd.unpaired_connection_count == 1) # log unpaired open
+        #ocd.open_connection(caller_name=fname)  
+        #assert(ocd.unpaired_connection_count == 2) # another unpaired open
+        #ocd.close_connection(caller_name=fname) # should close the open connection
+        #ocd.close_connection(caller_name=fname) # no effect
+        #ocd.close_connection(caller_name=fname) # no effect
+        #assert(ocd.connected == False)
+        #ocd.open_connection(caller_name=fname)  
+        #assert(ocd.unpaired_connection_count == 0) # open
+        #ocd.open_connection(caller_name=fname)  
+        #assert(ocd.unpaired_connection_count == 1) # unpaired open
           
         
 if __name__ == '__main__':

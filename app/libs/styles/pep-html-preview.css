@@ -150,7 +150,7 @@ by {
   color: maroon;
 }
 
-.quote {
+.quote, .quote > p {
   font-style: italic;
   margin-right: +.25in;
   margin-left: +.25in;

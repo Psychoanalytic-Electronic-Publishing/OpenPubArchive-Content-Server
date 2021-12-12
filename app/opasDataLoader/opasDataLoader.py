@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0623.1" 
+__version__     = "2021.1206.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -18,7 +18,7 @@ if sys.version_info[0] < 3:
 
 print(
     f""" 
-    {programNameShort} - Open Publications-Archive Server (OPAS) - Document, Authors, and References Core Loader
+        {programNameShort} - Open Publications-Archive Server (OPAS) - Document, Authors, and References Core Loader
     
         Load articles into the Docs, Authors, and Glossary Solr cores and
         load article information and bibliography entries into a MySQL database
@@ -37,6 +37,8 @@ print(
          --sub       Start with this subfolder of the root (can add sublevels to that)
          --key:      Do just one file with the specified PEP locator (e.g., --key AIM.076.0309A)
          --nocheck   Don't prompt whether to proceed after showing setting/option choices
+         --reverse   Process in reverse
+         --halfway   Stop after doing half of the files, so it can be run in both directions
 
         Example:
           Update all files from the root (default, pep-web-xml) down.  Starting two runs, one running the file list forward, the other backward.
@@ -56,7 +58,6 @@ print(
           S3 has subfolders _PEPArchive, _PEPCurrent, _PEPFree, _PEPOffsite
             to allow easy processing of one archive type at a time simply using
             the --sub option (or four concurrently for faster processing).
-
     """
 )
 
@@ -67,7 +68,6 @@ sys.path.append('../libs/configLib')
 
 import time
 import random
-import pymysql
 import pysolr
 import localsecrets
 import re
@@ -81,7 +81,7 @@ import datetime as dtime
 from datetime import datetime
 import logging
 logger = logging.getLogger(programNameShort)
-import html
+# import html
 
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.
@@ -91,7 +91,8 @@ from optparse import OptionParser
 from lxml import etree
 #now uses pysolr exclusively!
 # import solrpy as solr 
-import pymysql
+# import pymysql
+import mysql.connector
 
 # import config
 # import opasConfig
@@ -447,6 +448,9 @@ def main():
     
             # save common document (article) field values into artInfo instance for both databases
             artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
+            # watch src_type which comes in as a set from latest database
+            if type(artInfo.src_type) == set:
+                artInfo.src_type = "" if len(artInfo.src_type) == 0 else artInfo.src_type.pop()                
             artInfo.filedatetime = n.timestamp_str
             artInfo.filename = base
             artInfo.file_size = n.filesize
@@ -462,7 +466,7 @@ def main():
                         issue_updates[artInfo.issue_id_str] = [art]
 
             try:
-                artInfo.file_classification = re.search("(?P<class>current|archive|future|free|offsite)", str(n.filespec), re.IGNORECASE).group("class")
+                artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
                 # set it to lowercase for ease of matching later
                 if artInfo.file_classification is not None:
                     artInfo.file_classification = artInfo.file_classification.lower()
@@ -513,7 +517,7 @@ def main():
 
                     try:
                         ocd.db.commit()
-                    except pymysql.Error as e:
+                    except mysql.connector.Error as e:
                         print("SQL Database -- Biblio Commit failed!", e)
                         
                     ocd.close_connection(caller_name="processBibliographies")
@@ -616,6 +620,9 @@ if __name__ == "__main__":
     options = None
     parser = OptionParser(usage="%prog [options] - PEP Solr Data Loader", version=f"%prog ver. {__version__}")
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
+                      help="Option to force all files to be updated on the specified cores.")
+    # redundant add option to use so compatible options to the PEPXML code for manual use
+    parser.add_option("--rebuild", action="store_true", dest="forceRebuildAllFiles", default=False,
                       help="Option to force all files to be updated on the specified cores.")
     parser.add_option("--after", dest="created_after", default=None,
                       help="Load files created or modifed after this datetime (use YYYY-MM-DD format). (May not work on S3)")

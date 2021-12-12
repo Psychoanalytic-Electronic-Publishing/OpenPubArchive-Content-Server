@@ -234,7 +234,6 @@ CREATE TABLE `api_sessions`  (
   `authenticated` tinyint(1) NULL DEFAULT 0 COMMENT 'user data from PaDS - is user authenticated',
   `authorized_peparchive` tinyint(1) NULL DEFAULT 0 COMMENT 'user data from PaDS - does user have access to peparchive',
   `authorized_pepcurrent` tinyint(1) NULL DEFAULT 0 COMMENT 'user data from PaDS - does user have access to pepcurrent',
-  `confirmed_unauthenticated` tinyint(1) NULL DEFAULT 0,
   `has_subscription` tinyint(1) NULL DEFAULT 0 COMMENT 'user data from PaDS - does user have any subscription',
   `is_valid_login` tinyint(1) NULL DEFAULT 0 COMMENT 'user data from PaDS - is user logged in',
   `is_valid_username` tinyint(1) NULL DEFAULT 0 COMMENT 'user data from PaDS - is this a valid user name',

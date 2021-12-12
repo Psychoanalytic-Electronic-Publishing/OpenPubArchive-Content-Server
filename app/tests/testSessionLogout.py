@@ -33,6 +33,7 @@ class TestSessionLogout(unittest.TestCase):
         orig_session_id =  r["session_id"]
 
         full_URL = base_plus_endpoint_encoded('/v2/Session/Logout/')
+        headers["client-session"] = orig_session_id
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)

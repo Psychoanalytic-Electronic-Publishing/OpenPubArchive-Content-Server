@@ -4,8 +4,10 @@
 
 import unittest
 import requests
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, get_headers_not_logged_in
 
-from unitTestConfig import base_plus_endpoint_encoded, headers
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestDatabaseSearch(unittest.TestCase):
     def test_database_search_volume_issue_fields(self):
@@ -62,7 +64,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         kwiclist = r["documentList"]["responseSet"][0]["kwicList"]
@@ -75,7 +77,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         kwiclist = r["documentList"]["responseSet"][0]["kwicList"]
@@ -88,7 +90,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 1)
@@ -100,7 +102,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 2) # should REALLY be 3. I confirmed all three papers above in test_search_long_para...
@@ -112,7 +114,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True) # rank is accepted, same as score
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 47)
@@ -169,7 +171,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 2)
@@ -180,7 +182,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 20)
@@ -190,7 +192,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 20)
@@ -201,7 +203,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 610)
@@ -211,7 +213,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 610)
@@ -222,7 +224,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 42)
@@ -233,7 +235,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 21)
@@ -244,7 +246,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 588)
@@ -255,7 +257,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 3)
@@ -289,7 +291,7 @@ class TestDatabaseSearch(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["count"] == 1)

@@ -6,8 +6,12 @@ logger = logging.getLogger(__name__)
 
 import unittest
 import requests
+import sys
+from datetime import datetime
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_info
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestMost(unittest.TestCase):
     """
@@ -20,6 +24,7 @@ class TestMost(unittest.TestCase):
         """
         Test calls made by typical client (e.g., Gavant)
         """
+        print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?formatrequested=XML&limit=10&viewperiod=2')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -33,13 +38,14 @@ class TestMost(unittest.TestCase):
         assert(response.ok == True)
 
     def test_0_most_downloaded(self):
+        print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
         # request login to the API server
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        # print (r)
         print (f"Count: {r['documentList']['responseInfo']['count']}")
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
         if r['documentList']['responseInfo']['count'] > 0:
@@ -57,6 +63,7 @@ class TestMost(unittest.TestCase):
     def test_0_most_downloaded_pubperiod_author_viewperiod(self):
         """
         """
+        print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&author=tuck%2A&viewperiod=4&limit=5')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
@@ -74,9 +81,10 @@ class TestMost(unittest.TestCase):
 
         #assert(r["text_server_ok"] == True)
         #assert(r["db_server_ok"] == True)
-        print (r)
+        # print (r)
 
     def test_0_mostviewed_argument_robustness(self):
+        print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=0')
         response = requests.get(full_URL, headers=headers)
         # Try it with variations of the sourcetype to test new robust argument values
@@ -122,6 +130,7 @@ class TestMost(unittest.TestCase):
     def test_0_mostviewed_videos(self):
         """
         """
+        print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
         # request login to the API server
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=videostream&viewperiod=4&limit=5')
         response = requests.get(full_URL, headers=headers)
@@ -139,13 +148,14 @@ class TestMost(unittest.TestCase):
             
         #assert(r["text_server_ok"] == True)
         #assert(r["db_server_ok"] == True)
-        print (r)
+        # print (r)
         # Try it with variations of the sourcetype to test new robust argument values
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?pubperiod=30&sourcetype=vid&viewperiod=4&limit=5')
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         
     def test_0_most_viewed_download(self):
+        print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
         full_URL = base_plus_endpoint_encoded('/v2/Database/MostViewed/?download=True')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.

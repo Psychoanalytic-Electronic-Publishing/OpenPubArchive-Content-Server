@@ -8,7 +8,9 @@
 import unittest
 import requests
 import unitTestConfig
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestMetadataBooksJournalsVideos(unittest.TestCase):
     """
@@ -28,6 +30,13 @@ class TestMetadataBooksJournalsVideos(unittest.TestCase):
         r = response.json()
         print (f"Book Count: {r['sourceInfo']['responseInfo']['fullCount']}")
         assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.BOOKCOUNT)
+        
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Books/?sourcecode=GW')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseSet'][0]["accessClassification"] == "archive")
 
     def test_9_meta_journals(self):
         """
@@ -40,13 +49,24 @@ class TestMetadataBooksJournalsVideos(unittest.TestCase):
         # test return
         r = response.json()
         assert(r['sourceInfo']['responseInfo']['count'] == 1)
+        assert(r['sourceInfo']['responseSet'][0]["accessClassification"] == "archive")
 
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/?sourcecode=IJPOPen')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        assert(r['sourceInfo']['responseInfo']['count'] == 1)
+        assert(r['sourceInfo']['responseSet'][0]["accessClassification"] == "special")
+
+    def test_10_meta_videos(self):
         full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/?sourcecode=PEPGRANTVS')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         # test return
         r = response.json()
         assert(r['sourceInfo']['responseInfo']['count'] == 1)
+        assert(r['sourceInfo']['responseSet'][0]["accessClassification"] == "archive")
     
         
 if __name__ == '__main__':

@@ -1070,7 +1070,6 @@
       <xsl:apply-templates select="@content-type"/>
       <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="data-pagehelper"/>
-      <xsl:apply-templates/>
       <xsl:if test="@lgrid">
         <xsl:attribute name="data-lgrid">
           <xsl:value-of select="@lgrid"/>
@@ -1086,6 +1085,7 @@
           <xsl:value-of select="@lgrtype"/>
         </xsl:attribute>
       </xsl:if>
+      <xsl:apply-templates/>
     </p>
   </xsl:template>
 

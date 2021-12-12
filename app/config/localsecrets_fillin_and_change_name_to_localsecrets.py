@@ -12,8 +12,8 @@ from datetime import datetime
 HIGHLIGHT_STOP_WORDS_FILE = r"../config/highlight_stop_words.txt"
 DATA_UPDATE_LOG_DIR = "./dataUpdateLogs"
 
-# Time formats
-TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
+# Time formats (moved to opasConfig)
+#TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 
 # *******************************************************************
 # OPAS Definitions Re-used in various places below

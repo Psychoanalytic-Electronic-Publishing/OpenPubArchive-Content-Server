@@ -2,6 +2,11 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
 
+    2021-11-20 Added embargo and embargo type for IJPOpen, but can be used generally to embargo a specific article (if true)
+               Type can be used for conditional processing, or to recall an explanatory message based on this. 
+
+               Example type: IJPOpenRemoved
+
     2021-07-07 Added synonyms (_syn) to references_xml, that seems pretty important if searching titles of articles in that
                area, and it's one of the fields called out in the UI
 
@@ -202,9 +207,14 @@
   <field name="text" type="text_simple" indexed="true" stored="false" multiValued="false"/>
   <field name="text_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
   <!--If offsite text, then the server shall return a pointer to the data, rather than the full-text.  But it will be searchable. -->
-  <field name="art_offsite" type="boolean" indexed="true" stored="true" docValues="true" multiValued="false"/>
+  <field name="art_offsite" type="boolean" indexed="true" stored="true" docValues="true" default="false" multiValued="false"/>
   <copyField source="text_xml*" dest="text"/>
   <copyField source="text_xml*" dest="text_syn"/>
+
+  <!--Added 2021-11-20 for IJPOpen, but can be used generally to embargo a specific article-->
+  <field name="art_embargo" type="boolean" indexed="false" stored="true" docValues="true" default="false" multiValued="false"/>
+  <field name="art_embargotype" type="string_ci" indexed="true" stored="true" multiValued="false" docValues="false"/>
+  
   <!--......................................................................................................-->
   <!--TITLE-->
   <!-- Title includes subtitle -->
@@ -366,7 +376,7 @@
   <field name="summaries_xml" type="text_general" indexed="true" stored="true" multiValued="true"/> <!--this is used to display-->
   <!--Precompute an extract for docs without abstracts or summaries.  Will be html -->
   <field name="art_excerpt" type="text_general" indexed="true" stored="true" multiValued="false" uninvertible="false"/> <!--this is used to display-->
-  <!--Store XML version of displayab;e summary/abstract so the client can do their own XSLT transform. 2020-08-13 -->
+  <!--Store XML version of displayable summary/abstract so the client can do their own XSLT transform. 2020-08-13 -->
   <field name="art_excerpt_xml" type="text_general" indexed="true" stored="true" multiValued="false" uninvertible="false"/> <!--this is used to display-->
 
   <!-- Added this 6/25 to allow any part of a journal name to be searched.-->

@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0603/v1.1.5"
+__version__     = "2021.1121/v1.1.6"
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -31,6 +31,8 @@ print(
          vw_stat_docviews_crosstab
          vw_stat_cited_crosstab
          
+      2020-11-21 Added library numbers display to main startup to monitor what it's running under.
+      
       2020-10-29 Important update - Since it is used at database build/rebuild time, it now updates all records
          where views are non-zero, not just the last week.
     """
@@ -422,6 +424,8 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
 
 if __name__ == "__main__":
     import argparse
+    import pymysql
+    
     parser = argparse.ArgumentParser() 
     parser.add_argument('--version', action='version',
                         version='%(prog)s {version}'.format(version=__version__))    
@@ -442,6 +446,16 @@ if __name__ == "__main__":
     else: #  no user and password needed
         solr_docs2 = pysolr.Solr(solrurl_docs)
     start_time = time.time()
+    print (f"Solr URL used: {solrurl_docs}")
+    try:
+        print (f"Configuration used: {localsecrets.CONFIG}")
+    except: # in case it's not set on AWS
+        pass
+        
+    library_versions = {"pymysql": pymysql.__version__,
+                        "pysolr": pysolr.__version__,
+                       }
+    print (f"Key Library Versions: {library_versions}")
     load_unified_article_stat()
     updates = update_solr_stat_data(solr_docs2, args.all_records)
     total_time = time.time() - start_time

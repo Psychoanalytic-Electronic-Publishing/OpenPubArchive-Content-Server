@@ -9,7 +9,9 @@ import models
 from opasPySolrLib import search_text, search_text_qs
 
 import requests
-from unitTestConfig import base_plus_endpoint_encoded, headers, session_id, session_info
+import unitTestConfig
+from unitTestConfig import base_plus_endpoint_encoded, headers
+session_info = unitTestConfig.get_session_info_for_test()
 
 ocd = opasCentralDBLib.opasCentralDB()
 fulltext1 = [

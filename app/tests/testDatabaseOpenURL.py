@@ -5,7 +5,9 @@
 import unittest
 import requests
 
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestDatabaseOpenURL(unittest.TestCase):
     def test_search_issn(self):
@@ -13,7 +15,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["issn"] == '1018-2756')
@@ -23,7 +25,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["issn"] == '1018-2756')
@@ -33,7 +35,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -43,7 +45,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -53,7 +55,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (response_set[0]["PEPCode"])
@@ -66,7 +68,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 100)
@@ -77,7 +79,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (response_set[0]["authorMast"])
@@ -88,7 +90,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -99,7 +101,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -110,7 +112,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -120,7 +122,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -131,7 +133,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -141,7 +143,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["pgStart"] == '22')
@@ -151,7 +153,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_set[0]["pgStart"] == '79')
@@ -160,7 +162,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -171,7 +173,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -181,7 +183,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -193,7 +195,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)
@@ -204,7 +206,7 @@ class TestDatabaseOpenURL(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert(response_info["count"] >= 1)

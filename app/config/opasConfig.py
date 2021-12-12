@@ -14,6 +14,18 @@ from schemaMap import PREDEFINED_SORTS
 import localsecrets
 import opasFileSupport
 
+TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
+
+# To test idea for limiting access calls
+LIMIT_TEST_DO_THIS = True
+LIMIT_TEST_DONT_DO_THIS = False
+
+WHATS_NEW_EXPIRES_DAYS = 0
+WHATS_NEW_EXPIRES_HOURS = 8
+WHATS_NEW_EXPIRES_MINUTES = 0
+
+EXPERT_PICKS_DEFAULT_IMAGE = "IJP.100.1465A.F0002"
+
 #import urllib.request
 # from enum import Enum, EnumMeta, IntEnum
 
@@ -35,6 +47,7 @@ FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message
 logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 LOG_CALL_TIMING = True
 LOCAL_TRACE = False                   # turn this on to see the queries easily.
+LOCAL_DBOPEN_TRACE = False            # show open/close db in init/del
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
@@ -42,6 +55,9 @@ BOOK_CODES_ALL = ("GW", "SE", "ZBK", "NLP", "IPL")
 VIDEOSTREAM_CODES_ALL = ("AFCVS", "BPSIVS", "IJPVS", "IPSAVS", "NYPSIVS", "PCVS", "PEPGRANTVS", "PEPTOPAUTHVS", "PEPVS", "SFCPVS", "SPIVS", "UCLVS")
 ALL_EXCEPT_JOURNAL_CODES = BOOK_CODES_ALL + VIDEOSTREAM_CODES_ALL
 
+DOWNLOADS_MAX_PAGE_COUNT = 50
+DOWNLOADS_TYPES_RESTRICTED = ("book", )
+DOWNLOADS_TYPES_OVERRIDDEN = ("book", )
 # Note: language symbols to be lower case (will be converted to lowercase if not)
 DEFAULT_DATA_LANGUAGE_ENCODING = "en"
 CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr", "de-de", "it-it")
@@ -88,7 +104,7 @@ API_URL_DOCUMENTURL = "/v2/Documents/"
 
 MAX_WHATSNEW_ARTICLES_TO_CONSIDER = 1000
 
-IMAGES = "v2/Documents/Image" # from endpoint; was just images, e.g., "http://pep-web.rocks/images/bannerADPSALogo.gif
+IMAGES = "v2/Documents/Image" # from endpoint; was just images, e.g., "http://pep-web.org/images/bannerADPSALogo.gif
 HITMARKERSTART = "#@@@"  # using non html/xml default markers, so we can strip all tags but leave the hitmarkers!
 HITMARKEREND = "@@@#"
 HITMARKERSTART_OUTPUTHTML = "<span class='searchhit'>"  # to convert the non-markup HIT markers to HTML, supply values here.  These match the current PEPEasy stylesheet.
@@ -116,10 +132,12 @@ AUTH_ABSTRACT_VIEW_REQUEST = "AbstractView"
 
 # file classifications (from documents in the Solr database)
 DOCUMENT_ACCESS_FREE = "free"
-DOCUMENT_ACCESS_EMBARGOED = "current"
+DOCUMENT_ACCESS_CURRENT = "current"
+DOCUMENT_ACCESS_FUTURE = "future"      # Same as current but different messages
 DOCUMENT_ACCESS_ARCHIVE = "archive"
 DOCUMENT_ACCESS_UNDEFINED = "undefined"
 DOCUMENT_ACCESS_OFFSITE = "offsite"
+DOCUMENT_ACCESS_SPECIAL = "special"
 DOCUMENT_ACCESS_TOC = "toc"              # special handling tocs (free)
 # Let this be the default, e.g., when there's no data, like for paras
 DOCUMENT_ACCESS_DEFAULT = DOCUMENT_ACCESS_ARCHIVE
@@ -135,11 +153,12 @@ DEFAULT_KWIC_CONTENT_LENGTH = 50  # On each side of match (so use 1/2 of the tot
 DEFAULT_MAX_KWIC_RETURNS = 5
 DEFAULT_LIMIT_FOR_SOLR_RETURNS = 15
 DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS = 1
-DEFAULT_LIMIT_FOR_WHATS_NEW = 5
+DEFAULT_LIMIT_FOR_WHATS_NEW = 15
+DEFAULT_DAYS_BACK_FOR_WHATS_NEW = 30
 DEFAULT_LIMIT_FOR_VOLUME_LISTS = 10000 # 2020-04-06 raised from 100, so all volumes can be brought back at once
 DEFAULT_LIMIT_FOR_CONTENTS_LISTS = 200
 DEFAULT_LIMIT_FOR_METADATA_LISTS = 200
-DEFAULT_SOLR_SORT_FIELD = "art_cited_5" 
+DEFAULT_SOLR_SORT_FIELD = "art_cited_5"
 DEFAULT_SOLR_SORT_DIRECTION = "asc" # desc or asc
 DEFAULT_LIMIT_FOR_EXCERPT_LENGTH = 4000  # If the excerpt to first page break exceeds this, uses a workaround since usually means nested first page break.
 DEFAULT_CITED_MORE_THAN = 0
@@ -160,7 +179,6 @@ SOLRFIELD = "SOLRFIELD"
 ADVANCED = "ADVANCED"
 DOI = "DOI"
 REFERENCEFIELDS = "REFERENCEFIELDS"
-
 
 #Standard Values for parameters
 # here anything matching the first 4 characters of type matches.
@@ -199,6 +217,9 @@ def normalize_val(val, val_dict, default=None):
             logging.warning(f"Value check returned error {e}")
     
     return ret_val
+
+# Special relatedrx field name from Solr schema
+RELATED_RX_FIELDNAME = "art_qual"
 
 # Special Options flag map:
 OPTION_1_NO_GLOSSARY_TERM_MARKUP = 1
@@ -272,14 +293,13 @@ DESCRIPTION_ISBN = "International Standard Book Number. 10 digits up to the end 
 DESCRIPTION_ISSUE = "The issue number if the source has one (or S, or Supplement for supplements).  If alpha will convert to equivalent number counting from A."
 DESCRIPTION_LIMIT = "Maximum number of items to return."
 DESCRIPTION_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
-DESCRIPTION_MOREINFO = "Return statistics on the Archive holdings (admins always get this.)"
+DESCRIPTION_MOREINFO = "Return statistics on the Archive holdings (and extended version info for admins)"
 DESCRIPTION_MORELIKETHIS = "Find similar documents"
-DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (in full years: {list_values(VALS_YEAROPTIONS)})"
-DESCRIPTION_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (periods: {list_values(VALS_VIEWPERIODDICT_SOLRFIELDS)})"
+DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period [in full years: 5, 10, 20, al(l)]"
+DESCRIPTION_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (use integer: 1: lastweek,  2: lastmonth, 3: last6months, 4: last12months,  5: lastcalendaryear)"
 DESCRIPTION_OFFSET = "Start return with this item, referencing the sequence number in the return set (for paging results)."
 DESCRIPTION_PAGELIMIT = "Number of pages of a document to return"
 DESCRIPTION_PAGEOFFSET = "Starting page to return for this document as an offset from the first page.)"
-DESCRIPTION_PAGEOFFSET = "The relative page number (1 is the first) to return"
 DESCRIPTION_PAGEREQUEST = "The page or page range (from the document's numbering) to return (e.g., 215, or 215-217)"
 DESCRIPTION_PARAM_SOURCETYPE = f"Source type (One of: {list_values(VALS_SOURCE_TYPE)})"
 DESCRIPTION_PARASCOPE = "scope: doc, dreams, dialogs, biblios, per the schema (all the p_ prefixed scopes are also recognized without the p_ here)"
@@ -287,8 +307,10 @@ DESCRIPTION_PARATEXT = "Words or phrases (in quotes) in a paragraph in the docum
 #DESCRIPTION_PARAZONE_V1 = "scope: doc, dreams, dialogs, biblios, per the schema (all the p_ prefixed scopes are also recognized without the p_ here)"
 DESCRIPTION_PATH_SOURCETYPE = f"Source type.  One of: {list_values(VALS_SOURCE_TYPE)})"
 DESCRIPTION_PUBLICATION_PERIOD = "Number of publication years to include (counting back from current year, 0 means current year)"
-DESCRIPTION_REQUEST = "The request object, passed in automatically by FastAPI"
+DESCRIPTION_RELATEDTOTHIS = "Enter a document ID to find all related documents per a common schema value"
+DESCRIPTION_REPORT_REQUESTED="One of the predefined report names"
 DESCRIPTION_REPORT_MATCHSTR="Report specific match string (params for session-views/user-searches, e.g., /Documents/Document/AIM.023.0227A/, and type for document-activity, e.g., PDF)"
+DESCRIPTION_REQUEST = "The request object, passed in automatically by FastAPI"
 DESCRIPTION_RETURNFORMATS = "The format of the returned full-text (e.g., abstract or document data).  One of: 'HTML', 'XML', 'TEXTONLY'.  The default is HTML."
 DESCRIPTION_RETURN_ABSTRACTS = "Return abstracts in the documentList (Boolean: true or false)"
 DESCRIPTION_SEARCHPARAM = "This is a document request, including search parameters, to show hits"
@@ -364,22 +386,23 @@ TITLE_ISSUE = "Issue Number"
 TITLE_LIMIT = "Document return limit"
 TITLE_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 TITLE_MOREINFO = "Return extended information"
-TITLE_MORELIKETHIS = "Enter an article ID to Find similar documents"
-TITLE_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period (years: {list_values(VALS_YEAROPTIONS)})"
-TITLE_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (periods: {list_values(VALS_VIEWPERIODDICT_SOLRFIELDS)})"
+TITLE_MORELIKETHIS = "Enter an document ID to find similar documents"
+TITLE_MOST_CITED_PERIOD = f"Show articles cited at least this many times during this time period"
+TITLE_MOST_VIEWED_PERIOD = f"Show articles viewed during this period"
+TITLE_NO_CACHE = "Get the latest updates--reload the cache"
 TITLE_OFFSET = "Document return offset"
 TITLE_PAGELIMIT = "Number pages to return"
 TITLE_PAGEOFFSET = "Relative page number (1 is the first) to return"
 TITLE_PAGEREQUEST = "Document's first page or page range"
 TITLE_PARASCOPE = "Scope for paragraph search"
 TITLE_PARATEXT = "Paragraph based search"
+TITLE_RELATEDTOTHIS = "A document ID for which to find related documents"
 TITLE_SMARTSEARCH = "Search input parser"
 TITLE_SPECIALOPTIONS = "Integer mapped to Option flags for special options"
 TITLE_PARAZONE1_V1 = "Zone for paragraph search"
 TITLE_PUBLICATION_PERIOD = "Number of Years to include"
 TITLE_REPORT_MATCHSTR="Report specific match string"
 TITLE_REPORT_REQUESTED="Report Requested"
-DESCRIPTION_REPORT_REQUESTED="One of the predefined report names"
 TITLE_REQUEST = "HTTP Request" 
 TITLE_RETURN_ABSTRACTS_BOOLEAN = "Return an abstract with each match (true/false)"
 TITLE_RETURN_FIELDS = "Fields for data return"
@@ -447,11 +470,15 @@ ENDPOINT_SUMMARY_LOGIN = "Login a user (less secure method)"
 ENDPOINT_SUMMARY_LOGLEVEL = "Admin function to change logging level"
 ENDPOINT_SUMMARY_LOGIN_BASIC = "Login a user more securely"
 ENDPOINT_SUMMARY_LOGOUT = "Logout the user who is logged in"
+ENDPOINT_SUMMARY_METADATA_ARTICLEID = "Check if articleID (document ID) is a valid articleID and break down the subinformation from it"
 ENDPOINT_SUMMARY_MOST_CITED = "Return the most cited journal articles published in this time period (5, 10, 20, or ALL years)"
 ENDPOINT_SUMMARY_WHO_CITED = "Return the documents which cited the document specified during this time period (5, 10, 20, or ALL years)"
+ENDPOINT_SUMMARY_MORELIKETHIS = "Finds related documents based on the contents of the document."
 ENDPOINT_SUMMARY_MOST_VIEWED = "Return the most viewed journal articles published in this time period  (5, 10, 20, or ALL years)"
 ENDPOINT_SUMMARY_OPEN_API = "Return the OpenAPI specification for this API"
+ENDPOINT_SUMMARY_RELATEDTOTHIS = "Finds related documents based on a field mapped to relatedrx"
 ENDPOINT_SUMMARY_REPORTS = "Administrative predefined reports, e.g., from the server logs, e.g., Session-Log, User-Searches"
+ENDPOINT_SUMMARY_SEARCH_SMARTSEARCH = "Convenience function focused on the SmartSearch parameter"
 ENDPOINT_SUMMARY_SEARCH_ADVANCED = "Advanced document search directly using OPAS schemas with OPAS return structures"
 ENDPOINT_SUMMARY_SEARCH_ANALYSIS = "Analyze search and return term/clause counts"
 ENDPOINT_SUMMARY_SEARCH_MORE_LIKE_THESE = "Full Search implementation, but expand the results to include 'More like these'"
@@ -473,24 +500,63 @@ ENDPOINT_SUMMARY_WHATS_NEW = "Return the newest uploaded issues"
 ENDPOINT_SUMMARY_WHO_AM_I = "Return information about the current user"
 ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the specified field"
 
-ACCESS_SUMMARY_DESCRIPTION = "This is a summary excerpt from the full document. "
-ACCESS_SUMMARY_FORSUBSCRIBERS = "The full content of the document is available to subscribers. "
-ACCESS_SUMMARY_EMBARGOED = "The full-text content of the document is embargoed per an agreement with the publisher. "
+# control whether abstracts can be viewed by non-logged-in users
+ACCESS_ABSTRACT_RESTRICTION = False
+
+# Messages - Correspond to api_messages table
+
+# the following symbolic codes are embargo types, so the numeric equivalent is not needed.
+IJPOPEN_REMOVED = 300 # " This article was removed from IJPOpen."
+ACCESS_SUMMARY_ONLY_401_UNAUTHORIZED = 401 # "The authorization system returned a 401 error.  Your session may have timed out. Please try and login again."
+ACCESS_404_DOCUMENT_NOT_FOUND = 404 
+ACCESS_CLASS_DESCRIPTION_OFFSITE = 1200 # "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
+ACCESS_CLASS_DESCRIPTION_FREE = 1201 # "This content is currently free to all users."
+ACCESS_CLASS_DESCRIPTION_ARCHIVE = 1202 # "This archive content is available for you to access."
+ACCESS_CLASS_DESCRIPTION_CURRENT_CONTENT = 1203 # This is current content.  It is embargoed per agreement with the publisher.
+ACCESS_CLASS_DESCRIPTION_SPECIAL = 1204	# This is special content.  Access is determined by source title.	EN
+ACCESS_CLASS_DESCRIPTION_TOC = 1205
+ACCESS_CLASS_DESCRIPTION_FUTURE = 1206
+#1204	ACCESS_CLASS_DESCRIPTION_SPECIAL
+#1205	ACCESS_CLASS_DESCRIPTION_TOC
+#1208	ACCESS_CLASS_DESCRIPTION_AVAILABLE
+#1210	ACCESS_OK_CURRENT_CONTENT_AVAILABLE
+#1211	ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE
+#1216	ACCESS_NOK_FUTURE_CONTENT_NOT_AVAILABLE
+#1217	ACCESS_NOK_CURRENT_CONTENT_NOT_AVAILABLE
+#1220	ACCESS_ABSTRACT_RESTRICTED_MESSAGE
+#1221	ACCESS_SUMMARY_DESCRIPTION
+#1222	ACCESS_SUMMARY_FORSUBSCRIBERS
+#1223	ACCESS_SUMMARY_ONLY_EMBARGOED
+#1224	ACCESS_SUMMARY_FUTURE
+#1225	ACCESS_SUMMARY_PUBLISHER_INFO
+#1226	ACCESS_SUMMARY_NOT_AVAILABLE
+#1227	ACCESS_SUMMARY_SPECIAL
+#1228	ACCESS_PDF_ORIGINAL_NOT_FOUND
+
+ACCESS_LIMITED_REASON_OK_CURRENT_CONTENT = 1204 # "This current content is available for you to access."
+ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE = 1205 # "This archive content is available for you to access."
+ACCESS_LIMITED_REASON_NOK_EMBARGOED_CONTENT = 1214
+ACCESS_LIMITED_REASON_NOK_SPECIAL_CONTENT = 1215
+ACCESS_LIMITED_REASON_NOK_FUTURE_CONTENT = 1216 #"This future content is not yet available for you to access."
+ACCESS_LIMITED_REASON_NOK_CURRENT_CONTENT = 1217 # This is a summary excerpt from the full document.  The full-text content of the document is embargoed per an agreement with the publisher. 
+ACCESS_LIMITED_REASON_NOK_ARCHIVE_CONTENT = 1218 # in case user doesn't have access to PEP-Web archive
+ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN = 1219 # no access check and user is not logged in
+ACCESS_ABSTRACT_RESTRICTED_MESSAGE = 1220 #"You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
+ACCESS_SUMMARY_DESCRIPTION = 1221 # "This is a summary excerpt from the full document. "
+ACCESS_SUMMARY_FORSUBSCRIBERS = 1222 # "The full content of the document is available to subscribers. "
+ACCESS_SUMMARY_ONLY_EMBARGOED = 1223 # "The full-text content of the document is embargoed per an agreement with the publisher. "
+ACCESS_SUMMARY_FUTURE = 1224 # "This journal is in the process of being added to PEP-Web.  The full-text content of the document is not yet available. "
 # ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
-ACCESS_SUMMARY_PUBLISHER_INFO = "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
+ACCESS_SUMMARY_PUBLISHER_INFO = 1225 # "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
+ACCESS_SUMMARY_NOT_AVAILABLE = 1229 # This content is not currently available. 
+ACCESS_SUMMARY_SPECIAL = 1230 # "It may be available, it's a case by case basis 
+ACCESS_SUMMARY_PDFORIG_NOT_FOUND = 1231
+ACCESS_SUMMARY_PERMISSION_DENIED = 1235
+ACCESS_TEXT_PROCESSING_ISSUE = 1240 # error preparing file
+
 ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = " <a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>." # needs the left space now 2021-05-05
 # ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."
 
-ACCESSLIMITED_DESCRIPTION_OFFSITE = "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
-# ACCESSLIMITED_DESCRIPTION_LIMITED = "This is a summary excerpt from the full text of the article. The full text of the document may be available on the publisher's website"
-ACCESSLIMITED_DESCRIPTION_FREE = "This content is currently free to all users."
-ACCESSLIMITED_DESCRIPTION_AVAILABLE = "This archive content is available for you to access."
-ACCESSLIMITED_401_UNAUTHORIZED = "Your session may have timed out. Please try and login again."
-ACCESSLIMITED_DESCRIPTION_CURRENT_CONTENT_AVAILABLE = "This current content is available for you to access."
-
-# control whether abstracts can be viewed by non-logged-in users
-ACCESS_ABSTRACT_RESTRICTION = False
-ACCESS_ABSTRACT_RESTRICTED_MESSAGE = "You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
 
 # temp directory used for generated downloads
 TEMPDIRECTORY = tempfile.gettempdir()
@@ -539,11 +605,14 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_iss, 
  art_iss_title, 
  art_newsecnm, 
- art_pgrg, 
+ art_pgrg,
+ art_pgcount,
  art_lang, 
  art_doi, 
  art_issn,
  art_isbn,
+ art_embargo,
+ art_embargotype,
  art_origrx, 
  art_qual, 
  art_kwds, 
@@ -596,6 +665,7 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
  art_iss, 
  art_iss_title, 
  art_pgrg, 
+ art_pgcount,
  art_lang, 
  art_doi, 
  art_issn,
@@ -613,7 +683,7 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
 DOCUMENT_ITEM_VIDEO_FIELDS = """
 art_id,art_issn, art_sourcecode,art_authors, title, art_subtitle_xml, art_title_xml,
 art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, art_vol,art_vol_title, art_year, art_iss, art_iss_title,
-art_year, art_citeas_xml, art_pgrg, art_lang, art_origrx, art_qual, art_kwds, file_classification
+art_year, art_citeas_xml, art_pgrg, art_pgcount, art_lang, art_origrx, art_qual, art_kwds, file_classification
 """
 
 DOCUMENT_ITEM_TOC_FIELDS = """
@@ -635,6 +705,7 @@ DOCUMENT_ITEM_TOC_FIELDS = """
  art_iss_title, 
  art_newsecnm, 
  art_pgrg, 
+ art_pgcount,
  art_lang, 
  art_doi, 
  art_issn,
@@ -659,6 +730,8 @@ DOCUMENT_ITEM_META_FIELDS ="""
  art_vol,
  art_year, 
  art_pgrg,
+ art_pgcount,
+ art_qual,
  file_classification, 
  score
 """
@@ -942,7 +1015,7 @@ def parse_issue_code(issue_code: str, source_code=None, vol=None):
 
 class ArticleID(BaseModel):
     """
-    Article IDs are at the core of the system.  In PEP's design, article IDs are meaningful, and can be broken apart to learn about the content metadata.
+    Article IDs (document IDs) are at the core of the system.  In PEP's design, article IDs are meaningful, and can be broken apart to learn about the content metadata.
       But when designed as such, the structure of the article IDs may be different in different systems, so it needs to be configurable as possible.
       This routine in opasConfig is a start of allowing that to be defined as part of the customization. 
 
@@ -1102,9 +1175,9 @@ class ArticleID(BaseModel):
             self.isArticleID = False
         
     articleID: str = Field(None, title="As submitted ID, if it's a valid ID")
-    standardized: str = Field(None, title="Standard form of article ID")
-    altStandard: str = Field(None, title="Standard form of article ID from 2020 (most without volume suffix)")
-    isArticleID: bool = Field(False, title="True if initialized value is an article ID")
+    standardized: str = Field(None, title="Standard form of article (document) ID")
+    altStandard: str = Field(None, title="Standard form of article (document) ID from 2020 (most without volume suffix)")
+    isArticleID: bool = Field(False, title="True if initialized value is an article (document) ID")
     sourceCode: str = Field(None, title="Source material assigned code (e.g., journal, book, or video source code)")
     # volumeStr: str = Field(None, title="")
     volumeSuffix: str = Field(None, title="")

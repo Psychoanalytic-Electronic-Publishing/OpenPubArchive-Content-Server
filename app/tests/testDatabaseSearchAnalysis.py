@@ -4,8 +4,10 @@
 import unittest
 import requests
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
 import opasAPISupportLib
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestDatabaseSearchAnalysis(unittest.TestCase):
     """

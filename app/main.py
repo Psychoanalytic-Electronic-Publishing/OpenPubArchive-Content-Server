@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1002/v2.1.63" # semver versioning now added after date.
+__version__     = "2021.1210/v2.1.100" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -134,7 +134,7 @@ from requests.auth import HTTPBasicAuth
 # import aiofiles
 # from typing import List
 
-TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
+# TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ' # moved to opasConfig
 
 from pydantic import ValidationError
 import solrpy as solr # needed for extended search
@@ -276,6 +276,9 @@ app.add_middleware(
     allow_headers = ["*"],
 )
 
+from config import whatsnewdb 
+from config import msgdb
+
 msg = 'Started at %s' % datetime.today().strftime('%Y-%m-%d %H:%M:%S"')
 logger.info(msg)
 
@@ -300,15 +303,15 @@ def find_client_id(request: Request,
         if client_id is not None:
             ret_val = client_id
             msg = f"client-id from header: {ret_val} "
-            logger.info(msg)
+            logger.debug(msg)
         elif client_id_qparam is not None:
             ret_val = client_id_qparam
             msg = f"client-id from param: {ret_val} "
-            logger.info(msg)
+            logger.debug(msg)
         elif client_id_cookie is not None:
             ret_val = client_id_cookie
             msg = f"client-id from cookie: {ret_val} "
-            logger.info(msg)
+            logger.debug(msg)
         #else:
             #ret_val = opasConfig.NO_CLIENT_ID # no client id (default)
     else:
@@ -349,16 +352,21 @@ def get_client_session(response: Response,
     if client_session == 'None': # Not sure where this is coming from as string, but fix it.
         client_session = None
         
-    client_id = find_client_id(request, response) # client_id == 0 to force it to search header etc.
-    session_id = opasDocPermissions.find_client_session_id(request, response, client_session)
+    if client_session is not None:
+        session_id = client_session
+        #if localsecrets.DEBUG_TRACE:
+            #print ("-" * 100)
+            #msg = f"{datetime.now().time().isoformat()}: [client-session from header]: {session_id} "
+            #print (msg)
+    else:
+        session_id = opasDocPermissions.find_client_session_id(request, response, client_session)
         
-    # client_id = get_client_id(response, request, 0)
     # if there's no client session, get a session_id from PaDS without logging in
     if session_id is None:
         # get one from PaDS, without login info
         # session_info, pads_session_info = opasDocPermissions.pads_get_session(client_id=client_id)
-        logger.debug(f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID")
         # New...let's try to isolate when this happens by creating an error.  We get a session from PaDS, but not if there's no client ID.
+        client_id = find_client_id(request, response) # client_id == 0 to force it to search header etc.
         if client_id == opasConfig.NO_CLIENT_ID:
             # No client id, not allowed to get session.
             msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR + f" URL: {request.url._url} Headers:{request.headers} "
@@ -368,6 +376,7 @@ def get_client_session(response: Response,
                 detail=ERR_MSG_CALLER_IDENTIFICATION_ERROR
             )
         else:
+            print (f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID") # set to print rather than debug
             session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id,
                                                                           client_id=client_id,
                                                                           request=request)
@@ -381,19 +390,13 @@ def get_client_session(response: Response,
                     status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
                     detail=ERR_MSG_PASSWORD + f" ({msg} - {e})", 
                 )
-        # No need to save cookie unless logging in through server, and that is handled on line 1376.
-        #else:
-            #if session_id is not None:
-                #opasAPISupportLib.save_opas_session_cookie(request, response, session_id)
-            #else:
-                #logger.debug("SessionID is None, no cookie saved.")
 
     if session_id is None or len(session_id) < 12:
         # don't report these errors
         if session_id == "":
             session_id = "DUMMYA01234567890"
         else:
-            msg = f"Client:[{client_id}] SessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
+            msg = f"SessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
             if re.search("GW\.000|SE\.000", request.url._url) is None:
                 logger.error(msg)
             raise HTTPException(
@@ -530,7 +533,7 @@ async def admin_set_loglevel(response: Response,
     """
     levels = {10: "DEBUG", 20: "INFO", 30: "WARNING", 40: "ERROR", 50: "CRITICAL"}
     logger = logging.getLogger() # Get root logger
-    curr_level = levels.get(logger.level, str(logger.level))
+    curr_level = levels.get(logger.level, str(logger.level)) # return string of level if not in levels
     # see if user is an admin
     admin = False
     if client_session is not None:
@@ -561,20 +564,14 @@ async def admin_set_loglevel(response: Response,
     else:
         if curr_level != level:
             err = f"Log level can only be changed by an admin. Log level still set to: {curr_level}"
-            raise HTTPException(httpCodes.HTTP_401_UNAUTHORIZED, detail=err)
         else:
             err = f"Log level already set to: {curr_level}"
 
     try:
         if admin:
-            # see https://stackoverflow.com/questions/37703609/using-python-logging-with-aws-lambda
-            if logging.getLogger().hasHandlers:
-                # The Lambda environment pre-configures a handler logging to stderr. If a handler is already configured,
-                # `.basicConfig` does not execute. Thus we set the level directly.
-                logging.getLogger().setLevel(lev_int)
-            else:
-                logging.basicConfig(level=lev_int)            
-            change = True
+            new_level = opasAPISupportLib.set_log_level(level_int=lev_int)
+            if new_level != curr_level:
+                change = True
 
     except Exception as e:
         err = f"Exception setting or getting LogLevel: {e} Log level set to: {levels.get(logger.level, str(logger.level))}.  Was {curr_level}"
@@ -630,17 +627,24 @@ async def admin_reports(response: Response,
          
        For document-view-log matchstr does a regex search of the document type, e.g.,
          PDF
- 
-       Note as the examples above, you don't need to include special regex wildcards (it matches anywhere in the text)
+         
+       Note as the examples above, you don't need to include special regex wildcards
+         (it matches anywhere in the text)
 
     ## Potential Errors
-       N/A
+       Note document_views_report returns the current RDS database values, not the values
+         that are in the Solr database as updated during the latest Solr update. values
+         match vw_reports_document_views
+         
 
     """
+    caller_name = "[v2/Admin/Reports]"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+
     opasDocPermissions.verify_header(request, "Reports") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
     if session_info.admin != True:
         # watch to see if PaDS is using the reports as an admin or non-admin user, if admin, change reports to admin only
         ret_val = f"Report {report} request by non-admin user ({session_info.username})."
@@ -696,7 +700,8 @@ async def admin_reports(response: Response,
 
     if startdate is not None:
         if enddate is not None:
-            date_condition = f" AND last_update BETWEEN {startdate} AND {enddate}"
+            # 2021-11-06 - Can't use between here if the time isn't being included. Errors when startdate and enddate are same day.
+            date_condition = f" AND last_update BETWEEN {startdate}000000 AND {enddate}235959"
         else:
             date_condition = f" AND last_update >= {startdate}"
     else:
@@ -781,6 +786,8 @@ async def admin_reports(response: Response,
         )        
 
     # Get report
+
+    # with order by for return
     select = f"""SELECT * from {report_view}
                  WHERE {standard_filter}
                  {date_condition}
@@ -791,8 +798,18 @@ async def admin_reports(response: Response,
                  {orderby_clause}
                  """
 
+    # without order by for full count
+    select_count = f"""SELECT * from {report_view}
+                       WHERE {standard_filter}
+                       {date_condition}
+                       {userid_condition}
+                       {sessionid_condition}
+                       {endpoint_condition}
+                       {extra_condition}
+"""
+
     if getfullcount:
-        count = ocd.get_select_count(select)
+        count = ocd.get_select_count(select_count) # without order by
     else:
         count = -1
         
@@ -819,6 +836,7 @@ async def admin_reports(response: Response,
             ret_val = response
         else:
             # this comes back as a list of ReportListItems
+            ts = time.time()
             results = ocd.get_select_as_list_of_models(select, model=models.ReportListItem)
             limited_count = len(results)
             if count > 0:
@@ -835,7 +853,7 @@ async def admin_reports(response: Response,
                                                 listType="reportlist",
                                                 fullCountComplete = full_count_complete_checked,
                                                 request=f"{request.url._url}",
-                                                timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                                timeStamp = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)                     
                                                 )   
 
             if count == 0:
@@ -844,6 +862,7 @@ async def admin_reports(response: Response,
                     detail=ERR_MSG_NO_DATA_FOR_REPORT
                 )       
 
+            logger.debug(f"Watched: Admin Report Query Complete. DateCondition: {date_condition} Rows: {limited_count} Time={time.time() - ts}")
             report_struct = models.ReportStruct( responseInfo = response_info, 
                                                  responseSet = results
                                                  )
@@ -906,6 +925,9 @@ async def admin_sitemap(response: Response,
        N/A
     
     """
+    caller_name = "[v2/Admin/Sitemap]"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    
     import opasSiteMap
     # path variable/parameter defaults to localsecrets.SITEMAP_PATH
     try:
@@ -916,7 +938,7 @@ async def admin_sitemap(response: Response,
         SITEMAP_INDEX_FILE = ".." + localsecrets.PATH_SEPARATOR + "sitemapindex.xml"
    
     if client_session is not None:
-        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
         # see if user is an admin or if this is a localtest
         if ocd.verify_admin(session_info):
             try:
@@ -1122,11 +1144,13 @@ async def client_save_configuration(response: Response,
     #  set database for confg, overwriting previous
 
     #  return current config (old if it fails).
+    caller_name = "client_save_configuration"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
 
-    opasDocPermissions.verify_header(request, "ClientSaveConfig") # for debugging client call
+    opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     # ensure user is admin
     ret_val = None
@@ -1194,11 +1218,14 @@ async def client_update_configuration(response: Response,
     #  set database for confg, overwriting previous
     #  return current config (old if it fails).
 
+    caller_name = "client_update_configuration"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+
     opasDocPermissions.verify_header(request, "ClientUpdateConfig") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
     msg = ""
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     # ensure user is admin
     ret_val = None
@@ -1283,11 +1310,14 @@ async def client_get_configuration(response: Response,
        N/A
 
     """
+    caller_name = "client_get_configuration"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+
     # maybe no session id when they get this, so don't check here
     # opasDocPermissions.verify_header(request, "ClientGetConfig") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     # for now, just use API_KEY as the requirement.  Later admin?  
     ret_val = ocd.get_client_config(client_id=client_id,
@@ -1349,11 +1379,13 @@ async def client_del_configuration(response: Response,
        N/A
 
     """
+    caller_name = "client_del_configuration"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
     
-    opasDocPermissions.verify_header(request, "ClientDelConfig") # for debugging client call
+    opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     #for now, just use API_KEY as the requirement.  Later admin?
     ret_val = ocd.del_client_config(client_id=client_id,
@@ -1403,10 +1435,12 @@ def session_login_basic(response: Response,
        N/A
 
     """
-    session_id = session_info.session_id
+    caller_name = "[v2/Session/BasicLogin]"   
+    if localsecrets.DEBUG_TRACE: print(caller_name)
 
+    session_id = session_info.session_id
     if session_info is not None:
-        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=session_id, client_id=client_id)
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=session_id, client_id=client_id, caller_name=caller_name)
         # Save it for later; most importantly, overwrite any existing cookie!
         if session_info.authenticated:
             logger.info("Successful basic login - saved OpasSessionID Cookie")
@@ -1419,6 +1453,7 @@ def session_login_basic(response: Response,
                 value=f"{session_id}",
                 domain=localsecrets.COOKIE_DOMAIN
             )
+            session_info.api_direct_login = True
             
     else:
         logger.error(f"LoginError: Bad login")
@@ -1501,6 +1536,7 @@ def session_login(response: Response,
                 value=f"{session_id}",
                 domain=localsecrets.COOKIE_DOMAIN
             )
+            session_info.api_direct_login = True
             logger.debug("Successful login - saved OpasSessionID Cookie")
 
     try:
@@ -1550,18 +1586,23 @@ def session_logout_user(response: Response,
     """
 
     session_id = client_session
-    # ocd = opasCentralDBLib.opasCentralDB()
+    ocd = opasCentralDBLib.opasCentralDB()
     if session_id is not None and session_id != "":
-        # session_info = ocd.get_session_from_db(session_id)
-        # session_end_time = datetime.utcfromtimestamp(time.time())
-        response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
-        ret_val = opasDocPermissions.authserver_logout(session_id, request=request, response=response)
-        if ret_val:
-            # logged out
-            session_info = models.SessionInfo(session_id=session_id)
+        session_info = ocd.get_session_from_db(session_id)
+        if session_info is not None:
+            direct_login = session_info.api_direct_login
+            session_end_time = datetime.utcfromtimestamp(time.time())
+            if session_info is not None:
+                session_info.session_end = session_end_time
+                ocd.end_session(session_id=session_id)
+    
+            if direct_login:
+                response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
+                ret_val = opasDocPermissions.authserver_logout(session_id, request=request, response=response)
 
         #ocd, session_info = opasAPISupportLib.get_session_info(request, response,
-                                                               #session_id=session_id, client_id=client_id)
+        # logged out
+        session_info = models.SessionInfo(session_id=session_id)
     return session_info
 
 #-----------------------------------------------------------------------------
@@ -1594,10 +1635,13 @@ async def session_status(response: Response,
     """
     global text_server_ver # solr ver
     admin = False
+    caller_name = "[v2/Session/Status]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     # see if user is an admin
     if client_session is not None:
-        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
         if ocd.verify_admin(session_info):
             admin = True
     else:
@@ -1610,6 +1654,7 @@ async def session_status(response: Response,
     hierarchical_server_ver = f"{text_server_ver}/{__version__}"
     
     if admin:
+            
         config_name = localsecrets.CONFIG
         mysql_ver = ocd.get_mysql_version()
         try:
@@ -1625,10 +1670,26 @@ async def session_status(response: Response,
                                                          opas_version = __version__, 
                                                          db_server_url = localsecrets.DBHOST,
                                                          db_server_version = mysql_ver,
-                                                         cors_regex=localsecrets.CORS_REGEX, 
-                                                         config_name = config_name,
-                                                         user_count = 0
+                                                         #cors_regex=localsecrets.CORS_REGEX, # see moreinfo
+                                                         #library_versions=library_versions,  # see moreinfo
+                                                         config_name = config_name
                                                          )
+            
+            if moreinfo:
+                import pydantic
+                import starlette
+                import pysolr
+                import fastapi
+                import lxml
+                library_versions = {"mysql.connector": ocd.library_version,
+                                    "fastapi": fastapi.__version__,
+                                    "pysolr": pysolr.__version__,
+                                    "pydantic": pydantic.version.VERSION,
+                                    "starlette": starlette.__version__,
+                                    "lxml":lxml.__version__,
+                                   }
+                server_status_item.library_versions = library_versions
+                server_status_item.cors_regex = localsecrets.CORS_REGEX
 
         except ValidationError as e:
             logger.error("ValidationError", e.json())
@@ -1669,7 +1730,7 @@ async def session_status(response: Response,
     return server_status_item
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=True, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_AM_I)
+@app.get("/v2/Session/WhoAmI/", response_model=models.SessionInfo, response_model_exclude_unset=False, tags=["Session"], summary=opasConfig.ENDPOINT_SUMMARY_WHO_AM_I)
 async def session_whoami(response: Response,
                          request: Request,
                          client_id:int=Depends(get_client_id), 
@@ -1677,9 +1738,6 @@ async def session_whoami(response: Response,
                          ):
     """
     ## Function
-       <b>Temporary endpoint for debugging purposes</b>
-
-       This is only a stopgap for development
        All authentication processing is to be done in PaDS as planned
        (though it may be this stays conditionally for future iteration of local development TBD)
 
@@ -1700,18 +1758,22 @@ async def session_whoami(response: Response,
        N/A
 
     """
-    opasDocPermissions.verify_header(request, "WhoAmI") # for debugging client call
+    caller_name = "[v2/Session/WhoAmI]"   
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+
+    opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     if client_session is not None:
-        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
     else:
         logger.error(f"WhoAmIError: Client-Session ID not provided")
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST,
             detail=ERR_MSG_SESSION_ID_ERROR
         )
-        
+
     return(session_info)
 
 #-----------------------------------------------------------------------------
@@ -1913,10 +1975,13 @@ async def database_advanced_search(response: Response,
        N/A
 
     """
-    opasDocPermissions.verify_header(request, "AdvancedSearch") # for debugging client call
+    caller_name = "[v2/Database/AdvancedSearch]"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+
+    opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
     session_id = session_info.session_id
     try:
         apimode = apimode.lower()
@@ -1948,7 +2013,8 @@ async def database_advanced_search(response: Response,
     ret_val, ret_status = search_text_qs(solr_query_spec,
                                          #authenticated=session_info.authenticated
                                          session_info=session_info,
-                                         request=request
+                                         request=request,
+                                         caller_name=caller_name
                                          )
 
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
@@ -2017,6 +2083,19 @@ async def database_extendedsearch(response: Response,
          /v2/Database/ExtendedSearch/
          
            with body parameters:
+           
+           Related query without main document IJP.078.0335A example
+           (Added this example since the NOT within a field spec doesn't work in the regular
+            query endpoints, but works here. The problem appears to be within the
+            pysolr/solrpy library)
+           {
+             "solrcore": "pepwebdocs",
+             "solrquery": "art_qual:(IJP.076.0019A)", 
+              "solrargs": {
+                 "fq": "art_id:(NOT IJP.078.0335A)",
+                 "fl": "art_id, art_title, art_title_xml, art_subtitle_xml, art_author_id, art_authors, art_citeas_xml, art_info_xml, art_sourcecode, art_sourcetitleabbr, art_sourcetitlefull, art_sourcetype, art_level, para_art_id, parent_tag, para, art_vol, art_type, art_vol_title, art_year, art_iss, art_iss_title, art_newsecnm, art_pgrg, art_lang, art_doi, art_issn, art_isbn, art_origrx, art_qual, art_kwds, art_cited_all, art_cited_5, art_cited_10, art_cited_20, art_views_lastcalyear, art_views_last1mos, art_views_last6mos, art_views_last12mos, art_views_lastweek, reference_count, art_fig_count, art_tbl_count, art_kwds_count, art_words_count, art_citations_count, art_ftns_count, art_notes_count, art_dreams_count, file_last_modified, file_classification, timestamp, score, id"
+              }
+           }           
            
            {
              "solrcore":"pepwebdocs",
@@ -2182,10 +2261,13 @@ async def database_extendedsearch(response: Response,
        Otherwise, returns error.
 
     """
-    opasDocPermissions.verify_header(request, "ExtendedSearch") # for debugging client call
+    caller_name = "[v3/Database/ExtendedSearch]"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+   
+    opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
     # session_id = session_info.session_id 
     logger.debug("Solr Search Request: %s", request.url._url)
     
@@ -2324,9 +2406,13 @@ async def database_glossary_search_v2(response: Response,
        The "Request Body" field only applies to POST, but the code is shared, which trips up the interface for interactive docs.
     
     """
+    caller_name = "[v2/Database/Glossary/Search]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
     opasDocPermissions.verify_header(request, "database_glossary_search_v2") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     ret_val = await database_search(response,
                                     request,
@@ -2359,7 +2445,8 @@ async def database_glossary_search_v2(response: Response,
                                     limit=limit,
                                     offset=offset,
                                     client_session=client_session,
-                                    client_id=client_id
+                                    client_id=client_id,
+                                    override_endpoint_id=opasCentralDBLib.API_DATABASE_GLOSSARY_SEARCH
                                     )
     if ret_val != {}:
         matches = len(ret_val.documentList.responseSet)
@@ -2419,7 +2506,8 @@ async def database_search(response: Response,
                               limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                               offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                               client_id:int=Depends(get_client_id), 
-                              client_session:str= Depends(get_client_session)
+                              client_session:str= Depends(get_client_session),
+                              override_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH
                              ):
     """
     ## Function
@@ -2457,6 +2545,11 @@ async def database_search(response: Response,
 
     """
     ts = time.time()
+    caller_name = "[v2/Database/Search]"
+    if localsecrets.DEBUG_TRACE:
+        composite = f"smarttext: {smarttext} / paratext {paratext} / facetquery: {facetquery} "
+        print(f"{datetime.now().time().isoformat()}: {caller_name} - {composite}")
+    
     # get client_id and session directly
     client_id_from_header, client_session_from_header = opasDocPermissions.verify_header(request, "Search") # for debugging client call
     if client_session_from_header != client_session and (client_session_from_header == 2 or client_session_from_header == 3):
@@ -2479,7 +2572,7 @@ async def database_search(response: Response,
             detail=detail
         )
     
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     # session_id = session_info.session_id 
 
@@ -2544,7 +2637,8 @@ async def database_search(response: Response,
                                          limit=limit,
                                          offset=offset,
                                          session_info=session_info, 
-                                         request=request
+                                         request=request,
+                                         caller_name=caller_name
                                          )
 
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
@@ -2573,7 +2667,7 @@ async def database_search(response: Response,
 
     item_of_interest = opasAPISupportLib.get_query_item_of_interest(solrQuery=solr_query_spec.solrQuery)
     
-    ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_SEARCH,
+    ocd.record_session_endpoint(api_endpoint_id=override_endpoint_id, # 20211008 - defaults to this search call (41)
                                 session_info=session_info,
                                 item_of_interest=item_of_interest, 
                                 params=request.url._url,
@@ -2730,7 +2824,7 @@ def database_searchanalysis(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/SmartSearch/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"]) 
+@app.get("/v2/Database/SmartSearch/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_SEARCH_SMARTSEARCH) 
 async def database_smartsearch(response: Response, 
                                request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                smarttext: str=Query(None, title=opasConfig.TITLE_SMARTSEARCH, description=opasConfig.DESCRIPTION_SMARTSEARCH),
@@ -2857,7 +2951,7 @@ async def database_smartsearch(response: Response,
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
-@app.get("/v2/Database/MoreLikeThis/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"]) 
+@app.get("/v2/Database/MoreLikeThis/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_MORELIKETHIS) 
 async def database_morelikethis(response: Response, 
                                 request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                 morelikethis: str=Query(None, title=opasConfig.TITLE_MORELIKETHIS, description=opasConfig.DESCRIPTION_MORELIKETHIS),
@@ -2929,8 +3023,116 @@ async def database_morelikethis(response: Response,
                                     limit=limit,
                                     offset=offset,
                                     client_id=client_id,
-                                    client_session=client_session
+                                    client_session=client_session,
+                                    override_endpoint_id=opasCentralDBLib.API_DATABASE_MORELIKETHIS
                                     )
+    return ret_val
+
+#---------------------------------------------------------------------------------------------------------
+@app.get("/v2/Database/RelatedToThis/", response_model=models.DocumentList, response_model_exclude_unset=True, tags=["Database"], summary=opasConfig.ENDPOINT_SUMMARY_RELATEDTOTHIS) 
+async def database_related_to_this(response: Response, 
+                                   request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
+                                   relatedToThis: str=Query(None, title=opasConfig.TITLE_RELATEDTOTHIS, description=opasConfig.DESCRIPTION_RELATEDTOTHIS),
+                                   sort: str=Query("score desc", title=opasConfig.TITLE_SORT, description=opasConfig.DESCRIPTION_SORT),
+                                   abstract:bool=Query(False, title="Return an abstract with each match", description="True to return an abstract"),
+                                   formatrequested: str=Query("HTML", title=opasConfig.TITLE_RETURNFORMATS, description=opasConfig.DESCRIPTION_RETURNFORMATS),
+                                   limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                                   offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                                   client_id:int=Depends(get_client_id), 
+                                   client_session:str= Depends(get_client_session)
+                                  ):
+    """
+    ## Function
+
+    Find all related documents as recorded in the Solr schema by a field with a commmon ID value.
+    The document ID of the main document of interest is specified in the relatedTothis parameter, and the endpoint looks up the value
+    in that document's relatedrx field (defined in opasConfig as RELATED_RX_FIELDNAME), and returns all matching documents,
+    EXCEPT the main document you specify.
+    
+    Returns 0 documentList records if there are no related documents or there's no data in the relatedrx field is the relatedToThis document.
+
+    ## Return Type
+       models.DocumentList
+
+    ## Status
+       Status: Working
+
+    ## Sample Call
+       https://api.pep-web.org/v2/Database/RelatedToThis/?relatedToThis=IJP.078.0335A
+
+    ## Notes
+       N/A
+       
+    ## Potential Errors
+       N/A
+
+    """
+    ts = time.time()
+    
+    ret_val = None
+    caller_name = "[v2/Database/RelatedDocuments]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name}")
+
+    opasDocPermissions.verify_header(request, "RelatedDocuments") # for debugging client call
+    log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
+    
+    try:
+        return_fields = opasConfig.DOCUMENT_ITEM_TOC_FIELDS
+        solr_query_spec = opasQueryHelper.parse_search_query_parameters(forced_searchq=f"art_id:{relatedToThis}",
+                                                                        forced_filterq=None,
+                                                                        return_field_set=return_fields,
+                                                                        sort=sort, 
+                                                                        req_url = request.url._url
+                                                                        )
+    
+        ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                             extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                             session_info=session_info, 
+                                             request=request,
+                                             caller_name=caller_name
+                                             )
+    except Exception as e:
+        logger.error(f"Exception: {e}")
+    else:
+        try:
+            responseSet = ret_val.documentList.responseSet
+            response = responseSet[0]
+            related_fieldname_data = response.relatedrx
+            #if "art_qual:" in filterQ:
+                #filterQ = re.sub('art_qual:\(\"?(?P<tgtid>[^\"]*?)\"?\)', '(art_qual:(\g<tgtid>) || art_id:(\g<tgtid>))', filterQ)
+            
+            solr_query_spec = opasQueryHelper.parse_search_query_parameters(forced_searchq=f"{opasConfig.RELATED_RX_FIELDNAME}:{related_fieldname_data} || art_id:{related_fieldname_data}",
+                                                                            forced_filterq=f"NOT art_id:{relatedToThis}",
+                                                                            return_field_set=opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
+                                                                            abstract_requested=abstract,
+                                                                            req_url = request.url._url
+                                                                            )
+        
+            ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                                 extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                                 limit=limit,
+                                                 offset=offset,
+                                                 session_info=session_info, 
+                                                 request=request,
+                                                 caller_name=caller_name
+                                                 )
+
+            #status_code = httpCodes.HTTP_200_OK
+            #status_message = opasCentralDBLib.API_STATUS_SUCCESS
+            #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_RELATEDTOTHIS,
+                                        #session_info=session_info, 
+                                        #params=request.url._url,
+                                        #item_of_interest=f"relatedToDocumentID", 
+                                        #return_status_code = status_code,
+                                        #status_message=status_message
+                                        #)
+            
+        except Exception as e:
+            logger.error(f"Exception: {e}")
+
+    log_endpoint_time(request, ts=ts, level="debug")
     return ret_val
 
 #---------------------------------------------------------------------------------------------------------
@@ -2960,11 +3162,12 @@ def database_mostviewed(response: Response,
     ## Function
        <b>Return a list of documents which are the most downloaded (viewed)</b>
 
-            viewperiod = 0: lastcalendaryear
+            viewperiod = 0: lastcalendaryear (also 5, preferred)
                          1: lastweek
                          2: lastmonth
                          3: last6months
-                         4: last12months                                
+                         4: last12months
+                         5: lastcalendaryear
 
     ## Return Type
        models.DocumentList (or returns response if a download is requested )
@@ -2984,6 +3187,10 @@ def database_mostviewed(response: Response,
        N/A
 
     """
+    caller_name = "[v2/Database/MostViewed]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
     ts = time.time()
     ret_val = None
     query_arg_error = None
@@ -2991,7 +3198,7 @@ def database_mostviewed(response: Response,
     opasDocPermissions.verify_header(request, "MostViewed") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     if viewperiod < 0 or viewperiod > 4:
         query_arg_error = f"Most Viewed: viewperiod: {viewperiod}.  Range should be 0-4 (int), 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months"
@@ -3064,7 +3271,8 @@ def database_mostviewed(response: Response,
                                                                               offset=offset,
                                                                               download=download, 
                                                                               mlt_count=similarcount, 
-                                                                              session_info=session_info
+                                                                              session_info=session_info,
+                                                                              request=request
                                                                               )
 
             if ret_val is None:
@@ -3145,14 +3353,17 @@ def database_mostcited(response: Response,
        N/A
 
     """
-
+    caller_name = "[v2/Database/MostCited]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
     ret_val = True
     ts = time.time()
     
     opasDocPermissions.verify_header(request, "MostCited") # for debugging client call 
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     # session_id = session_info.session_id 
 
@@ -3210,7 +3421,8 @@ def database_mostcited(response: Response,
                                                                          offset=offset,
                                                                          download=False, 
                                                                          mlt_count=similarcount, 
-                                                                         session_info=session_info
+                                                                         session_info=session_info,
+                                                                         request=request
                                                                          )
 
         if isinstance(ret_val, models.ErrorReturn): 
@@ -3282,6 +3494,9 @@ async def database_open_url(response: Response,
 
     """
     ts = time.time()
+    caller_name = "[v2/Database/OpenURL]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     if aufirst is not None and aulast is not None:
         author = aufirst + " , " + aulast
@@ -3343,7 +3558,7 @@ async def database_open_url(response: Response,
             detail=detail
         )
     
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     solr_query_spec = \
         opasQueryHelper.parse_search_query_parameters(solrQueryTermList=None,
@@ -3370,7 +3585,8 @@ async def database_open_url(response: Response,
                                          limit=limit,
                                          offset=offset,
                                          session_info=session_info, 
-                                         request=request
+                                         request=request,
+                                         caller_name=caller_name
                                          )
 
     #  if there's a Solr server error in the call, it returns a non-200 ret_status[0]
@@ -3494,6 +3710,10 @@ async def database_term_counts(response: Response,
                handling is different between the two libraries
 
     """
+    caller_name = "[v2/Database/TermCounts]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} ")
+    
     ts = time.time()
     # no logging, no session info for this call...speed, speed, speed
     term_index_items = []
@@ -3552,7 +3772,7 @@ async def database_term_counts(response: Response,
         response_info = models.ResponseInfo( listType="termindex", # this is a mistake in the GVPi API, should be termIndex
                                              scopeQuery=[f"Terms: {termlist}"],
                                              dataSource = localsecrets.DATA_SOURCE, 
-                                             timestamp=datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)
+                                             timestamp=datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)
                                              )
 
         response_info.count = 0
@@ -3585,7 +3805,7 @@ async def database_term_counts(response: Response,
         logger.debug(statusMsg)
 
     if param_error:
-        logging.error(statusMsg)
+        logger.error(statusMsg)
         raise HTTPException(
             status_code=httpCodes.HTTP_400_BAD_REQUEST, 
             detail=statusMsg
@@ -3637,14 +3857,17 @@ def database_who_cited_this(response: Response,
        N/A
 
     """
+    caller_name = "[v2/Database/WhoCitedThis]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     ret_val = True
     ts = time.time()
     
-    opasDocPermissions.verify_header(request, "WhoCitedThis") # for debugging client call    
+    opasDocPermissions.verify_header(request, caller_name) # for debugging client call    
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     # session_id = session_info.session_id 
 
@@ -3661,7 +3884,8 @@ def database_who_cited_this(response: Response,
                                                                 offset=offset,
                                                                 download=False, 
                                                                 mlt_count=similarcount, 
-                                                                session_info=session_info
+                                                                session_info=session_info,
+                                                                request=request
                                                                 )
 
     if isinstance(ret_val, models.ErrorReturn): 
@@ -3689,8 +3913,9 @@ def database_who_cited_this(response: Response,
 def database_whatsnew(response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                       days_back: int=Query(14, title=opasConfig.TITLE_DAYSBACK, description=opasConfig.DESCRIPTION_DAYSBACK),
-                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
+                      limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_WHATS_NEW, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
+                      no_cache: bool=Query(False, title=opasConfig.TITLE_NO_CACHE, description=opasConfig.DESCRIPTION_DAYSBACK),
                       client_id:int=Depends(get_client_id), 
                       client_session:str= Depends(get_client_session)
                       ):  
@@ -3716,6 +3941,10 @@ def database_whatsnew(response: Response,
 
     """
     ts = time.time()
+    
+    caller_name = "[v2/Database/WhatsNew]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     # for debugging client call
     #opasDocPermissions.verify_header(request, "WhatsNew")
@@ -3725,11 +3954,12 @@ def database_whatsnew(response: Response,
     
     try:
         # return whatsNewList
-        ret_val = opasPySolrLib.database_get_whats_new(limit=limit, 
-                                                       offset=offset,
-                                                       days_back=days_back, 
-                                                       req_url=request.url
-                                                       )
+        ret_val = whatsnewdb.get_whats_new(limit=limit, 
+                                           offset=offset,
+                                           days_back=days_back, 
+                                           req_url=request.url,
+                                           forced_update=no_cache
+                                           )
 
     except Exception as e:
         e = str(e)
@@ -3807,6 +4037,11 @@ def database_word_wheel(response: Response,
 
     """
     ret_val = None
+
+    caller_name = "[v2/Database/WordWheel]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     if core in ["docs", "authors"] and word is not None:
@@ -3851,7 +4086,7 @@ def database_word_wheel(response: Response,
     return ret_val  # Return author information or error
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Metadata/ArticleID/", response_model=opasConfig.ArticleID, response_model_exclude_unset=True, tags=["Metadata"], summary="")
+@app.get("/v2/Metadata/ArticleID/", response_model=opasConfig.ArticleID, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_METADATA_ARTICLEID)
 def metadata_articleid(response: Response,
                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                        articleID: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description="ArticleID to evaluate"), 
@@ -3881,11 +4116,14 @@ def metadata_articleid(response: Response,
        N/A
 
     """
-
+    caller_name = "[v2/Metadata/ArticleID]"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    
+    # api_id = opasCentralDBLib.API_METADATA_ARTICLEID
+    
     # return the articleID model to the client to break it down for them
     ret_val = opasConfig.ArticleID(articleID=articleID, allInfo=diagnostics)
     
-
     return ret_val
 
 
@@ -3898,7 +4136,7 @@ def metadata_books(response: Response,
                    limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                    offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                    client_id:int=Depends(get_client_id), 
-                         #client_session:str= Depends(get_client_session)
+                   client_session:str= Depends(get_client_session)
                    ):
     """
     ## Function
@@ -3930,6 +4168,10 @@ def metadata_books(response: Response,
        N/A
 
     """
+    caller_name = "[v2/Metadata/Books]"
+    if localsecrets.DEBUG_TRACE:
+        ts = time.time()
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     ret_val = metadata_by_sourcetype_sourcecode(response,
                                                 request,
@@ -3978,7 +4220,11 @@ def metadata_contents_sourcecode(response: Response,
 
     """
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
-    ts = time.time()
+    caller_name = "[/v2/Metadata/Contents/{SourceCode}]"
+
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
     
     try:       
@@ -4048,6 +4294,11 @@ def metadata_contents(SourceCode: str,
     """
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+
+    caller_name = "[/v2/Metadata/Contents/{SourceCode}/{SourceVolume}]"
+
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     try:
         ret_val = documentList = opasPySolrLib.metadata_get_contents(SourceCode,
@@ -4424,7 +4675,12 @@ def authors_publications(response: Response,
        N/A
 
     """
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    caller_name = "[v2/Authors/Publications]"
+
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
     try:
@@ -4487,12 +4743,19 @@ def documents_abstracts(response: Response,
         N/A
 
     """
-    opasDocPermissions.verify_header(request, "documents_abstracts")  # for debugging client call
+    caller_name = "[v2/Documents/Abstracts]"
+
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
+    opasDocPermissions.verify_header(request, caller_name)  # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     try:
         # authenticated = opasAPISupportLib.is_session_authenticated(request, response)
+        # make sure it's upper case for consistency (added 2021-10-10)
+        documentID = documentID.upper()
         ret_val = opasAPISupportLib.documents_get_abstracts(document_id=documentID,
                                                             ret_format=return_format,
                                                             #authenticated=authenticated,
@@ -4501,7 +4764,8 @@ def documents_abstracts(response: Response,
                                                             limit=limit,
                                                             offset=offset,
                                                             sort=sort,
-                                                            session_info=session_info
+                                                            session_info=session_info,
+                                                            request=request
                                                             )
     except Exception as e:
         response.status_code=httpCodes.HTTP_400_BAD_REQUEST
@@ -4530,7 +4794,7 @@ def documents_abstracts(response: Response,
                                      view_type="Abstract")
             
             if ret_val.documents.responseInfo.count == 1:
-                if ret_val.documents.responseSet[0].accessLimited == False:
+                if ret_val.documents.responseSet[0].accessChecked == True and ret_val.documents.responseSet[0].accessLimited == False:
                     document_list_item = ret_val.documents.responseSet[0]
                     if opasFileSupport.file_exists(document_id=document_list_item.documentID, 
                                                    year=document_list_item.year,
@@ -4585,21 +4849,26 @@ def documents_concordance(response: Response,
        THE USER NEEDS TO BE AUTHENTICATED to return a para.
 
     """
-    # NOTE: Calls the code for the Glossary endpoint via function view_a_glossary_entry)
+
+    caller_name = "[v2/Documents/Concordance]"
+
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     ret_val = None
     item_of_interest = f"{paralangid}/{paralangrx}"
 
-    opasDocPermissions.verify_header(request, "documents_concordance") # for debugging client call
+    opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     try:
         ret_val = opasAPISupportLib.documents_get_concordance_paras( para_lang_id=paralangid,
                                                                      para_lang_rx=paralangrx, 
                                                                      ret_format=return_format,
                                                                      req_url=request.url._url, 
-                                                                     session_info=session_info
+                                                                     session_info=session_info,
+                                                                     request=request
                                                                      )
     except Exception as e:
         response.status_code=httpCodes.HTTP_400_BAD_REQUEST
@@ -4723,14 +4992,18 @@ def documents_document_fetch(response: Response,
 
     """
     # NOTE: Calls the code for the Glossary endpoint via function view_a_glossary_entry)
-
-    ts = time.time()
     ret_val = None
-    
+    ts = time.time()
+    caller_name = "[v2/Documents/Document]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+
     session_id = client_session
     opasDocPermissions.verify_header(request, "documents_fetch") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
+    # for qualifying any errors:
+    request_qualifier_text = f" Request: {documentID}. Session {session_info.session_id}."
 
     # check if this is a Glossary request, this is per API.v1.
     m = re.match("(ZBK\.069\..*?)?(?P<termid>(Y.0.*))", documentID)
@@ -4781,6 +5054,8 @@ def documents_document_fetch(response: Response,
             if translations == True:
                 specialoptions = specialoptions | 2 # add flag to return translations
 
+            # make sure it's upper case for consistency in logging (added 2021-10-10)
+            documentID = documentID.upper()
             ret_val = opasAPISupportLib.documents_get_document( documentID, 
                                                                 solr_query_params,
                                                                 ret_format=return_format,
@@ -4817,7 +5092,7 @@ def documents_document_fetch(response: Response,
                 response.status_code = httpCodes.HTTP_200_OK
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
                 try:
-                    access = not ret_val.documents.responseSet[0].accessLimited
+                    access = ret_val.documents.responseSet[0].accessChecked == True and ret_val.documents.responseSet[0].accessLimited == False
                     doc_len = len(ret_val.documents.responseSet[0].document)
                 except Exception as e:
                     access = False
@@ -4835,7 +5110,7 @@ def documents_document_fetch(response: Response,
             else:
                 # make sure we specify an error in the session log
                 # not sure this is the best return code, but for now...
-                status_message = "Not Found"
+                status_message = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text 
                 response.status_code = httpCodes.HTTP_404_NOT_FOUND
                 # record session endpoint in any case   
 
@@ -4847,10 +5122,8 @@ def documents_document_fetch(response: Response,
                                         status_message=status_message
                                         )
 
-            # prep for potential error below.
-            error_text = f"No document returned for request: {documentID} during session {session_info.session_id}"
             if ret_val is None or ret_val == {}:
-                logger.error(error_text)
+                logger.error(status_message)
                 raise HTTPException(
                     status_code=response.status_code,
                     detail=status_message
@@ -4859,7 +5132,7 @@ def documents_document_fetch(response: Response,
                 ret_val.documents.responseInfo.request = req_url
                 if access == False:
                     #  abstract returned...we don't count those currently.
-                    logger.info("Full-text access not allowed--Abstract only. " + error_text)
+                    logger.info("Full-text access not allowed--Abstract only." + request_qualifier_text)
                 else:
                     if ret_val.documents.responseInfo.count > 0:
                         #  record document view if found
@@ -4867,7 +5140,7 @@ def documents_document_fetch(response: Response,
                                                  session_info=session_info,
                                                  view_type="Document")
                     else:
-                        logger.error("No document available." + error_text)
+                        logger.error("No document available." + request_qualifier_text)
 
     log_endpoint_time(request, ts=ts, level="debug")
     return ret_val
@@ -4906,20 +5179,19 @@ def documents_downloads(response: Response,
        USER NEEDS TO BE AUTHENTICATED to request a download.  Otherwise, returns error.
     """
     ts = time.time()
-    caller_name = "DocumentDownloadError"
+    caller_name = "[v2/Documents/Downloads]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
     opasDocPermissions.verify_header(request, "documents_downloads") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug") # just for debug/info
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
     user_name = session_info.username
     
     if client_id is None or client_session is None:
         logger.error(f"{caller_name}: Client {client_id} Session: {client_session} ")
 
-    if retFormat.upper() == "EPUB":
-        file_format = 'EPUB'
-        media_type='application/epub+zip'
-        endpoint = opasCentralDBLib.API_DOCUMENTS_EPUB
-    elif retFormat.upper() == "PDF":
+    if retFormat.upper() == "PDF":
         file_format = 'PDF'
         media_type='application/pdf'
         endpoint = opasCentralDBLib.API_DOCUMENTS_PDF
@@ -4927,7 +5199,11 @@ def documents_downloads(response: Response,
         file_format = 'PDFORIG'
         media_type='application/pdf'
         endpoint = opasCentralDBLib.API_DOCUMENTS_PDFORIG
-    else:
+    elif retFormat.upper() == "EPUB":
+            file_format = 'EPUB'
+            media_type='application/epub+zip'
+            endpoint = opasCentralDBLib.API_DOCUMENTS_EPUB
+    else: # (no HTML download below!)
         file_format = 'HTML'
         media_type='application/xhtml+xml'
         endpoint = opasCentralDBLib.API_DOCUMENTS_HTML
@@ -4938,6 +5214,8 @@ def documents_downloads(response: Response,
                                              secret=localsecrets.S3_SECRET,
                                              root=localsecrets.PDF_ORIGINALS_PATH) # important to use this path, not the XML one!
 
+    # make sure it's upper case for consistency (added 2021-10-10)
+    documentID = documentID.upper()
     filename, status = opasPySolrLib.prep_document_download( documentID,
                                                              ret_format=file_format,
                                                              base_filename="opasDoc",
@@ -4945,13 +5223,27 @@ def documents_downloads(response: Response,
                                                              flex_fs=flex_fs,
                                                             )    
 
-    error_status_message = f"{caller_name}: The requested document {documentID} could not be returned (in {file_format}). "
+    #error_status_message = f"{caller_name}: The requested document {documentID} could not be returned (in {file_format}). {status.error_description} "
+    request_qualifier_text = f" Request: {documentID}. Session {session_info.session_id}."
 
     if filename is None:
         response.status_code = status.httpcode
-        status_message = error_status_message
+        if status.httpcode == httpCodes.HTTP_401_UNAUTHORIZED:
+            status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+        elif status.httpcode == httpCodes.HTTP_422_UNPROCESSABLE_ENTITY:
+            status_message = msgdb.get_user_message(opasConfig.ACCESS_TEXT_PROCESSING_ISSUE) + request_qualifier_text + f" {status.error_description}" 
+        elif status.httpcode == httpCodes.HTTP_400_BAD_REQUEST:
+            status_message = msgdb.get_user_message(opasConfig.ACCESS_TEXT_PROCESSING_ISSUE) + request_qualifier_text + f" {status.error_description}" 
+        elif status.httpcode == httpCodes.HTTP_404_NOT_FOUND:
+            status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+        elif status.httpcode == httpCodes.HTTP_422_UNPROCESSABLE_ENTITY:
+            status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+        else:
+            status_message = "Unknown/Unexpected error."
+            
+        #status_message = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
         if status.error_description is not None:
-            logger.error(error_status_message + ":" + status.error_description)
+            logger.error(status_message + ":" + status.error_description)
         # don't count--not successful (09/30/2021)
         #ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                     #session_info=session_info, 
@@ -4986,27 +5278,19 @@ def documents_downloads(response: Response,
                                            media_type=media_type)
     
                 except Exception as e:
-                    response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                    status_message = f"{caller_name}: The requested original document {filename} could not be returned"
+                    response.status_code = httpCodes.HTTP_404_NOT_FOUND 
+                    status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PDFORIG_NOT_FOUND) + request_qualifier_text 
                     extended_status_message = f"{status_message}:{e}"
                     logger.error(extended_status_message)
-                    # don't count--not successful (09/30/2021)
-                    #ocd.record_session_endpoint(api_endpoint_id=endpoint,
-                                                #session_info=session_info, 
-                                                #params=request.url._url,
-                                                #item_of_interest=f"{documentID}", 
-                                                #return_status_code = response.status_code,
-                                                #status_message=extended_status_message
-                                                #)
                     raise HTTPException(status_code=response.status_code,
-                                        detail=error_status_message)
+                                        detail=status_message)
                 else:
                     status_message = opasCentralDBLib.API_STATUS_SUCCESS
                     logger.debug(status_message)
+                    # success
                     ocd.record_document_view(document_id=documentID,
                                              session_info=session_info,
                                              view_type=file_format)
-    
                     ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                                 session_info=session_info, 
                                                 params=request.url._url,
@@ -5025,17 +5309,9 @@ def documents_downloads(response: Response,
 
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = f"{caller_name}: The requested document {filename} could not be returned."
-                extended_status_message = f"{status_message}:{e}"
+                status_message = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text + f". ({e})"
+                extended_status_message = status_message
                 logger.error(extended_status_message)
-                # don't count--not successful (09/30/2021)
-                #ocd.record_session_endpoint(api_endpoint_id=endpoint,
-                                            #session_info=session_info, 
-                                            #params=request.url._url,
-                                            #item_of_interest=f"{documentID}", 
-                                            #return_status_code = response.status_code,
-                                            #status_message=extended_status_message
-                                            #)
                 raise HTTPException(status_code=response.status_code,
                                     detail=status_message)
 
@@ -5043,6 +5319,7 @@ def documents_downloads(response: Response,
                 response.status_code = httpCodes.HTTP_200_OK
                 status_message = opasCentralDBLib.API_STATUS_SUCCESS
                 logger.debug(status_message)
+                # success
                 ocd.record_document_view(document_id=documentID,
                                          session_info=session_info,
                                          view_type=file_format)
@@ -5053,7 +5330,7 @@ def documents_downloads(response: Response,
                                             return_status_code = response.status_code,
                                             status_message=status_message
                                             )
-        else:
+        else: # file_format =='EPUB' (no HTML download)
             try:
                 response.status_code = httpCodes.HTTP_200_OK
                 ret_val = FileResponse(path=filename,
@@ -5121,19 +5398,20 @@ def documents_glossary_term(response: Response,
     ## Sample Call
          /v2/Documents/Glossary/{termIdentifier}
 
-    ## Notes
-         In V1 (and PEP-Easy 1.0), glossary entries are fetched via the /v1/Documents endpoint rather than here.
-
     ## Potential Errors
        USER NEEDS TO BE AUTHENTICATED for glossary access at the term level.  Otherwise, returns error.
 
        Client apps should disable the glossary links when not authenticated.
     """
+    caller_name = "[v2/Documents/Glossary]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
     ret_val = None
 
     opasDocPermissions.verify_header(request, "documents_glossary_term") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
-    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+    ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
     try:
         # handle default passthrough, when the value becomes query.
@@ -5164,7 +5442,8 @@ def documents_glossary_term(response: Response,
                                                                  record_per_term=recordperterm,
                                                                  retFormat=return_format,
                                                                  session_info=session_info,
-                                                                 req_url=request.url._url
+                                                                 req_url=request.url._url,
+                                                                 request=request
                                                                  )
 
         ret_val.documents.responseInfo.request = request.url._url
@@ -5235,7 +5514,7 @@ async def documents_image_fetch(response: Response,
        This endpoint is working.
 
     ## Sample Call
-         http://localhost:9100/v1/Documents/Image/AIM.036.0275A.FIG001/
+         http://localhost:9100/v2/Documents/Image/AIM.036.0275A.FIG001/
 
     ## Notes
         N/A
@@ -5249,13 +5528,26 @@ async def documents_image_fetch(response: Response,
                                                  secret=localsecrets.S3_SECRET,
                                                  root=expert_picks_path) 
         filenames = flex_fs.get_matching_filelist(path=expert_picks_path, filespec_regex=".*\.jpg", max_items=opasConfig.EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT)
-        status_message = f"Expert Picks Image Count: {len(filenames)}"
-        logger.debug(status_message)
-        filename = random.choice(filenames)
-        filename = filename.basename
-        expert_pick_image[0] = today
-        expert_pick_image[1] = filename
+        if len(filenames) == 0:
+            filename = opasConfig.EXPERT_PICKS_DEFAULT_IMAGE
+            expert_pick_image[0] = today
+            expert_pick_image[1] = filename
+        else:
+            status_message = f"Expert Picks Image Count: {len(filenames)}"
+            logger.debug(status_message)
+            filename = random.choice(filenames)
+            filename = filename.basename
+            expert_pick_image[0] = today
+            expert_pick_image[1] = filename
+            
         return filename
+
+    caller_name = "[v2/Documents/Image]"
+    #if localsecrets.DEBUG_TRACE:
+        #print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: {imageID}")
+
+    ret_val = None
+    filename = None
         
     try:
         expert_picks_path = localsecrets.IMAGE_EXPERT_PICKS_PATH
@@ -5264,9 +5556,7 @@ async def documents_image_fetch(response: Response,
     except: # in case IMAGE_EXPERT_PICKS_PATH in localsecrets is not set
         expert_picks_path = "pep-web-expert-pick-images"
 
-    ret_val = None
-    filename = None
-    
+   
     if imageID is not None:
         imageID = imageID.replace("+", " ")
         
@@ -5295,7 +5585,7 @@ async def documents_image_fetch(response: Response,
                                             #client_id=client_id) 
         # this is when we need a session id
             
-        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
+        ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
 
         # allow viewing, but not downloading if not logged in
         if not session_info.authenticated:
@@ -5314,12 +5604,15 @@ async def documents_image_fetch(response: Response,
     if download == 0 or download == 2:
         if imageID == "*":
             #  load a random image.  Load a new one each day
-            today = datetime.today().strftime("%Y%m%d")
-            if expert_pick_image[0] != today or reselect:
-                select_new_image() # saves new image to expert_pick_image as a side effect
-                filename = expert_pick_image[1] 
-            else:
-                filename = expert_pick_image[1] 
+            try:
+                today = datetime.today().strftime("%Y%m%d")
+                if expert_pick_image[0] != today or reselect:
+                    select_new_image() # saves new image to expert_pick_image as a side effect
+                    filename = expert_pick_image[1] 
+                else:
+                    filename = expert_pick_image[1]
+            except Exception as e:
+                logger.error(f"Error selecting a random expert pick image.  Error: {e}")
             
         if filename is None:
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
@@ -5423,6 +5716,16 @@ if __name__ == "__main__":
     import fastapi
     print (f"FastAPI Version {fastapi.__version__}")
     
-    uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=True, log_level="warning")
+    try:
+        if localsecrets.DEBUG_TRACE == 1:
+            print ("Debug on")
+            uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=True, log_level="warning")
+        else:
+            print ("Debug off")
+            uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=False, log_level="warning")
+    except:
+        print ("Debug off, DEBUG_TRACE not defined")
+        uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=False, log_level="warning")
+        
     # uvicorn.run(app, host=localsecrets.BASEURL, port=9100, debug=True)
     print ("Now we're exiting...")

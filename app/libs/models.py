@@ -110,8 +110,12 @@ class TimePeriod(Enum):
 #-------------------------------------------------------
 class ErrorReturn(BaseModel):
     httpcode: int = Field(200, title="HTTP code")
+    session_id: str = Field(None, title="Session ID")
+    user_authenticated: bool = Field(None, title="User authenticated")
     error: str = Field(None, title="Error class or title")
     error_description: str = Field(None, title="Error description")
+    subsystem_error_description: str = Field(None, title="Error description from subsystem, e.g., from Authorization System")
+    subsystem_error_model: dict = Field(None, title="Subsystem Error details")
 
 #-------------------------------------------------------
 # Status return structure, standard part of most models
@@ -149,11 +153,14 @@ class APIStatusItem(BaseModel):
 # General Data Encapsulation classes
 #-------------------------------------------------------
 class AccessLimitations(BaseModel):
+    accessType: str = Field(None, title="Class of access")
+    accessChecked: bool = Field(False, title="Access was checked. If false, accessLimited value is just defaulted to False")
     accessLimited: bool = Field(True, title="True if the data can not be provided for this user")
     accessLimitedCode: int = Field(None, title="If an error code is returned from the server, pass it back here for ease of client processing")
     accessLimitedClassifiedAsCurrentContent: bool = Field(False, title="True if the data is considered Current Content (embargoed). Note True does not mean it's limited for this user(See accessLimited for that).")
     accessLimitedReason: str = Field(None, title="Explanation of limited access status")
     accessLimitedDebugMsg: str = Field(None, title="Developer level info for tracing access issues")
+    accessLimitedAuthResponse: dict = Field(None, title="Response from authorization subsystem")
     accessLimitedDescription: str = Field(None, title="Description of why access is limited")
     accessLimitedPubLink: str = Field(None, title="Link to publisher") 
     doi: str = Field(None, title="Document Object Identifier, without base URL")
@@ -265,6 +272,7 @@ class DocumentListItem(BaseModel):
     issueSeqNbr: str = Field(None, title="Serial Issue Sequence Number (continuous count)") 
     issueTitle: str = Field(None, title="Serial Issue Title", description="Issues may have titles, e.g., special topic")
     newSectionName: str = Field(None, title="Name of Serial Section Starting", description="The name of the section of the issue, appears for the first article of a section")
+    pgCount: str = Field(None, title="Page Count", description="The number of pages in the document")
     pgRg: str = Field(None, title="Page Range as Published", description="The published start and end pages of the document, separated by a dash")
     pgStart: str = Field(None, title="Starting Page Number as Published", description="The published start page number of the document")
     pgEnd: str = Field(None, title="Ending Page Number as Published", description="The published end page number of the document")
@@ -309,9 +317,13 @@ class DocumentListItem(BaseModel):
     termDefPartXML: str = Field(None, title="", description="")
     termDefRestXML: str = Field(None, title="", description="")
     pdfOriginalAvailable: bool = Field(False, title="", description="")
+    embargo: str = Field(False, title="Article Embargoed", description="Article level embargo mechanism") 
+    embargotype: str = Field(None, title="Article Embargo Reason", description="Article level embargo reason")
+    downloads: bool = Field(None, title="Allow print/downloadng", description="If False, downloads and printing of this document are not allowed.")
     # these are not all currently used
-    accessClassification: str = Field(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
-    accessLimited: bool = Field(True, title="Access is limited, preventing full-text return")
+    accessClassification: str = Field(None, title="Document classification, e.g., Archive, Current, Free, OffSite, Special")
+    accessChecked: bool = Field(False, title="Access was checked. If false, accessLimited value is just defaulted to False")
+    accessLimited: bool = Field(None, title="Access is limited, preventing full-text return.  Only valid when accessChecked is True.")
     accessLimitedCode: int = Field(None, title="If an error code is returned from the server, pass it back here for ease of client processing")
     accessLimitedReason: str = Field(None, title="Explanation of user's access to this")
     accessLimitedDebugMsg: str = Field(None, title="Developer level info for tracing access issues")
@@ -469,6 +481,8 @@ class SessionInfo(BaseModel):
     session_expires_time: datetime = Field(None, title="The limit on the user's session information without renewing")
     admin: bool = Field(False, title="True if the user has been authenticated as admin.")
     api_client_id: int = Field(0, title="Identifies the client APP, e.g., 2 for the PEP-Web client; this is used to look up the client apps unique API_KEY in the database when needed")
+    api_direct_login: bool = Field(False, title="True if the session was logged in via the API endpoint.")
+    
     # temporary, for debug
     pads_session_info: PadsSessionInfo = None
     pads_user_info: PadsUserInfo = None
@@ -507,6 +521,7 @@ class ServerStatusItem(BaseModel):
     text_server_url: str = Field(None, title="Current SOLR URL")
     cors_regex: str = Field(None, title="Current CORS Regex")
     db_server_url: str = Field(None, title="Current DB URL")
+    library_versions: dict = Field({}, title="Server Python Library Versions")
 
 #-------------------------------------------------------
 
@@ -530,6 +545,10 @@ class JournalInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a fe
     yearLast: str = Field(None, title="")
     instanceCount: int = Field(None, title="Number of document instances for this source")
     embargoYears: str = Field(None, title="")
+    # New fields 2021-11-30
+    accessClassification: str = Field(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
+    pubSourceURL: str = Field(None, title="URL of the original publication if applicable)")
+    PEPRelease: str = Field(None, title="Year this was first published in the database")
     
 class JournalInfoStruct(BaseModel):
     responseInfo: ResponseInfo
@@ -718,13 +737,16 @@ class SourceInfoListItem(BaseModel):
     instanceCount: int = Field(None, title="Number of document instances for this source")
     embargoYears: str = Field(None, title="")
     # these are not all currently used
-    accessClassification: str = Field(None, title="Document classification, e.g., Archive, Current, Free, OffSite")
+    accessClassification: str = Field(None, title="Document classification, e.g., archive, current, free, offSite") 
     accessLimited: bool = Field(True, title="Access is limited, preventing full-text return")
     accessLimitedReason: str = Field(None, title="Explanation of user's access to this")
     accessLimitedDebugMsg: str = Field(None, title="Developer level info for tracing access issues")
     accessLimitedDescription: str = Field(None, title="Description of the access limitation applied")
     accessLimitedClassifiedAsCurrentContent: bool = Field(None, title="Access is limited by embargo to this specific content")
     accessLimitedPubLink: str = Field(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
+    # New fields 2021-11-30
+    pubSourceURL: str = Field(None, title="URL of the original publication if applicable)")
+    PEPRelease: str = Field(None, title="Year this was first published in the database")
     
 
 class SourceInfoStruct(BaseModel):
@@ -774,6 +796,9 @@ class VideoInfoListItem(BaseModel):    # Same as SourceInfoListItem minus a few 
     accessLimitedDescription: str = Field(None, title="Description of the access limitation applied")
     accessLimitedClassifiedAsCurrentContent: bool = Field(None, title="Access is limited by embargo to this specific content")
     accessLimitedPubLink: str = Field(None, title="Link to the document or publisher in some cases where doc's not readable on PEP")
+    # New fields 2021-11-30
+    pubSourceURL: str = Field(None, title="URL of the original publication if applicable)")
+    PEPRelease: str = Field(None, title="Year this was first published in the database")
 
 class VideoInfoStruct(BaseModel):
     responseInfo: ResponseInfo

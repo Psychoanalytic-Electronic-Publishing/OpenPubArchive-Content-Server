@@ -6,7 +6,9 @@ import unittest
 import requests
 import urllib.parse
 
-from unitTestConfig import base_plus_endpoint_encoded, headers
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+# Get session, but not logged in.
+headers = get_headers_not_logged_in()
 
 class TestDatabaseSearchAuthor(unittest.TestCase):
     def test_search_facets1_base(self):
@@ -14,7 +16,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 1)
@@ -24,7 +26,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 1)
@@ -34,7 +36,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 1)
@@ -47,7 +49,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 2)
@@ -60,7 +62,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 2)
@@ -71,7 +73,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] == 1)
@@ -82,7 +84,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 22)
@@ -92,7 +94,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 22)
@@ -102,7 +104,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 22)
@@ -112,20 +114,20 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 70)
+        assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 80)
   
     def test_search_facets2b(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=(cooper AND cooper, steven h. OR (cooper, steven))')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
-        assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 70)
+        assert(response_info["fullCount"] > 60 and response_info["fullCount"] < 80)
 
     def test_search_author_forward(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author="Moshe Spero"')
@@ -203,7 +205,7 @@ class TestDatabaseSearchAuthor(unittest.TestCase):
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
-        print (r)
+        #print (r)
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"] 
         assert(response_info["fullCount"] >= 6)
