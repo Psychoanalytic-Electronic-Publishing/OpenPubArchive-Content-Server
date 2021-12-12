@@ -2,11 +2,13 @@ import sys
 import logging
 logger = logging.getLogger(__name__)
 import datetime
+import time
 from datetime import datetime, timedelta
 import opasPySolrLib
 from fastapi import HTTPException
 import starlette.status as httpCodes
 import opasConfig
+import localsecrets
 
 def nested_dict(n, type):
     from collections import defaultdict
@@ -80,7 +82,11 @@ class whatsNewDB(object):
                 self.limit = limit
                 self.offset = offset
                 self.days_back = days_back
-                print(f"WhatsNew cache updated. Expires: {self.expires} DaysBack: {days_back} Limit: {limit} Offset: {offset} Forced:{forced_update}")
+
+                if localsecrets.DEBUG_TRACE:
+                    ts = time.time()
+                    print(f"{ts}: [WhatsNew] Cache updated. Exp: {self.expires} DaysBack: {days_back} Limit: {limit} Offset: {offset} Forced:{forced_update}")
+
             ret_val = self.whats_new
             ret_val.whatsNew.responseInfo.limit = limit
             ret_val.whatsNew.responseInfo.offset = offset

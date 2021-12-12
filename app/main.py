@@ -354,6 +354,10 @@ def get_client_session(response: Response,
         
     if client_session is not None:
         session_id = client_session
+        #if localsecrets.DEBUG_TRACE:
+            #print ("-" * 100)
+            #msg = f"{datetime.now().time().isoformat()}: [client-session from header]: {session_id} "
+            #print (msg)
     else:
         session_id = opasDocPermissions.find_client_session_id(request, response, client_session)
         
@@ -372,7 +376,7 @@ def get_client_session(response: Response,
                 detail=ERR_MSG_CALLER_IDENTIFICATION_ERROR
             )
         else:
-            logger.info(f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID")
+            print (f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID") # set to print rather than debug
             session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id,
                                                                           client_id=client_id,
                                                                           request=request)
@@ -386,12 +390,6 @@ def get_client_session(response: Response,
                     status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
                     detail=ERR_MSG_PASSWORD + f" ({msg} - {e})", 
                 )
-        # No need to save cookie unless logging in through server, and that is handled on line 1376.
-        #else:
-            #if session_id is not None:
-                #opasAPISupportLib.save_opas_session_cookie(request, response, session_id)
-            #else:
-                #logger.debug("SessionID is None, no cookie saved.")
 
     if session_id is None or len(session_id) < 12:
         # don't report these errors
@@ -641,6 +639,8 @@ async def admin_reports(response: Response,
 
     """
     caller_name = "[v2/Admin/Reports]"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+
     opasDocPermissions.verify_header(request, "Reports") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
@@ -926,6 +926,7 @@ async def admin_sitemap(response: Response,
     
     """
     caller_name = "[v2/Admin/Sitemap]"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
     
     import opasSiteMap
     # path variable/parameter defaults to localsecrets.SITEMAP_PATH
@@ -1144,6 +1145,8 @@ async def client_save_configuration(response: Response,
 
     #  return current config (old if it fails).
     caller_name = "client_save_configuration"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+
     opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
@@ -1216,6 +1219,8 @@ async def client_update_configuration(response: Response,
     #  return current config (old if it fails).
 
     caller_name = "client_update_configuration"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+
     opasDocPermissions.verify_header(request, "ClientUpdateConfig") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
     msg = ""
@@ -1306,6 +1311,8 @@ async def client_get_configuration(response: Response,
 
     """
     caller_name = "client_get_configuration"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+
     # maybe no session id when they get this, so don't check here
     # opasDocPermissions.verify_header(request, "ClientGetConfig") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -1373,6 +1380,7 @@ async def client_del_configuration(response: Response,
 
     """
     caller_name = "client_del_configuration"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
     
     opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -1428,8 +1436,9 @@ def session_login_basic(response: Response,
 
     """
     caller_name = "[v2/Session/BasicLogin]"   
-    session_id = session_info.session_id
+    if localsecrets.DEBUG_TRACE: print(caller_name)
 
+    session_id = session_info.session_id
     if session_info is not None:
         ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=session_id, client_id=client_id, caller_name=caller_name)
         # Save it for later; most importantly, overwrite any existing cookie!
@@ -1627,6 +1636,8 @@ async def session_status(response: Response,
     global text_server_ver # solr ver
     admin = False
     caller_name = "[v2/Session/Status]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     # see if user is an admin
     if client_session is not None:
@@ -1748,6 +1759,9 @@ async def session_whoami(response: Response,
 
     """
     caller_name = "[v2/Session/WhoAmI]"   
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+
     opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
@@ -1962,6 +1976,8 @@ async def database_advanced_search(response: Response,
 
     """
     caller_name = "[v2/Database/AdvancedSearch]"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+
     opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
 
@@ -2246,6 +2262,7 @@ async def database_extendedsearch(response: Response,
 
     """
     caller_name = "[v3/Database/ExtendedSearch]"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
    
     opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -2390,6 +2407,8 @@ async def database_glossary_search_v2(response: Response,
     
     """
     caller_name = "[v2/Database/Glossary/Search]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     opasDocPermissions.verify_header(request, "database_glossary_search_v2") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -2527,6 +2546,9 @@ async def database_search(response: Response,
     """
     ts = time.time()
     caller_name = "[v2/Database/Search]"
+    if localsecrets.DEBUG_TRACE:
+        composite = f"smarttext: {smarttext} / paratext {paratext} / facetquery: {facetquery} "
+        print(f"{datetime.now().time().isoformat()}: {caller_name} - {composite}")
     
     # get client_id and session directly
     client_id_from_header, client_session_from_header = opasDocPermissions.verify_header(request, "Search") # for debugging client call
@@ -3049,6 +3071,9 @@ async def database_related_to_this(response: Response,
     
     ret_val = None
     caller_name = "[v2/Database/RelatedDocuments]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name}")
+
     opasDocPermissions.verify_header(request, "RelatedDocuments") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
@@ -3163,6 +3188,8 @@ def database_mostviewed(response: Response,
 
     """
     caller_name = "[v2/Database/MostViewed]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     ts = time.time()
     ret_val = None
@@ -3327,7 +3354,9 @@ def database_mostcited(response: Response,
 
     """
     caller_name = "[v2/Database/MostCited]"
-
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
     ret_val = True
     ts = time.time()
     
@@ -3466,6 +3495,8 @@ async def database_open_url(response: Response,
     """
     ts = time.time()
     caller_name = "[v2/Database/OpenURL]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     if aufirst is not None and aulast is not None:
         author = aufirst + " , " + aulast
@@ -3679,6 +3710,10 @@ async def database_term_counts(response: Response,
                handling is different between the two libraries
 
     """
+    caller_name = "[v2/Database/TermCounts]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} ")
+    
     ts = time.time()
     # no logging, no session info for this call...speed, speed, speed
     term_index_items = []
@@ -3823,6 +3858,8 @@ def database_who_cited_this(response: Response,
 
     """
     caller_name = "[v2/Database/WhoCitedThis]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     ret_val = True
     ts = time.time()
@@ -3904,6 +3941,10 @@ def database_whatsnew(response: Response,
 
     """
     ts = time.time()
+    
+    caller_name = "[v2/Database/WhatsNew]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     # for debugging client call
     #opasDocPermissions.verify_header(request, "WhatsNew")
@@ -3996,6 +4037,11 @@ def database_word_wheel(response: Response,
 
     """
     ret_val = None
+
+    caller_name = "[v2/Database/WordWheel]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
 
     if core in ["docs", "authors"] and word is not None:
@@ -4070,7 +4116,9 @@ def metadata_articleid(response: Response,
        N/A
 
     """
-    # caller_name = "[v2/Metadata/ArticleID]"
+    caller_name = "[v2/Metadata/ArticleID]"
+    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    
     # api_id = opasCentralDBLib.API_METADATA_ARTICLEID
     
     # return the articleID model to the client to break it down for them
@@ -4088,7 +4136,7 @@ def metadata_books(response: Response,
                    limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_METADATA_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                    offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                    client_id:int=Depends(get_client_id), 
-                         #client_session:str= Depends(get_client_session)
+                   client_session:str= Depends(get_client_session)
                    ):
     """
     ## Function
@@ -4120,6 +4168,10 @@ def metadata_books(response: Response,
        N/A
 
     """
+    caller_name = "[v2/Metadata/Books]"
+    if localsecrets.DEBUG_TRACE:
+        ts = time.time()
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     ret_val = metadata_by_sourcetype_sourcecode(response,
                                                 request,
@@ -4168,7 +4220,11 @@ def metadata_contents_sourcecode(response: Response,
 
     """
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
-    ts = time.time()
+    caller_name = "[/v2/Metadata/Contents/{SourceCode}]"
+
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
     
     try:       
@@ -4238,6 +4294,11 @@ def metadata_contents(SourceCode: str,
     """
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
+
+    caller_name = "[/v2/Metadata/Contents/{SourceCode}/{SourceVolume}]"
+
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     try:
         ret_val = documentList = opasPySolrLib.metadata_get_contents(SourceCode,
@@ -4615,6 +4676,9 @@ def authors_publications(response: Response,
 
     """
     caller_name = "[v2/Authors/Publications]"
+
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -4680,6 +4744,9 @@ def documents_abstracts(response: Response,
 
     """
     caller_name = "[v2/Documents/Abstracts]"
+
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     opasDocPermissions.verify_header(request, caller_name)  # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -4784,6 +4851,9 @@ def documents_concordance(response: Response,
     """
 
     caller_name = "[v2/Documents/Concordance]"
+
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     ret_val = None
     item_of_interest = f"{paralangid}/{paralangrx}"
@@ -4922,11 +4992,12 @@ def documents_document_fetch(response: Response,
 
     """
     # NOTE: Calls the code for the Glossary endpoint via function view_a_glossary_entry)
-    caller_name = "[v2/Documents/Document]"
-
-    ts = time.time()
     ret_val = None
-    
+    ts = time.time()
+    caller_name = "[v2/Documents/Document]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+
     session_id = client_session
     opasDocPermissions.verify_header(request, "documents_fetch") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -5109,6 +5180,9 @@ def documents_downloads(response: Response,
     """
     ts = time.time()
     caller_name = "[v2/Documents/Downloads]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
+    
     opasDocPermissions.verify_header(request, "documents_downloads") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug") # just for debug/info
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
@@ -5330,6 +5404,8 @@ def documents_glossary_term(response: Response,
        Client apps should disable the glossary links when not authenticated.
     """
     caller_name = "[v2/Documents/Glossary]"
+    if localsecrets.DEBUG_TRACE:
+        print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     ret_val = None
 
@@ -5465,6 +5541,13 @@ async def documents_image_fetch(response: Response,
             expert_pick_image[1] = filename
             
         return filename
+
+    caller_name = "[v2/Documents/Image]"
+    #if localsecrets.DEBUG_TRACE:
+        #print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: {imageID}")
+
+    ret_val = None
+    filename = None
         
     try:
         expert_picks_path = localsecrets.IMAGE_EXPERT_PICKS_PATH
@@ -5473,10 +5556,7 @@ async def documents_image_fetch(response: Response,
     except: # in case IMAGE_EXPERT_PICKS_PATH in localsecrets is not set
         expert_picks_path = "pep-web-expert-pick-images"
 
-    caller_name = "[v2/Documents/Image]"
-    ret_val = None
-    filename = None
-    
+   
     if imageID is not None:
         imageID = imageID.replace("+", " ")
         

@@ -3,6 +3,7 @@
 
 import requests
 import datetime
+from datetime import datetime as dt # to avoid python's confusion with datetime.timedelta
 import time
 import opasConfig
 import models
@@ -13,7 +14,6 @@ import localsecrets
 import sys
 from fastapi import HTTPException
 
-# from opasAPISupportLib import save_opas_session_cookie
 sys.path.append("..") # Adds higher directory to python modules path.
 from config.opasConfig import OPASSESSIONID
 
@@ -67,7 +67,7 @@ def user_logged_in_per_header(request, session_id=None, caller_name="unknown") -
                            # session already ended
                             ret_val = False
                         else:
-                            if datetime.datetime.now() > the_session_info.session_expires_time:
+                            if dt.now() > the_session_info.session_expires_time:
                                 # End session
                                 success = ocd.end_session(session_id=session_id)
                                 ret_val = False
@@ -115,8 +115,8 @@ def find_client_session_id(request: Request,
     
     if client_session is not None:
         ret_val = client_session
-        #msg = f"client-session from header: {ret_val} "
-        #logger.debug(msg)
+        msg = f"client-session from header (find_client_session_id): {ret_val} "
+        print (msg)
     else:
         #Won't work unless they expose cookie to client, so don't waste time 
         #pepweb_session_cookie = request.cookies.get("pepweb_session", None)
@@ -283,7 +283,7 @@ def get_authserver_session_info(session_id,
         else:
             session_info = models.SessionInfo(session_id=session_id, api_client_id=client_id)
             
-        start_time = pads_session_info.session_start_time if pads_session_info.session_start_time is not None else datetime.datetime.now()
+        start_time = pads_session_info.session_start_time if pads_session_info.session_start_time is not None else dt.now()
         try:
             session_info.has_subscription = pads_session_info.HasSubscription
         except Exception as e:
@@ -338,7 +338,7 @@ def get_authserver_session_info(session_id,
                 # session_info.authorized_peparchive = False
                 # session_info.authorized_pepcurrent = False
             else:
-                start_time = pads_session_info.session_start_time if pads_session_info.session_start_time is not None else datetime.datetime.now()
+                start_time = pads_session_info.session_start_time if pads_session_info.session_start_time is not None else dt.now()
                 if pads_user_info is not None:
                     session_info.user_id = userID=pads_user_info.UserId
                     session_info.username = pads_user_info.UserName
@@ -792,15 +792,18 @@ def get_access_limitations(doc_id,
             # **************************************
             try:                   
                 if not open_access:
-                    if (session_info.authenticated == True # Must be authenticated for this check
-                        and (ret_val.accessLimited == True # if it's marked limited, then may need to check, it might be first one
-                             or fulltext_request == True)): # or whenever full-text is requested.
+                    if (ret_val.accessLimited == True      # if it's marked limited, then may need to check, it might be first one
+                             or fulltext_request == True): # or whenever full-text is requested.
                         # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:
                         if fulltext_request:
                             reason_for_check = opasConfig.AUTH_DOCUMENT_VIEW_REQUEST
                         else:
                             reason_for_check = opasConfig.AUTH_ABSTRACT_VIEW_REQUEST
+
                         try:
+                            if localsecrets.DEBUG_TRACE:
+                                print(f"{dt.now().time().isoformat()}: [PaDS/PermissChk] {session_info.session_id}: {doc_id} authenticated: {session_info.authenticated}")
+
                             pads_authorized, resp = authserver_permission_check(session_id=session_info.session_id,
                                                                                 doc_id=doc_id,
                                                                                 doc_year=year,
@@ -890,11 +893,17 @@ def get_access_limitations(doc_id,
                                     ret_val.accessChecked = True
                                     ret_val.accessLimitedDescription = msgdb.get_user_message(opasConfig.ACCESS_CLASS_DESCRIPTION_ARCHIVE)
                                     ret_val.accessLimitedReason = " (Authorized)"
+
                                     msg = f"Doc {doc_id} available. Pads: {resp.ReasonStr}. Server: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}"
                                     logger.debug(msg)
+                                    if localsecrets.DEBUG_TRACE:
+                                        print(f"{dt.now().time().isoformat()}: [PaDS] {session_info.session_id}: Doc {doc_id} available. Pads: {resp.ReasonStr}. Server: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}")
                                     ret_val.accessLimitedDebugMsg = msg
                                 else:
                                     # changed from warning to info 2021-06-02 to reduce normal logging
+                                    if localsecrets.DEBUG_TRACE:
+                                        print(f"{dt.now().time().isoformat()}: [PaDS] {session_info.session_id}: Doc {doc_id} unavailable. Pads: {resp.ReasonStr}. Server: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}")
+
                                     msg = f"Doc {doc_id} unavailable. Pads: {resp.ReasonStr}. Server: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}"
                                     logger.info(msg) # limited...get it elsewhere
                                     ret_val.accessLimitedDebugMsg = msg
@@ -907,19 +916,27 @@ def get_access_limitations(doc_id,
                                         if ret_val.accessLimitedReason is None:
                                             ret_val.accessLimitedReason = "(" + resp.ReasonStr + ")"
                     else:
-                        # not full-text OR (not authenticated or accessLimited==False)
+                        # not full-text OR not access_limited
+                        if localsecrets.DEBUG_TRACE:
+                            print(f"{dt.now().time().isoformat()}: [get_access_limitations] No PaDS check needed: Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}")
+
                         msg = f"No PaDS check needed: Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}"
-                        logger.debug(msg)
                         ret_val.accessLimitedDebugMsg = msg
 
                 else: # It's open access!
+                    if localsecrets.DEBUG_TRACE:
+                        print(f"{dt.now().time().isoformat()}: [get_access_limitations] No PaDS check needed: Document {doc_id} is open access")
+
                     msg = f"No PaDS check needed: Document {doc_id} is open access"
-                    logger.debug(msg)
                     ret_val.accessLimitedDebugMsg = msg
         
             except Exception as e:
-                msg = f"{caller_name}: Unexpected issue checking document permission. Possibly not logged in {e}"
-                logger.error(msg)
+                msg = f"{caller_name}: Unexpected issue checking document permission. Possibly not logged in. {e}"
+                logger.warning(msg)
+
+                if localsecrets.DEBUG_TRACE:
+                    print(f"{dt.now().time().isoformat()}: [get_access_limitations] {msg}")
+                
                 ret_val.accessLimitedDebugMsg = msg
                 pass # can't be checked, will be unauthorized.
 

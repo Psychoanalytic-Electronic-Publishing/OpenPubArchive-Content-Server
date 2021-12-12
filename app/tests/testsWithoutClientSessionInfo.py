@@ -47,7 +47,7 @@ class TestsWithoutClientSession(unittest.TestCase):
     
     def test_3_metadata_books(self):
         full_URL = base_plus_endpoint_encoded('/v2/Metadata/Books/')
-        response = requests.get(full_URL)
+        response = requests.get(full_URL, headers=client_only_headers)
         assert(response.ok == True)
         # test return
         r = response.json()
