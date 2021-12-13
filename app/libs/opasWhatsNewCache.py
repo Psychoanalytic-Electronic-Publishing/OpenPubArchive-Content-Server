@@ -83,7 +83,7 @@ class whatsNewDB(object):
                 self.offset = offset
                 self.days_back = days_back
 
-                if localsecrets.DEBUG_TRACE:
+                if opasConfig.DEBUG_TRACE:
                     ts = time.time()
                     print(f"{ts}: [WhatsNew] Cache updated. Exp: {self.expires} DaysBack: {days_back} Limit: {limit} Offset: {offset} Forced:{forced_update}")
 

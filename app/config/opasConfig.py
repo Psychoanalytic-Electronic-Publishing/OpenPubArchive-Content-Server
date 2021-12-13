@@ -16,10 +16,13 @@ import opasFileSupport
 
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
 
-# To test idea for limiting access calls
-LIMIT_TEST_DO_THIS = True
-LIMIT_TEST_DONT_DO_THIS = False
+# Various switches for information/debugging
+DEBUG_TRACE = 0
+LOG_CALL_TIMING = True
+LOCAL_TRACE = False                   # turn this on to see the queries easily.
+LOCAL_DBOPEN_TRACE = False            # show open/close db in init/del
 
+# Cache controls
 WHATS_NEW_EXPIRES_DAYS = 0
 WHATS_NEW_EXPIRES_HOURS = 8
 WHATS_NEW_EXPIRES_MINUTES = 0
@@ -45,9 +48,6 @@ import starlette.status as httpCodes # HTTP_ codes, e.g.
 # logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
-LOG_CALL_TIMING = True
-LOCAL_TRACE = False                   # turn this on to see the queries easily.
-LOCAL_DBOPEN_TRACE = False            # show open/close db in init/del
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
