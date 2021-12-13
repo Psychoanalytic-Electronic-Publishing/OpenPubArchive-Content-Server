@@ -2100,7 +2100,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 documentListItem.accessClassification = opasConfig.DOCUMENT_ACCESS_DEFAULT
                 
             if documentListItem.accessClassification == opasConfig.DOCUMENT_ACCESS_UNDEFINED:
-                logger.error(f"art_id: {documentListItem.documentID} no file_classification returned!")
+                logger.error(f"art_id: {documentListItem.documentID} no accessClassification returned!")
                 
             documentListItem.updated=result.get("file_last_modified", None)
     

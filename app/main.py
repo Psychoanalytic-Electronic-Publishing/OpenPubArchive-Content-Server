@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1210/v2.1.100" # semver versioning now added after date.
+__version__     = "2021.1213/v2.1.101" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -354,7 +354,7 @@ def get_client_session(response: Response,
         
     if client_session is not None:
         session_id = client_session
-        #if localsecrets.DEBUG_TRACE:
+        #if opasConfig.DEBUG_TRACE:
             #print ("-" * 100)
             #msg = f"{datetime.now().time().isoformat()}: [client-session from header]: {session_id} "
             #print (msg)
@@ -639,7 +639,7 @@ async def admin_reports(response: Response,
 
     """
     caller_name = "[v2/Admin/Reports]"
-    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    #if opasConfig.DEBUG_TRACE: print(caller_name)
 
     opasDocPermissions.verify_header(request, "Reports") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -926,7 +926,7 @@ async def admin_sitemap(response: Response,
     
     """
     caller_name = "[v2/Admin/Sitemap]"
-    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    #if opasConfig.DEBUG_TRACE: print(caller_name)
     
     import opasSiteMap
     # path variable/parameter defaults to localsecrets.SITEMAP_PATH
@@ -1145,7 +1145,7 @@ async def client_save_configuration(response: Response,
 
     #  return current config (old if it fails).
     caller_name = "client_save_configuration"
-    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    #if opasConfig.DEBUG_TRACE: print(caller_name)
 
     opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -1219,7 +1219,7 @@ async def client_update_configuration(response: Response,
     #  return current config (old if it fails).
 
     caller_name = "client_update_configuration"
-    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    #if opasConfig.DEBUG_TRACE: print(caller_name)
 
     opasDocPermissions.verify_header(request, "ClientUpdateConfig") # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -1311,7 +1311,7 @@ async def client_get_configuration(response: Response,
 
     """
     caller_name = "client_get_configuration"
-    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    #if opasConfig.DEBUG_TRACE: print(caller_name)
 
     # maybe no session id when they get this, so don't check here
     # opasDocPermissions.verify_header(request, "ClientGetConfig") # for debugging client call
@@ -1380,7 +1380,7 @@ async def client_del_configuration(response: Response,
 
     """
     caller_name = "client_del_configuration"
-    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    #if opasConfig.DEBUG_TRACE: print(caller_name)
     
     opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -1436,7 +1436,7 @@ def session_login_basic(response: Response,
 
     """
     caller_name = "[v2/Session/BasicLogin]"   
-    if localsecrets.DEBUG_TRACE: print(caller_name)
+    if opasConfig.DEBUG_TRACE: print(caller_name)
 
     session_id = session_info.session_id
     if session_info is not None:
@@ -1636,7 +1636,7 @@ async def session_status(response: Response,
     global text_server_ver # solr ver
     admin = False
     caller_name = "[v2/Session/Status]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     # see if user is an admin
@@ -1759,7 +1759,7 @@ async def session_whoami(response: Response,
 
     """
     caller_name = "[v2/Session/WhoAmI]"   
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     opasDocPermissions.verify_header(request, caller_name) # for debugging client call
@@ -1976,7 +1976,7 @@ async def database_advanced_search(response: Response,
 
     """
     caller_name = "[v2/Database/AdvancedSearch]"
-    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    #if opasConfig.DEBUG_TRACE: print(caller_name)
 
     opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -2262,7 +2262,7 @@ async def database_extendedsearch(response: Response,
 
     """
     caller_name = "[v3/Database/ExtendedSearch]"
-    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    #if opasConfig.DEBUG_TRACE: print(caller_name)
    
     opasDocPermissions.verify_header(request, caller_name) # for debugging client call
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -2407,7 +2407,7 @@ async def database_glossary_search_v2(response: Response,
     
     """
     caller_name = "[v2/Database/Glossary/Search]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     opasDocPermissions.verify_header(request, "database_glossary_search_v2") # for debugging client call
@@ -2546,7 +2546,7 @@ async def database_search(response: Response,
     """
     ts = time.time()
     caller_name = "[v2/Database/Search]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         composite = f"smarttext: {smarttext} / paratext {paratext} / facetquery: {facetquery} "
         print(f"{datetime.now().time().isoformat()}: {caller_name} - {composite}")
     
@@ -3071,7 +3071,7 @@ async def database_related_to_this(response: Response,
     
     ret_val = None
     caller_name = "[v2/Database/RelatedDocuments]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name}")
 
     opasDocPermissions.verify_header(request, "RelatedDocuments") # for debugging client call
@@ -3188,7 +3188,7 @@ def database_mostviewed(response: Response,
 
     """
     caller_name = "[v2/Database/MostViewed]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     ts = time.time()
@@ -3354,7 +3354,7 @@ def database_mostcited(response: Response,
 
     """
     caller_name = "[v2/Database/MostCited]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     ret_val = True
@@ -3495,7 +3495,7 @@ async def database_open_url(response: Response,
     """
     ts = time.time()
     caller_name = "[v2/Database/OpenURL]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     if aufirst is not None and aulast is not None:
@@ -3711,7 +3711,7 @@ async def database_term_counts(response: Response,
 
     """
     caller_name = "[v2/Database/TermCounts]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} ")
     
     ts = time.time()
@@ -3858,7 +3858,7 @@ def database_who_cited_this(response: Response,
 
     """
     caller_name = "[v2/Database/WhoCitedThis]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     ret_val = True
@@ -3943,7 +3943,7 @@ def database_whatsnew(response: Response,
     ts = time.time()
     
     caller_name = "[v2/Database/WhatsNew]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     # for debugging client call
@@ -4039,7 +4039,7 @@ def database_word_wheel(response: Response,
     ret_val = None
 
     caller_name = "[v2/Database/WordWheel]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
@@ -4117,7 +4117,7 @@ def metadata_articleid(response: Response,
 
     """
     caller_name = "[v2/Metadata/ArticleID]"
-    #if localsecrets.DEBUG_TRACE: print(caller_name)
+    #if opasConfig.DEBUG_TRACE: print(caller_name)
     
     # api_id = opasCentralDBLib.API_METADATA_ARTICLEID
     
@@ -4169,7 +4169,7 @@ def metadata_books(response: Response,
 
     """
     caller_name = "[v2/Metadata/Books]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         ts = time.time()
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
@@ -4222,7 +4222,7 @@ def metadata_contents_sourcecode(response: Response,
     # ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id)
     caller_name = "[/v2/Metadata/Contents/{SourceCode}]"
 
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     log_endpoint(request, client_id=client_id, session_id=client_session, level="debug")
@@ -4297,7 +4297,7 @@ def metadata_contents(SourceCode: str,
 
     caller_name = "[/v2/Metadata/Contents/{SourceCode}/{SourceVolume}]"
 
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     try:
@@ -4677,7 +4677,7 @@ def authors_publications(response: Response,
     """
     caller_name = "[v2/Authors/Publications]"
 
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     ocd, session_info = opasAPISupportLib.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
@@ -4745,7 +4745,7 @@ def documents_abstracts(response: Response,
     """
     caller_name = "[v2/Documents/Abstracts]"
 
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     opasDocPermissions.verify_header(request, caller_name)  # for debugging client call
@@ -4852,7 +4852,7 @@ def documents_concordance(response: Response,
 
     caller_name = "[v2/Documents/Concordance]"
 
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     ret_val = None
@@ -4995,7 +4995,7 @@ def documents_document_fetch(response: Response,
     ret_val = None
     ts = time.time()
     caller_name = "[v2/Documents/Document]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
 
     session_id = client_session
@@ -5180,7 +5180,7 @@ def documents_downloads(response: Response,
     """
     ts = time.time()
     caller_name = "[v2/Documents/Downloads]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     opasDocPermissions.verify_header(request, "documents_downloads") # for debugging client call
@@ -5404,7 +5404,7 @@ def documents_glossary_term(response: Response,
        Client apps should disable the glossary links when not authenticated.
     """
     caller_name = "[v2/Documents/Glossary]"
-    if localsecrets.DEBUG_TRACE:
+    if opasConfig.DEBUG_TRACE:
         print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: ")
     
     ret_val = None
@@ -5543,7 +5543,7 @@ async def documents_image_fetch(response: Response,
         return filename
 
     caller_name = "[v2/Documents/Image]"
-    #if localsecrets.DEBUG_TRACE:
+    #if opasConfig.DEBUG_TRACE:
         #print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: {imageID}")
 
     ret_val = None
@@ -5717,7 +5717,7 @@ if __name__ == "__main__":
     print (f"FastAPI Version {fastapi.__version__}")
     
     try:
-        if localsecrets.DEBUG_TRACE == 1:
+        if opasConfig.DEBUG_TRACE == 1:
             print ("Debug on")
             uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=True, log_level="warning")
         else:

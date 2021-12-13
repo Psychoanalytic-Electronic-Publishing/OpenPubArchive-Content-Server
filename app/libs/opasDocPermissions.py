@@ -801,7 +801,7 @@ def get_access_limitations(doc_id,
                             reason_for_check = opasConfig.AUTH_ABSTRACT_VIEW_REQUEST
 
                         try:
-                            if localsecrets.DEBUG_TRACE:
+                            if opasConfig.DEBUG_TRACE:
                                 print(f"{dt.now().time().isoformat()}: [PaDS/PermissChk] {session_info.session_id}: {doc_id} authenticated: {session_info.authenticated}")
 
                             pads_authorized, resp = authserver_permission_check(session_id=session_info.session_id,
@@ -896,12 +896,12 @@ def get_access_limitations(doc_id,
 
                                     msg = f"Doc {doc_id} available. Pads: {resp.ReasonStr}. Server: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}"
                                     logger.debug(msg)
-                                    if localsecrets.DEBUG_TRACE:
+                                    if opasConfig.DEBUG_TRACE:
                                         print(f"{dt.now().time().isoformat()}: [PaDS] {session_info.session_id}: Doc {doc_id} available. Pads: {resp.ReasonStr}. Server: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}")
                                     ret_val.accessLimitedDebugMsg = msg
                                 else:
                                     # changed from warning to info 2021-06-02 to reduce normal logging
-                                    if localsecrets.DEBUG_TRACE:
+                                    if opasConfig.DEBUG_TRACE:
                                         print(f"{dt.now().time().isoformat()}: [PaDS] {session_info.session_id}: Doc {doc_id} unavailable. Pads: {resp.ReasonStr}. Server: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}")
 
                                     msg = f"Doc {doc_id} unavailable. Pads: {resp.ReasonStr}. Server: {ret_val.accessLimitedDescription} - {ret_val.accessLimitedReason}"
@@ -917,14 +917,14 @@ def get_access_limitations(doc_id,
                                             ret_val.accessLimitedReason = "(" + resp.ReasonStr + ")"
                     else:
                         # not full-text OR not access_limited
-                        if localsecrets.DEBUG_TRACE:
+                        if opasConfig.DEBUG_TRACE:
                             print(f"{dt.now().time().isoformat()}: [get_access_limitations] No PaDS check needed: Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}")
 
                         msg = f"No PaDS check needed: Document {doc_id} accessLimited: {ret_val.accessLimited}. Authent: {session_info.authenticated}"
                         ret_val.accessLimitedDebugMsg = msg
 
                 else: # It's open access!
-                    if localsecrets.DEBUG_TRACE:
+                    if opasConfig.DEBUG_TRACE:
                         print(f"{dt.now().time().isoformat()}: [get_access_limitations] No PaDS check needed: Document {doc_id} is open access")
 
                     msg = f"No PaDS check needed: Document {doc_id} is open access"
@@ -934,7 +934,7 @@ def get_access_limitations(doc_id,
                 msg = f"{caller_name}: Unexpected issue checking document permission. Possibly not logged in. {e}"
                 logger.warning(msg)
 
-                if localsecrets.DEBUG_TRACE:
+                if opasConfig.DEBUG_TRACE:
                     print(f"{dt.now().time().isoformat()}: [get_access_limitations] {msg}")
                 
                 ret_val.accessLimitedDebugMsg = msg
