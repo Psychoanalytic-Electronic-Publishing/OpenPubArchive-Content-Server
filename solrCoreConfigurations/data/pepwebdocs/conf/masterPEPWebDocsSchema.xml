@@ -273,6 +273,8 @@
   <field name="art_doi" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--name for this section of an issue, e.g., section name in a issue TOC-->
   <field name="art_newsecnm" type="text_simple" indexed="true" stored="true" multiValued="false"/>
+  <field name="art_newseclevel" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
+    
   <!-- extra metadata for books -->
   <field name="bk_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_title_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting

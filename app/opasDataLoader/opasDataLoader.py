@@ -396,6 +396,7 @@ def main():
         # Now walk through all the filenames selected
         # ----------------------------------------------------------------------
         print (f"Load process started ({time.ctime()}).  Examining files.")
+        
         for n in filenames:
             fileTimeStart = time.time()
             file_updated = False
