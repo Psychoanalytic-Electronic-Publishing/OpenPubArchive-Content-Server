@@ -281,10 +281,18 @@ class ArticleInfo(object):
             self.src_title_abbr = sourceinfodb_data[pepsrccode].get("sourcetitleabbr", None)
             self.src_title_full = sourceinfodb_data[pepsrccode].get("sourcetitlefull", None)
             self.src_embargo = sourceinfodb_data[pepsrccode].get("wall", None)
+            product_type = sourceinfodb_data[pepsrccode].get("product_type", None)  # journal, book, video...
+                
             if self.src_code in ["GW", "SE"]:
                 self.src_type = "book"
             else:
-                self.src_type = sourceinfodb_data[pepsrccode].get("product_type", None)  # journal, book, video...
+                if type(product_type) == set:
+                    try:
+                        self.src_type = next(iter(product_type))
+                    except Exception as e:
+                        self.src_type = "exception"
+                else:
+                    self.src_type = product_type
                 
         except KeyError as err:
             self.src_title_abbr = None

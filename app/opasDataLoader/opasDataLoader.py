@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.1206.1" 
+__version__     = "2021.1215.1" 
 __status__      = "Development"
 
 programNameShort = "opasDataLoader"
@@ -449,9 +449,6 @@ def main():
     
             # save common document (article) field values into artInfo instance for both databases
             artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
-            # watch src_type which comes in as a set from latest database
-            if type(artInfo.src_type) == set:
-                artInfo.src_type = "" if len(artInfo.src_type) == 0 else artInfo.src_type.pop()                
             artInfo.filedatetime = n.timestamp_str
             artInfo.filename = base
             artInfo.file_size = n.filesize
