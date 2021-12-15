@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
     PEP Web Database Schema for core PEPWebDocs
+    
+    2021-12-14 Added art_newseclevel to allow multilevel TOCs as per PSU
 
     2021-11-20 Added embargo and embargo type for IJPOpen, but can be used generally to embargo a specific article (if true)
                Type can be used for conditional processing, or to recall an explanatory message based on this. 
@@ -273,7 +275,7 @@
   <field name="art_doi" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--name for this section of an issue, e.g., section name in a issue TOC-->
   <field name="art_newsecnm" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_newseclevel" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_newseclevel" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> # added 12/14/2021
     
   <!-- extra metadata for books -->
   <field name="bk_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>

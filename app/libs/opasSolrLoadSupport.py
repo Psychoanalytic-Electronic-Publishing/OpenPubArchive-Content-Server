@@ -1078,6 +1078,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "freuds_italics": freuds_italics,
                 "art_type" : artInfo.art_type,
                 "art_newsecnm" : artInfo.start_sectname,
+                "art_newseclevel" : artInfo.start_sectlevel,
                 "terms_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//impx[@type='TERM2']", default_return=None),
                 "terms_highlighted" : terms_highlighted,
                 "dialogs_spkr" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dialog/spkr/node()", default_return=None),
