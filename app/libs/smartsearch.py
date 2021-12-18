@@ -249,7 +249,7 @@ def smart_search(smart_search_text):
                         ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {words}"
 
             if ret_val == {}:
-                if smartsearchLib.all_words_start_upper_case(smart_search_text):
+                if smartsearchLib.all_words_start_upper_case(smart_search_text) and "*" not in smart_search_text:
                     # try to build a list of names, and check them individually
                     new_q = ""
                     names = smartsearchLib.get_list_of_name_ids(smart_search_text)

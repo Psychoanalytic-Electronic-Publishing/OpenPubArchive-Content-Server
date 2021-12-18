@@ -3,10 +3,14 @@
     PEP Author Database Schema
     for core PEPWebAuthors
     
-    2019-07-*:  Added string_ci, to allow case insensitive search    
+    2021-12-16: Noticed that the "other" role for the author was not recorded in the solr database. 
+                Added as art_author_role_other.  
+    
     2020-04-11: Added:
                   strings type, boolean, booleans because it was required online going to Solr 8.5
                   (cores would not load without that.)
+                  
+    2019-07-*:  Added string_ci, to allow case insensitive search    
 
     
    Schema version attribute note: 
@@ -63,6 +67,7 @@
   <field name="art_author_listed" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <field name="art_author_pos_int" type="pint" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_author_role" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
+  <field name="art_author_role_other" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/> # added 12-16-2021 
   <field name="art_author_affil_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_sourcetitlefull" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>
   <field name="art_sourcetype" type="string" indexed="true" stored="true" multiValued="false" docValues="true"/>

@@ -1198,6 +1198,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
             if authorListed.lower() == "true":
                 authorPos += 1
             authorRole = author.attrib.get('role', None)
+            authorRoleOther = author.attrib.get('other', None)
             authorXML = opasxmllib.xml_elem_or_str_to_xmlstring(author)
             authorDocid = artInfo.art_id + "." + ''.join(e for e in authorID if e.isalnum())
             authorBio = opasxmllib.xml_xpath_return_textsingleton(author, "nbio")
@@ -1219,6 +1220,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
                 "art_author_listed": authorListed,
                 "art_author_pos_int": authorPos,
                 "art_author_role": authorRole,
+                "art_author_role_other": authorRoleOther,
                 "art_author_bio": authorBio,
                 "art_author_affil_xml": authorAffil,
                 "art_year_int": artInfo.art_year_int,

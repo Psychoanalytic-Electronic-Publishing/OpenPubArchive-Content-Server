@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1214/v2.1.102" # semver versioning now added after date.
+__version__     = "2021.1217/v2.1.103" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -166,6 +166,10 @@ expert_pick_image = ["", ""]
 # Check text server version
 text_server_ver = None
 text_server_url = localsecrets.SOLRURL
+ocd = opasCentralDBLib.opasCentralDB()
+database_update_date = ocd.get_update_date_database()
+ocd = None
+
 PARAMS = {'wt':'json'}
 url = f"{localsecrets.SOLRURL}admin/info/system"
 if localsecrets.SOLRUSER is not None:
@@ -1634,6 +1638,7 @@ async def session_status(response: Response,
 
     """
     global text_server_ver # solr ver
+    global database_update_date # database last update date
     admin = False
     caller_name = "[v2/Session/Status]"
     if opasConfig.DEBUG_TRACE:
@@ -1660,7 +1665,7 @@ async def session_status(response: Response,
         try:
             server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
                                                          db_server_ok = db_ok,
-                                                         dataSource = localsecrets.DATA_SOURCE, 
+                                                         dataSource = localsecrets.DATA_SOURCE + "." + database_update_date, 
                                                          user_ip = request.client.host,
                                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
                                                          text_server_version = hierarchical_server_ver,
@@ -1702,7 +1707,7 @@ async def session_status(response: Response,
             if moreinfo:
                 server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
                                                              db_server_ok = db_ok,
-                                                             dataSource = localsecrets.DATA_SOURCE, 
+                                                             dataSource = localsecrets.DATA_SOURCE + "." + database_update_date, 
                                                              text_server_version = hierarchical_server_ver,
                                                              opas_version = __version__, 
                                                              serverContent=opasAPISupportLib.metadata_get_database_statistics(session_info), 
@@ -1712,7 +1717,7 @@ async def session_status(response: Response,
             else:
                 server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
                                                              db_server_ok = db_ok,
-                                                             dataSource = localsecrets.DATA_SOURCE, 
+                                                             dataSource = localsecrets.DATA_SOURCE + "." + database_update_date, 
                                                              text_server_version = hierarchical_server_ver,
                                                              opas_version = __version__, 
                                                              user_ip = request.client.host,
