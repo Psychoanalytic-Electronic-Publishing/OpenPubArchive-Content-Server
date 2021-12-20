@@ -75,7 +75,7 @@ class whatsNewDB(object):
         try:
             # reload when needed later
             if self.expires < datetime.now() or forced_update or days_back != self.days_back or offset != self.offset or self.limit != limit:
-                load_whats_new(days_back=days_back, limit=limit, offset=offset, req_url=req_url)            
+                self.whats_new = load_whats_new(days_back=days_back, limit=limit, offset=offset, req_url=req_url)            
                 self.expires = datetime.now() + timedelta(days=opasConfig.WHATS_NEW_EXPIRES_DAYS,
                                                           hours=opasConfig.WHATS_NEW_EXPIRES_HOURS,
                                                           minutes=opasConfig.WHATS_NEW_EXPIRES_MINUTES)

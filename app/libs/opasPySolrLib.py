@@ -1917,9 +1917,6 @@ def database_get_whats_new(days_back=14,
                 already_seen.append(display_title)
 
             eligible_entry_full_count += 1
-            if row_count > limit:
-                continue
-
             volume_url = "/v2/Metadata/Contents/%s/%s/" % (PEPCode, volume)
     
             item = models.WhatsNewListItem( documentID = result.get("art_id", None),
@@ -1935,10 +1932,9 @@ def database_get_whats_new(days_back=14,
                                             )
 
             whats_new_list_items.append(item)
-            
             row_count += 1 # number of rows added
-            #if row_count > limit:
-                #break
+            if row_count >= limit:
+                break
     
         whats_new_list_items = sorted(whats_new_list_items, key=lambda x: x.displayTitle, reverse = False)    
 
@@ -1949,7 +1945,7 @@ def database_get_whats_new(days_back=14,
         else:
             limited_whats_new_list = whats_new_list_items
         
-        response_info = models.ResponseInfo( count = len(results.docs),
+        response_info = models.ResponseInfo( count = len(whats_new_list_items),
                                              fullCount = eligible_entry_full_count,
                                              limit = limit,
                                              offset = offset,
