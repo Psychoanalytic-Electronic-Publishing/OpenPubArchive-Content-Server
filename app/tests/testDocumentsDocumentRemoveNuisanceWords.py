@@ -3,7 +3,6 @@
 
 import re
 import logging
-import opasAPISupportLib
 logger = logging.getLogger(__name__)
 
 import unittest

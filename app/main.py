@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1220/v2.1.104" # semver versioning now added after date.
+__version__     = "2021.1221/v2.1.105" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -280,7 +280,8 @@ app.add_middleware(
     allow_headers = ["*"],
 )
 
-from config import whatsnewdb 
+from config import whatsnewdb
+from config import mostviewedcache
 from config import msgdb
 
 msg = 'Started at %s' % datetime.today().strftime('%Y-%m-%d %H:%M:%S"')
@@ -467,7 +468,6 @@ async def get_api_key(api_key_query: str = Security(api_key_query),
 # ############################################################################
 # End Dependence routines
 # ############################################################################
-
 def log_endpoint(request, client_id=None, session_id=None, path_params=True, level="info", trace=False):
     url = urllib.parse.unquote(f"....{request.url}")
     text = f"*************[{client_id}:{session_id}]:{url}*************"
@@ -1669,7 +1669,7 @@ async def session_status(response: Response,
                                                          user_ip = request.client.host,
                                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
                                                          text_server_version = hierarchical_server_ver,
-                                                         serverContent=opasAPISupportLib.metadata_get_database_statistics(session_info), 
+                                                         serverContent=opasPySolrLib.metadata_get_document_statistics(session_info), 
                                                          # admin only fields
                                                          text_server_url = localsecrets.SOLRURL,
                                                          opas_version = __version__, 
@@ -1710,7 +1710,7 @@ async def session_status(response: Response,
                                                              dataSource = localsecrets.DATA_SOURCE + "." + database_update_date, 
                                                              text_server_version = hierarchical_server_ver,
                                                              opas_version = __version__, 
-                                                             serverContent=opasAPISupportLib.metadata_get_database_statistics(session_info), 
+                                                             serverContent=opasPySolrLib.metadata_get_document_statistics(session_info), 
                                                              user_ip = request.client.host,
                                                              timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
                                                              )
@@ -3159,7 +3159,9 @@ def database_mostviewed(response: Response,
                         stat:bool=Query(False, title=opasConfig.TITLE_STATONLY, description=opasConfig.DESCRIPTION_STATONLY),
                         limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT), # by PEP-Web standards, we want 10, but 5 is better for PEP-Easy
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                        download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
+                        download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD),
+                        cached:bool=Query(True, title=opasConfig.TITLE_CACHED, description=opasConfig.DESCRIPTION_CACHED),
+                        update_cache: bool=Query(False, title=opasConfig.TITLE_UPDATE_CACHE, description=opasConfig.DESCRIPTION_UPDATE_CACHE),
                         client_id:int=Depends(get_client_id), 
                         client_session:str=Depends(get_client_session)
                         ):
@@ -3259,9 +3261,20 @@ def database_mostviewed(response: Response,
         ret_val = response
 
     else: # go ahead! Search Solr
-        try:
-            # we want the last year (default, per PEP-Web) of views, for all articles (journal articles)
-            ret_val, ret_status = opasAPISupportLib.database_get_most_viewed( publication_period=pubperiod,
+        # if no special paramaters, then use the cache. It doesn't make sense otherwise.
+        if cached and all(v is None for v in [pubperiod, viewcount, author, title, sourcename,
+                                               sourcecode, sourcename, sourcetype, abstract,
+                                               stat, similarcount]):
+
+            ret_val = mostviewedcache.get_most_viewed(viewperiod=viewperiod,
+                                                      limit=limit,
+                                                      offset=0,
+                                                      session_info=session_info,
+                                                      forced_update=update_cache)
+        else:
+            try:
+                # we want the last year (default, per PEP-Web) of views, for all articles (journal articles)
+                ret_val, ret_status = opasPySolrLib.document_get_most_viewed( publication_period=pubperiod,
                                                                               view_period=viewperiod,   # 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
                                                                               view_count=viewcount, 
                                                                               author=author,
@@ -3279,31 +3292,31 @@ def database_mostviewed(response: Response,
                                                                               session_info=session_info,
                                                                               request=request
                                                                               )
-
-            if ret_val is None:
-                status_message = f"MostViewedError: Bad request"
+    
+                if ret_val is None:
+                    status_message = f"MostViewedError: Bad request"
+                    logger.error(status_message)
+                    raise HTTPException(
+                        status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                        detail=status_message
+                    )        
+                    
+            except Exception as e:
+                ret_val = None
+                status_message = f"MostViewedError: Exception: {e}"
                 logger.error(status_message)
                 raise HTTPException(
                     status_code=httpCodes.HTTP_400_BAD_REQUEST, 
                     detail=status_message
                 )        
-                
-        except Exception as e:
-            ret_val = None
-            status_message = f"MostViewedError: Exception: {e}"
-            logger.error(status_message)
-            raise HTTPException(
-                status_code=httpCodes.HTTP_400_BAD_REQUEST, 
-                detail=status_message
-            )        
-        else:
-            if isinstance(ret_val, models.ErrorReturn):
-                detail = ret_val.error + " - " + ret_val.error_description                
-                logger.error(f"MostViewedError: {detail}")
-                raise HTTPException(
-                    status_code=ret_val.httpcode, 
-                    detail = detail
-                )
+            else:
+                if isinstance(ret_val, models.ErrorReturn):
+                    detail = ret_val.error + " - " + ret_val.error_description                
+                    logger.error(f"MostViewedError: {detail}")
+                    raise HTTPException(
+                        status_code=ret_val.httpcode, 
+                        detail = detail
+                    )
         
     log_endpoint_time(request, ts=ts, level="debug")
     return ret_val  # document_list
@@ -3920,7 +3933,7 @@ def database_whatsnew(response: Response,
                       days_back: int=Query(14, title=opasConfig.TITLE_DAYSBACK, description=opasConfig.DESCRIPTION_DAYSBACK),
                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_WHATS_NEW, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
-                      no_cache: bool=Query(False, title=opasConfig.TITLE_NO_CACHE, description=opasConfig.DESCRIPTION_DAYSBACK),
+                      update_cache: bool=Query(False, title=opasConfig.TITLE_UPDATE_CACHE, description=opasConfig.DESCRIPTION_UPDATE_CACHE),
                       client_id:int=Depends(get_client_id), 
                       client_session:str= Depends(get_client_session)
                       ):  
@@ -3963,7 +3976,7 @@ def database_whatsnew(response: Response,
                                            offset=offset,
                                            days_back=days_back, 
                                            req_url=request.url,
-                                           forced_update=no_cache
+                                           forced_update=update_cache
                                            )
 
     except Exception as e:
@@ -5442,14 +5455,14 @@ def documents_glossary_term(response: Response,
                     detail=status_message
                 )
 
-        ret_val = opasAPISupportLib.documents_get_glossary_entry(term_id=termIdentifier,
-                                                                 term_id_type=termidtype,
-                                                                 record_per_term=recordperterm,
-                                                                 retFormat=return_format,
-                                                                 session_info=session_info,
-                                                                 req_url=request.url._url,
-                                                                 request=request
-                                                                 )
+        ret_val = opasPySolrLib.documents_get_glossary_entry(term_id=termIdentifier,
+                                                             term_id_type=termidtype,
+                                                             record_per_term=recordperterm,
+                                                             retFormat=return_format,
+                                                             session_info=session_info,
+                                                             req_url=request.url._url,
+                                                             request=request
+                                                             )
 
         ret_val.documents.responseInfo.request = request.url._url
 

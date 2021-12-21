@@ -27,6 +27,13 @@ WHATS_NEW_EXPIRES_DAYS = 0
 WHATS_NEW_EXPIRES_HOURS = 8
 WHATS_NEW_EXPIRES_MINUTES = 0
 
+# Cache controls
+CACHE_EXPIRES_DAYS = 0
+CACHE_EXPIRES_HOURS = 8
+CACHE_EXPIRES_MINUTES = 0
+DEFAULT_LIMIT_FOR_CACHE = 15
+DEFAULT_LIMIT_FOR_MOST_VIEWED = 7
+
 EXPERT_PICKS_DEFAULT_IMAGE = "IJP.100.1465A.F0002"
 
 #import urllib.request
@@ -395,7 +402,10 @@ TITLE_MOREINFO = "Return extended information"
 TITLE_MORELIKETHIS = "Enter an document ID to find similar documents"
 TITLE_MOST_CITED_PERIOD = f"Show articles cited at least this many times during this time period"
 TITLE_MOST_VIEWED_PERIOD = f"Show articles viewed during this period"
-TITLE_NO_CACHE = "Get the latest updates--reload the cache"
+TITLE_CACHED = "Turn on the cache (default=True)"
+DESCRIPTION_CACHED = "Turn on the cache (default=True)"
+TITLE_UPDATE_CACHE = "Get the latest updates--reload the cache"
+DESCRIPTION_UPDATE_CACHE = "Get the latest updates--reload the cache"
 TITLE_OFFSET = "Document return offset"
 TITLE_PAGELIMIT = "Number pages to return"
 TITLE_PAGEOFFSET = "Relative page number (1 is the first) to return"
