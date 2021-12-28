@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1221/v2.1.105" # semver versioning now added after date.
+__version__     = "2021.1228/v2.1.106" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -282,6 +282,7 @@ app.add_middleware(
 
 from config import whatsnewdb
 from config import mostviewedcache
+from config import mostcitedcache
 from config import msgdb
 
 msg = 'Started at %s' % datetime.today().strftime('%Y-%m-%d %H:%M:%S"')
@@ -305,7 +306,7 @@ def find_client_id(request: Request,
         client_id = request.headers.get(opasConfig.CLIENTID, None)
         client_id_qparam = request.query_params.get(opasConfig.CLIENTID, None)
         client_id_cookie = request.cookies.get(opasConfig.CLIENTID, None)
-        if client_id is not None:
+        if client_id is not None and client_id not in ('0', 0):
             ret_val = client_id
             msg = f"client-id from header: {ret_val} "
             logger.debug(msg)
@@ -381,15 +382,15 @@ def get_client_session(response: Response,
                 detail=ERR_MSG_CALLER_IDENTIFICATION_ERROR
             )
         else:
-            print (f"Client {client_id} request w/o sessionID: {request.url._url}. Calling to get sessionID") # set to print rather than debug
             session_info = opasDocPermissions.get_authserver_session_info(session_id=session_id,
                                                                           client_id=client_id,
                                                                           request=request)
             try:
                 session_id = session_info.session_id
+                logger.warning(f"Client {client_id} request w/o sessionID: {request.url._url}. Called PaDS, returned {session_id}") 
             except Exception as e:
                 # We didn't get a session id
-                msg = f"SessionID not received from authserver for client {client_id} and session {client_session}.  Raising Exception 424 ({e})."
+                msg = f"SessionID not received from authserver for client {client_id} and session {client_session}.  Headers:{request.headers}. Raising Exception 424 ({e})."
                 logger.error(msg)
                 raise HTTPException(
                     status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
@@ -399,7 +400,7 @@ def get_client_session(response: Response,
     if session_id is None or len(session_id) < 12:
         # don't report these errors
         if session_id == "":
-            session_id = "DUMMYA01234567890"
+            session_id = "BLANKSESSIONID123"
         else:
             msg = f"SessionID:[{session_id}] was not resolved. Request:{request.url._url}. Raising Exception 424."
             if re.search("GW\.000|SE\.000", request.url._url) is None:
@@ -508,9 +509,9 @@ async def admin_set_loglevel(response: Response,
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                              level:str=Query(None, title="Log Level", description="DEBUG, INFO, WARNING, or ERROR"),
                              sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
-                             api_key: APIKey = Depends(get_api_key), 
                              client_id:int=Depends(get_client_id),
                              client_session:str= Depends(get_client_session), 
+                             api_key: APIKey = Depends(get_api_key), 
                             ):
     
     """
@@ -1665,7 +1666,7 @@ async def session_status(response: Response,
         try:
             server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
                                                          db_server_ok = db_ok,
-                                                         dataSource = localsecrets.DATA_SOURCE + "." + database_update_date, 
+                                                         dataSource = opasConfig.DATA_SOURCE + database_update_date, 
                                                          user_ip = request.client.host,
                                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
                                                          text_server_version = hierarchical_server_ver,
@@ -1707,7 +1708,7 @@ async def session_status(response: Response,
             if moreinfo:
                 server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
                                                              db_server_ok = db_ok,
-                                                             dataSource = localsecrets.DATA_SOURCE + "." + database_update_date, 
+                                                             dataSource = opasConfig.DATA_SOURCE + database_update_date, 
                                                              text_server_version = hierarchical_server_ver,
                                                              opas_version = __version__, 
                                                              serverContent=opasPySolrLib.metadata_get_document_statistics(session_info), 
@@ -1717,7 +1718,7 @@ async def session_status(response: Response,
             else:
                 server_status_item = models.ServerStatusItem(text_server_ok = solr_ok,
                                                              db_server_ok = db_ok,
-                                                             dataSource = localsecrets.DATA_SOURCE + "." + database_update_date, 
+                                                             dataSource = opasConfig.DATA_SOURCE + database_update_date, 
                                                              text_server_version = hierarchical_server_ver,
                                                              opas_version = __version__, 
                                                              user_ip = request.client.host,
@@ -3339,6 +3340,8 @@ def database_mostcited(response: Response,
                        limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_SOLR_RETURNS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                        offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                        download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
+                       cached:bool=Query(True, title=opasConfig.TITLE_CACHED, description=opasConfig.DESCRIPTION_CACHED),
+                       update_cache: bool=Query(False, title=opasConfig.TITLE_UPDATE_CACHE, description=opasConfig.DESCRIPTION_UPDATE_CACHE),
                        client_id:int=Depends(get_client_id), 
                        client_session:str= Depends(get_client_session)
                        ):
@@ -3424,42 +3427,53 @@ def database_mostcited(response: Response,
                                     )
 
     else:
-        # return documentList, much more limited document list if download==True
-        ret_val, ret_status = opasAPISupportLib.database_get_most_cited( cited_in_period=citeperiod,
-                                                                         cite_count=citecount,
-                                                                         publication_period=pubperiod,
-                                                                         author=author,
-                                                                         title=title,
-                                                                         source_name=sourcename, 
-                                                                         source_code=sourcecode,
-                                                                         source_type=sourcetype,  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
-                                                                         abstract_requested=abstract, 
-                                                                         req_url=request.url, 
-                                                                         limit=limit,
-                                                                         offset=offset,
-                                                                         download=False, 
-                                                                         mlt_count=similarcount, 
-                                                                         session_info=session_info,
-                                                                         request=request
-                                                                         )
+        # if no special paramaters, then use the cache. It doesn't make sense otherwise.
+        if cached and all(v is None for v in [pubperiod, citecount, author, title, sourcename,
+                                               sourcecode, sourcename, sourcetype, abstract,
+                                               stat, similarcount]):
 
-        if isinstance(ret_val, models.ErrorReturn): 
-            detail = ret_val.error + " - " + ret_val.error_description                
-            logger.error(f"MostCitedError: {detail}")
-            raise HTTPException(
-                status_code=ret_val.httpcode, 
-                detail = detail
-            )
-
-        if ret_val is None:
-            detail = "MostCitedError: " + ERR_MSG_SEARCH_RETURNED_NONE + f" Status: {ret_status}"
-            logger.error(detail)
-            raise HTTPException(
-                status_code=httpCodes.HTTP_400_BAD_REQUEST, 
-                detail = detail
-            )
-            
-        # Don't record in final build - (ok for now during testing)
+            ret_val = mostcitedcache.get_most_cited(citeperiod=citeperiod,
+                                                      limit=limit,
+                                                      offset=0,
+                                                      session_info=session_info,
+                                                      forced_update=update_cache)
+        else:
+            # return documentList, much more limited document list if download==True
+            ret_val, ret_status = opasAPISupportLib.database_get_most_cited( cited_in_period=citeperiod,
+                                                                             cite_count=citecount,
+                                                                             publication_period=pubperiod,
+                                                                             author=author,
+                                                                             title=title,
+                                                                             source_name=sourcename, 
+                                                                             source_code=sourcecode,
+                                                                             source_type=sourcetype,  # see VALS_SOURCE_TYPE (norm_val applied in opasCenralDBLib)
+                                                                             abstract_requested=abstract, 
+                                                                             req_url=request.url, 
+                                                                             limit=limit,
+                                                                             offset=offset,
+                                                                             download=False, 
+                                                                             mlt_count=similarcount, 
+                                                                             session_info=session_info,
+                                                                             request=request
+                                                                             )
+    
+            if isinstance(ret_val, models.ErrorReturn): 
+                detail = ret_val.error + " - " + ret_val.error_description                
+                logger.error(f"MostCitedError: {detail}")
+                raise HTTPException(
+                    status_code=ret_val.httpcode, 
+                    detail = detail
+                )
+    
+            if ret_val is None:
+                detail = "MostCitedError: " + ERR_MSG_SEARCH_RETURNED_NONE + f" Status: {ret_status}"
+                logger.error(detail)
+                raise HTTPException(
+                    status_code=httpCodes.HTTP_400_BAD_REQUEST, 
+                    detail = detail
+                )
+                
+            # Don't record in final build - (ok for now during testing)
 
     log_endpoint_time(request, ts=ts, level="debug")
     return ret_val
@@ -3789,7 +3803,7 @@ async def database_term_counts(response: Response,
 
         response_info = models.ResponseInfo( listType="termindex", # this is a mistake in the GVPi API, should be termIndex
                                              scopeQuery=[f"Terms: {termlist}"],
-                                             dataSource = localsecrets.DATA_SOURCE, 
+                                             dataSource = opasConfig.DATA_SOURCE + database_update_date, 
                                              timestamp=datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)
                                              )
 

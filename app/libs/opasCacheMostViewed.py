@@ -7,7 +7,7 @@ import time
 from datetime import datetime, timedelta
 from fastapi import HTTPException
 import starlette.status as httpCodes
-from opasConfig import DEBUG_TRACE, CACHE_EXPIRES_DAYS, CACHE_EXPIRES_HOURS, CACHE_EXPIRES_MINUTES, DEFAULT_LIMIT_FOR_MOST_VIEWED, DEFAULT_LIMIT_FOR_CACHE
+from opasConfig import CACHEURL, DEBUG_TRACE, CACHE_EXPIRES_DAYS, CACHE_EXPIRES_HOURS, CACHE_EXPIRES_MINUTES, DEFAULT_LIMIT_FOR_MOST_VIEWED, DEFAULT_LIMIT_FOR_CACHE
 import models
 import opasPySolrLib
 
@@ -22,7 +22,7 @@ def load_most_viewed(viewperiod = 2,
                      limit=DEFAULT_LIMIT_FOR_MOST_VIEWED,
                      offset=0,
                      session_info=None,
-                     req_url="Caching"):
+                     req_url=CACHEURL):
 
     ret_val = None
     fname = "load_most_viewed"
@@ -31,7 +31,7 @@ def load_most_viewed(viewperiod = 2,
                                                                           limit=limit, 
                                                                           offset=offset,
                                                                           session_info=session_info, 
-                                                                          request=req_url
+                                                                          req_url=req_url
                                                                           )
 
         if ret_val is None:
@@ -64,10 +64,10 @@ def load_most_viewed(viewperiod = 2,
 class mostViewedCache(object):
     def __init__(self,
                  viewperiod = 2, 
-                 limit=DEFAULT_LIMIT_FOR_MOST_VIEWED,
+                 limit=DEFAULT_LIMIT_FOR_CACHE,
                  offset=0, 
                  session_info=None,
-                 req_url="Caching"
+                 req_url=CACHEURL
                 ):
         # load message database
         self.limit = limit
@@ -84,7 +84,7 @@ class mostViewedCache(object):
         # response.status_message = "Success"
         self.most_viewed.documentList.responseInfo.request = req_url
         self.most_viewed.documentList.responseInfo.limit = limit
-        self.most_viewed.documentList.responseInfo.offset = 0       
+        self.most_viewed.documentList.responseInfo.offset = offset       
         
 
     def __del__(self):
@@ -95,7 +95,7 @@ class mostViewedCache(object):
                         limit=DEFAULT_LIMIT_FOR_MOST_VIEWED,
                         offset=0, 
                         session_info=None,
-                        req_url="Caching",
+                        req_url=CACHEURL,
                         forced_update=False                ):
         ret_val = {}
         try:
@@ -114,7 +114,7 @@ class mostViewedCache(object):
 
             ret_val = self.most_viewed 
             ret_val.documentList.responseInfo.limit = limit
-            ret_val.documentList.responseInfo.offset = 0
+            ret_val.documentList.responseInfo.offset = offset
 
         except Exception as e:
             pass

@@ -1264,7 +1264,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     """
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
-    default_access_limited_message_not_logged_in = msgdb.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
+    # default_access_limited_message_not_logged_in = msgdb.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
 
     # count_anchors = 0
     try:
@@ -1274,11 +1274,12 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         
     try:
         session_id = session_info.session_id
-        user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name + "/ search_text_qs")
+        #user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name + "/ search_text_qs")
     except Exception as e:
-        logger.warning("No Session info supplied to search_text_qs")
+        if req_url != opasConfig.CACHEURL: # no session supplied when loading caching, ok
+          logger.warning("No Session info supplied to search_text_qs")
         # mark as not logged in
-        user_logged_in_bool = False
+        #user_logged_in_bool = False
 
     if 1: # just to allow folding
         if solr_query_spec.solrQueryOpts is None: # initialize a new model
@@ -1569,7 +1570,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # count_anchors = 0
                     # authorIDs = result.get("art_authors", None)
                     documentListItem = models.DocumentListItem()
-                    documentListItem = opasQueryHelper.get_base_article_info_from_search_result(result, documentListItem)
+                    documentListItem = opasQueryHelper.get_base_article_info_from_search_result(result, documentListItem, session_info=session_info)
                     documentID = documentListItem.documentID
                     if documentID is None:
                         # there's a problem with this records
