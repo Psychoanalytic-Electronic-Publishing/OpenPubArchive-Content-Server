@@ -6,7 +6,6 @@
 
 #  This test module is in development...
 
-import opasAPISupportLib
 import requests
 
 import logging
@@ -15,12 +14,13 @@ logger = logging.getLogger(__name__)
 import unittest
 from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PDF_ORIGINALS_PATH
 from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+import opasPySolrLib
 # Get session, but not logged in.
 headers = get_headers_not_logged_in()
 
 class TestDocumentsGlossary(unittest.TestCase):
     def test_00_get_glossary(self):
-        ret = opasAPISupportLib.documents_get_glossary_entry("YN0019667860580", term_id_type="ID", retFormat="html") 
+        ret = opasPySolrLib.documents_get_glossary_entry("YN0019667860580", term_id_type="ID", retFormat="html") 
         print (ret)
 
     def test_1a_get_glossary_endpoint_GROUP(self):

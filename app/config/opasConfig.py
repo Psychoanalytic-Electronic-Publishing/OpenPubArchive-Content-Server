@@ -27,6 +27,16 @@ WHATS_NEW_EXPIRES_DAYS = 0
 WHATS_NEW_EXPIRES_HOURS = 8
 WHATS_NEW_EXPIRES_MINUTES = 0
 
+# Cache controls
+CACHEURL = "Caching"
+CACHE_EXPIRES_DAYS = 0
+CACHE_EXPIRES_HOURS = 8
+CACHE_EXPIRES_MINUTES = 0
+DEFAULT_LIMIT_FOR_CACHE = 15
+DEFAULT_LIMIT_FOR_MOST_VIEWED = 7
+
+DATA_SOURCE = "DBUpdate "
+
 EXPERT_PICKS_DEFAULT_IMAGE = "IJP.100.1465A.F0002"
 
 #import urllib.request
@@ -266,6 +276,7 @@ DESCRIPTION_ARTICLETYPE = "Types of articles: ART(article), ABS(abstract), ANN(a
 DESCRIPTION_AUTHOR = "Author name, use wildcard * for partial entries (e.g., Johan*)"
 DESCRIPTION_AUTHORNAMEORPARTIAL = "The author name or a partial name (regex type wildcards [.*] permitted EXCEPT at the end of the string--the system will try that automatically)"
 DESCRIPTION_AUTHORNAMEORPARTIALNOWILD = "The author name or a author partial name (prefix)"
+DESCRIPTION_CACHED = "Turn on the cache (default=True)"
 DESCRIPTION_CITECOUNT = "Include documents cited this many or more times (or X TO Y times) in past 5 years (or IN {5, 10, 20, or ALL}), e.g., 3 TO 6 IN ALL. Default (implied) period is 5 years."  
 DESCRIPTION_CLIENT_ID = "Numeric ID assigned to a client app by Opas Administrator"
 DESCRIPTION_CLIENT_SESSION = "Client session GUID"
@@ -278,7 +289,7 @@ DESCRIPTION_DOCIDSINGLE = "The document ID (e.g., IJP.077.0217A) for which to re
 DESCRIPTION_CITEDID = "The cited document ID (e.g., IJP.077.0217A) for which to return a list of cited documents (booleans permitted)"
 DESCRIPTION_DOCUMENT_CONCORDANCE_ID = "Paragraph language ID to return for a concordance link"
 DESCRIPTION_DOCUMENT_CONCORDANCE_RX = "String with single or list of Paragraph language IDs to return for a concordance link"
-DESCRIPTION_ENDDATE = "Find records on or before this date (input date as 2020-08-10 or 20200810)"
+DESCRIPTION_ENDDATE = "Find records on or before this date (input date as 2020-08-10, Date/Time as YYYY-MM-DD HH:MM:SS. Dashes in date optional)"
 DESCRIPTION_ENDPOINTID_LIST = "Filter by this comma separated list of Endpoint IDs (e.g., 31,32,41)"
 DESCRIPTION_ENDYEAR = "Find documents published on or before this year (e.g, 2001)" 
 DESCRIPTION_FACETFIELDS = "List of fields for which to return facet info. Field art_sourcetype, for example, will give results counts by type (journal, book, videostream)."
@@ -293,6 +304,7 @@ DESCRIPTION_FULLTEXT1_V1 = "Words or phrases (in quotes) in a paragraph in the d
 DESCRIPTION_GETFULLCOUNT = "Return full set size as well as the filtered set size"
 DESCRIPTION_GLOSSARYID = "Specify the Name, Group, or ID of a Glossary item to return the document. Specify which type of identifier using query param termidtype."
 DESCRIPTION_IMAGEID = "A unique identifier for an image"
+DESCRIPTION_INCLUDENONLOGGEDIN = "Include both logged-in and non-logged-in records"
 DESCRIPTION_ISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals of all kinds and on all media–print and electronic."
 DESCRIPTION_EISSN = "Standardized 8-digit code used to identify newspapers, journals, magazines and periodicals as electronic (the same as issn in PEP schema)"
 DESCRIPTION_ISBN = "International Standard Book Number. 10 digits up to the end of 2006, now always consist of 13 digits"
@@ -335,7 +347,7 @@ DESCRIPTION_SOURCELANGCODE = "Language code or comma separated list of codes for
 DESCRIPTION_SOURCENAME = "Name or partial name of the source (e.g., 'international' or 'psychoanalytic')"
 DESCRIPTION_SPECIALOPTIONS = "Integer mapped to Option flags for special options"
 DESCRIPTION_STATONLY = "Return minimal documentListItems for statistics."
-DESCRIPTION_STARTDATE = "Find records on or after this date (input date as 2020-08-10 or 20200810)"
+DESCRIPTION_STARTDATE = "Find records on or after this date (input date as 2020-08-10, Date/Time as YYYY-MM-DD HH:MM:SS. Dashes in date optional)"
 DESCRIPTION_STARTYEAR = "Find documents published on or after this year, or in this range of years (e.g, 1999, Between range: 1999-2010. After: >1999 Before: <1999" 
 DESCRIPTION_SYNONYMS_BOOLEAN = "Expand search to include specially declared synonyms (True/False)"
 DESCRIPTION_SIMILARCOUNT = "Return this many similar documents for each document in the return set (0 = none)" 
@@ -347,6 +359,7 @@ DESCRIPTION_TITLE = "The title of the document (article, book, video)"
 DESCRIPTION_TRANSLATIONS = "Return a list of documents which are translations of this document in field translationSet"
 # DESCRIPTION_DATETYPE = "Qualifier for date range (from API v1), either 'Before', 'On', or 'Between'."
 DESCRIPTION_USERID_FILTER = "Filter by this common (global) system userid"
+DESCRIPTION_UPDATE_CACHE = "Get the latest updates--reload the cache"
 DESCRIPTION_VIEWCOUNT = "Include documents (not abstracts) viewed this many or more times (or X TO Y times). Optionally specify viewperiod, IN (lastweek|lastmonth|last6months|last12months|lastcalendaryear), or in parameter viewperiod"  
 DESCRIPTION_VIEWCOUNT_INT = "Include documents (not abstracts) viewed this many or more times. Must be an integer."  
 DESCRIPTION_VIEWPERIOD = "One of a few preset time frames for which to evaluate viewcount; 0=last cal year, 1=last week, 2=last month, 3=last 6 months, 4=last 12 months."
@@ -388,6 +401,7 @@ TITLE_FULLTEXT1_V1 = "Paragraph based search"
 TITLE_GETFULLCOUNT = "Return full unfiltered set size"
 TITLE_HIGHLIGHT_FIELDS = "Fields to return for highlighted matches"
 TITLE_IMAGEID = "Image ID (unique)"
+TITLE_INCLUDENONLOGGEDIN = "Include logged-in and non-logged-in"
 TITLE_ISSUE = "Issue Number"
 TITLE_LIMIT = "Document return limit"
 TITLE_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
@@ -395,7 +409,8 @@ TITLE_MOREINFO = "Return extended information"
 TITLE_MORELIKETHIS = "Enter an document ID to find similar documents"
 TITLE_MOST_CITED_PERIOD = f"Show articles cited at least this many times during this time period"
 TITLE_MOST_VIEWED_PERIOD = f"Show articles viewed during this period"
-TITLE_NO_CACHE = "Get the latest updates--reload the cache"
+TITLE_CACHED = "Turn on the cache (default=True)"
+TITLE_UPDATE_CACHE = "Get the latest updates--reload the cache"
 TITLE_OFFSET = "Document return offset"
 TITLE_PAGELIMIT = "Number pages to return"
 TITLE_PAGEOFFSET = "Relative page number (1 is the first) to return"

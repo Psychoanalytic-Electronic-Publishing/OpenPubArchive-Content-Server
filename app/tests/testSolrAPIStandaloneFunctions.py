@@ -7,10 +7,9 @@ Tests of the OPAS functions which depend on the Solr API.  (Direct, rather than 
 #2020-08-24 Changed numeric counts to symbols from unitTestConfig
 
 import unittest
-import opasAPISupportLib
-import opasPySolrLib
 import unitTestConfig
 from unitTestConfig import base_plus_endpoint_encoded, headers
+import opasPySolrLib
 
 session_info = unitTestConfig.get_session_info_for_test()
 
@@ -20,7 +19,7 @@ class TestSolrAPIStandaloneFunctions(unittest.TestCase):
     
     """
     def test_0_get_database_statistics(self):
-        data = opasAPISupportLib.metadata_get_database_statistics(session_info)
+        data = opasPySolrLib.metadata_get_document_statistics(session_info)
         count = data.article_count
         assert(count >= unitTestConfig.ARTICLE_COUNT)
     

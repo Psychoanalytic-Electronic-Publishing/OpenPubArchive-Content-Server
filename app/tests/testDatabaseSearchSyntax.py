@@ -2,16 +2,16 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-import opasQueryHelper
 import opasCentralDBLib
 import starlette.status as httpCodes
 import models
-from opasPySolrLib import search_text, search_text_qs
 
 import requests
 import unitTestConfig
 from unitTestConfig import base_plus_endpoint_encoded, headers
 session_info = unitTestConfig.get_session_info_for_test()
+from opasQueryHelper import parse_search_query_parameters, parse_to_query_term_list, parse_search_query_parameters 
+from opasPySolrLib import search_text_qs
 
 ocd = opasCentralDBLib.opasCentralDB()
 fulltext1 = [
@@ -59,9 +59,9 @@ class TestDatabaseSearchSyntax(unittest.TestCase):
     """
     def test_00_qt_parsing(self):
         for n, expected_count in fulltext1:
-            term_list = opasQueryHelper.parse_to_query_term_list(n)
+            term_list = parse_to_query_term_list(n)
             solr_query_term_list = models.SolrQueryTermList(qt=term_list)
-            solr_query_spec = opasQueryHelper.parse_search_query_parameters(solrQueryTermList=solr_query_term_list, art_level=1)
+            solr_query_spec = parse_search_query_parameters(solrQueryTermList=solr_query_term_list, art_level=1)
             full_URL = base_plus_endpoint_encoded('/v2/Database/Search/')
             response = requests.post(full_URL, headers=headers, json={"qtermlist": solr_query_term_list.dict()})
             assert(response.ok == True)
@@ -76,7 +76,7 @@ class TestDatabaseSearchSyntax(unittest.TestCase):
         Test query formation via parse_search_query_parameters
         """
         for n, expected_count in fulltext1:
-            solr_query_spec = opasQueryHelper.parse_search_query_parameters(fulltext1=n, art_level=1)
+            solr_query_spec = parse_search_query_parameters(fulltext1=n, art_level=1)
             # print (solr_query_spec.solrQuery.searchQ)
             ret_val, ret_status = search_text_qs(solr_query_spec,
                                                  limit=1,

@@ -1,0 +1,7 @@
+opasloader -d X:\_PEPA1\_PEPa1v\_PEPFuture --all 
+opasloader -d X:\_PEPA1\_PEPa1v\_PEPArchive\Videostreams --all 
+start opasloader -d X:\_PEPA1\_PEPa1v\_PEPSpecial --all 
+start opasloader -d X:\_PEPA1\_PEPa1v\_PEPArchive --halfway --all
+start opasloader -d X:\_PEPA1\_PEPa1v\_PEPArchive --halfway --reverse --all
+start opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --halfway --all
+start opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --halfway --reverse --all

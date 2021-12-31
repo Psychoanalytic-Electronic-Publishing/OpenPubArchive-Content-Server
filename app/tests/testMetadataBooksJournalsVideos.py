@@ -76,6 +76,13 @@ class TestMetadataBooksJournalsVideos(unittest.TestCase):
         # test return
         r = response.json()
         print(r['sourceInfo']['responseInfo']['fullCount']) 
+        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.VIDEOSOURCECOUNT)  # stream count
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/?streams=false')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print(r['sourceInfo']['responseInfo']['fullCount']) 
         assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.VIDEOCOUNT)  
     
     def test_10_meta_bookcounts(self):

@@ -898,13 +898,13 @@ class opasCentralDB(object):
         self.open_connection(caller_name="get_select_count") # make sure connection is open
         ret_val = None
 
-        sqlSelect = re.sub("SELECT .+? FROM", "SELECT COUNT(*) FROM", sqlSelect, count=1, flags=re.IGNORECASE)
+        sqlSelect = re.sub("SELECT .+? FROM", "SELECT COUNT(*) AS FULLCOUNT FROM", sqlSelect, count=1, flags=re.IGNORECASE)
         try:
             if self.db is not None:
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
                     cursor.execute(sqlSelect)
                     row = cursor.fetchall()
-                    ret_val = row[0][0]
+                    ret_val = row[0]["FULLCOUNT"]
             else:
                 logger.error("Connection not available to database.")
 
@@ -1183,6 +1183,50 @@ class opasCentralDB(object):
         self.close_connection(caller_name=fname) # make sure connection is closed
         return ret_val
     
+    def get_update_date_database(self):
+        """
+        Return isoformatted date/time of last database update based on article_tracker or ""
+          if not found.
+       
+        >>> ocd = opasCentralDB()
+        >>> ret = ocd.get_update_date_database() 
+
+        """
+        fname = "get_articles_newer_than"
+        self.open_connection(caller_name=fname) # make sure connection is open
+        ret_val = []
+        # newer_than = datetime.utcfromtimestamp(newer_than_date).strftime(opasConfig.TIME_FORMAT_STR)
+        sqlSelect = "SELECT max(date_inserted) as db_update_date FROM article_tracker"
+        if self.db is not None:
+            errmsg = f"getting database update date"
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
+                try:
+                    cursor.execute(sqlSelect)
+                except ValueError as e:
+                    logger.error(f"DB Value Error {e} - {errmsg}")
+                except mysql.connector.IntegrityError as e:
+                    logger.error(f"Integrity Error {e} - {errmsg}")
+                except mysql.connector.InternalError as e:
+                    logger.error(f"Internal Error {e} - {errmsg}")
+                except mysql.connector.DatabaseError as e:
+                    logger.error(f"Database Error {e} - {errmsg}")
+                except Exception as e:
+                    logger.error(f"DB Error  {e} - {errmsg}")
+                else:
+                    record = cursor.fetchone()
+                    if record is not None:
+                        ret_val = record['db_update_date']
+                        ret_val = ret_val.isoformat()
+                    else:
+                        ret_val = ""
+                    
+            self.close_connection(caller_name=fname) # make sure connection is closed
+        else:
+            logger.warning(f"RDS DB was not successfully opened ({caller_name}). WhatsNew check skipped.")
+
+        # return session model object
+        return ret_val # List of records or empty list
+
     def update_session(self,
                        session_id,
                        api_client_id, 

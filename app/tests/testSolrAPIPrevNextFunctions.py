@@ -5,11 +5,11 @@ Tests of the OPAS functions which depend on the Solr API.  (Direct, rather than 
 
 """
 import unittest
+import unitTestConfig
+from unitTestConfig import base_plus_endpoint_encoded, headers
 import requests
 import opasAPISupportLib
 from opasCentralDBLib import opasCentralDB
-import unitTestConfig
-from unitTestConfig import base_plus_endpoint_encoded, headers
 
 class TestSolrAPIPrevNextFunctions(unittest.TestCase):
     """

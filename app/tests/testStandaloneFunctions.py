@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 import opasAPISupportLib
 import opasConfig
 import opasQueryHelper
@@ -11,7 +12,6 @@ import models
 import opasPySolrLib
 from opasPySolrLib import search_text
 
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 ocd = opasCentralDBLib.opasCentralDB()
 
 class TestStandaloneFunctions(unittest.TestCase):

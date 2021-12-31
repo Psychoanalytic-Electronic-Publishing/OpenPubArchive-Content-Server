@@ -45,7 +45,7 @@ class TestDatabaseWhatsNew(unittest.TestCase):
         """
         """
         # request login to the API server
-        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=10&limit=99')
+        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=10&limit=10')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -53,8 +53,17 @@ class TestDatabaseWhatsNew(unittest.TestCase):
         response_info = r["whatsNew"]["responseInfo"]
         response_set = r["whatsNew"]["responseSet"] 
         #print (r)
-        #assert(response_info["limit"] == 99)
-        print (f"Limit: {response_info['limit']}")
+        print (f"Limit: {response_info['limit']} count: {response_info['count']}, fullcount: {response_info['fullCount']}")
+        assert(response_info["limit"] == 10)
+
+        full_URL = base_plus_endpoint_encoded('/v2/Database/WhatsNew/?days_back=50&limit=25')
+        response = requests.get(full_URL, headers=headers)
+        # Confirm that the request-response cycle completed successfully.
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["whatsNew"]["responseInfo"]
+        response_set = r["whatsNew"]["responseSet"] 
+        print (f"Limit: {response_info['limit']} count: {response_info['count']}, fullcount: {response_info['fullCount']}")
         assert(response_info["count"] == response_info["fullCount"])
 
     def test_2_whats_new(self):
