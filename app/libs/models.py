@@ -138,7 +138,7 @@ class ResponseInfo(BaseModel):
     core: str = Field(None, title="The Solr Core classname used (e.g., docs, authors).")
     solrParams: dict = Field(None, title="A dictionary based set of the parameters passed to the Solr search engine for this request.")
     errors: ErrorReturn = Field(None, title="Any Error information")
-    dataSource: str = Field(None, title="Version of the API server software")
+    dataSource: str = Field(None, title="Version (Date Update) of the database")
     authenticated: bool = Field(None, title="If request was processed as authenticated")
     timeStamp: str = Field(None, title="Server timestamp of return data.")   
 

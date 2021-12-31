@@ -2,11 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-import opasAPISupportLib
-import opasConfig
-import opasQueryHelper
 import opasCentralDBLib
-import models
 
 ocd = opasCentralDBLib.opasCentralDB()
 

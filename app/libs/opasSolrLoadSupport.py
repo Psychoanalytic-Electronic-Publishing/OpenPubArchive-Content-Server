@@ -11,7 +11,7 @@ OPAS - opasSolrLoadSupport
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0416.1" 
+__version__     = "2021.1213.1" 
 
 import sys
 sys.path.append('../libs')
@@ -281,10 +281,18 @@ class ArticleInfo(object):
             self.src_title_abbr = sourceinfodb_data[pepsrccode].get("sourcetitleabbr", None)
             self.src_title_full = sourceinfodb_data[pepsrccode].get("sourcetitlefull", None)
             self.src_embargo = sourceinfodb_data[pepsrccode].get("wall", None)
+            product_type = sourceinfodb_data[pepsrccode].get("product_type", None)  # journal, book, video...
+                
             if self.src_code in ["GW", "SE"]:
                 self.src_type = "book"
             else:
-                self.src_type = sourceinfodb_data[pepsrccode].get("product_type", None)  # journal, book, video...
+                if type(product_type) == set:
+                    try:
+                        self.src_type = next(iter(product_type))
+                    except Exception as e:
+                        self.src_type = "exception"
+                else:
+                    self.src_type = product_type
                 
         except KeyError as err:
             self.src_title_abbr = None
@@ -341,11 +349,12 @@ class ArticleInfo(object):
         self.art_issn = opasxmllib.xml_get_element_attr(artInfoNode, "ISSN", default_return=None) 
         self.art_isbn = opasxmllib.xml_get_element_attr(artInfoNode, "ISBN", default_return=None) 
         self.art_orig_rx = opasxmllib.xml_get_element_attr(artInfoNode, "origrx", default_return=None) 
+        self.start_sectlevel = opasxmllib.xml_get_element_attr(artInfoNode, "newseclevel", default_return=None)
         self.start_sectname = opasxmllib.xml_get_element_attr(artInfoNode, "newsecnm", default_return=None)
         if self.start_sectname is None:
             #  look in newer, tagged, data
-            self.start_sectname = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artsectinfo/secttitle/node()', default_return=None)
-        
+            self.start_sectname = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artsectinfo/secttitle/node()', default_return=None)
+
         self.art_pgrg = opasxmllib.xml_get_subelement_textsingleton(artInfoNode, "artpgrg", default_return=None)  # note: getSingleSubnodeText(pepxml, "artpgrg")
         self.art_pgstart, self.art_pgend = opasgenlib.pgrg_splitter(self.art_pgrg)
 
@@ -1069,6 +1078,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "freuds_italics": freuds_italics,
                 "art_type" : artInfo.art_type,
                 "art_newsecnm" : artInfo.start_sectname,
+                "art_newseclevel" : artInfo.start_sectlevel,
                 "terms_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//impx[@type='TERM2']", default_return=None),
                 "terms_highlighted" : terms_highlighted,
                 "dialogs_spkr" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//dialog/spkr/node()", default_return=None),
@@ -1188,6 +1198,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
             if authorListed.lower() == "true":
                 authorPos += 1
             authorRole = author.attrib.get('role', None)
+            authorRoleOther = author.attrib.get('other', None)
             authorXML = opasxmllib.xml_elem_or_str_to_xmlstring(author)
             authorDocid = artInfo.art_id + "." + ''.join(e for e in authorID if e.isalnum())
             authorBio = opasxmllib.xml_xpath_return_textsingleton(author, "nbio")
@@ -1209,6 +1220,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
                 "art_author_listed": authorListed,
                 "art_author_pos_int": authorPos,
                 "art_author_role": authorRole,
+                "art_author_role_other": authorRoleOther,
                 "art_author_bio": authorBio,
                 "art_author_affil_xml": authorAffil,
                 "art_year_int": artInfo.art_year_int,

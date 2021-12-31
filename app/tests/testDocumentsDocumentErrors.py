@@ -3,14 +3,12 @@
 
 import re
 import logging
-import opasAPISupportLib
 logger = logging.getLogger(__name__)
 
 import unittest
 import requests
 import localsecrets
 
-import opasDocPermissions
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
 
 # Login!

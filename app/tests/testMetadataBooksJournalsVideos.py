@@ -67,8 +67,44 @@ class TestMetadataBooksJournalsVideos(unittest.TestCase):
         r = response.json()
         assert(r['sourceInfo']['responseInfo']['count'] == 1)
         assert(r['sourceInfo']['responseSet'][0]["accessClassification"] == "archive")
+   
+    def test_10_meta_videocounts(self):
+        # test default streams parameter (which is streams=True)
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print(r['sourceInfo']['responseInfo']['fullCount']) 
+        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.VIDEOSOURCECOUNT)  # stream count
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/?streams=false')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print(r['sourceInfo']['responseInfo']['fullCount']) 
+        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.VIDEOCOUNT)  
     
+    def test_10_meta_bookcounts(self):
+        # test default streams parameter (which is streams=True)
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Books/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print(r['sourceInfo']['responseInfo']['fullCount']) 
+        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.BOOKCOUNT)  
         
+    def test_10_meta_journalcounts(self):
+        # test default streams parameter (which is streams=True)
+        full_URL = base_plus_endpoint_encoded('/v2/Metadata/Journals/')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # test return
+        r = response.json()
+        print(r['sourceInfo']['responseInfo']['fullCount']) 
+        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.JOURNALCOUNT)  
+
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")

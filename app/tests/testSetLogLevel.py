@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import unittest
+from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
 import requests
 import opasAPISupportLib
 import logging
 
-from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
 # Get session, but not logged in.
 headers = get_headers_not_logged_in()
 
