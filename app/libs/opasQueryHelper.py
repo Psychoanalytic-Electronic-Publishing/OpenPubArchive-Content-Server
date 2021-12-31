@@ -16,26 +16,26 @@ This library is meant to hold parsing and other functions which support query tr
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.0424.1"
+__version__     = "2021.1228.1"
 __status__      = "Development"
 
 import re
 import logging
 logger = logging.getLogger(__name__)
-import time
-from datetime import datetime
+#import time
+#from datetime import datetime
 
 import sys
 sys.path.append('./solrpy')
-import solrpy as solr
-from xml.sax import SAXParseException
+# import solrpy as solr
+#from xml.sax import SAXParseException
 import lxml
 
-import localsecrets
-from opasConfig import TIME_FORMAT_STR
+# import localsecrets
+# from opasConfig import TIME_FORMAT_STR
 
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
-import starlette.status as httpCodes
+# import starlette.status as httpCodes
 import opasConfig 
 from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE
 from configLib.opasCoreConfig import EXTENDED_CORES
@@ -45,7 +45,7 @@ import opasCentralDBLib
 import schemaMap
 import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
-import opasDocPermissions as opasDocPerm
+# import opasDocPermissions as opasDocPerm
 
 count_anchors = 0
 
@@ -75,13 +75,14 @@ def get_document_download_permission(documentInfoXML):
     return ret_val
 
 #-----------------------------------------------------------------------------
-def get_base_article_info_by_id(art_id):
+def get_base_article_info_by_id(art_id, session_info=None):
     from opasPySolrLib import search_text
     
     documentList, ret_status = search_text(query=f"art_id:{art_id}", 
                                            limit=1,
                                            abstract_requested=False,
-                                           full_text_requested=False
+                                           full_text_requested=False,
+                                           session_info=session_info
                                            )
 
     try:
@@ -2024,7 +2025,7 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
     return documentListItem
 
 #-----------------------------------------------------------------------------
-def get_base_article_info_from_search_result(result, documentListItem: models.DocumentListItem):
+def get_base_article_info_from_search_result(result, documentListItem: models.DocumentListItem, session_info=None):
     
     if result is not None:
         try:
@@ -2117,7 +2118,7 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             para_art_id = result.get("para_art_id", None)
             if documentListItem.documentID is None and para_art_id is not None:
                 # this is part of a document, we should retrieve the parent info
-                top_level_doc = get_base_article_info_by_id(art_id=para_art_id)
+                top_level_doc = get_base_article_info_by_id(art_id=para_art_id, session_info=session_info)
                 if top_level_doc is not None:
                     logger.info(f"Record {para_art_id} was child...retrieving and merging parent info {top_level_doc}")
                     documentListItem = merge_documentListItems(documentListItem, top_level_doc)

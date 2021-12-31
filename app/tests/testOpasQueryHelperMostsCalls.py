@@ -5,12 +5,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 import unittest
-import requests
+# import requests
+from unitTestConfig import headers, session_id, test_login
 import opasQueryHelper
 import opasPySolrLib
-import opasAPISupportLib
-
-from unitTestConfig import headers, session_id, test_login
 
 # Login!
 sessID, headers, session_info = test_login()

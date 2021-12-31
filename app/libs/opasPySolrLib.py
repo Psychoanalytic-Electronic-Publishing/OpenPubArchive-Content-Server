@@ -20,9 +20,13 @@ import tempfile
 import logging
 logger = logging.getLogger(__name__)
 import time
-from fastapi import HTTPException
+import copy
+from pydantic import ValidationError
+# from fastapi import HTTPException
 from errorMessages import *
+import datetime as dtime 
 from datetime import datetime
+from collections import OrderedDict
 # import datetime as dtime
 # from operator import itemgetter
 
@@ -433,6 +437,282 @@ def check_solr_docs_connection():
 
         return ret_val
 
+#-----------------------------------------------------------------------------
+def document_get_most_viewed( publication_period: int=5,
+                              author: str=None,
+                              title: str=None,
+                              source_name: str=None,  
+                              source_code: str=None,
+                              source_type: str="journal",
+                              abstract_requested: bool=False, 
+                              view_period: int=4,               # 4=last12months default. 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
+                              view_count: str="1",              # up this later
+                              req_url: str=None,
+                              stat:bool=False, 
+                              limit: int=5,                     # Get top 10 from the period
+                              offset=0,
+                              mlt_count:int=None,
+                              sort:str=None,
+                              download=False, 
+                              session_info=None,
+                              request=None
+                            ):
+    """
+    Return the most viewed journal articles (often referred to as most downloaded) duing the prior period years.
+
+    This is used for the statistical summary function and accesses only the relational database, not full-text Solr.
+
+    Args:
+        publication_period (int, optional): Look only at articles this many years back to current.  Defaults to 5.
+        author (str, optional): Filter, include matching author names per string .  Defaults to None (no filter).
+        title (str, optional): Filter, include only titles that match.  Defaults to None (no filter).
+        source_name (str, optional): Filter, include only journals matching this name.  Defaults to None (no filter).
+        source_type (str, optional): journals, books, or videostreams.
+        view_period (int, optional): defaults to last12months
+
+            view_period = { 0: "lastcalyear",
+                            1: "lastweek",
+                            2: "last1mos",
+                            3: "last6mos",
+                            4: "last12mos",
+                           }
+
+        limit (int, optional): Paging mechanism, return is limited to this number of items.
+        offset (int, optional): Paging mechanism, start with this item in limited return set, 0 is first item.
+
+    Returns:
+        models.DocumentList: Pydantic structure (dict) for DocumentList.  See models.py
+
+    Docstring Tests:
+
+    >>> result, status = document_get_most_viewed()
+    >>> result.documentList.responseSet[0].documentID if result.documentList.responseInfo.count >0 else "No views yet."
+    '...'
+
+    """
+    ret_val = None
+    caller_name = "document_get_most_viewed"
+    ret_status = (200, "OK") # default is like HTTP_200_OK
+    period = opasConfig.VALS_VIEWPERIODDICT_SOLRFIELDS.get(view_period, "last12mos")
+    
+    if sort is None:
+        sort = f"{period} desc"
+
+    start_year = dtime.date.today().year
+    if publication_period is None:
+        start_year = None
+    else:
+        start_year -= publication_period
+        start_year = f">{start_year}"
+
+    if stat:
+        field_set = "STAT"
+    else:
+        field_set = None
+        
+    solr_query_spec = \
+        opasQueryHelper.parse_search_query_parameters( viewperiod=view_period,      # 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
+                                                       viewcount=view_count, 
+                                                       source_name=source_name,
+                                                       source_code=source_code,
+                                                       source_type=source_type,
+                                                       author=author,
+                                                       title=title,
+                                                       startyear=start_year,
+                                                       highlightlimit=0, 
+                                                       abstract_requested=abstract_requested,
+                                                       return_field_set=field_set, 
+                                                       sort = sort,
+                                                       req_url = req_url
+                                                       )
+    if download: # much more limited document list if download==True
+        ret_val, ret_status = search_stats_for_download(solr_query_spec, 
+                                                        session_info=session_info, 
+                                                        request = request
+                                                        )
+    else:
+        try:
+            ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                                 limit=limit,
+                                                 offset=offset,
+                                                 req_url = req_url, 
+                                                 session_info=session_info, 
+                                                 request = request,
+                                                 caller_name=caller_name
+                                                )
+        except Exception as e:
+            logger.error(f"Search error {e}")
+
+    return ret_val, ret_status   
+
+#-----------------------------------------------------------------------------
+def documents_get_glossary_entry(term_id,
+                                 term_id_type=None,
+                                 record_per_term=False, # new 20210127, if false, collapse groups to one return record.
+                                 retFormat="XML",
+                                 req_url: str=None,
+                                 session_info=None,
+                                 limit=opasConfig.DEFAULT_LIMIT_FOR_DOCUMENT_RETURNS,
+                                 offset=0,
+                                 request=None):
+    """
+    For non-authenticated users, this endpoint should return an error (#TODO)
+
+    For authenticated users, it returns with the glossary itself
+
+    IMPORTANT NOTE: At least the way the database is currently populated, for a group, the textual part (text) is the complete group, 
+      and thus the same for all entries.  This is best for PEP-Easy now, otherwise, it would need to concatenate all the result entries.
+      
+    As of 2020-11, Group and Name use text fields, so partial matches are included rather than string fields which require exact
+     matches
+
+    >> resp = documents_get_glossary_entry("ZBK.069.0001o.YN0019667860580", retFormat="html") 
+
+    >> resp = documents_get_glossary_entry("ZBK.069.0001o.YN0004676559070") 
+
+    >> resp = documents_get_glossary_entry("ZBK.069.0001e.YN0005656557260")
+
+
+    """
+    caller_name = "documents_get_glossary_entry"
+    ret_val = {}
+
+    # Name and Group are strings, and case sensitive, so search, as submitted, and uppercase as well
+    if term_id_type == "Name":
+        # 2020-11-11 use text field instead
+        qstr = f'term_terms:("{term_id}")'
+        # qstr = f'term:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
+    elif term_id_type == "Group":
+        # 2020-11-11 use text field instead
+        # qstr = f'group_name_terms:("{term_id}")'
+        # trying hybrid 2021-01-27
+        #qstr = f'group_name:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
+        # hybrid search both if needed! 2021-01-27
+        qstr = f'group_name:("{term_id}" || "{term_id.upper()}" || "{term_id.lower()}")'
+        count = get_match_count(solr_gloss2, query=qstr)
+        if count == 0:
+            # no match, look in the group terms for a match
+            qstr = f'group_name_terms:("{term_id}")'
+            count = get_match_count(solr_gloss2, query=qstr)
+        
+    else: # default is term ID
+        term_id = term_id.upper()
+        qstr = f"term_id:{term_id} || group_id:{term_id}"
+
+    solr_query_spec = \
+            opasQueryHelper.parse_to_query_spec(query = f"art_id:{opasConfig.GLOSSARY_TOC_INSTANCE}",
+                                                full_text_requested=False,
+                                                abstract_requested=False,
+                                                format_requested="XML",
+                                                limit = 1,
+                                                req_url = req_url
+                                                )
+
+
+    gloss_info, ret_status = search_text_qs(solr_query_spec, 
+                                            extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                            limit=1,
+                                            session_info=session_info,
+                                            request = request,
+                                            caller_name=caller_name
+                                            )
+        
+    gloss_template = gloss_info.documentList.responseSet[0]
+    
+    args = {
+        "fl": opasConfig.GLOSSARY_ITEM_DEFAULT_FIELDS, 
+        "facet.field": opasConfig.DOCUMENT_VIEW_FACET_LIST,
+        "facet.mincount": 1
+    }
+    
+    try:
+        results = solr_gloss2.search(qstr, **args)
+    except Exception as e:
+        err = f"Solr query failed {e}"
+        logger.error(err)
+        raise Exception(err)
+           
+    document_item_list = []
+    count = 0
+    last_group = None
+    try:
+        for result in results.docs:
+            document = result.get("text", None)
+            documentListItem = copy.deepcopy(gloss_template)
+            if not documentListItem.accessChecked == True and documentListItem.accessLimited == False:
+                try:
+                    if retFormat == "HTML":
+                        document = opasxmllib.xml_str_to_html(document)
+                    elif retFormat == "TEXTONLY":
+                        document = opasxmllib.xml_elem_or_str_to_text(document)
+                    else: # XML
+                        document = document
+                except Exception as e:
+                    logger.error(f"Error converting glossary content: {term_id} ({e})")
+            else: # summary only
+                try:
+                    if retFormat == "HTML":
+                        document = opasxmllib.xml_str_to_html(document, transformer_name=opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
+                    elif retFormat == "TEXTONLY":
+                        document = opasxmllib.xml_elem_or_str_to_text(document) # TODO need summary here?  Or are we allowing full access?      
+                    else: # XML
+                        document = document # TODO need summary here? Or are we allowing full access?                 
+                except ValidationError as e:
+                    logger.error(e.json())  
+                except Exception as e:
+                    warning = f"Error getting contents of Glossary entry {term_id}"
+                    logger.error(warning)
+                    document = warning
+                
+            documentListItem.groupID = result.get("group_id", None)
+            # if using document, getting the individual items in a group is redundant.
+            #  so in that case, don't add them.  Only return unique groups.
+            if last_group != documentListItem.groupID or record_per_term:
+                last_group = documentListItem.groupID
+                documentListItem.term = result.get("term", None)
+                documentListItem.termID = result.get("term_id")
+                # documentListItem.document = document 
+                documentListItem.document = result.get("text")
+                documentListItem.groupName = result.get("group_name", None)
+                documentListItem.groupTermCount = result.get("group_term_count", None)
+                documentListItem.termSource = result.get("term_source", None)
+                documentListItem.termType = result.get("term_type", None)
+                documentListItem.termDefPartXML = result.get("term_def_xml")
+                documentListItem.termDefRestXML = result.get("term_def_rest_xml")
+                # note, the rest of the document info is from the TOC instance, but we're changing the name here
+                documentListItem.documentID = result.get("art_id", None)
+                documentListItem.score = result.get("score", None)
+                document_item_list.append(documentListItem)
+
+        count = len(document_item_list)
+        if count == 0:
+            documentListItem = copy.deepcopy(gloss_template)
+            documentListItem.document = documentListItem.term = "No matching glossary entry."
+            # raise Exception(KeyError("No matching glossary entry"))
+    except IndexError as e:
+        logger.error("No matching glossary entry for %s.  Error: %s", (term_id, e))
+    except KeyError as e:
+        logger.error("No content or abstract found for %s.  Error: %s", (term_id, e))
+    else:
+        response_info = models.ResponseInfo( count = count,
+                                             fullCount = count,
+                                             limit = limit,
+                                             offset = offset,
+                                             listType = "documentlist",
+                                             fullCountComplete = True,
+                                             request=f"{req_url}",
+                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)                     
+                                             )
+
+        document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
+                                                          responseSet = document_item_list
+                                                          )
+
+        documents = models.Documents(documents = document_list_struct)
+
+        ret_val = documents
+
+    return ret_val
 #-----------------------------------------------------------------------------
 def document_get_info(document_id, fields="art_id, art_sourcetype, art_year, file_classification, art_sourcecode, score"):
     """
@@ -984,7 +1264,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
     """
     ret_val = {}
     ret_status = (200, "OK") # default is like HTTP_200_OK
-    default_access_limited_message_not_logged_in = msgdb.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
+    # default_access_limited_message_not_logged_in = msgdb.get_user_message(msg_code=opasConfig.ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN)
 
     # count_anchors = 0
     try:
@@ -994,11 +1274,12 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         
     try:
         session_id = session_info.session_id
-        user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name + "/ search_text_qs")
+        #user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name + "/ search_text_qs")
     except Exception as e:
-        logger.warning("No Session info supplied to search_text_qs")
+        if req_url != opasConfig.CACHEURL: # no session supplied when loading caching, ok
+          logger.warning("No Session info supplied to search_text_qs")
         # mark as not logged in
-        user_logged_in_bool = False
+        #user_logged_in_bool = False
 
     if 1: # just to allow folding
         if solr_query_spec.solrQueryOpts is None: # initialize a new model
@@ -1289,7 +1570,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
                     # count_anchors = 0
                     # authorIDs = result.get("art_authors", None)
                     documentListItem = models.DocumentListItem()
-                    documentListItem = opasQueryHelper.get_base_article_info_from_search_result(result, documentListItem)
+                    documentListItem = opasQueryHelper.get_base_article_info_from_search_result(result, documentListItem, session_info=session_info)
                     documentID = documentListItem.documentID
                     if documentID is None:
                         # there's a problem with this records
@@ -2134,6 +2415,106 @@ def search_stats_for_download(solr_query_spec: models.SolrQuerySpec,
     logger.info(f"Download Stats Document Return Time: {time.time() - start_time}")
     return ret_val, ret_status
 #-----------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------
+def metadata_get_document_statistics(session_info=None):
+    """
+    Return counts for the annual summary (or load checks)
+
+    >>> results = metadata_get_database_statistics()
+    >>> results.article_count > 135000
+    True
+    """
+    content = models.ServerStatusContent()
+    
+    # data = metadata_get_volumes(source_code="IJPSP")
+    documentList, ret_status = search_text(query=f"art_id:*", 
+                                               limit=1,
+                                               facet_fields="art_year,art_pgcount,art_figcount,art_sourcetitleabbr,art_sourcecode", 
+                                               abstract_requested=False,
+                                               full_text_requested=False,
+                                               session_info=session_info
+                                               )
+    
+    bookList, ret_status = search_text(query=f"art_sourcecode:(ZBK || IPL || NLP)", 
+                                               limit=1,
+                                               facet_fields="art_product_key", 
+                                               abstract_requested=False,
+                                               full_text_requested=False, 
+                                               session_info=session_info
+                                               )
+    
+    videoList, ret_status = search_text(query=f"art_sourcecode:*VS", 
+                                               limit=1,
+                                               facet_fields=None, 
+                                               abstract_requested=False,
+                                               full_text_requested=False, 
+                                               session_info=session_info
+                                               )
+
+    content.article_count = documentList.documentList.responseInfo.fullCount
+    facet_counts = documentList.documentList.responseInfo.facetCounts
+    facet_fields = facet_counts["facet_fields"]
+    src_counts = facet_fields["art_sourcetitleabbr"]
+    src_code_counts = facet_fields["art_sourcecode"]
+    fig_counts = facet_fields["art_figcount"]
+    # figure count is how many figures shown in all articles (possible some are in more than one, not likely.  But one article could present a graphic multiple times.)
+    #  so not the same as the number of graphics in the g folder. (And a figure could be a chart or table)
+    content.figure_count = sum([int(y) * int(x) for x,y in fig_counts.items() if x != '0'])
+    journals_plus_videos = [x for x,y in src_counts.items() if x not in ("ZBK", "IPL", "NLP", "SE", "GW")]
+    journals = [x for x in src_code_counts if re.match(".*VS|OFFSITE|SE|GW|IPL|NLP|ZBK", x) is None]
+    content.journal_count = len(journals)
+    content.video_count = videoList.documentList.responseInfo.fullCount
+    book_facet_counts = bookList.documentList.responseInfo.facetCounts
+    book_facet_fields = book_facet_counts["facet_fields"]
+    book_facet_product_keys = book_facet_fields["art_product_key"]
+    content.book_count = len(book_facet_product_keys)
+    content.source_count = dict(OrderedDict(sorted(src_counts.items(), key=lambda t: t[0])))
+    vols = metadata_get_volumes(source_type="journal")    
+    content.vol_count = vols.volumeList.responseInfo.fullCount
+    year_counts = facet_fields["art_year"]
+    years = [int(x) for x,y in year_counts.items()]
+    content.year_first = min(years)
+    content.year_last = max(years)
+    content.year_count = content.year_last - content.year_first
+    page_counts = facet_fields["art_pgcount"]
+    pages = [int(x) *int(y) for x,y in page_counts.items()]
+    content.page_count = sum(pages)
+    content.page_height_feet = int(((content.page_count * .1) / 25.4) / 12) # page thickness in mm, 25.4 mm per inch, 12 inches per foot
+    content.page_weight_tons = int(content.page_count * 4.5 * 0.000001)
+    source_count_html = "<ul>"
+    for code, cnt in content.source_count.items():
+        source_count_html += f"<li>{code} - {cnt}</li>"
+    source_count_html += "</ul>"
+   
+    content.description_html = f"""
+<p>This release of PEP-Web contains the complete text and illustrations of
+{content.journal_count} premier journals in psychoanalysis,
+{content.book_count} classic psychoanalytic books, and the full text and Editorial notes of the
+24 volumes of the Standard Edition of the Complete Psychological Works of Sigmund Freud as well as the
+19 volume German Freud Standard Edition Gesammelte Werke.  It spans over
+{content.year_count} publication years and contains the full text of articles whose source ranges from
+{content.year_first} through {content.year_last}.</p>
+<p>
+There are over
+{content.article_count} articles and almost
+{content.figure_count} figures and illustrations that originally resided on
+{content.vol_count} volumes with over
+{content.page_count/1000000:.2f} million printed pages. In hard copy, the PEP Archive represents a stack of paper more than
+{content.page_height_feet} feet high and weighing over
+{content.page_weight_tons} tons!
+</p>
+"""
+    
+    content.source_count_html = f"""
+<p>
+\nCount of Articles by Source:
+\n{source_count_html}
+</p>
+"""
+        
+    ret_val = content
+    return ret_val
 
 #-----------------------------------------------------------------------------
 def metadata_get_next_and_prev_articles(art_id=None, 

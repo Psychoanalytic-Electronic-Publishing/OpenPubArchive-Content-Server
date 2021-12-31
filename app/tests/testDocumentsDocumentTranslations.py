@@ -3,7 +3,6 @@
 
 import re
 import logging
-import opasAPISupportLib
 import opasConfig
 
 logger = logging.getLogger(__name__)
@@ -11,8 +10,8 @@ logger = logging.getLogger(__name__)
 import unittest
 import requests
 
-import opasDocPermissions
 from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+import opasAPISupportLib
 
 # Login!
 sessID, headers, session_info = test_login()

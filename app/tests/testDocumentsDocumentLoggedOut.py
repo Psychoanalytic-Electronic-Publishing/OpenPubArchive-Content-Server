@@ -3,15 +3,12 @@
 
 import re
 import logging
-import opasAPISupportLib
 logger = logging.getLogger(__name__)
 
 import unittest
 import requests
-
-import opasDocPermissions
-
 from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
+import opasAPISupportLib
 # Get session, but not logged in.
 headers = get_headers_not_logged_in()
 
