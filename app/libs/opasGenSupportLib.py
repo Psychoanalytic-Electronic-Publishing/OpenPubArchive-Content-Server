@@ -396,6 +396,27 @@ def string_to_list(strlist: str, sep=","):
 
     return ret_val
 
+def get_date_type(date_text):
+    """
+    Return 1 if in date format Y-m-d
+    Return 2 if in date time format h:m:s
+    else return 0
+    """
+    ret_val = 1 # datetime=1, date=2
+    try:
+        datetime.strptime(date_text, '%Y%m%d %H:%M:%S')
+    except ValueError:
+        try:
+            datetime.strptime(date_text, '%Y%m%d')
+        except ValueError:
+            ret_val = 0 # neither
+        else:
+            ret_val = 1 # date
+    else:
+        ret_val = 2 # datetime
+
+    return ret_val
+
 def not_empty(arg):
     if arg is not None and arg != "":
         return True

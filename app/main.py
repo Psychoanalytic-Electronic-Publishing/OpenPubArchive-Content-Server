@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1228/v2.1.106" # semver versioning now added after date.
+__version__     = "2021.1230/v2.1.107" # semver versioning now added after date.
 __status__      = "Beta"
 
 """
@@ -156,9 +156,9 @@ import opasGenSupportLib
 import opasQueryHelper
 import opasSchemaHelper
 import opasDocPermissions
+import opasSolrPyLib
 import opasPySolrLib
 from opasPySolrLib import search_text_qs # , search_text
-import opasSolrPyLib
 import opasPDFStampCpyrght
 
 expert_pick_image = ["", ""]
@@ -602,6 +602,7 @@ async def admin_reports(response: Response,
                         limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                         getfullcount:bool=Query(False, title=opasConfig.TITLE_GETFULLCOUNT, description=opasConfig.DESCRIPTION_GETFULLCOUNT),
+                        includenonloggedin:bool=Query(False, title=opasConfig.TITLE_INCLUDENONLOGGEDIN, description=opasConfig.DESCRIPTION_INCLUDENONLOGGEDIN),
                         sortorder: str=Query("DESC", title=opasConfig.TITLE_SORTORDER, description=opasConfig.DESCRIPTION_SORTORDER),
                         download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
                         client_id:int=Depends(get_client_id), 
@@ -643,6 +644,7 @@ async def admin_reports(response: Response,
          
 
     """
+    
     caller_name = "[v2/Admin/Reports]"
     #if opasConfig.DEBUG_TRACE: print(caller_name)
 
@@ -691,7 +693,7 @@ async def admin_reports(response: Response,
     else:
         endpoint_condition = ""
         
-
+            
     try:
         if enddate is not None:
             enddate = enddate.replace("-", "")
@@ -704,14 +706,39 @@ async def admin_reports(response: Response,
 
 
     if startdate is not None:
+        # is this date or date time
+        stfmt = opasGenSupportLib.get_date_type(startdate)     # Return 1 if in date format Y-m-d Return 2 if in date time format h:m:s
+        if stfmt == 2:
+            startdt = datetime.strptime(startdate, '%Y%m%d %H:%M:%S').strftime('%Y%m%d%H%M%S')
+        else: # no time included or non-standard
+            startdt = startdate
+            
         if enddate is not None:
-            # 2021-11-06 - Can't use between here if the time isn't being included. Errors when startdate and enddate are same day.
-            date_condition = f" AND last_update BETWEEN {startdate}000000 AND {enddate}235959"
+            endfmt = opasGenSupportLib.get_date_type(enddate)     # Return 1 if in date format Y-m-d Return 2 if in date time format h:m:s
+            if endfmt == 2:
+                enddt = datetime.strptime(enddate, '%Y%m%d %H:%M:%S').strftime('%Y%m%d%H%M%S')
+                
+            if stfmt == 2 and endfmt == 2:
+                date_condition = f" AND last_update BETWEEN {startdt} AND {enddt}"
+            elif stfmt == 1 and endfmt == 1:
+                date_condition = f" AND last_update BETWEEN {startdt}000000 AND {enddate}235959"
+            elif stfmt == 1 and endfmt == 2:
+                date_condition = f" AND last_update BETWEEN {startdt}000000 AND {enddt}"
+            elif stfmt == 2 and endfmt == 1:
+                date_condition = f" AND last_update BETWEEN {startdt} AND {enddate}235959"
+            else:
+                # 2021-11-06 - Can't use between here if the time isn't being included. Errors when startdate and enddate are same day.
+                date_condition = f" AND last_update BETWEEN {startdate}000000 AND {enddate}235959"
         else:
-            date_condition = f" AND last_update >= {startdate}"
+            date_condition = f" AND last_update >= {startdt}"
     else:
         if enddate is not None:
-            date_condition = f" AND last_update <= {enddate}"
+            endfmt = opasGenSupportLib.get_date_type(enddate)     # Return 1 if in date format Y-m-d Return 2 if in date time format h:m:s
+            if endfmt == 2:
+                enddt = datetime.strptime(enddate, '%Y%m%d %H:%M:%S').strftime('%Y%m%d%H%M%S')
+                date_condition = f" AND last_update <= {enddt}"
+            else:
+                date_condition = f" AND last_update <= {enddate}235959"
         else:
             date_condition = ""
 
@@ -739,8 +766,12 @@ async def admin_reports(response: Response,
                   "document activity id"]
         
     elif report == models.ReportTypeEnum.sessionLog:
-        standard_filter = "1 = 1 " 
-        report_view = "vw_reports_session_activity"
+        standard_filter = "1 = 1 "
+        if includenonloggedin:
+            report_view = "vw_reports_session_activity_union_all"
+        else:
+            report_view = "vw_reports_session_activity"
+
         if matchstr is not None:
             extra_condition = f" AND params RLIKE '{matchstr}'"
         orderby_clause = f"ORDER BY last_update {sortorder}"

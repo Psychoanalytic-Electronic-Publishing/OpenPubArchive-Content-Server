@@ -898,13 +898,13 @@ class opasCentralDB(object):
         self.open_connection(caller_name="get_select_count") # make sure connection is open
         ret_val = None
 
-        sqlSelect = re.sub("SELECT .+? FROM", "SELECT COUNT(*) FROM", sqlSelect, count=1, flags=re.IGNORECASE)
+        sqlSelect = re.sub("SELECT .+? FROM", "SELECT COUNT(*) AS FULLCOUNT FROM", sqlSelect, count=1, flags=re.IGNORECASE)
         try:
             if self.db is not None:
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
                     cursor.execute(sqlSelect)
                     row = cursor.fetchall()
-                    ret_val = row[0][0]
+                    ret_val = row[0]["FULLCOUNT"]
             else:
                 logger.error("Connection not available to database.")
 
