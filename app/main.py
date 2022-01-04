@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2021.1230/v2.1.107" # semver versioning now added after date.
+__version__     = "2022.0103/v2.1.108" # semver versioning after date.
 __status__      = "Beta"
 
 """
@@ -603,7 +603,7 @@ async def admin_reports(response: Response,
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                         getfullcount:bool=Query(False, title=opasConfig.TITLE_GETFULLCOUNT, description=opasConfig.DESCRIPTION_GETFULLCOUNT),
                         includenonloggedin:bool=Query(False, title=opasConfig.TITLE_INCLUDENONLOGGEDIN, description=opasConfig.DESCRIPTION_INCLUDENONLOGGEDIN),
-                        sortorder: str=Query("DESC", title=opasConfig.TITLE_SORTORDER, description=opasConfig.DESCRIPTION_SORTORDER),
+                        sortorder: str=Query("ASC", title=opasConfig.TITLE_SORTORDER, description=opasConfig.DESCRIPTION_SORTORDER),
                         download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
                         client_id:int=Depends(get_client_id), 
                         client_session:str= Depends(get_client_session), 
@@ -693,54 +693,22 @@ async def admin_reports(response: Response,
     else:
         endpoint_condition = ""
         
-            
     try:
-        if enddate is not None:
-            enddate = enddate.replace("-", "")
-
         if startdate is not None:
-            startdate = startdate.replace("-", "")
-
+            startdt = opasGenSupportLib.datestr2mysql(startdate)
+            if enddate is not None:
+                enddt = opasGenSupportLib.datestr2mysql(enddate)
+                date_condition = f" AND last_update BETWEEN {startdt} AND {enddt}"
+            else:
+                date_condition = f" AND last_update >= {startdt}"
+        else:
+            if enddate is not None:
+                enddt = opasGenSupportLib.datestr2mysql(enddate)
+                date_condition = f" AND last_update <= {enddt}"
+            else: # both None
+                date_condition = ""
     except Exception as e:
         logger.warning(f"Bad start or end date specified to reports {e}")
-
-
-    if startdate is not None:
-        # is this date or date time
-        stfmt = opasGenSupportLib.get_date_type(startdate)     # Return 1 if in date format Y-m-d Return 2 if in date time format h:m:s
-        if stfmt == 2:
-            startdt = datetime.strptime(startdate, '%Y%m%d %H:%M:%S').strftime('%Y%m%d%H%M%S')
-        else: # no time included or non-standard
-            startdt = startdate
-            
-        if enddate is not None:
-            endfmt = opasGenSupportLib.get_date_type(enddate)     # Return 1 if in date format Y-m-d Return 2 if in date time format h:m:s
-            if endfmt == 2:
-                enddt = datetime.strptime(enddate, '%Y%m%d %H:%M:%S').strftime('%Y%m%d%H%M%S')
-                
-            if stfmt == 2 and endfmt == 2:
-                date_condition = f" AND last_update BETWEEN {startdt} AND {enddt}"
-            elif stfmt == 1 and endfmt == 1:
-                date_condition = f" AND last_update BETWEEN {startdt}000000 AND {enddate}235959"
-            elif stfmt == 1 and endfmt == 2:
-                date_condition = f" AND last_update BETWEEN {startdt}000000 AND {enddt}"
-            elif stfmt == 2 and endfmt == 1:
-                date_condition = f" AND last_update BETWEEN {startdt} AND {enddate}235959"
-            else:
-                # 2021-11-06 - Can't use between here if the time isn't being included. Errors when startdate and enddate are same day.
-                date_condition = f" AND last_update BETWEEN {startdate}000000 AND {enddate}235959"
-        else:
-            date_condition = f" AND last_update >= {startdt}"
-    else:
-        if enddate is not None:
-            endfmt = opasGenSupportLib.get_date_type(enddate)     # Return 1 if in date format Y-m-d Return 2 if in date time format h:m:s
-            if endfmt == 2:
-                enddt = datetime.strptime(enddate, '%Y%m%d %H:%M:%S').strftime('%Y%m%d%H%M%S')
-                date_condition = f" AND last_update <= {enddt}"
-            else:
-                date_condition = f" AND last_update <= {enddate}235959"
-        else:
-            date_condition = ""
 
     limit_clause = ""
     if limit is not None:
@@ -770,7 +738,11 @@ async def admin_reports(response: Response,
         if includenonloggedin:
             report_view = "vw_reports_session_activity_union_all"
         else:
-            report_view = "vw_reports_session_activity"
+            report_view = "vw_reports_session_activity" # default built in sort, ASC
+            orderby_clause = ""
+            if sortorder == "DESC":
+                report_view = "vw_reports_session_activity_desc"
+                
 
         if matchstr is not None:
             extra_condition = f" AND params RLIKE '{matchstr}'"

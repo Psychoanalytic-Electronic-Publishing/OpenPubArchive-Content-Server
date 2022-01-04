@@ -8,11 +8,11 @@ OPAS - General Support Function Library
 General purpose functions, e.g., string conversion (convenience) functions
 
 """
+# 2022.0101.1 - New date (str) to mysql function
 # 2019.0614.1 - Python 3.7 compatible
 # 2020.0229.1 - pgnum_splitter added
    
-
-from typing import Union, Optional, Tuple
+from typing import Union # , Optional, Tuple
 import sys
 import os.path
 import re
@@ -21,15 +21,15 @@ logger = logging.getLogger(__name__)
 
 import time
 from datetime import datetime
+from dateutil import parser
 import calendar
 import email.utils
-import localsecrets
 import opasConfig
 
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.01.09"
+__version__     = "2022.01.01"
 __status__      = "Development"
 
 class DocumentID(object):
@@ -396,25 +396,12 @@ def string_to_list(strlist: str, sep=","):
 
     return ret_val
 
-def get_date_type(date_text):
-    """
-    Return 1 if in date format Y-m-d
-    Return 2 if in date time format h:m:s
-    else return 0
-    """
-    ret_val = 1 # datetime=1, date=2
-    try:
-        datetime.strptime(date_text, '%Y%m%d %H:%M:%S')
-    except ValueError:
-        try:
-            datetime.strptime(date_text, '%Y%m%d')
-        except ValueError:
-            ret_val = 0 # neither
-        else:
-            ret_val = 1 # date
-    else:
-        ret_val = 2 # datetime
-
+def datestr2mysql(date_text):
+    dt = parser.parse(date_text)
+    if dt.hour == 0 and dt.minute == 0 and dt.second == 0:
+        # no time included
+        pass
+    ret_val = dt.strftime("%Y%m%d%H%M%S")
     return ret_val
 
 def not_empty(arg):
