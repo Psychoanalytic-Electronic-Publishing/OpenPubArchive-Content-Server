@@ -207,7 +207,30 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
-            
+
+    def test08_session_log_report_dateformats_not_logged_in(self):
+        # note api_key is required, but already in headers
+        import datetime
+        from datetime import date, timedelta
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=100&loggedinrecords=False&sort=ASC&getfullcount=True')
+        print (full_URL)
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # these don't get affected by the level.
+        r = response.json()
+        response_info = r["report"]["responseInfo"]
+        response_set = r["report"]["responseSet"]
+        assert(response_info["count"] >= 1)
+
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&loggedinrecords=False&sort=DESC')
+        print (full_URL)
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        # these don't get affected by the level.
+        r = response.json()
+        response_info = r["report"]["responseInfo"]
+        response_set = r["report"]["responseSet"]
+        assert(response_info["count"] >= 1)           
 
 
 if __name__ == '__main__':

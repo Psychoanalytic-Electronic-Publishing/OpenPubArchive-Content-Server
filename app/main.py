@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2022.0103/v2.1.108" # semver versioning after date.
+__version__     = "2022.0104/v2.1.109" # semver versioning after date.
 __status__      = "Beta"
 
 """
@@ -602,7 +602,7 @@ async def admin_reports(response: Response,
                         limit: int=Query(100, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                         offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                         getfullcount:bool=Query(False, title=opasConfig.TITLE_GETFULLCOUNT, description=opasConfig.DESCRIPTION_GETFULLCOUNT),
-                        includenonloggedin:bool=Query(False, title=opasConfig.TITLE_INCLUDENONLOGGEDIN, description=opasConfig.DESCRIPTION_INCLUDENONLOGGEDIN),
+                        loggedinrecords:bool=Query(True, title=opasConfig.TITLE_LOGGEDINRECORDS, description=opasConfig.DESCRIPTION_LOGGEDINRECORDS),
                         sortorder: str=Query("ASC", title=opasConfig.TITLE_SORTORDER, description=opasConfig.DESCRIPTION_SORTORDER),
                         download:bool=Query(False, title=opasConfig.TITLE_DOWNLOAD, description=opasConfig.DESCRIPTION_DOWNLOAD), 
                         client_id:int=Depends(get_client_id), 
@@ -735,8 +735,11 @@ async def admin_reports(response: Response,
         
     elif report == models.ReportTypeEnum.sessionLog:
         standard_filter = "1 = 1 "
-        if includenonloggedin:
-            report_view = "vw_reports_session_activity_union_all"
+        if not loggedinrecords:
+            report_view = "vw_reports_session_activity_not_logged_in"
+            orderby_clause = ""
+            if sortorder == "DESC":
+                report_view = "vw_reports_session_activity_not_logged_in_desc"
         else:
             report_view = "vw_reports_session_activity" # default built in sort, ASC
             orderby_clause = ""
