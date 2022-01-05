@@ -5,5 +5,7 @@ RUN pip install fastapi --upgrade
 RUN chmod 750 /app
 ENV LOG_LEVEL=warning
 ENV ACCESS_LOG=
+ENV TIMEOUT=180
+ENV GRACEFUL_TIMEOUT=180
 # Expose ports
 EXPOSE 80
