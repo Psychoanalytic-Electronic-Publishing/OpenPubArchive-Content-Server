@@ -124,7 +124,7 @@ class TestReports(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?startdate={dt}&limit=100000&offset=0&download=false&sortorder=asc')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
-        print (f"Watched: Admin Report Query Complete. Time={time.time() - ts}")
+        print (f"Watched: Admin Report Query Complete. Asc Sort.  Time={time.time() - ts}")
         r = response.json()
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
@@ -139,7 +139,7 @@ class TestReports(unittest.TestCase):
         full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?startdate={dt}&limit=100000&offset=0&download=false&sortorder=desc')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
-        print (f"Watched: Admin Report Query Complete. Time={time.time() - ts}")
+        print (f"Watched: Admin Report Query Complete. Desc Sort. Time={time.time() - ts}")
         r = response.json()
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
