@@ -27,7 +27,15 @@ logger = logging.getLogger(__name__)
 
 # import schemaMap
 # import opasConfig
-from configLib.opasCoreConfig import EXTENDED_CORES, direct_endpoint_call
+from configLib.opasCoreConfig import EXTENDED_CORES
+
+def direct_endpoint_call(endpoint, base_api=None):
+    if base_api == None:
+        base_api = SOLRURL
+        
+    ret_val = base_api + endpoint
+    return ret_val
+
 
 # -------------------------------------------------------------------------------------------------------
 def solr_field_check(core, field_name):

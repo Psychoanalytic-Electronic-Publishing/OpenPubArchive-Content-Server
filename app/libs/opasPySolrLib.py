@@ -2005,6 +2005,8 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                 art_newsecnm,
                 art_pgrg,
                 art_pgcount,
+                art_embargo,
+                art_embargotype,
                 title,
                 art_authors,
                 art_authors_mast,
@@ -2019,9 +2021,10 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
            }
 
     results = solr_docs2.search(query, **args)
-    
     document_item_list = []
     for result in results.docs:
+        document_id = result.get("art_id", None) # everything should have an ID
+        
         # transform authorID list to authorMast
         author_ids = result.get("art_authors", None)
         if author_ids is None:
@@ -2029,7 +2032,7 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
             authorMast = result.get("art_authors_mast", "")
         else:
             authorMast = opasgenlib.derive_author_mast(author_ids)
-
+            
         pgRg = result.get("art_pgrg", None)
         pgCount = result.get("art_pgcount", None)
         pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
@@ -2045,6 +2048,19 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                     issue_title = f"Issue {issue}"
                 else:
                     issue_title = f"No. {issue_seqnbr}"
+        
+        embargotype = result.get("art_embargotype", None)
+        embargo_toc_addon = opasConfig.EMBARGO_TOC_TEXT.get(embargotype, "")
+        
+        # handle ijopen differently, always a number.
+        if pep_code == "IJPOPEN":
+            toc_pg_start = f"{opasgenlib.DocumentID(document_id).get_page_number(default=pgStart)}"
+            if embargo_toc_addon != "":
+                # in case the config didn't include a space
+                toc_pg_start = embargo_toc_addon
+                embargo_toc_addon = ""
+        else:
+            toc_pg_start = pgStart
 
         item = models.DocumentListItem(PEPCode = pep_code, 
                                        year = result.get("art_year", None),
@@ -2055,11 +2071,11 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                                        newSectionName = result.get("art_newsecnm", None),
                                        pgRg = result.get("art_pgrg", None),
                                        pgCount=pgCount, 
-                                       pgStart = pgStart,
+                                       pgStart = toc_pg_start,
                                        pgEnd = pgEnd,
-                                       title = result.get("title", None), 
+                                       title = result.get("title", None) + embargo_toc_addon, 
                                        authorMast = authorMast,
-                                       documentID = result.get("art_id", None),
+                                       documentID = document_id,
                                        documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
                                        documentRefHTML = citeAs,
                                        documentInfoXML=result.get("art_info_xml", None), 
@@ -2888,13 +2904,13 @@ def prep_document_download(document_id,
             # set up documentListItem in case the article is embargoed. 
             documentListItem = opasQueryHelper.get_base_article_info_from_search_result(results.docs[0], documentListItem)
         except IndexError as e:
-            err_msg = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
+            err_msg = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
             logger.error(err_msg)
             status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
                                          error_description=err_msg
                                        )
         except KeyError as e:
-            err_msg = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + f" Error: Full-text not content found for {document_id}"
+            err_msg = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + f" Error: Full-text not content found for {document_id}"
             logger.error(err_msg)
             status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
                                          error_description=err_msg

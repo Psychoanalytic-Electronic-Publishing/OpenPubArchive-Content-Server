@@ -30,14 +30,12 @@ import lxml
 from lxml import etree
 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=False)
 import html
-
-# import pymysql
 import mysql.connector
 
 import localsecrets
-# import config
 import opasConfig
-# import configLib.opasCoreConfig
+from configLib.opasIJPConfig import IJPOPENISSUES
+
 import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
 import loaderConfig
@@ -236,7 +234,9 @@ class ArticleInfo(object):
         self.src_code = pepxml.xpath("//artinfo/@j")[0]
         self.src_code = self.src_code.upper()  # 20191115 - To make sure this is always uppercase
         self.embargo = pepxml.xpath("//artinfo/@embargo")
-        self.embargotype = pepxml.xpath("//artinfo/@embargotype")
+        self.embargotype = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/@embargotype", default_return=None)
+        if self.embargotype is not None:
+            self.embargotype = self.embargotype.upper()
         
         if 1: # vol info (just if'd for folding purposes)
             vol_actual = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvol/@actual', default_return=None)
@@ -307,6 +307,16 @@ class ArticleInfo(object):
             
         self.art_issue = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artiss/node()', default_return=None)
         self.art_issue_title = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artissinfo/isstitle/node()', default_return=None)
+        if self.art_issue_title is None:
+            try:
+                self.art_issue_title = pepxml.xpath("//artinfo/@issuetitle")[0]
+            except:
+                pass
+        if self.art_issue is None:
+            if self.src_code in ["IJPOPEN"] and self.art_issue_title is not None:
+                issue_num = IJPOPENISSUES.get(self.art_issue_title)
+                self.art_issue = issue_num
+                
         # special sequential numbering for issues used by journals like fa (we code it simply as artnbr in xml)
         self.art_issue_seqnbr = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artnbr/node()', default_return=None)
         

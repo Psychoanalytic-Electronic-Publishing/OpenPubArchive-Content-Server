@@ -77,13 +77,8 @@ import opasFileSupport
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
 # from localsecrets import TIME_FORMAT_STR # moved to opasConfig
 
-# from opasConfig import OPASSESSIONID
-# import configLib.opasCoreConfig as opasCoreConfig
 from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
-
 from configLib.opasCoreConfig import EXTENDED_CORES
-
-# from fastapi import HTTPException
 
 # Removed support for Py2, only Py3 supported now
 pyVer = 3

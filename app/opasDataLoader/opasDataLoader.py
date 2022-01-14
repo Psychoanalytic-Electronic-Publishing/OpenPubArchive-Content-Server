@@ -81,22 +81,12 @@ import datetime as dtime
 from datetime import datetime
 import logging
 logger = logging.getLogger(programNameShort)
-# import html
-
-# used this name because later we needed to refer to the module, and datetime is also the name
-#  of the import from datetime.
 
 from optparse import OptionParser
 
 from lxml import etree
-#now uses pysolr exclusively!
-# import solrpy as solr 
-# import pymysql
 import mysql.connector
 
-# import config
-# import opasConfig
-# import opasCoreConfig
 import configLib.opasCoreConfig
 from configLib.opasCoreConfig import solr_authors2, solr_gloss2
 import loaderConfig
@@ -222,7 +212,6 @@ def main():
     # logging.basicConfig(filename=logFilename, level=options.logLevel)
 
     solrurl_docs = None
-    #solrurl_refs = None
     solrurl_authors = None
     solrurl_glossary = None
     if options.rootFolder == localsecrets.XML_ORIGINALS_PATH or options.rootFolder == None:

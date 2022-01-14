@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Uses PaDS for authorization.  
+# 
+# PaDS builds its product database by polling the metadata endpoints.
+#  - For journals and books, this data comes from the api_products table. 
+#     - column 'active' turns on or off the listing in the journal list of the client
+#     - column 'accessClassificaiton' sets a journal as archive or future. (current is not at the journal level)
+# 
+
 import requests
 import datetime
 from datetime import datetime as dt # to avoid python's confusion with datetime.timedelta
@@ -842,7 +850,12 @@ def get_access_limitations(doc_id,
                             elif embargoed == True:
                                 ret_val.accessLimited = True
                                 if embargo_type is not None:
-                                    msg = msgdb.get_user_message(msg_code=embargo_type)
+                                    if embargo_type == 'IJPOPEN_REMOVED':
+                                        msg = msgdb.get_user_message(msg_code=opasConfig.EMBARGO_IJPOPEN_REMOVED)
+                                    elif embargo_type == 'RESTRICTED':
+                                        msg = msgdb.get_user_message(msg_code=opasConfig.EMBARGO_PUBLISHER_EMBARGOED)
+                                    else:
+                                        msg = msgdb.get_user_message(msg_code=opasConfig.EMBARGO_TYPE_OTHER)
                                 else:
                                     msg = msgdb.get_user_message(msg_code=opasConfig.ACCESS_LIMITED_REASON_NOK_EMBARGOED_CONTENT)
                                 ret_val.accessLimitedReason = msg

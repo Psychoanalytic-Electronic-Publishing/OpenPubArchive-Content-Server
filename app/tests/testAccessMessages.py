@@ -40,7 +40,7 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
 
     def test_001A_get_future_document(self):
         # Try to return current content, should only return abstract
-        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/JPT.005.0065A/?return_format=XML")
+        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/PCAS.024.0100A/?return_format=XML")
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)

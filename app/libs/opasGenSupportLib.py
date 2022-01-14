@@ -198,6 +198,18 @@ class DocumentID(object):
             return True
         else:
             return False
+        
+    def get_page_number(self, default=None):
+        "Returns the page number STR"
+        if self.page_start is None:
+            if default is None:
+                logger.error(f"Document {self.document_id} does not have a parsable page_start")
+                return '1' 
+            else:
+                return default
+        else:
+            pg_start = self.page_start.lstrip("0")
+            return pg_start
 
 class FileInfo(object):
     def __init__(self, filename): 

@@ -358,6 +358,7 @@ class TestDatabaseSearch(unittest.TestCase):
         assert(response.ok == True)
         r = response.json()
         print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+        
         assert(r['documentList']['responseInfo']['fullCount'] >= 3)
         assert(r['documentList']['responseInfo']['fullCountComplete'] == True)
 

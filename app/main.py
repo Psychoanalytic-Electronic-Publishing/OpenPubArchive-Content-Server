@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2022.0105/v2.1.110" # semver versioning after date.
+__version__     = "2022.0113/v2.1.111" # semver versioning after date.
 __status__      = "Beta"
 
 """
@@ -3402,9 +3402,9 @@ def database_mostcited(response: Response,
 
         # Download CSV of selected set.  Returns only response with download, not usual documentList
         #   response to client
-        cites = ocd.most_cited_generator( cited_in_period=citeperiod,
-                                          citecount=citecount,
-                                          publication_period=pubperiod,
+        cites = ocd.most_cited_generator( cited_in_period=citeperiod,   # in past 5 years (or IN {5, 10, 20, or ALL}
+                                          citecount=citecount,          # cited this many times
+                                          publication_period=pubperiod, # Number of publication years to include (back from current year, 0 for current)
                                           author=author,
                                           title=title,
                                           source_name=sourcename, 
@@ -5148,7 +5148,7 @@ def documents_document_fetch(response: Response,
             else:
                 # make sure we specify an error in the session log
                 # not sure this is the best return code, but for now...
-                status_message = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text 
+                status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text 
                 response.status_code = httpCodes.HTTP_404_NOT_FOUND
                 # record session endpoint in any case   
 
@@ -5273,7 +5273,7 @@ def documents_downloads(response: Response,
         elif status.httpcode == httpCodes.HTTP_400_BAD_REQUEST:
             status_message = msgdb.get_user_message(opasConfig.ACCESS_TEXT_PROCESSING_ISSUE) + request_qualifier_text + f" {status.error_description}" 
         elif status.httpcode == httpCodes.HTTP_404_NOT_FOUND:
-            status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+            status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text + f" {status.error_description}" 
         elif status.httpcode == httpCodes.HTTP_422_UNPROCESSABLE_ENTITY:
             status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
         else:
@@ -5347,8 +5347,8 @@ def documents_downloads(response: Response,
 
             except Exception as e:
                 response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                status_message = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text + f". ({e})"
-                extended_status_message = status_message
+                status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
+                extended_status_message = f"{status_message}:{e}"
                 logger.error(extended_status_message)
                 raise HTTPException(status_code=response.status_code,
                                     detail=status_message)

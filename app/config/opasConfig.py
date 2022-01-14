@@ -13,14 +13,31 @@ import string
 from schemaMap import PREDEFINED_SORTS
 import localsecrets
 import opasFileSupport
+# Share httpCodes definition with all OPAS modules that need it.  Starlette provides the symbolic declarations for us.
+import starlette.status as httpCodes # HTTP_ codes, e.g.
+                                     # HTTP_200_OK, \
+                                     # HTTP_400_BAD_REQUEST, \
+                                     # HTTP_401_UNAUTHORIZED, \
+                                     # HTTP_403_FORBIDDEN, \
+                                     # HTTP_404_NOT_FOUND, \
+                                     # HTTP_500_INTERNAL_SERVER_ERROR, \
+                                     # HTTP_503_SERVICE_UNAVAILABLE
+ 
 
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
+DATA_SOURCE = "v2022r1a/"
+# BASELOGFILENAME = "opasAPI"
+# logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
+FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message)s'
+logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
+
 
 # Various switches for information/debugging
 DEBUG_TRACE = 0
 LOG_CALL_TIMING = True
 LOCAL_TRACE = False                   # turn this on to see the queries easily.
 LOCAL_DBOPEN_TRACE = False            # show open/close db in init/del
+PADS_INFO_TRACE = False
 
 # Cache controls
 WHATS_NEW_EXPIRES_DAYS = 0
@@ -35,29 +52,7 @@ CACHE_EXPIRES_MINUTES = 0
 DEFAULT_LIMIT_FOR_CACHE = 15
 DEFAULT_LIMIT_FOR_MOST_VIEWED = 7
 
-DATA_SOURCE = "DBUpdate "
-
 EXPERT_PICKS_DEFAULT_IMAGE = "IJP.100.1465A.F0002"
-
-#import urllib.request
-# from enum import Enum, EnumMeta, IntEnum
-
-# count_anchors = 0 # define here so it can be used globally across modules
-
-# Share httpCodes definition with all OPAS modules that need it.  Starlette provides the symbolic declarations for us.
-import starlette.status as httpCodes # HTTP_ codes, e.g.
-                                     # HTTP_200_OK, \
-                                     # HTTP_400_BAD_REQUEST, \
-                                     # HTTP_401_UNAUTHORIZED, \
-                                     # HTTP_403_FORBIDDEN, \
-                                     # HTTP_404_NOT_FOUND, \
-                                     # HTTP_500_INTERNAL_SERVER_ERROR, \
-                                     # HTTP_503_SERVICE_UNAVAILABLE
- 
-# BASELOGFILENAME = "opasAPI"
-# logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
-FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message)s'
-logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 
 # General books
 BOOKSOURCECODE = "ZBK" #  books are listed under this source code, e.g., to make for an id of ZBK.052.0001
@@ -71,7 +66,7 @@ JOURNAL_CODES = """ADPSA|AFCVS|AIM|AJP|AJRPP|ANIJP-CHI|ANIJP-DE|ANIJP-EL|ANIJP-F
 |PPC|PPERSP|PPSY|PPTX|PSABEW|PSAR|PSC|PSP|PSU|PSW|PSYCHE|PY|RBP|REVAPA|RFP|RIP|RPP-CS|RPSA|RRP|SE|SFCPVS|SGS|SPIVS|SPR|TVPA
 |UCLVS|ZBK|ZBPA|ZPSAP"""
 
-DOWNLOADS_MAX_PAGE_COUNT = 50
+DOWNLOADS_MAX_PAGE_COUNT = 50             # Set to maximum restricted (e.g., book) article page count where download is allowed.
 DOWNLOADS_TYPES_RESTRICTED = ("book", )
 DOWNLOADS_TYPES_OVERRIDDEN = ("book", )
 # Note: language symbols to be lower case (will be converted to lowercase if not)
@@ -80,6 +75,63 @@ CLIENT_CONFIGS = ("common", "en-us", "es-es", "fr-fr", "de-de", "it-it")
 EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT = 13000 # lower numbers are faster, but don't read the last n files before making a random selection
 # paths vary because they depend on module location; solrXMLWebLoad needs a different path than the server
 # should do this better...later.
+
+# Messages - Correspond to api_messages table
+ACCESS_ABSTRACT_RESTRICTED_MESSAGE = 1220 #"You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
+ACCESS_CLASS_DESCRIPTION_ARCHIVE = 1202 # "This archive content is available for you to access."
+ACCESS_CLASS_DESCRIPTION_CURRENT_CONTENT = 1203 # This is current content.  It is embargoed per agreement with the publisher.
+ACCESS_CLASS_DESCRIPTION_FREE = 1201 # "This content is currently free to all users."
+ACCESS_CLASS_DESCRIPTION_FUTURE = 1206
+ACCESS_CLASS_DESCRIPTION_OFFSITE = 1200 # "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
+ACCESS_CLASS_DESCRIPTION_SPECIAL = 1204	# This is special content.  Access is determined by source title.	EN
+ACCESS_CLASS_DESCRIPTION_TOC = 1205
+ACCESS_LIMITED_REASON_NOK_ARCHIVE_CONTENT = 1218 # in case user doesn't have access to PEP-Web archive
+ACCESS_LIMITED_REASON_NOK_CURRENT_CONTENT = 1217 # This is a summary excerpt from the full document.  The full-text content of the document is embargoed per an agreement with the publisher. 
+ACCESS_LIMITED_REASON_NOK_EMBARGOED_CONTENT = 1214 # This is a summary excerpt from the full document.  This document has been specifically removed or embargoed by the publisher
+ACCESS_LIMITED_REASON_NOK_FUTURE_CONTENT = 1216 #"This future content is not yet available for you to access."
+ACCESS_LIMITED_REASON_OK_CURRENT_CONTENT = 1204 # "This current content is available for you to access."
+ACCESS_SUMMARY_DESCRIPTION = 1221 # "This is a summary excerpt from the full document. "
+ACCESS_SUMMARY_FORSUBSCRIBERS = 1222 # "The full content of the document is available to subscribers. "
+ACCESS_SUMMARY_ONLY_401_UNAUTHORIZED = 401 # "The authorization system returned a 401 error.  Your session may have timed out. Please try and login again."
+ACCESS_SUMMARY_PDFORIG_NOT_FOUND = 1231
+ACCESS_SUMMARY_PERMISSION_DENIED = 1235
+ACCESS_SUMMARY_PUBLISHER_INFO = 1225 # "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
+ACCESS_SUMMARY_SPECIAL = 1230 # "It may be available, it's a case by case basis 
+ACCESS_TEXT_PROCESSING_ISSUE = 1240 # error preparing file
+ERROR_404_DOCUMENT_NOT_FOUND = 404
+ERROR_422_CANNOT_RESPOND = 422
+# ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN = 1219 # no access check and user is not logged in
+# ACCESS_LIMITED_REASON_NOK_SPECIAL_CONTENT = 1215 
+# ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE = 1205 # "This archive content is available for you to access."
+# ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
+# ACCESS_SUMMARY_FUTURE = 1224 # "This journal is in the process of being added to PEP-Web.  The full-text content of the document is not yet available. "
+# ACCESS_SUMMARY_NOT_AVAILABLE = 1229 # This content is not currently available. 
+# ACCESS_SUMMARY_ONLY_EMBARGOED = 1223 # "The full-text content of the document is embargoed per an agreement with the publisher. "
+#1204	ACCESS_CLASS_DESCRIPTION_SPECIAL
+#1205	ACCESS_CLASS_DESCRIPTION_TOC
+#1208	ACCESS_CLASS_DESCRIPTION_AVAILABLE
+#1210	ACCESS_OK_CURRENT_CONTENT_AVAILABLE
+#1211	ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE
+#1216	ACCESS_NOK_FUTURE_CONTENT_NOT_AVAILABLE
+#1217	ACCESS_NOK_CURRENT_CONTENT_NOT_AVAILABLE
+#1220	ACCESS_ABSTRACT_RESTRICTED_MESSAGE
+#1221	ACCESS_SUMMARY_DESCRIPTION
+#1222	ACCESS_SUMMARY_FORSUBSCRIBERS
+#1223	ACCESS_SUMMARY_ONLY_EMBARGOED
+#1224	ACCESS_SUMMARY_FUTURE
+#1225	ACCESS_SUMMARY_PUBLISHER_INFO
+#1226	ACCESS_SUMMARY_NOT_AVAILABLE
+#1227	ACCESS_SUMMARY_SPECIAL
+#1228	ACCESS_PDF_ORIGINAL_NOT_FOUND
+
+# the following symbolic codes are embargo types.
+EMBARGO_IJPOPEN_REMOVED = 300       # This article was removed from IJPOpen.
+EMBARGO_PUBLISHER_EMBARGOED = 301   # special embargoed article from RFP and perhaps others, no reason specified
+EMBARGO_TYPE_OTHER = 301            # for now, just like publisher embargoed.
+EMBARGO_TOC_TEXT = {
+    'IJPOPEN_REMOVED': "Rmvd",        # Text to appear instead of Page number in TOC
+}
+
 GAVANTXSLT = False
 STYLE_PATH = r"./libs/styles;../libs/styles"
 if not GAVANTXSLT:
@@ -94,7 +146,7 @@ XSLT_XMLTOHTML_EXCERPT = r"pepkbd3-abstract-html.xslt"                       # u
 XSLT_XMLTOHTML_GLOSSARY_EXCERPT = r"pepkbd3-glossary-excerpt-html.xslt" 
 TRANSFORMER_XMLTOHTML = "XML_TO_HTML"                                        # used for dynamic conversion to HTML (maps to XSLT_XMLTOHTML)
 TRANSFORMER_XMLTOHTML_EXCERPT = "EXCERPT_HTML"                               # used for TOC instances on load (maps to XSLT_XMLTOHTML_EXCERPT)
-TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"                               # NOT CURRENTLY USED in OPAS (2020-09-14)
+TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"                               
 TRANSFORMER_XMLTOHTML_GLOSSARY_EXCERPT = "EXCERPT_GLOSSARY"                  # NOT CURRENTLY USED in OPAS (2020-09-14)
 
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
@@ -523,57 +575,6 @@ ENDPOINT_SUMMARY_WORD_WHEEL = "Return matching terms for the prefix in the speci
 
 # control whether abstracts can be viewed by non-logged-in users
 ACCESS_ABSTRACT_RESTRICTION = False
-
-# Messages - Correspond to api_messages table
-
-# the following symbolic codes are embargo types, so the numeric equivalent is not needed.
-IJPOPEN_REMOVED = 300 # " This article was removed from IJPOpen."
-ACCESS_SUMMARY_ONLY_401_UNAUTHORIZED = 401 # "The authorization system returned a 401 error.  Your session may have timed out. Please try and login again."
-ACCESS_404_DOCUMENT_NOT_FOUND = 404 
-ACCESS_CLASS_DESCRIPTION_OFFSITE = 1200 # "This important document is part of our 'offsite' collection--it's searched by our system, but available only from the publisher or authorized sites. "
-ACCESS_CLASS_DESCRIPTION_FREE = 1201 # "This content is currently free to all users."
-ACCESS_CLASS_DESCRIPTION_ARCHIVE = 1202 # "This archive content is available for you to access."
-ACCESS_CLASS_DESCRIPTION_CURRENT_CONTENT = 1203 # This is current content.  It is embargoed per agreement with the publisher.
-ACCESS_CLASS_DESCRIPTION_SPECIAL = 1204	# This is special content.  Access is determined by source title.	EN
-ACCESS_CLASS_DESCRIPTION_TOC = 1205
-ACCESS_CLASS_DESCRIPTION_FUTURE = 1206
-#1204	ACCESS_CLASS_DESCRIPTION_SPECIAL
-#1205	ACCESS_CLASS_DESCRIPTION_TOC
-#1208	ACCESS_CLASS_DESCRIPTION_AVAILABLE
-#1210	ACCESS_OK_CURRENT_CONTENT_AVAILABLE
-#1211	ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE
-#1216	ACCESS_NOK_FUTURE_CONTENT_NOT_AVAILABLE
-#1217	ACCESS_NOK_CURRENT_CONTENT_NOT_AVAILABLE
-#1220	ACCESS_ABSTRACT_RESTRICTED_MESSAGE
-#1221	ACCESS_SUMMARY_DESCRIPTION
-#1222	ACCESS_SUMMARY_FORSUBSCRIBERS
-#1223	ACCESS_SUMMARY_ONLY_EMBARGOED
-#1224	ACCESS_SUMMARY_FUTURE
-#1225	ACCESS_SUMMARY_PUBLISHER_INFO
-#1226	ACCESS_SUMMARY_NOT_AVAILABLE
-#1227	ACCESS_SUMMARY_SPECIAL
-#1228	ACCESS_PDF_ORIGINAL_NOT_FOUND
-
-ACCESS_LIMITED_REASON_OK_CURRENT_CONTENT = 1204 # "This current content is available for you to access."
-ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE = 1205 # "This archive content is available for you to access."
-ACCESS_LIMITED_REASON_NOK_EMBARGOED_CONTENT = 1214
-ACCESS_LIMITED_REASON_NOK_SPECIAL_CONTENT = 1215
-ACCESS_LIMITED_REASON_NOK_FUTURE_CONTENT = 1216 #"This future content is not yet available for you to access."
-ACCESS_LIMITED_REASON_NOK_CURRENT_CONTENT = 1217 # This is a summary excerpt from the full document.  The full-text content of the document is embargoed per an agreement with the publisher. 
-ACCESS_LIMITED_REASON_NOK_ARCHIVE_CONTENT = 1218 # in case user doesn't have access to PEP-Web archive
-ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN = 1219 # no access check and user is not logged in
-ACCESS_ABSTRACT_RESTRICTED_MESSAGE = 1220 #"You must be a registered user to view abstracts (registration is free and easy).  If you are already a registered user, please login."
-ACCESS_SUMMARY_DESCRIPTION = 1221 # "This is a summary excerpt from the full document. "
-ACCESS_SUMMARY_FORSUBSCRIBERS = 1222 # "The full content of the document is available to subscribers. "
-ACCESS_SUMMARY_ONLY_EMBARGOED = 1223 # "The full-text content of the document is embargoed per an agreement with the publisher. "
-ACCESS_SUMMARY_FUTURE = 1224 # "This journal is in the process of being added to PEP-Web.  The full-text content of the document is not yet available. "
-# ACCESS_SUMMARY_EMBARGOED_YEARS = "The full-text content of the document is embargoed for %s years per an agreement with the publisher. "
-ACCESS_SUMMARY_PUBLISHER_INFO = 1225 # "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
-ACCESS_SUMMARY_NOT_AVAILABLE = 1229 # This content is not currently available. 
-ACCESS_SUMMARY_SPECIAL = 1230 # "It may be available, it's a case by case basis 
-ACCESS_SUMMARY_PDFORIG_NOT_FOUND = 1231
-ACCESS_SUMMARY_PERMISSION_DENIED = 1235
-ACCESS_TEXT_PROCESSING_ISSUE = 1240 # error preparing file
 
 ACCESS_SUMMARY_PUBLISHER_INFO_DOI_LINK = " <a href=\"http://dx.doi.org/%s\" target=\"_blank\">here</a>." # needs the left space now 2021-05-05
 # ACCESS_SUMMARY_PUBLISHER_INFO_LINK_TEXT_ONLY = "%s."

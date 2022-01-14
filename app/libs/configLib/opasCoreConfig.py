@@ -76,13 +76,6 @@ CORES = {
     # "authors_terms": solr_authors_term_search,
 }
 
-def direct_endpoint_call(endpoint, base_api=None):
-    if base_api == None:
-        base_api = SOLRURL
-        
-    ret_val = base_api + endpoint
-    return ret_val
-
 if __name__ == "__main__":
     import sys
     sys.path.append('./config')

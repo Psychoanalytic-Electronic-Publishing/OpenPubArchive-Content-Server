@@ -90,7 +90,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 1560 and count1 <= 1650)
+        assert(count1 >= 1560 and count1 <= 1750)
 
     def test_search_fulltext_syn_5(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=dialogs_xml:(affect)&synonyms=false')
@@ -110,7 +110,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 1560 and count1 <= 1650)
+        assert(count1 >= 1600 and count1 <= 1800)
 
     def test_search_fulltext_syn_6(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=quotes_xml:(bisexuality)&synonyms=false')
@@ -130,7 +130,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 2122 and count1 <= 2222)
+        assert(count1 >= 2150 and count1 <= 2350)
 
     def test_search_fulltext_syn_7(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=references_xml:(bisexuality)&synonyms=false')
@@ -170,7 +170,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
         print (f"FullCount: {count1}")
-        assert(count1 >= 63000 and count1 <= 65000)
+        assert(count1 >= 65000 and count1 <= 65750)
 
 if __name__ == '__main__':
     unittest.main()
