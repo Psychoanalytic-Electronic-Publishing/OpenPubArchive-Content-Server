@@ -52,7 +52,6 @@ count_anchors = 0
 import smartsearch
 import smartsearchLib
 
-sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
 pat_prefix_amps = re.compile("^\s*&& ")
 
@@ -2129,11 +2128,11 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             documentListItem.downloads = get_document_download_permission(documentInfoXML=documentListItem.documentInfoXML)
             if documentListItem.pgCount is not None:
                 if documentListItem.downloads == True: # this disables downloading and printing per the client if the condition below is met, even though downloads=True in the XML
-                    if documentListItem.pgCount >= opasConfig.DOWNLOADS_MAX_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_TYPES_RESTRICTED:
+                    if documentListItem.pgCount >= opasConfig.DOWNLOADS_LIMIT_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_LIMIT_TYPES_RESTRICTED:
                         documentListItem.downloads = False
                 else: # DT said "exceptions"...this overrides the downloads=False I set in all the book instances, if they meet the exception conditons 
                     # Allow DOWNLOADS_TYPES_OVERRIDDEN with fewer than DOWNLOADS_MAX_PAGE_COUNT pages to be downloaded, even if marked downloads==False
-                    if documentListItem.pgCount < opasConfig.DOWNLOADS_MAX_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_TYPES_OVERRIDDEN:
+                    if documentListItem.pgCount < opasConfig.DOWNLOADS_LIMIT_PAGE_COUNT and documentListItem.sourceType in opasConfig.DOWNLOADS_LIMIT_TYPES_OVERRIDDEN:
                         documentListItem.downloads = True
             else:
                 logger.info(f"{documentListItem.documentID} has no PageCount.")

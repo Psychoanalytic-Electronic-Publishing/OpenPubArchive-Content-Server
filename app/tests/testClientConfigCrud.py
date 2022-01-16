@@ -161,7 +161,7 @@ class TestClientConfig(unittest.TestCase):
                                 json=testlist_double)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
-        assert(response.status_code == 201)
+        assert(response.status_code == 200 or response.status_code == 201)
         r = response.json()
         assert (r == testlist_double)
         # print ("Put OK: ", r)

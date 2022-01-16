@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2022.0113/v2.1.111" # semver versioning after date.
+__version__     = "2022.0116/v2.1.114" # semver versioning after date.
 __status__      = "Beta"
 
 """
@@ -5267,21 +5267,19 @@ def documents_downloads(response: Response,
     if filename is None:
         response.status_code = status.httpcode
         if status.httpcode == httpCodes.HTTP_401_UNAUTHORIZED:
-            status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+            status_message = status.error_description # msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
         elif status.httpcode == httpCodes.HTTP_422_UNPROCESSABLE_ENTITY:
-            status_message = msgdb.get_user_message(opasConfig.ACCESS_TEXT_PROCESSING_ISSUE) + request_qualifier_text + f" {status.error_description}" 
+            status_message = msgdb.get_user_message(opasConfig.ERROR_422_UNPROCESSABLE_ENTITY) + request_qualifier_text + f" {status.error_description}" 
         elif status.httpcode == httpCodes.HTTP_400_BAD_REQUEST:
-            status_message = msgdb.get_user_message(opasConfig.ACCESS_TEXT_PROCESSING_ISSUE) + request_qualifier_text + f" {status.error_description}" 
+            status_message = msgdb.get_user_message(opasConfig.ERROR_400_BAD_REQUEST) + request_qualifier_text + f" {status.error_description}" 
         elif status.httpcode == httpCodes.HTTP_404_NOT_FOUND:
-            status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text + f" {status.error_description}" 
-        elif status.httpcode == httpCodes.HTTP_422_UNPROCESSABLE_ENTITY:
-            status_message = msgdb.get_user_message(opasConfig.ACCESS_SUMMARY_PERMISSION_DENIED) + request_qualifier_text + f" {status.error_description}" 
+            status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text 
         else:
             status_message = "Unknown/Unexpected error."
             
         #status_message = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
         if status.error_description is not None:
-            logger.error(status_message + ":" + status.error_description)
+            logger.error(status_message)
         # don't count--not successful (09/30/2021)
         #ocd.record_session_endpoint(api_endpoint_id=endpoint,
                                     #session_info=session_info, 

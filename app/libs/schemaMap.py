@@ -119,6 +119,7 @@ USER2SOLRFIELDNAME_MAP = {
     "src_code": "art_sourcecode",
     "journal_code": "art_sourcecode",
     "src_title": "art_sourcetitlefull",
+    "source_title": "art_sourcetitlefull",
     "journal": "art_sourcetitlefull",
     "bibliography": "references",
     "page_count" : "art_pgcount",
@@ -149,7 +150,8 @@ USER2SOLRFIELDNAME_MAP = {
     "volume" : "art_vol",
     "vol" : "art_vol",
     "doi" : "art_doi",
-    "lang": "language",   
+    "lang": "language",
+    "graphic":"art_graphic_list",
 }
 
 FIELD2USER_MAP = {
@@ -158,6 +160,10 @@ FIELD2USER_MAP = {
     "art_year" : "year",
     "art_pepsource" : "source",
     "art_sourcecode" : "source",
+    "art_newsecnm": "section_name",
+    "art_vol": "volume",
+    "art_doi": "doi",
+    "language": "lang",
     "text_xml" : "text",
     "art_cited_5" : "cited, cited in the last 5 years",
     "art_cited_10" : "cited, cited in the last 10 years",

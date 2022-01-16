@@ -10,9 +10,10 @@
 #
 
 import string, sys, re, os, copy
-import opasCentralMini
+import opasCentralDBLib
+from opasProductLib import SourceInfoDB
 import pymysql
-from PEPGlobals import *
+#from PEPGlobals import *
 
 #sys.path.append("e:\usr3\py\SCIHL")
 #sys.path.append("e:\usr3\py\PEPXML")
@@ -263,7 +264,7 @@ class PEPLibExport:
     #--------------------------------------------------------------------------------
     def __init__(self, biblioDB, rootDir, startDir="", outBuildName="a1v7"):
         self.biblioDB = biblioDB
-        artSet = cursor.fetchall() # returns empty list if no rows
+        # artSet = cursor.fetchall() # returns empty list if no rows
         self.rootDir = rootDir
         self.startDir = startDir
         self.fullStartDir = os.path.join(rootDir, startDir)
@@ -282,7 +283,54 @@ class PEPLibExport:
     #--------------------------------------------------------------------------------
     def metaDataExport(self, outputFileName="X:\googleMetadata.xml", jrnlCodeWhereClause="", outputBuildName="FO01"):
         """
-        Populate the build table from the articles table.
+        Populate the build table from the articles table.   XXX CONTINUE WORK HERE XXX
+        
+        Need info from Solr similar to the articles table from pepa1db including
+           articleID	varchar	24
+           arttype	varchar	4
+           authorMast	text	
+           hdgauthor	text	
+           hdgtitle	text	
+           srctitleseries	text	
+           publisher	varchar	255
+           jrnlcode	varchar	14
+           year	varchar	5
+           vol	int	11
+           volsuffix	char	5
+           issue	char	5
+           pgrg	varchar	20
+           pgstart	int	11
+           pgend	int	11
+           pgcount	int	11
+           source	varchar	10
+           preserve	int	11
+           filename	varchar	255
+           maintocID	varchar	20
+           newsecname	varchar	255
+           bktitle	varchar	255
+           bkauthors	varchar	255
+           xmlref	text	
+           references	int	11
+           doi	varchar	255
+           artkwds	varchar	384
+           artlang	varchar	255
+
+           but may only need these columns:
+		     art_id,
+             arttype,
+             hdgtitle,
+             srctitleseries,
+             publisher,
+             jrnlcode,
+             year,
+             vol,
+             issue,
+             pgrg,
+             pgstart,
+             pgend,
+             filename,
+             mainTOCID
+
         Create the include list by calling class member	writeFFFInclude
 
         The intermediate tables are built, rather than using a transitional query, in order to
@@ -293,7 +341,7 @@ class PEPLibExport:
         retVal = 0
 
         # queries to be used
-        selArt = r"""select articleID,
+        selArt = r"""select art_id,
                             arttype,
                             hdgtitle,
                             srctitleseries,
@@ -307,7 +355,7 @@ class PEPLibExport:
                             pgend,
                             filename,
                             mainTOCID
-                            from articles
+                            from api_articles
                             %s
                             order by articleID
             """ % jrnlCodeWhereClause
@@ -742,11 +790,9 @@ if __name__ == "__main__":
 	"""
 
     import sys
-    import libPEPBiblioDB
-    from PEPProcessor import PEPProcessor
     totalErrors = []
 
-    ocd = opasCentralMini.opasCentralDBMini()
+    ocd = opasCentralDBLib.opasCentralDB()
 
     biblioDB = ocd
     biblioDB.open_connection()
@@ -761,12 +807,12 @@ if __name__ == "__main__":
     doSE = True
     #doGW = False
     doGW = True
+    productDB = SourceInfoDB()
     # try journal by journal/vol
     if doJournals:
-        jrnlCodes = gJrnlData.journalCodes()
-        #jrnlCodes = gJrnlData.PEPA1JrnlCodesLastVer
+        jrnlCodes = productDB.journalCodes()
+        #jrnlCodes = SourceInfoDB.PEPA1JrnlCodesLastVer
         #jrnlCodes = ["IZPA"]  # for testing
-        jrnlCodes.sort()
         print("Journal Set: ", jrnlCodes)
 
         totalCount = 0
@@ -776,8 +822,8 @@ if __name__ == "__main__":
                 continue
 
             jrnlCount = 0
-            restrictedYears = gJrnlData.volyears(jrnl)
-            if gDbg1: print("Journal Years: ", restrictedYears)
+            restrictedYears = productDB.volyears(jrnl)
+            print("Journal Years: ", restrictedYears)
             #restrictedYears = ["86", "2009"]  # for testing
             for vol, year in restrictedYears:
                 if type(vol) == type([]):

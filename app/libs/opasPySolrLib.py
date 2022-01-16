@@ -64,7 +64,7 @@ LOG.setLevel(logging.WARNING)
 import solrpy as solr
 
 # logging.getLogger('pysolr').setLevel(logging.INFO)
-sourceDB = opasCentralDBLib.SourceInfoDB()
+# sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
 
 from config import msgdb
@@ -3035,7 +3035,7 @@ def prep_document_download(document_id,
                                                                session_info=session_info)
                             ret_val = filename
                         else:
-                            err_msg = f"Download format {ret_format} not supported"
+                            err_msg = f"Format {ret_format} not supported"
                             #logger.warning(err_msg) # eliminate double log? 2021-06-02
                             ret_val = None
                             status = models.ErrorReturn( httpcode=httpCodes.HTTP_400_BAD_REQUEST,
@@ -3043,17 +3043,13 @@ def prep_document_download(document_id,
                                                        )
         
                     except Exception as e:
-                        err_msg = f"Prep for Download: Can't convert data: {e}"
+                        err_msg = f"Can't convert: {e}"
                         ret_val = None
-                        #raise HTTPException(
-                            #status_code=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
-                            #detail=err_msg # or use ERR_MSG_PROBLEM_CONVERTING_TO_PDF
-                        #)
                         status = models.ErrorReturn( httpcode=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
                                                      error_description=err_msg
                                                    )
                 else: # access is limited
-                    err_msg = f"From Authorization Server: {access.accessLimitedDebugMsg}"
+                    err_msg = access.accessLimitedReason
                     logger.warning(access.accessLimitedDebugMsg) # log developer info for tracing access issues
                     status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
                                                  error_description=err_msg

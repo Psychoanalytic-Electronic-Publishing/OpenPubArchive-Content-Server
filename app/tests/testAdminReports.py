@@ -156,11 +156,13 @@ class TestReports(unittest.TestCase):
         from datetime import date, timedelta
         dt1 = datetime.datetime.now() - timedelta(10)
         dt2 = datetime.datetime.now() - timedelta(7)
-        dt3 = datetime.datetime.now() - timedelta(days=10, hours=6)
+        dt3 = datetime.datetime.now() - timedelta(days=10) + timedelta(hours=13)
         df1 = dt1.strftime("%Y-%m-%d")
         print (df1)
         df1b = dt1.strftime("%Y%m%d")
         print (df1b)
+        df1c = dt1.strftime("%Y-%m-%d %H:%M:%S")
+        print (df1c)
         df2 = dt2.strftime("%Y-%m-%d")
         print (df2)
         df3 = dt3.strftime("%Y-%m-%d %H:%M:%S")
@@ -178,7 +180,7 @@ class TestReports(unittest.TestCase):
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
 
-        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1}&enddate={df3}')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1c}&enddate={df3}')
         print (full_URL)
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)

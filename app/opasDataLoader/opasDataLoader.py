@@ -94,6 +94,7 @@ import opasSolrLoadSupport
 
 import opasXMLHelper as opasxmllib
 import opasCentralDBLib
+import opasProductLib
 # import opasGenSupportLib as opasgenlib
 import localsecrets
 import opasFileSupport
@@ -276,7 +277,7 @@ def main():
 
     # import data about the PEP codes for journals and books.
     #  Codes are like APA, PAH, ... and special codes like ZBK000 for a particular book
-    sourceDB = opasCentralDBLib.SourceInfoDB()
+    sourceDB = opasProductLib.SourceInfoDB()
     solr_docs2 = None
     # The connection call is to solrpy (import was just solr)
     if localsecrets.SOLRUSER is not None and localsecrets.SOLRPW is not None:

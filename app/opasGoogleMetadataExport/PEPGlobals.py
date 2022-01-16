@@ -12,16 +12,16 @@ __copyright__   = "Copyright 2012-2021, Neil R. Shapiro and Psychoanalytic Elect
 __license__     = "Apache 2.0"
 
 gPEPdbName = "pepa1db"
-gPEPShortBldNbr = "21"          # new form of version
-gPEPBuild = "A1v21"             # important to keep this matched to the current build
-gReleaseYear = 2021             # Released in January of the indicated year
+gPEPShortBldNbr = "22"          # new form of version
+gPEPBuild = "A1v22"             # important to keep this matched to the current build
+gReleaseYear = 2022             # Released in January of the indicated year
 
 gLineLength = 110          # for drawing borders on error output (though hlLog can override)
 
 # log details for the matching special error types
 reMatchKey = "(warning|severe|fatal)"
 gLogProgrammingWarnings = 0        # this is used to hide warnings that are intended to flag data showing possible coding issues.
-import PEPJournalData
+#import PEPJournalData
 
 gXMLEditor = r"C:\Program Files\Oxygen XML Editor 21\oxygenAuthor21.1.exe"
 gTextEditor = r"C:\Program Files\Notepad++\notepad++.exe"

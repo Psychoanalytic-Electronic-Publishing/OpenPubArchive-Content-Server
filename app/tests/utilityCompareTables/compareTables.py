@@ -211,6 +211,7 @@ def main():
         sql1 = f"""SELECT * from {db_table['name']} ORDER BY {db_table['key']} ASC;"""
 
         try:
+            print (80*"=")
             print (f"Evaluating table: {db_table['name']}")
             stage_row_count, stage_tbl = stage_ocd.get_table_sql(sql1)
             dev_row_count, dev_tbl = dev_ocd.get_table_sql(sql1)

@@ -17,6 +17,7 @@ UPDATE_AFTER = 2500
 import logging
 import pymysql
 import localsecrets
+from contextlib import closing
 
 from datetime import datetime
 # logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
@@ -26,6 +27,25 @@ logger = logging.getLogger(programNameShort)
 start_notice = f"{programNameShort} version {__version__} started at {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}."
 print (start_notice)
 
+class SourceInfoDB(object):
+    def __init__(self):
+        self.sourceData = {}
+        ocd = opasCentralDBMini()
+        recs = ocd.get_productbase_data()
+        for n in recs:
+            try:
+                self.sourceData[n["pepsrccode"]] = n
+            except KeyError:
+                logger.error("Missing Source Code Value in %s" % n)
+
+    def lookupSourceCode(self, sourceCode):
+        """
+        Returns the dictionary entry for the source code or None
+          if it doesn't exist.
+        """
+        dbEntry = self.sourceData.get(sourceCode, None)
+        retVal = dbEntry
+        return retVal
 
 class opasCentralDBMini(object):
     """
@@ -42,6 +62,32 @@ class opasCentralDBMini(object):
         #self.access_token = access_token
         #self.user = None
         #self.sessionInfo = None
+
+    def get_productbase_data(self):
+        """
+        Load the journal book and video product data
+        """
+        fname = "get_productbase_data"
+        ret_val = {}
+        self.open_connection(caller_name=fname) # make sure connection is open
+        if self.db is not None:
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                sql = "SELECT * from vw_api_sourceinfodb where active=1;"
+                curs.execute(sql)
+                warnings = curs.fetchwarnings()
+                if warnings:
+                    for warning in warnings:
+                        logger.warning(warning)
+                        
+                row_count = curs.rowcount
+                if row_count:
+                    sourceData = curs.fetchall()
+                    ret_val = sourceData
+        else:
+            logger.fatal("Connection not available to database.")
+
+        self.close_connection(caller_name=fname) # make sure connection is closed
+        return ret_val
         
     def open_connection(self, caller_name=""):
         """

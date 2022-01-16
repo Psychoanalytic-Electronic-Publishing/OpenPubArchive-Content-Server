@@ -188,26 +188,6 @@ def get_password_hash(password):
     """
     return pwd_context.hash(password)
 
-class SourceInfoDB(object):
-    def __init__(self):
-        self.sourceData = {}
-        ocd = opasCentralDB()
-        recs = ocd.get_productbase_data()
-        for n in recs:
-            try:
-                self.sourceData[n["pepsrccode"]] = n
-            except KeyError:
-                logger.error("Missing Source Code Value in %s" % n)
-
-    def lookupSourceCode(self, sourceCode):
-        """
-        Returns the dictionary entry for the source code or None
-          if it doesn't exist.
-        """
-        dbEntry = self.sourceData.get(sourceCode, None)
-        retVal = dbEntry
-        return retVal
-
 class ErrorMessageDB(object):
     def __init__(self):
         self.message_data = {}
@@ -367,6 +347,36 @@ class opasCentralDB(object):
                 if row_count:
                     sourceData = curs.fetchall()
                     ret_val = sourceData
+        else:
+            logger.fatal("Connection not available to database.")
+
+        self.close_connection(caller_name=fname) # make sure connection is closed
+        return ret_val
+
+    def get_journal_vols(self, source_code=None):
+        """
+        Load the journal year, vol, and doi data
+        """
+        fname = "get_journal_vols"
+        ret_val = {}
+        if source_code is not None:
+            src_code_clause = f" where src_code RLIKE '{source_code}'"
+        else:
+            src_code_clause = ""
+            
+        self.open_connection(caller_name=fname) # make sure connection is open
+        if self.db is not None:
+            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                sql = f"SELECT * from vw_jrnl_vols {src_code_clause};"
+                curs.execute(sql)
+                warnings = curs.fetchwarnings()
+                if warnings:
+                    for warning in warnings:
+                        logger.warning(warning)
+                        
+                row_count = curs.rowcount
+                if row_count:
+                    ret_val = curs.fetchall()
         else:
             logger.fatal("Connection not available to database.")
 
@@ -1953,24 +1963,47 @@ class opasCentralDB(object):
                               WHERE client_id = {client_id_int}
                               AND config_name = '{client_config_name}'"""
         
-                    curs.execute(sql)
-                    row_count = curs.rowcount
-                    if row_count >= 1:
-                        clientConfig = curs.fetchone()
-                        ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
-                    else:
+                    try:
+                        curs.execute(sql)
+                        warnings = curs.fetchwarnings()
+                        if warnings:
+                            for warning in warnings:
+                                logger.warning(warning)
+                        
+                        if curs.rowcount >= 1:
+                            clientConfig = curs.fetchone()
+                            ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
+                        else:
+                            ret_val = None
+
+                        try:
+                            if ret_val is not None:
+                                ret_val_list.append(models.ClientConfigItem(configName = ret_val.config_name,
+                                                                            configSettings=json.loads(ret_val.config_settings),
+                                                                            api_client_id=ret_val.client_id, 
+                                                                            session_id=ret_val.session_id
+                                                                           )
+                                                   )
+                        except Exception as e:
+                            ret_val = None
+                            logger.error(f"Error converting config from database. Check json syntax in database {e}")
+                            
+                    except Exception as e:
                         ret_val = None
-                
-                    if ret_val is not None:
-                        ret_val_list.append(models.ClientConfigItem(configName = ret_val.config_name,
-                                                                    configSettings=json.loads(ret_val.config_settings),
-                                                                    api_client_id=ret_val.client_id, 
-                                                                    session_id=ret_val.session_id
-                                                                   )
-                                           )
-                if ret_val is not None:
-                    # convert to final return model, a list of ClientConfigItems
-                    ret_val = models.ClientConfigList(configList = ret_val_list)
+                        logger.error(f"Error getting config item from database {e}")
+                        
+                if ret_val_list is not None:
+                    try:
+                        # convert to final return model, a list of ClientConfigItems
+                        ret_val = models.ClientConfigList(configList = ret_val_list)
+                        logger.info("Config list returned.")
+                    except Exception as e:
+                        ret_val = None
+                        logger.error(f"Error converting list of config items from database. Check json syntax in database {e}")
+                elif ret_val is not None:
+                    logger.info("Config item returned.")
+                else:
+                    logger.error("No config returned.")
 
             self.close_connection(caller_name=fname) # make sure connection is closed
     
@@ -2203,8 +2236,6 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     
     ocd = opasCentralDB()
-    sourceDB = SourceInfoDB()
-    code = sourceDB.lookupSourceCode("ANIJP-EL")
     # check this user permissions 
     #ocd.get_dict_of_products()
     #ocd.get_subscription_access("IJP", 421)

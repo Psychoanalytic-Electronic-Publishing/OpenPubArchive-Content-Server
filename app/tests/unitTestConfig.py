@@ -91,6 +91,10 @@ def test_login(username=localsecrets.PADS_TEST_ID, password=localsecrets.PADS_TE
     
     return sessID, headers, session_info
 
+def test_logout(session_id):
+    ret_val = opasDocPermissions.authserver_logout(session_id)
+    return ret_val
+
 if 0:
     # session_info, pads_session_info = pads_get_session(client_id=UNIT_TEST_CLIENT_ID)
     session_info = opasDocPermissions.get_authserver_session_info(session_id=None, client_id=UNIT_TEST_CLIENT_ID)
