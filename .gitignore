@@ -49,3 +49,4 @@ xxx*
 # Include  pdfs in the schemas folder
 !*/schemas/*.pdf
 githib commit summary.txt
+app/back/main.py

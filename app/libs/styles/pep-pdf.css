@@ -67,7 +67,7 @@ p.figure {
 .poem, .quote, .quote > p, .dream, .note, .dialog, .panel, .summaries .abstract {
   text-indent: 22px ;
   color: midnightblue;
-  font-size: small;
+  font-size: medium;
   font-style: italic;
   margin-right: +.25in;
   margin-left: +.25in;
@@ -133,7 +133,7 @@ h5 {
 
 h6 {
   font-weight: bold;
-  font-size: small;
+  font-size: smaller;
 }
 
 span.pagebreak {
