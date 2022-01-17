@@ -3048,12 +3048,20 @@ def prep_document_download(document_id,
                         status = models.ErrorReturn( httpcode=httpCodes.HTTP_422_UNPROCESSABLE_ENTITY,
                                                      error_description=err_msg
                                                    )
-                else: # access is limited
-                    err_msg = access.accessLimitedReason
-                    logger.warning(access.accessLimitedDebugMsg) # log developer info for tracing access issues
-                    status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
-                                                 error_description=err_msg
-                                               )
+                else: # access is limited or download prohibited
+                    if documentListItem.downloads == False: # access.accessChecked == True and access.accessLimited != True and 
+                        #  download is prohibited
+                        err_msg = msgdb.get_user_message(opasConfig.ERROR_403_DOWNLOAD_OR_PRINTING_RESTRICTED) + " " + request_qualifier_text 
+                        logger.warning(err_msg) # log developer info for tracing access issues
+                        status = models.ErrorReturn( httpcode=httpCodes.HTTP_403_FORBIDDEN,
+                                                     error_description=err_msg
+                                                   )
+                    else:
+                        err_msg = access.accessLimitedReason
+                        logger.warning(access.accessLimitedDebugMsg) # log developer info for tracing access issues
+                        status = models.ErrorReturn( httpcode=httpCodes.HTTP_401_UNAUTHORIZED,
+                                                     error_description=err_msg
+                                                   )
                     ret_val = None
     
     return ret_val, status

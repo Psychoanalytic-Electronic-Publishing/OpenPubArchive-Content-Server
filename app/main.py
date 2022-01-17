@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2022.0117/v2.1.115" # semver versioning after date.
+__version__     = "2022.0117/v2.1.116" # semver versioning after date.
 __status__      = "Beta"
 
 """
@@ -5237,14 +5237,14 @@ def documents_downloads(response: Response,
         file_format = 'PDFORIG'
         media_type='application/pdf'
         endpoint = opasCentralDBLib.API_DOCUMENTS_PDFORIG
-    elif retFormat.upper() == "EPUB":
+    else: # retFormat.upper() == "EPUB":
             file_format = 'EPUB'
             media_type='application/epub+zip'
             endpoint = opasCentralDBLib.API_DOCUMENTS_EPUB
-    else: # (no HTML download below!)
-        file_format = 'HTML'
-        media_type='application/xhtml+xml'
-        endpoint = opasCentralDBLib.API_DOCUMENTS_HTML
+    #else: # (no HTML download below!)
+        #file_format = 'HTML'
+        #media_type='application/xhtml+xml'
+        #endpoint = opasCentralDBLib.API_DOCUMENTS_HTML
 
     #prep_document_download will check permissions for this user, and return abstract based file
     #if there's no permission
@@ -5261,7 +5261,6 @@ def documents_downloads(response: Response,
                                                              flex_fs=flex_fs,
                                                             )    
 
-    #error_status_message = f"{caller_name}: The requested document {documentID} could not be returned (in {file_format}). {status.error_description} "
     request_qualifier_text = f" Request: {documentID}. Session {session_info.session_id}."
 
     if filename is None:
@@ -5273,21 +5272,18 @@ def documents_downloads(response: Response,
         elif status.httpcode == httpCodes.HTTP_400_BAD_REQUEST:
             status_message = msgdb.get_user_message(opasConfig.ERROR_400_BAD_REQUEST) + request_qualifier_text + f" {status.error_description}" 
         elif status.httpcode == httpCodes.HTTP_404_NOT_FOUND:
-            status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text 
+            status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
+        elif status.httpcode == httpCodes.HTTP_403_FORBIDDEN:
+            status_message = status.error_description # status_message = msgdb.get_user_message(opasConfig.ERROR_403_DOWNLOAD_OR_PRINTING_RESTRICTED) + " " + request_qualifier_text
         else:
-            status_message = "Unknown/Unexpected error."
+            if status.error_description is not None and len(status.error_description) > 0:
+                status_message = f"{status.error_description} ({status.httpcode}): {request_qualifier_text}"
+            else:
+                status_message = f"Unknown/Unexpected error ({status.httpcode}): {request_qualifier_text}"
             
-        #status_message = msgdb.get_user_message(opasConfig.ACCESS_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
-        if status.error_description is not None:
+        if status_message is not None:
             logger.error(status_message)
-        # don't count--not successful (09/30/2021)
-        #ocd.record_session_endpoint(api_endpoint_id=endpoint,
-                                    #session_info=session_info, 
-                                    #params=request.url._url,
-                                    #item_of_interest=f"{documentID}", 
-                                    #return_status_code = response.status_code,
-                                    #status_message=status_message
-                                    #)
+
         raise HTTPException(status_code=response.status_code,
                             detail=status_message)
     else:

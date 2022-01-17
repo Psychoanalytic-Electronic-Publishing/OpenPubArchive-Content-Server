@@ -296,6 +296,7 @@ ACCESS_SUMMARY_ONLY_401_UNAUTHORIZED = 401 # "The authorization system returned 
 ERROR_404_DOCUMENT_NOT_FOUND = 404
 ERROR_422_UNPROCESSABLE_ENTITY = 422 # error preparing file
 ERROR_400_BAD_REQUEST = 400
+ERROR_403_DOWNLOAD_OR_PRINTING_RESTRICTED = 403 # fashioned after 403 (restricted)
 # ACCESS_LIMITD_REASON_NOK_NOT_LOGGED_IN = 1219 # no access check and user is not logged in
 # ACCESS_LIMITED_REASON_NOK_SPECIAL_CONTENT = 1215 
 # ACCESS_OK_ARCHIVE_CONTENT_AVAILABLE = 1205 # "This archive content is available for you to access."
