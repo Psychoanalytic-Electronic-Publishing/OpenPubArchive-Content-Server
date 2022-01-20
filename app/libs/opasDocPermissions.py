@@ -622,8 +622,11 @@ def authserver_permission_check(session_id,
                     logger.info(msg)
                     
         except Exception as e:
+            # added detail from json response for log but not response 2022-01-18 (seeing some of these in the production log)
             msg = f"{caller_name}: Permits response error {e}. Composing no access response."
-            logger.error(msg)
+            msg2 = msg + f" - return response {response.json()}."
+            logger.error(msg2)
+            
             ret_val = False
             ret_resp = models.PadsPermitInfo(SessionId=session_id,
                                              DocId=doc_id,
@@ -748,8 +751,12 @@ def get_access_limitations(doc_id,
                         logger.error(f"{caller_name}: PEPCurrent document permission: {e}")
 
             elif classification in (opasConfig.DOCUMENT_ACCESS_SPECIAL): # PEPSpecial
-                ret_val.accessLimitedDescription = msgdb.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION)
-                ret_val.accessLimitedReason = ret_val.accessLimitedDescription + " " + msgdb.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_SPECIAL) + " " + publisher_access # limited...get it elsewhere
+                if documentListItem.PEPCode.upper() in opasConfig.SPECIAL_SUBSCRIPTION_CODES:
+                    ret_val.accessLimitedDescription = msgdb.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_SPECIAL_SUBSCRIPTION)
+                    ret_val.accessLimitedReason = ret_val.accessLimitedDescription + " " + publisher_access # limited...get it elsewhere
+                else:
+                    ret_val.accessLimitedDescription = msgdb.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION)
+                    ret_val.accessLimitedReason = ret_val.accessLimitedDescription + " " + msgdb.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_SPECIAL) + " " + publisher_access # limited...get it elsewhere
                 # ret_val.accessLimitedClassifiedAsCurrentContent = False # (Default)
                 if session_info is not None:
                     try:

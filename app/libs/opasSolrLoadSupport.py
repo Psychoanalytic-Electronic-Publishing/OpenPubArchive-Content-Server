@@ -280,6 +280,10 @@ class ArticleInfo(object):
 
             self.src_title_abbr = sourceinfodb_data[pepsrccode].get("sourcetitleabbr", None)
             self.src_title_full = sourceinfodb_data[pepsrccode].get("sourcetitlefull", None)
+            # remove '*New*'  prefix if it's there
+            if self.src_title_full is not None:
+                self.src_title_full = self.src_title_full.replace(opasConfig.JOURNALNEWFLAG, "")
+            
             self.src_embargo = sourceinfodb_data[pepsrccode].get("wall", None)
             product_type = sourceinfodb_data[pepsrccode].get("product_type", None)  # journal, book, video...
                 

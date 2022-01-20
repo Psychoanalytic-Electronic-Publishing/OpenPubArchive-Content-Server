@@ -152,6 +152,7 @@ USER2SOLRFIELDNAME_MAP = {
     "doi" : "art_doi",
     "lang": "language",
     "graphic":"art_graphic_list",
+    "corrections": "meta_marked_corrections",  # collects cgrp type=era2 where we've fixed errors in the original
 }
 
 FIELD2USER_MAP = {

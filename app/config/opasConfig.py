@@ -43,6 +43,8 @@ WHATS_NEW_EXPIRES_DAYS = 0
 WHATS_NEW_EXPIRES_HOURS = 8
 WHATS_NEW_EXPIRES_MINUTES = 0
 
+JOURNALNEWFLAG = "*New* "
+
 # Cache controls
 CACHEURL = "Caching"
 CACHE_EXPIRES_DAYS = 0
@@ -64,6 +66,7 @@ JOURNAL_CODES = """ADPSA|AFCVS|AIM|AJP|AJRPP|ANIJP-CHI|ANIJP-DE|ANIJP-EL|ANIJP-F
 |JPPF|JPT|LU-AM|MPSA|NLP|NP|NYPSIVS|OEDA|OFFSITE|OPUS|PAH|PAQ|PB|PCAS|PCS|PCT|PCVS|PD|PDPSY|PEPGRANTVS|PEPTOPAUTHVS|PEPVS|PI
 |PPC|PPERSP|PPSY|PPTX|PSABEW|PSAR|PSC|PSP|PSU|PSW|PSYCHE|PY|RBP|REVAPA|RFP|RIP|RPP-CS|RPSA|RRP|SE|SFCPVS|SGS|SPIVS|SPR|TVPA
 |UCLVS|ZBK|ZBPA|ZPSAP"""
+SPECIAL_SUBSCRIPTION_CODES = ["IJPOPEN", ]  # use all uppercase
 
 # ########################################
 # Limits and Configurations
@@ -288,6 +291,7 @@ ACCESS_LIMITED_REASON_OK_CURRENT_CONTENT = 1204 # "This current content is avail
 ACCESS_SUMMARY_DESCRIPTION = 1221 # "This is a summary excerpt from the full document. "
 ACCESS_SUMMARY_FORSUBSCRIBERS = 1222 # "The full content of the document is available to subscribers. "
 ACCESS_SUMMARY_PDFORIG_NOT_FOUND = 1231
+ACCESS_SUMMARY_SPECIAL_SUBSCRIPTION =  1232 # This document is part of a separate or special subscription.
 ACCESS_SUMMARY_PERMISSION_DENIED = 1235
 ACCESS_SUMMARY_PUBLISHER_INFO = 1225 # "It may be available on the publisher's website" # Take out space here, put it below.  If no link, a period will be added. 
 ACCESS_SUMMARY_SPECIAL = 1230 # "It may be available, it's a case by case basis 

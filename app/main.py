@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2022.0117/v2.1.116" # semver versioning after date.
+__version__     = "2022.0119/v2.1.117" # semver versioning after date.
 __status__      = "Beta"
 
 """
@@ -387,7 +387,7 @@ def get_client_session(response: Response,
                                                                           request=request)
             try:
                 session_id = session_info.session_id
-                logger.warning(f"Client {client_id} request w/o sessionID: {request.url._url}. Called PaDS, returned {session_id}") 
+                logger.info(f"Client {client_id} request w/o sessionID: {request.url._url}. Called PaDS, returned {session_id}") 
             except Exception as e:
                 # We didn't get a session id
                 msg = f"SessionID not received from authserver for client {client_id} and session {client_session}.  Headers:{request.headers}. Raising Exception 424 ({e})."
@@ -4007,8 +4007,11 @@ def database_whatsnew(response: Response,
                             )
     else:
         # response.status_message = "Success"
-        response.status_code = httpCodes.HTTP_200_OK
-        ret_val.whatsNew.responseInfo.request = request.url._url
+        if ret_val is None:
+            logger.error("whatsnewdb returned None")
+        else:
+            response.status_code = httpCodes.HTTP_200_OK
+            ret_val.whatsNew.responseInfo.request = request.url._url
 
     log_endpoint_time(request, ts=ts, level="debug")
     return ret_val

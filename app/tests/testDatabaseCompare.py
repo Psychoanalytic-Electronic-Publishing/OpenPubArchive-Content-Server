@@ -18,6 +18,8 @@ class TestDoDatabaseCompare(unittest.TestCase):
         """
         ret_val = compareTables.main()
         if ret_val > 0:
+            print (80*"=")
+            print (30*"*FINAL*")
             print ("Table differences found!")
         assert(ret_val == 0)
 

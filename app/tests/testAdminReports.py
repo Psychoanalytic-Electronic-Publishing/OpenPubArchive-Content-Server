@@ -156,19 +156,20 @@ class TestReports(unittest.TestCase):
         from datetime import date, timedelta
         dt1 = datetime.datetime.now() - timedelta(10)
         dt2 = datetime.datetime.now() - timedelta(7)
-        dt3 = datetime.datetime.now() - timedelta(days=10) + timedelta(hours=13)
         df1 = dt1.strftime("%Y-%m-%d")
         print (df1)
+        df1a = dt1.strftime("%Y%m%d%H%M%S")
+        print (df1a)
         df1b = dt1.strftime("%Y%m%d")
         print (df1b)
         df1c = dt1.strftime("%Y-%m-%d %H:%M:%S")
         print (df1c)
         df2 = dt2.strftime("%Y-%m-%d")
         print (df2)
-        df3 = dt3.strftime("%Y-%m-%d %H:%M:%S")
-        print (df3)
-        df4 = dt3.strftime("%Y%m%d%H%M%S")
-        print (df4)
+        df2b = dt2.strftime("%Y%m%d%H%M%S")
+        print (df2b)
+        df2c = dt2.strftime("%Y-%m-%d %H:%M:%S")
+        print (df2c)
 
         full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1}&enddate={df2}')
         print (full_URL)
@@ -178,9 +179,10 @@ class TestReports(unittest.TestCase):
         r = response.json()
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
+        print (response_info["count"])
         assert(response_info["count"] >= 1)
 
-        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1c}&enddate={df3}')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1a}&enddate={df2b}')
         print (full_URL)
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -188,27 +190,28 @@ class TestReports(unittest.TestCase):
         r = response.json()
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
-        assert(response_info["count"] >= 1)
+        if (response_info["count"]) >= 1: # make sure there are hits, then try different formats together
+            full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1a}&enddate={df2c}')
+            print (full_URL)
+            response = requests.get(full_URL, headers=headers)
+            assert(response.ok == True)
+            # these don't get affected by the level.
+            r = response.json()
+            response_info = r["report"]["responseInfo"]
+            response_set = r["report"]["responseSet"]
+            print (response_info["count"])
+            assert(response_info["count"] >= 1)
 
-        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1}&enddate={df4}')
-        print (full_URL)
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        # these don't get affected by the level.
-        r = response.json()
-        response_info = r["report"]["responseInfo"]
-        response_set = r["report"]["responseSet"]
-        assert(response_info["count"] >= 1)
-
-        full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1b}&enddate={df4}')
-        print (full_URL)
-        response = requests.get(full_URL, headers=headers)
-        assert(response.ok == True)
-        # these don't get affected by the level.
-        r = response.json()
-        response_info = r["report"]["responseInfo"]
-        response_set = r["report"]["responseSet"]
-        assert(response_info["count"] >= 1)
+            full_URL = base_plus_endpoint_encoded(f'/v2/Admin/Reports/Session-Log?limit=10&startdate={df1c}&enddate={df2c}')
+            print (full_URL)
+            response = requests.get(full_URL, headers=headers)
+            assert(response.ok == True)
+            # these don't get affected by the level.
+            r = response.json()
+            response_info = r["report"]["responseInfo"]
+            response_set = r["report"]["responseSet"]
+            print (response_info["count"])
+            assert(response_info["count"] >= 1)
 
     def test08_session_log_report_dateformats_not_logged_in(self):
         # note api_key is required, but already in headers
