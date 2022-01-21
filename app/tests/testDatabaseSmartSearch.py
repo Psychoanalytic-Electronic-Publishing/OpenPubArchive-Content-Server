@@ -446,7 +446,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
-        assert(response_info["fullCount"] >= 6900 and response_info["fullCount"] <= 7920)
+        assert(response_info["fullCount"] >= 6900 and response_info["fullCount"] <= 9000)
 
     def test_13c_dts_example_searches(self):
         """

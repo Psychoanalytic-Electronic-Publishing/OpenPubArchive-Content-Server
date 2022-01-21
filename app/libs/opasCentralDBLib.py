@@ -336,7 +336,7 @@ class opasCentralDB(object):
         self.open_connection(caller_name=fname) # make sure connection is open
         if self.db is not None:
             with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
-                sql = "SELECT * from vw_api_sourceinfodb where active=1;"
+                sql = "SELECT * from vw_api_sourceinfodb where active>0;" # 1=Active 0=Not Active 2=future
                 curs.execute(sql)
                 warnings = curs.fetchwarnings()
                 if warnings:

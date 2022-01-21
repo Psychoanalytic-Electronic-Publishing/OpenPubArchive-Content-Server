@@ -280,6 +280,8 @@ class ArticleInfo(object):
 
             self.src_title_abbr = sourceinfodb_data[pepsrccode].get("sourcetitleabbr", None)
             self.src_title_full = sourceinfodb_data[pepsrccode].get("sourcetitlefull", None)
+            self.src_code_active = sourceinfodb_data[pepsrccode].get("active", None)
+                
             # remove '*New*'  prefix if it's there
             if self.src_title_full is not None:
                 self.src_title_full = self.src_title_full.replace(opasConfig.JOURNALNEWFLAG, "")
@@ -990,6 +992,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "art_title_xml" : opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "//arttitle", default_return = None),
                 "art_title_str" : title_str, # remove all punct, this is only used for sorting
                 "art_sourcecode" : artInfo.src_code,                 # important
+                "art_sourcecode_active": artInfo.src_code_active,
                 "art_sourcetitleabbr" : artInfo.src_title_abbr,
                 "art_sourcetitlefull" : artInfo.src_title_full,
                 "art_sourcetitlefull_str" : art_sourcetitlefull_str, # remove all punct for sorting,

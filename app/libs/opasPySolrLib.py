@@ -2446,7 +2446,7 @@ def metadata_get_document_statistics(session_info=None):
     # data = metadata_get_volumes(source_code="IJPSP")
     documentList, ret_status = search_text(query=f"art_id:*", 
                                                limit=1,
-                                               facet_fields="art_year,art_pgcount,art_figcount,art_sourcetitleabbr,art_sourcecode", 
+                                               facet_fields="art_year,art_pgcount,art_figcount,art_sourcetitleabbr", 
                                                abstract_requested=False,
                                                full_text_requested=False,
                                                session_info=session_info
@@ -2468,18 +2468,31 @@ def metadata_get_document_statistics(session_info=None):
                                                session_info=session_info
                                                )
 
+    journalList, ret_status = search_text(query=f"art_sourcetype:journal AND art_id:* AND art_sourcecode_active:1", 
+                                               limit=1,
+                                               facet_fields="source", 
+                                               abstract_requested=False,
+                                               full_text_requested=False, 
+                                               session_info=session_info
+                                               )
+
     content.article_count = documentList.documentList.responseInfo.fullCount
+    journal_facet_counts = journalList.documentList.responseInfo.facetCounts
+    journal_facet_fields = journal_facet_counts["facet_fields"]
+    journal_src_counts = journal_facet_fields["source"]
+    journal_src_counts = dict(OrderedDict(sorted(journal_src_counts.items(), key=lambda t: t[0])))
+    
     facet_counts = documentList.documentList.responseInfo.facetCounts
     facet_fields = facet_counts["facet_fields"]
     src_counts = facet_fields["art_sourcetitleabbr"]
-    src_code_counts = facet_fields["art_sourcecode"]
+    # src_code_counts = facet_fields["art_sourcecode"]
     fig_counts = facet_fields["art_figcount"]
     # figure count is how many figures shown in all articles (possible some are in more than one, not likely.  But one article could present a graphic multiple times.)
     #  so not the same as the number of graphics in the g folder. (And a figure could be a chart or table)
     content.figure_count = sum([int(y) * int(x) for x,y in fig_counts.items() if x != '0'])
-    journals_plus_videos = [x for x,y in src_counts.items() if x not in ("ZBK", "IPL", "NLP", "SE", "GW")]
-    journals = [x for x in src_code_counts if re.match(".*VS|OFFSITE|SE|GW|IPL|NLP|ZBK", x) is None]
-    content.journal_count = len(journals)
+    # journals_plus_videos = [x for x,y in src_counts.items() if x not in ("ZBK", "IPL", "NLP", "SE", "GW")]
+    # journals = [x for x,y in src_counts.items() if re.match(".*VS|OFFSITE|SE|GW|IPL|NLP|ZBK", x) is None]
+    content.journal_count = len(journal_src_counts)
     content.video_count = videoList.documentList.responseInfo.fullCount
     book_facet_counts = bookList.documentList.responseInfo.facetCounts
     book_facet_fields = book_facet_counts["facet_fields"]
@@ -2498,36 +2511,27 @@ def metadata_get_document_statistics(session_info=None):
     content.page_count = sum(pages)
     content.page_height_feet = int(((content.page_count * .1) / 25.4) / 12) # page thickness in mm, 25.4 mm per inch, 12 inches per foot
     content.page_weight_tons = int(content.page_count * 4.5 * 0.000001)
-    source_count_html = "<ul>"
+    source_count_html = "<ol>"
     for code, cnt in content.source_count.items():
         source_count_html += f"<li>{code} - {cnt}</li>"
-    source_count_html += "</ul>"
-   
-    content.description_html = f"""
-<p>This release of PEP-Web contains the complete text and illustrations of
-{content.journal_count} premier journals in psychoanalysis,
-{content.book_count} classic psychoanalytic books, and the full text and Editorial notes of the
-24 volumes of the Standard Edition of the Complete Psychological Works of Sigmund Freud as well as the
-19 volume German Freud Standard Edition Gesammelte Werke.  It spans over
-{content.year_count} publication years and contains the full text of articles whose source ranges from
-{content.year_first} through {content.year_last}.</p>
-<p>
-There are over
-{content.article_count} articles and almost
-{content.figure_count} figures and illustrations that originally resided on
-{content.vol_count} volumes with over
-{content.page_count/1000000:.2f} million printed pages. In hard copy, the PEP Archive represents a stack of paper more than
-{content.page_height_feet} feet high and weighing over
-{content.page_weight_tons} tons!
-</p>
-"""
+    source_count_html += "</ol>"
     
-    content.source_count_html = f"""
-<p>
-\nCount of Articles by Source:
-\n{source_count_html}
-</p>
-"""
+    journal_list_html = "<ol>"
+    for j, cnt in journal_src_counts.items():
+        journal_list_html += f"<li>{j} - {cnt}</li>"
+    journal_list_html += "</ol>"
+   
+    content.description_html = f"""<!DOCTYPE html><html><body><p>This release of PEP-Web contains the complete text and illustrations of {content.journal_count} \
+premier journals in psychoanalysis, {content.book_count} classic psychoanalytic books, {content.video_count} videos, and the full text and editorial notes of the \
+24 volumes of the Standard Edition of the Complete Psychological Works of Sigmund Freud as well as the \
+19 volume German Freud Standard Edition Gesammelte Werke.  It spans over \
+{content.year_count} publication years and contains the full text of articles whose source ranges from {content.year_first} through {content.year_last}.</p>\
+<p>There are over {content.article_count} articles and {content.figure_count} figures and illustrations that originally resided on \
+{content.vol_count} volumes with over {content.page_count/1000000:.2f} million printed pages. In hard copy, the PEP Archive represents a stack of paper more than \
+{content.page_height_feet} feet high and weighing over {content.page_weight_tons} tons!</p><p>The journals (with article counts) include:{journal_list_html}</p> \
+<p>An exhaustive list of sources, including those being loaded (abbreviations listed here with article counts) include:{source_count_html}</p></body></html>"""
+    
+    content.source_count_html = f"""<p>\nCount of Articles by All sources:\n{source_count_html}</p>"""
         
     ret_val = content
     return ret_val

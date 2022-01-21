@@ -514,6 +514,7 @@ class ServerStatusItem(BaseModel):
     dataSource: str = Field(None, title="Version of the API server software")
     timeStamp: str = Field(None, title="Current time")
     serverContent: ServerStatusContent = Field(None, title="Database Content (Counts)")
+    session_id: str = Field(None, title="Session ID")
     # admin only
     user_count:  int = Field(0, title="Number of users online")
     user_ip: str = Field(None, title="Requestor's ip")

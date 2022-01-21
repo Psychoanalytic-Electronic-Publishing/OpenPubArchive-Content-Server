@@ -2,6 +2,10 @@
 <!--
     PEP Web Database Schema for core PEPWebDocs
     
+    2022-01-20 Added art_sourcecode_active to allow marking in Solr Future documents as 2, and Active docs as 1, to allow 
+               the sourceDB to include Future documents, and the server to easily exclude them, for example in counting 
+               articles in the database in the status command.
+
     2021-12-14 Added art_newseclevel to allow multilevel TOCs as per PSU
 
     2021-11-20 Added embargo and embargo type for IJPOpen, but can be used generally to embargo a specific article (if true)
@@ -210,6 +214,7 @@
   <field name="text_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
   <!--If offsite text, then the server shall return a pointer to the data, rather than the full-text.  But it will be searchable. -->
   <field name="art_offsite" type="boolean" indexed="true" stored="true" docValues="true" default="false" multiValued="false"/>
+  
   <copyField source="text_xml*" dest="text"/>
   <copyField source="text_xml*" dest="text_syn"/>
 
@@ -265,6 +270,7 @@
   <field name="art_views_lastweek" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
    
   <field name="art_sourcecode" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_sourcecode_active" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  #2022-01-20
   <field name="art_sourcetitleabbr" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_sourcetitlefull" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_sourcetitlefull_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting

@@ -16,6 +16,8 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, sessio
 # Login!
 sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ARCHIVEONLY, password=localsecrets.PADS_TEST_ARCHIVEONLY_PW)
 
+print("When PCAS goes live (2022-02) this will need to be changed!")
+FUTURE_DOC = "PCAS.008.0003A"
 global message_collection
 global pp
 pp = pprint.PrettyPrinter(indent=5, width=70) # , stream=sys.stderr) # , sort_dicts=True) sort_dicts requires py 3.8
@@ -171,7 +173,7 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
 
     def test_011B_get_future_document_manually_proof_messages(self):
         # Try to return current content, should only return abstract
-        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/PCAS.024.0100A/?return_format=XML")
+        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/{FUTURE_DOC}/?return_format=XML")
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
@@ -213,8 +215,7 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
 
     def test_012A_get_future_document_manually_proof_messages(self):
         # Try to return current content, should only return abstract
-        print("When PCAS goes live (2022-02) this will need to be changed!")
-        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/PCAS.024.0100A/?return_format=XML")
+        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/{FUTURE_DOC}/?return_format=XML")
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)

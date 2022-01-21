@@ -210,6 +210,7 @@
   <field name="text_syn" type="text_general_syn" indexed="true" stored="false" multiValued="false"/>
   <!--If offsite text, then the server shall return a pointer to the data, rather than the full-text.  But it will be searchable. -->
   <field name="art_offsite" type="boolean" indexed="true" stored="true" docValues="true" default="false" multiValued="false"/>
+  
   <copyField source="text_xml*" dest="text"/>
   <copyField source="text_xml*" dest="text_syn"/>
 
@@ -265,6 +266,7 @@
   <field name="art_views_lastweek" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> 
    
   <field name="art_sourcecode" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
+  <field name="art_sourcecode_active" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/>  #2022-01-20
   <field name="art_sourcetitleabbr" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="art_sourcetitlefull" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="art_sourcetitlefull_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting

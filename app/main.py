@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2022.0119/v2.1.117" # semver versioning after date.
+__version__     = "2022.0120/v2.1.118" # semver versioning after date.
 __status__      = "Beta"
 
 """
@@ -1676,7 +1676,8 @@ async def session_status(response: Response,
                                                          user_ip = request.client.host,
                                                          timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
                                                          text_server_version = hierarchical_server_ver,
-                                                         serverContent=opasPySolrLib.metadata_get_document_statistics(session_info), 
+                                                         serverContent=opasPySolrLib.metadata_get_document_statistics(session_info),
+                                                         session_id=client_session, 
                                                          # admin only fields
                                                          text_server_url = localsecrets.SOLRURL,
                                                          opas_version = __version__, 
@@ -1719,6 +1720,7 @@ async def session_status(response: Response,
                                                              opas_version = __version__, 
                                                              serverContent=opasPySolrLib.metadata_get_document_statistics(session_info), 
                                                              user_ip = request.client.host,
+                                                             session_id=client_session, 
                                                              timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
                                                              )
             else:
@@ -1728,6 +1730,7 @@ async def session_status(response: Response,
                                                              text_server_version = hierarchical_server_ver,
                                                              opas_version = __version__, 
                                                              user_ip = request.client.host,
+                                                             session_id=client_session, 
                                                              timeStamp = datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%dT%H:%M:%SZ'), 
                                                              )
                 
