@@ -227,17 +227,17 @@ def main():
             diffs = 0
             for n in range(row_count):
                 if dev_tbl[n] != stage_tbl[n]:
-                    print (f"\t{db_table['name']} row {n} differs!")
+                    print (f"\tLocal Dev vs Stage: {db_table['name']} row {n} differs!")
                     print (f"\t\tDev: {dev_tbl[n]}")
                     print (f"\t\tStage: {stage_tbl[n]}")
                     diffs += 1
                 if stage_tbl[n] != awsdev_tbl[n]:
-                    print (f"\t{db_table['name']} row {n} differs!")
+                    print (f"\tStage vs AWS Dev: {db_table['name']} row {n} differs!")
                     print (f"\t\tStage: {stage_tbl[n]}")
                     print (f"\t\tAWSDev: {awsdev_tbl[n]}")
                     diffs += 1
                 if stage_tbl[n] != prod_tbl[n]:
-                    print (f"\t{db_table['name']} row {n} differs!")
+                    print (f"\tStage vs Prod: {db_table['name']} row {n} differs!")
                     print (f"\t\tStage: {stage_tbl[n]}")
                     print (f"\t\tProd: {prod_tbl[n]}")
                     diffs += 1

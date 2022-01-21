@@ -1687,7 +1687,7 @@ class opasCentralDB(object):
 
                 # 2020-11-13 - changed ref from vw_api_productbase to vw_api_productbase_instance_counts to include instance counts
                 sqlAll = f"""FROM vw_api_productbase_instance_counts
-                             WHERE active = 1
+                             WHERE active >= 1
                                 AND product_type <> 'bookseriessub'
                                 {src_code_clause}
                                 {prod_type_clause}

@@ -2528,7 +2528,7 @@ premier journals in psychoanalysis, {content.book_count} classic psychoanalytic 
 {content.year_count} publication years and contains the full text of articles whose source ranges from {content.year_first} through {content.year_last}.</p>\
 <p>There are over {content.article_count} articles and {content.figure_count} figures and illustrations that originally resided on \
 {content.vol_count} volumes with over {content.page_count/1000000:.2f} million printed pages. In hard copy, the PEP Archive represents a stack of paper more than \
-{content.page_height_feet} feet high and weighing over {content.page_weight_tons} tons!</p><p>The journals (with article counts) include:{journal_list_html}</p> \
+{content.page_height_feet} feet high and weighing over {content.page_weight_tons} tons!</p><p>The journals officially in this release (with article counts) include:{journal_list_html}</p> \
 <p>An exhaustive list of sources, including those being loaded (abbreviations listed here with article counts) include:{source_count_html}</p></body></html>"""
     
     content.source_count_html = f"""<p>\nCount of Articles by All sources:\n{source_count_html}</p>"""
