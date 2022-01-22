@@ -608,7 +608,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
 
                 publisher = source.get("bib_abbrev", source.get("bibabbrev")) # videos and books
 
-                # for books
+                # for books (from productbase)
                 authors = source.get("author")
                 pub_year = source.get("pub_year") 
                 instance_count = source.get("instances", 1)
@@ -616,7 +616,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
 
                 # src_type = source.get("product_type")
 
-                # for journals
+                # for journals (from productbase)
                 start_year = source.get("start_year")
                 end_year = source.get("end_year")
                 if start_year is None:
@@ -671,6 +671,7 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
                                                       ISSN = source.get("ISSN"),
                                                       ISBN10 = source.get("ISBN-10"),
                                                       ISBN13 = source.get("ISBN-13"),
+                                                      pub_year = pub_year, # added back 2022-01-22 (comes from productbase, for books -- not needed in solr)
                                                       yearFirst = start_year,
                                                       yearLast = end_year,
                                                       instanceCount = instance_count, 

@@ -666,6 +666,7 @@ class ArticleInfo(object):
         self.bk_publisher = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//bkpubandloc", None)
         self.bk_seriestoc = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//artbkinfo/@seriestoc", None)
         self.bk_next_id = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artbkinfo/@next", None)
+        # self.bk_pubyear = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//artbkinfo/bkpubyear", default_return=self.art_year_str)
         # hard code special cases SE/GW if they are not covered by the instances
         if self.bk_seriestoc is None:
             if self.src_code == "SE":
@@ -1109,7 +1110,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
                 "quotes_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//quote", default_return=None), # multi
                 "references_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//be|binc", default_return=None), # multi
                 "tables_xml" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//tbl", default_return=None), # multi
-                "bk_pubyear" : opasxmllib.xml_xpath_return_xmlstringlist(pepxml, "//bkpubyear/node()", default_return=None), # multi
+                #"bk_pubyear" : artInfo.bk_pubyear, # added but not needed, since it can comes from productdabase, but leave commented in just in case
                 "bib_authors" : artInfo.bib_authors,
                 "bib_title" : artInfo.bib_title,
                 "bib_journaltitle" : artInfo.bib_journaltitle,

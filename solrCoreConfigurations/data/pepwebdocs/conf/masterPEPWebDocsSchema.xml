@@ -292,7 +292,7 @@
   <field name="bk_seriestitle_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_seriestitle_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting
   <copyField source="bk_seriestitle_xml" dest="bk_seriestitle_str"/>
-  <!--<field name="bk_pubyear" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/>-->
+  <!--<field name="bk_pubyear" type="string" indexed="false" stored="false" multiValued="false" docValues="true"/> # Confirmed not needed for Book TOC -->
   <!--Added 7/6 for SE/GW and to cover general book info (e.g., next/prev id)details which do not come back in the html-->
   <field name="bk_subdoc" type="boolean" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <!--New fields for book management 2020-08-11 -->
