@@ -613,17 +613,23 @@ def authserver_permission_check(session_id,
                 )
             else:
                 ret_resp = response.json()
-                ret_resp = models.PadsPermitInfo(**ret_resp)
-                # returns 401 for a non-authenticated session
-                ret_resp.StatusCode = response.status_code
-                ret_val = ret_resp.Permit
-                if ret_resp.StatusCode != 200:
-                    msg = f"PaDS returned a non-200 permit req status: {ret_resp.StatusCode}"
-                    logger.info(msg)
+                if type(ret_resp) == str:
+                    msg = f"(PaDS responded: {ret_resp})"
+                    ret_resp = models.PadsPermitInfo(SessionId=session_id,
+                                                     DocId=doc_id,
+                                                     ReasonStr=msg)
+                else:
+                    ret_resp = models.PadsPermitInfo(**ret_resp)
+                    # returns 401 for a non-authenticated session
+                    ret_resp.StatusCode = response.status_code
+                    ret_val = ret_resp.Permit
+                    if ret_resp.StatusCode != 200:
+                        msg = f"PaDS returned a non-200 permit req status: {ret_resp.StatusCode}"
+                        logger.info(msg)
                     
         except Exception as e:
             # added detail from json response for log but not response 2022-01-18 (seeing some of these in the production log)
-            msg = f"{caller_name}: Permits response error {e}. Composing no access response."
+            msg = f"{caller_name}: PaDS response error {e}. Assumed access rejected."
             msg2 = msg + f" - return response {response.json()}."
             logger.error(msg2)
             
