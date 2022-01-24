@@ -2043,7 +2043,10 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                 
             pgRg = result.get("art_pgrg", None)
             pgCount = result.get("art_pgcount", None)
-            pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
+            if pgRg is not None:
+                pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
+            else:
+                pgStart, pgEnd = (0, 0)
             citeAs = result.get("art_citeas_xml", None)  
             citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
             vol = result.get("art_vol", None)

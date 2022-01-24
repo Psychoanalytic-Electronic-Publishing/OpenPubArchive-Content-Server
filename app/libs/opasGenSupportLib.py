@@ -305,15 +305,22 @@ def pgrg_splitter(pgrg_str: str) -> tuple:
     retVal = (None, None)
     # pgParts = pgrg_str.split("-")
     # pgParts = re.split("[-–—]") # split for dash or ndash
-    pgParts = [n.strip() for n in re.split("[-–—]", pgrg_str)]
     try:
-        pgStart = pgParts[0]
-    except IndexError as e:
-        pgStart = None
-    try:
-        pgEnd = pgParts[1]
-    except IndexError as e:
-        pgEnd = None
+        pgParts = [n.strip() for n in re.split("[-–—]", pgrg_str)]
+    except:
+        logging.error(f"pgrg_splitter: bad input: {pgrg_str}")
+        retVal = (None, None)
+    else:
+        try:
+            pgStart = pgParts[0]
+        except IndexError as e:
+            logging.debug(f"pgrg_splitter: index error: {e}")
+            pgStart = None
+        try:
+            pgEnd = pgParts[1]
+        except IndexError as e:
+            logging.debug(f"pgrg_splitter: index error: {e}")
+            pgEnd = None
 
     retVal = (pgStart, pgEnd)    
     return retVal
