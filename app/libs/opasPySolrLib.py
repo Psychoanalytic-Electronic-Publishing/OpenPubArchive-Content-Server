@@ -1962,6 +1962,10 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     True
     """
     ret_val = []
+
+    # for debugging type error
+    log_params = (pep_code, year, vol, req_url, extra_info, limit, offset)
+    
     if year == "*" and vol != "*":
         # specified only volume
         field="art_vol"
@@ -2019,105 +2023,118 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                'start': offset,
                'sort':"art_id asc",
            }
-
-    results = solr_docs2.search(query, **args)
+    try:
+        results = solr_docs2.search(query, **args)
+    except Exception as e:
+        logger.error(f"metadata_get_contents: Solr search error: {e} (query: {query} args: {args}) (log params: {log_params})")
+        
     document_item_list = []
     for result in results.docs:
-        document_id = result.get("art_id", None) # everything should have an ID
-        
-        # transform authorID list to authorMast
-        author_ids = result.get("art_authors", None)
-        if author_ids is None:
-            # try this, instead of abberrant behavior in alpha of display None!
-            authorMast = result.get("art_authors_mast", "")
-        else:
-            authorMast = opasgenlib.derive_author_mast(author_ids)
+        try:     # for debugging type error
+            document_id = result.get("art_id", None) # everything should have an ID
             
-        pgRg = result.get("art_pgrg", None)
-        pgCount = result.get("art_pgcount", None)
-        pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
-        citeAs = result.get("art_citeas_xml", None)  
-        citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
-        vol = result.get("art_vol", None)
-        issue = result.get("art_iss", None)
-        issue_title = result.get("art_iss_title", None)
-        issue_seqnbr = result.get("art_iss_seqnbr", None)
-        if issue is not None:
-            if issue_title is None:
-                if issue_seqnbr is None:
-                    issue_title = f"Issue {issue}"
-                else:
-                    issue_title = f"No. {issue_seqnbr}"
-        
-        embargotype = result.get("art_embargotype", None)
-        embargo_toc_addon = opasConfig.EMBARGO_TOC_TEXT.get(embargotype, "")
-        
-        # handle ijopen differently, always a number.
-        if pep_code == "IJPOPEN":
-            toc_pg_start = f"{opasgenlib.DocumentID(document_id).get_page_number(default=pgStart)}"
-            if embargo_toc_addon != "":
-                # in case the config didn't include a space
-                toc_pg_start = embargo_toc_addon
-                embargo_toc_addon = ""
-        else:
-            toc_pg_start = pgStart
-
-        item = models.DocumentListItem(PEPCode = pep_code, 
-                                       year = result.get("art_year", None),
-                                       vol = vol,
-                                       issue = issue,
-                                       issueTitle = issue_title,
-                                       issueSeqNbr = issue_seqnbr, 
-                                       newSectionName = result.get("art_newsecnm", None),
-                                       pgRg = result.get("art_pgrg", None),
-                                       pgCount=pgCount, 
-                                       pgStart = toc_pg_start,
-                                       pgEnd = pgEnd,
-                                       title = result.get("title", None) + embargo_toc_addon, 
-                                       authorMast = authorMast,
-                                       documentID = document_id,
-                                       documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
-                                       documentRefHTML = citeAs,
-                                       documentInfoXML=result.get("art_info_xml", None), 
-                                       score = result.get("score", None)
-                                       )
-        #logger.debug(item)
-        document_item_list.append(item)
+            # transform authorID list to authorMast
+            author_ids = result.get("art_authors", None)
+            if author_ids is None:
+                # try this, instead of abberrant behavior in alpha of display None!
+                authorMast = result.get("art_authors_mast", "")
+            else:
+                authorMast = opasgenlib.derive_author_mast(author_ids)
+                
+            pgRg = result.get("art_pgrg", None)
+            pgCount = result.get("art_pgcount", None)
+            pgStart, pgEnd = opasgenlib.pgrg_splitter(pgRg)
+            citeAs = result.get("art_citeas_xml", None)  
+            citeAs = opasQueryHelper.force_string_return_from_various_return_types(citeAs)
+            vol = result.get("art_vol", None)
+            issue = result.get("art_iss", None)
+            issue_title = result.get("art_iss_title", None)
+            issue_seqnbr = result.get("art_iss_seqnbr", None)
+            if issue is not None:
+                if issue_title is None:
+                    if issue_seqnbr is None:
+                        issue_title = f"Issue {issue}"
+                    else:
+                        issue_title = f"No. {issue_seqnbr}"
+            
+            embargotype = result.get("art_embargotype", None)
+            embargo_toc_addon = opasConfig.EMBARGO_TOC_TEXT.get(embargotype, "")
+            
+            # handle ijopen differently, always a number.
+            if pep_code == "IJPOPEN":
+                toc_pg_start = f"{opasgenlib.DocumentID(document_id).get_page_number(default=pgStart)}"
+                if embargo_toc_addon != "":
+                    # in case the config didn't include a space
+                    toc_pg_start = embargo_toc_addon
+                    embargo_toc_addon = ""
+            else:
+                toc_pg_start = pgStart
+        except Exception as e:
+            logger.error(f"metadata_get_contents: Value prep error: {e} (query: {query}) (log params: {log_params})")
+           
+        try:
+            item = models.DocumentListItem(PEPCode = pep_code, 
+                                           year = result.get("art_year", None),
+                                           vol = vol,
+                                           issue = issue,
+                                           issueTitle = issue_title,
+                                           issueSeqNbr = issue_seqnbr, 
+                                           newSectionName = result.get("art_newsecnm", None),
+                                           pgRg = result.get("art_pgrg", None),
+                                           pgCount=pgCount, 
+                                           pgStart = toc_pg_start,
+                                           pgEnd = pgEnd,
+                                           title = result.get("title", None) + embargo_toc_addon, 
+                                           authorMast = authorMast,
+                                           documentID = document_id,
+                                           documentRef = opasxmllib.xml_elem_or_str_to_text(citeAs, default_return=""),
+                                           documentRefHTML = citeAs,
+                                           documentInfoXML=result.get("art_info_xml", None), 
+                                           score = result.get("score", None)
+                                           )
+            #logger.debug(item)
+            document_item_list.append(item)
+        except Exception as e:
+            logger.error(f"metadata_get_contents: model assign error: {e} (query: {query}) (log params: {log_params})")
 
     # two options 2020-11-17 for extra info (lets see timing for each...)
-    suppinfo = None
-    if extra_info == 1 and search_val != "*" and pep_code != "*" and len(results.docs) > 0:
-        ocd = opasCentralDBLib.opasCentralDB()
-        suppinfo = ocd.get_min_max_volumes(source_code=pep_code)
-
-    if extra_info == 2 and search_val != "*" and pep_code != "*" and len(results.docs) > 0:
-        prev_vol, match_vol, next_vol = metadata_get_next_and_prev_vols(source_code=pep_code,
-                                                                        source_vol=vol,
-                                                                        req_url=req_url
-                                                                        )
-        suppinfo = {"infosource": "volumes_adjacent",
-                    "prev_vol": prev_vol,
-                    "matched_vol": match_vol,
-                    "next_vol": next_vol}
-
-    num_found = results.hits
-
-    response_info = models.ResponseInfo( count = len(results.docs),
-                                         fullCount = num_found,
-                                         limit = limit,
-                                         offset = offset,
-                                         listType="documentlist",
-                                         fullCountComplete = limit >= num_found,
-                                         supplementalInfo=suppinfo, 
-                                         request=f"{req_url}",
-                                         timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
-                                         )
-
-    document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
-                                                      responseSet=document_item_list
-                                                      )
-
-    document_list = models.DocumentList(documentList = document_list_struct)
+    try:
+        suppinfo = None
+        if extra_info == 1 and search_val != "*" and pep_code != "*" and len(results.docs) > 0:
+            ocd = opasCentralDBLib.opasCentralDB()
+            suppinfo = ocd.get_min_max_volumes(source_code=pep_code)
+    
+        if extra_info == 2 and search_val != "*" and pep_code != "*" and len(results.docs) > 0:
+            prev_vol, match_vol, next_vol = metadata_get_next_and_prev_vols(source_code=pep_code,
+                                                                            source_vol=vol,
+                                                                            req_url=req_url
+                                                                            )
+            suppinfo = {"infosource": "volumes_adjacent",
+                        "prev_vol": prev_vol,
+                        "matched_vol": match_vol,
+                        "next_vol": next_vol}
+    
+        num_found = results.hits
+    
+        response_info = models.ResponseInfo( count = len(results.docs),
+                                             fullCount = num_found,
+                                             limit = limit,
+                                             offset = offset,
+                                             listType="documentlist",
+                                             fullCountComplete = limit >= num_found,
+                                             supplementalInfo=suppinfo, 
+                                             request=f"{req_url}",
+                                             timeStamp = datetime.utcfromtimestamp(time.time()).strftime(TIME_FORMAT_STR)                     
+                                             )
+    
+        document_list_struct = models.DocumentListStruct( responseInfo = response_info, 
+                                                          responseSet=document_item_list
+                                                          )
+    
+        document_list = models.DocumentList(documentList = document_list_struct)
+    except Exception as e:
+        logger.error(f"metadata_get_contents: model assign error: {e} (log params: {log_params})")
+        
 
     ret_val = document_list
 
