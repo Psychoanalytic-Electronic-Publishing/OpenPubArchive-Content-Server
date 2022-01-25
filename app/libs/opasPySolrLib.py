@@ -2908,10 +2908,12 @@ def prep_document_download(document_id,
 
     query = "art_id:%s" % (document_id)
     args = {
-             "fl": """art_id, art_info_xml, art_citeas_xml, text_xml, art_excerpt, art_sourcetype, art_year,
-                      art_sourcetitleabbr, art_vol, art_iss, art_pgrg, art_doi, art_title, art_authors, art_authors_mast, art_lang,
-                      art_embargo, art_embargotype, art_pgcount, 
-                      art_issn, file_classification"""
+             #"fl": """artx_id, artx_info_xml, artx_citeas_xml, text_xml, art_excerpt, artx_sourcetype, artx_year, artx_sourcecode,
+                      #artx_sourcetitleabbr, artx_vol, artx_iss, artx_pgrg, artx_doi, artx_title, artx_authors, art_authors_mast, artx_lang,
+                      #artx_embargo, artx_embargotype, artx_pgcount, 
+                      #artx_issn, artx_isbn, filex_classification"""
+             # use one of the standard field sets to replace above (x's used above to check against opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS)
+             "fl": opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS + ", art_excerpt, text_xml, art_authors_mast" # extra fields not covered by opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS
     }
 
     request_qualifier_text = f" Request: {document_id}. Session {session_info.session_id}."

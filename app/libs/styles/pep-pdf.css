@@ -25,7 +25,7 @@ a.id {
   color: midnightblue;
 }
 
-p.title {
+p.title, binc.title {
   font-size: xx-large;
   font-weight: bold;
   text-align: center;

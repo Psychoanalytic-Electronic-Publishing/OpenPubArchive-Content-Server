@@ -111,15 +111,13 @@ def smart_search(smart_search_text):
     smart_search_text = smart_search_text.rstrip(" ")
     # get rid of smart quotes
     smart_search_text = re.sub("“|”", "'", smart_search_text)
-    # count words
-    # has_wildcards = len(re.findall(r'\*|(\S?\?+\S)', smart_search_text))
-    #if smart_search_includes_simple_wildcards:
-        #try:
-            #regc = re.compile(smart_search_text)
-            #smart_search_is_regex = None # we don't know
-        #except:
-            #smart_search_is_regex = False # we know it's not
     
+    if "TO" not in smart_search_text:
+        m = re.search("\[.*to.*\]", smart_search_text, re.IGNORECASE)
+        if m is None: # no Solr ranges
+            remove_characters = ("[", "]")
+            for character in remove_characters:
+                smart_search_text = smart_search_text.replace(character, "")            
     
     if re.match("^[\"\'].*[\"\']$", smart_search_text):
         # literal string
@@ -135,19 +133,7 @@ def smart_search(smart_search_text):
         elif smartsearchLib.is_value_in_field(smart_article_id.altStandard, opasConfig.SEARCH_FIELD_LOCATOR):
             ret_val = {opasConfig.SEARCH_FIELD_LOCATOR: smart_article_id.altStandard}           
 
-    ## TODO: Use wildcard parse in articleID per smart_article_id above
-    ## journal and issue and wildcard
-    #m = re.match("(?P<journal>[A-Z\-]{2," + f"{opasConfig.MAX_JOURNALCODE_LEN}" + "})\.(?P<vol>([0-9]{3,3}[A-Z]?)|(\*))\.(?P<page>\*)", smart_search_text, flags=re.IGNORECASE)
-    #if m is not None:
-        #src_code = m.group("journal")
-        #if src_code is not None:
-            #vol_code = m.group("vol")
-            #if vol_code is None:
-                #vol_code = "*"
-        #loc = f"{src_code}.{vol_code}.*"
-        #loc = loc.upper()
 
-        #ret_val = {"art_id": loc}
         
     if ret_val == {}: # (opasConfig.SEARCH_TYPE_ADVANCED, "ADVANCED")
         # this is not much different than search_type_fielded, except the Solr query will be cleaner and perhaps more flexible.

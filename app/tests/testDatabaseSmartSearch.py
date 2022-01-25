@@ -557,5 +557,31 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         print (response_info["fullCount"])
         assert(response_info["fullCount"] >= 114 and response_info["fullCount"] <= 150)
 
+    def test_15a_bracket_test(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=year:[1970 TO 1990]')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"]
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["fullCount"])
+        assert(response_info["fullCount"] >= 100 ) # range just to give it some upper slack for new data
+
+    def test_15b_bracket_test(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Caruso [2003]')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"]
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["fullCount"])
+        assert(response_info["fullCount"] >= 1 ) # range just to give it some upper slack for new data
+
 if __name__ == '__main__':
     unittest.main()

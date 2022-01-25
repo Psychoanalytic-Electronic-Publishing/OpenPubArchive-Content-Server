@@ -818,11 +818,9 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
     if artInfo.file_classification == opasConfig.DOCUMENT_ACCESS_OFFSITE:
         # certain fields should not be stored in returnable areas.  So full-text searchable special field for that.
         offsite_contents = True
-        offsite_ref =  """<p>This article or book is available online on a non-PEP website. 
-                            Click <a href="//www.doi.org/%s" target="_blank">here</a> to open that website 
-                            in another window or tab.
-                            </p>
-                        """ % urllib.parse.quote(artInfo.art_doi)
+        offsite_ref =  """<p>This article or book is part of our Offline collection. It is searchable, for your convenience,
+ but the full text is not part of our PEP-Archive collection. Here is a link where you may get access: <webx url="https://www.doi.org/%s">https://www.doi.org/%s</webx>.</p>
+ """ % (urllib.parse.quote(artInfo.art_doi), urllib.parse.quote(artInfo.art_doi))
         summaries_xml = f"""<abs>
                             {offsite_ref}
                             </abs>

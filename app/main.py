@@ -6,7 +6,7 @@ __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
 # funny source things happening, may be crosslinked files in the project...watch this one
 
-__version__     = "2022.0123/v2.1.122" # semver versioning after date.
+__version__     = "2022.0123/v2.1.124" # semver versioning after date.
 __status__      = "Beta"
 
 """
@@ -3111,39 +3111,50 @@ async def database_related_to_this(response: Response,
     except Exception as e:
         logger.error(f"Exception: {e}")
     else:
+        # we have the main document record.  Now let's look for related documents.
         try:
             responseSet = ret_val.documentList.responseSet
-            response = responseSet[0]
-            related_fieldname_data = response.relatedrx
-            #if "art_qual:" in filterQ:
-                #filterQ = re.sub('art_qual:\(\"?(?P<tgtid>[^\"]*?)\"?\)', '(art_qual:(\g<tgtid>) || art_id:(\g<tgtid>))', filterQ)
+            if responseSet != []:
+                response = responseSet[0]
+                related_fieldname_data = response.relatedrx
+            else:
+                related_fieldname_data = None
             
-            solr_query_spec = opasQueryHelper.parse_search_query_parameters(forced_searchq=f"{opasConfig.RELATED_RX_FIELDNAME}:{related_fieldname_data} || art_id:{related_fieldname_data}",
-                                                                            forced_filterq=f"NOT art_id:{relatedToThis}",
-                                                                            return_field_set=opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
-                                                                            abstract_requested=abstract,
-                                                                            req_url = request.url._url
-                                                                            )
-        
-            ret_val, ret_status = search_text_qs(solr_query_spec, 
-                                                 extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
-                                                 limit=limit,
-                                                 offset=offset,
-                                                 session_info=session_info, 
-                                                 request=request,
-                                                 caller_name=caller_name
-                                                 )
+            if related_fieldname_data is not None:
+                solr_query_spec = opasQueryHelper.parse_search_query_parameters(forced_searchq=f"{opasConfig.RELATED_RX_FIELDNAME}:{related_fieldname_data} || art_id:{related_fieldname_data}",
+                                                                                forced_filterq=f"NOT art_id:{relatedToThis}",
+                                                                                return_field_set=opasConfig.DOCUMENT_ITEM_SUMMARY_FIELDS, 
+                                                                                abstract_requested=abstract,
+                                                                                req_url = request.url._url
+                                                                                )
+            
+                ret_val, ret_status = search_text_qs(solr_query_spec, 
+                                                     extra_context_len=opasConfig.DEFAULT_KWIC_CONTENT_LENGTH,
+                                                     limit=limit,
+                                                     offset=offset,
+                                                     session_info=session_info, 
+                                                     request=request,
+                                                     caller_name=caller_name
+                                                     )
 
-            #status_code = httpCodes.HTTP_200_OK
-            #status_message = opasCentralDBLib.API_STATUS_SUCCESS
-            #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_RELATEDTOTHIS,
-                                        #session_info=session_info, 
-                                        #params=request.url._url,
-                                        #item_of_interest=f"relatedToDocumentID", 
-                                        #return_status_code = status_code,
-                                        #status_message=status_message
-                                        #)
-            
+            else:
+                # return empty set response
+                responseInfo = models.ResponseInfo(count = 0,
+                                                   fullCount = 0,
+                                                   totalMatchCount = 0,
+                                                   listType="documentlist",
+                                                   fullCountComplete = True,
+                                                   request=f"{request.url._url}",
+                                                   timeStamp = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)                     
+                                                   )
+       
+                documentListStruct = models.DocumentListStruct( responseInfo = responseInfo, 
+                                                                responseSet = []
+                                                                )
+                documentList = models.DocumentList(documentList = documentListStruct)
+                ret_val = documentList
+                
+
         except Exception as e:
             logger.error(f"Exception: {e}")
 

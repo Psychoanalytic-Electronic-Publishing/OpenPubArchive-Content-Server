@@ -10,6 +10,9 @@
           - Decide if the data-pagehelper attributes are helpful 
             for page return
 
+        2022-01-24  - Fixed display of titles that are sub binc references.
+                      Seems to cover all titles test, but needs many more samples
+                      except it's too slow a process to test many.  
         2021-09-27  - Fixing Figure caption spacing between nbr and caption
         2021-06-06  - enabled first tbl production by eliminating body// prefix.
                       this seems to work to solve the tbl attributes to be
@@ -110,7 +113,7 @@
         </xsl:variable>
         <xsl:value-of select="normalize-space(string($authors))"/>
         <xsl:if test="normalize-space(string($authors))">: </xsl:if>
-        <xsl:value-of select="pepkbd3/artinfo/arttitle"/>
+        <xsl:value-of select="pepkbd3/artinfo/arttitle|pepkbd3/artinfo/arttitle/binc"/>
       </title>
       <!-- <link rel="stylesheet" type="text/css" href="{$css}"></link>-->
       <!--<link rel="stylesheet" type="text/css" href="{$css2}"></link>-->
@@ -385,6 +388,30 @@
     </xsl:call-template>
   </xsl:template>
 
+  <!-- Added 2022-01-24 to fix issue 
+    https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server/issues/128 -->
+  <xsl:template match="arttitle" mode="metadata">
+    <p class="title">
+      <a href="/#/ArticleList/?journal={$journal-code}&amp;vol={$artvol}&amp;page={$artstartpg}"  id="{./binc/@id}">
+          <span>
+            <xsl:apply-templates/>
+          </span>
+          <xsl:if test="@rx"> <!--matched reference id-->
+            <a class="bibx" >
+              <xsl:attribute name="href">
+                <xsl:value-of select="concat('#', '/Document/',@rx)"/>
+              </xsl:attribute>
+              <!--              <xsl:text> [→]</xsl:text>-->
+              <i class="fas fa-arrow-circle-right"></i>
+            </a>
+          </xsl:if>
+      </a>
+      <xsl:apply-templates select="ftnx"/>
+    </p>
+  </xsl:template>
+
+  <!-- Replaced 2022-01-24 by above to fix issue #128 
+       XSLT Seems to still handle other titles ok
   <xsl:template match="arttitle" mode="metadata">
     <p class="title">
       <a href="/#/ArticleList/?journal={$journal-code}&amp;vol={$artvol}&amp;page={$artstartpg}">
@@ -394,7 +421,8 @@
       <xsl:apply-templates select="ftnx"/>
     </p>
   </xsl:template>
-
+-->
+  
   <xsl:template match="artsub" mode="metadata">
     <p class="artsub">
       <xsl:value-of select="."/>

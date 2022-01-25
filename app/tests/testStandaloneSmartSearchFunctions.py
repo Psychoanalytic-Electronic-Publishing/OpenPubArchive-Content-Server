@@ -100,7 +100,7 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         result = smartsearch.smart_search("art_authors_text:[tucket and fonagy]")
         print (result)
         assert (result['schema_field'] == 'art_authors_text')
-        assert (result['schema_value'] == '[tucket and fonagy]')
+        assert (result['schema_value'] == 'tucket and fonagy') # brackets removed from smartsearch fields, except ranges.  2022-01-24
         
         result = smartsearch.smart_search("art_kwds:malaise")
         print (result)
