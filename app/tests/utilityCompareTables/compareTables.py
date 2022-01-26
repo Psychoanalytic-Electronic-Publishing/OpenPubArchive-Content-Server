@@ -15,35 +15,6 @@ import sys
 if sys.version_info[0] < 3:
     raise Exception("Must be using Python 3")
 
-print(
-    f""" 
-        {programNameShort} - CompareTables
-    
-        This program compares the important setup tables in the four MySQL/RDS databases
-        used in the PEP-Web data preparation and Production process.
-        
-        The tables compared need to be in sync for the system to operate properly.
-        
-        Databases:
-          dev - localhost development database
-          awsdev - Development database used by production process
-          stage - stage server for testing builds
-          production - PEP-Web end-user site
-        
-        Tables:
-          The tested tables are listed in a list of dicts.  They currently include:
-          db_tables = "api_productbase" - List of journals and books and metadata
-                      "api_endpoints"   - List of endpoints and ids
-                      "api_messages"    - API return messages (from the server)
-                      "api_client_apps" - List of registered client apps
-          
-        Example Invocation:
-                $ python compareTables.py
-                
-        Requires Python 3
-        
-    """
-)
 
 import sys
 sys.path.append('../libs')
@@ -64,8 +35,14 @@ import mysql.connector
 from optparse import OptionParser
 
 import localsecrets
-import opasCentralDBLib
+# import opasCentralDBLib
 # import opasGenSupportLib as opasgenlib
+
+from localsecrets import STAGE_DB_HOST, STAGE2PROD_PW, STAGE2PROD_USER, PRODUCTION_DB_HOST, AWSDEV_DB_HOST 
+DEV_DBHOST = "localhost"
+DEV_DBUSER = "root"
+DEV_DBPW = ""
+
 
 class opasCentralDBMini(object):
     """
@@ -167,32 +144,50 @@ class opasCentralDBMini(object):
 #  End OpasCentralDBMini
 #----------------------------------------------------------------------------------------
 
-#------------------------------------------------------------------------------------------------------
-def main():
 
-    from localsecrets import STAGE_DB_HOST, STAGE2PROD_PW, STAGE2PROD_USER, PRODUCTION_DB_HOST, AWSDEV_DB_HOST 
+def compare_critical_columns(table_name, key_col_name, value_col_name):
+    #  compare local dev and production before pushing
+    #  open databases
+    try:
+        print ("Comparing local DEV table with Production")
+        dev_db = opasCentralDBMini(host=DEV_DBHOST, password=DEV_DBPW, user=DEV_DBUSER)
+        prod_db = opasCentralDBMini(host=PRODUCTION_DB_HOST, password=STAGE2PROD_PW[1], user=STAGE2PROD_USER[1])
+    except Exception as e:
+        logger.error(f"Cannot open dev or production databases: {e}.  Terminating without changes")
+    else:
+        pass
 
-    # set toplevel logger to specified loglevel
-    logger = logging.getLogger()
-    logger.setLevel(logging.WARN)
-    # get local logger
-    logger = logging.getLogger(programNameShort)
-    logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
-    logger.setLevel(logging.WARN)
+    sql1=f"select {key_col_name}, {value_col_name} from {table_name} order by 1 ASC"
+    dev_row_count, dev_tbl = dev_db.get_table_sql(sql1)
+    prod_row_count, prod_tbl = prod_db.get_table_sql(sql1)
+    dev_dict = {}
+    prod_dict = {}
 
-    timeStart = time.time()
-    print (f"Processing started at ({time.ctime()}).")
-    print((80*"-"))
+    for n in prod_tbl:
+        # unpack and store
+        key_col_val, value_col_val = n
+        prod_dict[key_col_val] = value_col_val
+        
+    count = 0
+    for n in dev_tbl:
+        key_col_val, value_col_val = n
+        try:
+            if value_col_val != prod_dict[key_col_val]:
+                count += 1
+                print (f"Difference in {value_col_name}: {(value_col_val, value_col_val, prod_dict[value_col_val])}")
+        except KeyError:
+            print (f"Key: {key_col_val} not on production")
+
+    print (f"{count} differences!")
+    return count
+
+def compare_tables():
     db_tables = [{"name": "api_productbase", "key": "basecode"},
                  {"name": "api_endpoints", "key": "api_endpoint_id"},
                  {"name": "api_messages", "key": "msg_num_code, msg_language"},
                  {"name": "api_client_apps", "key": "api_client_id"},
     ]
 
-    DEV_DBHOST = "localhost"
-    DEV_DBUSER = "root"
-    DEV_DBPW = ""
-    
     #  open databases
     try:
         stage_ocd = opasCentralDBMini(host=STAGE_DB_HOST, password=STAGE2PROD_PW[0], user=STAGE2PROD_USER[0])
@@ -254,24 +249,55 @@ def main():
         except Exception as e:
             print (f"Error: {e}")
 
-    # ---------------------------------------------------------
-    # Closing time
-    # ---------------------------------------------------------
-    timeEnd = time.time()
-    #currentfile_info.close()
-
-    # for logging
-    elapsed_seconds = timeEnd-timeStart # actual processing time going through files
-    elapsed_minutes = elapsed_seconds / 60
-    msg = f"Note: File load time is not total elapsed time. Total elapsed time is: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
-    logger.info(msg)
-    print (msg)
-
     return total_diffs
 
+#------------------------------------------------------------------------------------------------------
+def main():
+
+    print(
+        f""" 
+            {programNameShort} - CompareTables
+        
+            This program compares the important setup tables in the four MySQL/RDS databases
+            used in the PEP-Web data preparation and Production process.
+            
+            The tables compared need to be in sync for the system to operate properly.
+            
+            Databases:
+              dev - localhost development database
+              awsdev - Development database used by production process
+              stage - stage server for testing builds
+              production - PEP-Web end-user site
+            
+            Tables:
+              The tested tables are listed in a list of dicts.  They currently include:
+              db_tables = "api_productbase" - List of journals and books and metadata
+                          "api_endpoints"   - List of endpoints and ids
+                          "api_messages"    - API return messages (from the server)
+                          "api_client_apps" - List of registered client apps
+              
+            Example Invocation:
+                    $ python compareTables.py
+                    
+            Requires Python 3
+            
+        """
+    )
+
+    # set toplevel logger to specified loglevel
+    logger = logging.getLogger()
+    logger.setLevel(logging.WARN)
+    # get local logger
+    logger = logging.getLogger(programNameShort)
+    logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
+    logger.setLevel(logging.WARN)
+
+    timeStart = time.time()
+    print (f"Processing started at ({time.ctime()}).")
+    print((80*"-"))
 
 # -------------------------------------------------------------------------------------------------------
 # run it!
 
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+    #main()

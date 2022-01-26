@@ -44,6 +44,7 @@ WHATS_NEW_EXPIRES_HOURS = 8
 WHATS_NEW_EXPIRES_MINUTES = 0
 
 JOURNALNEWFLAG = "*New* "
+NO_OFFSITE_DOCUMENT_ACCESS_CHECKS = True # set to false if the server should check with PaDS for offsite documents
 
 # Cache controls
 CACHEURL = "Caching"
@@ -403,9 +404,9 @@ DESCRIPTION_SMARTSEARCH = "Search input parser looks for key information and sea
 DESCRIPTION_SORT =f"Comma separated list of field names to sort by {tuple(PREDEFINED_SORTS.keys())}"
 DESCRIPTION_SORTORDER = f"Sort order, either DESC or ASC for descending/ascending"
 DESCRIPTION_SOURCECODE = "The 2-12 character PEP Code (e.g., APA, ANIJP-FR, CPS, PEPTOPAUTHVS), or a Boolean list of codes (e.g., APA OR CPS) or a comma separated list (e.g.: APA, IJP, CPS)"
-DESCRIPTION_SOURCECODE_METADATA_BOOKS = "The 2-3 character PEP Code for the book series (e.g., SE, GW, IPL, NLP, ZBK), or the PEP Code and specific volume number of a book in the series (e.g., GW001, SE006, NLP014, ZBK047 (classic book, specific book assigned number) or * for all."
-DESCRIPTION_SOURCECODE_METADATA_JOURNALS = "The FULL 2-8 character PEP Code of the journal source for matching documents (e.g., APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE) or * for all"
-DESCRIPTION_SOURCECODE_METADATA_VIDEOS = "The PEP Code of the video series (e.g., BPSIVS, IPSAVS, PEPVS, PEPGRANTVS, PEPTOPAUTHVS) or * for all"
+DESCRIPTION_SOURCECODE_METADATA_BOOKS = "The 2-3 character PEP Code for the book series (e.g., SE, GW, IPL, NLP, ZBK), or the PEP Code and specific volume number of a book in the series (e.g., GW001, SE006, NLP014, ZBK047 (classic book, specific book assigned number) or * for all.  Can use simple .* wildcards, e.g., IPL.* returns all the IPL books"
+DESCRIPTION_SOURCECODE_METADATA_JOURNALS = "The FULL 2-8 character PEP Code of the journal source for matching documents (e.g., APA, ANIJP-FR, CPS, IJP, IJPSP, PSYCHE) or * for all. Can use simple .* wildcards, e.g., ANIJP-.* returns all the ANIJP journals"
+DESCRIPTION_SOURCECODE_METADATA_VIDEOS = "The PEP Code of the video series (e.g., BPSIVS, IPSAVS, PEPVS, PEPGRANTVS, PEPTOPAUTHVS) or * for all.   Can use simple .* wildcards, e.g., PEP.* returns all the PEP videostreams"
 DESCRIPTION_SOURCELANGCODE = "Language code or comma separated list of codes for matching documents (e.g., EN, ES, DE, ...)"
 DESCRIPTION_SOURCENAME = "Name or partial name of the source (e.g., 'international' or 'psychoanalytic')"
 DESCRIPTION_SPECIALOPTIONS = "Integer mapped to Option flags for special options"

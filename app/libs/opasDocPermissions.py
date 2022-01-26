@@ -662,6 +662,7 @@ def get_access_limitations(doc_id,
     
     try:
         open_access = False
+        bypass_pads_check = False # need to check
         ret_val = models.AccessLimitations()
         ret_val.doi = doi
         ret_val.accessType = classification
@@ -722,6 +723,9 @@ def get_access_limitations(doc_id,
                 #"This content is currently completely limited to all users."
                 ret_val.accessLimitedDescription = msgdb.get_user_message(msg_code=opasConfig.ACCESS_CLASS_DESCRIPTION_OFFSITE)
                 ret_val.accessLimitedReason = ret_val.accessLimitedDescription # + " " + publisherAccess # limited...get it elsewhere
+                # turning this off (false) in opasConfig means offsite docs will be checked with PaDS.
+                if opasConfig.NO_OFFSITE_DOCUMENT_ACCESS_CHECKS:
+                    bypass_pads_check = True
         
             elif classification in (opasConfig.DOCUMENT_ACCESS_CURRENT): # PEPCurrent
                 ret_val.accessLimitedDescription = msgdb.get_user_message(msg_code=opasConfig.ACCESS_SUMMARY_DESCRIPTION) + msgdb.get_user_message(msg_code=opasConfig.ACCESS_CLASS_DESCRIPTION_CURRENT_CONTENT)
@@ -811,8 +815,9 @@ def get_access_limitations(doc_id,
             #   - always check for a full-text request so PaDS can track them.
             #     since we don't really always know about authentication, we need to check all requests that are otherwise rejected.
             # **************************************
+            
             try:                   
-                if not open_access:
+                if not open_access and not bypass_pads_check:
                     if (ret_val.accessLimited == True      # if it's marked limited, then may need to check, it might be first one
                              or fulltext_request == True): # or whenever full-text is requested.
                         # and session_info.api_client_session and session_info.api_client_id in PADS_BASED_CLIENT_IDS:

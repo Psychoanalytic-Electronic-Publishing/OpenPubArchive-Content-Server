@@ -1675,7 +1675,11 @@ class opasCentralDB(object):
             
             try:
                 if src_code is not None and src_code != "*":
-                    src_code_clause = f"AND basecode = '{src_code}'"
+                    if "*" in src_code:
+                        src_code_clause = f"AND basecode rlike '^{src_code}$'"
+                    else:
+                        src_code_clause = f"AND basecode = '{src_code}'"
+                        
                 if src_type is not None and src_type != "*":
                     # already normalized, don't do it again
                     # src_type = normalize_val(src_type, opasConfig.VALS_PRODUCT_TYPES)
