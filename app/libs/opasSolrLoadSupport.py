@@ -200,6 +200,7 @@ class ArticleInfo(object):
         self.bk_subdoc = None
         self.bk_seriestoc = None
         self.verbose = verbose
+        self.src_code_active = 0
 
         # Just init these.  Creator will set based on filename
         self.file_classification = None
@@ -280,7 +281,7 @@ class ArticleInfo(object):
 
             self.src_title_abbr = sourceinfodb_data[pepsrccode].get("sourcetitleabbr", None)
             self.src_title_full = sourceinfodb_data[pepsrccode].get("sourcetitlefull", None)
-            self.src_code_active = sourceinfodb_data[pepsrccode].get("active", None)
+            self.src_code_active = sourceinfodb_data[pepsrccode].get("active", 0)
                 
             # remove '*New*'  prefix if it's there
             if self.src_title_full is not None:
