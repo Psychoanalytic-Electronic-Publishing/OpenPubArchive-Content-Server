@@ -330,7 +330,6 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             print (f"...{remaining_count} records to go")
             
         # set only includes those with the desired update value > 0 
-        #   (see RDS vw_stat_to_update_solr_docviews to change criteria)
         doc_id = key
         found = False
         try:

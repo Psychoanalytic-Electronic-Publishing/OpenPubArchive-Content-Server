@@ -28,31 +28,36 @@ class TestSQLStructure(unittest.TestCase):
         ocd = opasCentralDBLib.opasCentralDB()
         dbok = ocd.open_connection(caller_name="test_views") # make sure connection is open
         assert (dbok == True)
-        tables = ["vw_active_sessions",
-                  "vw_api_productbase",
+        tables = ["vw_api_messages", 
                   "vw_api_productbase_instance_counts", 
                   "vw_api_sourceinfodb",
-                  "vw_api_volume_limits",
-                  "vw_instance_counts_books",
-                  "vw_instance_counts_src", 
-                  "vw_latest_session_activity",
+                  "vw_instance_counts_books", #  (used indirectly, by vw_api_productbase_instance_counts)
+                  "vw_instance_counts_src",   #  (used indirectly, by vw_api_productbase_instance_counts)
+                  "vw_jrnl_vols", 
                   "vw_reports_document_activity", 
                   "vw_reports_document_views", 
                   "vw_reports_session_activity",
+                  "vw_reports_session_activity_desc",
+                  "vw_reports_session_activity_not_logged_in", 
+                  "vw_reports_session_activity_not_logged_in_desc", 
                   "vw_reports_user_searches", 
                   "vw_stat_cited_crosstab",
                   "vw_stat_cited_crosstab_with_details",
                   "vw_stat_cited_in_all_years",
-                  "vw_stat_cited_in_last_5_years",
                   "vw_stat_cited_in_last_10_years",
                   "vw_stat_cited_in_last_20_years",
+                  "vw_stat_cited_in_last_5_years",
                   "vw_stat_docviews_crosstab",
                   "vw_stat_docviews_last12months",
                   "vw_stat_docviews_lastmonth",
                   "vw_stat_docviews_lastsixmonths",
-                  "vw_stat_docviews_lastweek",
+                  "vw_stat_docviews_lastweek",    # (used indirectly, in vw_stat_docviews_crosstab)                 
                   "vw_stat_most_viewed",
-                  "vw_stat_to_update_solr_docviews",
+                  # "vw_active_sessions",               # deprecated
+                  # # "vw_api_productbase",                # deprecated
+                  # "vw_api_volume_limits",             # deprecated
+                  # "vw_latest_session_activity",
+                  # "vw_stat_to_update_solr_docviews",  # deprecated
                   # "vw_stat_docviews_lastcalyear" # for now, nothing from last year
                   ]
 

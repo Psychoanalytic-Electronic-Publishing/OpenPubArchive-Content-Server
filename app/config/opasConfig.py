@@ -624,6 +624,7 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_authors, 
  art_citeas_xml, 
  art_info_xml, 
+ meta_xml, 
  art_sourcecode, 
  art_sourcetitleabbr, 
  art_sourcetitlefull, 
@@ -649,7 +650,7 @@ DOCUMENT_ITEM_SUMMARY_FIELDS ="""
  art_embargotype,
  art_origrx, 
  art_qual, 
- art_kwds, 
+ art_kwds,
  art_cited_all, 
  art_cited_5, 
  art_cited_10, 
@@ -683,6 +684,7 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
  art_authors, 
  art_citeas_xml, 
  art_info_xml, 
+ meta_xml, 
  art_sourcecode, 
  art_sourcetitleabbr, 
  art_sourcetitlefull, 
@@ -716,13 +718,15 @@ DOCUMENT_ITEM_CONCORDANCE_FIELDS ="""
 # try the more squashed approach to listing, see if that shows better in the solr call logs
 DOCUMENT_ITEM_VIDEO_FIELDS = """
 art_id,art_issn, art_sourcecode,art_authors, title, art_subtitle_xml, art_title_xml,
-art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, art_vol,art_vol_title, art_year, art_iss, art_iss_title,
+art_sourcetitlefull,art_sourcetitleabbr,art_info_xml, meta_xml, 
+art_vol,art_vol_title, art_year, art_iss, art_iss_title,
 art_year, art_citeas_xml, art_pgrg, art_pgcount, art_lang, art_origrx, art_qual, art_kwds, file_classification
 """
 
 DOCUMENT_ITEM_TOC_FIELDS = """
  art_id, 
  art_info_xml, 
+ meta_xml, 
  art_title_xml, 
  art_subtitle_xml, 
  art_authors_xml, 
@@ -754,6 +758,7 @@ DOCUMENT_ITEM_TOC_FIELDS = """
 
 DOCUMENT_ITEM_META_FIELDS ="""
  art_id, 
+ art_info_xml, 
  meta_xml, 
  art_citeas_xml, 
  art_title_xml, 
@@ -773,6 +778,8 @@ DOCUMENT_ITEM_META_FIELDS ="""
 
 DOCUMENT_ITEM_STAT_FIELDS = """
  art_id, 
+ art_info_xml, 
+ meta_xml, 
  art_citeas_xml, 
  art_title, 
  art_authors, 

@@ -13,7 +13,6 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
                                    table articles)
 
    vw_stat_docviews_crosstab (depends on api_docviews,
-                                         vw_stat_docviews_lastweek,
                                          vw_stat_docviews_lastmonth,
                                          vw_stat_docviews_lastsixmonths,
                                          vw_stat_docviews_lastcalyear,
@@ -27,9 +26,7 @@ OPASCENTRAL TABLES (and Views) CURRENTLY USED:
                            vw_stat_cited_in_all_years
                            )                                        
     
-    vw_api_productbase (this is the ISSN table from pepa1vdb used during processing)
-    
-    vw_latest_session_activity (list of sessions with date from table api_session_endpoints)
+    vw_api_productbase_instance_counts (this is the ISSN table from pepa1vdb used during processing)
     
     Used in generators:
     
@@ -1718,7 +1715,7 @@ class opasCentralDB(object):
                             except:
                                 total_count  = 0
             except Exception as e:
-                msg = f"Error querying vw_api_productbase: {e}"
+                msg = f"Error querying vw_api_productbase_instance_counts: {e}"
                 logger.error(msg)
                 # print (msg)
             

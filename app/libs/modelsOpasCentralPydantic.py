@@ -38,27 +38,27 @@ class User(BaseModel):  # snake_case names to match DB
 class UserInDB(User):
     password: str = None
   
-class UserSubscriptions(UserInDB):
-    """
-    __View vw_user_active_subscriptions__
+#class UserSubscriptions(UserInDB): # deprecated
+    #"""
+    #__View vw_user_active_subscriptions__
 
-    Includes UserInDB and key Subscriptions
-      fields.  Filtered down to "active"
-      subscriptions, enabled and in date.
+    #Includes UserInDB and key Subscriptions
+      #fields.  Filtered down to "active"
+      #subscriptions, enabled and in date.
  
-    User alone is not enough to verify a username
-      since they could be in the database
-      but not have any active subscriptions
+    #User alone is not enough to verify a username
+      #since they could be in the database
+      #but not have any active subscriptions
       
-    """
-    product_id: int = None
-    start_date: datetime = None
-    end_date: datetime = None
-    max_concurrency: int = None
-    content_start_date: datetime = None
-    content_end_date: datetime = None
-    perpetual: bool = None
-    referrer: str = None
+    #"""
+    #product_id: int = None
+    #start_date: datetime = None
+    #end_date: datetime = None
+    #max_concurrency: int = None
+    #content_start_date: datetime = None
+    #content_end_date: datetime = None
+    #perpetual: bool = None
+    #referrer: str = None
 
 class Session(BaseModel):  # subset of sessionInfo
     session_id: str = None

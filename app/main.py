@@ -2,12 +2,10 @@
 # -*- coding: utf-8 -*-
 
 __author__      = "Neil R. Shapiro"
-__copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
+__copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-# funny source things happening, may be crosslinked files in the project...watch this one
-
-__version__     = "2022.0124/v2.1.125" # semver versioning after date.
-__status__      = "Beta"
+__version__     = "2022.0204/v2.1.126"   # semver versioning after date.
+__status__      = "Release Candidate 1"  
 
 """
 Main entry module for PEP version of OPAS API
@@ -4594,7 +4592,7 @@ def metadata_by_sourcetype_sourcecode(response: Response,
 
     ## Notes
         Depends on:
-          vw_api_productbase for videos
+          vw_api_productbase_instance_counts
 
     ## Potential Errors
         N/A
