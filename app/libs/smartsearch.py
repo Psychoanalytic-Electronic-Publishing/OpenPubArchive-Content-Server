@@ -273,7 +273,10 @@ def smart_search(smart_search_text):
                     if not opasgenlib.in_quotes(smart_search_text):
                         if not opasgenlib.is_boolean(smart_search_text):
                             if not opasgenlib.in_brackets(smart_search_text) and word_count > 1:
-                                smart_search_text = f'"{smart_search_text}"~25'
+                                # phrase search, remove punctuation which if on the first word can be mistaken for field identifiers (fix 2022-02-05)
+                                punct = '!"#$%&\'()+,-./:;<=>@[\\]^_`{|}~' # string.punctuation - wild cards accepted
+                                phrase_search = re.sub(f'[{punct}]', '', smart_search_text)
+                                smart_search_text = f'"{phrase_search}"~25'         
                                 ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_PARAGRAPH
                                 ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched paragraphs with terms: ({orig_smart_search_text})"
                                 ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{smart_search_text}"

@@ -982,9 +982,11 @@ def documents_get_document(document_id,
                         
                 document_list.documentList.responseSet[0].term = f'SearchHits({search_context})'
                 document_list.documentList.responseSet[0].termCount = 0
+            else:
+                logger.error(f"{caller_name}: No matches for: {solr_query_spec}") # added 2022-02-06 to help diagnose document not found errors in logs
 
     except Exception as e:
-        logger.error("get_document: No matches or another error: %s", e)
+        logger.error("get_document exception: No matches or another error: %s", e)
         # return None
     else:
         if page_limit is None:

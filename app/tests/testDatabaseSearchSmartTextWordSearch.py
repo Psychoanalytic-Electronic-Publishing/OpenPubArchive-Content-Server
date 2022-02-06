@@ -20,8 +20,8 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         full_count = response_info["fullCount"]
-        assert(response_info["fullCount"] >= 1)
-        print (response_set)
+        assert(response_info["fullCount"] >= 1), full_count
+        #print (response_set)
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Interpret* symbol')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -31,8 +31,8 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"] 
         print (f'Smarttext: {response_info["description"]}')
         full_count2 = response_info["fullCount"]
-        assert(full_count == full_count2)
-        print (response_set)
+        assert(full_count == full_count2), (full_count, full_count2)
+        # print (response_set)
     
     def test_1a_literal_search_with_wildcards(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Car? Gr?nt"~25')
