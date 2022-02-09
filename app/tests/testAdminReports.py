@@ -154,7 +154,7 @@ class TestReports(unittest.TestCase):
         # note api_key is required, but already in headers
         import datetime
         from datetime import date, timedelta
-        dt1 = datetime.datetime.now() - timedelta(10)
+        dt1 = datetime.datetime.now() - timedelta(15)
         dt2 = datetime.datetime.now() - timedelta(7)
         df1 = dt1.strftime("%Y-%m-%d")
         print (df1)

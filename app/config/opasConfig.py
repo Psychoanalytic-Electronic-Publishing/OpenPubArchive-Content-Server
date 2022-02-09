@@ -24,7 +24,9 @@ import starlette.status as httpCodes # HTTP_ codes, e.g.
                                      # HTTP_503_SERVICE_UNAVAILABLE
  
 
-TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'
+TIME_FORMAT_STR_DB = '%Y-%m-%dT%H:%M:%S'        # solr wants the Z; mysql connector doesn't!
+TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'  # solr wants the Z; mysql connector doesn't!
+
 DATA_SOURCE = "v2022r1a/"
 # BASELOGFILENAME = "opasAPI"
 # logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
@@ -32,7 +34,7 @@ FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message
 logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 
 # Various switches for information/debugging
-DEBUG_TRACE = 0
+DEBUG_TRACE = 1
 LOG_CALL_TIMING = True
 LOCAL_TRACE = False                   # turn this on to see the queries easily.
 LOCAL_DBOPEN_TRACE = False            # show open/close db in init/del

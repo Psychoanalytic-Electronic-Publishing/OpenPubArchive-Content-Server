@@ -1128,8 +1128,8 @@ class opasCentralDB(object):
                 with closing(self.db.cursor(buffered=True, dictionary=True)) as cursor:
                     # now insert the session
                     sql = f"SELECT * FROM api_sessions WHERE session_id = '{session_id}'";
-                    res = cursor.execute(sql)
-                    if res == 1:
+                    cursor.execute(sql)
+                    if cursor.rowcount:
                         session = cursor.fetchone()
                         try:
                             if session["username"] is None:
@@ -1322,7 +1322,7 @@ class opasCentralDB(object):
                                  {}
                                  WHERE session_id = %s
                               """.format(setClause)
-                        cursor.execute(sql, (session_id))
+                        cursor.execute(sql, (session_id, )) # was getting error in debug without ',' as routine saw string rather than list/tuple.
                         warnings = cursor.fetchwarnings()
                         if warnings:
                             for warning in warnings:
@@ -1397,7 +1397,7 @@ class opasCentralDB(object):
             logger.error(f"No session_info specified")
         else:
             if session_info.session_start is None:
-                session_info.session_start = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR)
+                session_info.session_start = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR_DB)
                 print (session_info.session_start)
             if not self.open_connection(caller_name=fname): # make sure connection opens
                 logger.error(f"Could not open database")
@@ -1597,6 +1597,7 @@ class opasCentralDB(object):
                                                        api_endpoint_method, 
                                                        status_message
                                                       ))
+                        ret_val = cursor.rowcount
                         self.db.commit()
                     except mysql.connector.IntegrityError as e:
                         logger.error(f"Integrity Error {e} logging endpoint {api_endpoint_id} for session {session_id}.")

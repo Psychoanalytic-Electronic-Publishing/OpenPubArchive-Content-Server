@@ -63,6 +63,7 @@ import time
 import datetime as dtime 
 # import datetime
 from datetime import datetime
+from datetime import datetime as dt # to avoid python's confusion with datetime.timedelta
 # from typing import Union, Optional, Tuple, List
 # from enum import Enum
 # import pymysql
@@ -255,50 +256,135 @@ def get_session_info(request: Request,
 
     """
     ocd = opasCentralDBLib.opasCentralDB()
+    update_db = False
+    pads_session_info = None
+
+    #get_user_info = False
+    
+    if session_id is None:
+        session_id = opasDocPerm.find_client_session_id(request, response)
+        
     if session_id is not None and session_id != opasConfig.NO_SESSION_ID:
         user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name)
         ts = time.time()
         session_info = ocd.get_session_from_db(session_id)
-        if session_info is None:
+        if session_info is None: # not in DB
             in_db = False
             # logger.warning(f"Session info for {session_id} not found in db.  Getting from authserver (will save on server)")
             # session info is saved in get_authserver_session_info if logged in  
-            session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
-                                                                   client_id=client_id,
-                                                                   request=request)
-            logger.debug(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/13 removed  Server Session Info: {session_info} for brevity
+            #session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
+                                                                   #client_id=client_id,
+                                                                   #request=request)
+            pads_session_info = opasDocPerm.get_pads_session_info(session_id=session_id,
+                                                                  client_id=client_id,
+                                                                  retry=False, 
+                                                                  request=request)
+            session_info = models.SessionInfo(session_id=session_id,
+                                              api_client_id=client_id,
+                                              )
+            
+            session_info.is_valid_login = pads_session_info.IsValidLogon
+            session_info.authenticated = pads_session_info.IsValidUserName
+            session_info.has_subscription = pads_session_info.HasSubscription
+            update_db = True
+            logger.warning(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/13 removed  Server Session Info: {session_info} for brevity
             # session info is saved in get_authserver_session_info   
             # success, session_info = ocd.save_session(session_id, session_info)
-        else:
+        else: # found in DB
             in_db = True
-            # if they weren't authenticated, but headers say they are, check again
-            if session_info.authenticated == False and user_logged_in_bool: # or session_info.session_expires_time < datetime.today(): # not logged in
+            # if they weren't authenticated before, but headers say they are, check again
+            if session_info.authenticated != user_logged_in_bool: # if login status has changed
                 # better check if now they are logged in
-                # session info is saved in get_authserver_session_info if logged in  
-                session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
-                                                                       client_id=client_id, 
-                                                                       request=request)
+                # session info is saved in get_authserver_session_info if logged in
+                pads_session_info = opasDocPerm.get_pads_session_info(session_id=session_id,
+                                                                      client_id=client_id,
+                                                                      retry=False, 
+                                                                      request=request)
+
+                session_info.is_valid_login = session_info.is_valid_username = pads_session_info.IsValidLogon
+                session_info.authenticated = pads_session_info.IsValidUserName
+                session_info.has_subscription = pads_session_info.HasSubscription
+                session_info.pads_session_info = pads_session_info
+                update_db = True
+                # success, session_info = ocd.save_session(session_id, session_info)
+                #session_info = opasDocPerm.get_authserver_session_info(session_id=session_id,
+                                                                       #client_id=client_id,
+                                                                       #user_logged_in_header=user_logged_in_bool, 
+                                                                       #request=request)
                 # session info is saved in get_authserver_session_info   
                 # success, session_info = ocd.save_session(session_id, session_info)
-                logger.debug(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/14 removed  Server Session Info: {session_info} for brevity
+                logger.warning(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request.url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/14 removed  Server Session Info: {session_info} for brevity
+
+        if session_info.username == opasConfig.USER_NOT_LOGGED_IN_NAME:
+            update_db = True
+            #get_user_info = False
+
+        if update_db: # get_user_info: # user_logged_in_bool or session_info.is_valid_login:
+            status_code = 0 # no check, no error
+            pads_user_info = None
+            if user_logged_in_bool:
+                logger.warning(f"{caller_name}: Tracing.  Getting session userinfo from PaDS.  Request: {request}")
+                pads_user_info, status_code = opasDocPerm.get_authserver_session_userinfo(session_id, client_id, addl_log_info=" (complete session_record)")
+    
+            if status_code == 401: # could be just no session_id, but also could have be returned by PaDS if it doesn't recognize it
+                #if session_info.pads_session_info.pads_status_response > 500:
+                    #msg = f"{caller_name}: PaDS error or PaDS unavailable - user cannot be logged in and no session_id assigned"
+                    #logger.error(msg)
+                if session_id is not None:
+                    logger.warning(f"{session_id} call to pads produces 401 error. Setting user_logged_in to False")
+                    user_logged_in_bool = False
+                    
+                # session is not logged in
+                # session_info.confirmed_unauthenticated = True
+                # these are defaults so commented out
+                # session_info.authenticated = False
+                # session_info.user_id = 0
+                # session_info.username = opasConfig.USER_NOT_LOGGED_IN_NAME
+                # session_info.user_type = "Unknown"
+                # session_info.admin = False
+                # session_info.authorized_peparchive = False
+                # session_info.authorized_pepcurrent = False
             else:
-                if session_info.authenticated == True and user_logged_in_bool == True:
-                    # note that user_logged_in_bool can be None
-                    ## important - because they "were" logged in, we will return a session timed out error
-                    ## so don't refresh it...server likes to know they were logged in
-                    remaining_time = session_info.session_expires_time - datetime.today()
-                    remaining_time_hrs = remaining_time.seconds // 3600
-                    logger.info(f"User was authenticated per server database record.  Session {session_id}. Expires: {remaining_time_hrs} hrs ({session_info.session_expires_time}). DB SessionInfo: {session_info}")
+                if pads_user_info is not None:
+                    session_info.pads_user_info = pads_user_info
                 else:
-                    logger.debug(f"User is logged in (session {session_id}), but the client did not supply header info.")
-
-        if opasConfig.LOG_CALL_TIMING:
-            logger.debug(f"Get/Save session info response time: {time.time() - ts}")       
-        
+                    try:
+                        session_info.pads_user_info = session_info.pads_user_info
+                    except:
+                        session_info.pads_user_info = None
+                    
+                    
+                if pads_session_info is None:
+                    start_time = datetime.now()
+                else:
+                    start_time = pads_session_info.session_start_time if pads_session_info.session_start_time is not None else dt.now()
+                    
+                if pads_user_info is not None:
+                    session_info.user_id = userID=pads_user_info.UserId
+                    session_info.username = pads_user_info.UserName
+                    session_info.user_type = pads_user_info.UserType
+                    session_info.admin = pads_user_info.UserType=="Admin"
+                    session_info.authorized_peparchive = pads_user_info.HasArchiveAccess
+                    session_info.authorized_pepcurrent = pads_user_info.HasCurrentAccess
+                    logger.warning(f"PaDS returned user info {session_info.user_id}.  Saving to DB")
+   
+    if update_db: # not user_logged_in_bool:
+        if session_id is not None:
+            # save session info anyway
+            if not opasDocPerm.save_session_info_to_db(session_info):  # now session info will contain non-logged in users
+                logger.debug(f"***authent: {session_info.authenticated} - Save session info failed.")
+            else: 
+                logger.debug(f"***authent: {session_info.authenticated} - Save session succeeded.")
+        else:
+            msg = f"SessionID:[{session_id}] was not resolved. Raising Exception 424."
+            raise HTTPException(
+                status_code=httpCodes.HTTP_424_FAILED_DEPENDENCY,
+                detail=ERR_MSG_PASSWORD + f" {msg}"
+                )
     else:
-        logger.warning("No SessionID; Default session info returned (Not Logged In)")
-        session_info = models.SessionInfo() # default session model
-
+        # print (f"SessInfo: {session_info}")
+        logger.debug(f"***authent: {session_info.authenticated} - get_full_session_info total time: {time.time() - ts} (no session_info update)***")
+        
     return ocd, session_info
 
 #-----------------------------------------------------------------------------
