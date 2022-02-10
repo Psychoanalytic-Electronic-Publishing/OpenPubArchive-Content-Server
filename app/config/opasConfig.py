@@ -34,7 +34,7 @@ FORMAT = '%(asctime)s %(name)s/%(funcName)s(%(lineno)d): %(levelname)s %(message
 logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
 
 # Various switches for information/debugging
-DEBUG_TRACE = 1
+DEBUG_TRACE = False
 LOG_CALL_TIMING = True
 LOCAL_TRACE = False                   # turn this on to see the queries easily.
 LOCAL_DBOPEN_TRACE = False            # show open/close db in init/del
@@ -146,6 +146,7 @@ USER_NOT_LOGGED_IN_ID = 0
 USER_NOT_LOGGED_IN_NAME = "NotLoggedIn"
 NO_CLIENT_ID = 666
 NO_SESSION_ID = "NO-SESSION-ID"
+ADMIN_TYPE = "Admin"
     
 COOKIE_MIN_KEEP_TIME = 3600  # 1 hour in seconds
 COOKIE_MAX_KEEP_TIME = 86400 # 24 hours in seconds

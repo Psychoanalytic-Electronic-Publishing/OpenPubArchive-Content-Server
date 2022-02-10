@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0208/v2.1.128"   # semver versioning after date.
+__version__     = "2022.0209/v2.1.129"   # semver versioning after date.
 __status__      = "Release Candidate 1"  
 
 """
@@ -1196,7 +1196,7 @@ async def client_save_configuration(response: Response,
             detail=msg
         )
     else:
-        status_code = 200
+        status_code = httpCodes.HTTP_200_OK
         ret_val = configuration
         
     #ocd.record_session_endpoint(api_endpoint_id=opasCentralDBLib.API_DATABASE_CLIENT_CONFIGURATION,
@@ -1281,9 +1281,9 @@ async def client_update_configuration(response: Response,
     else:
         if curr_config is None: # == ClientConfigList(configList=[])
             # didn't exist, so return 201
-            response.status_code = 201
+            response.status_code = httpCodes.HTTP_201_CREATED   
         else:
-            response.status_code = 200 # already there, updated, return 200
+            response.status_code = httpCodes.HTTP_200_OK       # already there, updated, return 200
             
         ret_val = configuration
 
@@ -5783,7 +5783,7 @@ if __name__ == "__main__":
     print (f"FastAPI Version {fastapi.__version__}")
     
     try:
-        if opasConfig.DEBUG_TRACE == 1:
+        if opasConfig.DEBUG_TRACE:
             print ("Debug on")
             uvicorn.run(app, host=localsecrets.BASEURL, port=localsecrets.API_PORT_MAIN, debug=True, log_level="warning")
         else:

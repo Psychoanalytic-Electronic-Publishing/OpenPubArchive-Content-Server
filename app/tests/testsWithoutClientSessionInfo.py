@@ -11,7 +11,8 @@ from unitTestConfig import base_plus_endpoint_encoded, headers, UNIT_TEST_CLIENT
 
 no_session = True
 client_only_headers = {"client-id": UNIT_TEST_CLIENT_ID}
-no_client_headers = {"client-id": ""}
+bad_client_headers = {"client-id": ""}
+no_client_headers = {"client-id": None}
 
 class TestsWithoutClientSession(unittest.TestCase):
     """
@@ -146,13 +147,6 @@ class TestsWithoutClientSession(unittest.TestCase):
         assert(response_info["count"] == 1)
         print (response_set)
 
-    def test_16_get_abstract_bad_client_id(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4&client-id="ME"')
-        response = requests.get(full_URL, headers=no_client_headers)
-        r = response.json()
-        print (r)
-        assert(response.status_code == 428)
-
     def test_16B_get_abstract_client_id_param(self):
         # this method of client-id should be ok.
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4&client-id=4')
@@ -163,6 +157,15 @@ class TestsWithoutClientSession(unittest.TestCase):
         assert(response_info["count"] == 1)
         print (r)
 
+    def test_16C_get_abstract_bad_client_id(self):
+        # client-id must be numeric
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4&client-id=ABC')
+        response = requests.get(full_URL)
+        r = response.json()
+        print (r)
+        assert(r["detail"] == 'The caller has not provided sufficient identification.')
+        assert(response.status_code == 428)
+
     def test_17_get_abstract_bad_client_id_func(self):
         print("Test bad client ID...error expected.")
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Abstracts/IFP.017.0240A?similarcount=4')
@@ -172,13 +175,14 @@ class TestsWithoutClientSession(unittest.TestCase):
         #response_set = r["documents"]["responseSet"] 
         #assert(response_info["count"] == 1)
         #print (response_set)
+        print (f"Headers: {no_client_headers}")
         response = requests.get(full_URL, headers=no_client_headers)
         r = response.json()
         print (r)
         #response_info = r["documents"]["responseInfo"]
         #response_set = r["documents"]["responseSet"] 
+        assert(r["detail"] == 'The caller has not provided sufficient identification.')
         assert(response.status_code == 428)
-        #assert(r["detail"] == 'The caller has not provided sufficient client information and session information.')
         #print (response_set)
        
 if __name__ == '__main__':

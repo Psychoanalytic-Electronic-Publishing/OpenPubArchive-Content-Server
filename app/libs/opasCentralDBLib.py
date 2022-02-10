@@ -1274,6 +1274,11 @@ class opasCentralDB(object):
                 setClause += ", "
             setClause += f" user_type = '{usertype}'"
             added += 1
+            if usertype == opasConfig.ADMIN_TYPE and authenticated:
+                if added > 0:
+                    setClause += ", "
+                setClause += f" admin = 1"
+                added += 1
         if hassubscription is not None:
             if added > 0:
                 setClause += ", "
@@ -1335,7 +1340,11 @@ class opasCentralDB(object):
                         ret_val = False 
                     except mysql.connector.Error as error:
                         logger.error(code, message)
-                        ret_val = False 
+                        ret_val = False
+                    except Exception as e:
+                        message = f"General exception saving to database: {e}"
+                        logger.error(message)
+                        ret_val = False
                     else:
                         self.db.commit()
 

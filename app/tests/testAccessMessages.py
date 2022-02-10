@@ -11,7 +11,7 @@ import pprint
 import sys
 
 import opasDocPermissions
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login, test_logout 
+from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login, test_logout, get_headers_not_logged_in
 
 # Login!
 sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ARCHIVEONLY, password=localsecrets.PADS_TEST_ARCHIVEONLY_PW)
@@ -348,18 +348,18 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         assert (response_set["accessClassification"] == 'free')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
         
-        # ijpopen document
-        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJPOPEN.004.0008A/?return_format=XML")
-        response = requests.get(full_URL, headers=headers)
-        r = response.json()
-        response_info = r["documents"]["responseInfo"]
-        response_set = r["documents"]["responseSet"][0]
-        print(f'Classification: {response_set["accessClassification"]}')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
-        assert (response_set["accessLimited"] == False)
-        assert (response_set["accessClassification"] == 'special')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        ## ijpopen document
+        #full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJPOPEN.004.0008A/?return_format=XML")
+        #response = requests.get(full_URL, headers=headers)
+        #r = response.json()
+        #response_info = r["documents"]["responseInfo"]
+        #response_set = r["documents"]["responseSet"][0]
+        #print(f'Classification: {response_set["accessClassification"]}')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #assert (response_set["accessLimited"] == False)
+        #assert (response_set["accessClassification"] == 'special')
+        #message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
     def test_015A_get_pepall_permission_manually_proof_messages(self):
         print ("Login pep all access user!")
@@ -422,13 +422,13 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
-        print ("***** Test IJPOPEN Permission *****")
-        print(f'Classification: {response_set["accessClassification"]}')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
-        assert (response_set["accessLimited"] == False)
-        assert (response_set["accessClassification"] == 'special')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        #print ("***** Test IJPOPEN Permission *****")
+        #print(f'Classification: {response_set["accessClassification"]}')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #assert (response_set["accessLimited"] == False)
+        #assert (response_set["accessClassification"] == 'special')
+        #message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
     def test_016A_get_registered_user_permission_manually_proof_messages(self):
         print ("Login registered user!")
@@ -501,7 +501,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         # global message_collection
         message_collection[usertype] = {}
         
-        sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_REGISTEREDUSER, password=localsecrets.PADS_TEST_REGISTEREDUSER_PW)
+        #sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_REGISTEREDUSER, password=localsecrets.PADS_TEST_REGISTEREDUSER_PW)
+        headers = get_headers_not_logged_in()
         if test_logout(sessID):
             # Try to return IJPOPEN
             # ijpopen document
