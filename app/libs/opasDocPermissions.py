@@ -383,9 +383,9 @@ def get_session_info(request: Request,
         if session_info_from_db is None: # not in DB
             in_db = False
             update_db = True
-            logger.warning(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request_url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/13 removed  Server Session Info: {session_info} for brevity
+            logger.debug(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request_url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/13 removed  Server Session Info: {session_info} for brevity
         else: # found in DB
-            print(f"Found in DB - SessionInfoFromDB: {session_info_from_db}")
+            # print(f"Found in DB - SessionInfoFromDB: {session_info_from_db}")
             in_db = True
             if user_logged_in_bool is None:
                 # no info on loging.  Use DB info
@@ -407,7 +407,7 @@ def get_session_info(request: Request,
                     
                 if db_session_ended and user_logged_in_bool:
                     # this should not happen in real life.
-                    logger.error("DB Session marked ended, but active session with same id received.")
+                    logger.warning(f"Warning: DB Session {session_id} marked ended, but active session with same id received.")
                     
                 if user_logged_in_bool == True and (session_info_from_db.is_valid_login == False or session_info_from_db.username == opasConfig.USER_NOT_LOGGED_IN_NAME):
                     # logged in but not that way in the db
@@ -417,14 +417,14 @@ def get_session_info(request: Request,
                         session_info.authenticated = pads_session_info.IsValidUserName
                         session_info.has_subscription = pads_session_info.HasSubscription
                         session_info.pads_session_info = pads_session_info
-                        logger.warning(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request_url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/14 removed  Server Session Info: {session_info} for brevity
+                        logger.debug(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request_url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/14 removed  Server Session Info: {session_info} for brevity
                         update_db = True
                     else:
                         session_info = session_info_from_db
                         session_info.is_valid_login = session_info.is_valid_username = True
                         session_info.authenticated = session_info.is_valid_login
                         # this may give a way to set logged in in db artificially, but as soon as they try to read a document, db will be updated to agree with PaDS
-                        logger.warning(f"{caller_name}: Session {session_id} in DB:{in_db}. DB says not logged in, but they are.  Authenticated:{session_info.authenticated}. URL: {request_url}")
+                        logger.debug(f"{caller_name}: Session {session_id} in DB:{in_db}. DB says not logged in, but they are.  Authenticated:{session_info.authenticated}. URL: {request_url}")
                         update_db = True
                 elif not user_logged_in_bool and session_info_from_db.is_valid_login == True: # if login status has changed
                     # Not logged in but database says they are, so logout
@@ -443,7 +443,7 @@ def get_session_info(request: Request,
                     status_code = 0 # no check, no error
                     pads_user_info = None
                     if user_logged_in_bool:
-                        logger.warning(f"{caller_name}: Tracing.  Getting session userinfo from PaDS.  Request: {request}")
+                        logger.debug(f"{caller_name}: For Tracing.  Getting session userinfo from PaDS.  Request: {request}")
                         pads_user_info, status_code = get_authserver_session_userinfo(session_id, client_id, addl_log_info=" (complete session_record)")
             
                     if status_code == 401: # could be just no session_id, but also could have be returned by PaDS if it doesn't recognize it
@@ -469,7 +469,7 @@ def get_session_info(request: Request,
                             session_info.admin = pads_user_info.UserType==opasConfig.ADMIN_TYPE
                             session_info.authorized_peparchive = pads_user_info.HasArchiveAccess
                             session_info.authorized_pepcurrent = pads_user_info.HasCurrentAccess
-                            logger.warning(f"PaDS returned user info {session_info.user_id}.  Saving to DB")
+                            logger.debug(f"PaDS returned user info {session_info.user_id}.  Saving to DB")
    
     if update_db: # not user_logged_in_bool:
         if session_id is not None:
