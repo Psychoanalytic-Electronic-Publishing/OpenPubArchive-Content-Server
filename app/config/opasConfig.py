@@ -37,7 +37,6 @@ logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%
 DEBUG_TRACE = False
 LOG_CALL_TIMING = True
 LOCAL_TRACE = False                   # turn this on to see the queries easily.
-LOCAL_DBOPEN_TRACE = False            # show open/close db in init/del
 PADS_INFO_TRACE = False
 
 # Cache controls

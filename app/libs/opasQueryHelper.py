@@ -2020,8 +2020,8 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
 
     # return it in the abstract field for display
     documentListItem.abstract = abstract
-    if opasConfig.PADS_INFO_TRACE:
-        print (f"{documentListItem.documentID}/{documentListItem.year} is classified as {documentListItem.accessClassification}")
+    #if opasConfig.PADS_INFO_TRACE:
+        #print (f"[Trace/Get Excerpt] {documentListItem.documentID}/{documentListItem.year} is classified as {documentListItem.accessClassification}")
 
     return documentListItem
 

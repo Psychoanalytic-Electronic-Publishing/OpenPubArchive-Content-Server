@@ -50,13 +50,6 @@ from starlette.responses import Response
 # import starlette.status as httpCodes
 from starlette.exceptions import HTTPException
 
-#from starlette.status import HTTP_200_OK, \
-                                #HTTP_400_BAD_REQUEST, \
-                                #HTTP_401_UNAUTHORIZED, \
-                                #HTTP_403_FORBIDDEN, \
-                                #HTTP_404_NOT_FOUND, \
-                                #HTTP_500_INTERNAL_SERVER_ERROR, \
-                                #HTTP_503_SERVICE_UNAVAILABLE
 import time
 # used this name because later we needed to refer to the module, and datetime is also the name
 #  of the import from datetime.
@@ -73,10 +66,6 @@ import opasConfig
 import localsecrets
 
 import opasFileSupport
-# opas_fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET)
-
-# from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN
-# from localsecrets import TIME_FORMAT_STR # moved to opasConfig
 
 from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
 from configLib.opasCoreConfig import EXTENDED_CORES

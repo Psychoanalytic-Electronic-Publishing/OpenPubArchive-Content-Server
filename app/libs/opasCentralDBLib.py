@@ -1966,56 +1966,60 @@ class opasCentralDB(object):
             logger.error(msg)
             ret_val = httpCodes.HTTP_400_BAD_REQUEST
         else:
-            with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
-                ret_val_list = []
-                for client_config_name in client_config_name_list:
-                    sql = f"""SELECT *
-                              FROM api_client_configs
-                              WHERE client_id = {client_id_int}
-                              AND config_name = '{client_config_name}'"""
-        
-                    try:
-                        curs.execute(sql)
-                        warnings = curs.fetchwarnings()
-                        if warnings:
-                            for warning in warnings:
-                                logger.warning(warning)
-                        
-                        if curs.rowcount >= 1:
-                            clientConfig = curs.fetchone()
-                            ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
-                        else:
-                            ret_val = None
-
+            if self.db is not None:
+                with closing(self.db.cursor(buffered=True, dictionary=True)) as curs:
+                    ret_val_list = []
+                    for client_config_name in client_config_name_list:
+                        sql = f"""SELECT *
+                                  FROM api_client_configs
+                                  WHERE client_id = {client_id_int}
+                                  AND config_name = '{client_config_name}'"""
+            
                         try:
-                            if ret_val is not None:
-                                ret_val_list.append(models.ClientConfigItem(configName = ret_val.config_name,
-                                                                            configSettings=json.loads(ret_val.config_settings),
-                                                                            api_client_id=ret_val.client_id, 
-                                                                            session_id=ret_val.session_id
-                                                                           )
-                                                   )
+                            curs.execute(sql)
+                            warnings = curs.fetchwarnings()
+                            if warnings:
+                                for warning in warnings:
+                                    logger.warning(warning)
+                            
+                            if curs.rowcount >= 1:
+                                clientConfig = curs.fetchone()
+                                ret_val = modelsOpasCentralPydantic.ClientConfigs(**clientConfig)
+                            else:
+                                ret_val = None
+    
+                            try:
+                                if ret_val is not None:
+                                    ret_val_list.append(models.ClientConfigItem(configName = ret_val.config_name,
+                                                                                configSettings=json.loads(ret_val.config_settings),
+                                                                                api_client_id=ret_val.client_id, 
+                                                                                session_id=ret_val.session_id
+                                                                               )
+                                                       )
+                            except Exception as e:
+                                ret_val = None
+                                logger.error(f"Error converting config from database. Check json syntax in database {e}")
+                                
                         except Exception as e:
                             ret_val = None
-                            logger.error(f"Error converting config from database. Check json syntax in database {e}")
+                            logger.error(f"Error getting config item from database {e}")
                             
-                    except Exception as e:
-                        ret_val = None
-                        logger.error(f"Error getting config item from database {e}")
-                        
-                if ret_val_list is not None:
-                    try:
-                        # convert to final return model, a list of ClientConfigItems
-                        ret_val = models.ClientConfigList(configList = ret_val_list)
-                        logger.info("Config list returned.")
-                    except Exception as e:
-                        ret_val = None
-                        logger.error(f"Error converting list of config items from database. Check json syntax in database {e}")
-                elif ret_val is not None:
-                    logger.info("Config item returned.")
-                else:
-                    logger.error("No config returned.")
-
+                    if ret_val_list is not None:
+                        try:
+                            # convert to final return model, a list of ClientConfigItems
+                            ret_val = models.ClientConfigList(configList = ret_val_list)
+                            logger.info("Config list returned.")
+                        except Exception as e:
+                            ret_val = None
+                            logger.error(f"Error converting list of config items from database. Check json syntax in database {e}")
+                    elif ret_val is not None:
+                        logger.info("Config item returned.")
+                    else:
+                        logger.error("No config returned.")
+            else:
+                logger.error(f"self.db connection is not set/missing. Can't get client config.")
+                
+                
             self.close_connection(caller_name=fname) # make sure connection is closed
     
         return ret_val

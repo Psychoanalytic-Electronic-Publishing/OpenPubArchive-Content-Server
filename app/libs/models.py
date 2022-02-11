@@ -468,7 +468,7 @@ class SessionInfo(BaseModel):
     user_id: int = Field(opasConfig.USER_NOT_LOGGED_IN_ID, title="User ID (numeric).  0 for unknown user.  Corresponds to the user table records")
     username: str = Field(opasConfig.USER_NOT_LOGGED_IN_NAME, title="Registered user name, for convenience here")
     user_type: str = Field("Unknown", title="User type, e.g., Admin or Individual")
-    is_valid_login: bool = Field(False, title="")
+    is_valid_login: bool = Field(False, title="From PaDS, is valid login")
     has_subscription: bool = Field(False, title="")
     is_valid_username: bool = Field(False, title="")
     authenticated: bool = Field(False, title="True if the user has been authenticated.")

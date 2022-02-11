@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0209/v2.1.130"   # semver versioning after date.
+__version__     = "2022.0211/v2.1.131"   # semver versioning after date.
 __status__      = "Release Candidate 1"  
 
 """
@@ -454,6 +454,7 @@ def login_via_pads(request: Request,
                                                                response,
                                                                session_id=pads_session_info.SessionId,
                                                                client_id=client_id,
+                                                               pads_session_info=pads_session_info, 
                                                                caller_name=caller_name)
 
         # Confirm that the request-response cycle completed successfully.
@@ -671,14 +672,16 @@ async def admin_reports(response: Response,
     ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=client_session, client_id=client_id, caller_name=caller_name)
     if session_info.admin != True:
         # watch to see if PaDS is using the reports as an admin or non-admin user, if admin, change reports to admin only
-        ret_val = f"Report {report} request by non-admin user ({session_info.username})."
+        ret_val = f"Report {report} request by non-admin user ({session_info.username} id: {session_info.session_id})."
         logger.error(ret_val)
         raise HTTPException(
             status_code=httpCodes.HTTP_401_UNAUTHORIZED, 
             detail=ret_val
         )       
     else:
-        logger.info(f"Report {report} request by admin user ({session_info.username}).")
+        msg = f"Report {report} request by admin user ({session_info.username}) id: {session_info.session_id})."
+        logger.info(msg)
+        if opasConfig.PADS_INFO_TRACE: print (msg)
 
     userid_condition = ""
     sessionid_condition = ""
@@ -1467,22 +1470,23 @@ def session_login_basic(response: Response,
     if opasConfig.DEBUG_TRACE: print(caller_name)
 
     session_id = session_info.session_id
+    session_info.api_direct_login = True
     if session_info is not None:
         ocd, session_info = opasDocPermissions.get_session_info(request, response, session_id=session_id, client_id=client_id, caller_name=caller_name)
         # Save it for later; most importantly, overwrite any existing cookie!
         if session_info.authenticated:
             logger.info("Successful basic login - saved OpasSessionID Cookie")
             opasAPISupportLib.save_opas_session_cookie(request, response, session_id)
-            
-        #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
+            #opas_session_cookie = request.cookies.get(opasConfig.OPASSESSIONID, None)
+            session_info.api_direct_login = True
+
         if session_info.is_valid_login:
             response.set_cookie(
                 OPASSESSIONID,
                 value=f"{session_id}",
                 domain=localsecrets.COOKIE_DOMAIN
             )
-            session_info.api_direct_login = True
-            
+                       
     else:
         logger.error(f"LoginError: Bad login")
         raise HTTPException(
@@ -1564,7 +1568,7 @@ def session_login(response: Response,
                 value=f"{session_id}",
                 domain=localsecrets.COOKIE_DOMAIN
             )
-            session_info.api_direct_login = True
+            #session_info.api_direct_login = True
             logger.debug("Successful login - saved OpasSessionID Cookie")
 
     try:
@@ -1618,17 +1622,16 @@ def session_logout_user(response: Response,
     if session_id is not None and session_id != "":
         session_info = ocd.get_session_from_db(session_id)
         if session_info is not None:
-            direct_login = session_info.api_direct_login
+            #direct_login = session_info.api_direct_login
             session_end_time = datetime.utcfromtimestamp(time.time())
             if session_info is not None:
                 session_info.session_end = session_end_time
                 ocd.end_session(session_id=session_id)
     
-            if direct_login:
-                response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
-                ret_val = opasDocPermissions.authserver_logout(session_id, request=request, response=response)
+            #if direct_login:
+            response.delete_cookie(key=OPASSESSIONID,path="/", domain=localsecrets.COOKIE_DOMAIN)
+            ret_val = opasDocPermissions.authserver_logout(session_id, request=request, response=response)
 
-        #ocd, session_info = opasDocPermissions.get_session_info(request, response,
         # logged out
         session_info = models.SessionInfo(session_id=session_id)
     return session_info

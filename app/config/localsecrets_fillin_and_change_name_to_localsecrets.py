@@ -59,7 +59,6 @@ API_KEY_NAME = "apikeyname"
 # *******************************************************************
 # defaults
 DEBUG_DOCUMENTS = 1
-DEBUG_TRACE = 1
 SOLR_DEBUG = "on"
 DBPORT = 3306 # default
 API_PORT_MAIN = 9100
@@ -80,22 +79,6 @@ CLIENT_DB = {
     "4": {"api-client-name": "unittests", "api-client-key" : None},
     "666": {"api-client-name" : "unknown", "api-client-key" : None},
 }
-
-# *******************************************************************
-# *******************************************************************
-# defaults
-DEBUG_DOCUMENTS = 1
-DEBUG_TRACE = 1
-SOLR_DEBUG = "on"
-DBPORT = 3306 # default
-API_PORT_MAIN = 9100
-SSH_HOST = None # if set, ssh tunnel is active for database
-CORS_ORIGINS = [ "", "" ]
-CORS_REGEX = "^((.*\.)?((orig1|orig2)(\..*)?)$"
-IMAGE_SOURCE_PATH = None
-PDF_ORIGINALS_PATH = None
-PDF_ORIGINALS_EXTENSION = ".pdf" #  PDF originals extension
-XML_ORIGINALS_PATH = None
 
 S3_KEY = None
 S3_SECRET = None

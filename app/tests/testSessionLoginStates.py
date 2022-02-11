@@ -95,7 +95,7 @@ class TestSessionLogin(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         # this document should not be available
-        assert(response_set[0]["accessLimited"] == False)
+        assert(response_set[0]["accessLimited"] == True)  # Not logged in
         print (response_set)
 
                
