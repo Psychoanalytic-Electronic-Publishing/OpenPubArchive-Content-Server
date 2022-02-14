@@ -813,7 +813,6 @@ def another_citation_parser(arg):
     pat1 = "(\w{2,}\s(:?(\w\.)*?)?\s\w{3,})+"
     pat2 = "(?:and\s)((\w{2,}\s(?:(\w\.){0,2}\s?)\w{3,}))"
     names = re.split(",|\s+and\s+", arg, re.I)
-    print (names)
     ret_val1 = re.findall(pat1, arg, flags=re.I)
     ret_val2 = re.findall(pat2, arg, flags=re.I)
     return ret_val1, ret_val2

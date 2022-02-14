@@ -374,7 +374,6 @@ def get_session_info(request: Request,
             logger.debug(f"{caller_name}: Session {session_id} in DB:{in_db}. Authenticated:{session_info.authenticated}. URL: {request_url} PaDS SessionInfo: {session_info.pads_session_info}") # 09/13 removed  Server Session Info: {session_info} for brevity
             
         else: # found in DB
-            # print(f"Found in DB - SessionInfoFromDB: {session_info_from_db}")
             in_db = True
             if user_logged_in_bool is None:
                 # no info on loging.  Use DB info
@@ -506,7 +505,6 @@ def get_session_info(request: Request,
                 )
     else:
         if session_id is not None:
-            # print (f"SessInfo: {session_info}")
             logger.debug(f"***session_id : {session_id} - get_full_session_info total time: {time.time() - ts} (no session_info update)***")
         else:
             msg = f"SessionID:[{session_id}] was not resolved. Raising Exception 424."
@@ -606,7 +604,6 @@ def authserver_login(username=PADS_TEST_ID,
     except Exception as e:
         msg = f"{caller_name}: Authorization server not available. {e}"
         logger.error(msg)
-        if opasConfig.LOCAL_TRACE: print (f"****WATCH_THIS****: {msg}")
         # set up response with default model
         pads_session_info = models.PadsSessionInfo()
         if session_id is not None:
@@ -1140,7 +1137,6 @@ def get_pads_session_info(session_id=None,
     caller_name = "get_pads_session_info"
     msg = f"Checking PaDS authentication for Session ID: {session_id}"
     logger.debug(msg)
-    print (f"Monitor: {msg}")
     if opasConfig.PADS_INFO_TRACE: print(msg)
     
     if client_id == opasConfig.NO_CLIENT_ID:
@@ -1212,7 +1208,6 @@ def get_pads_session_info(session_id=None,
             except Exception as e:
                 msg = f"{caller_name}: Response processing error {e}"
                 logger.error(msg)
-                if opasConfig.PADS_INFO_TRACE: print (f"PADS Monitor: {msg}")
                 pads_session_info = models.PadsSessionInfo(**pads_session_info)
                 pads_session_info.pads_status_response = status_code
                 pads_session_info.pads_disposition = msg 

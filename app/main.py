@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0211/v2.1.131"   # semver versioning after date.
+__version__     = "2022.0213/v2.1.132"   # semver versioning after date.
 __status__      = "Release Candidate 1"  
 
 """
@@ -99,16 +99,10 @@ import time
 import datetime
 from datetime import datetime
 import re
-# import secrets
 import wget
-# import shlex
 import io
-# import pathlib
 import urllib.parse
 import random
-# import glob
-
-# import json
 
 from urllib import parse
 
@@ -122,8 +116,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, FileResponse, StreamingResponse # RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 import starlette.status as httpCodes
-#from starlette.middleware.sessions import SessionMiddleware
-#from typing import Optional
 from typing import Union
 import pandas as pd
 
@@ -141,7 +133,6 @@ import config.opasConfig as opasConfig
 import logging
 logger = logging.getLogger(__name__)
 
-# import jwt
 import localsecrets
 import libs.opasAPISupportLib as opasAPISupportLib
 from configLib.opasCoreConfig import EXTENDED_CORES_DEFAULTS, SOLR_DOCS # , EXTENDED_CORES, SOLR_AUTHORS, SOLR_GLOSSARY, SOLR_DEFAULT_CORE 

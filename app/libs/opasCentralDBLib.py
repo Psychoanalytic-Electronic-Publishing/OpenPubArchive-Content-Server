@@ -1407,7 +1407,7 @@ class opasCentralDB(object):
         else:
             if session_info.session_start is None:
                 session_info.session_start = datetime.utcfromtimestamp(time.time()).strftime(opasConfig.TIME_FORMAT_STR_DB)
-                print (session_info.session_start)
+                if opasConfig.DEBUG_TRACE: print (f"{fname} set session Start: {session_info.session_start}")
             if not self.open_connection(caller_name=fname): # make sure connection opens
                 logger.error(f"Could not open database")
             else: # its open
