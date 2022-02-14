@@ -34,7 +34,7 @@ class TestDocumentsGlossary(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
+        #print (response_set)
 
     def test_1b_get_glossary_endpoint_GROUP(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Glossary/ANXIETY/?termidtype=Group&recordperterm=True')
@@ -47,7 +47,7 @@ class TestDocumentsGlossary(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] >= 7) # chg from 7 to 10, since expanded group search to also search names
-        print (response_set)
+        #print (response_set)
         
     def test_1c_get_glossary_endpoint_NAME(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Glossary/WHEELWRIGHT, JOSEPH BALCH (1906-99)/?termidtype=Name')
@@ -60,7 +60,7 @@ class TestDocumentsGlossary(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
+        #print (response_set)
         
     def test_1c2_get_glossary_endpoint_NAME(self):
         # Confirm that the request-response cycle completed successfully.
@@ -74,7 +74,7 @@ class TestDocumentsGlossary(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
+        #print (response_set)
 
     def test_1d_get_glossary_endpoint_ID(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Glossary/YP0017805628220.001/?termidtype=ID')
@@ -87,7 +87,7 @@ class TestDocumentsGlossary(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
+        #print (response_set)
         
 if __name__ == '__main__':
     unittest.main()

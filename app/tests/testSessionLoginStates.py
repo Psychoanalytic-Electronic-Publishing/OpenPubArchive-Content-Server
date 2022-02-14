@@ -65,7 +65,7 @@ class TestSessionLogin(unittest.TestCase):
         assert(response_info["count"] == 1)
         # this document should be available
         assert(response_set[0]["accessLimited"] == False)
-        print (response_set)
+        print (response_set[0]["document"][0:600])
         
     def test_03_logout(self):
         global orig_session_id
@@ -96,7 +96,7 @@ class TestSessionLogin(unittest.TestCase):
         assert(response_info["count"] == 1)
         # this document should not be available
         assert(response_set[0]["accessLimited"] == True)  # Not logged in
-        print (response_set)
+        print (response_set[0]["document"][0:600])
 
                
 if __name__ == '__main__':

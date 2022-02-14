@@ -103,7 +103,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         assert(response_info["count"] == 1)
         # this document should be available
         assert(response_set[0]["accessLimited"] == False)
-        print (response_set)
+        #print (response_set)
 
     def test_1_get_document_roman(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/ZBK.074.R0007A/')
@@ -118,7 +118,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         assert(response_info["count"] == 1)
         # this document should be available
         assert(response_set[0]["accessLimited"] == False)
-        print (response_set)
+        #print (response_set)
 
     def test_1B_get_document_Without_Variant(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PCT.011.0171/')
@@ -133,7 +133,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         assert(response_info["count"] == 1)
         # this document should be available
         assert(response_set[0]["accessLimited"] == False)
-        print (response_set)
+        #print (response_set)
 
     def test_2_get_document_with_search_context(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/AJP.057.0360A/?search=?fulltext1=touch&sort=citeCount')
@@ -146,7 +146,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
+        #print (response_set)
 
     def test_2_get_document_with_search_context_xml(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/AJP.057.0360A/?search=?fulltext1=reverie&sort=citeCount&return_format=XML')
@@ -159,7 +159,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
+        #print (response_set)
 
     def test_2_get_document_with_similarcount(self):
         # either format works 
@@ -174,7 +174,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
+        #print (response_set)
 
     def test_1_fetch_article(self):
         """
@@ -204,7 +204,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         assert(response_set[0]["accessLimited"] == False)
-        print (response_set)
+        #print (response_set)
         
     def test_5_get_special_document(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/APA.064E.NP0001A/')
@@ -216,7 +216,7 @@ class TestDocumentsDocumentGet(unittest.TestCase):
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
-        print (response_set)
+        #print (response_set)
 
     def test_6_nonexistent_document(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/APA.064E.6666A/')

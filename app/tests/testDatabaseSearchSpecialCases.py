@@ -19,7 +19,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f"Count: {response_info['count']}")
         assert(response_info["count"] >= 0) # just make sure there's a count
-        print (response_set)
+        #print (response_set)
 
     def test_search_viewed_count_1b(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=1')
@@ -31,7 +31,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f"Count: {response_info['count']}")
         assert(response_info["count"] >= 0) # just make sure there's a count
-        print (response_set)
+        #print (response_set)
 
     def test_search_viewed_count_1c(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=1&fulltext1=feel')
@@ -46,7 +46,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f"Count: {response_info['count']}")
         assert(response_info["count"] >= 0) # just make sure there's a count
-        print (response_set)
+        #print (response_set)
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=3&fulltext1=feel')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -56,7 +56,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f"Count: {response_info['count']}")
         assert(response_info["count"] >= 0) # just make sure there's a count
-        print (response_set)
+        #print (response_set)
 
     def test_search_author_and_journalcode_and_text_and_citecount(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?author=tuckett&citecount=3')
@@ -68,7 +68,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f"Count: {response_info['count']}")
         assert(response_info["count"] >= 0) # just make sure there's a count
-        print (response_set)
+        #print (response_set)
 
     def test_2_example_fulltext1_search_types(self):
         """
@@ -169,7 +169,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 0, f"Count: {response_info['count']}" # just make sure there's a count
-        print (response_set)
+        #print (response_set)
 
     def test_search_viewed_count_3b_ranges(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=5 TO 30&pubperiod=100')
@@ -180,7 +180,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 1,  f"Count: {response_info['count']}"
-        print (response_set)
+        #print (response_set)
 
     def test_search_viewed_count_3c_ranges_last6months(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=5 TO 30 IN last6months&pubperiod=100')
@@ -191,7 +191,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 1, f"Count: {response_info['count']}" # just make sure there's a count
-        print (response_set)
+        #print (response_set)
 
     def test_search_viewed_count_3d_ranges_lastmonth(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=2 TO 30 IN lastmonth')
@@ -202,7 +202,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 1, f"Count: {response_info['count']}" # just make sure there's a count
-        print (response_set)
+        #print (response_set)
 
     def test_search_viewed_count_3e_ranges_lastcalendaryear(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=1 TO 30 IN lastcalendaryear')
@@ -213,7 +213,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 0, f"Count: {response_info['count']}" # just make sure there's a count
-        print (response_set)
+        #print (response_set)
 
     def test_search_viewed_count_3f_ranges_with_viewperiod(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=5 TO 30&viewperiod=4')
@@ -224,7 +224,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         assert response_info["count"] >= 1, f"Count: {response_info['count']}" # just make sure there's a count
-        print (response_set)
+        #print (response_set)
 
 
 if __name__ == '__main__':

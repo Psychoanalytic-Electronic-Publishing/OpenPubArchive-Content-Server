@@ -370,7 +370,8 @@ class FlexFileSystem(object):
             # remove any suffix for vol, so we don't need to separate the folders
             vol_clean = ''.join(i for i in vol if i.isdigit())
         except Exception as e:
-            logger.error(f"Could not split filespec into path: {filespec}. ({e})")
+            # changed to log as debug rather than error.  Sometimes this is ok.
+            logger.debug(f"Could not split filespec into path: {filespec}. ({e})")
             subpath = ""
         else:
             subpath = f"/{jrnlcode}/{vol_clean}" #  pad volume to 3 digits with 0

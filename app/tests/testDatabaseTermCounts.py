@@ -24,7 +24,7 @@ class TestDatabaseTermCounts(unittest.TestCase):
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 6)
-        print (response_set)
+        #print (response_set)
         # Confirm that the request-response cycle completed successfully.
         
     def test_0a_termcounts(self):
@@ -41,7 +41,7 @@ class TestDatabaseTermCounts(unittest.TestCase):
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 2600)
-        print (response_set)
+        #print (response_set)
         # Confirm that the request-response cycle completed successfully.
         full_URL = base_plus_endpoint_encoded('/v2/Database/TermCounts/?termlist=mother')
         response = requests.get(full_URL, headers=headers)
@@ -51,7 +51,7 @@ class TestDatabaseTermCounts(unittest.TestCase):
         response_info = r["termIndex"]["responseInfo"]
         response_set = r["termIndex"]["responseSet"] 
         assert(response_set[0]["termCount"] >= 3000)
-        print (response_set)
+        #print (response_set)
     
     def test_1a_termlist(self):
         # test both library methods and check for equality.

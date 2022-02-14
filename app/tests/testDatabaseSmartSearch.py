@@ -76,7 +76,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         print (f'Smarttext: {response_info["description"]}')
         response_set = r["documentList"]["responseSet"]
         assert(response_info["fullCount"] == 19)
-        print (response_set)
+        #print (response_set)
 
     def test_003_smartsearch_name_year(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=Tuckett 1982&sort=rank&limit=15&offset=0')
