@@ -395,7 +395,7 @@ def get_session_info(request: Request,
                     
                 if db_session_ended and user_logged_in_bool:
                     # this should not happen in real life.
-                    logger.warning(f"Warning: DB Session {session_id} marked ended, but active session with same id received.")
+                    logger.info(f"Warning: DB Session {session_id} marked ended, but active session with same id received.")
                     
                 if user_logged_in_bool == True and (session_info_from_db.is_valid_login == False or session_info_from_db.username == opasConfig.USER_NOT_LOGGED_IN_NAME):
                     # logged in but not that way in the db
