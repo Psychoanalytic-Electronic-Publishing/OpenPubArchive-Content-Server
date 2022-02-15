@@ -9,7 +9,7 @@ from fastapi import HTTPException
 import starlette.status as httpCodes
 from opasConfig import CACHEURL, DEBUG_TRACE, CACHE_EXPIRES_DAYS, CACHE_EXPIRES_HOURS, CACHE_EXPIRES_MINUTES, DEFAULT_LIMIT_FOR_MOST_VIEWED, DEFAULT_LIMIT_FOR_CACHE
 import models
-import opasPySolrLib
+from opasPySolrLib import document_get_most_viewed
 
 def nested_dict(n, type):
     from collections import defaultdict
@@ -27,12 +27,12 @@ def load_most_viewed(viewperiod = 2,
     ret_val = None
     fname = "load_most_viewed"
     try:
-        ret_val, ret_status = opasPySolrLib.document_get_most_viewed( view_period=viewperiod,   # 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
-                                                                          limit=limit, 
-                                                                          offset=offset,
-                                                                          session_info=session_info, 
-                                                                          req_url=req_url
-                                                                          )
+        ret_val, ret_status = document_get_most_viewed( view_period=viewperiod,   # 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
+                                                        limit=limit, 
+                                                        offset=offset,
+                                                        session_info=session_info, 
+                                                        req_url=req_url
+                                                      )
 
         if ret_val is None:
             status_message = f"MostViewedError: Bad request"

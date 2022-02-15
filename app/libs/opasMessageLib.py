@@ -51,7 +51,7 @@ class messageDB(object):
             msg_lang = n["msg_language"]
             self.message_dict[msg_code][msg_lang] = n
 
-    def __del__():
+    def __del__(self):
         pass
     
     def get_user_message(self, msg_code, lang="EN"):
