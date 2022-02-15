@@ -2,12 +2,15 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+# from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, session_id, UNIT_TEST_CLIENT_ID, test_login
+from unitTestConfig import test_login
+
 import opasAPISupportLib
 import opasConfig
 import opasCentralDBLib
 import opasPySolrLib
-import models
+import opasCacheSupport
+# import models
 
 
 # Login!
@@ -60,7 +63,7 @@ class TestPySolrBasedFunctions(unittest.TestCase):
     def test_3_get_most_viewed(self):
         # not in PySolrLib, but calls important functions for searching there.
         # make sure to look back a lot of years, because for testing, we just need data
-        data, ret_status = opasPySolrLib.document_get_most_viewed(publication_period=100)
+        data, ret_status = opasCacheSupport.document_get_most_viewed(publication_period=100)
         assert (ret_status == (200, 'OK'))
         assert(data.documentList.responseInfo.fullCount > 1)
         

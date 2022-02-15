@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0214/v2.1.134"   # semver versioning after date.
+__version__     = "2022.0215/v2.1.135"   # semver versioning after date.
 __status__      = "Release Candidate 1"  
 
 """
@@ -149,7 +149,7 @@ import opasSolrPyLib
 import opasPySolrLib
 from opasPySolrLib import search_text_qs # , search_text
 import opasPDFStampCpyrght
-
+import opasCacheSupport
 
 
 expert_pick_image = ["", ""]
@@ -3306,7 +3306,7 @@ def database_mostviewed(response: Response,
         else:
             try:
                 # we want the last year (default, per PEP-Web) of views, for all articles (journal articles)
-                ret_val, ret_status = opasPySolrLib.document_get_most_viewed( publication_period=pubperiod,
+                ret_val, ret_status = opasCacheSupport.document_get_most_viewed( publication_period=pubperiod,
                                                                               view_period=viewperiod,   # 0:lastcalendaryear 1:lastweek 2:lastmonth, 3:last6months, 4:last12months
                                                                               view_count=viewcount, 
                                                                               author=author,

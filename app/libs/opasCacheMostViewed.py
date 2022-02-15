@@ -9,7 +9,7 @@ from fastapi import HTTPException
 import starlette.status as httpCodes
 from opasConfig import CACHEURL, DEBUG_TRACE, CACHE_EXPIRES_DAYS, CACHE_EXPIRES_HOURS, CACHE_EXPIRES_MINUTES, DEFAULT_LIMIT_FOR_MOST_VIEWED, DEFAULT_LIMIT_FOR_CACHE
 import models
-from opasPySolrLib import document_get_most_viewed
+from opasCacheSupport import document_get_most_viewed
 
 def nested_dict(n, type):
     from collections import defaultdict

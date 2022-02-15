@@ -31,7 +31,7 @@ import s3fs
 
 sys.path.append('./libs/configLib')
 
-import opasPySolrLib
+from opasPySolrLib import search
 
 SITEMAP_LOC = r"development.org"
 SITEMAP_DATE = "2021-04-24"
@@ -102,10 +102,11 @@ def metadata_export(outputFileName="../sitemap", total_records=140000, records_p
          if rec_count > total_records: # don't write more than total_records
             break
          try:
-            results = opasPySolrLib.search("art_level:1", 
-                                           summaryField="art_id, file_last_modified", 
-                                           returnStartAt=rec_group, 
-                                           returnLimit=records_per_file)
+            # search using opasPySolrLib
+            results = search("art_level:1", 
+                              summaryField="art_id, file_last_modified", 
+                              returnStartAt=rec_group, 
+                              returnLimit=records_per_file)
          except Exception as err:
             raise HTTPException(404, detail=err)
             

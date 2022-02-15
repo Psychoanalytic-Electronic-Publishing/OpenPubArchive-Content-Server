@@ -11,7 +11,7 @@ from opasConfig import normalize_val, VALS_YEAROPTIONS, CACHEURL, \
                        CACHE_EXPIRES_HOURS, CACHE_EXPIRES_MINUTES
 #import models
 #import opasPySolrLib
-from opasPySolrLib import search_text_qs
+from opasPySolrSearch import search_text_qs
 import opasQueryHelper
 
 def nested_dict(n, type):
