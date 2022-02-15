@@ -19,11 +19,16 @@ from configLib.opasCoreConfig import solr_docs2, solr_authors2, solr_gloss2
 import opasConfig 
 from configLib.opasCoreConfig import EXTENDED_CORES
 
+from xml.sax import SAXParseException
+
 import models
 import opasXMLHelper as opasxmllib
 import opasDocPermissions as opasDocPerm
 import opasQueryHelper
 import pysolr
+# still using a function in solpy
+import solrpy as solr
+
 LOG = logging.getLogger("pysolr")
 LOG.setLevel(logging.WARNING)
 
@@ -88,6 +93,40 @@ def numbered_anchors(matchobj):
 
     else:
         return matchobj.group(0)
+
+#-----------------------------------------------------------------------------
+def pysolrerror_processing(e):
+    error = "pySolr.SolrError"
+    error_num = 400
+    error_description=f"There's an error in your input (no reason supplied)"
+    ret_val = models.ErrorReturn(httpcode=400, error=error, error_description=error_description)
+
+    try:
+        if e is None:
+            pass # take defaults
+        elif e.args is not None:
+            # defaults, before trying to decode error
+            error = 400
+            try:
+                err = e.args
+                error_set = err[0].split(":", 1)
+                error = error_set[0]
+                error = error.replace('Solr ', 'Search engine ')
+                ret_val.error = error_set[1]
+                ret_val.error_description = error_description.strip(" []")
+                m = re.search("HTTP (?P<err>[0-9]{3,3})", error)
+                if m is not None:
+                    http_error = m.group("err")
+                    http_error_num = int(http_error)
+                    ret_val.httpcode = http_error_num
+            except Exception as e:
+                logger.error(f"PySolrError: Exception {e} Parsing error {e.args}")
+            else:
+                ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
+    except Exception as e2:
+        logger.error(f"PySolrError: {e} Processing exception {e2}")
+
+    return ret_val    
 
 #-----------------------------------------------------------------------------
 def get_fulltext_from_search_results(result,
