@@ -1,5 +1,5 @@
 # Updated 2021-03-11 to for pdfrw
-# Updated 2021-03-18 requests-2.25.1 urllib3-1.26.4 botocore-1.20.31 boto3-1.17.31 
+# Updated 2021-03-18 requests-2.25.1 urllib3-1.26.4 botocore-1.20.31 boto3-1.17.31
 #      many more need updating, but postponing for later.  Pillow was needed due to security bug
 # Updated 2021-06-10 more Dependabot alerts, urllib3, Pillow, and FastAPI
 #
@@ -61,7 +61,7 @@ python-dateutil~=2.8.2
 #
 python-multipart==0.0.5
 #
-reportlab>=3.5.47
+reportlab==3.6.6
 requests~=2.26.0
 s3fs==0.4.2
 s3transfer~=0.3.3
