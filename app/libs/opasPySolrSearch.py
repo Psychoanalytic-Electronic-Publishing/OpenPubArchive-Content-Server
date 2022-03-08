@@ -491,7 +491,7 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         #user_logged_in_bool = opasDocPerm.user_logged_in_per_header(request, session_id=session_id, caller_name=caller_name + "/ search_text_qs")
     except Exception as e:
         if req_url != opasConfig.CACHEURL: # no session supplied when loading caching, ok
-          logger.warning("No Session info supplied to search_text_qs")
+            logger.warning("No Session info supplied to search_text_qs")
         # mark as not logged in
         #user_logged_in_bool = False
 

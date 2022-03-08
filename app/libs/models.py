@@ -249,6 +249,7 @@ class DocumentListItem(BaseModel):
     docType:  str = Field(None, title="Document Type (Classification)", description="e.g., ART(article), ABS(abstract), ANN(announcement), COM(commentary), ERR(errata), PRO(profile), (REP)report, or (REV)review")
     documentRef: str = Field(None, title="Document Ref (bibliographic)", description="The bibliographic form presentation of the information about the document, as in the 'citeas' area or reference sections (text-only).")
     documentRefHTML: str = Field(None, title="Same as documentRef but in HTML.")
+    documentRefXML: str = Field(None, title="Same as documentRef but in XML.")  # currently same as documentRefHTML but for semantic clarity listed
     documentMetaXML: str = Field(None, title="Metadata content in XML, , e.g., element meta")
     documentInfoXML: str = Field(None, title="The document meta information in XML, e.g., element artinfo")
     title: str = Field(None, title="Document Title")

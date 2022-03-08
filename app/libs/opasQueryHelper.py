@@ -2084,10 +2084,15 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
                 documentListItem.authorMast = result.get("art_authors_mast", "")
             else:
                 documentListItem.authorMast = opasgenlib.derive_author_mast(author_ids)
-            if result.get("art_newsecnm", None): documentListItem.newSectionName=result.get("art_newsecnm", None)            
+            if result.get("art_newsecnm", None): documentListItem.newSectionName=result.get("art_newsecnm", None)
+            ## Usually we put the abbreviated title here, but that won't always work here.
+            # for reference, art_citeas_xml is both legal xml and html
+            # <p class="citeas"><span class="authors">%s</span> (<span class="year">%s</span>) <span class="title">%s</span>. 
+            #          <span class="sourcetitle">%s</span> <span class="vol">%s</span>:<span class="pgrg">%s</span></p>""" \
             citeas = result.get("art_citeas_xml", None)
             citeas = force_string_return_from_various_return_types(citeas)
             documentListItem.documentRef = opasxmllib.xml_elem_or_str_to_text(citeas, default_return="")
+            documentListItem.documentRefXML = citeas
             documentListItem.documentRefHTML = citeas
             
             # para level is ok, default to archive

@@ -9,5 +9,5 @@ options = None
 SRC_CODES_TO_INCLUDE_PARAS = ["GW", "SE"]
 
 # for these codes, do not create update notifications
-DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE = ["EGG", "NODO"] # examples, no update notifications for these codes.
+DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE = ["IPL", "ZBK", "NLP", "SE", "GW"] # no update notifications for these codes.
 

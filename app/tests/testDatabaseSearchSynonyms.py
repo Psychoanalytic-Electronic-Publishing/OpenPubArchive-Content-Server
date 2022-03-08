@@ -146,7 +146,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        assert(count1 >= 2300 and count1 <= 2400), f"Count: {count1}" 
+        assert(count1 >= 2300 and count1 <= 2800), f"Count: {count1}" 
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?fulltext1=text:(externalization)&synonyms=true')
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
@@ -154,7 +154,7 @@ class TestDatabaseSearchSynonyms(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         count1 = response_info["fullCount"]
-        assert(count1 >= 65000 and count1 <= 65750), f"Count: {count1}" 
+        assert(count1 >= 65000 and count1 <= 69000), f"Count: {count1}" 
 
 if __name__ == '__main__':
     unittest.main()

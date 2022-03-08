@@ -33,9 +33,6 @@ sys.path.append('./libs/configLib')
 
 from opasPySolrLib import search
 
-SITEMAP_LOC = r"development.org"
-SITEMAP_DATE = "2021-04-24"
-
 def opas_sitemap_index(output_file=localsecrets.SITEMAP_PATH, sitemap_list=[]):
    """
    Create a site index

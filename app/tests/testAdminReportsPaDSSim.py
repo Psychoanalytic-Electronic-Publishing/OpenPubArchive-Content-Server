@@ -12,7 +12,7 @@ import localsecrets
 from localsecrets import AUTH_KEY_NAME, PADS_TEST_ID, PADS_TEST_PW, PADS_TEST_ID2, PADS_TEST_PW2
 
 base_api = "https://stage-api.pep-web.org"
-base_api = "http://development.org:9100"
+base_api = "http://development2.org:9100"
 
 base = PADS_BASE_URL = "https://stage-pads.pep-web.org/PEPSecure/api"
 

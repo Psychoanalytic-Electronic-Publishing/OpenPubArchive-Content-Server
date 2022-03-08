@@ -974,7 +974,7 @@ def get_access_limitations(doc_id,
                             # PaDS could be down, local development
                             msg = f"{caller_name}: Subsystem (e.g., PaDS) unavailable. Access Exception: {e}"
                             logger.error(msg)
-                            if localsecrets.BASEURL == "development.org:9100":
+                            if localsecrets.BASEURL == "development2.org:9100":
                                 resp = models.PadsPermitInfo(Permit=True, HasArchiveAccess=True, HasCurrentAccess=True)
                                 # so it doesn't have to check this later
                                 session_info.authorized_peparchive = True

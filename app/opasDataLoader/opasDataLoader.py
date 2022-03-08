@@ -7,8 +7,8 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.1215.2" 
-__status__      = "Development"
+__version__     = "2022.0302" 
+__status__      = "Production"
 
 programNameShort = "opasDataLoader"
 import lxml
@@ -32,13 +32,16 @@ print(
                 $ python opasDataLoader.py
                 
         Important option choices:
-         -h, --help  List all help options
-         -a          Force update of files (otherwise, only updated when the data is newer)
-         --sub       Start with this subfolder of the root (can add sublevels to that)
-         --key:      Do just one file with the specified PEP locator (e.g., --key AIM.076.0309A)
-         --nocheck   Don't prompt whether to proceed after showing setting/option choices
-         --reverse   Process in reverse
-         --halfway   Stop after doing half of the files, so it can be run in both directions
+         -h, --help      List all help options
+         -a              Force update of files (otherwise, only updated when the data is newer)
+         --sub           Start with this subfolder of the root (can add sublevels to that)
+         --key:          Do just one file with the specified PEP locator (e.g., --key AIM.076.0309A)
+         --nocheck       Don't prompt whether to proceed after showing setting/option choices
+         --reverse       Process in reverse
+         --halfway       Stop after doing half of the files, so it can be run in both directions
+         --whatsnewdays  Use the days back value supplied to create the list of added articles, rather than the specific files loaded.
+                         Note that 1==today.
+         --nofiles       Can be used in conjunction with whatsnewdays to simply produce the whats new list rather than loading files.
 
         Example:
           Update all files from the root (default, pep-web-xml) down.  Starting two runs, one running the file list forward, the other backward.
@@ -98,6 +101,7 @@ import opasProductLib
 # import opasGenSupportLib as opasgenlib
 import localsecrets
 import opasFileSupport
+import opasAPISupportLib
 
 #detect data is on *nix or windows system
 if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH) is not None:
@@ -323,216 +327,250 @@ def main():
     
     if options.subFolder is not None:
         start_folder = start_folder / pathlib.Path(options.subFolder)
-    
-    print (f"Locating files for processing at {start_folder} with pattern {loaderConfig.file_match_pattern}. Started at ({time.ctime()}).")
-    if options.file_key is not None:  
-        # print (f"File Key Specified: {options.file_key}")
-        pat = fr"({options.file_key}.*){loaderConfig.file_match_pattern}"
-        filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1000)
-        if len(filenames) is None:
-            msg = f"File {pat} not found.  Exiting."
-            logger.warning(msg)
-            print (msg)
-            exit(0)
-        else:
-            options.forceRebuildAllFiles = True
-    elif options.file_only is not None:
-        fileinfo = FileInfo()
-        filespec = options.file_only
-        fileinfo.mapLocalFS(filespec)
-        filenames = [fileinfo]
-    else:
-        pat = fr"(.*?){loaderConfig.file_match_pattern}"
-        filenames = []
-    
-    if filenames != []:
-        total_files = len(filenames)
-        new_files = len(filenames)
-    else:
-        # get a list of all the XML files that are new
-        if options.forceRebuildAllFiles:
-            # get a complete list of filenames for start_folder tree
-            filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder)
-        else:
-            filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, revised_after_date=options.created_after)
-            
-    print((80*"-"))
-    files_found = len(filenames)
-    if options.forceRebuildAllFiles:
-        #maybe do this only during core resets?
-        #print ("Clearing database tables...")
-        #ocd.delete_all_article_data()
-        print(f"Ready to import records from {files_found} files at path {start_folder}")
-    else:
-        print(f"Ready to import {files_found} files *if modified* at path: {start_folder}")
 
+    # record time in case options.nofiles is true
     timeStart = time.time()
-    print (f"Processing started at ({time.ctime()}).")
 
-    print((80*"-"))
-    precommit_file_count = 0
-    skipped_files = 0
-    stop_after = 0
-    cumulative_file_time_start = time.time()
-    issue_updates = {}
-    if files_found > 0:
-        if options.halfway:
-            stop_after = round(files_found / 2) + 5 # go a bit further
-            
-        if options.run_in_reverse:
-            filenames.reverse()
-        
-        # ----------------------------------------------------------------------
-        # Now walk through all the filenames selected
-        # ----------------------------------------------------------------------
-        print (f"Load process started ({time.ctime()}).  Examining files.")
-        
-        for n in filenames:
-            fileTimeStart = time.time()
-            file_updated = False
-            if not options.forceRebuildAllFiles:                    
-                if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0:
-                    print (f"Processed Files ...loaded {processed_files_count} out of {files_found} possible.")
-
-                if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0:
-                    print (f"Skipped {skipped_files} so far...loaded {processed_files_count} out of {files_found} possible." )
-                
-                if file_is_same_as_in_solr(solr_docs2, filename=n.basename, timestamp_str=n.timestamp_str):
-                    skipped_files += 1
-                    if options.display_verbose:
-                        print (f"Skipped - No refresh needed for {n.basename}")
-                    continue
-                else:
-                    file_updated = True
-            
-            # get mod date/time, filesize, etc. for mysql database insert/update
-            processed_files_count += 1
-            if stop_after > 0:
-                if processed_files_count > stop_after:
-                    print (f"Halfway mark reached on file list ({stop_after})...file processing stopped per halfway option")
-                    break
-
-            fileXMLContents = fs.get_file_contents(n.filespec)
-            
-            # get file basename without build (which is in paren)
-            base = n.basename
-            artID = os.path.splitext(base)[0]
-            # watch out for comments in file name, like:
-            #   JICAP.018.0307A updated but no page breaks (bEXP_ARCH1).XML
-            #   so skip data after a space
-            m = re.match(r"([^ ]*).*\(.*\)", artID)
-            # Note: We could also get the artID from the XML, but since it's also important
-            # the file names are correct, we'll do it here.  Also, it "could" have been left out
-            # of the artinfo (attribute), whereas the filename is always there.
-            artID = m.group(1)
-            # all IDs to upper case.
-            artID = artID.upper()
-            msg = "Processing file #%s of %s: %s (%s bytes). Art-ID:%s" % (processed_files_count, files_found, base, n.filesize, artID)
-            logger.info(msg)
-            if options.display_verbose:
+    if not options.no_files:
+        print (f"Locating files for processing at {start_folder} with pattern {loaderConfig.file_match_pattern}. Started at ({time.ctime()}).")
+        if options.file_key is not None:  
+            # print (f"File Key Specified: {options.file_key}")
+            pat = fr"({options.file_key}.*){loaderConfig.file_match_pattern}"
+            filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1000)
+            if len(filenames) is None:
+                msg = f"File {pat} not found.  Exiting."
+                logger.warning(msg)
                 print (msg)
-    
-            # import into lxml
-            parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-            root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
-            pepxml = root
-    
-            # save common document (article) field values into artInfo instance for both databases
-            artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
-            artInfo.filedatetime = n.timestamp_str
-            artInfo.filename = base
-            artInfo.file_size = n.filesize
-            artInfo.file_updated = file_updated
-            # not a new journal, see if it's a new article.
-            if opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
-                # don't log to issue updates for journals that are new sources added during the annual update
-                if artInfo.src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
-                    art = f"<article id='{artInfo.art_id}'>{artInfo.art_citeas_xml}</article>"
-                    try:
-                        issue_updates[artInfo.issue_id_str].append(art)
-                    except Exception as e:
-                        issue_updates[artInfo.issue_id_str] = [art]
-
-            try:
-                artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
-                # set it to lowercase for ease of matching later
-                if artInfo.file_classification is not None:
-                    artInfo.file_classification = artInfo.file_classification.lower()
-            except Exception as e:
-                logger.warning("Could not determine file classification for %s (%s)" % (n.filespec, e))
-    
-            # walk through bib section and add to refs core database
-    
-            precommit_file_count += 1
-            if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
-                print(f"Committing info for {configLib.opasCoreConfig.COMMITLIMIT} documents/articles")
-
-            # input to the glossary
-            if 1: # options.glossary_core_update:
-                # load the glossary core if this is a glossary item
-                glossary_file_pattern=r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
-                if re.match(glossary_file_pattern, n.basename):
-                    opasSolrLoadSupport.process_article_for_glossary_core(pepxml, artInfo, solr_gloss2, fileXMLContents, verbose=options.display_verbose)
-                
-            # input to the full-text and authors cores
-            if not options.glossary_only: # options.fulltext_core_update:
-                # load the docs (pepwebdocs) core
-                opasSolrLoadSupport.process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents, include_paras=options.include_paras, verbose=options.display_verbose)
-                # load the authors (pepwebauthors) core.
-                opasSolrLoadSupport.process_info_for_author_core(pepxml, artInfo, solr_authors2, verbose=options.display_verbose)
-                # load the database
-                opasSolrLoadSupport.add_article_to_api_articles_table(ocd, artInfo, verbose=options.display_verbose)
-                
-                if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
-                    precommit_file_count = 0
-                    solr_docs2.commit()
-                    solr_authors2.commit()
-    
-            # input to the references core
-            if 1: # options.biblio_update:
-                if artInfo.ref_count > 0:
-                    bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-                    if options.display_verbose:
-                        print(("   ...Processing %s references for the references database." % (artInfo.ref_count)))
-
-                    #processedFilesCount += 1
-                    bib_total_reference_count = 0
-                    ocd.open_connection(caller_name="processBibliographies")
-                    for ref in bibReferences:
-                        bib_total_reference_count += 1
-                        bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
-                        opasSolrLoadSupport.add_reference_to_biblioxml_table(ocd, artInfo, bib_entry)
-
-                    try:
-                        ocd.db.commit()
-                    except mysql.connector.Error as e:
-                        print("SQL Database -- Biblio Commit failed!", e)
-                        
-                    ocd.close_connection(caller_name="processBibliographies")
-
-            # close the file, and do the next
-            if options.display_verbose:
-                print(("   ...Time: %s seconds." % (time.time() - fileTimeStart)))
-    
-        print (f"Load process complete ({time.ctime()}).")
-        if processed_files_count > 0:
-            try:
-                print ("Performing final commit.")
-                if not options.glossary_only: # options.fulltext_core_update:
-                    solr_docs2.commit()
-                    solr_authors2.commit()
-                    # fileTracker.commit()
-                if 1: # options.glossary_core_update:
-                    solr_gloss2.commit()
-            except Exception as e:
-                print(("Exception: ", e))
+                exit(0)
             else:
-                # Use date time as seed, hoping multiple instances don't get here at the same time
-                # but only if caller did not specify
-                if randomizer_seed is None:
-                    randomizer_seed = int(datetime.utcnow().timestamp())
-
+                options.forceRebuildAllFiles = True
+        elif options.file_only is not None:
+            fileinfo = FileInfo()
+            filespec = options.file_only
+            fileinfo.mapLocalFS(filespec)
+            filenames = [fileinfo]
+        else:
+            pat = fr"(.*?){loaderConfig.file_match_pattern}"
+            filenames = []
+        
+        if filenames != []:
+            total_files = len(filenames)
+            new_files = len(filenames)
+        else:
+            # get a list of all the XML files that are new
+            if options.forceRebuildAllFiles:
+                # get a complete list of filenames for start_folder tree
+                filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder)
+            else:
+                filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, revised_after_date=options.created_after)
+                
+        print((80*"-"))
+        files_found = len(filenames)
+        if options.forceRebuildAllFiles:
+            #maybe do this only during core resets?
+            #print ("Clearing database tables...")
+            #ocd.delete_all_article_data()
+            print(f"Ready to import records from {files_found} files at path {start_folder}")
+        else:
+            print(f"Ready to import {files_found} files *if modified* at path: {start_folder}")
+    
+        timeStart = time.time()
+        print (f"Processing started at ({time.ctime()}).")
+    
+        print((80*"-"))
+        precommit_file_count = 0
+        skipped_files = 0
+        stop_after = 0
+        cumulative_file_time_start = time.time()
+        issue_updates = {}
+        if files_found > 0:
+            if options.halfway:
+                stop_after = round(files_found / 2) + 5 # go a bit further
+                
+            if options.run_in_reverse:
+                filenames.reverse()
+            
+            # ----------------------------------------------------------------------
+            # Now walk through all the filenames selected
+            # ----------------------------------------------------------------------
+            print (f"Load process started ({time.ctime()}).  Examining files.")
+            
+            for n in filenames:
+                fileTimeStart = time.time()
+                file_updated = False
+                if not options.forceRebuildAllFiles:                    
+                    if not options.display_verbose and processed_files_count % 100 == 0 and processed_files_count != 0:
+                        print (f"Processed Files ...loaded {processed_files_count} out of {files_found} possible.")
+    
+                    if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0:
+                        print (f"Skipped {skipped_files} so far...loaded {processed_files_count} out of {files_found} possible." )
+                    
+                    if file_is_same_as_in_solr(solr_docs2, filename=n.basename, timestamp_str=n.timestamp_str):
+                        skipped_files += 1
+                        if options.display_verbose:
+                            print (f"Skipped - No refresh needed for {n.basename}")
+                        continue
+                    else:
+                        file_updated = True
+                
+                # get mod date/time, filesize, etc. for mysql database insert/update
+                processed_files_count += 1
+                if stop_after > 0:
+                    if processed_files_count > stop_after:
+                        print (f"Halfway mark reached on file list ({stop_after})...file processing stopped per halfway option")
+                        break
+    
+                fileXMLContents = fs.get_file_contents(n.filespec)
+                
+                # get file basename without build (which is in paren)
+                base = n.basename
+                artID = os.path.splitext(base)[0]
+                # watch out for comments in file name, like:
+                #   JICAP.018.0307A updated but no page breaks (bEXP_ARCH1).XML
+                #   so skip data after a space
+                m = re.match(r"([^ ]*).*\(.*\)", artID)
+                # Note: We could also get the artID from the XML, but since it's also important
+                # the file names are correct, we'll do it here.  Also, it "could" have been left out
+                # of the artinfo (attribute), whereas the filename is always there.
+                artID = m.group(1)
+                # all IDs to upper case.
+                artID = artID.upper()
+                msg = "Processing file #%s of %s: %s (%s bytes). Art-ID:%s" % (processed_files_count, files_found, base, n.filesize, artID)
+                logger.info(msg)
+                if options.display_verbose:
+                    print (msg)
+        
+                # import into lxml
+                parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
+                root = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+                pepxml = root
+        
+                # save common document (article) field values into artInfo instance for both databases
+                artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
+                artInfo.filedatetime = n.timestamp_str
+                artInfo.filename = base
+                artInfo.file_size = n.filesize
+                artInfo.file_updated = file_updated
+                # not a new journal, see if it's a new article.
+                force_tracking = True
+                if force_tracking or opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
+                    # don't log to issue updates for journals that are new sources added during the annual update
+                    if artInfo.src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
+                        art = f"<article id='{artInfo.art_id}'>{artInfo.art_citeas_xml}</article>"
+                        try:
+                            issue_updates[artInfo.issue_id_str].append(art)
+                        except Exception as e:
+                            issue_updates[artInfo.issue_id_str] = [art]
+    
+                try:
+                    artInfo.file_classification = re.search("(?P<class>current|archive|future|free|special|offsite)", str(n.filespec), re.IGNORECASE).group("class")
+                    # set it to lowercase for ease of matching later
+                    if artInfo.file_classification is not None:
+                        artInfo.file_classification = artInfo.file_classification.lower()
+                except Exception as e:
+                    logger.warning("Could not determine file classification for %s (%s)" % (n.filespec, e))
+        
+                # walk through bib section and add to refs core database
+        
+                precommit_file_count += 1
+                if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
+                    print(f"Committing info for {configLib.opasCoreConfig.COMMITLIMIT} documents/articles")
+    
+                # input to the glossary
+                if 1: # options.glossary_core_update:
+                    # load the glossary core if this is a glossary item
+                    glossary_file_pattern=r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
+                    if re.match(glossary_file_pattern, n.basename):
+                        opasSolrLoadSupport.process_article_for_glossary_core(pepxml, artInfo, solr_gloss2, fileXMLContents, verbose=options.display_verbose)
+                    
+                # input to the full-text and authors cores
+                if not options.glossary_only: # options.fulltext_core_update:
+                    # load the docs (pepwebdocs) core
+                    opasSolrLoadSupport.process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents, include_paras=options.include_paras, verbose=options.display_verbose)
+                    # load the authors (pepwebauthors) core.
+                    opasSolrLoadSupport.process_info_for_author_core(pepxml, artInfo, solr_authors2, verbose=options.display_verbose)
+                    # load the database
+                    opasSolrLoadSupport.add_article_to_api_articles_table(ocd, artInfo, verbose=options.display_verbose)
+                    
+                    if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
+                        precommit_file_count = 0
+                        solr_docs2.commit()
+                        solr_authors2.commit()
+        
+                # input to the references core
+                if 1: # options.biblio_update:
+                    if artInfo.ref_count > 0:
+                        bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
+                        if options.display_verbose:
+                            print(("   ...Processing %s references for the references database." % (artInfo.ref_count)))
+    
+                        #processedFilesCount += 1
+                        bib_total_reference_count = 0
+                        ocd.open_connection(caller_name="processBibliographies")
+                        for ref in bibReferences:
+                            bib_total_reference_count += 1
+                            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
+                            opasSolrLoadSupport.add_reference_to_biblioxml_table(ocd, artInfo, bib_entry)
+    
+                        try:
+                            ocd.db.commit()
+                        except mysql.connector.Error as e:
+                            print("SQL Database -- Biblio Commit failed!", e)
+                            
+                        ocd.close_connection(caller_name="processBibliographies")
+    
+                # close the file, and do the next
+                if options.display_verbose:
+                    print(("   ...Time: %s seconds." % (time.time() - fileTimeStart)))
+        
+            print (f"Load process complete ({time.ctime()}).")
+            if processed_files_count > 0:
+                try:
+                    print ("Performing final commit.")
+                    if not options.glossary_only: # options.fulltext_core_update:
+                        solr_docs2.commit()
+                        solr_authors2.commit()
+                        # fileTracker.commit()
+                    if 1: # options.glossary_core_update:
+                        solr_gloss2.commit()
+                except Exception as e:
+                    print(("Exception: ", e))
+                else:
+                    # Use date time as seed, hoping multiple instances don't get here at the same time
+                    # but only if caller did not specify
+                    if randomizer_seed is None:
+                        randomizer_seed = int(datetime.utcnow().timestamp())
+    
     # end of docs, authors, and/or references Adds
+    
+    if options.get_updated_for_daysback is not None: #  get all updated records
+        print (f"Listing updates for {options.get_updated_for_daysback} days.")
+        issue_updates = {}
+        try:
+            days_back = int(options.get_updated_for_daysback)
+        except:
+            logger.error("Incorrect specification of days back. Must be integer.")
+        else:
+            article_list = ocd.get_articles_newer_than(days_back=days_back)
+            for art_id in article_list:
+                # save common document (article) field values into artInfo instance for both databases
+                artInfoSolr = opasAPISupportLib.documents_get_abstracts(art_id)
+                try:
+                    art_citeas_xml = artInfoSolr.documents.responseSet[0].documentRefXML
+                    src_code = artInfoSolr.documents.responseSet[0].PEPCode
+                    art_year = artInfoSolr.documents.responseSet[0].year
+                    art_vol_str = artInfoSolr.documents.responseSet[0].vol
+                    art_issue = artInfoSolr.documents.responseSet[0].issue
+                    issue_id_str = f"<issue_id><src>{src_code}</src><yr>{art_year}</yr><vol>{art_vol_str}</vol><iss>{art_issue}</iss></issue_id>"
+                except:
+                    logger.error(f"Error: can't find article info for: {art_id} ")
+                else:   
+                    if src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
+                        art = f"<article id='{art_id}'>{art_citeas_xml}</article>"
+                        try:
+                            issue_updates[issue_id_str].append(art)
+                        except Exception as e:
+                            issue_updates[issue_id_str] = [art]
     
     # write updated file
     if issue_updates != {}:
@@ -552,6 +590,7 @@ def main():
                 for k, a in issue_updates.items():
                     fo.write(f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
                     for ref in a:
+                        print(f"{ref}")
                         try:
                             #ref = re.sub(ref, "([Q ])&([ A])", r"\1&amp;\2", flags=re.IGNORECASE)
                             fo.write(f"\t\t\t{ref}\n")
@@ -563,40 +602,48 @@ def main():
 
         except Exception as e:
             print(f"Issue Update File Write Error: ({e})")
-
+ 
     # ---------------------------------------------------------
     # Closing time
     # ---------------------------------------------------------
     timeEnd = time.time()
     #currentfile_info.close()
 
-    # for logging
-    if 1: # (options.biblio_update or options.fulltext_core_update) == True:
-        elapsed_seconds = timeEnd-cumulative_file_time_start # actual processing time going through files
+    if not options.no_files:
+        # for logging
+        if 1: # (options.biblio_update or options.fulltext_core_update) == True:
+            elapsed_seconds = timeEnd-cumulative_file_time_start # actual processing time going through files
+            elapsed_minutes = elapsed_seconds / 60
+            if bib_total_reference_count > 0:
+                msg = f"Finished! Imported {processed_files_count} documents and {bib_total_reference_count} references. Total file inspection/load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "
+                logger.info(msg)
+                print (msg)
+            else:
+                msg = f"Finished! Imported {processed_files_count} documents. Total file load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
+                logger.info(msg) 
+                print (msg)
+            if processed_files_count > 0:
+                msg = f"...Files loaded per Min: {processed_files_count/elapsed_minutes:.4f}"
+                logger.info(msg)
+                print (msg)
+                msg = f"...Files evaluated per Min (includes skipped files): {len(filenames)/elapsed_minutes:.4f}"
+                logger.info(msg)
+                print (msg)
+    
+        elapsed_seconds = timeEnd-timeStart # actual processing time going through files
         elapsed_minutes = elapsed_seconds / 60
-        if bib_total_reference_count > 0:
-            msg = f"Finished! Imported {processed_files_count} documents and {bib_total_reference_count} references. Total file inspection/load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "
-            logger.info(msg)
-            print (msg)
-        else:
-            msg = f"Finished! Imported {processed_files_count} documents. Total file load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
-            logger.info(msg) 
-            print (msg)
+        msg = f"Note: File load time is not total elapsed time. Total elapsed time is: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
+        logger.info(msg)
+        print (msg)
         if processed_files_count > 0:
-            msg = f"...Files loaded per Min: {processed_files_count/elapsed_minutes:.4f}"
+            msg = f"Files per elapsed min: {processed_files_count/elapsed_minutes:.4f}"
             logger.info(msg)
             print (msg)
-            msg = f"...Files evaluated per Min (includes skipped files): {len(filenames)/elapsed_minutes:.4f}"
-            logger.info(msg)
-            print (msg)
-
-    elapsed_seconds = timeEnd-timeStart # actual processing time going through files
-    elapsed_minutes = elapsed_seconds / 60
-    msg = f"Note: File load time is not total elapsed time. Total elapsed time is: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
-    logger.info(msg)
-    print (msg)
-    if processed_files_count > 0:
-        msg = f"Files per elapsed min: {processed_files_count/elapsed_minutes:.4f}"
+    else:  # no_files
+        print ("Processing finished.")
+        elapsed_seconds = timeEnd-timeStart # actual processing time going through files
+        elapsed_minutes = elapsed_seconds / 60
+        msg = f"Elapsed min: {elapsed_minutes:.4f}"
         logger.info(msg)
         print (msg)
 
@@ -650,6 +697,10 @@ if __name__ == "__main__":
                       help="UserID for the server")
     parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
                       help="Display status and operational timing info as load progresses.")
+    parser.add_option("--nofiles", action="store_true", dest="no_files", default=False,
+                      help="Don't add any files (use with whatsnewdays to only generate a whats new list).")
+    parser.add_option("--whatsnewdays", dest="get_updated_for_daysback", default=None,
+                      help="Get updated notification text for files updated in the last n days (where 1==today), rather than just the files added.")
 
     (options, args) = parser.parse_args()
     
