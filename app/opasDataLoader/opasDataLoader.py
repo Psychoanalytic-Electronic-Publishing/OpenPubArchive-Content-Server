@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0302" 
+__version__     = "2022.0309" 
 __status__      = "Production"
 
 programNameShort = "opasDataLoader"
@@ -39,9 +39,9 @@ print(
          --nocheck       Don't prompt whether to proceed after showing setting/option choices
          --reverse       Process in reverse
          --halfway       Stop after doing half of the files, so it can be run in both directions
-         --whatsnewdays  Use the days back value supplied to create the list of added articles, rather than the specific files loaded.
+         --whatsnewdays  Use the days back value supplied to write a new article log, rather than the specific files loaded.
                          Note that 1==today.
-         --nofiles       Can be used in conjunction with whatsnewdays to simply produce the whats new list rather than loading files.
+         --nofiles       Can be used in conjunction with whatsnewdays to simply produce the new article log rather than loading files.
 
         Example:
           Update all files from the root (default, pep-web-xml) down.  Starting two runs, one running the file list forward, the other backward.
@@ -54,6 +54,10 @@ print(
           Update all of PEPCurrent
 
              python opasDataLoader.py -a --sub _PEPCurrent
+             
+          Generate a new articles log file for 10 days back
+             
+             python opasDataLoader.py --nofiles --whatsnewdays=10
 
         Note:
           S3 is set up with root pep-web-xml (default).  The root must be the bucket name.
@@ -543,11 +547,11 @@ def main():
     
     # end of docs, authors, and/or references Adds
     
-    if options.get_updated_for_daysback is not None: #  get all updated records
-        print (f"Listing updates for {options.get_updated_for_daysback} days.")
+    if options.daysback is not None: #  get all updated records
+        print (f"Listing updates for {options.daysback} days.")
         issue_updates = {}
         try:
-            days_back = int(options.get_updated_for_daysback)
+            days_back = int(options.daysback)
         except:
             logger.error("Incorrect specification of days back. Must be integer.")
         else:
@@ -590,7 +594,7 @@ def main():
                 for k, a in issue_updates.items():
                     fo.write(f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
                     for ref in a:
-                        print(f"{ref}")
+                        # print(f"{ref}")
                         try:
                             #ref = re.sub(ref, "([Q ])&([ A])", r"\1&amp;\2", flags=re.IGNORECASE)
                             fo.write(f"\t\t\t{ref}\n")
@@ -670,7 +674,7 @@ if __name__ == "__main__":
     #parser.add_option("--logfile", dest="logfile", default=logFilename,
                       #help="Logfile name with full path where events should be logged")
     parser.add_option("--nocheck", action="store_true", dest="no_check", default=False,
-                      help="Don't check whether to proceed.")
+                      help="Don't prompt whether to proceed.")
     parser.add_option("--only", dest="file_only", default=None,
                       help="File spec for a single file to process.")
     parser.add_option("--includeparas", action="store_true", dest="include_paras", default=False,
@@ -699,8 +703,8 @@ if __name__ == "__main__":
                       help="Display status and operational timing info as load progresses.")
     parser.add_option("--nofiles", action="store_true", dest="no_files", default=False,
                       help="Don't add any files (use with whatsnewdays to only generate a whats new list).")
-    parser.add_option("--whatsnewdays", dest="get_updated_for_daysback", default=None,
-                      help="Get updated notification text for files updated in the last n days (where 1==today), rather than just the files added.")
+    parser.add_option("--whatsnewdays", dest="daysback", default=None,
+                      help="Generate a log of files added in the last n days (1==today), rather than for files added during this run.")
 
     (options, args) = parser.parse_args()
     
