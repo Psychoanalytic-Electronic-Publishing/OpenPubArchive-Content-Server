@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0309" 
+__version__     = "2022.0315" 
 __status__      = "Production"
 
 programNameShort = "opasDataLoader"
@@ -41,6 +41,7 @@ print(
          --halfway       Stop after doing half of the files, so it can be run in both directions
          --whatsnewdays  Use the days back value supplied to write a new article log, rather than the specific files loaded.
                          Note that 1==today.
+         --whatsnewfile  To specify the file in which to write the what's new list.
          --nofiles       Can be used in conjunction with whatsnewdays to simply produce the new article log rather than loading files.
 
         Example:
@@ -456,8 +457,7 @@ def main():
                 artInfo.file_size = n.filesize
                 artInfo.file_updated = file_updated
                 # not a new journal, see if it's a new article.
-                force_tracking = True
-                if force_tracking or opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
+                if opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
                     # don't log to issue updates for journals that are new sources added during the annual update
                     if artInfo.src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
                         art = f"<article id='{artInfo.art_id}'>{artInfo.art_citeas_xml}</article>"
@@ -582,30 +582,48 @@ def main():
         random.seed(randomizer_seed)
         try:
             # temp exception block just until localsecrets has been updated with DATA_UPDATE_LOG_DIR
-            try:
-                fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
-            except Exception as e:
-                fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
+            if options.whatsnewfile is None:
+                try:
+                    fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
+                except Exception as e:
+                    fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
+            else:
+                fname = options.whatsnewfile
                 
-            print(f"Issue updates.  Writing file {fname}")
+            msg = f"Issue updates.  Writing file {fname}"
+            print (msg)
+            logging.info(msg)
             with open(fname, 'w', encoding="utf8") as fo:
                 fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
                 fo.write('<issue_updates>\n')
+                count_records = 0
                 for k, a in issue_updates.items():
                     fo.write(f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
+                    count_records += 1
                     for ref in a:
-                        # print(f"{ref}")
                         try:
                             #ref = re.sub(ref, "([Q ])&([ A])", r"\1&amp;\2", flags=re.IGNORECASE)
                             fo.write(f"\t\t\t{ref}\n")
                         except Exception as e:
-                            print(f"Issue Update Article Write Error: ({e})")
+                            logging.error(f"Issue Update Article Write Error: ({e})")
                             
                     fo.write("\t\t</articles>\n\t</issue>")
                 fo.write('\n</issue_updates>')
 
+            if count_records > 0:
+                print (f"{count_records} issue updates written to whatsnew log file.")
+
         except Exception as e:
-            print(f"Issue Update File Write Error: ({e})")
+            logging.error(f"Issue Update File Write Error: ({e})")
+    
+    else: # if issue_updates != {}
+        if options.daysback is not None:
+            msg = f"Note: There was nothing in the whats new request to output for days back == {options.daysback}."
+            logging.warning(msg)
+        else:
+            msg = f"Note: There was nothing new in the batch output whatsnew."
+            logging.warning(msg)
+            
  
     # ---------------------------------------------------------
     # Closing time
@@ -705,6 +723,8 @@ if __name__ == "__main__":
                       help="Don't add any files (use with whatsnewdays to only generate a whats new list).")
     parser.add_option("--whatsnewdays", dest="daysback", default=None,
                       help="Generate a log of files added in the last n days (1==today), rather than for files added during this run.")
+    parser.add_option("--whatsnewfile", dest="whatsnewfile", default=None,
+                      help="File name to force whatsnew being written to that file and path rather than a generated name.")
 
     (options, args) = parser.parse_args()
     

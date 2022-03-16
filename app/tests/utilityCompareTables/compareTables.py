@@ -185,7 +185,7 @@ def compare_tables():
     db_tables = [{"name": "api_productbase", "key": "basecode"},
                  {"name": "vw_api_productbase_instance_counts", "key": "basecode"},
                  {"name": "api_endpoints", "key": "api_endpoint_id"},
-                 {"name": "api_messages", "key": "msg_num_code, msg_language"},
+                 {"name": "vw_api_messages", "key": "msg_num_code, msg_language"},
                  {"name": "api_client_apps", "key": "api_client_id"},
     ]
 

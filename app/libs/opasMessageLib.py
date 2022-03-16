@@ -35,7 +35,9 @@ def load_message_table():
             except Exception as e:
                 print (f"Error: {e}")
                 ret_val = None
-                
+    else:
+        logger.error("Can't load message table.  ocd.db is None.")
+        
     ocd.close_connection (caller_name=fname)
 
     return ret_val
@@ -45,11 +47,11 @@ class messageDB(object):
         # load message database
         message_table = load_message_table()
         self.message_dict = nested_dict(2, dict)
-        
-        for n in message_table:
-            msg_code = n["msg_num_code"]
-            msg_lang = n["msg_language"]
-            self.message_dict[msg_code][msg_lang] = n
+        if message_table is not None:
+            for n in message_table:
+                msg_code = n["msg_num_code"]
+                msg_lang = n["msg_language"]
+                self.message_dict[msg_code][msg_lang] = n
 
     def __del__(self):
         pass

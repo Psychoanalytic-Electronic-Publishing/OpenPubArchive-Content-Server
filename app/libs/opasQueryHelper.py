@@ -2036,6 +2036,9 @@ def get_base_article_info_from_search_result(result, documentListItem: models.Do
             if documentListItem.documentID is None and parent_tag is None:
                 logger.error(f"Database error, incomplete record, can't find ID: {result}")
             #else it's a child record
+            # NOTE: There were some of these in my local Solr
+            #    to find these in Solr 
+            #    q = -art_id:["" TO *] AND -parent_tag:["" TO *]
             
             documentListItem.PEPCode = result.get("art_sourcecode", None)
             # Note: This cautious (if not None) load method prevents data overwriting when not necessary
