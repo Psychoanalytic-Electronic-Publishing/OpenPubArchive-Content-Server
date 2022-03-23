@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0322/v2.1.137"   # semver versioning after date.
+__version__     = "2022.0323/v2.1.138"   # semver versioning after date.
 __status__      = "Release Candidate 1"  
 
 """
@@ -5606,7 +5606,8 @@ async def documents_image_fetch(response: Response,
             expert_pick_image[0] = today
             expert_pick_image[1] = filename
         else:
-            status_message = f"Expert Picks Image Count: {len(filenames)}"
+            status_message = f"Info: Expert Picks Image Count: {len(filenames)}"
+            print (status_message)
             logger.debug(status_message)
             filename = random.choice(filenames)
             filename = filename.basename
@@ -5686,6 +5687,8 @@ async def documents_image_fetch(response: Response,
                     filename = expert_pick_image[1]
             except Exception as e:
                 logger.error(f"Error selecting a random expert pick image.  Error: {e}")
+                # load the default image, so user doesn't see get a bad request.  But we'll need to watch for the error above.
+                filename = opasConfig.EXPERT_PICKS_DEFAULT_IMAGE
             
         if filename is None:
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
