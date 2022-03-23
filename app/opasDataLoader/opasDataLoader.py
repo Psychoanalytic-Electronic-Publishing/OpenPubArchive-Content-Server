@@ -84,7 +84,6 @@ import os.path
 import pathlib
 from opasFileSupport import FileInfo
 
-import time
 import datetime as dtime
 from datetime import datetime
 import logging
@@ -298,12 +297,20 @@ def main():
     # Reset core's data if requested (mainly for early development)
     if options.resetCoreData:
         if not options.glossary_only: # options.fulltext_core_update:
-            msg = "*** Deleting all data from the docs and author cores and database tables ***"
+            if not options.no_check:
+                cont = input ("The solr cores and the database article and artstat tables will be cleared.  Do you want to continue (y/n)?")
+                if cont.lower() == "n":
+                    print ("User requested exit.  No data changed.")
+                    sys.exit(0)
+            else:
+                print ("Options --no-check and --resetcore both specified.  Warning: The solr cores and the database article and artstat tables will be cleared.  Pausing 60 seconds to allow you to cancel (ctrl-c) the run.")
+                time.sleep(60)
+                print ("Second Warning: Continuing the run (and core and database reset) in 20 seconds...")
+                time.sleep(20)               
+
+            msg = "*** Deleting all data from the docs and author cores and articles and biblio database tables ***"
             logger.warning(msg)
             print (msg)
-            msg2 = "Biblio and Articles table contents will be reset"
-            logger.info(msg2)
-            print (msg2)
             ocd.delete_all_article_data()
             solr_docs2.delete(q='*:*')
             solr_docs2.commit()
@@ -318,8 +325,7 @@ def main():
             solr_gloss2.delete(q="*:*")
             solr_gloss2.commit()
     else:
-        # check for missing files and delete them from the core, since we didn't empty the core above
-        pass
+        pass   # XXX Later - check for missing files and delete them from the core, since we didn't empty the core above
 
     # Go through a set of XML files
     bib_total_reference_count = 0 # zero this here, it's checked at the end whether references are processed or not
@@ -456,6 +462,7 @@ def main():
                 artInfo.filename = base
                 artInfo.file_size = n.filesize
                 artInfo.file_updated = file_updated
+                artInfo.file_create_time = n.create_time
                 # not a new journal, see if it's a new article.
                 if opasSolrLoadSupport.add_to_tracker_table(ocd, artInfo.art_id): # if true, added successfully, so new!
                     # don't log to issue updates for journals that are new sources added during the annual update
@@ -495,6 +502,7 @@ def main():
                     opasSolrLoadSupport.process_info_for_author_core(pepxml, artInfo, solr_authors2, verbose=options.display_verbose)
                     # load the database
                     opasSolrLoadSupport.add_article_to_api_articles_table(ocd, artInfo, verbose=options.display_verbose)
+                    opasSolrLoadSupport.add_to_artstat_table(ocd, artInfo, verbose=options.display_verbose)
                     
                     if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
                         precommit_file_count = 0
@@ -546,6 +554,8 @@ def main():
                         randomizer_seed = int(datetime.utcnow().timestamp())
     
     # end of docs, authors, and/or references Adds
+    # fix statistics by removing any not in the api_articles table
+    opasSolrLoadSupport.garbage_collect_stat(ocd)
     
     if options.daysback is not None: #  get all updated records
         print (f"Listing updates for {options.daysback} days.")

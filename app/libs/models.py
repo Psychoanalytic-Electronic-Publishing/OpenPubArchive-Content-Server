@@ -24,15 +24,15 @@ __status__      = "Development"
 import sys
 sys.path.append('../libs')
 
-import re
-import os.path
+# import re
+# import os.path
 
 import time
 import datetime
 from datetime import datetime
 from typing import List, Generic, TypeVar, Optional
 import opasConfig
-from pysolr import Results
+# from pysolr import Results
 
 from enum import Enum
 
@@ -43,7 +43,7 @@ class ExtendedEnum(Enum):
     
 from pydantic import BaseModel, Field # removed Field, causing an error on AWS
 # from pydantic.types import EmailStr
-from modelsOpasCentralPydantic import User
+# from modelsOpasCentralPydantic import User
 #from opasCentralDBLib import opasCentralDB
 
 #-------------------------------------------------------
@@ -80,6 +80,7 @@ class ReportTypeEnum(str, Enum):
     userSearches = "User-Searches"
     documentViews = "Document-View-Stat"
     documentViewLog = "Document-View-Log"
+    characterCounts = "Character Count Report"
     #opasLogs = "Opas-Error-Logs"
     
 class TermTypeIDEnum(str, ExtendedEnum):

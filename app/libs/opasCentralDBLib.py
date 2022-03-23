@@ -92,7 +92,7 @@ import models
 
 # All opasCentral Database Models here
 import modelsOpasCentralPydantic
-from modelsOpasCentralPydantic import User, UserInDB
+# from modelsOpasCentralPydantic import User, UserInDB
 #from models import SessionInfo
 
 DEFAULTSESSIONLENGTH = 1800 # seconds (timeout)
@@ -152,6 +152,22 @@ API_DATABASE_OPENURL = 52	                 # /Database/OpenURL/
 API_DATABASE_WHOCITEDTHIS = 53               # /Database/WhoCitedThis/
 API_DATABASE_MORELIKETHIS = 54               # /Database/MoreLikeThis/
 API_DATABASE_RELATEDTOTHIS = 55              # /Database/RelatedDocuments/
+
+def date_to_db_date(std_date):
+    ret_val = None
+    if type(std_date) == type("str"):
+        try:
+            ret_val = datetime.strftime(datetime.strptime(std_date, opasConfig.TIME_FORMAT_STR), opasConfig.TIME_FORMAT_STR_DB)
+        except Exception as e:
+            logger.error(e)
+    else:
+        try: # see if it's a regular date object
+            ret_val = datetime.strftime(std_date, opasConfig.TIME_FORMAT_STR_DB)
+        except Exception as e:
+            logger.error(e)
+            
+    return ret_val
+    
 
 #def verifyAccessToken(session_id, username, access_token):
     #return pwd_context.verify(session_id+username, access_token)

@@ -186,7 +186,7 @@ def compare_tables():
                  {"name": "vw_api_productbase_instance_counts", "key": "basecode"},
                  {"name": "api_endpoints", "key": "api_endpoint_id"},
                  {"name": "vw_api_messages", "key": "msg_num_code, msg_language"},
-                 {"name": "api_client_apps", "key": "api_client_id"},
+                 {"name": "api_client_apps", "key": "api_client_id"}
     ]
 
     #  open databases
@@ -219,34 +219,72 @@ def compare_tables():
             else:
                 row_count = stage_row_count
                 print (f"\tRow counts: {(dev_row_count, awsdev_row_count, stage_row_count, prod_row_count)}")
-                
+            
+            stage_col_count = len(stage_tbl[0])
+            dev_col_count = len(dev_tbl[0])
+            awsdev_col_count = len(awsdev_tbl[0])
+            prod_col_count = len(prod_tbl[0])
+            
             diffs = 0
-            for n in range(row_count):
-                if dev_tbl[n] != stage_tbl[n]:
-                    print (f"\tLocal Dev vs Stage: {db_table['name']} row {n} differs!")
-                    print (f"\t\tDev: {dev_tbl[n]}")
-                    print (f"\t\tStage: {stage_tbl[n]}")
-                    diffs += 1
-                if stage_tbl[n] != awsdev_tbl[n]:
-                    print (f"\tStage vs AWS Dev: {db_table['name']} row {n} differs!")
-                    print (f"\t\tStage: {stage_tbl[n]}")
-                    print (f"\t\tAWSDev: {awsdev_tbl[n]}")
-                    diffs += 1
-                if stage_tbl[n] != prod_tbl[n]:
-                    print (f"\tStage vs Prod: {db_table['name']} row {n} differs!")
-                    print (f"\t\tStage: {stage_tbl[n]}")
-                    print (f"\t\tProd: {prod_tbl[n]}")
-                    diffs += 1
-                if diffs > 0:
-                    break
+            coldiffs = 0
+            if stage_col_count != dev_col_count:
+                print (f"Stage column count {stage_col_count} different than Dev column count {dev_col_count}.")
+                coldiffs += 1
+            if stage_col_count != awsdev_col_count:
+                print (f"Stage column count {stage_col_count} different than AWSDev column count {awsdev_col_count}.")
+                coldiffs += 1
+            if stage_col_count != prod_col_count:
+                print (f"Stage column count {stage_col_count} different than Prod column count {prod_col_count}.")
+                coldiffs += 1
 
-            if diffs == 0:
+            if coldiffs > 0:
+                print ("Column count differences.  Stopping compare.")
+            else:
+                for n in range(row_count):
+                    if dev_tbl[n] != stage_tbl[n]:
+                        print (f"\tLocal Dev vs Stage: {db_table['name']} row {n} differs!")
+                        for item in range(len(stage_tbl[n])):
+                            if dev_tbl[n][item] !=  stage_tbl[n][item]:
+                                print (f"\t\tCol {item} Dev: {dev_tbl[n][item]}")
+                                print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
+                                print (f"\t\t{40*'-'}")
+                        #print (f"\t\tDev: {dev_tbl[n]}")
+                        #print (f"\t\tStage: {stage_tbl[n]}")
+                        diffs += 1
+                    if stage_tbl[n] != awsdev_tbl[n]:
+                        print (f"\tStage vs AWS Dev: {db_table['name']} row {n} differs!")
+                        for item in range(len(stage_tbl[n])):
+                            if awsdev_tbl[n][item] !=  stage_tbl[n][item]:
+                                print (f"\t\tCol {item} Dev: {awsdev_tbl[n][item]}")
+                                print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
+                                print (f"\t\t{40*'-'}")
+                        #print (f"\t\tStage: {stage_tbl[n]}")
+                        #print (f"\t\tAWSDev: {awsdev_tbl[n]}")
+                        diffs += 1
+                    if stage_tbl[n] != prod_tbl[n]:
+                        print (f"\tStage vs Prod: {db_table['name']} row {n} differs!")
+                        for item in range(len(stage_tbl[n])):
+                            if prod_tbl[n][item] != stage_tbl[n][item]:
+                                print (f"\t\tCol {item} Dev: {prod_tbl[n][item]}")
+                                print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
+                                print (f"\t\t{40*'-'}")
+                        #print (f"\t\tStage: {stage_tbl[n]}")
+                        #print (f"\t\tProd: {prod_tbl[n]}")
+                        diffs += 1
+                    if diffs > 10:
+                        print (f"{diffs} row differences found; compare was discontinued.")
+                        break
+
+            if diffs == 0 and coldiffs == 0:
                 print(f"\t{db_table['name']} Tables are the same.")
             else:
                 print(f"\t{db_table['name']} Tables Differ.  Row diff Count: {diffs}")
     
             total_diffs += diffs
             
+        except IndexError:
+            pass # column count difference
+        
         except Exception as e:
             print (f"Error: {e}")
 

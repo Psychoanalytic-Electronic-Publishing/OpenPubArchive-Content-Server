@@ -35,6 +35,7 @@ import mysql.connector
 import localsecrets
 import opasConfig
 from configLib.opasIJPConfig import IJPOPENISSUES
+import opasCentralDBLib
 
 import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
@@ -382,6 +383,13 @@ class ArticleInfo(object):
             
         self.art_kwds = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/artkwds/node()", None)
         
+        # art_pgrx_count
+        try:
+            self.art_pgrx_count = int(pepxml.xpath("count(//pgx)")) # 20220320
+        except Exception as e:
+            self.art_pgrx_count = 0
+
+
         # ************* new counts! 20210413 *******************************************
         try:
             if self.art_kwds is not None:
@@ -470,11 +478,15 @@ class ArticleInfo(object):
         # art_chars_count
         try:
             self.art_chars_count = int(pepxml.xpath("string-length(normalize-space(//node()))"))
+            self.art_chars_meta_count = int(pepxml.xpath("string-length(normalize-space(//meta))"))
+            self.art_chars_count -= self.art_chars_meta_count 
         except Exception as e:
             self.art_chars_count  = 0
 
         try:
             self.art_chars_no_spaces_count = int(pepxml.xpath("string-length(translate(normalize-space(//node()),' ',''))"))
+            self.art_chars_no_spaces_meta_count = int(pepxml.xpath("string-length(translate(normalize-space(//meta),' ',''))"))
+            self.art_chars_no_spaces_count -= self.art_chars_no_spaces_meta_count
         except Exception as e:
             self.art_chars_no_spaces_count  = 0
 
@@ -1354,7 +1366,7 @@ def add_reference_to_biblioxml_table(ocd, artInfo, bib_entry, verbose=None):
         
     return ret_val  # return True for success
 #------------------------------------------------------------------------------------------------------
-def add_article_to_api_articles_table(ocd, art_info, verbose=None):
+def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
     """
     Adds the article data from a single document to the api_articles table in mysql database opascentral.
     
@@ -1439,34 +1451,34 @@ def add_article_to_api_articles_table(ocd, art_info, verbose=None):
                             """
 
     query_params = {
-        "art_id": art_info.art_id,
-        "art_doi": art_info.art_doi,
-        "art_type": art_info.art_type,
-        "art_lang":  art_info.art_lang,
-        "art_kwds":  art_info.art_kwds,
-        "art_auth_mast":  art_info.art_auth_mast,
-        "art_auth_citation": art_info.art_auth_citation, 
-        "art_title":  art_info.art_title,
-        "src_title_abbr":  art_info.src_title_abbr,  
-        "src_code":  art_info.src_code,  
-        "art_year":  art_info.art_year,
-        "art_vol_int":  art_info.art_vol_int,
-        "art_vol_str":  art_info.art_vol_str,
-        "art_vol_suffix":  art_info.art_vol_suffix,
-        "art_issue":  art_info.art_issue,
-        "art_pgrg":  art_info.art_pgrg,
-        "art_pgstart":  art_info.art_pgstart,
-        "art_pgend":  art_info.art_pgend,
-        "main_toc_id":  art_info.main_toc_id,
-        "start_sectname":  art_info.start_sectname,
-        "bk_info_xml":  art_info.bk_info_xml,
-        "bk_title":  art_info.bk_title,
-        "bk_publisher":  art_info.bk_publisher,
-        "art_citeas_xml":  art_info.art_citeas_xml,
-        "art_citeas_text":  art_info.art_citeas_text,
-        "ref_count":  art_info.ref_count,
-        "filename":  art_info.filename,
-        "filedatetime": art_info.filedatetime
+        "art_id": artInfo.art_id,
+        "art_doi": artInfo.art_doi,
+        "art_type": artInfo.art_type,
+        "art_lang":  artInfo.art_lang,
+        "art_kwds":  artInfo.art_kwds,
+        "art_auth_mast":  artInfo.art_auth_mast,
+        "art_auth_citation": artInfo.art_auth_citation, 
+        "art_title":  artInfo.art_title,
+        "src_title_abbr":  artInfo.src_title_abbr,  
+        "src_code":  artInfo.src_code,  
+        "art_year":  artInfo.art_year,
+        "art_vol_int":  artInfo.art_vol_int,
+        "art_vol_str":  artInfo.art_vol_str,
+        "art_vol_suffix":  artInfo.art_vol_suffix,
+        "art_issue":  artInfo.art_issue,
+        "art_pgrg":  artInfo.art_pgrg,
+        "art_pgstart":  artInfo.art_pgstart,
+        "art_pgend":  artInfo.art_pgend,
+        "main_toc_id":  artInfo.main_toc_id,
+        "start_sectname":  artInfo.start_sectname,
+        "bk_info_xml":  artInfo.bk_info_xml,
+        "bk_title":  artInfo.bk_title,
+        "bk_publisher":  artInfo.bk_publisher,
+        "art_citeas_xml":  artInfo.art_citeas_xml,
+        "art_citeas_text":  artInfo.art_citeas_text,
+        "ref_count":  artInfo.ref_count,
+        "filename":  artInfo.filename,
+        "filedatetime": artInfo.filedatetime
     }
 
     # string entries above must match an attr of the art_info instance.
@@ -1537,6 +1549,144 @@ def add_to_tracker_table(ocd, art_id, verbose=None):
         ocd.close_connection(caller_name=caller_name)
     except mysql.connector.Error as e:
         errStr = f"SQLDatabaseError: Commit failed! {e}"
+        logger.error(errStr)
+        if opasConfig.LOCAL_TRACE: print (errStr)
+        ret_val = False
+    
+    return ret_val  # return True for success
+
+#--------------------------------------------------------------------------------
+def garbage_collect_stat(ocd):
+    """
+    Clean out any records that aren't in articles.
+
+    >>> PEPStat = PEPStats()
+    >>> PEPStat.garbageCollectStats()
+    True
+    """
+    ret_val = None
+    procname = "garbage_collect_stat"
+    sqlActionQry = "delete from artstat where artstat.articleID not in (select art_id from api_articles)"
+    try:
+        ocd.open_connection(caller_name=procname)
+        ret_val = ocd.do_action_query(sqlActionQry, queryparams=None)
+        ocd.close_connection(caller_name=procname)
+    except Exception as e:
+        logger.error(e)
+        ret_val = False
+    else:
+        print ("cleaned up artstat: removed article statistics for any article ids not in article table.")
+        
+    return ret_val
+
+#--------------------------------------------------------------------------------
+def add_to_artstat_table(ocd, artInfo, verbose=None):
+    """
+    update the corresponding database record
+    """
+    ret_val = False
+    procname = "AddToArtStatDB"
+    msg = f"   ...Processing statistics for artStat table."
+    logger.info(msg)
+    if verbose:
+        print (msg)
+    
+    ocd.open_connection(caller_name=procname)
+    
+    if artInfo == None:
+        print ("Error!")
+    else:
+        selInsert = r"""REPLACE INTO artstat
+                            (
+                                    articleID,
+                                    Citations,
+                                    `References`,
+                                    Reflinks,
+                                    PgxJumps,
+                                    Figures,
+                                    Poems,
+                                    Tables,
+                                    Pages,
+                                    Footnotes,
+                                    Quotes,
+                                    Dreams,
+                                    Dialogs,
+                                    Paragraphs,
+                                    Words,
+                                    Chars,
+                                    NonspaceChars,
+                                    modTime,
+                                    createTime,
+                                    pubyear
+                            )
+                        values
+                           (
+                                    %(art_id)s,
+                                    %(art_citations_count)s,
+                                    %(ref_count)s, 
+                                    %(bib_rx)s,   
+                                    %(art_pgrx_count)s,  
+                                    %(figcount)s,
+                                    %(art_poems_count)s,
+                                    %(art_tblcount)s,
+                                    %(art_pgcount)s,
+                                    %(art_ftns_count)s,
+                                    %(art_quotes_count)s,
+                                    %(art_dreams_count)s,
+                                    %(art_dialogs_count)s,
+                                    %(art_paras_count)s,
+                                    %(art_words_count)s,
+                                    %(art_chars_count)s,
+                                    %(art_chars_no_spaces_count)s,
+                                    %(modtime)s,
+                                    %(createtime)s,
+                                    %(pubyear)s
+                            )
+                            """
+
+    query_params = {
+                       "art_id":artInfo.art_id,
+                       "art_citations_count":artInfo.art_citations_count, 
+                       "ref_count":artInfo.ref_count, 
+                       "bib_rx": len(artInfo.bib_rx),                     # reflinks
+                       "art_pgrx_count":artInfo.art_pgrx_count,     # pgxjumps
+                       "figcount":artInfo.art_figcount,
+                       "art_poems_count":artInfo.art_poems_count,
+                       "art_tblcount":artInfo.art_tblcount,
+                       "art_pgcount":artInfo.art_pgcount,
+                       "art_ftns_count":artInfo.art_ftns_count,
+                       "art_quotes_count":artInfo.art_quotes_count,
+                       "art_dreams_count":artInfo.art_dreams_count,
+                       "art_dialogs_count":artInfo.art_dialogs_count,
+                       "art_paras_count":artInfo.art_paras_count,
+                       "art_words_count":artInfo.art_words_count,
+                       "art_chars_count":artInfo.art_chars_count,
+                       "art_chars_no_spaces_count":artInfo.art_chars_no_spaces_count,
+                       "modtime":opasCentralDBLib.date_to_db_date(artInfo.filedatetime),
+                       "createtime":opasCentralDBLib.date_to_db_date(artInfo.file_create_time),
+                       "pubyear":artInfo.art_year,
+                    }
+    
+    # string entries above must match an attr of the art_info instance.
+    #query_param_dict = art_info.__dict__.copy()
+    # the element objects in the author_xml_list cause an error in the action query 
+    # even though that dict entry is not used.  So removed in a copy.
+    #query_param_dict["author_xml_list"] = None
+        
+    try:
+        res = ocd.do_action_query(querytxt=selInsert, queryparams=query_params)
+    except Exception as e:
+        errStr = f"DBError: insert error {e}"
+        logger.error(errStr)
+        if opasConfig.LOCAL_TRACE: print (errStr)
+    else:
+        ret_val = True
+        
+    try:
+        ocd.db.commit()
+        ocd.close_connection(caller_name=procname)
+    except mysql.connector.Error as e:
+        errStr = f"DBError: Commit failed! {e}"
         logger.error(errStr)
         if opasConfig.LOCAL_TRACE: print (errStr)
         ret_val = False

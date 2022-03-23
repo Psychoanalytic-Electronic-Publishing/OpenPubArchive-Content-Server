@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0215/v2.1.136"   # semver versioning after date.
+__version__     = "2022.0322/v2.1.137"   # semver versioning after date.
 __status__      = "Release Candidate 1"  
 
 """
@@ -798,6 +798,19 @@ async def admin_reports(response: Response,
         header = ["document id",
                   "view type",
                   "view count"]
+    elif report == models.ReportTypeEnum.characterCounts:
+        report_view = "vw_reports_charcounts"
+        orderby_clause = f"ORDER BY jrnlgrpname {sortorder}"
+        header = ["jrnl grp",
+                  "jrnl code",
+                  "grp inclusion",
+                  "grp start year",
+                  "jrnl start year",
+                  "year count",
+                  "char count",
+                  "no space char count", 
+                  "up to year"
+                  ]
     else:
         report_view = None
 

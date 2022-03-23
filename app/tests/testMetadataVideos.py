@@ -53,7 +53,7 @@ class TestMetadataVideos(unittest.TestCase):
         r = response.json()
         print(r['sourceInfo']['responseInfo']['fullCount'])
         # give it a range, so we don't have to adjust all the time
-        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.VIDEOCOUNT and r['sourceInfo']['responseInfo']['fullCount'] <= unitTestConfig.VIDEOCOUNT + 15)
+        assert(r['sourceInfo']['responseInfo']['fullCount'] >= unitTestConfig.VIDEOCOUNT and r['sourceInfo']['responseInfo']['fullCount'] <= unitTestConfig.VIDEOCOUNT + 35)
 
         full_URL = base_plus_endpoint_encoded('/v2/Metadata/Videos/?streams=True')
         response = requests.get(full_URL, headers=headers)

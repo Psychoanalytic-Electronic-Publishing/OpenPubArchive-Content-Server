@@ -61,6 +61,7 @@ class FileInfo(object):
         self.filesize = fileinfo["Size"]
         self.filetype = fileinfo["type"]
         self.build_date = time.time() # current time
+        self.create_time = datetime.datetime.fromtimestamp(os.path.getctime(self.filespec)).strftime(opasConfig.TIME_FORMAT_STR)
         # modified date
         self.timestamp_str = datetime.datetime.strftime(fileinfo["LastModified"], opasConfig.TIME_FORMAT_STR)
         self.timestamp = datetime.datetime.strptime(self.timestamp_str, opasConfig.TIME_FORMAT_STR)
@@ -75,6 +76,7 @@ class FileInfo(object):
         self.filesize = self.fileinfo["Size"] = os.path.getsize(filespec)
         self.filetype = self.fileinfo["type"] = "xml" # fileinfo["type"]
         self.build_date = self.fileinfo["build_date"] = time.time() # current time
+        self.create_time = datetime.datetime.fromtimestamp(os.path.getctime(self.filespec)).strftime(opasConfig.TIME_FORMAT_STR)
         # modified date
         mod_date = self.fileinfo["fileSize"] = os.path.getmtime(filespec)
         self.timestamp_str = self.fileinfo["LastModified"] = datetime.datetime.utcfromtimestamp(mod_date).strftime(opasConfig.TIME_FORMAT_STR)
