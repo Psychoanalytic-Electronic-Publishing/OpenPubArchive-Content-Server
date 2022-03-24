@@ -314,12 +314,12 @@ def pgrg_splitter(pgrg_str: str) -> tuple:
         try:
             pgStart = pgParts[0]
         except IndexError as e:
-            logging.debug(f"pgrg_splitter: index error: {e}")
+            logging.debug(f"pgrg_splitter (arg={pgrg_str}): pgStart index error: {e} PGParts: {pgParts}")
             pgStart = None
         try:
             pgEnd = pgParts[1]
         except IndexError as e:
-            logging.debug(f"pgrg_splitter: index error: {e}")
+            logging.debug(f"pgrg_splitter (arg={pgrg_str}): pgEnd index error: {e} PGParts: {pgParts}")
             pgEnd = None
 
     retVal = (pgStart, pgEnd)    

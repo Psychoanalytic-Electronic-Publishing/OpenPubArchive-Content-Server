@@ -687,16 +687,16 @@ if __name__ == "__main__":
     options = None
     parser = OptionParser(usage="%prog [options] - PEP Solr Data Loader", version=f"%prog ver. {__version__}")
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
-                      help="Option to force all files to be updated on the specified cores.")
+                      help="Option to force all files to be loaded to the specified cores.")
     # redundant add option to use so compatible options to the PEPXML code for manual use
     parser.add_option("--rebuild", action="store_true", dest="forceRebuildAllFiles", default=False,
-                      help="Option to force all files to be updated on the specified cores.")
+                      help="Option to force one or more included files to be reloaded to the specified cores whether changed or not.")
     parser.add_option("--after", dest="created_after", default=None,
                       help="Load files created or modifed after this datetime (use YYYY-MM-DD format). (May not work on S3)")
     parser.add_option("-d", "--dataroot", dest="rootFolder", default=localsecrets.XML_ORIGINALS_PATH,
                       help="Bucket (Required S3) or Root folder path where input data is located")
     parser.add_option("--key", dest="file_key", default=None,
-                      help="Key for a single file to process, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")
+                      help="Key for a single file to load, e.g., AIM.076.0269A.  Use in conjunction with --sub for faster processing of single files on AWS")
     parser.add_option("-l", "--loglevel", dest="logLevel", default=logging.ERROR,
                       help="Level at which events should be logged (DEBUG, INFO, WARNING, ERROR")
     #parser.add_option("--logfile", dest="logfile", default=logFilename,
@@ -714,10 +714,10 @@ if __name__ == "__main__":
     parser.add_option("--pw", dest="httpPassword", default=None,
                       help="Password for the server")
     parser.add_option("-r", "--reverse", dest="run_in_reverse", action="store_true", default=False,
-                      help="Whether to run the files selected in reverse")
+                      help="Whether to run the selected files in reverse order")
     parser.add_option("--resetcore",
                       action="store_true", dest="resetCoreData", default=False,
-                      help="reset the data in the selected cores (author core is reset with the fulltext core).")
+                      help="clear (delete) any data in the selected cores (author core is reset with the fulltext core).")
     parser.add_option("--seed",
                       dest="randomizer_seed", default=None,
                       help="Seed so data update files don't collide if they start writing at exactly the same time.")
@@ -730,11 +730,11 @@ if __name__ == "__main__":
     parser.add_option("--verbose", action="store_true", dest="display_verbose", default=False,
                       help="Display status and operational timing info as load progresses.")
     parser.add_option("--nofiles", action="store_true", dest="no_files", default=False,
-                      help="Don't add any files (use with whatsnewdays to only generate a whats new list).")
+                      help="Don't load any files (use with whatsnewdays to only generate a whats new list).")
     parser.add_option("--whatsnewdays", dest="daysback", default=None,
                       help="Generate a log of files added in the last n days (1==today), rather than for files added during this run.")
     parser.add_option("--whatsnewfile", dest="whatsnewfile", default=None,
-                      help="File name to force whatsnew being written to that file and path rather than a generated name.")
+                      help="File name to force the file and path rather than a generated name for the log of files added in the last n days.")
 
     (options, args) = parser.parse_args()
     

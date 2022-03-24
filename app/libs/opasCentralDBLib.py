@@ -279,7 +279,7 @@ class opasCentralDB(object):
             opasCentralDB.connection_count += 1
             self.db = mysql.connector.connect(user=self.user, password=self.password, database=self.database, host=self.host)
             self.connected = True
-            logger.debug(f"Opened connection #{opasCentralDB.connection_count}")
+            # logger.debug(f"Opened connection #{opasCentralDB.connection_count}")
 
         except Exception as e:
             self.connected = False
@@ -293,7 +293,7 @@ class opasCentralDB(object):
             self.db.close()
             self.db = None
             opasCentralDB.connection_count -= 1
-            logger.debug(f"Database closed by ({caller_name})")
+            # logger.debug(f"Database closed by ({caller_name})")
                 
         except Exception as e:
             logger.error(f"caller: {caller_name} the db is not open ({e}).")
@@ -2024,12 +2024,12 @@ class opasCentralDB(object):
                         try:
                             # convert to final return model, a list of ClientConfigItems
                             ret_val = models.ClientConfigList(configList = ret_val_list)
-                            logger.info("Config list returned.")
+                            logger.debug("Config list returned.")
                         except Exception as e:
                             ret_val = None
                             logger.error(f"Error converting list of config items from database. Check json syntax in database {e}")
                     elif ret_val is not None:
-                        logger.info("Config item returned.")
+                        logger.debug("Config item returned.")
                     else:
                         logger.error("No config returned.")
             else:

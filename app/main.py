@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0323/v2.1.138"   # semver versioning after date.
+__version__     = "2022.0323/v2.1.139"   # semver versioning after date.
 __status__      = "Release Candidate 1"  
 
 """
@@ -5602,13 +5602,13 @@ async def documents_image_fetch(response: Response,
                                                  root=expert_picks_path) 
         filenames = flex_fs.get_matching_filelist(path=expert_picks_path, filespec_regex=".*\.jpg", max_items=opasConfig.EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT)
         if len(filenames) == 0:
+            logger.warning(f"No filenames returned from get_matching_filelist for '.*\.jpg' and max_items={opasConfig.EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT}")
             filename = opasConfig.EXPERT_PICKS_DEFAULT_IMAGE
             expert_pick_image[0] = today
             expert_pick_image[1] = filename
         else:
             status_message = f"Info: Expert Picks Image Count: {len(filenames)}"
-            print (status_message)
-            logger.debug(status_message)
+            logger.info(status_message)
             filename = random.choice(filenames)
             filename = filename.basename
             expert_pick_image[0] = today
@@ -5675,18 +5675,21 @@ async def documents_image_fetch(response: Response,
     media_type='image/jpeg'
     if imageID != "*":
         filename = fs.get_image_filename(filespec=imageID, insensitive=insensitive) # IMAGE_SOURCE_PATH set as root above, all that we need
+        logger.debug(f"Random (*) expert pick image returns: {filename}.")       
+
     if download == 0 or download == 2:
         if imageID == "*":
             #  load a random image.  Load a new one each day
             try:
                 today = datetime.today().strftime("%Y%m%d")
                 if expert_pick_image[0] != today or reselect:
-                    select_new_image() # saves new image to expert_pick_image as a side effect
+                    returned_filename = select_new_image() # saves new image to expert_pick_image as a side effect
+                    logger.debug(f"select_new_image returns filename: {returned_filename}")
                     filename = expert_pick_image[1] 
                 else:
                     filename = expert_pick_image[1]
             except Exception as e:
-                logger.error(f"Error selecting a random expert pick image.  Error: {e}")
+                logger.error(f"Error selecting a random expert pick image {filename}.  Error: {e}")
                 # load the default image, so user doesn't see get a bad request.  But we'll need to watch for the error above.
                 filename = opasConfig.EXPERT_PICKS_DEFAULT_IMAGE
             
