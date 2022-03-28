@@ -25,7 +25,7 @@ import re
 import os
 import os.path
 import time
-from datetime import datetime
+from datetime import datetime as datetime1
 
 import logging
 logger = logging.getLogger(programNameShort)
@@ -43,6 +43,18 @@ DEV_DBHOST = "localhost"
 DEV_DBUSER = "root"
 DEV_DBPW = ""
 
+def is_date_time(date_text):
+    ret_val = True
+    try:
+        if isinstance(date_text, datetime1):
+            ret_val = True
+        else:
+            val = datetime1.strptime(date_text, '%Y-%m-%d')
+            
+    except ValueError:
+        ret_val = False
+
+    return ret_val
 
 class opasCentralDBMini(object):
     """
@@ -160,7 +172,7 @@ def compare_critical_columns(table_name, key_col_name, value_col_name):
     sql1=f"select {key_col_name}, {value_col_name} from {table_name} order by 1 ASC"
     dev_row_count, dev_tbl = dev_db.get_table_sql(sql1)
     prod_row_count, prod_tbl = prod_db.get_table_sql(sql1)
-    dev_dict = {}
+    # dev_dict = {}
     prod_dict = {}
 
     for n in prod_tbl:
@@ -181,13 +193,66 @@ def compare_critical_columns(table_name, key_col_name, value_col_name):
     print (f"{count} differences!")
     return count
 
-def compare_tables():
-    db_tables = [{"name": "api_productbase", "key": "basecode"},
-                 {"name": "vw_api_productbase_instance_counts", "key": "basecode"},
-                 {"name": "api_endpoints", "key": "api_endpoint_id"},
-                 {"name": "vw_api_messages", "key": "msg_num_code, msg_language"},
-                 {"name": "api_client_apps", "key": "api_client_id"}
+def compare_critical_column_lists(table_name, key_col_name, value_col_name_list, db1Name="STAGE", db2Name="PRODUCTION", verbose=False):
+    #  compare local dev and production before pushing
+    #  open databases
+
+    try:
+        if db1Name == "DEV":
+            dev_db = opasCentralDBMini(host=DEV_DBHOST, password=DEV_DBPW, user=DEV_DBUSER)
+            
+        elif db1Name == "STAGE":
+            dev_db = opasCentralDBMini(host=STAGE_DB_HOST, password=STAGE2PROD_PW[1], user=STAGE2PROD_USER[1])
+                
+        if db2Name == "STAGE":
+            target_db = opasCentralDBMini(host=STAGE_DB_HOST, password=STAGE2PROD_PW[1], user=STAGE2PROD_USER[1])
+        elif db2Name == "PRODUCTION":
+            target_db = opasCentralDBMini(host=PRODUCTION_DB_HOST, password=STAGE2PROD_PW[1], user=STAGE2PROD_USER[1])
+    except Exception as e:
+        logger.error(f"Cannot open dev or production databases: {e}.  Terminating without changes")
+    else:
+        print (f"\nComparing {db1Name} table {table_name} with {db2Name}")
+
+
+    for value_col_name in value_col_name_list:
+        # if verbose: print (f"\tChecking: {value_col_name}")
+        sql1=f"select {key_col_name}, {value_col_name} from {table_name} order by 1 ASC"
+        dev_row_count, dev_tbl = dev_db.get_table_sql(sql1)
+        target_row_count, target_tbl = target_db.get_table_sql(sql1)
+        #dev_dict = {}
+        target_dict = {}
+
+        for n in target_tbl:
+            # unpack and store
+            key_col_val, value_col_val = n
+            target_dict[key_col_val] = value_col_val
+            
+        count = 0
+        for n in dev_tbl:
+            key_col_val, value_col_val = n
+            try:
+                if value_col_val != target_dict[key_col_val]:
+                    count += 1
+                    print (f"Difference in {value_col_name}: {(value_col_val, target_dict[key_col_val])}")
+            except KeyError:
+                print (f"Key: {key_col_val} not on target")
+    
+        if count > 0 or verbose: print (f"\t{value_col_name} has {count} differences!")
+    
+    return count
+    
+
+def compare_tables(db_tables=None):
+
+    def_db_tables = [{"name": "api_productbase", "key": "basecode"},
+                     #{"name": "vw_api_productbase_instance_counts", "key": "basecode"},
+                     {"name": "api_endpoints", "key": "api_endpoint_id"},
+                     {"name": "vw_api_messages", "key": "msg_num_code, msg_language"},
+                     {"name": "api_client_apps", "key": "api_client_id"}
     ]
+    
+    if db_tables is None:
+        db_tables = def_db_tables
 
     #  open databases
     try:
@@ -255,9 +320,12 @@ def compare_tables():
                         print (f"\tStage vs AWS Dev: {db_table['name']} row {n} differs!")
                         for item in range(len(stage_tbl[n])):
                             if awsdev_tbl[n][item] !=  stage_tbl[n][item]:
-                                print (f"\t\tCol {item} Dev: {awsdev_tbl[n][item]}")
-                                print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
-                                print (f"\t\t{40*'-'}")
+                                if is_date_time(awsdev_tbl[n][item]):
+                                    pass
+                                else:
+                                    print (f"\t\tCol {item} Dev: {awsdev_tbl[n][item]}")
+                                    print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
+                                    print (f"\t\t{40*'-'}")
                         #print (f"\t\tStage: {stage_tbl[n]}")
                         #print (f"\t\tAWSDev: {awsdev_tbl[n]}")
                         diffs += 1
@@ -265,9 +333,12 @@ def compare_tables():
                         print (f"\tStage vs Prod: {db_table['name']} row {n} differs!")
                         for item in range(len(stage_tbl[n])):
                             if prod_tbl[n][item] != stage_tbl[n][item]:
-                                print (f"\t\tCol {item} Dev: {prod_tbl[n][item]}")
-                                print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
-                                print (f"\t\t{40*'-'}")
+                                if is_date_time(awsdev_tbl[n][item]):
+                                    pass
+                                else:
+                                    print (f"\t\tCol {item} Dev: {prod_tbl[n][item]}")
+                                    print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
+                                    print (f"\t\t{40*'-'}")
                         #print (f"\t\tStage: {stage_tbl[n]}")
                         #print (f"\t\tProd: {prod_tbl[n]}")
                         diffs += 1
@@ -328,7 +399,7 @@ def main():
     logger.setLevel(logging.WARN)
     # get local logger
     logger = logging.getLogger(programNameShort)
-    logger.info('Started at %s', datetime.today().strftime('%Y-%m-%d %H:%M:%S"'))
+    logger.info('Started at %s', datetime1.today().strftime('%Y-%m-%d %H:%M:%S"'))
     logger.setLevel(logging.WARN)
 
     timeStart = time.time()
