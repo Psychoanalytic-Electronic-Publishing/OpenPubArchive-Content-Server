@@ -475,7 +475,11 @@ def metadata_get_source_info(src_type=None, # opasConfig.VALS_PRODUCT_TYPES
         total_count, source_info_dblist, ret_val, return_status = opasPySolrLib.metadata_get_videos(src_type=src_type, pep_code=src_code, limit=limit, offset=offset, sort_field="title_str")
         count = len(source_info_dblist)
         if return_status != (200, "OK"):
-            raise Exception(return_status(1))
+            raise HTTPException(
+                status_code=return_status[0],
+                detail=return_status[1]
+            )                
+        
     else: # get from mySQL
         try:
             # note...this sorts by title as only current option
@@ -818,7 +822,7 @@ def documents_get_document(document_id,
         filterQ = f"art_id:{document_id} && {solr_query_params.filterQ}"
         # solrParams = solr_query_params.dict() 
     else:
-        query = f"art_id:{document_id}"
+        query = f"art_id:{document_id}"  # TODO - Set this to accept with or without issue letter if one is supplied (seen in error logs - nrs)
         filterQ = None
         #solrMax = None
         # solrParams = None

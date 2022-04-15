@@ -4,8 +4,8 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0330/v2.1.141"   # semver versioning after date.
-__status__      = "Release Candidate 1"  
+__version__     = "2022.0415/v2.1.143"   # semver versioning after date.
+__status__      = "Maintenance Release"  
 
 """
 Main entry module for PEP version of OPAS API
@@ -314,7 +314,7 @@ def find_client_id(request: Request,
     else:
         ret_val = client_id
 
-    #  it will be fixed if necessary, in validate
+    #  client_id type will be fixed, if necessary, in validate, or errors logged
     if ret_val != opasConfig.NO_CLIENT_ID:
         ret_val = opasDocPermissions.validate_client_id(ret_val, caller_name="FindClientID")
 
@@ -330,7 +330,7 @@ def get_client_id(response: Response,
     """
     Dependency for client id: see find_client_id
     """
-    ret_val = find_client_id(request, response, client_id)
+    ret_val = find_client_id(request, response, client_id)   
     return ret_val
 
 def get_client_session(response: Response,
@@ -5381,7 +5381,7 @@ def documents_downloads(response: Response,
                                        media_type=media_type)
 
             except Exception as e:
-                response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
+                response.status_code = httpCodes.HTTP_404_NOT_FOUND # changed from 400 code on 2022-04-11 to match 404 error code below
                 status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
                 extended_status_message = f"{status_message}:{e}"
                 logger.error(extended_status_message)
@@ -5567,8 +5567,10 @@ async def documents_image_fetch(response: Response,
                                 insensitive: bool=Query(True, title="Filename case ignored"),  
                                 #seed:str=Query(None, title="Seed String to help randomize daily expert pick", description="Use the date, for example, to avoid caching from a prev. date. "),
                                 reselect:bool=Query(False, title="Force a new random image selection"),  
+                                #client_id:int=Depends(get_client_id), 
+                                #client_session:str= Depends(get_client_session)
                                 client_id:int=Query(0, title="Client Id as Parameter"), 
-                                client_session:int=Query(0, title="Client Session as Parameter")
+                                client_session:str=Query(0, title="Client Session as Parameter")
                                 ):
     """
     ## Function
@@ -5617,12 +5619,23 @@ async def documents_image_fetch(response: Response,
         return filename
 
     caller_name = "[v2/Documents/Image]"
-    #if opasConfig.DEBUG_TRACE:
-        #print(f"{datetime.now().time().isoformat()}: {caller_name} {client_session}: {imageID}")
 
     ret_val = None
     filename = None
-        
+
+    if client_id is not None:
+        try:
+            a = int(client_id)
+        except:
+            msg = ERR_MSG_CALLER_IDENTIFICATION_ERROR + f" Client/Session {client_id}/{client_session}. URL: {request.url._url} Headers:{request.headers} "
+            logger.error(msg)
+            response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
+            status_message = ERR_MSG_CALLER_IDENTIFICATION_ERROR
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=status_message
+            )
+       
     try:
         expert_picks_path = localsecrets.IMAGE_EXPERT_PICKS_PATH
         status_message = f"Expert Picks Path is: {expert_picks_path}"
@@ -5649,6 +5662,7 @@ async def documents_image_fetch(response: Response,
             client_session = client_session_from_header
         
     if client_id == 0:
+        client_id_from_header, client_session_from_header = opasDocPermissions.verify_header(request, "DocumentImage") # for debugging client call
         if client_id_from_header is not None:
             client_id = client_id_from_header       
 
@@ -5665,7 +5679,7 @@ async def documents_image_fetch(response: Response,
         if not session_info.authenticated:
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
             status_message = "Must be logged in and authorized to download an image."
-            logger.error(status_message)
+            logger.error(status_message + f" Client/Session {client_id}/{client_session}.")
             raise HTTPException(
                 status_code=response.status_code,
                 detail=status_message
@@ -5674,7 +5688,7 @@ async def documents_image_fetch(response: Response,
     fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
     media_type='image/jpeg'
     if imageID != "*":
-        filename = fs.get_image_filename(filespec=imageID, insensitive=insensitive) # IMAGE_SOURCE_PATH set as root above, all that we need
+        filename = fs.get_image_filename(filespec=imageID, insensitive=insensitive, log_errors=False) # IMAGE_SOURCE_PATH set as root above, all that we need
         logger.debug(f"Random (*) expert pick image returns: {filename}.")       
 
     if download == 0 or download == 2:
@@ -5695,11 +5709,14 @@ async def documents_image_fetch(response: Response,
             
         if filename is None:
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-            status_message = f"Error: {imageID} not found or no filename specified. URL requested: {request.url}"
-            logger.warning(status_message)
+            status_message = f"Error: {imageID} not found or no filename specified. URL requested: {request.url}."
+            logger.warning(status_message + f" Client/Session {client_id}/{client_session}.") # To check on the many calls for pseudo images IDs we get
             raise HTTPException(status_code=response.status_code,
                                 detail=status_message)
         else:
+            if 1: # opasConfig.DEBUG_TRACE:
+                print(f"{datetime.now().time().isoformat()}: {caller_name} {client_id}/{client_session} Image:{imageID} Filename:{filename}")
+
             if download == 0:
                 file_content = fs.get_image_binary(filename)
                 try:
@@ -5707,8 +5724,8 @@ async def documents_image_fetch(response: Response,
     
                 except Exception as e:
                     response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                    status_message = f" The requested document {filename} could not be returned {e}"
-                    logger.warning(status_message)
+                    status_message = f" The requested image {filename} could not be returned {e}."
+                    logger.warning(status_message + f" Client/Session {client_id}/{client_session}.") # To check on the many calls for pseudo images IDs we get
                     raise HTTPException(status_code=response.status_code,
                                         detail=status_message)
                 else:
@@ -5738,7 +5755,8 @@ async def documents_image_fetch(response: Response,
                     
                 except Exception as e:
                     response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-                    status_message = f"ImageFetchError: The requested document {filename} could not be returned {e}"
+                    status_message = f"ImageFetchError: The requested image {filename} could not be returned {e}"
+                    logger.warning(status_message + f" Client/Session {client_id}/{client_session}.") # To check on the many calls for pseudo images IDs we get
                     raise HTTPException(status_code=response.status_code,
                                         detail=status_message)
                     
@@ -5764,7 +5782,7 @@ async def documents_image_fetch(response: Response,
 
         except Exception as e:
             response.status_code = httpCodes.HTTP_400_BAD_REQUEST 
-            status_message = f" The requested document {filename} could not be returned {e}"
+            status_message = f" The requested document {filename} could not be downloaded {e}"
             raise HTTPException(status_code=response.status_code,
                                 detail=status_message)
 

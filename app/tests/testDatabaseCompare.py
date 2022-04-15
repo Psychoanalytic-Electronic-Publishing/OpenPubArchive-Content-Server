@@ -26,6 +26,22 @@ class TestDoDatabaseCompare(unittest.TestCase):
         ret_val = compareTables.compare_critical_columns("api_productbase","basecode", "active")
         assert(ret_val == 0)
 
+    def test_2a1(self):
+        col_list = [
+            "config_settings", 
+        ]
+        ret_val = compareTables.compare_critical_column_lists("api_client_configs","config_name", col_list, db1Name="STAGE", db2Name="PRODUCTION", key_where_clause='WHERE config_name="common"')
+        print (f"Difference Count ={ret_val}")
+        assert(ret_val == 0)
+
+    def test_2a2(self):
+        col_list = [
+            "config_settings", 
+        ]
+        ret_val = compareTables.compare_critical_column_lists("api_client_configs","config_name", col_list, db1Name="STAGE", db2Name="PRODUCTION", key_where_clause='WHERE config_name="en-us"')
+        print (f"Difference Count ={ret_val}")
+        assert(ret_val == 0)
+
     def test_2b(self):
         col_list = [
                       "articleID", 
@@ -62,10 +78,31 @@ class TestDoDatabaseCompare(unittest.TestCase):
                       "google_books_link", 
               ]
         verbose = False
-        ret_val = compareTables.compare_critical_column_lists("api_productbase","basecode", col_list, db1Name="DEV", db2Name="STAGE", verbose=verbose)
+        ret_val = compareTables.compare_critical_column_lists("api_productbase","basecode", col_list, db1Name="LOCALDEV", db2Name="STAGE", verbose=verbose)
         print (f"Difference Count ={ret_val}")
         assert(ret_val == 0)
         ret_val = compareTables.compare_critical_column_lists("api_productbase","basecode", col_list, db1Name="STAGE", db2Name="PRODUCTION", verbose=verbose)
+        print (f"Difference Count ={ret_val}")
+        assert(ret_val == 0)
+
+
+    def test_3a(self):
+        print ("Articles on LOCALDEV not on STAGE")
+        col_list = [
+                      "art_title"
+              ]
+        verbose = False
+        ret_val = compareTables.compare_critical_column_lists("api_articles","art_id", col_list, db1Name="LOCALDEV", db2Name="STAGE", verbose=verbose)
+        print (f"Difference Count ={ret_val}")
+        assert(ret_val == 0)
+
+    def test_3b(self):
+        print ("Articles on STAGE not on LOCALDEV")
+        col_list = [
+                      "art_title"
+              ]
+        verbose = False
+        ret_val = compareTables.compare_critical_column_lists("api_articles","art_id", col_list, db1Name="STAGE", db2Name="LOCALDEV", verbose=verbose)
         print (f"Difference Count ={ret_val}")
         assert(ret_val == 0)
 

@@ -472,7 +472,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         response_set = r["documentList"]["responseSet"]
         print (f'Smarttext: {response_info["description"]}')
         count1 = response_info["fullCount"]
-        assert count1 >= 2700 and count1 <= 2790, f"Count: {count1}" 
+        assert count1 >= 2780, f"Count: {count1}" 
 
     def test_14_example_smart_search_classes(self):
         """
@@ -540,6 +540,34 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         print (response_info["fullCount"])
         count1 = response_info["fullCount"]
         assert (count1 >= 114 and count1 <= 150), f"Count: {count1}" 
+
+    def test_14f_example_smart_search_with_colons(self):
+        """
+        """
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Eitingon: Model"~4')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"]
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["fullCount"])
+        count1 = response_info["fullCount"]
+        assert (count1 >= 114 and count1 <= 150), f"Count: {count1}" 
+
+    def test_14g_example_smart_search_with_colons(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Treating the Untreatable: Healing in the Realms of Madness"')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"]
+        print (f'Smarttext: {response_info["description"]}')
+        print (response_info["fullCount"])
+        count1 = response_info["fullCount"]
+        assert (count1 >= 1), f"Count: {count1}" 
+
+
 
     def test_15a_bracket_test(self):
         """

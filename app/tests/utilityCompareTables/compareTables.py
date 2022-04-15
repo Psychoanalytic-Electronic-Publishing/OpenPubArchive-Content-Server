@@ -157,7 +157,7 @@ class opasCentralDBMini(object):
 #----------------------------------------------------------------------------------------
 
 
-def compare_critical_columns(table_name, key_col_name, value_col_name):
+def compare_critical_columns(table_name, key_col_name, value_col_name, where_clause=""):
     #  compare local dev and production before pushing
     #  open databases
     try:
@@ -169,7 +169,7 @@ def compare_critical_columns(table_name, key_col_name, value_col_name):
     else:
         pass
 
-    sql1=f"select {key_col_name}, {value_col_name} from {table_name} order by 1 ASC"
+    sql1=f"select {key_col_name}, {value_col_name} from {table_name} {where_clause} order by 1 ASC"
     dev_row_count, dev_tbl = dev_db.get_table_sql(sql1)
     prod_row_count, prod_tbl = prod_db.get_table_sql(sql1)
     # dev_dict = {}
@@ -193,30 +193,43 @@ def compare_critical_columns(table_name, key_col_name, value_col_name):
     print (f"{count} differences!")
     return count
 
-def compare_critical_column_lists(table_name, key_col_name, value_col_name_list, db1Name="STAGE", db2Name="PRODUCTION", verbose=False):
+def compare_critical_column_lists(table_name, key_col_name, value_col_name_list, db1Name="STAGE", db2Name="PRODUCTION", key_where_clause="", verbose=False):
     #  compare local dev and production before pushing
     #  open databases
 
     try:
-        if db1Name == "DEV":
+        if db1Name == "LOCALDEV":
             dev_db = opasCentralDBMini(host=DEV_DBHOST, password=DEV_DBPW, user=DEV_DBUSER)
-            
         elif db1Name == "STAGE":
             dev_db = opasCentralDBMini(host=STAGE_DB_HOST, password=STAGE2PROD_PW[1], user=STAGE2PROD_USER[1])
+        elif db1Name == "AWSDEV":
+            dev_db = opasCentralDBMini(host=AWSDEV_DB_HOST, password=STAGE2PROD_PW[1], user=STAGE2PROD_USER[1])
+        elif db1Name  == "PRODUCTION":
+            dev_db = opasCentralDBMini(host=PRODUCTION_DB_HOST, password=STAGE2PROD_PW[1], user=STAGE2PROD_USER[1])
                 
-        if db2Name == "STAGE":
+        if db2Name == "LOCALDEV":
+            target_db = opasCentralDBMini(host=DEV_DBHOST, password=DEV_DBPW, user=DEV_DBUSER)
+        elif db2Name == "STAGE":
             target_db = opasCentralDBMini(host=STAGE_DB_HOST, password=STAGE2PROD_PW[1], user=STAGE2PROD_USER[1])
+        elif db2Name == "AWSDEV":
+            target_db = opasCentralDBMini(host=AWSDEV_DB_HOST, password=STAGE2PROD_PW[1], user=STAGE2PROD_USER[1])
         elif db2Name == "PRODUCTION":
             target_db = opasCentralDBMini(host=PRODUCTION_DB_HOST, password=STAGE2PROD_PW[1], user=STAGE2PROD_USER[1])
+
     except Exception as e:
         logger.error(f"Cannot open dev or production databases: {e}.  Terminating without changes")
     else:
-        print (f"\nComparing {db1Name} table {table_name} with {db2Name}")
+        if key_where_clause != "" and key_where_clause is not None:
+            additional_info = key_where_clause
+        else:
+            additional_info = ""
+            
+        print (f"\nComparing {db1Name} table {table_name} with {db2Name} {additional_info}")
 
 
     for value_col_name in value_col_name_list:
         # if verbose: print (f"\tChecking: {value_col_name}")
-        sql1=f"select {key_col_name}, {value_col_name} from {table_name} order by 1 ASC"
+        sql1=f"select {key_col_name}, {value_col_name} from {table_name} {key_where_clause} order by 1 ASC"
         dev_row_count, dev_tbl = dev_db.get_table_sql(sql1)
         target_row_count, target_tbl = target_db.get_table_sql(sql1)
         #dev_dict = {}
@@ -235,7 +248,8 @@ def compare_critical_column_lists(table_name, key_col_name, value_col_name_list,
                     count += 1
                     print (f"Difference in {value_col_name}: {(value_col_val, target_dict[key_col_val])}")
             except KeyError:
-                print (f"Key: {key_col_val} not on target")
+                print (f"Key: {key_col_val} on {db1Name} not on target {db2Name}")
+                count += 1
     
         if count > 0 or verbose: print (f"\t{value_col_name} has {count} differences!")
     
@@ -283,7 +297,7 @@ def compare_tables(db_tables=None):
                 continue
             else:
                 row_count = stage_row_count
-                print (f"\tRow counts: {(dev_row_count, awsdev_row_count, stage_row_count, prod_row_count)}")
+                print (f"\tRow counts (localdev, awsdev, stage, prod): {(dev_row_count, awsdev_row_count, stage_row_count, prod_row_count)}")
             
             stage_col_count = len(stage_tbl[0])
             dev_col_count = len(dev_tbl[0])
@@ -293,7 +307,7 @@ def compare_tables(db_tables=None):
             diffs = 0
             coldiffs = 0
             if stage_col_count != dev_col_count:
-                print (f"Stage column count {stage_col_count} different than Dev column count {dev_col_count}.")
+                print (f"Stage column count {stage_col_count} different than LocalDev column count {dev_col_count}.")
                 coldiffs += 1
             if stage_col_count != awsdev_col_count:
                 print (f"Stage column count {stage_col_count} different than AWSDev column count {awsdev_col_count}.")
@@ -307,25 +321,25 @@ def compare_tables(db_tables=None):
             else:
                 for n in range(row_count):
                     if dev_tbl[n] != stage_tbl[n]:
-                        print (f"\tLocal Dev vs Stage: {db_table['name']} row {n} differs!")
+                        print (f"\tLocalDev vs Stage: {db_table['name']} row {n} differs! Key: {dev_tbl[n][0]}")
                         for item in range(len(stage_tbl[n])):
                             if dev_tbl[n][item] !=  stage_tbl[n][item]:
-                                print (f"\t\tCol {item} Dev: {dev_tbl[n][item]}")
+                                print (f"\t\tCol {item} LocalDev: {dev_tbl[n][item]}")
                                 print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
                                 print (f"\t\t{40*'-'}")
                         #print (f"\t\tDev: {dev_tbl[n]}")
                         #print (f"\t\tStage: {stage_tbl[n]}")
                         diffs += 1
                     if stage_tbl[n] != awsdev_tbl[n]:
-                        print (f"\tStage vs AWS Dev: {db_table['name']} row {n} differs!")
+                        print (f"\tStage vs AWS Dev: {db_table['name']} row {n} differs! Key:  {dev_tbl[n][0]}")
                         for item in range(len(stage_tbl[n])):
                             if awsdev_tbl[n][item] !=  stage_tbl[n][item]:
-                                if is_date_time(awsdev_tbl[n][item]):
-                                    pass
-                                else:
-                                    print (f"\t\tCol {item} Dev: {awsdev_tbl[n][item]}")
-                                    print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
-                                    print (f"\t\t{40*'-'}")
+                                if awsdev_tbl[n][item] is not None:
+                                    if is_date_time(awsdev_tbl[n][item]):
+                                        continue
+                                print (f"\t\tCol {item} Dev: {awsdev_tbl[n][item]}")
+                                print (f"\t\tCol {item} Stage: {stage_tbl[n][item]}")
+                                print (f"\t\t{40*'-'}")
                         #print (f"\t\tStage: {stage_tbl[n]}")
                         #print (f"\t\tAWSDev: {awsdev_tbl[n]}")
                         diffs += 1

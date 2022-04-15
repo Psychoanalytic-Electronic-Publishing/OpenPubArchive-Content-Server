@@ -44,7 +44,9 @@ import models
 import opasCentralDBLib
 import schemaMap
 import opasGenSupportLib as opasgenlib
+
 import opasXMLHelper as opasxmllib
+   
 # import opasDocPermissions as opasDocPerm
 
 count_anchors = 0
@@ -1188,13 +1190,17 @@ def parse_search_query_parameters(search=None,             # url based parameter
 
                 search_type = search_dict.get(opasConfig.KEY_SEARCH_TYPE)
                 if search_type == opasConfig.SEARCH_TYPE_LITERAL:
-                    literal_str = re.sub("'", '"', search_dict.get(opasConfig.KEY_SEARCH_VALUE))
+                    literal_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                    literal_str = opasgenlib.add_smart_quote_search(literal_str) # temp, until we load smartquotes only
                     search_q += f'&& {literal_str}'
                 elif search_type == opasConfig.SEARCH_TYPE_BOOLEAN:
                     boolean_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE)
+                    boolean_str = opasgenlib.add_smart_quote_search(boolean_str) # temp, until we load smartquotes only 
                     search_q += f'&& {boolean_str}'
                 elif search_type == opasConfig.SEARCH_TYPE_PARAGRAPH:
-                    search_q += f'&& {search_dict.get(KEY_SEARCH_VALUE)}'
+                    para_str = search_dict.get(opasConfig.KEY_SEARCH_VALUE) 
+                    para_str = opasgenlib.add_smart_quote_search(para_str) # temp, until we load smartquotes only
+                    search_q += f'&& {para_str}'
                 elif search_type == opasConfig.SEARCH_TYPE_WORDSEARCH:
                     pass # nothing else to do here, but don't want to hit else in this case
                 else: # allow trapping during debug
@@ -1648,6 +1654,13 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if search_q == "*:*" and filter_q == "*:*":
         filter_q = "art_level:1"
 
+    # No - As is can cause problems for advanced searches like:
+    #  "{!parent which='art_level:1'} art_level:2 && ((parent_tag:(p_body || p_summaries || p_appxs) && para:(ego id superego)))"
+    # may not be needed, but sometimes this tricks Solr (2022-04-07). Note: we have already removed colons in the string when it's prefixed by a fieldname+:
+    #if smartsearchLib.quoted_str_has_colons(search_q):
+        ## remove colons
+        #search_q = search_q.replace(":", "")
+        
     if smartsearchLib.str_has_wildcards(search_q) or smartsearchLib.str_has_fuzzy_ops(search_q): # quoted_str_has_wildcards(search_q):
         complex_phrase = "{!complexphrase}"
         search_q = f"{complex_phrase}{search_q}"

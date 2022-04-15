@@ -111,6 +111,15 @@ def smart_search(smart_search_text):
     smart_search_text = smart_search_text.rstrip(" ")
     # get rid of smart quotes
     smart_search_text = re.sub("“|”", "'", smart_search_text)
+    # See if it has a field and then text with colon
+    m = re.match(smartsearchLib.rx_quoted_str_with_colon_and_coloned_field_prefix, smart_search_text)
+    if m:
+        # split in 2
+        fieldname = m.group("field")
+        quotedstr = m.group("qstr")
+        quotedstr = quotedstr.replace(":", "")
+        # remove the colons in the quote
+        smart_search_text = fieldname + quotedstr
     
     if "TO" not in smart_search_text:
         m = re.search("\[.*to.*\]", smart_search_text, re.IGNORECASE)
@@ -119,11 +128,11 @@ def smart_search(smart_search_text):
             for character in remove_characters:
                 smart_search_text = smart_search_text.replace(character, "")            
     
-    if re.match("^[\"\'].*[\"\']$", smart_search_text):
+    if re.match(r"^([\"\'])(.*)\1$", smart_search_text):
         # literal string
         ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for {opasConfig.SEARCH_TYPE_LITERAL}: ({smart_search_text})"
         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_LITERAL
-        ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{smart_search_text}"
+        ret_val[opasConfig.KEY_SEARCH_VALUE] = smart_search_text
         
     smart_article_id = opasConfig.ArticleID(articleID=smart_search_text)
     if smart_article_id.isArticleID:
@@ -282,6 +291,7 @@ def smart_search(smart_search_text):
                                 ret_val[opasConfig.KEY_SEARCH_VALUE] = f"{smart_search_text}"
                             else:
                                 ret_val["wordsearch"] = re.sub(":", "\:", smart_search_text)
+                                ret_val["wordsearch"] = opasgenlib.add_smart_quote_search(ret_val["wordsearch"]) # temp, until we load smartquotes only
                                 ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_WORDSEARCH
                                 ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles for words: ({orig_smart_search_text})"
                         else:

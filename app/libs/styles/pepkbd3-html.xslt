@@ -210,7 +210,7 @@
            <!--<img src="./images/banner{$journal-code}Logo.gif" alt=""/>-->
           <img>
             <xsl:attribute name="src">
-              <xsl:value-of select="concat($imageurl, 'banner', $journal-code, 'Logo.gif')"/>
+              <xsl:value-of select="concat($imageurl, 'banner', $journal-code, 'Logo.gif/?client-id=100')"/>
             </xsl:attribute>
             <xsl:attribute name="alt">Journal Logo</xsl:attribute>
           </img>

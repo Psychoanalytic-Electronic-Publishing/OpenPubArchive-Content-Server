@@ -308,7 +308,7 @@ def main():
                 print ("Second Warning: Continuing the run (and core and database reset) in 20 seconds...")
                 time.sleep(20)               
 
-            msg = "*** Deleting all data from the docs and author cores and articles and biblio database tables ***"
+            msg = "*** Deleting all data from the docs and author cores, the articles, artstat, and biblio database tables ***"
             logger.warning(msg)
             print (msg)
             ocd.delete_all_article_data()

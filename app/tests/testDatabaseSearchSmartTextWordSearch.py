@@ -106,6 +106,29 @@ class testDatabaseSearchSmartTextWordSearch(unittest.TestCase):
         assert(response_info["fullCount"] >= 15)
         #print (response_set)
 
+    def test_1a_boolean_phrase_search_with_smartquotes(self):
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Farmer’s Daughter"~25')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        first_count = response_info["fullCount"]
+        print (f'Smarttext: {response_info["description"]}.  Count: {first_count}')
+        assert(first_count >= 25)
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Farmer\'s Daughter"~25')
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        #print (r)
+        response_info = r["documentList"]["responseInfo"]
+        response_set = r["documentList"]["responseSet"] 
+        second_count = response_info["fullCount"]
+        print (f'Smarttext: {response_info["description"]}.  Count: {second_count}.  Counts Match: {first_count == second_count}')
+        assert(first_count == second_count)
+        #print (response_set)
+
     def test_1a_boolean_word_search2(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext=love AND sex')
         response = requests.get(full_URL, headers=headers)

@@ -78,9 +78,9 @@ rx_nuisance_words = f"""{opasConfig.HITMARKERSTART}(?P<word>i\.e|e\.g|a|am|an|ar
 
 rcx_remove_nuisance_words = re.compile(rx_nuisance_words, flags=re.IGNORECASE)
 
+#-----------------------------------------------------------------------------
 def pysolrerror_processing(e):
     error = "pySolr.SolrError"
-    error_num = 400
     error_description=f"There's an error in your input (no reason supplied)"
     ret_val = models.ErrorReturn(httpcode=400, error=error, error_description=error_description)
 
@@ -96,7 +96,10 @@ def pysolrerror_processing(e):
                 error = error_set[0]
                 error = error.replace('Solr ', 'Search engine ')
                 ret_val.error = error_set[1]
-                ret_val.error_description = error_description.strip(" []")
+                try:
+                    ret_val.error_description = ret_val.error.strip(" []")
+                except:
+                    ret_val.error_description = error_description
                 m = re.search("HTTP (?P<err>[0-9]{3,3})", error)
                 if m is not None:
                     http_error = m.group("err")
@@ -105,7 +108,7 @@ def pysolrerror_processing(e):
             except Exception as e:
                 logger.error(f"PySolrError: Exception {e} Parsing error {e.args}")
             else:
-                ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
+                ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=ret_val.error_description)
     except Exception as e2:
         logger.error(f"PySolrError: {e} Processing exception {e2}")
 
@@ -429,6 +432,8 @@ def check_solr_docs_connection():
             results = solr_docs2.search(query, **args)
         except Exception as e:
             logger.error(f"SolrConnectionError: {e}")
+            error_info = pysolrerror_processing(e)
+            logger.error(f"SolrConnectionError(cont): {error_info.httpcode}. Error: {error_info.error_description}")
         else:
             if len(results.docs) > 0:
                 ret_val = True
@@ -1064,7 +1069,9 @@ def search_analysis( query_list,
             
         except Exception as e:
             # try to return an error message for now.
-            return models.ErrorReturn(error="Search syntax error", error_description=f"There's an error in your input {e}")
+            error_info = pysolrerror_processing(e)
+            logger.error(f"SolrSearchAnal: {error_info.httpcode}. Error: {error_info.error_description}")
+            return models.ErrorReturn(error=f"Search error {query_item}", error_description=error_info.error_description)
 
         if "!parent" in query_item:
             term = query_item
@@ -1487,37 +1494,40 @@ def search_text_qs(solr_query_spec: models.SolrQuerySpec,
         logger.error(f"SolrAttributeExceptionError: Attribute Error: {e}")
            
     except pysolr.SolrError as e:
+        #error_num = 400
+        #error_description=f"PySolrError: There's an error in your input ({e})"
+        ## {ret_status[1].reason}:{ret_status[1].body}
+        # ret_val = models.ErrorReturn(httpcode=400, error=error, error_description=error_description)
         error = "pySolr.SolrError"
-        error_num = 400
-        error_description=f"PySolrError: There's an error in your input ({e})"
-        # {ret_status[1].reason}:{ret_status[1].body}
-        ret_status = (error_num, {"reason": error, "body": error_description})
-        ret_val = models.ErrorReturn(httpcode=400, error=error, error_description=error_description)
+        ret_val = pysolrerror_processing(e)
+        error_description = ret_val.error_description
+        ret_status = (ret_val.httpcode, {"reason": error, "body": error_description})
+        logger.error(f"Search error for: {query} Code: {ret_val.httpcode}. Error: {error_description}")
 
-        if e is None:
-            pass # take defaults
-        elif e.args is not None:
-            # defaults, before trying to decode error
-            error_description = "PySolrError: Search Error"
-            error = 400
-            http_error_num = 0
-            try:
-                err = e.args
-                error_set = err[0].split(":", 1)
-                error = error_set[0]
-                error = error.replace('Solr ', 'Search engine ')
-                error_description = error_set[1]
-                error_description = error_description.strip(" []")
-                m = re.search("HTTP (?P<err>[0-9]{3,3})", error)
-                if m is not None:
-                    http_error = m.group("err")
-                    http_error_num = int(http_error)
-            except Exception as e:
-                logger.error(f"PySolrError: Error parsing Solr error {e.args} Query: {query}")
-                ret_status = (error_num, e.args)
-            else:
-                ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
-                ret_status = (error_num, {"reason": error, "body": error_description})
+        #if e is None:
+            #pass # take defaults
+        #elif e.args is not None:
+            ## defaults, before trying to decode error
+            #error_description = "PySolrError: Search Error"
+            #error = 400
+            #http_error_num = 0
+            #try:
+                #err = e.args
+                #error_set = err[0].split(":", 1)
+                #error = error_set[0]
+                #error = error.replace('Solr ', 'Search engine ')
+                #error_description = error_set[1]
+                #error_description = error_description.strip(" []")
+                #m = re.search("HTTP (?P<err>[0-9]{3,3})", error)
+                #if m is not None:
+                    #http_error = m.group("err")
+                    #http_error_num = int(http_error)
+            #except Exception as e:
+                #logger.error(f"PySolrError: Error parsing Solr error {e.args} Query: {query}")
+                #ret_status = (error_num, e.args)
+            #else:
+                #ret_val = models.ErrorReturn(httpcode=http_error_num, error=error, error_description=error_description)
+                #ret_status = (error_num, {"reason": error, "body": error_description})
 
         logger.error(f"PySolrError: Syntax: {ret_status}. Query: {query} Params sent: {solr_param_dict}")
         
@@ -1894,7 +1904,7 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
         args = {
                    'fl':opasConfig.DOCUMENT_ITEM_VIDEO_FIELDS,
                    # 'q':'tuck*',
-                   'rows':limit,
+                   'rows': limit,
                    'start': offset,
                    'sort':f"{sort_field} asc",
                    #'sort.order':'asc'
@@ -1903,10 +1913,9 @@ def metadata_get_videos(src_type=None, pep_code=None, limit=opasConfig.DEFAULT_L
         srcList = solr_docs2.search(query, **args)
 
     except Exception as e:
-        #logger.error(f"metadataGetVideosError: {e}")
-        ret_val = models.ErrorReturn(httpcode=e.httpcode, error="Search syntax error", error_description=f"There's an error in your input (no reason supplied)")
-        return_status = (httpCodes.HTTP_400_BAD_REQUEST, e) # e has type <class 'solrpy.core.SolrException'>, with useful elements of httpcode, reason, and body, e.g.,
-        logger.error(f"metadataGetVideosError: {e.httpcode}. Params sent: {solr_param_dict} Body: {e.body}")
+        ret_val = pysolrerror_processing(e)
+        return_status = (httpCodes.HTTP_400_BAD_REQUEST, e) 
+        logger.error(f"metadataGetVideosError: {ret_val.httpcode}. Query: {query} Error: {ret_val.error_description}")
     else:
         # count = len(srcList.results)
         total_count = srcList.raw_response['response']['numFound']
@@ -2026,7 +2035,10 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
     try:
         results = solr_docs2.search(query, **args)
     except Exception as e:
-        logger.error(f"metadata_get_contents: Solr search error: {e} (query: {query} args: {args}) (log params: {log_params})")
+        #logger.error(f"metadata_get_contents: Solr search error: {e} (query: {query} args: {args}) (log params: {log_params})")
+        err_info = pysolrerror_processing(e)
+        # return_status = (err_info.httpcode, e) 
+        logger.error(f"metadata_get_contents: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
         
     document_item_list = []
     for result in results.docs:
@@ -2476,7 +2488,9 @@ def metadata_get_next_and_prev_articles(art_id=None,
         results = solr_docs2.search(query, **args)
 
     except Exception as e:
-        logger.error(f"MetadataGetArtError: {e}")
+        #logger.error(f"MetadataGetArtError: {e}")
+        err_info = pysolrerror_processing(e)
+        logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
     else:
         # find the doc
         count = 0
@@ -2567,7 +2581,8 @@ def metadata_get_next_and_prev_vols(source_code=None,
                 facet_pivot = results.facets["facet_pivot"][facet_pivot_fields]
 
             except Exception as e:
-                logger.error(f"Exception: {e}")
+                err_info = pysolrerror_processing(e)
+                logger.error(f"MetadataGetNextPrevError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
             else:
                 prev_vol = None
                 match_vol = None
@@ -2727,7 +2742,9 @@ def metadata_get_volumes(source_code=None,
 
                 
     except Exception as e:
-        logger.error(f"MetadataGetVolsError: {e}")
+        #logger.error(f"MetadataGetVolsError: {e}")
+        err_info = pysolrerror_processing(e)
+        logger.error(f"MetadataGetVolsError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
     else:
         response_info.count = len(volume_item_list)
         response_info.fullCount = len(volume_item_list)
@@ -2782,7 +2799,9 @@ def prep_document_download(document_id,
     try:
         results = solr_docs2.search(query, **args)
     except Exception as e:
-        logger.error(f"PrepDownloadError: Solr Search Exception: {e}")
+        # logger.error(f"PrepDownloadError: Solr Search Exception: {e}")
+        err_info = pysolrerror_processing(e)
+        logger.error(f"PrepDownloadError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
     else:
         try:
             documentListItem = models.DocumentListItem()
@@ -2895,17 +2914,20 @@ def prep_document_download(document_id,
                                         fo.write(html_string)
                             except:
                                 pass
-                            
-                            result_file = open(output_filename, "w+b")
-                            # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
-                            pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
-                                                        dest=result_file,
-                                                        encoding="UTF-8",
-                                                        link_callback=opasConfig.fetch_resources)           # file handle to receive result
-                            # close output file
-                            result_file.close()                 
-                            # return True on success and False on errors
-                            ret_val = output_filename
+
+                            try:
+                                result_file = open(output_filename, "w+b")
+                                # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
+                                pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
+                                                            dest=result_file,
+                                                            encoding="UTF-8",
+                                                            link_callback=opasConfig.fetch_resources)           # file handle to receive result
+                                # close output file
+                                result_file.close()
+                            except Exception as e:
+                                ret_val = None
+                            else:
+                                ret_val = output_filename
                                 
                         elif ret_format.upper() == "EPUB":
                             doc = opasxmllib.remove_encoding_string(doc)
@@ -3128,8 +3150,13 @@ def quick_docmeta_docsearch(q_str,
                'start': offset,
                'sort':"art_id asc",
            }
-    
-    results = solr_docs2.search(q=q_str, **args)
+
+    try:
+        results = solr_docs2.search(q=q_str, **args)
+    except Exception as e:
+        err_info = pysolrerror_processing(e)
+        logger.error(f"DocMetaDocSearch: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+        
     document_item_list = []
     count = len(results)
     try:

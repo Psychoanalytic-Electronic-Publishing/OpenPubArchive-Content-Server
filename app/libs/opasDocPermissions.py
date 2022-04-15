@@ -282,9 +282,16 @@ def get_base_session_info(request=None, session_id=None, client_id=4, pads_sessi
             session_id = pads_session_info.SessionId
 
     if session_info is None:
-        base_session_info = models.SessionInfo(session_id=session_id,
-                                               api_client_id=client_id
-                                               )
+        #  try to handle pydantic validation errors we're seeing in the production logs - nrs 2022-04-15
+        #  to turn off validation for the model, see https://pydantic-docs.helpmanual.io/usage/models/#creating-models-without-validation
+        try:
+            base_session_info = models.SessionInfo(session_id=session_id,
+                                                   api_client_id=client_id
+                                                   )
+        except Exception as e: 
+            logger.error(f"SessionInfo model creation error - {e}. Sessionid: {session_id} clientid: {client_id}")
+            # default session info
+            base_session_info = models.SessionInfo()
     else:
         base_session_info = session_info
         
@@ -330,6 +337,9 @@ def get_session_info(request: Request,
     ocd = opasCentralDBLib.opasCentralDB()
     update_db = False
     ts = time.time()
+
+    # check client id for legality
+    client_id = validate_client_id(client_id, caller_name="get_session_info")
 
     if request is not None:
         request_url = request.url

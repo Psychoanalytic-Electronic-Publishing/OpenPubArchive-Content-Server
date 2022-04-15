@@ -222,6 +222,34 @@ class FileInfo(object):
         self.fileSize = os.path.getsize(filename)
         self.buildDate = time.time()
 
+#-----------------------------------------------------------------------------
+def add_smart_quote_search(search_value):
+    ret_val = search_value
+
+    if opasConfig.SMARTQUOTE_EXTENSION:
+        # if there's an old style (typed) single quote, search for both smart and typed single quote
+        bools = ["&&", "||", "AND", "OR"]
+        if search_value is not None:
+            if "'" in search_value:
+                ret_val = re.sub("'", '’', search_value)
+                if ret_val != search_value:
+                    if any(boolstr in search_value for boolstr in bools):
+                        ret_val = f"({ret_val})" # add parens
+                        search_value = f"({search_value})"
+                    # for now search both ways!
+                    ret_val = f"({ret_val} || {search_value})"
+            elif '’' in search_value:
+                ret_val = re.sub('’', "'", search_value)
+                if ret_val != search_value:
+                    if any(boolstr in search_value for boolstr in bools):
+                        ret_val = f"({ret_val})" # add parens
+                        search_value = f"({search_value})"
+                    # for now search both ways!
+                    ret_val = f"({ret_val} || {search_value})"
+        
+    return ret_val        
+
+
 def year_grabber(year_str: str):
     """
     From a string containing a year, possibly more than one, pull out the first.

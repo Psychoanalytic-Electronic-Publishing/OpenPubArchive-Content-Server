@@ -731,7 +731,7 @@ class opasCentralDB(object):
             elif source_type == "books":
                 doc_type_clause = f" AND source_code IN {opasConfig.BOOK_CODES_ALL}"
             elif source_type == "videos":
-                doc_type_clause = f" AND source_code IN {opasConfig.VIDOSTREAM_CODES_ALL}"
+                doc_type_clause = f" AND source_code IN {opasConfig.VIDEOSTREAM_CODES_ALL}"
             else:
                 doc_type_clause = ""  # everything
 

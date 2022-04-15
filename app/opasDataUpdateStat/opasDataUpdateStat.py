@@ -409,6 +409,12 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                         logger.error(errStr)
                     else:
                         update_count += 1
+            else:
+                errStr = (f"Document {doc_id} not in Solr...skipping")
+                print (errStr)
+                logger.error(errStr)
+                if ".jpg" in errStr:
+                    print (f"Todo: eliminate these jpgs from the table dribing the stat {doc_id}")
 
     #  final commit
     try:

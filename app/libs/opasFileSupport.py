@@ -448,7 +448,7 @@ class FlexFileSystem(object):
         return ret_val
 
     #-----------------------------------------------------------------------------
-    def get_image_filename(self, filespec, path=None, insensitive=True):
+    def get_image_filename(self, filespec, path=None, insensitive=True, log_errors=True):
         """
         Return the file name given the image id, if it exists
         
@@ -471,7 +471,7 @@ class FlexFileSystem(object):
         #else:
         #watch for case sensitive extensions on S3 and other systems
         ret_val = self.get_imagename_if_exists(namestr=ret_val, extensions=(".jpg", ".gif", ".tif"), insensitive=insensitive)
-        if ret_val is None:
+        if ret_val is None and log_errors:
             logger.error(f"File {filespec} not found")
     
         return ret_val   
