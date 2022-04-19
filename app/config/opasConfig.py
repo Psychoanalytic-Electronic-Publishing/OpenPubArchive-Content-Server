@@ -945,6 +945,7 @@ def get_file_path(filename, subpath):
     return ret_val
     
 def fetch_resources(uri, rel):
+    logging.info(f"Call to Fetch Resources: {uri} / {rel}")
     path = None
     if ".ttf" in uri:
         path = get_file_path(uri, SUBPATH)
@@ -988,10 +989,10 @@ def fetch_resources(uri, rel):
                 #print (f"PDF Image Filename: {filename}")
                 fs = opasFileSupport.FlexFileSystem(key=localsecrets.S3_KEY, secret=localsecrets.S3_SECRET, root=localsecrets.IMAGE_SOURCE_PATH)
                 path = fs.get_image_filename(filename)
-                print (f"Get HTTP Image Resource Path from S3 flex: {path}")
+                logging.info (f"Get HTTP Image Resource Path from S3 flex: {path}")
 
     # for now, to watch uri's on web.
-    print(f"Fetch Resources for '{uri}': '{path}'")
+    logging.info(f"Fetched Resources for '{uri}': '{path}'")
     return path
 
 FONT_FILENAME = "Roboto-Regular.ttf"
