@@ -4,8 +4,8 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0415/v2.1.144"   # semver versioning after date.
-__status__      = "Maintenance Release"  
+__version__     = "2022.0419/v2.1.145"   # semver versioning after date.
+__status__      = "Testing PDF Export Release"  
 
 """
 Main entry module for PEP version of OPAS API
@@ -517,7 +517,7 @@ def log_endpoint_time(request, ts, level="info", trace=False):
 async def admin_set_loglevel(response: Response, 
                              request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                              level:str=Query(None, title="Log Level", description="DEBUG, INFO, WARNING, or ERROR"),
-                             sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
+                             #sessionid: str=Query(None, title="SessionID", description="Filter by this Session ID"),
                              client_id:int=Depends(get_client_id),
                              client_session:str= Depends(get_client_session), 
                              api_key: APIKey = Depends(get_api_key), 
