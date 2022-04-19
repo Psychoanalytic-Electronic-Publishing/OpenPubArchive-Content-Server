@@ -286,7 +286,7 @@ class XSLT_Transformer(object):
     def __init__(self):
         pass
     
-    def set_transformer(self, transformer_name, xslt_file, style_path=opasConfig.STYLE_PATH):
+    def set_transformer(self, transformer_name, xslt_file, style_path=opasConfig.XSLT_PATH):
         self.transformer_name = transformer_name
         self.transformer_tree = None
         self.file_spec = None

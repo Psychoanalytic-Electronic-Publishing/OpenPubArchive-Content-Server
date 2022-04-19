@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0419/v2.1.146"   # semver versioning after date.
+__version__     = "2022.0419/v2.1.147"   # semver versioning after date.
 __status__      = "Testing PDF Export Release"  
 
 """
@@ -118,7 +118,6 @@ from starlette.middleware.cors import CORSMiddleware
 import starlette.status as httpCodes
 from typing import Union
 import pandas as pd
-
 import requests
 from requests.auth import HTTPBasicAuth
 # import aiofiles
@@ -5371,13 +5370,44 @@ def documents_downloads(response: Response,
                                                 return_status_code = response.status_code,
                                                 status_message=status_message
                                                 )
-        elif file_format == 'PDF':
+        elif file_format == 'PDFOLD':
             try:
                 stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename, suffix="pepweb")
                 response.status_code = httpCodes.HTTP_200_OK
                 ret_val = FileResponse(path=stamped_file,
                                        status_code=response.status_code,
                                        filename=os.path.split(stamped_file)[1], 
+                                       media_type=media_type)
+
+            except Exception as e:
+                response.status_code = httpCodes.HTTP_404_NOT_FOUND # changed from 400 code on 2022-04-11 to match 404 error code below
+                status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
+                extended_status_message = f"{status_message}:{e}"
+                logger.error(extended_status_message)
+                raise HTTPException(status_code=response.status_code,
+                                    detail=status_message)
+
+            else: # success
+                response.status_code = httpCodes.HTTP_200_OK
+                status_message = opasCentralDBLib.API_STATUS_SUCCESS
+                logger.debug(status_message)
+                # success
+                ocd.record_document_view(document_id=documentID,
+                                         session_info=session_info,
+                                         view_type=file_format)
+                ocd.record_session_endpoint(api_endpoint_id=endpoint,
+                                            session_info=session_info, 
+                                            params=request.url._url,
+                                            item_of_interest=f"{documentID}", 
+                                            return_status_code = response.status_code,
+                                            status_message=status_message
+                                            )
+        elif file_format == 'PDF':
+            try:
+                response.status_code = httpCodes.HTTP_200_OK
+                ret_val = FileResponse(path=filename,
+                                       status_code=response.status_code,
+                                       filename=os.path.split(filename)[1], 
                                        media_type=media_type)
 
             except Exception as e:

@@ -55,6 +55,7 @@ import opasDocPermissions as opasDocPerm
 # import smartsearch
 import opasQueryHelper
 from xhtml2pdf import pisa             # for HTML 2 PDF conversion
+from weasyprint import HTML
 
 import pysolr
 LOG = logging.getLogger("pysolr")
@@ -2900,13 +2901,8 @@ def prep_document_download(document_id,
                             # html_string.encode("UTF-8")
                             filename = document_id + ".PDF" 
                             output_filename = os.path.join(tempfile.gettempdir(), filename)
-                            pisa.showLogging() # debug only
-                            #print (f"In Print Module.  Folder {os.getcwd()}")
-                            #print (f"{opasConfig.PDF_EXTENDED_FONT}")
-                            # doc = opasxmllib.remove_encoding_string(doc)
-                            # open output file for writing (truncated binary)
-                            # temp debugging change to write out intermediate HTML file
                             try:
+                                # temp debugging change to write out intermediate HTML file
                                 if localsecrets.DEVELOPMENT_DEBUGGING:
                                     html_filename = document_id + ".html" 
                                     html_out_filename  = os.path.join(tempfile.gettempdir(), html_filename)
@@ -2915,19 +2911,34 @@ def prep_document_download(document_id,
                             except:
                                 pass
 
-                            try:
-                                result_file = open(output_filename, "w+b")
-                                # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
-                                pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
-                                                            dest=result_file,
-                                                            encoding="UTF-8",
-                                                            link_callback=opasConfig.fetch_resources)           # file handle to receive result
-                                # close output file
-                                result_file.close()
-                            except Exception as e:
-                                ret_val = None
-                            else:
-                                ret_val = output_filename
+                            if 0:
+                                pisa.showLogging() # debug only
+                                #print (f"In Print Module.  Folder {os.getcwd()}")
+                                #print (f"{opasConfig.PDF_EXTENDED_FONT}")
+                                # doc = opasxmllib.remove_encoding_string(doc)
+                                # open output file for writing (truncated binary)
+    
+                                try:
+                                    result_file = open(output_filename, "w+b")
+                                    # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
+                                    pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
+                                                                dest=result_file,
+                                                                encoding="UTF-8",
+                                                                link_callback=opasConfig.fetch_resources)           # file handle to receive result
+                                    # close output file
+                                    result_file.close()
+                                except Exception as e:
+                                    ret_val = None
+                                else:
+                                    ret_val = output_filename
+                            else: # try weasyprint
+                                try:
+                                    doc_pdf = HTML(string = html_string, base_url = "https://pep-web.org/browse").write_pdf(target=output_filename, stylesheets=[opasConfig.CSS_STYLESHEET])
+                                except Exception as e:
+                                    logging.error(f"Weasyprint error: {e}")
+                                else:
+                                    ret_val = output_filename
+                                
                                 
                         elif ret_format.upper() == "EPUB":
                             doc = opasxmllib.remove_encoding_string(doc)

@@ -99,7 +99,7 @@ EMBARGO_TOC_TEXT = {
 }
 
 GAVANTXSLT = False
-STYLE_PATH = r"./libs/styles;../libs/styles"
+XSLT_PATH = r"./libs/styles;../libs/styles"
 if not GAVANTXSLT:
     XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
 else:
@@ -116,6 +116,10 @@ TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"
 TRANSFORMER_XMLTOHTML_GLOSSARY_EXCERPT = "EXCERPT_GLOSSARY"                  # NOT CURRENTLY USED in OPAS (2020-09-14)
 
 CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
+PDF_STYLE_SHEET = "pep-pdf.css"              # "pep-html-preview.css"
+SUBPATH = 'fonts'                            # sub to app
+STYLEPATH = os.path.join("libs", "styles")
+
 MAX_RECORDS_FOR_ACCESS_INFO_RETURN = 100
 
 # Special xpaths and attributes for data handling in solrXMLPEPWebLoad
@@ -915,10 +919,6 @@ PDF_CHINESE_STYLE = """
 </style>
 """
 
-PDF_STYLE_SHEET = "pep-pdf.css"              # "pep-html-preview.css"
-SUBPATH = 'fonts'                            # sub to app
-STYLEPATH = os.path.join("libs", "styles")
-
 # PDF_EXTENDED_FONT_FILE = f"url('{PATHCHECK1}')"
 # PDF_EXTENDED_FONT_ALT = f"url('{PATHCHECK2}')"
 # Make sure font is defined:
@@ -949,10 +949,10 @@ def fetch_resources(uri, rel):
     path = None
     if ".ttf" in uri:
         path = get_file_path(uri, SUBPATH)
-        # print (f"Returning Font Location: {path}")
+        print (f"Returning Font Location: {path} args=({uri} / {SUBPATH} / {rel})")
     elif ".css" in uri:
         path = get_file_path(uri, STYLEPATH)
-        # print (f"Returning style Location: {path}")
+        print (f"Returning style Location: {path} args=({uri} / {STYLEPATH} / {rel})")
     elif "http" in uri:
         if localsecrets.CONFIG == "Local":
             a = urlparse(uri)
