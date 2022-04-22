@@ -54,8 +54,9 @@ import opasXMLHelper as opasxmllib
 import opasDocPermissions as opasDocPerm
 # import smartsearch
 import opasQueryHelper
-from xhtml2pdf import pisa             # for HTML 2 PDF conversion
-from weasyprint import HTML
+# from xhtml2pdf import pisa             # for HTML 2 PDF conversion
+from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
 
 import pysolr
 LOG = logging.getLogger("pysolr")
@@ -2869,6 +2870,7 @@ def prep_document_download(document_id,
                             html = opasxmllib.remove_encoding_string(doc)
                             filename = opasxmllib.convert_xml_to_html_file(html, output_filename=document_id + ".html")  # returns filename
                             ret_val = filename
+
                         elif ret_format.upper() == "PDFORIG":
                             # setup so can include year in path (folder names) in AWS, helpful.
                             if flex_fs is not None:
@@ -2882,12 +2884,21 @@ def prep_document_download(document_id,
                                                              error_description=err_msg
                                                            )
                                 ret_val = None
+
                         elif ret_format.upper() == "PDF":
+                            """
+                            Generated PDF, no page breaks, but page numbering, for reading and printing without wasting pages.
+                            """
                             html_string = opasxmllib.xml_str_to_html(doc, document_id=document_id)
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                             html_string = re.sub("\(\)", f"", html_string, count=1) # in running head, missing issue
                             copyright_page = COPYRIGHT_PAGE_HTML.replace("[[username]]", session_info.username)
                             html_string = re.sub("</html>", f"{copyright_page}</html>", html_string, count=1)
+                            html_string = re.sub("href=\"#/Document",\
+                                                 "href=\"pep-web.org/browse/Document",html_string)
+                            html_string = re.sub('class="fas fa-arrow-circle-right"',\
+                                                 'class="fa fa-external-link"', html_string)
+                            
                             if art_lang == "zh":
                                 # add some spaces in the chinese text to permit wrapping:
                                 html_string = re.sub('\。', '。 ', html_string)
@@ -2911,34 +2922,26 @@ def prep_document_download(document_id,
                             except:
                                 pass
 
-                            if 0:
-                                pisa.showLogging() # debug only
-                                #print (f"In Print Module.  Folder {os.getcwd()}")
-                                #print (f"{opasConfig.PDF_EXTENDED_FONT}")
-                                # doc = opasxmllib.remove_encoding_string(doc)
-                                # open output file for writing (truncated binary)
-    
+                            # due to problems with pisa and referenced graphics and banners, weasyprint used now rather than Pisa 2022-04-20
+                            try:
+                                stylesheets = []
+                                # stylesheet_paths = [opasConfig.CSS_STYLESHEET, "./libs/styles/pep-pdf.css", "./libs/styles/pepepub.css"]
+                                stylesheet_paths = ["./libs/styles/pep-pdf.css"]
                                 try:
-                                    result_file = open(output_filename, "w+b")
-                                    # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
-                                    pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
-                                                                dest=result_file,
-                                                                encoding="UTF-8",
-                                                                link_callback=opasConfig.fetch_resources)           # file handle to receive result
-                                    # close output file
-                                    result_file.close()
+                                    for stylesheet_path in stylesheet_paths:
+                                        with open(stylesheet_path) as f:
+                                            style_data = f.read()
+                                        stylesheets.append(CSS(string=style_data))
                                 except Exception as e:
-                                    ret_val = None
-                                else:
-                                    ret_val = output_filename
-                            else: # try weasyprint
-                                try:
-                                    doc_pdf = HTML(string = html_string, base_url = "https://pep-web.org/browse").write_pdf(target=output_filename, stylesheets=[opasConfig.CSS_STYLESHEET])
-                                except Exception as e:
-                                    logging.error(f"Weasyprint error: {e}")
-                                else:
-                                    ret_val = output_filename
+                                    print (f"Error reading file: {stylesheet_path}")
+                                font_config = FontConfiguration()
+                                html = HTML(string = html_string)
+                                html.write_pdf(target=output_filename, stylesheets=stylesheets, font_config=font_config)
                                 
+                            except Exception as e:
+                                logging.error(f"Weasyprint error: {e}")
+                            else:
+                                ret_val = output_filename                               
                                 
                         elif ret_format.upper() == "EPUB":
                             doc = opasxmllib.remove_encoding_string(doc)

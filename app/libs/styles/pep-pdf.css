@@ -108,17 +108,17 @@ h1, h2, h3, h4, h5, h6, figx {
 
 h1 {
   font-weight: bolder;
-  font-size: xx-large;
+  font-size: x-large;
 }
 
 h2 {
   font-weight: bolder;
-  font-size: x-large;
+  font-size: large;
 }
 
 h3 {
   font-weight: bolder;
-  font-size: large;
+  font-size: medium;
 }
 
 h4 {
@@ -128,7 +128,7 @@ h4 {
 
 h5 {
   font-weight: bold;
-  font-size: medium;
+  font-size: smaller;
 }
 
 h6 {
@@ -136,14 +136,10 @@ h6 {
   font-size: smaller;
 }
 
-span.pagebreak {
-  display:block;
-  text-align: center;
-}
 
 span.bibauthor {
   font-weight: bold;    
-  font-style: italic;
+  /*font-style: italic;*/
   color: midnightblue;
 }
 
@@ -162,15 +158,15 @@ span.bibyear {
     color: midnightblue;
 }
 
-span.bibyear:before {
-    font-style: italic;
-    content: " (";    
-}
+/*span.bibyear:before {*/
+    /*font-style: italic;*/
+    /*content: " (";    */
+/*}*/
 
-span.bibyear:after {
-    font-style: italic;
-    content: ") ";    
-}
+/*span.bibyear:after {*/
+    /*font-style: italic;*/
+    /*content: ") ";    */
+/*}*/
 
 span.footer > p:first-child, span.ftr > p:first-child {
     display: block;
@@ -210,3 +206,17 @@ span.footer > p, span.ftr > p, .ftn {
   display: none;
 }
 
+.glosstip {
+  color: midnightblue;    
+}
+
+span.pagebreak {
+  display:block;
+  text-align: center;
+}
+
+.pagenumber {
+  margin-bottom: 12pt;  
+  display: block;
+  text-align: center;
+}

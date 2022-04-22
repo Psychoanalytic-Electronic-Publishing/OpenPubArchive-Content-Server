@@ -117,7 +117,7 @@
       </title>
       <!-- <link rel="stylesheet" type="text/css" href="{$css}"></link>-->
       <!--<link rel="stylesheet" type="text/css" href="{$css2}"></link>-->
-      <link rel="stylesheet" type="text/css" href="{$css3}"></link>
+      <!--<link rel="stylesheet" type="text/css" href="{$css3}"></link>-->
       
       <!-- When importing jats-oasis-html.xsl, we can call a template to insert CSS for our tables. -->
       <!--<xsl:call-template name="p:table-css" xmlns:p="http://www.wendellpiez.com/oasis-tables/util"/>-->

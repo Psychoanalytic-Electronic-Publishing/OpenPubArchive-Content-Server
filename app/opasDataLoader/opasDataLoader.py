@@ -493,16 +493,32 @@ def main():
                     glossary_file_pattern=r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
                     if re.match(glossary_file_pattern, n.basename):
                         opasSolrLoadSupport.process_article_for_glossary_core(pepxml, artInfo, solr_gloss2, fileXMLContents, verbose=options.display_verbose)
-                    
+                
                 # input to the full-text and authors cores
                 if not options.glossary_only: # options.fulltext_core_update:
+                    # load the database
+                    opasSolrLoadSupport.add_article_to_api_articles_table(ocd, artInfo, verbose=options.display_verbose)
+                    opasSolrLoadSupport.add_to_artstat_table(ocd, artInfo, verbose=options.display_verbose)
+
+                    # -----
+                    # 2022-04-22 New Section Name Workaround - This works but it means at least for new data, you can't run the load backwards as we currently do
+                    #  on a full build.  Should be put into the client instead, really, during table gen.
+                    # -----
+                    # Uses new views: vw_article_firstsectnames which is based on the new view vw_article_sectnames
+                    #  if an article id is found in that view, it's the first in the section, otherwise it isn't
+                    # check database to see if this is the first in the section
+                    if not opasSolrLoadSupport.check_if_start_of_section(ocd, artInfo.art_id):
+                        print (f"   ...NewSec Workaround: Clearing newsecnm for {artInfo.art_id}")
+                        artInfo.start_sectname = None # clear it so it's not written to solr, this is not the first article
+                    # -----
+
                     # load the docs (pepwebdocs) core
                     opasSolrLoadSupport.process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents, include_paras=options.include_paras, verbose=options.display_verbose)
                     # load the authors (pepwebauthors) core.
                     opasSolrLoadSupport.process_info_for_author_core(pepxml, artInfo, solr_authors2, verbose=options.display_verbose)
-                    # load the database
-                    opasSolrLoadSupport.add_article_to_api_articles_table(ocd, artInfo, verbose=options.display_verbose)
-                    opasSolrLoadSupport.add_to_artstat_table(ocd, artInfo, verbose=options.display_verbose)
+                    # load the database (Moved to above new section name workaround)
+                    #opasSolrLoadSupport.add_article_to_api_articles_table(ocd, artInfo, verbose=options.display_verbose)
+                    #opasSolrLoadSupport.add_to_artstat_table(ocd, artInfo, verbose=options.display_verbose)
                     
                     if precommit_file_count > configLib.opasCoreConfig.COMMITLIMIT:
                         precommit_file_count = 0

@@ -25,6 +25,7 @@ import string
 import re
 import urllib.request, urllib.parse, urllib.error
 import random
+from contextlib import closing
 
 import lxml
 from lxml import etree
@@ -372,7 +373,7 @@ class ArticleInfo(object):
         if self.start_sectname is None:
             #  look in newer, tagged, data
             self.start_sectname = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artsectinfo/secttitle/node()', default_return=None)
-
+            
         self.art_pgrg = opasxmllib.xml_get_subelement_textsingleton(artInfoNode, "artpgrg", default_return=None)  # note: getSingleSubnodeText(pepxml, "artpgrg")
         self.art_pgstart, self.art_pgend = opasgenlib.pgrg_splitter(self.art_pgrg)
 
@@ -1554,6 +1555,50 @@ def add_to_tracker_table(ocd, art_id, verbose=None):
         ret_val = False
     
     return ret_val  # return True for success
+
+#--------------------------------------------------------------------------------
+def check_if_start_of_section(ocd, art_id, fname=None):
+    """
+    Clean out any records that aren't in articles.
+
+    >>> PEPStat = PEPStats()
+    >>> PEPStat.garbageCollectStats()
+    True
+    """
+    ret_val = False
+    sql = f"select * from vw_article_firstsectnames where art_id='{art_id}'"
+    try:
+        ocd.open_connection(caller_name=fname)
+        if ocd.db is not None:
+            with closing(ocd.db.cursor(buffered=True, dictionary=True)) as curs:
+                try:
+                    curs.execute(sql)
+                    warnings = curs.fetchwarnings()
+                    if warnings:
+                        for warning in warnings:
+                            logger.warning(warning)
+    
+                    if curs.rowcount >= 1:
+                        try:
+                            data_for_debug = curs.fetchall()
+                            logging.info(f"Article info: {data_for_debug}")
+                            ret_val = True
+                        except Exception as e:
+                            print (f"Error: {e}")
+                except Exception as e:
+                    print (f"Error: {e}")
+        else:
+            logger.error("Can't load message table.  ocd.db is None.")
+            
+        ocd.close_connection (caller_name=fname)
+        
+    
+    except Exception as e:
+        logger.error(e)
+    else:
+        logging.info("Article is the start of a new section.")
+        
+    return ret_val
 
 #--------------------------------------------------------------------------------
 def garbage_collect_stat(ocd):

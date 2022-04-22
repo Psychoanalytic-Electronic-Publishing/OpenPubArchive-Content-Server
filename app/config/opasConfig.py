@@ -928,11 +928,11 @@ def get_file_path(filename, subpath):
         pathmod = Path()
         path = pathmod.absolute()
         full_file_path = os.path.join(path, subpath, filename)
-        if not Path(full_file_path).is_file():
-            parentpath = path.parent.absolute()
-            full_file_path = os.path.join(parentpath, subpath, filename)
-            if not Path(full_file_path).is_file():
-                logging.error(f"{full_font_path} not found. Current Path: {full_file_path} ")
+        #if not full_file_path.is_file():
+            #parentpath = path.parent.absolute()
+            #full_file_path = os.path.join(parentpath, subpath, filename)
+            #if not Path(full_file_path).is_file():
+                #logging.error(f"{full_font_path} not found. Current Path: {full_file_path} ")
 
     except Exception as e:
         # try current folder relative
@@ -995,9 +995,8 @@ def fetch_resources(uri, rel):
     logging.info(f"Fetched Resources for '{uri}': '{path}'")
     return path
 
-FONT_FILENAME = "Roboto-Regular.ttf"
 PDF_OTHER_STYLE = r"""
-<link rel="stylesheet" type="text/css" href="%s"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css" integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous">
 <style>
     @page {
         size: letter portrait;
@@ -1008,21 +1007,16 @@ PDF_OTHER_STYLE = r"""
             height: 692pt;
         }
     }
-    @font-face {font-family: Roboto; src: url('%s');}
-    @font-face {font-family: Roboto; font-style: italic; src: url('%s');}
-    @font-face {font-family: Roboto; font-weight: bold; src: url('%s');}
-    @font-face {font-family: Roboto; font-weight: bold; font-style: italic; src: url('%s');}
+    img { max-width:70%;
+        }                
     body, p {   
-                font-family: 'Roboto' }	
+                font-family: 'Times New Roman' }
 </style>
-""" % (fetch_resources(PDF_STYLE_SHEET, None),
-       fetch_resources('Roboto-Regular.ttf', None),
-       fetch_resources('Roboto-Italic.ttf', None),
-       fetch_resources('Roboto-Bold.ttf', None),
-       fetch_resources('Roboto-BoldItalic.ttf', None),
-       )
+"""
 
-#print (f"PDF Style: '{PDF_OTHER_STYLE}'")
+# 
+# import and next four functions should be moved to their own module soon - nrs
+# 
 
 from pydantic import BaseModel, Field
 
@@ -1383,4 +1377,3 @@ if __name__ == "__main__":
     import doctest
     doctest.testmod()    
     print ("opasConfig Tests Completed")
-            
