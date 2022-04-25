@@ -4,8 +4,8 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0422/v2.1.148"   # semver versioning after date.
-__status__      = "Testing PDF Export Release"  
+__version__     = "2022.0425/v2.1.149"   # semver versioning after date.
+__status__      = "Production"  
 
 """
 Main entry module for PEP version of OPAS API
@@ -5744,7 +5744,7 @@ async def documents_image_fetch(response: Response,
             raise HTTPException(status_code=response.status_code,
                                 detail=status_message)
         else:
-            if 1: # opasConfig.DEBUG_TRACE:
+            if opasConfig.DEBUG_TRACE:
                 print(f"{datetime.now().time().isoformat()}: {caller_name} {client_id}/{client_session} Image:{imageID} Filename:{filename}")
 
             if download == 0:

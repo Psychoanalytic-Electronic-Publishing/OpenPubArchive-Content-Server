@@ -105,6 +105,9 @@ def smart_search(smart_search_text):
     """
     # recognize Smart Search inputs
     ret_val = {}
+
+    for_words_only_remove_punct = '!"#$%&()+,-./;:<=>@[\\]^_`{|}~' # punctuation to be removed from words only searches - wild cards accepted
+    
     # get rid of leading spaces and zeros
     smart_search_text = smart_search_text.lstrip(" 0")
     # get rid of trailing spaces and zeros
@@ -230,7 +233,7 @@ def smart_search(smart_search_text):
             if ret_val == {}:
                 if 0 != smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TITLE, match_type="ordered") == 1: # unique match only
                     if word_count > 4:
-                        ret_val["title"] = words
+                        ret_val["title"] = re.sub(f'[{for_words_only_remove_punct}]', '', words)
                         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_TITLE
                         ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {words}"
     
@@ -238,7 +241,7 @@ def smart_search(smart_search_text):
                 # unique match only
                 if 1 == smartsearchLib.is_value_in_field(words, core="docs", field=opasConfig.SEARCH_FIELD_TITLE, match_type="proximate"): 
                     if word_count > 4:
-                        ret_val["title"] = words
+                        ret_val["title"] = re.sub(f'[{for_words_only_remove_punct}]', '', words)
                         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_TITLE
                         ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched words in titles: {words}"
 
@@ -321,9 +324,10 @@ def smart_search(smart_search_text):
         pass # we're done
 
     if ret_val == {}:
-        ret_val["wordsearch"] = re.sub(":", "\:", smart_search_text)
+        # word search
+        ret_val["wordsearch"] = re.sub(f'[{for_words_only_remove_punct}]', '', smart_search_text)
         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_WORDSEARCH
-        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles with text: {smart_search_text}"
+        ret_val[opasConfig.KEY_SEARCH_SMARTSEARCH] = f"Matched articles with words: {smart_search_text}"
 
     ret_val = smartsearchLib.dict_clean_none_terms(ret_val)
     
