@@ -29,6 +29,7 @@
 _gsdata_/
 __pycache__
 app/libs/Garbage*
+app/libs/styles/defunct*
 app/opasDataLoader/updated_issues_*
 app/sitemapindex
 backups
@@ -51,3 +52,4 @@ xxx*
 githib commit summary.txt
 app/back/main.py
 app/libs/styles/jats-archive-oasis-article1-mathml3flat-edited.dtd
+*.xpr

@@ -39,9 +39,9 @@
   <xsl:strip-space elements="*"/>
     
   <!--<xsl:param name="transform" select="'pepkbd3-html.xsl'"/>-->
-  <!--<xsl:param name="css" select="'./pep-html-preview.css'"/>-->
+
   <!--<xsl:param name="css2" select="'pep.css'"/>-->
-  <xsl:param name="css3" select="'pepepub.css'"/>
+  <xsl:param name="css3" select="./'pep-pdf-epub.css'"/>
   <xsl:param name="report-warnings" select="'no'"/>
 
   <xsl:variable name="verbose" select="$report-warnings = 'yes'"/>

@@ -2029,7 +2029,7 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
             abstract = abs_xml
             
         else: # ret_format == "HTML":
-            abstract = opasxmllib.xml_str_to_html(abs_xml, document_id=documentListItem.documentID)
+            abstract = opasxmllib.xml_str_to_html(abs_xml, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=documentListItem.documentID) # transformer_name default used explicitly for code readability
 
     # return it in the abstract field for display
     documentListItem.abstract = abstract

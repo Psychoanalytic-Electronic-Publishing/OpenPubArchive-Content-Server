@@ -337,7 +337,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
         except Exception as e:
-            logger.warning(f"Document {doc_id} not in Solr...skipping")
+            logger.info(f"Document {doc_id} not in Solr...skipping")
             skipped_as_missing += 1
         else:
             if found:
@@ -411,10 +411,10 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                         update_count += 1
             else:
                 errStr = (f"Document {doc_id} not in Solr...skipping")
-                print (errStr)
+                #print (errStr)
                 logger.error(errStr)
                 if ".jpg" in errStr:
-                    print (f"Todo: eliminate these jpgs from the table dribing the stat {doc_id}")
+                    print (f"Todo: eliminate these jpgs from the table driving the stat {doc_id}")
 
     #  final commit
     try:

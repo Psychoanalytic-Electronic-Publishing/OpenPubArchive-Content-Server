@@ -98,12 +98,12 @@ EMBARGO_TOC_TEXT = {
     'IJPOPEN_REMOVED': "Rmvd",        # Text to appear instead of Page number in TOC
 }
 
-GAVANTXSLT = False
+EXPERIMENTAL = False
 XSLT_PATH = r"./libs/styles;../libs/styles"
-if not GAVANTXSLT:
+if not EXPERIMENTAL: # tests with the Gavant XSLT
     XSLT_XMLTOHTML = r"pepkbd3-html.xslt"
 else:
-    XSLT_XMLTOHTML = r"xmlToHtml2021.xslt"                                      # used for dynamic conversion to HTML; trying to update 2021-06-03 
+    XSLT_XMLTOHTML = r"xmlToHtmlExperimental.xslt"                              # used for dynamic conversion to HTML; trying to update 2021-06-03 
                                                                                 # with Gavant improvements, *** but not working here 2021-06-05 yet ****
                                                                                 # but needed the doctype code back in and lots of other fixes including params
     
@@ -115,8 +115,13 @@ TRANSFORMER_XMLTOHTML_EXCERPT = "EXCERPT_HTML"                               # u
 TRANSFORMER_XMLTOTEXT_EXCERPT = "EXCERPT_TEXT"                               
 TRANSFORMER_XMLTOHTML_GLOSSARY_EXCERPT = "EXCERPT_GLOSSARY"                  # NOT CURRENTLY USED in OPAS (2020-09-14)
 
-CSS_STYLESHEET = r"./libs/styles/pep-html-preview.css"
-PDF_STYLE_SHEET = "pep-pdf.css"              # "pep-html-preview.css"
+CSS_STYLESHEET = r"./libs/styles/pep-pdf-epub.css"
+CSS_STYLESHEET_REFERENCE = "style/pep-pdf-epub.css" # this is how it's named in the epub in 'folder' style
+# Fork Awesome is an authorized open source free version of Font Awesome
+FORK_AWESOME_PUBLIC_URL = "https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css"
+FORK_AWESOME_INTEGRITY="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY="
+FORK_AWESOME_CROSSORIGIN="anonymous"
+
 SUBPATH = 'fonts'                            # sub to app
 STYLEPATH = os.path.join("libs", "styles")
 
@@ -901,24 +906,6 @@ SUPPLEMENT_ISSUE_SEARCH_STR = "Supplement" # this is what will be searched in "a
 #journal publishers. For details on how to read the full text of 2017 and more current articles see the publishers official website 
 #"""
 
-# Note the STSong-Light is a built in font for Pisa
-PDF_CHINESE_STYLE = """
-<style>
-   @page {
-          margin-top: 12mm;
-          margin-bottom: 12mm;
-   }
- 
-   body, p  {
-              font-language-override: "zh";
-              font-family: STSong-Light;
-              padding-right: 20%;
-              margin-left: 5mm;
-              margin-right: 8mm;
-            }	
-</style>
-"""
-
 # PDF_EXTENDED_FONT_FILE = f"url('{PATHCHECK1}')"
 # PDF_EXTENDED_FONT_ALT = f"url('{PATHCHECK2}')"
 # Make sure font is defined:
@@ -945,18 +932,18 @@ def get_file_path(filename, subpath):
     return ret_val
     
 def fetch_resources(uri, rel):
-    logging.info(f"Call to Fetch Resources: {uri} / {rel}")
+    logging.debug(f"Call to Fetch Resources: {uri} / {rel}")
     path = None
     if ".ttf" in uri:
         path = get_file_path(uri, SUBPATH)
-        print (f"Returning Font Location: {path} args=({uri} / {SUBPATH} / {rel})")
+        logging.info(f"Returning Font Location: {path} args=({uri} / {SUBPATH} / {rel})")
     elif ".css" in uri:
         path = get_file_path(uri, STYLEPATH)
-        print (f"Returning style Location: {path} args=({uri} / {STYLEPATH} / {rel})")
+        logging.info(f"Returning style Location: {path} args=({uri} / {STYLEPATH} / {rel})")
     elif "http" in uri:
         if localsecrets.CONFIG == "Local":
             a = urlparse(uri)
-            m = re.search(".*/Documents/Image/(.*)/[\"\']?", a.path)
+            m = re.search(".*/Documents/Image/(.*)[/\"\']?", a.path)
             try:
                 if m is not None:
                     #print ("Found <img> and source.")
@@ -995,8 +982,25 @@ def fetch_resources(uri, rel):
     logging.info(f"Fetched Resources for '{uri}': '{path}'")
     return path
 
+# Note the STSong-Light is a built in font for Pisa
+PDF_CHINESE_STYLE = """
+<style>
+   @page {
+          margin-top: 12mm;
+          margin-bottom: 12mm;
+   }
+ 
+   body, p  {
+              font-language-override: "zh";
+              font-family: STSong-Light;
+              padding-right: 20%;
+              margin-left: 5mm;
+              margin-right: 8mm;
+            }	
+</style>
+"""
+
 PDF_OTHER_STYLE = r"""
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css" integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous">
 <style>
     @page {
         size: letter portrait;
@@ -1009,8 +1013,6 @@ PDF_OTHER_STYLE = r"""
     }
     img { max-width:70%;
         }                
-    body, p {   
-                font-family: 'Times New Roman' }
 </style>
 """
 

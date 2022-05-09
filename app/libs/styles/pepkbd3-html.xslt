@@ -73,9 +73,9 @@
   <xsl:strip-space elements="*"/>
     
   <!--<xsl:param name="transform" select="'pepkbd3-html.xsl'"/>-->
-  <!--<xsl:param name="css" select="'./pep-html-preview.css'"/>-->
+
   <!--<xsl:param name="css2" select="'pep.css'"/>-->
-  <xsl:param name="css3" select="'pepepub.css'"/>
+  <xsl:param name="css3" select="'./pep-pdf-epub.css'"/>
   <xsl:param name="report-warnings" select="'no'"/>
 
   <xsl:variable name="verbose" select="$report-warnings = 'yes'"/>
@@ -115,6 +115,7 @@
         <xsl:if test="normalize-space(string($authors))">: </xsl:if>
         <xsl:value-of select="pepkbd3/artinfo/arttitle|pepkbd3/artinfo/arttitle/binc"/>
       </title>
+	  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css" integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous"></link>
       <!-- <link rel="stylesheet" type="text/css" href="{$css}"></link>-->
       <!--<link rel="stylesheet" type="text/css" href="{$css2}"></link>-->
       <!--<link rel="stylesheet" type="text/css" href="{$css3}"></link>-->
@@ -206,7 +207,7 @@
       <xsl:apply-templates select="front | front-stub" mode="metadata"/>
       <p class="banner">
         <a class="anchor" name="{$document-id}" id="{$document-id}"/>
-        <a class="toc-link" href="/#/ArticleList/?journal={$journal-code}">
+        <a class="toc-link" href="https://pep-web.org/browse/{$journal-code}/volumes?openNotificationModal=False">
            <!--<img src="./images/banner{$journal-code}Logo.gif" alt=""/>-->
           <img>
             <xsl:attribute name="src">
@@ -392,7 +393,7 @@
     https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server/issues/128 -->
   <xsl:template match="arttitle" mode="metadata">
     <p class="title">
-      <a href="/#/ArticleList/?journal={$journal-code}&amp;vol={$artvol}&amp;page={$artstartpg}"  id="{./binc/@id}">
+      <a href="https://pep-web.org/browse/{$journal-code}/volumes/{$artvol}?openNotificationModal=False" id="{./binc/@id}">
           <span>
             <xsl:apply-templates/>
           </span>
@@ -455,7 +456,7 @@
             <xsl:when test="position() = last()">
               <xsl:text> </xsl:text>
               <span class="peppopup newauthortip">
-                <i class="fas fa-info-circle"></i>  
+                <i class="fa fa-info-circle"></i>  
                 <br></br>
                 <xsl:text>&#xa;</xsl:text>
                 <div class="peppopuptext" id="autaffinfo" hidden="True">
@@ -608,6 +609,17 @@
     </sup>
   </xsl:template>
 
+  <xsl:template match="notex">
+    <sup>
+      <a class="notex" data-type="{@type}" data-r="{@r}">
+		<xsl:attribute name="href">
+		  <xsl:value-of select="concat('#', @r)"/>
+		</xsl:attribute>
+        <xsl:value-of select="."/>
+      </a>
+    </sup>
+  </xsl:template>
+
   <xsl:template match="ftr">
     <xsl:text>&#13;</xsl:text>
     <span class="footer ftr above-border" data-class="ftr">
@@ -669,7 +681,7 @@
           </xsl:when>
           <xsl:when test="position() = last()">
             <span class="peppopup hauthortip">
-            <i class="fas fa-info-circle"></i>  
+            <i class="fa fa-info-circle"></i>  
             <xsl:text></xsl:text>
               <br></br>
               <div class="peppopuptext" id="hautaffinfo" hidden="True">
@@ -1098,6 +1110,11 @@
       <xsl:apply-templates select="@content-type"/>
       <xsl:call-template name="assign-lang"/>
       <xsl:call-template name="data-pagehelper"/>
+      <xsl:if test="@name">
+		<xsl:attribute name="data-name">
+			<xsl:value-of select="@name"/>
+		</xsl:attribute>
+      </xsl:if>
       <xsl:if test="@lgrid">
         <xsl:attribute name="data-lgrid">
           <xsl:value-of select="@lgrid"/>
@@ -1213,7 +1230,7 @@
                 <xsl:value-of select="concat('#', '/Document/',@rx)"/>
               </xsl:attribute>
               <!--              <xsl:text> [→]</xsl:text>-->
-              <i class="fas fa-arrow-circle-right"></i>
+              <xsl:text>&#x2003;&#x2003;</xsl:text><i class="fas fa-arrow-circle-right"></i>
             </a>
           </xsl:if>
         </p>
@@ -1738,6 +1755,10 @@
         <xsl:apply-templates select="@fn-type"/>
       </xsl:with-param>
     </xsl:call-template>
+  </xsl:template>
+
+  <xsl:template match="tab">
+    <xsl:text>&#x00A0;</xsl:text>
   </xsl:template>
 
   <xsl:template match="fn/@fn-type[. = 'abbr']" priority="2">

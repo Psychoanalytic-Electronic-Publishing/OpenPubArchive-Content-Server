@@ -303,7 +303,7 @@ def main():
                     print ("User requested exit.  No data changed.")
                     sys.exit(0)
             else:
-                print ("Options --no-check and --resetcore both specified.  Warning: The solr cores and the database article and artstat tables will be cleared.  Pausing 60 seconds to allow you to cancel (ctrl-c) the run.")
+                print ("Options --nocheck and --resetcore both specified.  Warning: The solr cores and the database article and artstat tables will be cleared.  Pausing 60 seconds to allow you to cancel (ctrl-c) the run.")
                 time.sleep(60)
                 print ("Second Warning: Continuing the run (and core and database reset) in 20 seconds...")
                 time.sleep(20)               
@@ -508,8 +508,11 @@ def main():
                     #  if an article id is found in that view, it's the first in the section, otherwise it isn't
                     # check database to see if this is the first in the section
                     if not opasSolrLoadSupport.check_if_start_of_section(ocd, artInfo.art_id):
-                        print (f"   ...NewSec Workaround: Clearing newsecnm for {artInfo.art_id}")
+                        # print (f"   ...NewSec Workaround: Clearing newsecnm for {artInfo.art_id}")
                         artInfo.start_sectname = None # clear it so it's not written to solr, this is not the first article
+                    else:
+                        if options.display_verbose:
+                            print (f"   ...NewSec {artInfo.start_sectname} found in {artInfo.art_id}")
                     # -----
 
                     # load the docs (pepwebdocs) core

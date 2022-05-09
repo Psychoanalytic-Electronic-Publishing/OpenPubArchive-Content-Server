@@ -1,7 +1,9 @@
 body{
-    margin-left: 8%;
-    margin-right: 8%;
+    font-family:helvetica;
+    margin-left: 5%;
+    margin-right: 5%;
     color: black;
+    font-size:10pt;
     }
 
 .pubinfotop {
@@ -18,19 +20,25 @@ a.id {
   font-weight: bolder;
 }
 
+.title {
+  font-size: xx-large;
+  text-align: center;
+  font-weight: bold;
+  color: midnightblue;
+}
+
 .title_author {
-  font-size: x-large;
+  font-size: large;
   text-align: center;
   font-weight: bold;
   color: midnightblue;
 }
 
 p.title, binc.title {
-  font-size: xx-large;
+  font-size: large;
   font-weight: bold;
   text-align: center;
   display: block;
-  font-weight: bold; 
   text-decoration: none;
 }
 
@@ -41,11 +49,11 @@ p.title, binc.title {
 }
 
 p {
-  font-size: large;
+  font-size: medium;
 }
 
 p.pagenumber {
-  font-size: medium;
+  font-size: small;
   text-align: center;
   color: midnightblue;
 }
@@ -65,7 +73,7 @@ p.figure {
 }
 
 .poem, .quote, .quote > p, .dream, .note, .dialog, .panel, .summaries .abstract {
-  text-indent: 22px ;
+  text-indent: 22px;
   color: midnightblue;
   font-size: medium;
   font-style: italic;
@@ -108,12 +116,12 @@ h1, h2, h3, h4, h5, h6, figx {
 
 h1 {
   font-weight: bolder;
-  font-size: x-large;
+  font-size: large;
 }
 
 h2 {
   font-weight: bolder;
-  font-size: large;
+  font-size: medium;
 }
 
 h3 {
@@ -123,12 +131,12 @@ h3 {
 
 h4 {
   font-weight: bolder;
-  font-size: medium;
+  font-size: small;
 }
 
 h5 {
   font-weight: bold;
-  font-size: smaller;
+  font-size: small;
 }
 
 h6 {
@@ -139,7 +147,6 @@ h6 {
 
 span.bibauthor {
   font-weight: bold;    
-  /*font-style: italic;*/
   color: midnightblue;
 }
 
@@ -158,33 +165,21 @@ span.bibyear {
     color: midnightblue;
 }
 
-/*span.bibyear:before {*/
-    /*font-style: italic;*/
-    /*content: " (";    */
-/*}*/
-
-/*span.bibyear:after {*/
-    /*font-style: italic;*/
-    /*content: ") ";    */
-/*}*/
-
-span.footer > p:first-child, span.ftr > p:first-child {
-    display: block;
+span.footer > p:first-of-type:first-line, span.ftr > p:first-of-type:first-line {
     text-decoration-line: overline;
-    margin-bottom:-.15in;
+    display: block;
+    /*margin-bottom:-.15in;*/
 }
 
 span.footer > p, span.ftr > p, .ftn {
     display: block;
     font-weight:lighter;
-    color: black;
     text-align:left;  
     font-size: medium;
     font-style: italic;
     margin-left: +.25in;
     text-indent: -.25in;
-    font-weight: lighter;
-    vertical-align: super;
+    /*vertical-align: super;*/
     color: #4b4e54;    
 }
 
@@ -194,7 +189,7 @@ span.footer > p, span.ftr > p, .ftn {
   margin-left: +.25in;
   text-indent: -.25in;
   font-weight: lighter;
-  vertical-align: super;
+  /*vertical-align: super;*/
   color: #4b4e54;    
 }
 
@@ -219,4 +214,36 @@ span.pagebreak {
   margin-bottom: 12pt;  
   display: block;
   text-align: center;
+  font-style: italic;
+}
+
+.fa-external-link:before {
+  content: "&emsp;&emsp;&emsp; "; 
+}
+
+list {
+  list-style-type: decimal;
+}
+
+ul {
+    margin-left: 2em;
+}
+
+ol {
+    margin-left: 2em;
+}
+
+ol ol {
+    margin-left: 2em;
+}
+
+li {
+  display: list-item;
+  list-style-type: decimal;
+  font-style: italic;
+}
+
+li::before {
+  content: attr(label) " ";
+  font-weight: bold;
 }

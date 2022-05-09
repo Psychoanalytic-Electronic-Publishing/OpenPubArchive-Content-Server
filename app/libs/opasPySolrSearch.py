@@ -243,7 +243,8 @@ def get_fulltext_from_search_results(result,
                                                ret_format="HTML"
                                                )
         try:
-            text_xml = opasxmllib.xml_str_to_html(text_xml, document_id=documentListItem.documentID)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+            text_xml = opasxmllib.xml_str_to_html(text_xml, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=documentListItem.documentID) # transformer_name default used explicitly for code readability
+            
         except Exception as e:
             logger.error(f"GetFulltextError: Could not convert to HTML {e}; returning native format")
             text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
@@ -257,7 +258,8 @@ def get_fulltext_from_search_results(result,
                 logger.error(f"GetFulltextError: Could not do anchor substitution {e}")
 
         if child_xml is not None:
-            child_xml = opasxmllib.xml_str_to_html(child_xml, document_id=documentListItem.documentID)
+            child_xml = opasxmllib.xml_str_to_html(child_xml, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=documentListItem.documentID) # transformer_name default used explicitly for code readability
+            
                 
     elif format_requested_ci == "textonly":
         # strip tags

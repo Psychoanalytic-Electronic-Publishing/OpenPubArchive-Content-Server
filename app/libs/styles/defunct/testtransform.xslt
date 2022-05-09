@@ -53,9 +53,9 @@
   <xsl:strip-space elements="*"/>
     
   <!--<xsl:param name="transform" select="'pepkbd3-html.xsl'"/>-->
-  <!--<xsl:param name="css" select="'./pep-html-preview.css'"/>-->
+  
   <!--<xsl:param name="css2" select="'pep.css'"/>-->
-  <xsl:param name="css3" select="'pepepub.css'"/>
+  <xsl:param name="css3" select="'pep-pdf-epub.css'"/>
   <xsl:param name="report-warnings" select="'no'"/>
 
   <xsl:variable name="verbose" select="$report-warnings = 'yes'"/>
@@ -493,8 +493,8 @@
   <!--  Tables are already in XHTML, and can simply be copied
         through                                                      -->
   
-  <xsl:template match="body//tbl">
-    <!-- other labels are displayed as blocks -->
+<!--  <xsl:template match="body//tbl">
+    <!-\- other labels are displayed as blocks -\->
     <div class="table nrs">
       <xsl:call-template name="assign-styles"/>
       <xsl:attribute name="id">
@@ -509,11 +509,11 @@
       <xsl:attribute name="data-ewide">
         <xsl:value-of select="@ewide"/>
       </xsl:attribute>
-<!--      <xsl:apply-templates select="@*" mode="table-copy"/>-->
+      <xsl:apply-templates select="@*" mode="table-copy"/>
       <xsl:apply-templates/>
     </div>
   </xsl:template>
-  
+-->  
   <xsl:template match="row">
     <!-- other labels are displayed as blocks -->
     <tr class="tablerow row nrs">

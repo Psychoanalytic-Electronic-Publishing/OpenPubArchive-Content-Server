@@ -16,8 +16,7 @@ from unitTestConfig import base_api, base_plus_endpoint_encoded, headers, sessio
 # Login!
 sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ARCHIVEONLY, password=localsecrets.PADS_TEST_ARCHIVEONLY_PW)
 
-print("When PCAS goes live (2022-02) this will need to be changed!")
-FUTURE_DOC = "PCAS.008.0003A"
+FUTURE_DOC = None # "PCAS.008.0003A"
 global message_collection
 global pp
 pp = pprint.PrettyPrinter(indent=5, width=70) # , stream=sys.stderr) # , sort_dicts=True) sort_dicts requires py 3.8
@@ -33,7 +32,7 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
     print (f"User for tests: {localsecrets.PADS_TEST_ID}")
     # Embargoed files (removed IJPOPen for example, xml flag:embargo=true)
     def test_001B_download_embargoed_document_PDF(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IJPOPEN.004.0013A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/APA.068.0027A/')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         print (r["detail"])
@@ -62,28 +61,21 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         assert(response.ok == False)
 
     def test_001D_download_prohibited_document_PDF(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IPL.064.0001A/')
-        response = requests.get(full_URL, headers=headers)
-        r = response.json()
-        print (r["detail"])
-        assert(response.ok == False)
-
-    def test_001D_download_prohibited_document_PDF(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFOrig/IPL.064.0001A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/SE.004.R0009A/')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         print (r["detail"])
         assert(response.ok == False)
 
     def test_001D_download_prohibited_document_EPUB(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/IPL.064.0001A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/SE.004.R0009A/')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         print (r["detail"])
         assert(response.ok == False)
 
     def test_001D_download_prohibited_document_PDF_EXCEPTION(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/IPL.064.0001A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/SE.004.R0009A/')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         print (r["detail"])
@@ -91,8 +83,8 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         usertype = "prohibited.download.pdflong"
         message_collection[usertype] = {r["detail"]}
 
-    def test_001D_download_prohibited_document_PDF_EXCEPTION(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFOrig/IPL.064.0001A/')
+    def test_001D_download_prohibited_document_PDFORIG_EXCEPTION(self):
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDFOrig/SE.004.R0009A/')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         print (r["detail"])
@@ -101,7 +93,7 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         message_collection[usertype] = {r["detail"]}
 
     def test_001D_download_prohibited_document_EPUB_EXCEPTION(self):
-        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/IPL.064.0001A/')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/EPUB/SE.004.R0009A/')
         response = requests.get(full_URL, headers=headers)
         r = response.json()
         print (r["detail"])
@@ -172,19 +164,22 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         print(f'Description: {response_set["accessLimitedDescription"]}\n')
 
     def test_011B_get_future_document_manually_proof_messages(self):
-        # Try to return current content, should only return abstract
-        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/{FUTURE_DOC}/?return_format=XML")
-        response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        r = response.json()
-        response_info = r["documents"]["responseInfo"]
-        response_set = r["documents"]["responseSet"][0]
-        assert (response_set["accessLimited"] == True)   
-        assert (response_set["accessClassification"] == 'future')
-        print(f'Classification: {response_set["accessClassification"]}')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        if FUTURE_DOC is not None: # set to none when nothing is in Future category
+            # Try to return current content, should only return abstract
+            full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/{FUTURE_DOC}/?return_format=XML")
+            response = requests.get(full_URL, headers=headers)
+            # Confirm that the request-response cycle completed successfully.
+            assert(response.ok == True)
+            r = response.json()
+            response_info = r["documents"]["responseInfo"]
+            response_set = r["documents"]["responseSet"][0]
+            assert (response_set["accessLimited"] == True)   
+            assert (response_set["accessClassification"] == 'future')
+            print(f'Classification: {response_set["accessClassification"]}')
+            print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+            print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        else:
+            print ("Test cannot be run - no future documents available per setting of FUTURE_DOC.")
 
     def test_011C_get_marked_embargoed_document_manually_proof_messages(self):
         # Try to return current content, should only return abstract
@@ -212,23 +207,7 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         print(f'Classification: {response_set["accessClassification"]}\n')
         print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
         print(f'Description: {response_set["accessLimitedDescription"]}\n')
-
-    def test_012A_get_future_document_manually_proof_messages(self):
-        # Try to return current content, should only return abstract
-        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/{FUTURE_DOC}/?return_format=XML")
-        response = requests.get(full_URL, headers=headers)
-        # Confirm that the request-response cycle completed successfully.
-        assert(response.ok == True)
-        r = response.json()
-        response_info = r["documents"]["responseInfo"]
-        response_set = r["documents"]["responseSet"][0]
-        assert (response_set["accessLimited"] == True)   
-        assert (response_set["accessClassification"] == 'future')
-        print(f'Classification: {response_set["accessClassification"]}')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
-
-        
+       
     def test_013A_get_ijpopen_only_permission_manually_proof_messages(self):
         print ("Login IJPOPen only user!")
         usertype = "IJPOpen Only subscriber"
@@ -260,9 +239,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
-        print(f'Classification: {response_set["accessClassification"]}\n')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print(f'Classification: {response_set["accessClassification"]}\n')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == True)
         assert (response_set["accessClassification"] == 'archive')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
@@ -275,9 +254,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
-        print(f'Classification: {response_set["accessClassification"]}\n')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print(f'Classification: {response_set["accessClassification"]}\n')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'free')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
@@ -288,9 +267,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
-        print(f'Classification: {response_set["accessClassification"]}')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print(f'Classification: {response_set["accessClassification"]}')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'special')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
@@ -311,9 +290,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
-        print(f'Classification: {response_set["accessClassification"]}\n')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print(f'Classification: {response_set["accessClassification"]}\n')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == True)
         assert (response_set["accessClassification"] == 'current')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
@@ -326,9 +305,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
-        print(f'Classification: {response_set["accessClassification"]}\n')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print(f'Classification: {response_set["accessClassification"]}\n')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'archive')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
@@ -341,9 +320,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
-        print(f'Classification: {response_set["accessClassification"]}\n')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print(f'Classification: {response_set["accessClassification"]}\n')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'free')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
@@ -378,9 +357,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         print ("***** Test PEPCURRENT (AJP) Permission *****")
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'current')
-        print(f'Classification: {response_set["accessClassification"]}\n')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print(f'Classification: {response_set["accessClassification"]}\n')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # peparchive document
@@ -391,10 +370,10 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
-        print ("***** Test PEPARCHIVE (AJP) Permission *****")
-        print(f'Classification: {response_set["accessClassification"]}\n')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print ("***** Test PEPARCHIVE (AJP) Permission *****")
+        #print(f'Classification: {response_set["accessClassification"]}\n')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'archive')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
@@ -407,10 +386,10 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
-        print ("***** Test PEPFREE (PEPGRANTVS) Permission *****")
-        print(f'Classification: {response_set["accessClassification"]}\n')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print ("***** Test PEPFREE (PEPGRANTVS) Permission *****")
+        #print(f'Classification: {response_set["accessClassification"]}\n')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'free')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
@@ -446,9 +425,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         response_set = r["documents"]["responseSet"][0]
         assert (response_set["accessLimited"] == True)
         assert (response_set["accessClassification"] == 'special')
-        print(f'Classification: {response_set["accessClassification"]}')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print(f'Classification: {response_set["accessClassification"]}')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # pepcurrent document
@@ -461,9 +440,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         response_set = r["documents"]["responseSet"][0]
         assert (response_set["accessLimited"] == True)
         assert (response_set["accessClassification"] == 'current')
-        print(f'Classification: {response_set["accessClassification"]}\n')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print(f'Classification: {response_set["accessClassification"]}\n')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # peparchive document
@@ -476,9 +455,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         response_set = r["documents"]["responseSet"][0]
         assert (response_set["accessLimited"] == True)
         assert (response_set["accessClassification"] == 'archive')
-        print(f'Classification: {response_set["accessClassification"]}\n')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print(f'Classification: {response_set["accessClassification"]}\n')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
         # free document
@@ -491,9 +470,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         response_set = r["documents"]["responseSet"][0]
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'free')
-        print(f'Classification: {response_set["accessClassification"]}\n')
-        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        #print(f'Classification: {response_set["accessClassification"]}\n')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
     def test_017A_non_logged_in_user_manually_proof_messages(self):
@@ -513,9 +492,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
             response_set = r["documents"]["responseSet"][0]
             assert (response_set["accessLimited"] == True)
             assert (response_set["accessClassification"] == 'special')
-            print(f'Classification: {response_set["accessClassification"]}')
-            print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-            print(f'Description: {response_set["accessLimitedDescription"]}\n')
+            #print(f'Classification: {response_set["accessClassification"]}')
+            #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+            #print(f'Description: {response_set["accessLimitedDescription"]}\n')
             message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
     
             # pepcurrent document
@@ -528,9 +507,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
             response_set = r["documents"]["responseSet"][0]
             assert (response_set["accessLimited"] == True)
             assert (response_set["accessClassification"] == 'current')
-            print(f'Classification: {response_set["accessClassification"]}\n')
-            print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-            print(f'Description: {response_set["accessLimitedDescription"]}\n')
+            #print(f'Classification: {response_set["accessClassification"]}\n')
+            #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+            #print(f'Description: {response_set["accessLimitedDescription"]}\n')
             message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
     
             # peparchive document
@@ -543,9 +522,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
             response_set = r["documents"]["responseSet"][0]
             assert (response_set["accessLimited"] == True)
             assert (response_set["accessClassification"] == 'archive')
-            print(f'Classification: {response_set["accessClassification"]}\n')
-            print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-            print(f'Description: {response_set["accessLimitedDescription"]}\n')
+            #print(f'Classification: {response_set["accessClassification"]}\n')
+            #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+            #print(f'Description: {response_set["accessLimitedDescription"]}\n')
             message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
     
             # free document
@@ -558,10 +537,11 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
             response_set = r["documents"]["responseSet"][0]
             assert (response_set["accessLimited"] == False)
             assert (response_set["accessClassification"] == 'free')
-            print(f'Classification: {response_set["accessClassification"]}\n')
-            print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-            print(f'Description: {response_set["accessLimitedDescription"]}\n')
+            #print(f'Classification: {response_set["accessClassification"]}\n')
+            #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+            #print(f'Description: {response_set["accessLimitedDescription"]}\n')
             message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+            print ("Message Collection by user type and classification:")
             pp.pprint(message_collection)
     
 if __name__ == '__main__':

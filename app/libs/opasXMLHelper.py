@@ -805,7 +805,7 @@ def xml_get_pages_html(xmlorhtmlstr, offset=0, limit=1, inside="div[@id='body']"
     >>> realxmlinst = xml_file_to_xmlstr(r"tstfiles/DoNotRedistribute/SE.006.R0007A(bKBD3).xml")
     >>> ret_tuple = xml_get_pages_html(realxmlinst, 1, 1, inside="div[@id='body']", env="html", remove_tags=["div[@id='front']"])
     >>> ret_tuple[0]
-    '<html>\\n<head>\\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>\\n<title class="head title">Sigmund Freud: The Psychopathology of Everyday Life</title>\\n<link rel="stylesheet" type="text/css" href="pepepub.css"/>\\n</head>\\n</html>\\n'
+    '<html>\\n<head>\\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>\\n<title class="head title">Sigmund Freud: The Psychopathology of Everyday Life</title>\\n<link rel="stylesheet" type="text/css" href="pep-pdf-epub.css"/>\\n</head>\\n</html>\\n'
     >>> ret_tuple[2:]
     ('vii', 'vii')
 
@@ -1554,7 +1554,7 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                         # do substitutes
                         ret_val = ret_val.replace("%24OPAS_IMAGE_URL;", APIURL + opasConfig.IMAGE_API_LINK)
                         # only for the updated Gavant xslt
-                        if opasConfig.GAVANTXSLT:
+                        if opasConfig.EXPERIMENTAL:
                             ret_val = ret_val.replace("%24OPAS_JOURNAL_NAME;", "IJP")
                             ret_val = ret_val.replace("%24OPAS_CLIENT_ID;", "2") # need to fix
                             ret_val = ret_val.replace("%24OPAS_SESSION_ID;", "") # need to fix
@@ -1572,7 +1572,7 @@ def html_to_epub(htmlstr,
                  html_title=None,
                  citeas=None,
                  session_info=None,
-                 stylesheet=opasConfig.CSS_STYLESHEET): #  e.g., "./libs/styles/pep-html-preview.css"
+                 stylesheet=opasConfig.CSS_STYLESHEET): 
     """
     uses ebooklib
     
@@ -1628,6 +1628,8 @@ def html_to_epub(htmlstr,
                        lang=lang)
 
     c1.set_content(htmlstr)
+    c1.add_link(href=opasConfig.CSS_STYLESHEET_REFERENCE, rel='stylesheet', type='text/css')
+    c1.add_link(href=opasConfig.FORK_AWESOME_PUBLIC_URL, rel='stylesheet', type='text/css', integrity=opasConfig.FORK_AWESOME_INTEGRITY, crossorigin=opasConfig.FORK_AWESOME_CROSSORIGIN)
     copyright_text = stdMessageLib.COPYRIGHT_PAGE_HTML
     copyright_text = copyright_text.replace("[[username]]", username)
     # copyright_text = copyright_text.replace("<!--UserInfoHere-->", download_info)
@@ -1656,7 +1658,7 @@ def html_to_epub(htmlstr,
     
     
     nav_css = epub.EpubItem(uid="style_nav",
-                            file_name="style/pepkbd3-html.css",
+                            file_name=opasConfig.CSS_STYLESHEET_REFERENCE,
                             media_type="text/css",
                             content=style)
     book.add_item(nav_css)    

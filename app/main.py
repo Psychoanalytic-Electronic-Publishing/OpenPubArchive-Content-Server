@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0425/v2.1.149"   # semver versioning after date.
+__version__     = "2022.0507/v2.1.151"   # semver versioning after date.
 __status__      = "Production"  
 
 """
@@ -5315,6 +5315,9 @@ def documents_downloads(response: Response,
             status_message = msgdb.get_user_message(opasConfig.ERROR_404_DOCUMENT_NOT_FOUND) + request_qualifier_text
         elif status.httpcode == httpCodes.HTTP_403_FORBIDDEN:
             status_message = status.error_description # status_message = msgdb.get_user_message(opasConfig.ERROR_403_DOWNLOAD_OR_PRINTING_RESTRICTED) + " " + request_qualifier_text
+        elif status.httpcode == httpCodes.HTTP_500_INTERNAL_SERVER_ERROR:
+            status_message = status.error_description # status_message = msgdb.get_user_message(opasConfig.ERROR_403_DOWNLOAD_OR_PRINTING_RESTRICTED) + " " + request_qualifier_text
+        
         else:
             if status.error_description is not None and len(status.error_description) > 0:
                 status_message = f"{status.error_description} ({status.httpcode}): {request_qualifier_text}"
@@ -5404,10 +5407,11 @@ def documents_downloads(response: Response,
                                             )
         elif file_format == 'PDF':
             try:
+                stamped_file = opasPDFStampCpyrght.stampcopyright(user_name, input_file=filename, suffix="pepweb")
                 response.status_code = httpCodes.HTTP_200_OK
-                ret_val = FileResponse(path=filename,
+                ret_val = FileResponse(path=stamped_file,
                                        status_code=response.status_code,
-                                       filename=os.path.split(filename)[1], 
+                                       filename=os.path.split(stamped_file)[1], 
                                        media_type=media_type)
 
             except Exception as e:

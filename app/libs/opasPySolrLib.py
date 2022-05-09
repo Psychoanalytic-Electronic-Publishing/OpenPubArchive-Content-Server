@@ -54,9 +54,11 @@ import opasXMLHelper as opasxmllib
 import opasDocPermissions as opasDocPerm
 # import smartsearch
 import opasQueryHelper
-# from xhtml2pdf import pisa             # for HTML 2 PDF conversion
 from weasyprint import HTML, CSS
 from weasyprint.text.fonts import FontConfiguration
+from xhtml2pdf import pisa             # alt conversion when weasyprint fails
+loggerw = logging.getLogger('weasyprint')
+loggerw.setLevel('ERROR')
 
 import pysolr
 LOG = logging.getLogger("pysolr")
@@ -2803,7 +2805,11 @@ def prep_document_download(document_id,
     except Exception as e:
         # logger.error(f"PrepDownloadError: Solr Search Exception: {e}")
         err_info = pysolrerror_processing(e)
-        logger.error(f"PrepDownloadError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
+        err_msg = f"PrepDownloadError: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}"
+        logger.error(err_msg)
+        status = models.ErrorReturn( httpcode=httpCodes.HTTP_404_NOT_FOUND,
+                                     error_description=err_msg
+                                   )
     else:
         try:
             documentListItem = models.DocumentListItem()
@@ -2889,15 +2895,16 @@ def prep_document_download(document_id,
                             """
                             Generated PDF, no page breaks, but page numbering, for reading and printing without wasting pages.
                             """
-                            html_string = opasxmllib.xml_str_to_html(doc, document_id=document_id)
+                            html_string = opasxmllib.xml_str_to_html(doc, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=document_id) # transformer_name default used explicitly for code readability
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
                             html_string = re.sub("\(\)", f"", html_string, count=1) # in running head, missing issue
                             copyright_page = COPYRIGHT_PAGE_HTML.replace("[[username]]", session_info.username)
                             html_string = re.sub("</html>", f"{copyright_page}</html>", html_string, count=1)
                             html_string = re.sub("href=\"#/Document",\
-                                                 "href=\"pep-web.org/browse/Document",html_string)
+                                                 "href=\"https://pep-web.org/browse/document",html_string)
                             html_string = re.sub('class="fas fa-arrow-circle-right"',\
                                                  'class="fa fa-external-link"', html_string)
+                            html_string = re.sub(r"#/Search/\?author", f"https://pep-web.org/search/?q", html_string)
                             
                             if art_lang == "zh":
                                 # add some spaces in the chinese text to permit wrapping:
@@ -2925,8 +2932,7 @@ def prep_document_download(document_id,
                             # due to problems with pisa and referenced graphics and banners, weasyprint used now rather than Pisa 2022-04-20
                             try:
                                 stylesheets = []
-                                # stylesheet_paths = [opasConfig.CSS_STYLESHEET, "./libs/styles/pep-pdf.css", "./libs/styles/pepepub.css"]
-                                stylesheet_paths = ["./libs/styles/pep-pdf.css"]
+                                stylesheet_paths = [opasConfig.CSS_STYLESHEET, ]
                                 try:
                                     for stylesheet_path in stylesheet_paths:
                                         with open(stylesheet_path) as f:
@@ -2937,16 +2943,74 @@ def prep_document_download(document_id,
                                 font_config = FontConfiguration()
                                 html = HTML(string = html_string)
                                 html.write_pdf(target=output_filename, stylesheets=stylesheets, font_config=font_config)
-                                
+
                             except Exception as e:
                                 logging.error(f"Weasyprint error: {e}")
+                                #status = models.ErrorReturn( httpcode=httpCodes.HTTP_500_INTERNAL_SERVER_ERROR,
+                                                             #error_description="Sorry, due to a conversion error, this article cannot be converted to PDF. Try ePUB format instead."
+                                                             #)
+                                if 1:
+                                    # Since Weasyprint returns nothing useful in this case, use the xml2html Pisa library to generate the PDF
+                                    # It usually works when Weasyprint fails, but doesn't seem to be able to include graphics anymore
+                                    # that was working at least partly at one point.
+                                    pisa_css = r"""
+                                        <link rel="stylesheet" type="text/css" href="%s"/>
+                                        @page {
+                                            size: letter portrait;
+                                            @frame content_frame {
+                                                left: 50pt;
+                                                width: 512pt;
+                                                top: 50pt;
+                                                height: 692pt;
+                                            }
+                                        }
+                                        @font-face {font-family: Roboto; src: url('%s');}
+                                        @font-face {font-family: Roboto; font-style: italic; src: url('%s');}
+                                        @font-face {font-family: Roboto; font-weight: bold; src: url('%s');}
+                                        @font-face {font-family: Roboto; font-weight: bold; font-style: italic; src: url('%s');}
+                                        body, p {   
+                                                    font-family: 'Roboto' }
+                                                
+                                    """ % (opasConfig.CSS_STYLESHEET,
+                                           opasConfig.fetch_resources('Roboto-Regular.ttf', None),
+                                           opasConfig.fetch_resources('Roboto-Italic.ttf', None),
+                                           opasConfig.fetch_resources('Roboto-Bold.ttf', None),
+                                           opasConfig.fetch_resources('Roboto-BoldItalic.ttf', None),
+                                           )
+                                    #pisa_css = pisa_css + style_data 
+
+                                    pisa.showLogging() # debug only
+                                    #print (f"In Print Module.  Folder {os.getcwd()}")
+                                    #print (f"{opasConfig.PDF_EXTENDED_FONT}")
+                                    # doc = opasxmllib.remove_encoding_string(doc)
+                                    # open output file for writing (truncated binary)
+                                    try:
+                                        result_file = open(output_filename, "w+b")
+                                        # Need to fix links for graphics, e.g., see https://xhtml2pdf.readthedocs.io/en/latest/usage.html#using-xhtml2pdf-in-django
+                                        pisaStatus = pisa.CreatePDF(src=html_string,            # the HTML to convert
+                                                                    dest=result_file,
+                                                                    css_default=pisa_css, 
+                                                                    encoding="UTF-8") #,
+                                                                    # link_callback=opasConfig.fetch_resources)           # file handle to receive result
+                                        # close output file
+                                        result_file.close()
+                                    except Exception as e:
+                                        ret_val = None
+                                    else:
+                                        ret_val = output_filename                                    
+
                             else:
                                 ret_val = output_filename                               
                                 
                         elif ret_format.upper() == "EPUB":
                             doc = opasxmllib.remove_encoding_string(doc)
-                            html_string = opasxmllib.xml_str_to_html(doc, document_id=document_id)
+                            html_string = opasxmllib.xml_str_to_html(doc, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=document_id) # transformer_name default used explicitly for code readability
                             html_string = re.sub("\[\[RunningHead\]\]", f"{heading}", html_string, count=1)
+                            html_string = re.sub("href=\"#/Document",\
+                                                 "href=\"https://pep-web.org/browse/document", html_string)
+                            html_string = re.sub('class="fas fa-arrow-circle-right"',\
+                                                 'class="fa fa-external-link"', html_string)
+                            html_string = re.sub(r"#/Search/\?author", f"https://pep-web.org/search/?q", html_string)
                             html_string = add_epub_elements(html_string)
                             filename = opasxmllib.html_to_epub(htmlstr=html_string,
                                                                output_filename_base=document_id,
@@ -3104,7 +3168,8 @@ def get_fulltext_from_search_results(result,
                                                ret_format="HTML"
                                                )
         try:
-            text_xml = opasxmllib.xml_str_to_html(text_xml, document_id=documentListItem.documentID)  #  e.g, r"./libs/styles/pepkbd3-html.xslt"
+            text_xml = opasxmllib.xml_str_to_html(text_xml, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=documentListItem.documentID) # transformer_name default used explicitly for code readability
+            
         except Exception as e:
             logger.error(f"GetFulltextError: Could not convert to HTML {e}; returning native format")
             text_xml = re.sub(f"{opasConfig.HITMARKERSTART}|{opasConfig.HITMARKEREND}", numbered_anchors, text_xml)
@@ -3118,7 +3183,7 @@ def get_fulltext_from_search_results(result,
                 logger.error(f"GetFulltextError: Could not do anchor substitution {e}")
 
         if child_xml is not None:
-            child_xml = opasxmllib.xml_str_to_html(child_xml, document_id=documentListItem.documentID)
+            child_xml = opasxmllib.xml_str_to_html(child_xml, transformer_name=opasConfig.TRANSFORMER_XMLTOHTML, document_id=documentListItem.documentID) # transformer_name default used explicitly for code readability
                 
     elif format_requested_ci == "textonly":
         # strip tags
