@@ -2979,7 +2979,7 @@ def prep_document_download(document_id,
                                            )
                                     #pisa_css = pisa_css + style_data 
 
-                                    pisa.showLogging() # debug only
+                                    #pisa.showLogging() # debug only
                                     #print (f"In Print Module.  Folder {os.getcwd()}")
                                     #print (f"{opasConfig.PDF_EXTENDED_FONT}")
                                     # doc = opasxmllib.remove_encoding_string(doc)
