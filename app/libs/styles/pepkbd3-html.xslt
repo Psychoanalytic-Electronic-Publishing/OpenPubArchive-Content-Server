@@ -2,7 +2,7 @@
 <!-- ============================================================= -->
 <!--  MODULE:    HTML Preview of PEP-Web KBD3 instances            -->
 <!--  BASED-ON:  HTML Preview of NISO JATS Publishing 1.0 XML      -->
-<!--  DATE:      2021-06-06                                        -->
+<!--  DATE:      2022-05-10                                        -->
 <!--  Revisions:                                                   
         
         TODO:
@@ -10,6 +10,9 @@
           - Decide if the data-pagehelper attributes are helpful 
             for page return
 
+        2022-05-10  - Changed ftn p's to span with class 'para' since It caused the text following the
+                      footer to be "outside" of the para resulting in incorrect
+                      formatting
         2022-01-24  - Fixed display of titles that are sub binc references.
                       Seems to cover all titles test, but needs many more samples
                       except it's too slow a process to test many.  
@@ -633,7 +636,7 @@
   </xsl:template>  
   
   <xsl:template match="ftn">
-        <p class="ftn" data-class="ftn_group">
+        <span class="ftn" data-class="ftn_group">
           <xsl:attribute name="id">
             <xsl:value-of select="@id"/>
           </xsl:attribute>
@@ -642,9 +645,8 @@
               <xsl:value-of select="@label"/>
             </sup>
           </span>
-          <xsl:value-of select="."/>
-<!--          <xsl:apply-templates/>-->
-        </p>  
+          <xsl:apply-templates select="." mode="ftn_text"/>
+        </span>  
 
   </xsl:template>
   
@@ -1034,11 +1036,13 @@
   </xsl:template>
   
   <xsl:template match="pb">
+    <xsl:text>&#xa;</xsl:text>
     <span class="pagebreak" data-class="pb">
       <xsl:call-template name="named-anchor"/>
       <xsl:apply-templates select="@content-type"/>
       <xsl:apply-templates/>
     </span>
+    <xsl:text>&#xa;</xsl:text>
   </xsl:template>
 
 
@@ -1107,6 +1111,36 @@
       <xsl:attribute name="class">paracont</xsl:attribute>
       <xsl:apply-templates/>
     </p>
+  </xsl:template>
+  
+  <xsl:template match="p" mode="ftn_text">
+    <span class="para">
+      <xsl:call-template name="assign-id"/>
+      <xsl:apply-templates select="@content-type"/>
+      <xsl:call-template name="assign-lang"/>
+      <xsl:call-template name="data-pagehelper"/>
+      <xsl:if test="@name">
+        <xsl:attribute name="data-name">
+          <xsl:value-of select="@name"/>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:if test="@lgrid">
+        <xsl:attribute name="data-lgrid">
+          <xsl:value-of select="@lgrid"/>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:if test="@lgrx">
+        <xsl:attribute name="data-lgrx">
+          <xsl:value-of select="@lgrx"/>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:if test="@lgrtype">
+        <xsl:attribute name="data-lgrtype">
+          <xsl:value-of select="@lgrtype"/>
+        </xsl:attribute>
+      </xsl:if>
+      <xsl:apply-templates/>
+    </span>
   </xsl:template>
   
   <xsl:template match="p">
