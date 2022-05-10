@@ -1536,10 +1536,9 @@ def xml_str_to_html(elem_or_xmlstr, transformer_name=opasConfig.TRANSFORMER_XMLT
                         # transform the doc or fragment
                         transformed_data = transformer(sourceFile)
                     except KeyError as e:
-                        if transformer is None:
-                            logger.error(f"Selected Transformer: {transformer_name} not found ({e})")
-                            if stop_on_exceptions:
-                                raise Exception(ret_val)
+                        logger.error(f"Selected Transformer: {transformer_name} not found ({e})")
+                        if stop_on_exceptions:
+                            raise Exception(ret_val)
                     except Exception as e:
                         # return this error, so it will be displayed (for now) instead of the document
                         ret_val = f"<p align='center'>Sorry, due to a transformation error, we cannot display this document right now.</p><p align='center'>Please report this to PEP.</p>  <p align='center'>XSLT Transform Error: {e}</p>"

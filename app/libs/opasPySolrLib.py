@@ -2932,14 +2932,14 @@ def prep_document_download(document_id,
                             # due to problems with pisa and referenced graphics and banners, weasyprint used now rather than Pisa 2022-04-20
                             try:
                                 stylesheets = []
-                                stylesheet_paths = [opasConfig.CSS_STYLESHEET, ]
-                                try:
-                                    for stylesheet_path in stylesheet_paths:
-                                        with open(stylesheet_path) as f:
-                                            style_data = f.read()
-                                        stylesheets.append(CSS(string=style_data))
-                                except Exception as e:
-                                    print (f"Error reading file: {stylesheet_path}")
+                                #stylesheet_paths = [opasConfig.CSS_STYLESHEET, ]
+                                #try:
+                                    #for stylesheet_path in stylesheet_paths:
+                                        #with open(stylesheet_path) as f:
+                                            #style_data = f.read()
+                                        #stylesheets.append(CSS(string=style_data))
+                                #except Exception as e:
+                                    #print (f"Error reading file: {stylesheet_path}")
                                 font_config = FontConfiguration()
                                 html = HTML(string = html_string)
                                 html.write_pdf(target=output_filename, stylesheets=stylesheets, font_config=font_config)
@@ -2968,8 +2968,8 @@ def prep_document_download(document_id,
                                         @font-face {font-family: Roboto; font-style: italic; src: url('%s');}
                                         @font-face {font-family: Roboto; font-weight: bold; src: url('%s');}
                                         @font-face {font-family: Roboto; font-weight: bold; font-style: italic; src: url('%s');}
-                                        body, p {   
-                                                    font-family: 'Roboto' }
+                                        body, p, p2 {   
+                                                    font-family: 'Noto Sans' }
                                                 
                                     """ % (opasConfig.CSS_STYLESHEET,
                                            opasConfig.fetch_resources('Roboto-Regular.ttf', None),

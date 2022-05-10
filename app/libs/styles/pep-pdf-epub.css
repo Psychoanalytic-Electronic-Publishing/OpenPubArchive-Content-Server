@@ -1,5 +1,8 @@
+body, p, p2 {   
+              font-family: 'Noto Sans'; 
+            }
+
 body{
-    font-family:helvetica;
     margin-left: 5%;
     margin-right: 5%;
     color: black;
@@ -173,7 +176,7 @@ span.footer > p:first-of-type:first-line, span.ftr > p:first-of-type:first-line 
 
 span.footer > p, span.ftr > p, .ftn {
     display: block;
-    font-weight:lighter;
+    font-weight:350;
     text-align:left;  
     font-size: medium;
     font-style: italic;
@@ -188,7 +191,7 @@ span.footer > p, span.ftr > p, .ftn {
   font-style: italic;
   margin-left: +.25in;
   text-indent: -.25in;
-  font-weight: lighter;
+  font-weight: 350;
   /*vertical-align: super;*/
   color: #4b4e54;    
 }
@@ -217,9 +220,10 @@ span.pagebreak {
   font-style: italic;
 }
 
-.fa-external-link:before {
-  content: "&emsp;&emsp;&emsp; "; 
-}
+/*.fa-external-link:before {*/
+  /*font-family: 'ForkAwesome'; */
+  /*content: "\A\2003\f08e"; */
+/*}*/
 
 list {
   list-style-type: decimal;

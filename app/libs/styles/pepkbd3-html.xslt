@@ -74,8 +74,8 @@
     
   <!--<xsl:param name="transform" select="'pepkbd3-html.xsl'"/>-->
 
-  <!--<xsl:param name="css2" select="'pep.css'"/>-->
-  <xsl:param name="css3" select="'./pep-pdf-epub.css'"/>
+  <xsl:param name="css2" select="'https://pep-web-includes.s3.amazonaws.com/pep-pdf-epub.css'"/>
+  <xsl:param name="css3" select="'https://pep-web-includes.s3.amazonaws.com/pep-pdf-epub.css'"/>  
   <xsl:param name="report-warnings" select="'no'"/>
 
   <xsl:variable name="verbose" select="$report-warnings = 'yes'"/>
@@ -115,9 +115,14 @@
         <xsl:if test="normalize-space(string($authors))">: </xsl:if>
         <xsl:value-of select="pepkbd3/artinfo/arttitle|pepkbd3/artinfo/arttitle/binc"/>
       </title>
+	  <link rel="preconnect" href="https://fonts.googleapis.com"></link>
+	  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"></link>
+	  <!--<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&amp;display=swap" rel="stylesheet"></link>-->
+	  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&amp;family=Noto+Serif&amp;display=swap" rel="stylesheet"></link>
+	  <!--<link href="https://fonts.googleapis.com/css2?family=Tangerine&amp;display=swap" rel="stylesheet"></link>-->
+      <link rel="stylesheet" type="text/css" href="{$css2}"></link>
 	  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css" integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous"></link>
-      <!-- <link rel="stylesheet" type="text/css" href="{$css}"></link>-->
-      <!--<link rel="stylesheet" type="text/css" href="{$css2}"></link>-->
+      <!--<link rel="stylesheet" type="text/css" href="{$css}"></link>-->
       <!--<link rel="stylesheet" type="text/css" href="{$css3}"></link>-->
       
       <!-- When importing jats-oasis-html.xsl, we can call a template to insert CSS for our tables. -->
