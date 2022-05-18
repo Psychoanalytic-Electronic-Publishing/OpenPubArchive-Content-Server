@@ -2592,27 +2592,21 @@ def metadata_get_next_and_prev_vols(source_code=None,
                 match_vol = None
                 next_vol = None
                 if facet_pivot != []:
-                    next_vol_idx = None
-                    prev_vol_idx = None
                     match_vol_idx = None
-                    pivot_len = len(facet_pivot[0]['pivot'])
+                    #pivot_len = len(facet_pivot[0]['pivot'])
                     counter = 0
                     for n in facet_pivot[0]['pivot']:
                         if n['value'] == str(source_vol):
                             match_vol_idx = counter
                             match_vol = n
+                        elif n['value'] == str(int(source_vol) - 1):
+                            prev_vol = n
+                        elif n['value'] == str(int(source_vol) + 1):
+                            next_vol = n
 
                         counter += 1
         
-                    if match_vol_idx is not None:
-                        if match_vol_idx > 0:
-                            prev_vol_idx = match_vol_idx - 1
-                            prev_vol = facet_pivot[0]['pivot'][prev_vol_idx]
-                            
-                        if match_vol_idx < pivot_len - 1:
-                            next_vol_idx = match_vol_idx + 1
-                            next_vol = facet_pivot[0]['pivot'][next_vol_idx]
-                    else:
+                    if match_vol_idx is None:
                         logger.warning(f"No match for source {source_code} volume: {source_vol} ")
                         
                 try:
@@ -2629,6 +2623,7 @@ def metadata_get_next_and_prev_vols(source_code=None,
                     del(next_vol['field'])
                 except:
                     pass
+
     if opasConfig.LOCAL_TRACE:
         print(f"Match Prev {prev_vol}, Curr: {match_vol}, Next: {next_vol}")
         

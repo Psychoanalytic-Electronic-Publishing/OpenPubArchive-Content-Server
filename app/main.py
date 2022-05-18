@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0510/v2.1.154"   # semver versioning after date.
+__version__     = "2022.0518/v2.1.155"   # semver versioning after date.
 __status__      = "Production"  
 
 """
@@ -4269,7 +4269,7 @@ def metadata_contents_sourcecode(response: Response,
                                  request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                                  SourceCode: str=Path(..., title=opasConfig.TITLE_SOURCECODE, description=opasConfig.DESCRIPTION_SOURCECODE), 
                                  year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
-                                 moreinfo:int=Query(0, title="Extra volume info", description="Extra info"), 
+                                 moreinfo:int=Query(0, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO_CONTENTS), 
                                  limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                                  offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET), 
                                  client_id:int=Depends(get_client_id), 
@@ -4341,7 +4341,7 @@ def metadata_contents(SourceCode: str,
                       response: Response,
                       request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),  
                       year: str=Query("*", title=opasConfig.TITLE_YEAR, description=opasConfig.DESCRIPTION_YEAR),
-                      moreinfo:int=Query(0, title="Extra volume info", description="Extra info"), 
+                      moreinfo:int=Query(0, title=opasConfig.TITLE_MOREINFO, description=opasConfig.DESCRIPTION_MOREINFO_CONTENTS), 
                       limit: int=Query(opasConfig.DEFAULT_LIMIT_FOR_CONTENTS_LISTS, title=opasConfig.TITLE_LIMIT, description=opasConfig.DESCRIPTION_LIMIT),
                       offset: int=Query(0, title=opasConfig.TITLE_OFFSET, description=opasConfig.DESCRIPTION_OFFSET),
                       client_id:int=Depends(get_client_id), 

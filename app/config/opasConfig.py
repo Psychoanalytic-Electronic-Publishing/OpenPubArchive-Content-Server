@@ -390,6 +390,7 @@ DESCRIPTION_ISSUE = "The issue number if the source has one (or S, or Supplement
 DESCRIPTION_LIMIT = "Maximum number of items to return."
 DESCRIPTION_MAX_KWIC_COUNT = "Maximum number of hits in context areas to return"
 DESCRIPTION_MOREINFO = "Return statistics on the Archive holdings (and extended version info for admins)"
+DESCRIPTION_MOREINFO_CONTENTS = "1=Provides Range of volumes (infosource: volumes_min_max); 2=Provides Prev and Next Volume info (infosource: volumes_adjacent)"
 DESCRIPTION_MORELIKETHIS = "Find similar documents"
 DESCRIPTION_MOST_CITED_PERIOD = f"Period for minimum count parameter 'citecount'; show articles cited at least this many times during this time period [in full years: 5, 10, 20, al(l)]"
 DESCRIPTION_MOST_VIEWED_PERIOD = f"Period applying to the minimum count parameter 'viewcount' filtering articles viewed during this period (use integer: 1: lastweek,  2: lastmonth, 3: last6months, 4: last12months,  5: lastcalendaryear)"
