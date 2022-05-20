@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0518/v2.1.155"   # semver versioning after date.
+__version__     = "2022.0520/v2.1.156"   # semver versioning after date.
 __status__      = "Production"  
 
 """

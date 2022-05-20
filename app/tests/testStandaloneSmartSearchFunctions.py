@@ -3,6 +3,7 @@
 
 import unittest
 import smartsearch
+import smartsearchLib
 from opasConfig import KEY_SEARCH_FIELD, KEY_SEARCH_SMARTSEARCH, KEY_SEARCH_VALUE,  KEY_SEARCH_TYPE
 from unitTestConfig import base_plus_endpoint_encoded, headers
 
@@ -214,6 +215,24 @@ class TestStandaloneSmartSearchFunctions(unittest.TestCase):
         print (result)
         assert (result[KEY_SEARCH_TYPE] == 'authors year vol pgrg')
         
+    def test4_get_list_of_name_ids(self): 
+        result = smartsearchLib.get_list_of_name_ids("Madame Bovary")
+        print (result)
+        assert (result[0] == 'Bovary')
+        
+    def test4b_get_list_of_name_ids(self):
+        names = [("Dr. Martin Luther King", "King, M."),
+                 ("Felix the Cat", "Felix the Cat"), 
+                 ("Sigmund Freud", "Freud, S."), 
+                 ("Elisabeth R. Geleerd", "Geleerd, E."), 
+                 ("Miguel Angel Gonzalez-Torres", "Gonzalez-Torres, M."),
+                 ("Freud", "Freud"), 
+        ]
+        for n in names:
+            result = smartsearchLib.get_list_of_name_ids(n[0])
+            print (result[0], n[0])
+            assert (result[0] == n[1])
+
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")

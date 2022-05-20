@@ -359,7 +359,10 @@ def get_list_of_name_ids(names_mess):
     try:
         for n in names.human_names:
             if n.last != "":
-                name_id = n.last + f", {n.first[0]}."
+                if n.first != "":
+                    name_id = n.last + f", {n.first[0]}."
+                else:
+                    name_id = n.last
                 ret_val.append(name_id)
             else:
                 ret_val.append(n.first)
