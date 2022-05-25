@@ -43,10 +43,10 @@ class TestMetadataContents(unittest.TestCase):
         print(r['documentList']['responseInfo']['fullCount']) 
         # print ("test_metadata_journals complete.")
         # Check this TOC items
-        assert(r['documentList']['responseSet'][6]["documentID"] == "FA.014A.0104A")
-        assert(r['documentList']['responseSet'][6]["issueTitle"] == "No. 64")
-        assert(r['documentList']['responseSet'][6]["issueSeqNbr"] == "64")
-        assert(r['documentList']['responseSet'][6]["pgStart"] == "104")
+        assert(r['documentList']['responseSet'][0]["documentID"] == "FA.014A.0001A")
+        assert(r['documentList']['responseSet'][0]["issueTitle"] == "No. 64")
+        assert(r['documentList']['responseSet'][0]["issueSeqNbr"] == "64")
+        assert(r['documentList']['responseSet'][0]["pgStart"] == "1")
         
     def test_1C_meta_contents_for_source(self):
         full_URL = base_plus_endpoint_encoded('/v2/Metadata/Contents/APA/27S/')
