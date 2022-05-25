@@ -98,6 +98,8 @@ EMBARGO_TOC_TEXT = {
     'IJPOPEN_REMOVED': "Rmvd",        # Text to appear instead of Page number in TOC
 }
 
+MERGE_AFFIDS = False                # If True, when an author has multiple affids, the institutions will be merged into the first ID affiliation
+                                    #  in the author core (not in the XML in the Docs core)
 EXPERIMENTAL = False
 XSLT_PATH = r"./libs/styles;../libs/styles"
 if not EXPERIMENTAL: # tests with the Gavant XSLT

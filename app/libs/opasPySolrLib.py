@@ -2069,12 +2069,13 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
             issue = result.get("art_iss", None)
             issue_title = result.get("art_iss_title", None)
             issue_seqnbr = result.get("art_iss_seqnbr", None)
-            if issue is not None:
-                if issue_title is None:
-                    if issue_seqnbr is None:
-                        issue_title = f"Issue {issue}"
-                    else:
-                        issue_title = f"No. {issue_seqnbr}"
+            # turned this off 2022-05-25, the PEP Client generates issue numbers/sequence numbers so don't put it in the title
+            #if issue is not None:
+                #if issue_title is None:
+                    #if issue_seqnbr is None:
+                        #issue_title = f"Issue {issue}"
+                    #else:
+                        #issue_title = f"No. {issue_seqnbr}"
             
             embargotype = result.get("art_embargotype", None)
             embargo_toc_addon = opasConfig.EMBARGO_TOC_TEXT.get(embargotype, "")

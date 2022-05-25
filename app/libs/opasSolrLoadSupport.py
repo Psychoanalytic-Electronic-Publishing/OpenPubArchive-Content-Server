@@ -1237,8 +1237,19 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
             except KeyError as e:
                 authorAffil = None  # see if the add still takes!
             else:
-                authorAffil = pepxml.xpath('//artinfo/artauth/autaff[@affid="%s"]' % authorAffID)
-                authorAffil = etree.tostring(authorAffil[0]).decode("utf-8")
+                authAffIDs = authorAffID.split(" ")
+                if not opasConfig.MERGE_AFFIDS: # True XML way to do it, but note that authorAffil will be concatenated affil models for the authors affIDs
+                    authorAffil = ""
+                    for authorAffID in authAffIDs:
+                        affil = pepxml.xpath('//artinfo/artauth/autaff[@affid="%s"]' % authorAffID)
+                        authorAffil += etree.tostring(affil[0]).decode("utf-8")
+                else: # merge this authors institutions into a single Affil for this author
+                    authAffIDs = authorAffID.split(" ")
+                    authorAffil = f'<autaff affid="{authAffIDs[0]}">'
+                    for authorAffID in authAffIDs:
+                        affil = pepxml.xpath('//artinfo/artauth/autaff[@affid="%s"]/instit' % authorAffID)
+                        authorAffil += etree.tostring(affil[0]).decode("utf-8")
+                    authorAffil += "</autaff>"                    
 
             adoc = []
             adoc.append({

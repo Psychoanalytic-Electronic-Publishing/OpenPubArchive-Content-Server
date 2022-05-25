@@ -7,7 +7,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0315" 
+__version__     = "2022.0522" 
 __status__      = "Production"
 
 programNameShort = "opasDataLoader"
