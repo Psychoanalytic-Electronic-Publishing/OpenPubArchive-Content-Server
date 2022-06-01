@@ -90,8 +90,10 @@ EXPERT_PICK_IMAGE_FILENAME_READ_LIMIT = 13000 # lower numbers are faster, but do
 # should do this better...later.
 
 
-# the following symbolic codes are embargo types.
-EMBARGO_IJPOPEN_REMOVED = 300       # This article was removed from IJPOpen.
+# the following symbolic codes are embargo types.  (Perhaps later the IJPOpen embargo types should be made into general embargo types 
+# if we are to withdraw other articles, though that's really not PEP's policy.
+EMBARGO_IJPOPEN_REMOVED = 300       # This article was removed from IJPOpen (abstract, authors, and title available)
+EMBARGO_IJPOPEN_FULLY_REMOVED = 302 # Fully removed, special dispensation cases, per DT request 2022-05-31
 EMBARGO_PUBLISHER_EMBARGOED = 301   # special embargoed article from RFP and perhaps others, no reason specified
 EMBARGO_TYPE_OTHER = 301            # for now, just like publisher embargoed.
 EMBARGO_TOC_TEXT = {

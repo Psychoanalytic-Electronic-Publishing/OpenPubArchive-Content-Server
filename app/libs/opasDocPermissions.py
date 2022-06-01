@@ -1015,6 +1015,8 @@ def get_access_limitations(doc_id,
                                 if embargo_type is not None:
                                     if embargo_type == 'IJPOPEN_REMOVED':
                                         msg = msgdb.get_user_message(msg_code=opasConfig.EMBARGO_IJPOPEN_REMOVED)
+                                    elif embargo_type == 'IJPOPEN_FULLY_REMOVED':
+                                        msg = msgdb.get_user_message(msg_code=opasConfig.EMBARGO_IJPOPEN_FULLY_REMOVED)
                                     elif embargo_type == 'RESTRICTED':
                                         msg = msgdb.get_user_message(msg_code=opasConfig.EMBARGO_PUBLISHER_EMBARGOED)
                                     else:
