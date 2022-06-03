@@ -312,6 +312,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
     """
     Use in-place updates to update the views data
     """
+    from opasConfig import ArticleID
     update_count = 0
     skipped_as_update_error = 0
     skipped_as_missing = 0
@@ -336,6 +337,15 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             results = solrcon.search(q = f"art_id:{doc_id}")
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
+            else:
+                parsed_id = ArticleID(articleID=doc_id)
+                results = solrcon.search(q = f"art_id:{parsed_id.altStandard}")
+                if results.raw_response["response"]["numFound"] == 1:
+                    # odds are good this is what was cited.
+                    found = True
+                    logger.error(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.altStandard}. Using that instead!")
+                    doc_id = parsed_id.altStandard
+                
         except Exception as e:
             logger.info(f"Document {doc_id} not in Solr...skipping")
             skipped_as_missing += 1

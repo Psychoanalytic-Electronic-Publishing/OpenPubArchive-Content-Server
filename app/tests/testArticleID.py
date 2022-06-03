@@ -75,6 +75,18 @@ class TestArticleID(unittest.TestCase):
             
             print (n, " = ", r)
           
+    def test_2_articleID_manipulation(self):
+        testIDs = [
+            "FA.001A.0005A",
+            "FA.001C.0074", 
+            "FA.001.R0002", 
+        ]
+        for n in testIDs:
+            a = opasConfig.ArticleID(articleID=n)
+            print (a.articleID, a.altStandard)
+            
+            
+        
         
 if __name__ == '__main__':
     unittest.main()
