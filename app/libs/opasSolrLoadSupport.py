@@ -240,6 +240,9 @@ class ArticleInfo(object):
         self.embargotype = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artinfo/@embargotype", default_return=None)
         if self.embargotype is not None:
             self.embargotype = self.embargotype.upper()
+            if opasConfig.TEMP_IJPOPEN_VER_COMPAT_FIX:
+                if self.embargotype == "IJPOPEN_FULLY_REMOVED":
+                    self.embargotype = "IJPOPEN_REMOVED" 
         
         if 1: # vol info (just if'd for folding purposes)
             vol_actual = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artvol/@actual', default_return=None)

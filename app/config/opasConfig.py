@@ -27,6 +27,9 @@ import starlette.status as httpCodes # HTTP_ codes, e.g.
 TIME_FORMAT_STR_DB = '%Y-%m-%dT%H:%M:%S'        # solr wants the Z; mysql connector doesn't!
 TIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%SZ'  # solr wants the Z; mysql connector doesn't!
 
+# TEMPORARY COMPATIBILITY SWITCHES
+TEMP_IJPOPEN_VER_COMPAT_FIX = True   # Production server can't be updated yet (June 1) and doesn't understand IJPOPEN_FULLY_REMOVED
+
 DATA_SOURCE = "v2022r1a/"
 # BASELOGFILENAME = "opasAPI"
 # logFilename = BASELOGFILENAME + "_" + datetime.date.today().strftime('%Y-%m-%d') + ".log"
