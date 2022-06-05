@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2021.1121/v1.1.6"
+__version__     = "2022.0605/v1.1.7"
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -312,7 +312,13 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
     """
     Use in-place updates to update the views data
     """
-    from opasConfig import ArticleID
+    try:
+        opasTryAlternateID = True
+        from opasConfig import ArticleID
+    except Exception as e:
+        logger.error(f"Can't load ArticleID from opasConfig {e}!!!")
+        opasTryAlternateID = False
+        
     update_count = 0
     skipped_as_update_error = 0
     skipped_as_missing = 0
@@ -337,7 +343,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             results = solrcon.search(q = f"art_id:{doc_id}")
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
-            else:
+            elif opasTryAlternateID:
                 parsed_id = ArticleID(articleID=doc_id)
                 results = solrcon.search(q = f"art_id:{parsed_id.altStandard}")
                 if results.raw_response["response"]["numFound"] == 1:
@@ -345,9 +351,11 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
                     found = True
                     logger.error(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.altStandard}. Using that instead!")
                     doc_id = parsed_id.altStandard
+                else:
+                    logger.error(f"Document ID {doc_id} not in Solr.  No alternative ID found.")
                 
         except Exception as e:
-            logger.info(f"Document {doc_id} not in Solr...skipping")
+            logger.error(f"Document {doc_id} not in Solr...skipping {e}")
             skipped_as_missing += 1
         else:
             if found:

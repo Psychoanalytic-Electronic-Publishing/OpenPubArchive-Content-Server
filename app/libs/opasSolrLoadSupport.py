@@ -546,7 +546,7 @@ class ArticleInfo(object):
         
         self.author_xml_list = pepxml.xpath('//artinfo/artauth/aut')
         self.author_xml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, '//artinfo/artauth')
-        self.authors_bibliographic, self.author_list, self.authors_bibliographic_list = opasxmllib.authors_citation_from_xmlstr(self.author_xml, listed=True)
+        self.authors_bibliographic, self.author_list, self.authors_bibliographic_list = opasxmllib.authors_citation_from_xmlstr(self.author_xml, listed="All") #listed=True)
         self.art_auth_citation = self.authors_bibliographic
         self.art_auth_citation_list = self.authors_bibliographic_list
         # ToDo: I think I should add an author ID to bib aut too.  But that will have
