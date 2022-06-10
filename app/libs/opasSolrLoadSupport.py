@@ -45,6 +45,11 @@ import loaderConfig
 import logging
 logger = logging.getLogger(__name__)
 
+# new for processing code
+import PEPJournalData
+jrnlData = PEPJournalData.PEPJournalData()
+import modelsOpasCentralPydantic
+
 def read_stopwords(): 
     with open(localsecrets.HIGHLIGHT_STOP_WORDS_FILE) as f:
         stopWordList = f.read().splitlines()
@@ -113,6 +118,8 @@ class BiblioEntry(object):
             self.ref_entry_xml = self.ref_entry_xml.decode("utf8") # convert from bytes
         self.ref_entry_text = opasxmllib.xml_elem_or_str_to_text(ref)
         self.art_id = artInfo.art_id
+        self.source_type = ""
+        self.sourcecode = ""
         self.art_year_int = artInfo.art_year_int
         self.ref_local_id= opasxmllib.xml_get_element_attr(ref, "id")
         self.ref_id = artInfo.art_id + "." + self.ref_local_id
@@ -132,21 +139,34 @@ class BiblioEntry(object):
         self.source_title = opasxmllib.xml_get_subelement_textsingleton(ref, "j")
         self.publishers = opasxmllib.xml_get_subelement_textsingleton(ref, "bp")
         self.publishers = self.publishers[:254]
+
+        if self.source_title is None or self.source_title == "":
+            self.source_title = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
+            if self.source_title is not None and self.source_title != "":
+                self.source_type = "book"
+        
         if self.publishers != "":
             self.source_type = "book"
-        else:
+        elif self.source_type is None or self.source_type == "":
             self.source_type = "journal"
 
         if self.source_type == "book":
             self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "bpd")
             if self.year_of_publication == "":
                 self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
-            if self.source_title is None or self.source_title == "":
-                # sometimes has markup
-                self.source_title = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
+            #if self.source_title is None or self.source_title == "":
+                ## sometimes has markup
+                #self.source_title = opasxmllib.xml_get_direct_subnode_textsingleton(ref, "bst")  # book title
         else:
             self.year_of_publication = opasxmllib.xml_get_subelement_textsingleton(ref, "y")
-         
+            sourcecode = jrnlData.getPEPJournalCode(self.source_title)
+            if sourcecode is not None:
+                self.sourcecode = sourcecode[0]
+                if self.rx_sourcecode is None and self.sourcecode is not None:
+                    self.rx_sourcecode = self.sourcecode
+                if self.rx_sourcecode != self.sourcecode:
+                    logger.warning(f"Parsed title source code {self.source_title} does not match rx_sourcecode {self.rx_sourcecode}")
+                
         if self.year_of_publication != "":
             # make sure it's not a range or list of some sort.  Grab first year
             self.year_of_publication = opasgenlib.year_grabber(self.year_of_publication)
@@ -376,7 +396,7 @@ class ArticleInfo(object):
         if self.start_sectname is None:
             #  look in newer, tagged, data
             self.start_sectname = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artsectinfo/secttitle/node()', default_return=None)
-            
+        
         self.art_pgrg = opasxmllib.xml_get_subelement_textsingleton(artInfoNode, "artpgrg", default_return=None)  # note: getSingleSubnodeText(pepxml, "artpgrg")
         self.art_pgstart, self.art_pgend = opasgenlib.pgrg_splitter(self.art_pgrg)
 
@@ -1751,6 +1771,7 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
         ret_val = False
     
     return ret_val  # return True for success
+
 
 if __name__ == "__main__":
     sys.path.append('./config') 

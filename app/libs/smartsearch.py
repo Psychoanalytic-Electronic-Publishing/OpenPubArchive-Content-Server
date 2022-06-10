@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 from opasSchemaInfoLib import SchemaInfo
 docschemainfo = SchemaInfo()
 import schemaMap
+from opasArticleIDSupport import ArticleID
 
 def smart_search(smart_search_text):
     """
@@ -137,7 +138,7 @@ def smart_search(smart_search_text):
         ret_val[opasConfig.KEY_SEARCH_TYPE] = opasConfig.SEARCH_TYPE_LITERAL
         ret_val[opasConfig.KEY_SEARCH_VALUE] = smart_search_text
         
-    smart_article_id = opasConfig.ArticleID(articleID=smart_search_text)
+    smart_article_id = ArticleID(articleID=smart_search_text) # now from opasArticleIDSupport 2022-06-05
     if smart_article_id.isArticleID:
         # locator (articleID)
         if smartsearchLib.is_value_in_field(smart_article_id.standardized, opasConfig.SEARCH_FIELD_LOCATOR):

@@ -1089,7 +1089,7 @@ class opasCentralDB(object):
                 for warning in warnings:
                     logger.warning(warning)
                     
-            ret_val = [model(row=row) for row in curs.fetchall()]
+            ret_val = [model(**row) for row in curs.fetchall()]
             #ret_val = [model(row=row) for row in rows]
             
         self.close_connection(caller_name=fname) # make sure connection is closed
@@ -1097,6 +1097,29 @@ class opasCentralDB(object):
         # return session model object
         return ret_val # None or Session Object
         
+    #------------------------------------------------------------------------------------------------------
+    def get_references_from_biblioxml_table(self, article_id, ref_local_id=None, verbose=None):
+        """
+        Return a list of references from the api_biblioxml table in opascentral
+        """
+        ret_val = None
+
+        if ref_local_id is not None:
+            local_id_clause = f"AND bib_local_id RLIKE '{ref_local_id}'"
+        else:
+            local_id_clause = ""
+            
+        select = f"""SELECT * from api_biblioxml
+                     WHERE art_id = '{article_id}' {local_id_clause}
+                     """
+    
+        results = self.get_select_as_list_of_models(select, model=modelsOpasCentralPydantic.Biblioxml)
+        
+        ret_val = results
+    
+        return ret_val  # return True for success
+
+    #------------------------------------------------------------------------------------------------------
     def get_select_as_list(self, sqlSelect: str):
         """
         Generic retrieval from database
@@ -2185,7 +2208,6 @@ class opasCentralDB(object):
             except mysql.connector.InternalError as e:
                 logger.error(f"DBError: Art: {contextStr}. DB Internal Error {e} ({querytxt})")
                 raise mysql.connector.InternalError(e)
-                # raise RuntimeError, gErrorLog.logSevere("Art: %s.  DB Intr. Error (%s)" % (contextStr, querytxt))
             except mysql.connector.ProgrammingError as e:
                 logger.error(f"DBError: DB Programming Error {e} ({querytxt})")
                 raise mysql.connector.ProgrammingError(e)

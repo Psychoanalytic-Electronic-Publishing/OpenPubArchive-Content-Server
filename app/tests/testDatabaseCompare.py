@@ -3,6 +3,7 @@
 
 import unittest
 from .utilityCompareTables import compareTables
+import difflib
 #import compareTables
 
 class TestDoDatabaseCompare(unittest.TestCase):

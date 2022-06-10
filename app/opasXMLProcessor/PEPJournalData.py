@@ -1,4 +1,14 @@
 # -*- coding: UTF-8 -*-
+"""
+This is the original module used to provide journal data for the PEPXML processing engine used to build from KBD3 and import files.
+
+This module adapted from a much older module used in PEPXML to compile PEP instances since 200x!
+
+  ** Slowly being adopted to opas **
+  
+  Should probably be integrated into opasProductLib - some routines are perhaps done better there from the database rather than code (newer module), and from the database
+
+"""
 #
 # 20071005 - Added BAFC
 #
@@ -38,22 +48,26 @@
 """
 Class Module to encapsulate journal metadata information used to validate PEP journal data.
 """
-import re, string, sys
+import sys, os.path
+import logging
+logger = logging.getLogger(__name__)
 
-sys.path.append("e:/usr3/py")
-sys.path.append("e:/usr3/py/sciHL")
+PROJECT_ROOT = os.path.abspath(os.path.join(
+                  os.path.dirname(__file__), 
+                  os.pardir)
+)
+sys.path.append(PROJECT_ROOT)
 
-import PEPGlobals
-
+import re
+# import codecs
 import opasGenSupportLib as opasgenlib
-import codecs
-#from sciHLPyxie import *
-import sciDocuments
+import opasDocuments
 
 global gJrnlData
 
 gDbg1 = 0  # details
 gDbg2 = 1  # High level
+
 
 #============================================================================================
 class PEPJournalData:
@@ -628,6 +642,7 @@ class PEPJournalData:
     }
 
     pcas = {
+        1996:1, 1997:2, 1998:3, 1999:4,
         2000:5, 2001:6, 2002:7, 2003:8, 2004:9, 2005:10, 2006:11, 2007:12, 2008:13, 2009:14,
         2010:15, 2011:16, 2012:17, 2013:18, 2014:19, 2015:20, 2016:21, 2017:22, 2018:23, 2019:24,
         2020:25, 2021:26, 2022:27, 2023:28, 2024:29, 2025:30, 2026:31, 2027:32, 2028:33, 2029:34,
@@ -1091,13 +1106,13 @@ class PEPJournalData:
         "ANRP"      : "Ital. Psychoanal. Annu.",
         "ANIJP-CHI" : "Chinese Ann. Psychoanal.",
         "ANIJP-DE"  : "Int. Psychoanalyse",
-        "ANIJP-EL"  : u"Ετήσια ελληνική έκδοση",                                           # new
+        "ANIJP-EL"  : "Ετήσια ελληνική έκδοση",                                           # new
         "ANIJP-FR"  : "L'Annee Psychanal. Int.",
         "ANIJP-IT"  : "L'Annata Psicoanal. Int.",
-        "ANIJP-TR"  : u"Ulusl. Psikanaliz Yıll.",                                           # from Nilüfer Erdem email 2013-09-23
+        "ANIJP-TR"  : "Ulusl. Psikanaliz Yıll.",                                           # from Nilüfer Erdem email 2013-09-23
         "AOP"       : "Annu. Psychoanal.",
         "APA"       : "J. Amer. Psychoanal. Assn.",
-        "APM"       : u"Rev. Psicoanál. Asoc. Psico. Madrid",                              # A1v14 (2014) from journal form
+        "APM"       : "Rev. Psicoanál. Asoc. Psico. Madrid",                              # A1v14 (2014) from journal form
         "APS"       : "J. Appl. Psychoanal. Stud.",
         "BAP"       : "Bul. Amer. Psychoanal. Assn.",
         "BAFC"      : "Bul. Anna Freud Centre",
@@ -1205,7 +1220,7 @@ class PEPJournalData:
         "ANRP"      : "Italian Psychoanalytic Annual",
         "ANIJP-CHI" : "Chinese Annual of Psychoanalysis",
         "ANIJP-DE"  : "Int. Psychoanalyse",
-        "ANIJP-EL"  : u"Ετήσια ελληνική έκδοση",                                            # new
+        "ANIJP-EL"  : "Ετήσια ελληνική έκδοση",                                            # new
         "ANIJP-IT"  : "Annata Psicoanalitica Internazionale",
         "ANIJP-FR"  : "Annee Psychanalytique Internationale",
         "ANIJP-TR"  : "Turkish Annual of Psychanal. Int.",                                  # new (just a temporary title to hold this XXX)
@@ -1241,7 +1256,7 @@ class PEPJournalData:
         "IMAGO"     : "Imago",
         "IPL"       : "International Psycho-Analytical Library",
         "IRP"       : "International Review of Psycho-Analysis",
-        "IZPA"      : u"Internationale Zeitschrift für Psychoanalyse".encode("utf8"),
+        "IZPA"      : "Internationale Zeitschrift für Psychoanalyse".encode("utf8"),
         "JAA"       : "Journal of the American Academy of Psychoanalysis and Dynamic Psychiatry",
         "JBP"       : "Jahrbuch Der Psychoanalyse",
         "JCP"       : "Journal of Clinical Psychoanalysis",
@@ -1283,7 +1298,7 @@ class PEPJournalData:
         "REVAPA"    : "Revista de psicoanálisis",
         "RFP"       : "Revue française de psychanalyse",
         "RIP"       : "Rivista Italiana di Psicoanalisi",
-        "RPP-CS"    : u"Revue psychoanalytická psychoterapie",
+        "RPP-CS"    : "Revue psychoanalytická psychoterapie",
         "RRP"       : "Revue Roumaine de Psychoanalyse",
         "RPSA"      : "Rivista di Psicoanalisi",
         "SE"        : "Standard Edition",
@@ -1294,7 +1309,7 @@ class PEPJournalData:
         "TVPA"      : "Tijdschrift voor Psychoanalyse",
         "ZBK"       : "Classic Books",
         "ZBPA"      : "Zentralblatt für Psychoanalyse",
-        "ZPSAP"     : u'Zeitschrift f\xfcr psychoanalytische P\xe4dagogik'.encode("utf-8"),
+        "ZPSAP"     : 'Zeitschrift f\xfcr psychoanalytische P\xe4dagogik'.encode("utf-8"),
         # video streams
         "AFCVS"     : "Anna Freud Center Video Collection",
         "PCVS"      : "Philoctetes Center Video Collection",
@@ -1364,6 +1379,8 @@ class PEPJournalData:
     patJournal = r"(J(\b|\.|our\.?(nal)?))"
     patJahrBuch = r"Jahr\.?(b\.?(uch)?)?"
     patJournalOf = patJournal + "(\s+of\s*?)?"
+    patJournalForThe = r"((J(\b|\.|our\.?(nal)?))(\s+for\s+the)?)?"
+    patJPCS = "(\s+JPCS:\s*)?"
     patModern = r"Mod(\b|\.|ern)"
     patNew = "New"
     patOrganizat = r"Org(an|aniz|anization(al)?|anis|anisation(al)?)(\.|\b)"
@@ -1400,7 +1417,7 @@ class PEPJournalData:
     patDer = "(der\s+)?"  # need the space here, since if der is missing, there won't be a space following, just the preceeding
     patEn = r"(en)"
     patEspanol = "(Espa[ñn]ol)"
-    patFrancaise = u"((fran[çc](aise)?(\.)?)|(fr(\.)))"
+    patFrancaise = "((fran[çc](aise)?(\.)?)|(fr(\.)))"
     patFur = "(für|fur|f\.?)"
     patGesch = "Geschichte"
     patInternationale = r"(I\.|Int(\b|l\.?|\.|ernat(\.?|ionale?\.?)))"
@@ -1483,7 +1500,7 @@ class PEPJournalData:
         "PCS"          :       "\&PCS\;|" + patPsychoanalysis + patReqdSpace + patOptAnd + patContemporary + patReqdSpace + patScience,
 
         #  new for 2022
-        "PCAS"         :       "\&PCAS\;|" + patPsychoanalysis + patReqdSpace + patCulture + patOptAnd + patReqdSpace + patSociety,
+        "PCAS"         :       "\&PCAS\;|" + patJournalForThe + patOptSpace + patPsychoanalysis + patOptSpace + patOptOf + patOptSpace + patCulture + patOptSpace + patOptAnd + patReqdSpace + patSociety,
         "IJFP"         :       "\&IJFP\;|" + patInternational + patReqdSpace + patJournalOf + patReqdSpace + patForensic + patReqdSpace + patPsychotherapy,
         "JPT"          :       "\&JPT\;|" + patJournalOf + patReqdSpace + patPsychological + patReqdSpace + patTherapies,
         "OEDA"         :       "\&OEDA\;|" + patOedipus + patReqdSpace + patAnnual,
@@ -1505,7 +1522,7 @@ class PEPJournalData:
         "PY"           :       "Psikanaliz|Psk."+ patReqdSpace + "Yazıları|Yaz.",
         "RBP"          :       "\&RBP\;|R(ev(ue)?)?(\.\s*|\s+)B(elg(e?))?(\.)?\s+(de\s+)?Psych(\.|an(\.|al\.|alyse))",
         "REVAPA"       :       r"\&REVAPA\;|Riv(\.|ista)\s+(de\s+)?" + patPsicoanalisis,
-        "RFP"          :       r"\&RFP\;|" + u"(Rev(\\b|\\.|ue)?|R(\\b|\\.?))\\s+?((fran(\\xe7|c)(aise)?(\\.)?|fr(\\.?))\\s+?)" + "(de\\s+)?" + "(Psa\.?|Psyca\.?|Psych(\-?)(an\.?|anal\.?|analyse))",
+        "RFP"          :       r"\&RFP\;|" + "(Rev(\\b|\\.|ue)?|R(\\b|\\.?))\\s+?((fran(\\xe7|c)(aise)?(\\.)?|fr(\\.?))\\s+?)" + "(de\\s+)?" + "(Psa\.?|Psyca\.?|Psych(\-?)(an\.?|anal\.?|analyse))",
         "RPP-CS"       :       "\&RPP-CS\;|" + patRevue + patReqdSpace + patPsychoanalytika + patReqdSpace + patPsychoterapie,
         "RRP"          :       "\&RRP\;|RRP|(Rev(\.|ue)?\s+Roum(\.|aine)\s+de\s+Psychanal(\.|yse))|" + patRomanian + patReqdSpace + patJournal + patReqdSpace + patPsychoanalysis,
         "RIP"          :       "\&RIP\;|Riv(ista|\.)\s+It(aliana)\s+(di\s+)?" + patPsicoanalisi,
@@ -1661,25 +1678,25 @@ class PEPJournalData:
         """
 
         if None in (jrnlCode, jrnlYear, jrnlVol):
-            retVal = False # what happens if it's a book?  Inconsistent with TBD marked below...
+            ret_val = False # what happens if it's a book?  Inconsistent with TBD marked below...
         else:
-            if isinstance(jrnlYear, basestring):  # supports string and unicode
-                jrnlYear = sciSupport.atoiYear(jrnlYear)
+            if isinstance(jrnlYear, str):  # supports string and unicode
+                jrnlYear = opasgenlib.atoiYear(jrnlYear)
 
-            if not sciDocuments.isVolumeNumber(jrnlVol):
-                jrnlVol = sciDocuments.VolumeNumber(jrnlVol)
+            if not opasDocuments.isVolumeNumber(jrnlVol):
+                jrnlVol = opasDocuments.VolumeNumber(jrnlVol)
 
             if self.all.get(jrnlCode)==None:
                 # this is from a book or not a pep journal
-                retVal = True  # TBD - Check if this is right...
+                ret_val = True  # TBD - Check if this is right...
             elif not self.matchVol(jrnlCode, jrnlYear, jrnlVol):
                 if not self.matchVol(jrnlCode, jrnlYear, jrnlVol.volID(noSuffix=True)):
                     vol, volList = self.getVol(jrnlCode, jrnlYear)
-                    retVal = False
+                    ret_val = False
                     errStr = "%s jrnlVol %s did not match lookup vol %s for %s" % (jrnlCode, jrnlVol, vol, jrnlYear)
 
                     acxt = ""
-                    if context is not None:
+                    if context!=None:
                         acxt = context
 
                         if not opasgenlib.is_empty(articleID):
@@ -1690,16 +1707,16 @@ class PEPJournalData:
                     errInsert = "%s%s" % (acxt, errStr)
 
                     if report == 1:
-                        gErrorLog.logSpecial("%s" % (errInsert), errorType="Severe - Metadata")
+                        logger.error(f"({errInsert}) Severe - Metadata")
 
                     else:
                         pass
                 else:
-                    retVal = True
+                    ret_val = True
             else:
-                retVal = True
+                ret_val = True
 
-        return retVal
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def matchVol(self, jrnlCode, jrnlYear, jrnlVol):
@@ -1708,14 +1725,14 @@ class PEPJournalData:
             are correct for the jnrlcode.
         """
 
-        retVal = False
+        ret_val = False
         # sometimes a string might be passed in as jrnlVol, because of supplements, so
         #  convert this parameter to volumnumber if so
-        if isinstance(jrnlVol, basestring):  # supports string and unicode
-            jrnlVol = sciDocuments.VolumeNumber(jrnlVol)
+        if isinstance(jrnlVol, str):  # supports string and unicode
+            jrnlVol = opasDocuments.VolumeNumber(jrnlVol)
             #print "Converted jrnlvol: ", jrnlVol
 
-        if jrnlCode is not None:
+        if jrnlCode != None:
             vol, volList = self.getVol(jrnlCode, jrnlYear)
             if type(volList) == type([]):
                 # then this journal has a list of volumes for that year.
@@ -1728,24 +1745,24 @@ class PEPJournalData:
             if isAList:
                 if type(jrnlVol) == type([]):
                     # they are both lists:
-                    retVal = True
+                    ret_val = True
                     for n in jrnlVol:
                         # compare contents, ignoring order
                         if n not in volList:
-                            retVal = False
+                            ret_val = False
                             # not the same
                             break
                 else:
                     if jrnlVol in volList:
-                        retVal = True
+                        ret_val = True
             else:
                 if type(jrnlVol) == type([]):
                     raise "Error: looking for list of journal volumes, when this journals year shows only one volume number."
                 elif jrnlVol == vol:
-                    retVal = True
+                    ret_val = True
 
         #print "jrnlvol: '%s', vol: '%s', type: %s, equal: %s" % (jrnlVol, vol, type(jrnlVol), jrnlVol==vol)
-        return retVal
+        return ret_val
 
 
     #--------------------------------------------------------------------------------
@@ -1754,34 +1771,34 @@ class PEPJournalData:
         Returns the year for a given volume of a journal.
         The data is from the global tables in this module.
         """
-        retVal = None
+        ret_val = None
         baseYear = 0
 
-        if not sciDocuments.isVolumeNumber(jrnlVol):
-            jrnlVol = sciDocuments.VolumeNumber(jrnlVol)
+        if not opasDocuments.isVolumeNumber(jrnlVol):
+            jrnlVol = opasDocuments.VolumeNumber(jrnlVol)
 
         try:
-            currDict = self.all[string.upper(jrnlCode)]
+            currDict = self.all[jrnlCode.upper()]
         except:
             #print "%s is a book; no year populated in locator." % jrnlCode
             pass
         else:
-            if currDict is not None:
-                for (year, vol) in currDict.iteritems():
+            if currDict != None:
+                for (year, vol) in currDict.items():
                     #print "%s/%s/%s/" % (vol, year, jrnlVol)
                     if type(vol) == type([]):
                         # hmm. will this work with jrnlVol being an object?
                         if jrnlVol in vol:
-                            retVal = year
+                            ret_val = year
                             break
                     else:
                         if vol == jrnlVol:
-                            retVal = year
+                            ret_val = year
                             break
             else:
-                print ("Can't find year/date dict for %s" % jrnlCode, HLWARNING)
+                logger.warn("Can't find year/date dict for %s" % jrnlCode)
 
-        return retVal
+        return ret_val
 
 
     #--------------------------------------------------------------------------------
@@ -1818,7 +1835,7 @@ class PEPJournalData:
         pvol = None
         ppp = None
         psrc = None
-        retVal = None
+        ret_val = None
         vol = None
         pg = None
         found = True
@@ -1827,7 +1844,7 @@ class PEPJournalData:
         if matchSE == None:
             # return none, don't go on!
             #print "Not SE", refText, PYXTree
-            return retVal
+            return ret_val
         else:
             SEName, restRef = matchSE
             #print "Rest of Reference: ", restRef
@@ -1836,7 +1853,7 @@ class PEPJournalData:
 
         # Ok, we have SE.  What is the volume, page!
 
-        if PYXTree is not None and (PYXTree.getElements(SUB, E("v"))<>[]):
+        if PYXTree != None and (PYXTree.getElements(SUB, E("v"))!=[]):
             elem = PYXTree.CurPos.tag
             # get vol, but must be direct child of current element.
             vol = PYXTree.getElementTextSingleton(SUB, E('v'), parentSpec=E(elem))
@@ -1844,18 +1861,18 @@ class PEPJournalData:
             vol = processVol(vol)
             pg = PYXTree.getElementTextSingleton(SUB, E('pp'), parentSpec=E(elem))
             pg, vol = processPage(pg, vol)
-            retVal = (vol, pg)  # set this anyway, saying it IS SE but no vol or page found
+            ret_val = (vol, pg)  # set this anyway, saying it IS SE but no vol or page found
             #if gDbg2: print "Found SE, Vol, Page! (xml): ", vol, pg
 
         else: # This is unmarked SE.  Find volume data
             # look for volume and page
             if gDbg1 and noTrace==False:
-                print "\t",80*"^"
+                print("\t",80*"^")
                 #print "Searching for SE: ", refText
 
             m = self.rgxSEVolPageOnly.search(refText)
-            if m is not None:
-                if gDbg1: print "rgxSEVolPageOnly!", m.group("bvol"), m.group("bpgs")
+            if m != None:
+                if gDbg1: print("rgxSEVolPageOnly!", m.group("bvol"), m.group("bpgs"))
                 vol = m.group("bvol")
                 #print "VOL1: ", vol
                 #vol = re.split("[,/-]|\&amp;", vol)[0]
@@ -1865,8 +1882,8 @@ class PEPJournalData:
             else:
                 #print "Searching for vol using: ", self.rgxSEVol.pattern
                 m = self.rgxSEVol.search(refText)
-                if m is not None:
-                    if gDbg1: print "rgxSEVolMatch!", m.group("extra"), m.group("bvol"), m.group("bpgs")
+                if m != None:
+                    if gDbg1: print("rgxSEVolMatch!", m.group("extra"), m.group("bvol"), m.group("bpgs"))
                     vol = m.group("bvol")
                     #print "VOL2: ", vol
                     #vol = re.split("[,/-]|\&amp;", vol)[0]
@@ -1878,39 +1895,39 @@ class PEPJournalData:
                         restRef = refText
                     #print "Searching restRef: ", restRef
                     m = self.rgxSEVol3.search(restRef)
-                    if gDbg1: print "Warning - Searching for Vol # alone in italics out of desperation."
-                    if m is not None:
-                        if gDbg1: print "rgxSEVolMatch3!", m.groups()
+                    if gDbg1: print("Warning - Searching for Vol # alone in italics out of desperation.")
+                    if m != None:
+                        if gDbg1: print("rgxSEVolMatch3!", m.groups())
                         vol = m.group("bvol")
                         vol = processVol(vol)
                     else:
                         m = self.rgxSEVol2.search(restRef)
-                        if gDbg1: print "Warning - Searching Vol # alone out of desperation."
-                        if m is not None:
-                            if gDbg1: print "rgxSEVolMatch2!", m.groups()
+                        if gDbg1: print("Warning - Searching Vol # alone out of desperation.")
+                        if m != None:
+                            if gDbg1: print("rgxSEVolMatch2!", m.groups())
                             vol = m.group("bvol")
                             vol = processVol(vol)
                             pg = m.group("bpgs")
                             pg, vol = processPage(pg, vol)
                         else: # try vol, ANYWHERE (not just after the journal
                             m = self.rgxSEVol2.search(refText)
-                            if gDbg1: print "Warning - Searching Vol only, in all of Ref (4)."
-                            if m is not None:
-                                if gDbg1: print "rgxSEVolMatch4!", m.groups()
+                            if gDbg1: print("Warning - Searching Vol only, in all of Ref (4).")
+                            if m != None:
+                                if gDbg1: print("rgxSEVolMatch4!", m.groups())
                                 vol = m.group("bvol")
                                 vol = processVol(vol)
                                 pg = m.group("bpgs")
                                 pg, vol = processPage(pg, vol)
                             else:
                                 vol = 1     # default volume (for refs where it's just the whole std edition cited
-            if vol > 0:
-                retVal = (vol, pg)  # set this anyway, saying it IS SE but no vol or page found
+            if int(opasgenlib.convRomanToArabic(vol)) > 0:
+                ret_val = (vol, pg)  # set this anyway, saying it IS SE but no vol or page found
             else:
-                retVal = None
+                ret_val = None
 
-        if gDbg1: print "Found SE, Vol, Page!: ", vol, pg
+        if gDbg1: print("Found SE, Vol, Page!: ", vol, pg)
 
-        return retVal
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def getVol(self, jrnlCode, jrnlYear):
@@ -1920,58 +1937,57 @@ class PEPJournalData:
         The second return value is the list of values, or a singular list with the indiv.
         value
         """
-        retVal = None
-        retValList = []
+        ret_val = None
+        ret_valList = []
         baseYear = 0
 
         if jrnlCode == None:
-            print sciErrorLogging.log_error("getVol: No journal name for %s/%s" % (jrnlCode, jrnlYear))
-            return retVal, retValList
+            logger.warn("getVol: No journal name for %s/%s" % (jrnlCode, jrnlYear))
+            return ret_val, ret_valList
 
         #if gDbg1: print "Args: ", jrnlCode, jrnlYear
-        if jrnlYear is not None:
-            if isinstance(jrnlYear, basestring):  # supports string and unicode
-                jrnlYear = sciSupport.atoiNotEmpty(jrnlYear)
+        if jrnlYear != None:
+            if isinstance(jrnlYear, str):  # supports string and unicode
+                jrnlYear = opasgenlib.atoiNotEmpty(jrnlYear)
                 #if gDbg1: print "Journal Year: ", jrnlYear
 
-            if isinstance(jrnlYear, sciDocuments.PubYear):
-                jrnlYear = sciSupport.atoiNotEmpty(repr(jrnlYear))
+            if isinstance(jrnlYear, opasDocuments.PubYear):
+                jrnlYear = opasgenlib.atoiNotEmpty(repr(jrnlYear))
 
             # handle SE separately NOTE: This is not a good way to find the SE Year/Vol!
             if jrnlCode in ["SE"]:
-                from libPEPBiblioDB import BiblioDB
-                biblioDB = BiblioDB()
-                retValList = biblioDB.getPEPVols("SE", jrnlYear)
-                if gDbg1: print "SE Volumes Retrieved for Year: ", retValList
-                if not opasgenlib.is_empty(retValList):
-                    retVal = retValList[0]
+                pass
+                #if 0: # NEED TO FIX
+                    #from .libPEPBiblioDB import BiblioDB
+                    #biblioDB = BiblioDB()
+                    #ret_valList = biblioDB.getPEPVols("SE", jrnlYear)
+                    #if gDbg1: print("SE Volumes Retrieved for Year: ", ret_valList)
+                    #if not opasgenlib.is_empty(ret_valList):
+                        #ret_val = ret_valList[0]
             else:
-                currDict = self.all.get(string.upper(jrnlCode), None)
+                currDict = self.all.get(jrnlCode.upper(), None)
 
-                if currDict is not None:
+                if currDict != None:
                     currVol = currDict.get(jrnlYear) # needs to be numeric!
                     #print "CurrVol, type: ", currVol, type(currVol)
-                    if currVol is not None:
+                    if currVol != None:
                         # Need to do something different if its a list.
                         if type(currVol) == type([]):
-                            if PEPGlobals.gLogProgrammingWarnings:
-                                print sciErrorLogging.log_error("getVol: this year has multiple volume numbers: %s." % currVol, HLINFO)
-                            retVal = sciDocuments.VolumeNumber(currVol[0])  # first element returned in retVal, converted to volume number
-                            retValList = currVol
+                            logger.info("getVol: this year has multiple volume numbers: %s." % currVol)
+                            ret_val = opasDocuments.VolumeNumber(currVol[0])  # first element returned in ret_val, converted to volume number
+                            ret_valList = currVol
                         else:
                             #print "getVol Else: ", currVol
-                            retVal = sciDocuments.VolumeNumber(currVol)
-                            retValList = [retVal]
+                            ret_val = opasDocuments.VolumeNumber(currVol)
+                            ret_valList = [ret_val]
 
-        if opasgenlib.is_empty(retVal):
+        if opasgenlib.is_empty(ret_val):
             # don't bother reporting if jrnlYear is 0; just not interesting!
-            if jrnlYear<>0 and jrnlYear<>"0":
-                if PEPGlobals.gLogProgrammingWarnings:
-                    print sciErrorLogging.log_error("getVol: Cannot find vol for %s/%s" % (jrnlCode, jrnlYear))
-                    #raise "Fatal, for now..."
+            if jrnlYear!=0 and jrnlYear!="0":
+                logger.warn("getVol: Cannot find vol for %s/%s" % (jrnlCode, jrnlYear))
 
-        #print "CurrVol, type: ", retVal, type(retVal)
-        return retVal, retValList
+        #print "CurrVol, type: ", ret_val, type(ret_val)
+        return ret_val, ret_valList
 
 
     #--------------------------------------------------------------------------------
@@ -1982,27 +1998,27 @@ class PEPJournalData:
         """
 
         jrnl = self.jrnlAbbr.get(sourceCode, None)
-        if jrnl<>None:
-            retVal = 1
+        if jrnl!=None:
+            ret_val = 1
         else:
-            retVal = 0
-        return retVal
+            ret_val = 0
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def getPEPSourceAbbr(self, sourceCode):
         """
         Return the official PEP source title for this code.
         """
-        retVal = self.jrnlAbbr.get(sourceCode)
-        return retVal
+        ret_val = self.jrnlAbbr.get(sourceCode)
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def getJournalFull(self, sourceCode):
         """
         Return the official PEP source title for this code.
         """
-        retVal = self.jrnlFull.get(sourceCode)
-        return retVal
+        ret_val = self.jrnlFull.get(sourceCode)
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def getPEPJournalCode(self, strText, exactText = False):
@@ -2329,15 +2345,15 @@ class PEPJournalData:
         """
         # use this to lookup journal codes from a journal name
 
-        retVal = (None, None, None)
+        ret_val = (None, None, None)
         found = False
 
         if strText != "":
             try:
-                if not isinstance(strText, unicode):
+                if not isinstance(strText, str):
                     strText = strText.encode("utf8")   # 2018-01-19 Make sure it's UTF8 (if error, then it is already, so pass)
             except Exception as e:
-                gErrorLog.logWarning("Encoding error: %s" % e)
+                logger.warning("Encoding error: %s" % e)
 
             for (rgxJournalPtrn, code) in self.rgxJrnlPEPPatterns:
                 #print "Pattern: ", rgxJournalPtrn.pattern, code
@@ -2346,21 +2362,21 @@ class PEPJournalData:
                 else:
                     m = rgxJournalPtrn.search(strText)
 
-                if m is not None:
+                if m != None:
                     jrnlName = m.group()
                     found = True
-                    retVal = (code, self.jrnlAbbr.get(code, None), jrnlName)
+                    ret_val = (code, self.jrnlAbbr.get(code, None), jrnlName)
                     if gDbg1:
                         if exactText:
-                            print "getPEPJournalCode found exactmatch (code, abbr, full name):", retVal
+                            print("getPEPJournalCode found exactmatch (code, abbr, full name):", ret_val)
                         else:
-                            print "getPEPJournalCode found (code, abbr, full name):", retVal
+                            print("getPEPJournalCode found (code, abbr, full name):", ret_val)
                     break
 
         if gDbg1:
             if not found:
-                print "PEP Journal Not found for: ", strText
-        return retVal
+                print("PEP Journal Not found for: ", strText)
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def matchSEtoReference(self, strRef, refPYX=None):
@@ -2374,14 +2390,14 @@ class PEPJournalData:
         rest = None
         exactText = False
         elem = ""
-        if refPYX<>None:
+        if refPYX!=None:
             found = True
             elem = refPYX.CurPos.tag
             jrnl = refPYX.getElementTextSingleton(SUB, E('j|bst'), parentSpec=E(elem))
             #print "jrnl/src: ", jrnl
             # try getting the text, minus any sub-bincs
             fullRef = refPYX.getCurrElementText(notIncludingTagRegex=("binc"))
-        elif strRef is not None:
+        elif strRef != None:
             fullRef = strRef
         else:
             raise "No data supplied in reference."
@@ -2394,35 +2410,35 @@ class PEPJournalData:
                 #print "trying pattern 2 on jrnl"
                 m = self.rgxSEPat2.match(jrnl)
 
-            if m is not None:
+            if m != None:
                 # journal matched, it's SE
                 rest = refEntry.getElementTextSingleton(SUB, E('v'), parentSpec=E(elem))
-                retVal = (jrnl, rest)
+                ret_val = (jrnl, rest)
             else:
                 # Not SE
-                retVal = None
+                ret_val = None
         else:
             # not resolved, do by search
-            if gDbg1: print "Checking SE FullRef: ", fullRef
+            if gDbg1: print("Checking SE FullRef: ", fullRef)
             m = self.rgxSEPat.search(fullRef)
 
-            if m<>None:
+            if m!=None:
                 jrnl = m.group("jrnlname")
                 try:
                     rest = fullRef[m.end("jrnlname"):]
                 except:
                     rest = ""
-                    if gDbg1: print "Nothing else after name", strRef
+                    if gDbg1: print("Nothing else after name", strRef)
             else:
                 jrnl = None
 
-            if jrnl is not None:
-                retVal = (jrnl, rest)
+            if jrnl != None:
+                ret_val = (jrnl, rest)
                 #print "SE Journal found"
             else:
-                retVal = None
+                ret_val = None
 
-        return retVal
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def years(self, jrnlCode):
@@ -2433,15 +2449,15 @@ class PEPJournalData:
             >>> jrnlData.years("pptx")
             [1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]
         """
-        retVal = []
-        jrnlCode = string.upper(jrnlCode)
+        ret_val = []
+        jrnlCode = jrnlCode.upper()
         try:
-            for year, vol in self.all[jrnlCode].items():
-                retVal.append(year)
+            for year, vol in list(self.all[jrnlCode].items()):
+                ret_val.append(year)
         except:
-            print "Journal Code not found: ", jrnlCode
+            print("Journal Code not found: ", jrnlCode)
 
-        return retVal
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def journalCodes(self):
@@ -2453,9 +2469,9 @@ class PEPJournalData:
             >>> jrnlData.journalCodes()
             ['PAQ', 'ANIJP-IT', 'FA', 'FD', 'PAH', 'PPSY', 'CPS', 'MPSA', 'SPR', 'RIP', 'ANIJP-DE', 'AOP', 'NP', 'BAFC', 'GW', 'JEP', 'ANRP', 'JCPTX', 'JAA', 'RPSA', 'IJPSP', 'SE', 'PPTX', 'IFP', 'BAP', 'PCS', 'PCAS', JOAP', 'PCT', 'AIM', 'JCP', 'ANIJP-FR', 'SGS', 'JICAP', 'GAP', 'IRP', 'PD', 'PDPSY', 'PI', 'BIP', 'IJAPS', 'AJP', 'RBP', 'CJP', 'PPERSP', 'IJP', 'APA', 'PSC', 'PSAR', 'PSP', 'PSW']
         """
-        retVal = self.all.keys()
-        retVal.sort()
-        return retVal
+        ret_val = list(self.all.keys())
+        ret_val.sort()
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def vols(self, jrnlCode):
@@ -2467,78 +2483,15 @@ class PEPJournalData:
             [1, 2, 3, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 
         """
-        retVal = []
-        jrnlCode = string.upper(jrnlCode)
+        ret_val = []
+        jrnlCode = jrnlCode.upper()
         try:
-            for year, vol in self.all[jrnlCode].items():
-                retVal.append(vol)
+            for year, vol in list(self.all[jrnlCode].items()):
+                ret_val.append(vol)
         except:
-            print "Journal Code not found: ", jrnlCode
+            print("Journal Code not found: ", jrnlCode)
 
-        return retVal
-
-    #----------------------------------------------------------------------------------------
-    def getJournalList(self, version=None, printList=False, showKey=False, fileName=None):
-        """
-        print a list of journals, in alphabetical order, reference style.  Useful
-            for various PEP facilities.
-
-            >>> sys.path.append("e:/usr3/py/PEPXML")
-            >>> jrnlData = PEPJournalData()
-            >>> jrnlData.getJournalList(printList=True, fileName="testGetJournalLis.lis")[0]
-            '50 journals in this version.'
-        """
-
-        import libPEPBiblioDB
-        import MySQLdb
-
-
-        count = 0
-        retVal = []
-
-        if fileName is not None:
-            fileOut = codecs.open(fileName, "w", "utf-8-sig")
-            print fileName
-        else:
-            fileOut = sys.stderr
-
-
-        biblioDB = libPEPBiblioDB.BiblioDB(connectDB=True)
-        selISSNData = r"select * from issn_productbase where jrnl = 1 and active = 1 order by title;"
-        dbc = biblioDB.db.cursor(cursorclass=MySQLdb.cursors.DictCursor)
-        dbc.execute(selISSNData)
-        issnTableList  = dbc.fetchall()
-        dbc.close()
-
-        if printList:
-            if showKey:
-                fileOut.write('%s, %s, %s, %s, %s, %s, %s\n' % ("key" , "issn", "abbr", "jrnlName", "minYear", "maxYear", "url"))
-            else:
-                fileOut.write('%s, %s, %s, %s, %s, %s\n' % ("issn", "abbr", "jrnlName", "minYear", "maxYear", "url"))
-
-        for issnRow in issnTableList:
-            key = issnRow["basecode"]
-            issn = issnRow["ISSN"]
-            abbr = issnRow["bibabbrev"]
-            jrnlName = issnRow["title"]
-            minYear = issnRow["start_year"]
-            maxYear = issnRow["end_year"]
-            url = issnRow["pep_url"]
-            count += 1
-
-            if printList:
-                url = "http://www.pep-web.org/toc.php?journal=%s" % key
-                if showKey:
-                    fileOut.write('%s, %s, "%s", "%s", %s, %s, "%s"\n' % (key , issn, abbr, jrnlName, minYear, maxYear, url))
-                else:
-                    fileOut.write('%s, "%s", "%s", %s, %s, "%s"\n' % (issn, abbr, jrnlName, minYear, maxYear, url))
-
-        if fileOut <> sys.stderr:
-            fileOut.close()
-
-        retMsg = "%d journals in this version." % (count)
-        retVal = issnTableList
-        return retVal   # Return list of pepRefs for books included.
+        return ret_val
 
     #--------------------------------------------------------------------------------
     def volyears(self, jrnlCode):
@@ -2550,15 +2503,15 @@ class PEPJournalData:
             [(1, 1985), (2, 1986), (3, 1987), (3, 1988), (4, 1989), (5, 1990), (5, 1991), (6, 1992), (7, 1993), (8, 1994), (9, 1995), (10, 1996), (11, 1997), (12, 1998), (13, 1999), (14, 2000), (15, 2001), (16, 2002), (17, 2003), (18, 2004), (19, 2005), (20, 2006), (21, 2007), (22, 2008), (23, 2009), (24, 2010), (25, 2011), (26, 2012), (27, 2013), (28, 2014), (29, 2015), (30, 2016), (31, 2017), (32, 2018), (33, 2019)]
 
         """
-        retVal = []
-        jrnlCode = string.upper(jrnlCode)
+        ret_val = []
+        jrnlCode = jrnlCode.upper()
         try:
-            for year, vol in self.all[jrnlCode].items():
-                retVal.append((vol, year))
+            for year, vol in list(self.all[jrnlCode].items()):
+                ret_val.append((vol, year))
         except:
-            print "Journal Code not found: ", jrnlCode
+            print("Journal Code not found: ", jrnlCode)
 
-        return retVal
+        return ret_val
 
 #--------------------------------------------------------------------------------
 def processPage(page, pvol=None):
@@ -2571,18 +2524,18 @@ def processPage(page, pvol=None):
         ('P0300', None)
     """
     if not opasgenlib.is_empty(page):
-        page = sciDocuments.PageRange(page).pgStart
+        page = opasDocuments.PageRange(page).pgStart
         if pvol==15:
             if page>241:
-                if gDbg1: print "Adjusting Page, PVol: ", page, pvol
+                if gDbg1: print("Adjusting Page, PVol: ", page, pvol)
                 pvol=16
         elif pvol==4:
             if page>=628:
-                if gDbg1: print "Adjusting Page, PVol: ", page, pvol
+                if gDbg1: print("Adjusting Page, PVol: ", page, pvol)
                 pvol=5
         elif pvol==5:
             if page<628 and page > 0:
-                if gDbg1: print "Adjusting Page, PVol: ", page, pvol
+                if gDbg1: print("Adjusting Page, PVol: ", page, pvol)
                 pvol=4
         page = page.format(keyword=page.LOCALID)
         #print "XML PageStart (vol: %s): %s " % (pvol, page)
@@ -2597,24 +2550,24 @@ def processVol(vol):
     #if vol in ["4/5", "4-5", "4,5", "IV/V", "IV-V", "IV - V", "IV, V", "4 &amp; 5", "4&amp;5", "4 &ndash; 5", "4&ndash;5"]: vol=4
     #if vol in ["15/16", "15-16", "15,16", "XV-XVI", "XV, XVI", "XV - XVI", "XV&amp;XVI", "XV &amp; XVI", "15&amp;16", "15 &amp; 16", "15 &ndash; 16", "15&ndash;16"]: vol=15
     #print "ProcessVol Vol for Cleanup: ", vol
-    retVal = sciDocuments.VolumeNumber(vol)
+    ret_val = opasDocuments.VolumeNumber(vol)
     if 0:
-        # moved to volNum in sciDocuments
-        if isinstance(vol, basestring):  # supports string and unicode
+        # moved to volNum in opasDocuments
+        if isinstance(vol, str):  # supports string and unicode
             vol = re.split("[,/\-\s&]", vol)
             vol = vol[0]
-            vol = sciSupport.trimPunctAndSpaces(str(vol)) # OLD:, punctSet=",. :;(\t\"'-")
-        if sciHLMath.isRoman(vol):
-            vol = sciHLMath.convRomanToArabic(vol)  # Returns number whether arabic or roman
+            vol = opasgenlib.trimPunctAndSpaces(vol) # OLD:, punct_set=",. :;(\t\"'-")
+        if opasgenlib.isRoman(vol):
+            vol = opasgenlib.convRomanToArabic(vol)  # Returns number whether arabic or roman
         if vol==5: vol=4
         if vol==16: vol=15
-        if isinstance(vol, basestring):  # supports string and unicode
+        if isinstance(vol, str):  # supports string and unicode
             try:
                 vol = int(vol)
             except:
-                print "Defaulted to vol 1 because of error with vol=", vol
+                print("Defaulted to vol 1 because of error with vol=", vol)
                 vol = 1  # So far, it seems these are mostly SE without volumes, so go to vol 1!
-    return retVal
+    return ret_val
 
 
 #==================================================================================================
@@ -2625,10 +2578,6 @@ if __name__ == "__main__":
     import sys
     import doctest
 
-    j = PEPJournalData().journalCodes()
-    for n in j:
-        print n
-    print len(j), " journals"
     doctest.testmod()
     sys.exit()
 

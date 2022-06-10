@@ -906,17 +906,12 @@ SS_BROADEN_DICT = {SEARCH_FIELD_RELATED: SS_BROADEN_SEARCH_FIELD_RELATED,
                    SEARCH_FIELD_RELATED_EXPANDED: SS_BROADEN_SEARCH_FIELD_RELATED,
                   }
 
-SUPPLEMENT_ISSUE_SEARCH_STR = "Supplement" # this is what will be searched in "art_iss" for supplements
-
-#PEPWEB_ABSTRACT_MSG1 = """
-#This is a summary or excerpt from the full text of the article. PEP-Web provides full-text search of the complete articles for
-#current and archive content, but only the abstracts are displayed for current content, due to contractual obligations with the
-#journal publishers. For details on how to read the full text of 2017 and more current articles see the publishers official website 
-#"""
+#SUPPLEMENT_ISSUE_SEARCH_STR = "Supplement" # this is what will be searched in "art_iss" for supplements
 
 # PDF_EXTENDED_FONT_FILE = f"url('{PATHCHECK1}')"
 # PDF_EXTENDED_FONT_ALT = f"url('{PATHCHECK2}')"
 # Make sure font is defined:
+
 def get_file_path(filename, subpath):
     ret_val = None
     try:
@@ -1024,359 +1019,335 @@ PDF_OTHER_STYLE = r"""
 </style>
 """
 
-# 
-# import and next four functions should be moved to their own module soon - nrs
-# 
+# ----------------------------------------
+# opasXMLSimpleProcessor definitions
+# ----------------------------------------
 
-from pydantic import BaseModel, Field
+# MAXSRATIO is the highest sRatio, since 1 is reserved.
+MAXSRATIO = 0.9999999
 
-def parse_volume_code(vol_code: str, source_code: str=None): 
-    """
-    PEP Volume numbers in IDS can be numbers or suffixed by an issue code--we use them after a volume number when a journal repeats pagination
-    from issue to issue or starts the pagination over in a Supplement.
-    
-    >>> parse_volume_code("34S")
-    ('34', 'S')
-    >>> parse_volume_code("101C")
-    ('101', 'C')
-    >>> parse_volume_code("130")
-    ('130', None)
-    
-    
-    """
-    ret_val = ("*", None)
-    if vol_code is not None:
-        m = re.match("\(*(?P<vol>[0-9]+)(?P<issuecode>[A-z]+)?\)*", vol_code)
-        if m is not None:
-            vol = m.group("vol")
-            vol = vol.lstrip("0")
-            issuecode = m.group("issuecode") 
-            ret_val = vol, issuecode
+gBookCodes = ["CBK", "ZBK", "IPL", "NLP", "WMK", "SE", "GW"]
+gAnnualsThatAreTranslations = ["ANIJP-FR", "ANIJP-IT", "ANIJP-EL", "ANIJP-TR", "ANIJP-DE", "ANRP"]
+# Series Classic books with their own code, to add CBK as well.
+gBookClassicSeries = ["IPL", "NLP", "SE", "ZBK"]                       # 3-13-2008, added missing ZBK here.
+gJrnlNoIssueInfo = ["AOP", "PSC", "PY", "ANIJP-IT", "ANIJP-FR", "ANIJP-TR", "ANIJP-EL"]              # 2008-09-07, added to make sure a no-issues volume isn't given an issue number on the one issue each year.
+gSplitCodesForGetProximateArticle = ["CBK", "ZBK", "IPL", "NLP", "WMK", "SE", "GW"]
+gSplitBooks = {
+    "IPL002" : 0,
+    "IPL022" : 0,
+    "IPL045" : 0,
+    "IPL052" : 0,
+    "IPL055" : 0,
+    "IPL059" : 0,
+    "IPL064" : 0,
+    "IPL073" : 0,
+    "IPL076" : 0,
+    "IPL079" : 0,
+    "IPL084" : 0,
+    "IPL087" : 0,
+    "IPL089" : 0,
+    "IPL094" : 0,
+    "IPL095" : 0,
+    "IPL100" : 0,
+    "IPL104" : 0,
+    "IPL105" : 0,
+    "IPL109" : 0,
+    "IPL118" : 0,
+    "NLP001" : 0,
+    "NLP003" : 0,
+    "NLP005" : 1,
+    "NLP011" : 0,
+    "NLP014" : 0,
+    "GW001"  : 0,
+    "GW002"  : 0,
+    "GW003"  : 0,
+    "GW004"  : 0,
+    "GW005"  : 0,
+    "GW006"  : 0,
+    "GW007"  : 0,
+    "GW008"  : 0,
+    "GW009"  : 0,
+    "GW010"  : 0,
+    "GW011"  : 0,
+    "GW012"  : 0,
+    "GW013"  : 0,
+    "GW014"  : 0,
+    "GW015"  : 0,
+    "GW016"  : 0,
+    "GW017"  : 0,
+    "GW018"  : 0,
+    "GW018S" : 0,
+    "NLP011" : 0,
+    "NLP014" : 0,
+    "SE001"  : 0,
+    "SE002"  : 0,
+    "SE003"  : 0,
+    "SE004"  : 0,
+    "SE005"  : 0,
+    "SE006"  : 0,
+    "SE007"  : 0,
+    "SE008"  : 0,
+    "SE009"  : 0,
+    "SE010"  : 0,
+    "SE011"  : 0,
+    "SE012"  : 0,
+    "SE013"  : 0,
+    "SE014"  : 0,
+    "SE015"  : 0,
+    "SE016"  : 0,
+    "SE017"  : 0,
+    "SE018"  : 0,
+    "SE019"  : 0,
+    "SE020"  : 0,
+    "SE021"  : 0,
+    "SE022"  : 0,
+    "SE023"  : 0,
+    "SE024"  : 0,
+    "ZBK002" : 0, # new 2022-05-02
+    "ZBK003" : 0, # new 2022-05-02
+    "ZBK006" : 0, # new 2022-05-02
+    "ZBK007" : 0, # new 2022-05-02
+    "ZBK015" : 0, # new 2022-05-02
+    "ZBK016" : 0, # new 2022-05-02
+    "ZBK017" : 0, # new 2022-05-02
+    "ZBK025" : 0,
+    "ZBK026" : 0,
+    "ZBK027" : 0,
+    "ZBK028" : 0,
+    "ZBK029" : 0,
+    "ZBK033" : 0, # new 2022-05-02
+    "ZBK038" : 0,
+    "ZBK041" : 0,
+    "ZBK042" : 0,
+    "ZBK045" : 0,
+    "ZBK046" : 0,
+    "ZBK047" : 0,
+    "ZBK048" : 0,
+    "ZBK050" : 0,
+    "ZBK051" : 0,
+    "ZBK052" : 0,
+    "ZBK054" : 0,
+    "ZBK055" : 0,
+    "ZBK056" : 0,
+    "ZBK061" : 0,
+    "ZBK062" : 0,
+    "ZBK069" : 0,
+    "ZBK070" : 0, # new 2022-05-02
+    "ZBK071" : 0, # new 2022-05-02
+    "ZBK072" : 0, # new 2022-05-02
+    "ZBK073" : 0,
+    "ZBK074" : 0,
+    "ZBK075" : 0,
+    "ZBK076" : 0, # new 2022-05-02
+    "ZBK077" : 0, # new 2022-05-02
+    "ZBK078" : 0,
+    "ZBK079" : 0,
+    "ZBK080" : 0,
+    "ZBK081" : 0,
+    "ZBK133" : 0,
+    "ZBK131" : 0, # new 2022-05-02
+    "ZBK132" : 0, # new 2022-05-02
+    "ZBK134" : 0, # new 2022-05-02
+    "ZBK135" : 0, # new 2022-05-02
+    "ZBK137" : 0, # new 2022-05-02
+    "ZBK138" : 0, # new 2022-05-02
+    "ZBK140" : 0,
+    "ZBK141" : 0,
+    "ZBK142" : 0, # new 2022-05-02
+    "ZBK143" : 0, # new 2022-05-02
+    "ZBK144" : 0, # new 2022-05-02
+    "ZBK145" : 0,
+    "ZBK146" : 0, # new 2022-05-02
+    "ZBK147" : 0, # new 2022-05-02
+    "ZBK148" : 0, # new 2022-05-02
+    "ZBK150" : 0, # new 2022-05-02
+    "ZBK151" : 0, # new 2022-05-02
+    "ZBK152" : 0, # new 2022-05-02
+    "ZBK153" : 0, # new 2022-05-02
+    "ZBK155" : 0, # new 2022-05-02
+    "ZBK156" : 0, # new 2022-05-02
+}
 
-    return ret_val    
+gDgrAbbr = {
+    "PHD" : "Ph.D.",
+    "MD"  : "M.D.",
+    "SJ"  : "S.J.",         # Jesuit priest, I think
+    "DSC" : "D.Sc.",
+    "RN"  : "R.N." ,
+    "DMH" : "DMH",
+    "DDS" : "D.D.S.",
+    "BS"  : "B.S." ,
+    "BA"  : "B.A." ,
+    "MS"  : "M.S." ,
+    "MA"  : "M.A." ,
+    "MB"  : "M.B." ,
+    "EDD" : "ED.D.",
+    "MPSY": "M.PSY.",
+    "MSW" : "M.S.W."
+}
 
-def parse_issue_code(issue_code: str, source_code=None, vol=None): 
-    """
-    Issue codes are PEP unique--we use them after a volume number when a journal repeats pagination
-    from issue to issue or starts the pagination over in a Supplement.
-    
-    Source code and volume can be used to handle sources that are "exceptions" to rules (unfortunately)
-    
-    """
-    ret_val = "*"
-    if issue_code is not None and issue_code.isalpha():
-        issue_code = issue_code.upper()
-        if issue_code[0] != "S" or (source_code == "FA" and vol == 1):
-            ret_val = string.ascii_uppercase.index(issue_code[0]) # A==0, B==1
-            ret_val += 1 # now A==1
-            ret_val = str(ret_val)
-        elif issue_code[0] == 'S':
-            ret_val = SUPPLEMENT_ISSUE_SEARCH_STR # supplement
-        else:
-            ret_val = "*" # not recognized, allow any issue
-            
-    elif issue_code.isdecimal():
-        if type(issue_code) == "int":
-            ret_val = str(issue_code)
-        else:
-            ret_val = issue_code
-    return ret_val    
+# REFTYPES
+REFBOOK                 =  "RefBook"
+REFBOOKSERIES           =  "RefBookSeries"
+REFJOURNALARTICLE       =  "RefJrnlArticle"        # (in journal)
+REFBOOKARTICLE          =  "RefBookArticle"        # (article in book)
+REFBOOKSERIESARTICLE    =  "RefBookSeriesArticle"  # (article in series book)
+REFABSTRACT             =  "RefAbstract"
+REFSECTION              =  "RefSection"            # Format of "section citation"
 
-class ArticleID(BaseModel):
-    """
-    Article IDs (document IDs) are at the core of the system.  In PEP's design, article IDs are meaningful, and can be broken apart to learn about the content metadata.
-      But when designed as such, the structure of the article IDs may be different in different systems, so it needs to be configurable as possible.
-      This routine in opasConfig is a start of allowing that to be defined as part of the customization. 
+# Used to generate the index of classic books (excluding SE and GW,, done separately)
+gClassicBookTOCList = {
+    "IPL.002.0000"  :  "IPL.002.0000",  # A1v7 Ferenczi
+    "IPL.022.0000"  :  "IPL.022.0000",  # A1v4 Start
+    "IPL.045.0000"  :  "IPL.045.0000",  # A1v4 Jones
+    "IPL.052.0000"  :  "IPL.052.0000",
+    "IPL.055.0000"  :  "IPL.055.0000",
+    "IPL.059.0000"  :  "IPL.059.0000",  #A1v7 Meng
+    "IPL.064.0000"  :  "IPL.064.0000",  #A1v6 Winnicott
+    "IPL.073.0000"  :  "IPL.073.0000",  #A1v7 Racker
+    "IPL.076.0000"  :  "IPL.076.0000",  #A1v7 Milner
+    "IPL.079.0001"  :  "IPL.079.0001",  #A1v7 Bowlby
+    "IPL.084.0000"  :  "IPL.084.0000",  #A1v7 EFreud
+    "IPL.087.0000"  :  "IPL.087.0000",
+    "IPL.089.0000"  :  "IPL.089.0000",  # A1v7
+    "IPL.094.0000"  :  "IPL.094.0000",
+    "IPL.095.0001"  :  "IPL.095.0001",
+    "IPL.100.0000"  :  "IPL.100.0000",
+    "IPL.104.0000"  :  "IPL.104.0000",
+    "IPL.105.0000"  :  "IPL.105.0000",
+    "IPL.107.0001"  :  "IPL.107.0001",
+    "IPL.109.0001"  :  "IPL.109.0001",  #A1v7 Bowlby
+    "IPL.115.0001"  :  "IPL.115.0001",
+    "IPL.118.0000"  :  "IPL.118.0000",
+    "NLP.001.0000"  :  "NLP.001.0000",
+    "NLP.003.0000"  :  "NLP.003.0000",
+    "NLP.005.0000"  :  "NLP.005.0000",  # 2022-03-25
+    "NLP.009.0001"  :  "NLP.009.0001",  # A1v7
+    "NLP.011.0000"  :  "NLP.011.0000",  # A1v2200r1
+    "NLP.014.0000"  :  "NLP.014.0000",  # A1v7
+    "ZBK.002.0000"  :  "ZBK.002.0000",  # split 2022-05-02
+    "ZBK.003.0000"  :  "ZBK.003.0000",  # split 2022-05-02
+    "ZBK.004.0001"  :  "ZBK.004.0001",
+    "ZBK.005.0001"  :  "ZBK.005.0001",
+    "ZBK.006.0000"  :  "ZBK.006.0000",  # split 2022-05-02
+    "ZBK.007.0000"  :  "ZBK.007.0000",  # split 2022-05-02
+    "ZBK.015.0000"  :  "ZBK.015.0000",  # split 2022-05-02
+    "ZBK.016.0000"  :  "ZBK.016.0000",  # split 2022-05-02
+    "ZBK.017.0000"  :  "ZBK.017.0000",  # split 2022-05-02
+    "ZBK.020.0001"  :  "ZBK.020.0001",  # A1v4 End
+    "ZBK.025.0000"  :  "ZBK.025.0000",
+    "ZBK.026.0000"  :  "ZBK.026.0000",
+    "ZBK.027.0000"  :  "ZBK.027.0000",
+    "ZBK.028.0000"  :  "ZBK.028.0000",
+    "ZBK.029.0000"  :  "ZBK.029.0000",  # A1v7
+    "ZBK.033.0000"  :  "ZBK.033.0000",  # split 2022-05-02  # A1v7
+    # "ZBK.034.0001"    :  "ZBK.034.0001",  # A1v8
+    "ZBK.038.0000"  :  "ZBK.038.0000",  # A1v7
+    "ZBK.041.0000"  :  "ZBK.041.0000",
+    "ZBK.042.0000"  :  "ZBK.042.0000",
+    "ZBK.045.0000"  :  "ZBK.045.0000",  # A1v7
+    "ZBK.046.0000"  :  "ZBK.046.0000",  # A1v7
+    "ZBK.047.0000"  :  "ZBK.047.0000",  # A1v7
+    "ZBK.048.0000"  :  "ZBK.048.0000",  # A1v12 Money-Kyrle
+    # "ZBK.049.0001"    :  "ZBK.049.0001",  # A1v8
+    "ZBK.050.0000"  :  "ZBK.050.0000",  # A1v7
+    "ZBK.051.0000"  :  "ZBK.051.0000",  # A1v7
+    "ZBK.052.0000"  :  "ZBK.052.0000",
+    "ZBK.054.0000"  :  "ZBK.054.0000",
+    "ZBK.055.0000"  :  "ZBK.055.0000",
+    "ZBK.056.0001"  :  "ZBK.056.0001",
+    "ZBK.061.0000"  :  "ZBK.061.0000",
+    "ZBK.062.0000"  :  "ZBK.062.0000",  # split for A1v2022r1b
+    "ZBK.070.0000"  :  "ZBK.070.0000",  # split 2022-05-02 # A1v11
+    "ZBK.071.0000"  :  "ZBK.071.0000",  # split 2022-05-02
+    "ZBK.072.0000"  :  "ZBK.072.0000",  # split 2022-05-02
+    "ZBK.073.0000"  :  "ZBK.073.0000",
+    "ZBK.074.0000"  :  "ZBK.074.0000",
+    "ZBK.075.0000"  :  "ZBK.075.0000",
+    "ZBK.076.0000"  :  "ZBK.076.0000",  # split 2022-05-02
+    "ZBK.077.0000"  :  "ZBK.077.0000",  # split 2022-05-02
+    "ZBK.078.0000"  :  "ZBK.078.0000",
+    "ZBK.079.0000"  :  "ZBK.079.0000",
+    "ZBK.080.0000"  :  "ZBK.080.0000",
+    "ZBK.081.0000"  :  "ZBK.081.0000",
+    "ZBK.131.0000"  :  "ZBK.131.0000",  # split 2022-05-02
+    "ZBK.132.0000"  :  "ZBK.132.0000",  # split 2022-05-02
+    "ZBK.133.0000"  :  "ZBK.133.0000",
+    "ZBK.134.0000"  :  "ZBK.134.0000",  # split 2022-05-02
+    "ZBK.135.0000"  :  "ZBK.135.0000",  # split 2022-05-02
+    "ZBK.136.0001"  :  "ZBK.136.0001",
+    "ZBK.137.0000"  :  "ZBK.137.0000",  # split 2022-05-02
+    "ZBK.138.0000"  :  "ZBK.138.0000",  # split 2022-05-02
+    "ZBK.139.0001"  :  "ZBK.139.0001",
+    "ZBK.140.0000"  :  "ZBK.140.0000",
+    "ZBK.141.0000"  :  "ZBK.141.0000",
+    "ZBK.142.0000"  :  "ZBK.142.0000",  # split 2022-05-02
+    "ZBK.143.0000"  :  "ZBK.143.0000",  # split 2022-05-02
+    "ZBK.144.0000"  :  "ZBK.144.0000",  # split 2022-05-02
+    "ZBK.145.0000"  :  "ZBK.145.0000",
+    "ZBK.146.0000"  :  "ZBK.146.0000",  # split 2022-05-02
+    "ZBK.147.0000"  :  "ZBK.147.0000",  # split 2022-05-02
+    "ZBK.148.0000"  :  "ZBK.148.0000",  # split 2022-05-02
+    "ZBK.149.0001"  :  "ZBK.149.0001",
+    "ZBK.150.0001"  :  "ZBK.150.0001",  # split 2022-05-02
+    "ZBK.151.0001"  :  "ZBK.151.0001",  # split 2022-05-02
+    "ZBK.152.0001"  :  "ZBK.152.0001",  # split 2022-05-02
+    "ZBK.153.0001"  :  "ZBK.153.0001",  # split 2022-05-02
+    #    "ZBK.154.0001"  :  "ZBK.154.0001",  # Missing book
+    "ZBK.155.0000"  :  "ZBK.155.0000",  # split 2022-05-02
+    "ZBK.156.0000"  :  "ZBK.156.0000",  # split 2022-05-02
+    "ZBK.160.0001"  :  "ZBK.160.0001",
+}
 
-    >>> a = ArticleID(articleID="AJRPP.004.0007A", allInfo=True)
-    >>> print (a.articleInfo)
-    {'source_code': 'AJRPP', 'vol_str': '004', 'vol_numeric': '004', 'vol_suffix': '', 'vol_wildcard': '', 'issue_nbr': '', 'page': '0007A', 'roman': '', 'page_numeric': '0007', 'page_suffix': 'A', 'page_wildcard': ''}
+gSEIndex =         {
+    "SE.001.0000"   :  "SE.001.0000",
+    "SE.002.0000"   :  "SE.002.0000",
+    "SE.003.0000"   :  "SE.003.0000",
+    "SE.004.0000"   :  "SE.004.0000",
+    "SE.005.0000"   :  "SE.005.0000",
+    "SE.006.0000"   :  "SE.006.0000",
+    "SE.007.0000"   :  "SE.007.0000",
+    "SE.008.0000"   :  "SE.008.0000",
+    "SE.009.0000"   :  "SE.009.0000",
+    "SE.010.0000"   :  "SE.010.0000",
+    "SE.011.0000"   :  "SE.011.0000",
+    "SE.012.0000"   :  "SE.012.0000",
+    "SE.013.0000"   :  "SE.013.0000",
+    "SE.014.0000"   :  "SE.014.0000",
+    "SE.015.0000"   :  "SE.015.0000",
+    "SE.016.0000"   :  "SE.016.0000",
+    "SE.017.0000"   :  "SE.017.0000",
+    "SE.018.0000"   :  "SE.018.0000",
+    "SE.019.0000"   :  "SE.019.0000",
+    "SE.020.0000"   :  "SE.020.0000",
+    "SE.021.0000"   :  "SE.021.0000",
+    "SE.022.0000"   :  "SE.022.0000",
+    "SE.023.0000"   :  "SE.023.0000",
+    "SE.024.0000"   :  "SE.024.0000"
+}
 
-    >>> a = ArticleID(articleID="MPSA.043.0117A")
-    >>> print (a.altStandard)
-    MPSA.043?.0117A
-    
-    >>> a = ArticleID(articleID="AJRPP.004A.0007A")
-    >>> print (a.volumeNbrStr)
-    004
-    >>> a = ArticleID(articleID="AJRPP.004S.R0007A")
-    >>> print (a.issueCode)
-    S
-    >>> a = ArticleID(articleID="AJRPP.004S(1).R0007A")
-    >>> print (a.issueInt)
-    1
-    >>> a.volumeInt
-    4
-    >>> a.romanPrefix
-    'R'
-    >>> a.isRoman
-    True
-    >>> print (a.articleID)
-    AJRPP.004S.R0007A
-    >>> a.isRoman
-    True
-    >>> a.pageInt
-    7
-    >>> a.standardized
-    'AJRPP.004S.R0007A'
-    >>> a = ArticleID(articleID="AJRPP.*.*")
-    >>> a.standardized
-    'AJRPP.*.*'
-    >>> a = ArticleID(articleID="IJP.034.*")
-    >>> a.standardized
-    'IJP.034.*'
-    >>> a = ArticleID(articleID="IJP.*.0001A")
-    >>> a.standardized
-    'IJP.*.*'
-    
-    """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        regex_article_id =  "(?P<source_code>[A-Z\-]{2,13})\.(?P<vol_str>(((?P<vol_numeric>[0-9]{3,4})(?P<vol_suffix>[A-Z]?))|(?P<vol_wildcard>\*)))(\((?P<issue_nbr>[0-9]{1,3})\))?\.(?P<page>((?P<roman>R?)(((?P<page_numeric>([0-9]{4,4}))(?P<page_suffix>[A-Z]?))|(?P<page_wildcard>\*))))"
-        volumeWildcardOverride = ''
-        m = re.match(regex_article_id, self.articleID, flags=re.IGNORECASE)
-        if m is not None:
-            self.articleInfo = m.groupdict("")
-            self.sourceCode = self.articleInfo.get("source_code")
-            # self.volumeStr = self.articleInfo.get("vol_str")
-            
-            # See if it has issue number numerically in ()
-            self.issueInt = self.articleInfo.get("issue_nbr") # default for groupdict is ''
-            if self.issueInt != '':
-                self.issueInt = int(self.issueInt)
-            else:
-                self.issueInt = 0
+gGWIndex =         {
+    "GW.001.0000"   :  "GW.001.0000",
+    "GW.002.0000"   :  "GW.002.0000", # this is a combined vol 2/3
+    "GW.004.0000"   :  "GW.004.0000",
+    "GW.005.0000"   :  "GW.005.0000",
+    "GW.006.0000"   :  "GW.006.0000",
+    "GW.007.0000"   :  "GW.007.0000",
+    "GW.008.0000"   :  "GW.008.0000",
+    "GW.009.0000"   :  "GW.009.0000",
+    "GW.010.0000"   :  "GW.010.0000",
+    "GW.011.0000"   :  "GW.011.0000",
+    "GW.012.0000"   :  "GW.012.0000",
+    "GW.013.0000"   :  "GW.013.0000",
+    "GW.014.0000"   :  "GW.014.0000",
+    "GW.015.0000"   :  "GW.015.0000",
+    "GW.016.0000"   :  "GW.016.0000",
+    "GW.017.0000"   :  "GW.017.0000",
+    "GW.018.0000"   :  "GW.018.0000",
+    "GW.018S.0000"   :  "GW.018S.0000",
+}
 
-            volumeSuffix = self.articleInfo.get("vol_suffix", "")
-            altVolSuffix = ""
-            if volumeSuffix != "":
-                self.issueCode  = volumeSuffix[0]  # sometimes it says supplement!
-            else:
-                self.issueCode = ""
-                if self.issueInt > 0:
-                    altVolSuffix = string.ascii_uppercase[self.issueInt-1]
-                
-            if not self.isSupplement and self.issueInt == 0 and self.issueCode != "":
-                # an issue code was specified (but not supplement or "S")
-                converted = parse_issue_code(self.issueCode, source_code=self.sourceCode, vol=self.volumeInt)
-                if converted.isdecimal():
-                    self.issueCodeInt = int(converted)
 
-            self.volumeInt = self.articleInfo.get("vol_numeric") 
-            if self.volumeInt != '': # default for groupdict is ''
-                self.volumeInt = int(self.volumeInt)
-                # make sure str is at least 3 places via zero fill
-                self.volumeNbrStr = format(self.volumeInt, '03')
-            else:
-                self.volumeInt = 0
-
-            volumeWildcardOverride = self.articleInfo.get("vol_wildcard")
-            if volumeWildcardOverride != '':
-                self.volumeNbrStr = volumeWildcardOverride
-                
-            self.isSupplement = self.issueCode == "S"
-                    
-            # page info
-            # page = self.articleInfo.get("page")
-            self.pageNbrStr = self.articleInfo.get("page_numeric")
-            self.pageInt = self.pageNbrStr 
-            if self.pageInt != '':
-                self.pageInt = int(self.pageInt)
-                self.pageNbrStr = format(self.pageInt, '04')
-            else:
-                self.pageInt = 0
-                
-            pageWildcard = self.articleInfo.get("page_wildcard")
-            if pageWildcard != '':
-                self.pageNbrStr = pageWildcard
-            
-            roman_prefix = self.articleInfo.get("roman", "")  
-            self.isRoman = roman_prefix.upper() == "R"
-            if self.isRoman:
-                self.romanPrefix = roman_prefix 
-               
-            self.pageSuffix = self.articleInfo.get("page_suffix", "A")
-            self.standardized = f"{self.sourceCode}.{self.volumeNbrStr}{self.issueCode}"
-            self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}"
-            if self.standardized == self.altStandard:
-                # there's no issue code in the standard one. Try adding one:
-                if altVolSuffix != "":
-                    self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}{altVolSuffix}"
-                else: # use 1 character wildcard
-                    self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}?"
-            
-            if volumeWildcardOverride == '':
-                if pageWildcard == '':
-                    self.standardized += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
-                    self.altStandard += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
-                    #self.standardizedPlusIssueCode += f".{self.romanPrefix}{self.pageNbrStr}{self.pageSuffix}"
-                else:
-                    self.standardized += f".*"
-                    self.altStandard += f".*"
-                    #self.standardizedPlusIssueCode += f".*"
-            else:
-                self.standardized += f".*"
-                self.altStandard += f".*"
-                #self.standardizedPlusIssueCode += f".*"
-
-            # always should be uppercase
-            self.standardized = self.standardized.upper()
-            self.isArticleID = True
-            self.articleID = self.standardized
-            if not self.allInfo:
-                self.articleInfo = None
-                # These show anyway so don't waste time with clear
-                #if self.pageInt == 0:
-                    #self.pageNbrStr = None
-                #if self.volumeSuffix == '':
-                    #self.volumeSuffix = None
-                #if self.pageSuffix == '':
-                    #self.pageSuffix = None
-                #if self.volumeWildcardOverride == '':
-                    #self.volumeWildcardOverride = None
-                #if self.issueCode == '':
-                    #self.issueCode = None
-                #if self.page == "*":
-                    #self.page = None
-                #if self.pageWildcard == '':
-                    #self.pageWildcard = None
-        else:
-            self.isArticleID = False
-        
-    articleID: str = Field(None, title="As submitted ID, if it's a valid ID")
-    standardized: str = Field(None, title="Standard form of article (document) ID")
-    altStandard: str = Field(None, title="Standard form of article (document) ID from 2020 (most without volume suffix)")
-    isArticleID: bool = Field(False, title="True if initialized value is an article (document) ID")
-    sourceCode: str = Field(None, title="Source material assigned code (e.g., journal, book, or video source code)")
-    # volumeStr: str = Field(None, title="")
-    volumeSuffix: str = Field(None, title="")
-    # volumeWildcardOverride: str = Field(None, title="")
-    volumeInt: int = Field(0, title="")
-    volumeNbrStr: str = Field(None, title="")
-    issueCode: str = Field(None, title="")
-    isSupplement: bool = Field(False, title="")
-    issueInt: int = Field(0, title="")
-    issueCodeInt: int = Field(0, title="") 
-    # page info
-    # page: str = Field(None, title="")
-    pageNbrStr: str = Field(None, title="")
-    pageInt: int = Field(0, title="")
-    # pageWildcard: str = Field(None, title="")
-    romanPrefix: str = Field("", title="")
-    isRoman: bool = Field(False, title="")
-    pageSuffix: str = Field(None, title="")    
-    articleInfo: dict = Field(None, title="Regex result scanning input articleID")
-    allInfo: bool = Field(False, title="Show all captured information, e.g. for diagnostics")
-
-        
-class JournalVolIssue(BaseModel):
-    """
-    Identify and parse a "loose" spec if a journal code, volume or year, and issue.
-    
-    >>> a = JournalVolIssue(journalSpec="AJRPP.004", allInfo=True)
-    >>> print (a.JournalVolIssue)
-    
-    >>> a = JournalVolIssue(journalSpec="AJRPP 1972")
-    >>> print (f"\'{a.journalSpec}\'", a.sourceCode, a.yearStr)
-    
-    >>> a = JournalVolIssue(journalSpec="ANIJP-DE 42")
-    >>> print (f"\'{a.journalSpec}\'", a.sourceCode, a.volumeNbrStr)
-
-    >>> a = JournalVolIssue(journalSpec="ANIJP-CHI 2021")
-    >>> print (f"\'{a.journalSpec}\'", a.sourceCode, a.yearStr)
-
-    >>> a = JournalVolIssue(journalSpec="IJP.*.0001A")
-    >>> print (f"\'{a.journalSpec}\'", a.standardized)
-    'IJP.*.*'
-    
-    """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        JOURNAL_VOL_RX = "(?P<source_code>%s)(\s+|\.)?(?P<vol_numeric>[0-9]{1,4})?(?P<issue_letter>[A-z]?)(\s+|\.)?(?P<issue_nbr>[0-9]{1-2})?" % JOURNAL_CODES
-        loose_journal_rxc = re.compile(JOURNAL_VOL_RX)        
-        m = loose_journal_rxc.match(self.journalSpec)
-        if m is not None:
-            self.JournalVolIssue = m.groupdict("")
-            self.sourceCode = self.JournalVolIssue.get("source_code")
-            
-            # See if it has issue number numerically in ()
-            self.issueInt = self.JournalVolIssue.get("issue_nbr") # default for groupdict is ''
-            if self.issueInt != '':
-                self.issueInt = int(self.issueInt)
-            else:
-                self.issueInt = 0
-
-            issue_letter = self.JournalVolIssue.get("vol_suffix", "")
-            altVolSuffix = ""
-            if issue_letter != "":
-                self.issueCode  = issue_letter[0]  
-            else:
-                self.issueCode = ""
-                if self.issueInt > 0:
-                    altVolSuffix = string.ascii_uppercase[self.issueInt-1]
-                
-            if not self.isSupplement and self.issueInt == 0 and self.issueCode != "":
-                # an issue code was specified (but not supplement or "S")
-                converted = parse_issue_code(self.issueCode, source_code=self.sourceCode, vol=self.volumeInt)
-                if converted.isdecimal():
-                    self.issueCodeInt = int(converted)
-
-            self.volumeInt = self.JournalVolIssue.get("vol_numeric") 
-            if self.volumeInt != '': # default for groupdict is ''
-                self.volumeInt = int(self.volumeInt)
-                # make sure str is at least 3 places via zero fill
-                self.volumeNbrStr = format(self.volumeInt, '03')
-            else:
-                self.volumeInt = 0
-
-            if self.volumeInt > 1000:
-                self.yearInt = self.volumeInt
-                self.yearStr = format(self.volumeInt, '04')
-                self.volumeInt = 0
-                self.volumeNbrStr = ""
-
-            self.isSupplement = self.issueCode == "S"
-                
-            self.standardized = f"{self.sourceCode}.{self.volumeNbrStr}{self.issueCode}"
-            self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}"
-            if self.standardized == self.altStandard:
-                # there's no issue code in the standard one. Try adding one:
-                if altVolSuffix != "":
-                    self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}{altVolSuffix}"
-                else: # use 1 character wildcard
-                    self.altStandard = f"{self.sourceCode}.{self.volumeNbrStr}?"
-            
-            # always should be uppercase
-            self.standardized = self.standardized.upper()
-            self.isJournalSpec = True
-            self.journalSpec = self.standardized
-            if not self.allInfo:
-                self.JournalVolIssue = None
-        else:
-            self.isArticleID = False
-        
-    journalSpec: str = Field(None, title="As submitted")
-    JournalVolIssue: dict = Field(None, title="Regex result scanning input JournalSpec")
-    solrQuerySpec: dict = Field(None, title="Solr Query spec")
-    standardized: str = Field(None, title="Standard form of article (document) ID")
-    altStandard: str = Field(None, title="Standard form of article (document) ID from 2020 (most without volume suffix)")
-    isArticleID: bool = Field(False, title="True if initialized value is an article (document) ID")
-
-    sourceCode: str = Field(None, title="Source material assigned code (e.g., journal, book, or video source code)")
-    # volumeStr: str = Field(None, title="")
-    volumeSuffix: str = Field(None, title="")
-    # volumeWildcardOverride: str = Field(None, title="")
-    volumeInt: int = Field(0, title="")
-    volumeNbrStr: str = Field(None, title="")
-    yearInt: int = Field(0, title="")
-    yearStr: str = Field(None, title="")
-    issueCode: str = Field(None, title="")
-    isJournalSpec: bool = Field(False, title="True if it correctly specifies a journal")
-    isSupplement: bool = Field(False, title="")
-    issueInt: int = Field(0, title="")
-    issueCodeInt: int = Field(0, title="") 
-    allInfo: bool = Field(False, title="Show all captured information, e.g. for diagnostics")
-            
 # -------------------------------------------------------------------------------------------------------
 # test it!
 

@@ -29,7 +29,7 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
     
     """
     search_term = "test"
-    print (f"User for tests: {localsecrets.PADS_TEST_ID}")
+    print (f"User for tests: {localsecrets.PADS_TEST_ARCHIVEONLY}")
     # Embargoed files (removed IJPOPen for example, xml flag:embargo=true)
     def test_001B_download_embargoed_document_PDF(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/APA.068.0027A/')
@@ -341,11 +341,11 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
     def test_015A_get_pepall_permission_manually_proof_messages(self):
-        print ("Login pep all access user!")
+        userid = localsecrets.PADS_TEST_ARCHIVEANDCURRENT
         usertype = "All Access user"
+        print (f"Login pep all access user {userid} {usertype}!")
         message_collection[usertype] = {}
-
-        sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ARCHIVEANDCURRENT, password=localsecrets.PADS_TEST_ARCHIVEANDCURRENT_PW)
+        sessID, headers, session_info = test_login(userid, password=localsecrets.PADS_TEST_ARCHIVEANDCURRENT_PW)
         # pepcurrent document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/AJP.080.0001A/?return_format=XML")
         response = requests.get(full_URL, headers=headers)
@@ -410,8 +410,9 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
     def test_016A_get_registered_user_permission_manually_proof_messages(self):
-        print ("Login registered user!")
+        userid = localsecrets.PADS_TEST_REGISTEREDUSER
         usertype = "Registered user"
+        print (f"Login registered user {userid}, {usertype}!")
         # global message_collection
         message_collection[usertype] = {}
         

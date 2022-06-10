@@ -4,6 +4,7 @@
 # Updated 2021-06-10 Dependabot alerts, urllib3, Pillow, and FastAPI
 # Updated 2022-04-06 Dependabot alerts, Pillow to 9.0.1 (from 9.0.0)
 # Updated 2022-05-25 Update Weasyprint version, still doesn't have needed fixes though, but maybe will be in version 55 so will update.
+# Updated 2022-06-07 added roman support library from pypi for XML processing code
 #
 aiofiles==0.5.0
 #
@@ -62,6 +63,8 @@ python-dateutil~=2.8.2
 #
 #
 python-multipart==0.0.5
+#
+roman==3.3
 #
 reportlab==3.6.6
 requests~=2.26.0

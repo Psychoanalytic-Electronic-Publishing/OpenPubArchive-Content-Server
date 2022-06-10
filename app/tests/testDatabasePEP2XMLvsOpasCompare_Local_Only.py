@@ -7,7 +7,7 @@ import localsecrets
 # import opasCentralDBLib
 # import opasGenSupportLib as opasgenlib
 
-from localsecrets import STAGE_DB_HOST, STAGE2PROD_PW, STAGE2PROD_USER, PRODUCTION_DB_HOST, AWSDEV_DB_HOST 
+from localsecrets import STAGE_DB_HOST, AWSDB_PWS, AWSDB_USERS, PRODUCTION_DB_HOST, AWSDEV_DB_HOST 
 DEV_DBHOST = "localhost"
 DEV_DBUSER = "root"
 DEV_DBPW = ""

@@ -24,7 +24,7 @@ import copy
 from pydantic import ValidationError
 # from fastapi import HTTPException
 from errorMessages import *
-import datetime as dtime 
+#import datetime as dtime 
 from datetime import datetime
 from collections import OrderedDict
 # import datetime as dtime
@@ -37,6 +37,7 @@ from xml.sax import SAXParseException
 
 import localsecrets
 from opasConfig import TIME_FORMAT_STR
+from opasArticleIDSupport import ArticleID
 
 # from localsecrets import BASEURL, SOLRURL, SOLRUSER, SOLRPW, DEBUG_DOCUMENTS, SOLR_DEBUG, CONFIG, COOKIE_DOMAIN  
 import starlette.status as httpCodes
@@ -2459,7 +2460,7 @@ def metadata_get_next_and_prev_articles(art_id=None,
     # works for journal, videostreams have more than one year per vol.
     # works for books, videostream vol numbers
     
-    article_id = opasConfig.ArticleID(articleID=art_id)
+    article_id = ArticleID(articleID=art_id) # now from opasArticleIDSupport
     
     distinct_return = "art_sourcecode, art_year, art_vol, art_id, art_iss, art_iss_seqnbr"
     next_art = {}

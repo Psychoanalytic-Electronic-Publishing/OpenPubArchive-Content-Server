@@ -5,7 +5,7 @@ from starlette.testclient import TestClient
 
 import unittest
 import requests
-from localsecrets import PADS_TEST_ID, PADS_TEST_PW
+from localsecrets import PADS_TEST_ID, PADS_TEST_PW, PADS_TEST_ARCHIVEANDCURRENT, PADS_TEST_ARCHIVEANDCURRENT_PW
 
 from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in, test_logout
 # Get session, but not logged in.
@@ -35,7 +35,7 @@ class TestSessionLogin(unittest.TestCase):
     
     def test_01_login(self):
         global orig_session_id
-        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ID}&password={PADS_TEST_PW}&client-id=4')
+        full_URL = base_plus_endpoint_encoded(f'/v2/Session/Login/?grant_type=password&username={PADS_TEST_ARCHIVEANDCURRENT}&password={PADS_TEST_ARCHIVEANDCURRENT_PW}&client-id=4')
         response = requests.get(full_URL, headers=headers)
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)

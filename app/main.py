@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0603/v2.1.161"   # semver versioning after date.
+__version__     = "2022.0610/v2.1.163"   # semver versioning after date.
 __status__      = "Production"  
 
 """
@@ -149,7 +149,7 @@ import opasPySolrLib
 from opasPySolrLib import search_text_qs # , search_text
 import opasPDFStampCpyrght
 import opasCacheSupport
-
+from opasArticleIDSupport import ArticleID
 
 expert_pick_image = ["", ""]
 
@@ -4164,7 +4164,7 @@ def database_word_wheel(response: Response,
     return ret_val  # Return author information or error
 
 #-----------------------------------------------------------------------------
-@app.get("/v2/Metadata/ArticleID/", response_model=opasConfig.ArticleID, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_METADATA_ARTICLEID)
+@app.get("/v2/Metadata/ArticleID/", response_model=ArticleID, response_model_exclude_unset=True, tags=["Metadata"], summary=opasConfig.ENDPOINT_SUMMARY_METADATA_ARTICLEID)
 def metadata_articleid(response: Response,
                        request: Request=Query(None, title=opasConfig.TITLE_REQUEST, description=opasConfig.DESCRIPTION_REQUEST),
                        articleID: str=Query("*", title=opasConfig.TITLE_SOURCECODE, description="ArticleID to evaluate"), 
@@ -4200,7 +4200,7 @@ def metadata_articleid(response: Response,
     # api_id = opasCentralDBLib.API_METADATA_ARTICLEID
     
     # return the articleID model to the client to break it down for them
-    ret_val = opasConfig.ArticleID(articleID=articleID, allInfo=diagnostics)
+    ret_val = ArticleID(articleID=articleID, allInfo=diagnostics)
     
     return ret_val
 
@@ -5676,7 +5676,7 @@ async def documents_image_fetch(response: Response,
         logger.info(status_message)
     except: # in case IMAGE_EXPERT_PICKS_PATH in localsecrets is not set
         expert_picks_path = "pep-web-expert-pick-images"
-
+        logger.error("IMAGE_EXPERT_PICKS_PATH needs to be set in localsecrets.") # added for setup error notice 2022-06-06
    
     if imageID is not None:
         imageID = imageID.replace("+", " ")
