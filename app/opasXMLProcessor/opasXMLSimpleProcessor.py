@@ -105,6 +105,9 @@ from opasLocator import Locator
 import PEPBookInfo
 
 import PEPJournalData # eventually merge with opasProductLib
+# import loaderConfig
+# Override Configuration file for opasDataLoader
+file_match_pattern = "\((bKBD3|bSeriesTOC)\)\.(xml|XML)$"
 
 #detect data is on *nix or windows system
 if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH) is not None:
@@ -184,7 +187,6 @@ def xml_update(root, pepxml, artInfo, ocd):
             bk_locator = None
             if bib_entry.source_type != "book":
                 print (bib_saved_entry.bib_rx,
-                       locator, 
                        bib_entry.author_list_str, 
                        bib_entry.source_title,
                        bib_entry.sourcecode,
@@ -447,7 +449,9 @@ def main():
         # print (f"Locating files for processing at {start_folder} with pattern {loaderConfig.file_match_pattern}. Started at ({time.ctime()}).")
         if options.file_key is not None:  
             # print (f"File Key Specified: {options.file_key}")
-            pat = fr"({options.file_key}.*){loaderConfig.file_match_pattern}"
+            # Changed from opasDataLoader (reading in bKBD3 files rather than EXP_ARCH1)
+            pat = fr"({options.file_key}.*){file_match_pattern}"
+            print (f"Reading {pat} files")
             filenames = fs.get_matching_filelist(filespec_regex=pat, path=start_folder, max_items=1000)
             if len(filenames) is None:
                 msg = f"File {pat} not found.  Exiting."
@@ -462,7 +466,7 @@ def main():
             fileinfo.mapLocalFS(filespec)
             filenames = [fileinfo]
         else:
-            pat = fr"(.*?){loaderConfig.file_match_pattern}"
+            pat = fr"(.*?){file_match_pattern}"
             filenames = []
         
         if filenames != []:
@@ -575,8 +579,11 @@ def main():
                 # tag glossary entries
                 # link biblio entries
                 # write output file
-                fname = n.filespec.replace("bKBD3", "bEXP_TEST")
-                #fname = f"{artID}(bEXP_Out).xml"  # *** TBD *** one file for now.
+                # fname = n.filespec("bKBD3", "bEXP_TEST")
+                fname = f"{artID}(bEXP_TEST).xml"  # *** TBD *** one file for now.
+                fname = str(n.filespec.absolute())
+                fname = fname.replace("bKBD3", "bEXP_TEST")
+                
                 msg = f"Writing file {fname}"
                 print (msg)
                 root.write(fname, encoding="utf8", method="xml", pretty_print=True)
