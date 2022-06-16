@@ -24,7 +24,7 @@ import pymysql
 #import fileinput
 #import sciSupport
 #import libPEPBiblioDB
-#import PEPArticleListDB
+import PEPArticleListDB
 #import PEPLocator
 #import PEPJournalData
 #import sciDocuments
@@ -342,33 +342,33 @@ class PEPLibExport:
         fields = """art_id,
                     art_type,
                     art_title,
-                    art_sourcetitleabbr,
+                    src_title_abbr,
                     # publisher,
-                    sourcecode,
+                    src_code,
                     art_year,
                     art_vol,
-                    art_iss,
+                    art_issue,
                     art_pgrg,
-                    file_name,
-                    bk_main_toc_id
+                    filename,
+                    main_toc_id
                  """
 
         # queries to be used
         selArt = r"""select art_id,
                             art_type,
                             art_title,
-                            art_sourcetitleabbr,
+                            src_title_abbr,
                             # publisher,
-                            sourcecode,
+                            src_code,
                             art_year,
                             art_vol,
-                            art_iss,
+                            art_issue,
                             art_pgrg,
-                            file_name,
-                            bk_main_toc_id
+                            filename,
+                            main_toc_id
                             from api_articles
                             %s
-                            order by articleID
+                            order by art_id
             """ % jrnlCodeWhereClause
 
         selAuth = r"""select a.authorID as authorid, a.last as nlast, a.first as nfirst, a.middle as nmid, arta.authorder as norder, arta.authrole as role, a.suffix as nsufx
@@ -407,12 +407,6 @@ class PEPLibExport:
             artRefList = PEPArticleList.fetchArticleReferenceFromArticleID(articleID)
             if "<" in hdgtitle:
                 hdgtitle = sciSupport.doEscapesForPCData(hdgtitle)
-                if 0: # not needed anymore
-                    print(30*"*", "You need to manually fix this instance.", 30*"*")
-                    manFixError = "Warning! Markup characters in heading title: '%s' " % hdgtitle
-                    print(sciUnicode.unicode2Console(manFixError))
-                    manFixErrors.append(manFixError)
-                    print("*"*90)
 
             aLoc = PEPLocator.Locator(articleID)
             #isBook = aLoc.isBook()
@@ -450,7 +444,7 @@ class PEPLibExport:
                         for auth in authSet:
                             self.setPrenames(auth)
                             auth = self.validateAuthLimits(auth)
-                            if sciSupport.isEmpty(auth[gConst.AUTHORNAMEROLE]):
+                            if opasgenlib.is_empty(auth[gConst.AUTHORNAMEROLE]):
                                 print("No author role.  Set to 'author'")
                                 auth[gConst.AUTHORNAMEROLE] = "author"
                             else:
@@ -477,7 +471,7 @@ class PEPLibExport:
                     for auth in authSet:
                         self.setPrenames(auth)
                         auth = self.validateAuthLimits(auth)
-                        if sciSupport.isEmpty(auth[gConst.AUTHORNAMEROLE]):
+                        if opasgenlib.is_empty(auth[gConst.AUTHORNAMEROLE]):
                             print("No author role.  Set to 'author'")
                             auth[gConst.AUTHORNAMEROLE] = "author"
                         else:
@@ -501,7 +495,7 @@ class PEPLibExport:
             else:
                 for auth in authSet:
                     self.setPrenames(auth)
-                    if sciSupport.isEmpty(auth[gConst.AUTHORNAMEROLE]):
+                    if opasgenlib.is_empty(auth[gConst.AUTHORNAMEROLE]):
                         #print "No author role.  Set to 'author'"
                         auth[gConst.AUTHORNAMEROLE] = "author"
                     else:
@@ -552,7 +546,7 @@ class PEPLibExport:
 
         if len(artRef[gConst.TITLE]) > limitTitle: artRef[gConst.TITLE] = artRef[gConst.TITLE][0:limitTitle]
         #print "Issue: ", artRef[gConst.ISSUE], artRef[gConst.TITLE]
-        if sciSupport.isEmptyOrNoneStr(artRef[gConst.ISSUE]):
+        if opasgenlib.is_emptyOrNoneStr(artRef[gConst.ISSUE]):
             artRef[gConst.ISSUE] = ""
 
         if artRef[gConst.ISSUE] == "S":
@@ -562,7 +556,7 @@ class PEPLibExport:
         if artRef[gConst.SOURCEPEPCODE] == "ZBK":
             artRef[gConst.VOL] = ""
 
-        if sciSupport.isEmptyOrNoneStr(artRef[gConst.PUBLISHER]):
+        if opasgenlib.is_emptyOrNoneStr(artRef[gConst.PUBLISHER]):
             artLoc = PEPLocator.Locator(artRef[gConst.KEY])
             if artLoc.isBook():
                 artBaseCode = artLoc.baseCode()
@@ -593,7 +587,7 @@ class PEPLibExport:
         if len(auth[gConst.AUTHORNAMEFIRSTMID]) > limitFirstName:
             auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEFIRSTMID][0:limitFirstName]
         if len(auth[gConst.AUTHORNAMELAST]) > limitLastName: auth[gConst.AUTHORNAMELAST] = auth[gConst.AUTHORNAMELAST][0:limitLastName]
-        if sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMESUFX]):
+        if opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMESUFX]):
             auth[gConst.AUTHORNAMESUFX] = ""
         else:
             if len(auth[gConst.AUTHORNAMESUFX]) > limitSuffix:
@@ -606,13 +600,13 @@ class PEPLibExport:
     def setPrenames(self, auth):
 
         auth[gConst.AUTHORNAMEFIRSTMID] = ""
-        if not sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMEFIRST]):
-            if not sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
+        if not opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMEFIRST]):
+            if not opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
                 auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEFIRST] + ", " + auth[gConst.AUTHORNAMEMID]
             else:
                 auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEFIRST]
         else:
-            if not sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
+            if not opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
                 auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEMID]
 
         return auth
@@ -714,7 +708,7 @@ class PEPLibExport:
                 #print "Key, ToFind, Value", string.upper(key), fieldToFind, n
                 if string.upper(key) == fieldToFind:
                     # Found unless value is empty
-                    if not sciSupport.isEmpty(n):
+                    if not opasgenlib.is_empty(n):
                         val = True
 
                     # break in either case once the key is found
@@ -748,7 +742,7 @@ class PEPLibExport:
                 #print "Key, ToFind, Value", string.upper(key), fieldToFind, n
                 if string.upper(key) == fieldToFind:
                     # Found unless value is empty
-                    if not sciSupport.isEmpty(n):
+                    if not opasgenlib.is_empty(n):
                         val = True
                     # break in either case once the key is found
                     break
@@ -775,7 +769,7 @@ class PEPLibExport:
             retVal = self.rgcBaseToken.sub("", retVal)
             # now look again--any left?
             #m = self.rgcBaseToken.search(retVal)
-            #if m <> None:
+            #if m is not None:
             #	log_error("Still untranslated tokens in template: '%s'" % retVal)
 
         #Remove any token delimiters (they will still be there from the sub areas that worked
@@ -800,7 +794,7 @@ if __name__ == "__main__":
 	Run Tests of module routines
 	"""
 
-    import sys
+    #import sys
     totalErrors = []
 
     ocd = opasCentralDBLib.opasCentralDB()
@@ -839,7 +833,7 @@ if __name__ == "__main__":
             for vol, year in restrictedYears:
                 if type(vol) == type([]):
                     for volsub in vol:
-                        jrnlWhereClause = "where jrnlcode='%s' and vol='%s'" % (jrnl, volsub)
+                        jrnlWhereClause = "where src_code='%s' and art_vol='%s'" % (jrnl, volsub)
                         filenameBase = r"\%s.%s.xml" % (jrnl, year)
                         print("Processing %s: %s/%s to %s" % (jrnl, volsub, year, filenameBase))
                         count, errs = doMetaDataExport(pepExport, rootdir, filenameBase, jrnlWhereClause)
@@ -848,7 +842,7 @@ if __name__ == "__main__":
                         if errs!=[]: totalErrors.append((filenameBase, errs))
 
                 else:
-                    jrnlWhereClause = "where jrnlcode='%s' and vol='%s'" % (jrnl, vol)
+                    jrnlWhereClause = "where src_code='%s' and art_vol='%s'" % (jrnl, vol)
                     filenameBase = r"\%s.%s.xml" % (jrnl, year)
                     print("Processing %s: %s/%s to %s" % (jrnl, vol, year, filenameBase))
                     count, errs = doMetaDataExport(pepExport, rootdir, filenameBase, jrnlWhereClause)

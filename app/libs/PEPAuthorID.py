@@ -11,13 +11,13 @@ This module adapted from a much older module used in PEPXML to compile PEP insta
   ** Slowly being adopted to opas **
 
 """
-import sys, os.path
+import sys
+sys.path.append('../libs')
+sys.path.append('../config')
+sys.path.append('../libs/configLib')
 
-PROJECT_ROOT = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.append(PROJECT_ROOT)
+import logging
+logger = logging.getLogger(__name__)
 
 import re
 import opasGenSupportLib as opasgenlib
@@ -120,14 +120,13 @@ def isAuthorIDString(idString):
     if not opasgenlib.is_empty(idString):
         if not isinstance(idString, str):  # supports string and unicode
             idString = repr(idString)
-        #print "IDString: ", idString
         m = autLocator.match(idString)
         if m == None:
             retVal = False
         else:
             retVal = True
     else:
-        print("Empty idString to isAuthorID")
+        logging.warning("Empty idString to isAuthorID")
         retVal = False
 
     return retVal

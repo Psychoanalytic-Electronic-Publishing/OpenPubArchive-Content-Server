@@ -8,15 +8,19 @@ This module adapted from a much older module used in PEPXML to compile PEP insta
   Should probably be integrated into opasProductLib - some routines are perhaps done better there from the database rather than code (newer module), and from the database
 
 """
-import sys, os.path
+import sys
+sys.path.append('../libs')
+sys.path.append('../config')
+sys.path.append('../libs/configLib')
+
 import logging
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.append(PROJECT_ROOT)
+#PROJECT_ROOT = os.path.abspath(os.path.join(
+                  #os.path.dirname(__file__), 
+                  #os.pardir)
+#)
+#sys.path.append(PROJECT_ROOT)
 
 import re
 
@@ -1056,12 +1060,12 @@ class PEPBookInfo:
         # use the class to hold this initialized global data
         try:
             if self.__class__.initd == True:
-                #print "Already initd."
+                #"Already initd."
                 pass
         except:
             self.__class__.initd = True
             self.__class__.bookRGXList = []
-            #print "Initializing Patterns..."
+            #"Initializing Patterns..."
             for key, nTup in self.bookPatterns.items():
                 minMatchLen, authPat, titlePat, yearPat, extraPat = nTup
                 authPat = re.sub("\s+", r"\\s+", authPat)
@@ -1253,7 +1257,6 @@ class PEPBookInfo:
         # Book reference
         retVal = None, None, None
         matchID = None
-        #gDbg1 = True
 
         self.LastPYXRefTree = None # called with string, so reset tree.
         # fall through and process string
@@ -1261,43 +1264,43 @@ class PEPBookInfo:
         if opasgenlib.is_empty(theReference):
             return retVal
 
-        if 1: logger.info("getPEPBookCodeStr matching: ", theReference)
+        if gDbg1: logger.info("getPEPBookCodeStr matching: ", theReference)
 
-        for dummy, bookID, rgxAuth, rgxTitle, rgxYear, rgxExtra in self.bookRGXList:
+        for dummy, bookID, rgxAuth, rgxTitle, rgxYear, rgxExtra in self.bookRGXList: # shows in Wing as undefined, but defined at class level
             match = False
-            #print "Book Pattern being searched: ", rgxTitle.pattern
+            #"Book Pattern being searched: ", rgxTitle.pattern
 
             m = rgxTitle.search(theReference)
             if m != None:
-                if 1: print("***%s Matched Title.  (Pattern: %s)" % (bookID, rgxTitle.pattern))
+                if gDbg1: logger.info("***%s Matched Title.  (Pattern: %s)" % (bookID, rgxTitle.pattern))
                 match = True
             else:
                 continue # keep looking
 
             m = rgxAuth.search(theReference)
             if m != None:
-                if 1: print("**%s Matched Author.  (Pattern: %s)" % (bookID, rgxAuth.pattern))
+                if gDbg1: logger.info("**%s Matched Author.  (Pattern: %s)" % (bookID, rgxAuth.pattern))
             else:
                 match = False
-                if gDbg1: print("Didn't match Author: ", bookID, rgxAuth.pattern)
+                if gDbg1: logger.info("Didn't match Author: ", bookID, rgxAuth.pattern)
                 continue # (must keep looking)
 
             m = rgxYear.search(theReference)
             if m != None:
-                if 1: print("*%s Matched Year.  (Pattern: %s)" % (bookID, rgxYear.pattern))
+                if gDbg1: logger.info("*%s Matched Year.  (Pattern: %s)" % (bookID, rgxYear.pattern))
             else:
                 match = False
-                if gDbg1: print("Didn't match Year: ", rgxYear.pattern)
+                if gDbg1: logger.info("Didn't match Year: ", rgxYear.pattern)
                 continue # (must keep looking)
 
             # Add an extra search of the entire reference; this can be used to "whittle down" false positives.
             if not opasgenlib.is_empty(rgxExtra):
                 m = rgxExtra.search(theReference)
                 if m != None:
-                    if 1: print("*%s Matched Extra Pattern: %s)" % (bookID, rgxExtra.pattern))
+                    if gDbg1: logger.info("*%s Matched Extra Pattern: %s)" % (bookID, rgxExtra.pattern))
                 else:
                     match = False
-                    if gDbg1: print("Didn't match Extra Pattern: ", rgxExtra.pattern)
+                    if gDbg1: logger.info("Didn't match Extra Pattern: ", rgxExtra.pattern)
                     continue # (must keep looking)
 
             if match == True:

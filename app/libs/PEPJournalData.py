@@ -48,15 +48,13 @@ This module adapted from a much older module used in PEPXML to compile PEP insta
 """
 Class Module to encapsulate journal metadata information used to validate PEP journal data.
 """
-import sys, os.path
+import sys
+sys.path.append('../libs')
+sys.path.append('../config')
+sys.path.append('../libs/configLib')
+
 import logging
 logger = logging.getLogger(__name__)
-
-PROJECT_ROOT = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__), 
-                  os.pardir)
-)
-sys.path.append(PROJECT_ROOT)
 
 import re
 # import codecs
