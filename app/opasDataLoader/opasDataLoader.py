@@ -46,6 +46,11 @@ print(
          --whatsnewfile  To specify the file in which to write the what's new list.
          --nofiles       Can be used in conjunction with whatsnewdays to simply produce the new article log rather than loading files.
 
+         V.2 New Options
+         --inputbuild       input build name, e.g., (bKBD3)  
+         --processxml       Process the KBD XML to EXP_ARCH specifications (add biblio links, glossary tags, other attributes, before saving to Solr or an output file 
+         --writeprocessed   Write the processed file to an output file; otherwise write directly to Solr.
+         --outputbuild      optional output build name, e.g., (bEXP_ARCH1), used with writeprocessed  
         Example:
           Update all files from the root (default, pep-web-xml) down.  Starting two runs, one running the file list forward, the other backward.
           As long as you don't specify -a, they will skip the ones the other did when they eventually
@@ -113,16 +118,8 @@ if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH
 else:
     path_separator = r"\\"
 
-# for xml_update (build XML or update in place module) - eventually merge to lib or rename to new stds
-if XMLProcessingEnabled:
-    import modelsOpasCentralPydantic     
-    from opasLocator import Locator
-    import opasGenSupportLib as opasgenlib
-    import PEPBookInfo
-    import PEPAuthorID
-    import PEPGlossaryRecognitionEngine
-    glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
-    # Override Configuration file for opasDataLoader
+# for processxml (build XML or update directly without intermediate file)
+import opasXMLProcessor
 
 # Module Globals
 bib_total_reference_count = 0
@@ -210,164 +207,9 @@ def file_is_same_as_in_solr(solrcore, filename, timestamp_str):
     return ret_val
 
 #----------------------------------------------------------------------------------------------------------------
-def pgnbr_add_next_attrib(pepxml):
-    """
-    Walk through page number "n" elements, and record page number sequence.  Add the next page number to
-       the nextpgnum attribute of the n element.
-    """
-
-    # Walk through page number "n" elements, and record page number sequence
-    n_nodes = pepxml.findall("**/n")
-    lastPage = None
-    count = 0
-    # walk through the nodes backwards.
-    for node in n_nodes[::-1]: # backwards
-        pgNumber = node.text
-        if lastPage is not None:
-            node.set("nextpgnum", lastPage)
-            count += 1
-        # record the new pagenumber for the next node
-        lastPage = pgNumber # .format()
-
-    return count
-
-#------------------------------------------------------------------------------------------------------
-def xml_update(root, pepxml, artInfo, ocd):
-    ret_val = None
-    # write issn and id to artinfo
-    xml_artinfo = pepxml.find("artinfo")
-    source_row = ocd.get_sources(src_code=artInfo.src_code)
-    known_books = PEPBookInfo.PEPBookInfo()
-
-    try:
-        source_info = source_row[1][0]
-        # gather info needed about source
-        if artInfo.src_code is not None:
-            if artInfo.art_issn is None:
-                xml_artinfo.attrib["ISSN"] = source_info["ISSN"]
-            else:
-                if artInfo.art_issn is not None:
-                    xml_artinfo.attrib["ISSN"] = artInfo.art_issn
-                else:
-                    if artInfo.art_isbn is None:
-                        xml_artinfo.attrib["ISBN"] = source_info["ISBN-13"]
-                    else:
-                        xml_artinfo.attrib["ISBN"] = artInfo.art_isbn
-
-    except Exception as e:
-        print (e)
-    
-    if artInfo.art_id is not None: xml_artinfo.set("id", artInfo.art_id)
-    if artInfo.art_type is not None: xml_artinfo.set("arttype", artInfo.art_type)
-    if artInfo.start_sectname is not None: xml_artinfo.set("newsecnm", artInfo.start_sectname)
-    if artInfo.start_sectlevel is not None: xml_artinfo.set("newseclevel", artInfo.start_sectlevel)                
-    xml_artauth = pepxml.findall("artinfo/artauth")
-    for art_auth in xml_artauth:
-        art_auth.set("hidden", art_auth.get("hidden", "false"))
-
-    xml_artauth_aut = pepxml.findall("artinfo/artauth/aut")
-    for aut in xml_artauth_aut:
-        print(aut)
-        if aut.attrib.get("authindexid", None) is None:
-            author_id = PEPAuthorID.getStandardAuthorID(nfirst=aut.findtext("nfirst"), nmid=aut.findtext("nmid"), nlast=aut.findtext("nlast"))
-            aut.set("authindexid", author_id)
             # set default attributes if not seet
-            aut.set("listed", aut.get("listed", "true"))
-            aut.set("role", aut.get("role", "author"))
         
-        ## write authindexid to aut
-        #if opasgenlib.is_empty(artInfo.art_author_id_list):
-            #for n in artInfo.author_list:
-                #author_id = PEPAuthorID.getStandardAuthorID(n)
-                #print (f"author_id: {author_id}")
-        #else:
-            #print (artInfo.art_author_id_list)
-    
-    # tag glossary words
-    
-    # add nextpgnum with id to n, possibly filling in prefixused
-    pgnbr_add_next_attrib(pepxml)
-    
-    # add links to biblio entries, rx to be
-    if artInfo.ref_count > 0:
-        bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
-        if options.display_verbose:
-            logger.info(("   ...Processing %s references for links." % (artInfo.ref_count)))
-
-        #processedFilesCount += 1
-        bib_total_reference_count = 0
-        #db_ok = ocd.open_connection(caller_name="processBibliographies")
-        for ref in bibReferences:
-            # bib_entry_text = ''.join(ref.itertext())
-            bib_pgstart = None
-            bib_pgend = None
-            ref_id = ref.attrib["id"]
-            # see if it's already in table
-            bib_saved_entry_tuple = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id, ref_local_id=ref_id)
-            if bib_saved_entry_tuple is not None:
-                bib_saved_entry = bib_saved_entry_tuple[0]
-            else:
-                bib_saved_entry = modelsOpasCentralPydantic.Biblioxml()
-            
-            # merge record info
-            bib_total_reference_count += 1
-            bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
-            if not opasgenlib.is_empty(bib_entry.pgrg):
-                bib_pgstart, bib_pgend = bib_entry.pgrg.split("-")
-
-            bk_locator = None
-            if bib_entry.source_type != "book":
-                if not opasgenlib.is_empty(bib_entry.sourcecode):
-                    locator = Locator(strLocator=None,
-                                       jrnlCode=bib_entry.sourcecode, 
-                                       jrnlVolSuffix="", 
-                                       jrnlVol=bib_entry.volume, 
-                                       jrnlIss=None, 
-                                       pgVar="A", 
-                                       pgStart=bib_pgstart, 
-                                       jrnlYear=bib_entry.year, 
-                                       localID=ref_id, 
-                                       keepContext=1, 
-                                       forceRoman=False, 
-                                       notFatal=True, 
-                                       noStartingPageException=True, 
-                                       filename=artInfo.filename)
-                    # need to check if it's whole, and if it works, but for now.
-                    ref.attrib["rx"] = locator.articleID()
-                    search_str = f"//be[@id='{ref_id}']"
-                    logger.info(opasxmllib.xml_xpath_return_xmlstringlist(pepxml, search_str, default_return=None))
-                else:
-                    locator = None
-                    logger.info("Skipped: ", bib_saved_entry)
-                
-            else:
-                bk_locator_str, match_val, whatever = known_books.getPEPBookCodeStr(bib_entry.ref_entry_text)
-                if bk_locator_str is not None:
-                    logger.info(f"Added Reference Locator {bk_locator}, {match_val}, {whatever}")
-                    ref.attrib["rx"] = bk_locator_str 
-                    search_str = f"//be[@id='{ref_id}']"
-                    logger.debug(opasxmllib.xml_xpath_return_xmlstringlist(pepxml, search_str, default_return=None))
-                    
-                else:
-                    locator = None
-                    logger.debug("Skipped: ", bib_entry.ref_entry_text)
-
             # opasSolrLoadSupport.add_reference_to_biblioxml_table(ocd, artInfo, bib_entry)
-
-        #try:
-            #ocd.db.commit()
-        #except mysql.connector.Error as e:
-            #print("SQL Database -- Biblio Commit failed!", e)
-        #if db_ok:
-            #ocd.close_connection(caller_name="processBibliographies")
-    
-
-    # xml_artauth = pepxml.findall("artinfo/artauth/aut")
-    root, pepxml, result_text = glossEngine.doGlossaryMarkup(root)
-    
-    ret_val = root, pepxml, result_text
-    return ret_val
-
 #------------------------------------------------------------------------------------------------------
 def main():
     
@@ -513,7 +355,7 @@ def main():
     # record time in case options.nofiles is true
     timeStart = time.time()
 
-    if not options.no_files:
+    if options.no_files == False: # process and/or load files (no_files just generates a whats_new list, no processing or loading)
         print (f"Locating files for processing at {start_folder} with build pattern {options.input_build_pattern}. Started at ({time.ctime()}).")
         if options.file_key is not None:  
             # print (f"File Key Specified: {options.file_key}")
@@ -534,7 +376,7 @@ def main():
             fileinfo.mapLocalFS(filespec)
             filenames = [fileinfo]
         else:
-            pat = fr"(.*?)\({loaderConfig.input_build_pattern}\)\.(xml|XML)$"
+            pat = fr"(.*?)\({options.input_build_pattern}\)\.(xml|XML)$"
             filenames = []
         
         if filenames != []:
@@ -655,21 +497,21 @@ def main():
                 except Exception as e:
                     logger.warning("Could not determine file classification for %s (%s)" % (n.filespec, e))
                            
-                if XMLProcessingEnabled:
+                if options.processxml:
                     # make changes to the XML
-                    root, pepxml, fileXMLContents = xml_update(root, pepxml, artInfo, ocd)
+                    root, pepxml, fileXMLContents = opasXMLProcessor.xml_update(root, pepxml, artInfo, ocd)
                     # impx_count = int(pepxml.xpath('count(//impx[@type="TERM2"])'))
                     # print (impx_count, fileXMLContents[500:2500])
     
                     # write output file
-                    if not options.load_only:
-                        fname = f"{artID}{outputBuild}.xml"  # *** TBD *** one file for now.
+                    if options.write_processed:
+                        #fname = f"{artID}(bEXP_TEST).xml"  # *** TBD *** one file for now.
                         fname = str(n.filespec)
-                        fname = fname.replace("bKBD3", "bEXP_TEST")
+                        fname = fname.replace("(bKBD3)", options.output_build)
                         
                         msg = f"Writing file {fname}"
                         print (msg)
-                        root.write(fname, encoding="utf8", method="xml", pretty_print=True)
+                        root.write(fname, encoding="utf8", method="xml", pretty_print=True, xml_declaration=True)
                         
                         # the above does not add the xml line...need to address this!
                         
@@ -758,7 +600,7 @@ def main():
                 if options.display_verbose:
                     print(("   ...Time: %s seconds." % (time.time() - fileTimeStart)))
         
-            print (f"Load process complete ({time.ctime()}).")
+            print (f"Conversion/Load process complete ({time.ctime()}).")
             if processed_files_count > 0:
                 try:
                     print ("Performing final commit.")
@@ -958,7 +800,7 @@ if __name__ == "__main__":
                       help="Generate a log of files added in the last n days (1==today), rather than for files added during this run.")
     parser.add_option("--whatsnewfile", dest="whatsnewfile", default=None,
                       help="File name to force the file and path rather than a generated name for the log of files added in the last n days.")
-
+    # New OpasLoader2 Options
     parser.add_option("--loadonly", action="store_true", dest="load_only", default=True,
                       help="Only load the databases, don't generate a converted output (e.g., (bEXP_ARCH1) file.")
     parser.add_option("--processxml", action="store_true", dest="processxml", default=False,
@@ -969,6 +811,12 @@ if __name__ == "__main__":
                       help="Specific output build specification, default='(bEXP_ARCH1)'.")
 
     (options, args) = parser.parse_args()
+    if len(options.output_build) < 2:
+        logger.error("Bad output buildname. Using default.")
+        options.output_build = '(bEXP_ARCH1)'
+    if options.output_build[0] != "(" and options.output_build[-1] != ")":
+        print ("Warning: output build should have parenthesized format like (bEXP_ARCH1). Adding ()")
+        options.output_build = f"({options.output_build})"
     
     if options.processxml and options.input_build_pattern == loaderConfig.default_build_pattern:
         # should be default process pattern
@@ -980,7 +828,7 @@ if __name__ == "__main__":
     if options.testmode:
         import doctest
         doctest.testmod()
-        print ("Fini. SolrXMLPEPWebLoad Tests complete.")
+        print ("Fini. opasDataLoader2 Tests complete.")
         sys.exit()
 
     main()

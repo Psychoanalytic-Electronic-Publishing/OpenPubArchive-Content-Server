@@ -51,46 +51,132 @@ class TestXMLProcessing(unittest.TestCase):
     def test_1_glossary_word_markup(self):
         """
         """
+        import difflib
+        d = difflib.Differ()
+        
         testXML= u'<body><p>My penis envy belief is that, διαφέρει although Freud was a revolutionary, most of his penis envy followers were more conventional. As is true of most institutions, as psychoanalysis aged, a conservatism overtook it. Foreground analytic theory incorporated the background cultural pathologizing of nonheterosexuality. Thus, the few articles written about lesbians rigidly followed narrow reductionistic explanations. Initially, these explanations followed classical theory, and then as psychoanalysis expanded into ego psychology and object relations, lesbian pathologizing was fit into these theories <bx r="B006">(Deutsch, 1995)</bx>.</p><p>For example, Adrienne Applegarth&apos;s 1984 American Psychoanalytic panel on homosexual women, used ego psychology to explain lesbianism. Applegarth viewed it (according to <bx r="B020">Wolfson, 1984</bx>), as a complicated structure of gratification and defense (p. <pgx r="B020">166</pgx>). She felt that if the steps in the usual positive and negative oedipal phases or if a girls wish for a baby arising out of penis envy become distorted, a range of outcomes, including homosexuality, could occur (Wolfson, <bx r="B020">1984</bx>, p. <pgx r="B020">166</pgx>).</p></body>'
         glossEngine = PEPGlossaryRecognitionEngine.GlossaryRecognitionEngine(gather=False)
         parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         pepxml = etree.fromstring(testXML, parser)
         root = pepxml.getroottree()
-        result, result_text = glossEngine.doGlossaryMarkup(root)
-        print (result_text)
+        result, result_tree, node_text = glossEngine.doGlossaryMarkup(root, prettyPrint=False)
+        a = testXML[0:29]
+        b = node_text[0:118]
+        output_list = [li for li in difflib.ndiff([a], [b]) if li[0] != ' ']
+        print (output_list[0])
+        print (output_list[1])
+        assert output_list[1] == """+ <body><p>My <impx type="TERM2" rx="YN0012799450720" grpname="Penis Envy; Masculinity Complex">penis envy</impx> belief"""
+        
         
         testXML= '<body><p> forces. Brenner has suggested that the familiar  of the id, ego, and superego as agencies of <b id="10">the</b> mind.</p></body>'
         parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         pepxml = etree.fromstring(testXML, parser)
         root = pepxml.getroottree()
-        result, result_text = glossEngine.doGlossaryMarkup(root)
-        print (result_text)
-            
-    def test_bld_from_kbd3(self):
+        result, result_tree, node_text  = glossEngine.doGlossaryMarkup(root, prettyPrint=False)
+        a = testXML[60:70]
+        b = node_text[60:129]
+        output_list = [li for li in difflib.ndiff([a], [b]) if li[0] != ' ']
+        print (output_list[0])
+        print (output_list[1])
+        assert output_list[1] == """+ f the <impx type="TERM2" rx="YP0001423271790" grpname="ID">id</impx>,"""
+        
+    def test_3_bld_from_kbd3(self):
         """
-        """
-        import shlex, subprocess
-        command_line = ""
-        /bin/vikings -input eggs.txt -output "spam spam.txt" -cmd "echo '$MONEY'"
-        >>> args = shlex.split(command_line)
-        >>> print(args)
-        ['/bin/vikings', '-input', 'eggs.txt', '-output', 'spam spam.txt', '-cmd', "echo '$MONEY'"]
-        >>> p = subprocess.Popen(args) # Success!
+        Tests:
+        
+        1) load dbs from EXP_ARCH1 files (previous funct.)
 
-        # Start the unit tests
-        result = os.spawnv(os.P_NOWAIT, gTextEditor, ("textEditor", self.logFileName))
-        
-        
-            owlrec, owlmean = get_sightings(filename, 'Owl')
-            assert owlrec == 2, 'Number of records for owl is wrong'
-            assert owlmean == 17, 'Mean sightings for owl is wrong'
-        parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-        pepxml = etree.fromstring(testXML, parser)
-        root = pepxml.getroottree()
-        result, result_text = glossEngine.doGlossaryMarkup(root)
-        print (result_text)
+           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose
+           
+           same as 
+
+           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --inputbuild=bEXP_ARCH1
+
+           or 
+
+           opasloader2 --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
+           
+        2) load dbs from KBD3 files directly
+
+           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml --inputbuild=bKBD3
+
+              should be same as
+
+           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
            
         
+        3) only build EXP_ARCH1 files from KBD3
+
+           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
+        
+        4) load dbs from KBD3 files and write EXP_ARCH1's for quicker reprocessing later or QA
+        
+           opasloader2 --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
+           
+        
+        """
+    def test_3_bld_from_kbd3(self):
+        """
+        Tests:
+        
+        1) load dbs from EXP_ARCH1 files (previous funct.)
+
+           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose
+           
+           same as 
+
+           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --inputbuild=bEXP_ARCH1
+
+           or 
+
+           opasloader2 --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
+           
+        2) load dbs from KBD3 files directly
+
+           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml --inputbuild=bKBD3
+
+              should be same as
+
+           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
+           
+        
+        3) only build EXP_ARCH1 files from KBD3
+
+           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
+        
+        4) load dbs from KBD3 files and write EXP_ARCH1's for quicker reprocessing later or QA
+        
+           opasloader2 --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
+           
+        
+        """
+        import shlex, subprocess
+        pycmd = r"e:\\usr3\\GitHub\\openpubarchive\\app\\env\\Scripts\\python.exe E:\\usr3\\GitHub\\openpubarchive\\app\\opasDataLoader2\\opasDataLoader2.py "
+        data_file1 = r"--key CFP.012.0022A"
+        data_file2 = r"CFP.012.0022A(bKBD3).xml"
+        data_file3 = r"--sub _PEPCurrent\\CFP\\012.2022"
+        
+        command_lines = [
+            fr"{pycmd} {data_file1} --nocheck --verbose",
+            fr"{pycmd} {data_file1} --nocheck --verbose --processxml --writeprocessed --inputbuild=bKBD3 --outputbuild=bEXP_TEST2",
+            fr"{pycmd} {data_file1} --nocheck --verbose --inputbuild=bEXP_TEST2",
+            fr"{pycmd} {data_file1} --nocheck --verbose --processxml --inputbuild=bKBD3",
+            fr"{pycmd} {data_file3} --nocheck --verbose --processxml", # implies --inputbuild=bKBD3
+        ]
+        
+        for command_line in command_lines:
+            #print (command_line)
+            args = shlex.split(command_line)
+            print(f"opasDataLoader2 {args[2:]}")
+            p = subprocess.Popen(args, stdout=subprocess.PIPE, shell=True) # Success!
+            out, err = p.communicate()
+            out_str = str(out, 'utf-8')
+            result = out_str.split('\r\n')
+            for lin in result:
+                if "Processing file" in lin or "Writing file" in lin or "Finished!" in lin:
+                    print(lin)
+           
+
 if __name__ == '__main__':
     unittest.main()
     print ("Tests Complete.")

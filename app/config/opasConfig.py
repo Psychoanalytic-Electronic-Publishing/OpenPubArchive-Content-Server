@@ -1020,7 +1020,7 @@ PDF_OTHER_STYLE = r"""
 """
 
 # ----------------------------------------
-# opasXMLSimpleProcessor definitions
+# opasDataLoader2 definitions
 # ----------------------------------------
 
 # MAXSRATIO is the highest sRatio, since 1 is reserved.

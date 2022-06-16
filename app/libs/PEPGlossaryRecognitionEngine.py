@@ -185,8 +185,9 @@ class GlossaryRecognitionEngine(UserDict):
             print (80*"*")
 
         for n in match_list:
-            if n[0] is None or len(n[0]) < 3:
-                logger.error(f"Glossary Pattern Exception: {n}")
+            if gDbg1:
+                if n[0] is None or len(n[0]) < 3:
+                    logger.error(f"Glossary Pattern Exception: {n}")
                 
             if self.gather:  # combine the patterns, to speed things up
                 if n[0] == None:
@@ -368,7 +369,7 @@ class GlossaryRecognitionEngine(UserDict):
         #return retVal
 
     #--------------------------------------------------------------------------------
-    def doGlossaryMarkup(self, tree, skipIfHasAncestor=default_ancestor_list, preface=None, theGroupName=None):
+    def doGlossaryMarkup(self, tree, skipIfHasAncestor=default_ancestor_list, preface=None, theGroupName=None, prettyPrint=True):
         """
         Markup any glossary entries in paragraphs (only).
 
@@ -407,7 +408,7 @@ class GlossaryRecognitionEngine(UserDict):
 
         startTime = time.time()
         # create a string to do replace
-        nodeText = lxml.etree.tostring(tree, pretty_print=True, encoding="utf8").decode("utf-8")
+        node_text = lxml.etree.tostring(tree, pretty_print=prettyPrint, encoding="utf8").decode("utf-8")
 
         # replacement pattern...if we need to add an ID, it probably needs to be done in a second pass (because
         #       we are combining patterns.
@@ -421,17 +422,17 @@ class GlossaryRecognitionEngine(UserDict):
             # Match at the start, at the end, the whole, and in the middle, delineated
             rc = rcrow[0]
             try:
-                nodeText2 = nodeText # temp
-                m = rc.search(nodeText)
+                nodeText2 = node_text # temp
+                m = rc.search(node_text)
                 if m is not None:
                     #match = m.group(0)
                     #logger.debug(match)
-                    nodeText2 = rc.sub(subStrCxt, nodeText)
+                    nodeText2 = rc.sub(subStrCxt, node_text)
             except Exception as e:
                 logger.error(f"Error matching glossary data {e}")
 
             if 1:
-                if nodeText2 != nodeText:
+                if nodeText2 != node_text:
                     # if the markup is within quotes, don't keep it.
                     if re.search(f"\u201C[^\u2019]*?{self.leftMarker}.*?{self.rightMarker}[^201C]*?\u2019", nodeText2, flags=re.IGNORECASE):
                         logger.debug("impx in quoted passage detected. Skipping markup")
@@ -448,11 +449,11 @@ class GlossaryRecognitionEngine(UserDict):
                         # sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
                         changes = True
                         count += 1
-                        nodeText = nodeText2
+                        node_text = nodeText2
 
         # now reparse datanode to check
         if changes:
-            glossary_nodes = re.findall(f"{self.leftMarker}[^{self.leftMarker}{self.rightMarker}]+?{self.rightMarker}", nodeText)
+            glossary_nodes = re.findall(f"{self.leftMarker}[^{self.leftMarker}{self.rightMarker}]+?{self.rightMarker}", node_text)
             if glossary_nodes is not None:
                 for term in glossary_nodes:
                     if gDbg7: print (term)
@@ -463,17 +464,17 @@ class GlossaryRecognitionEngine(UserDict):
                     replacement_text = self.leftTag.replace("$grpnm$", term_data[2])
                     replacement_text = replacement_text.replace("$rx$", term_data[3])
                     if gDbg7: print (replacement_text)
-                    nodeText = re.sub(term, f"{replacement_text}{term_set_item[1]}</impx>", nodeText)
+                    node_text = re.sub(term, f"{replacement_text}{term_set_item[1]}</impx>", node_text)
                
             #nodeTextEval = re.sub(self.leftMarker, self.leftTag, nodeText)
             #nodeTextEval = re.sub(self.rightMarker, self.rightTag, nodeTextEval)
             try:
                 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-                pepxml = lxml.etree.fromstring(nodeText, parser)
+                pepxml = lxml.etree.fromstring(node_text, parser)
                 root = pepxml.getroottree()
             except Exception as e:
                 logger.error("WARNING!!!!!  GlossaryRecognition.  Glossary Replacement makes this section unparseable.  Skipped: ")
-                logger.error("Nodetext:$%s$ " % nodeText.encode("utf-8"))
+                logger.error("Nodetext:$%s$ " % node_text.encode("utf-8"))
             else:
                 ret_val = root
     
@@ -490,7 +491,7 @@ class GlossaryRecognitionEngine(UserDict):
         timeDiff = endTime - startTime
         logger.info (f"Time to do markup: {timeDiff}")
 
-        return ret_val, pepxml, nodeText
+        return ret_val, pepxml, node_text
 
     ##--------------------------------------------------------------------------------
     #def doGlossaryMarkupOld(self, tree, skipIfHasAncestor=default_ancestor_list, preface=None, theGroupName=None):

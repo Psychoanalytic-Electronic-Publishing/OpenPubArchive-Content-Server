@@ -7,10 +7,10 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0616/v2.0.002"   # semver versioning after date.
+__version__     = "2022.0616/v2.0.001"   # semver versioning after date.
 __status__      = "Development"
 
-programNameShort = "opasDataLoader2"
+programNameShort = "opasDataLoader.2"
 XMLProcessingEnabled = True
 
 import lxml
@@ -82,7 +82,7 @@ sys.path.append('../config')
 sys.path.append('../libs/configLib')
 
 import time
-import random
+#import random
 import pysolr
 import localsecrets
 import re
@@ -91,7 +91,7 @@ import os.path
 import pathlib
 from opasFileSupport import FileInfo
 
-import datetime as dtime
+#import datetime as dtime
 from datetime import datetime
 import logging
 logger = logging.getLogger(programNameShort)
@@ -110,7 +110,7 @@ import opasXMLHelper as opasxmllib
 import opasCentralDBLib
 import opasProductLib
 import opasFileSupport
-import opasAPISupportLib
+# import opasAPISupportLib
 
 #detect data is on *nix or windows system
 if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH) is not None:
@@ -118,7 +118,6 @@ if "AWS" in localsecrets.CONFIG or re.search("/", localsecrets.IMAGE_SOURCE_PATH
 else:
     path_separator = r"\\"
 
-# for processxml (build XML or update directly without intermediate file)
 import opasXMLProcessor
 
 # Module Globals
@@ -246,14 +245,6 @@ def main():
             print("Messaging verbose: ", options.display_verbose)
             print("Input data Root: ", start_folder)
             print("Input data Subfolder: ", options.subFolder)
-            if options.processxml:
-                print (f"Input XML of build {options.input_build_pattern} will be processed into {options.output_build} and loaded.")
-            else:
-                print(f"Input XML of build {options.input_build_pattern} will be loaded without processing: ")
-                
-            if options.write_processed:
-                print(f"Output file of build {options.output_build} will be saved to a file.")
-            
             print("Reset Core Data: ", options.resetCoreData)
             if options.forceRebuildAllFiles == True:
                 msg = "Forced Rebuild - All files added, regardless of whether they are the same as in Solr."
@@ -379,7 +370,6 @@ def main():
             filespec = options.file_only
             fileinfo.mapLocalFS(filespec)
             filenames = [fileinfo]
-            print (f"Filenames: {filenames}")
         else:
             pat = fr"(.*?)\({options.input_build_pattern}\)\.(xml|XML)$"
             filenames = []
@@ -436,7 +426,7 @@ def main():
                     if not options.display_verbose and skipped_files % 100 == 0 and skipped_files != 0:
                         print (f"Skipped {skipped_files} so far...loaded {processed_files_count} out of {files_found} possible." )
                     
-                    if file_is_same_as_in_solr(solr_docs2, filename=n.basename, timestamp_str=n.timestamp_str):
+                    if 0: # file_is_already_processed(filename=n.basename, timestamp_str=n.timestamp_str):
                         skipped_files += 1
                         if options.display_verbose:
                             print (f"Skipped - No refresh needed for {n.basename}")
@@ -623,73 +613,8 @@ def main():
                     if randomizer_seed is None:
                         randomizer_seed = int(datetime.utcnow().timestamp())
     
-    opasSolrLoadSupport.garbage_collect_stat(ocd)
-    if options.daysback is not None: #  get all updated records
-        print (f"Listing updates for {options.daysback} days.")
-        issue_updates = {}
-        try:
-            days_back = int(options.daysback)
-        except:
-            logger.error("Incorrect specification of days back. Must be integer.")
-        else:
-            article_list = ocd.get_articles_newer_than(days_back=days_back)
-            for art_id in article_list:
-                artInfoSolr = opasAPISupportLib.documents_get_abstracts(art_id)
-                try:
-                    art_citeas_xml = artInfoSolr.documents.responseSet[0].documentRefXML
-                    src_code = artInfoSolr.documents.responseSet[0].PEPCode
-                    art_year = artInfoSolr.documents.responseSet[0].year
-                    art_vol_str = artInfoSolr.documents.responseSet[0].vol
-                    art_issue = artInfoSolr.documents.responseSet[0].issue
-                    issue_id_str = f"<issue_id><src>{src_code}</src><yr>{art_year}</yr><vol>{art_vol_str}</vol><iss>{art_issue}</iss></issue_id>"
-                except:
-                    logger.error(f"Error: can't find article info for: {art_id} ")
-                else:   
-                    if src_code not in loaderConfig.DATA_UPDATE_PREPUBLICATION_CODES_TO_IGNORE:
-                        art = f"<article id='{art_id}'>{art_citeas_xml}</article>"
-                        try:
-                            issue_updates[issue_id_str].append(art)
-                        except Exception as e:
-                            issue_updates[issue_id_str] = [art]
-    if issue_updates != {}:
-        random.seed(randomizer_seed)
-        try:
-            if options.whatsnewfile is None:
-                try:
-                    fname = f"{localsecrets.DATA_UPDATE_LOG_DIR}/updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
-                except Exception as e:
-                    fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
-            else:
-                fname = options.whatsnewfile
-            msg = f"Issue updates.  Writing file {fname}"
-            print (msg)
-            logging.info(msg)
-            with open(fname, 'w', encoding="utf8") as fo:
-                fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
-                fo.write('<issue_updates>\n')
-                count_records = 0
-                for k, a in issue_updates.items():
-                    fo.write(f"\n\t<issue>\n\t\t{str(k)}\n\t\t<articles>\n")
-                    count_records += 1
-                    for ref in a:
-                        try:
-                            fo.write(f"\t\t\t{ref}\n")
-                        except Exception as e:
-                            logging.error(f"Issue Update Article Write Error: ({e})")
-                    fo.write("\t\t</articles>\n\t</issue>")
-                fo.write('\n</issue_updates>')
-            if count_records > 0:
-                print (f"{count_records} issue updates written to whatsnew log file.")
+    # end of docs
 
-        except Exception as e:
-            logging.error(f"Issue Update File Write Error: ({e})")
-    else: # if issue_updates != {}
-        if options.daysback is not None:
-            msg = f"Note: There was nothing in the whats new request to output for days back == {options.daysback}."
-            logging.warning(msg)
-        else:
-            msg = f"Note: There was nothing new in the batch output whatsnew."
-            logging.warning(msg)
     # ---------------------------------------------------------
     # Closing time
     # ---------------------------------------------------------
@@ -701,14 +626,9 @@ def main():
         if 1: # (options.biblio_update or options.fulltext_core_update) == True:
             elapsed_seconds = timeEnd-cumulative_file_time_start # actual processing time going through files
             elapsed_minutes = elapsed_seconds / 60
-            if bib_total_reference_count > 0:
-                msg = f"Finished! Imported {processed_files_count} documents and {bib_total_reference_count} references. Total file inspection/load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.) "
-                logger.info(msg)
-                print (msg)
-            else:
-                msg = f"Finished! Imported {processed_files_count} documents. Total file load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
-                logger.info(msg) 
-                print (msg)
+            msg = f"Finished! Converted {processed_files_count} documents. Total file processing time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
+            logger.info(msg) 
+            print (msg)
             if processed_files_count > 0:
                 msg = f"...Files loaded per Min: {processed_files_count/elapsed_minutes:.4f}"
                 logger.info(msg)
@@ -738,9 +658,8 @@ def main():
 # run it!
 
 if __name__ == "__main__":
-    global options  # so the information can be used in support functions
     options = None
-    parser = OptionParser(usage="%prog [options] - PEP Solr Data Loader", version=f"%prog ver. {__version__}")
+    parser = OptionParser(usage="%prog [options] - PEP XML Simple Data Processor", version=f"%prog ver. {__version__}")
     parser.add_option("-a", "--allfiles", action="store_true", dest="forceRebuildAllFiles", default=False,
                       help="Option to force all files to be loaded to the specified cores.")
     # redundant add option to use so compatible options to the PEPXML code for manual use
@@ -790,7 +709,7 @@ if __name__ == "__main__":
                       help="Generate a log of files added in the last n days (1==today), rather than for files added during this run.")
     parser.add_option("--whatsnewfile", dest="whatsnewfile", default=None,
                       help="File name to force the file and path rather than a generated name for the log of files added in the last n days.")
-    # New OpasLoader2 Options
+    
     parser.add_option("--writeprocessed", action="store_true", dest="write_processed", default=False,
                       help="Write the processed data to files, using the output build (e.g., (bEXP_ARCH1).")
     parser.add_option("--processxml", action="store_true", dest="processxml", default=False,
