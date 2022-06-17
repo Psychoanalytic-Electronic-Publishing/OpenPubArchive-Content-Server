@@ -59,7 +59,7 @@ class TestXMLProcessing(unittest.TestCase):
         parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         pepxml = etree.fromstring(testXML, parser)
         root = pepxml.getroottree()
-        result, result_tree, node_text = glossEngine.doGlossaryMarkup(root, prettyPrint=False)
+        result, result_tree, node_text = glossEngine.doGlossaryMarkup(root, pretty_print=False)
         a = testXML[0:29]
         b = node_text[0:118]
         output_list = [li for li in difflib.ndiff([a], [b]) if li[0] != ' ']
@@ -72,7 +72,7 @@ class TestXMLProcessing(unittest.TestCase):
         parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         pepxml = etree.fromstring(testXML, parser)
         root = pepxml.getroottree()
-        result, result_tree, node_text  = glossEngine.doGlossaryMarkup(root, prettyPrint=False)
+        result, result_tree, node_text  = glossEngine.doGlossaryMarkup(root, pretty_print=False)
         a = testXML[60:70]
         b = node_text[60:129]
         output_list = [li for li in difflib.ndiff([a], [b]) if li[0] != ' ']
@@ -115,41 +115,6 @@ class TestXMLProcessing(unittest.TestCase):
            
         
         """
-    def test_3_bld_from_kbd3(self):
-        """
-        Tests:
-        
-        1) load dbs from EXP_ARCH1 files (previous funct.)
-
-           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose
-           
-           same as 
-
-           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --inputbuild=bEXP_ARCH1
-
-           or 
-
-           opasloader2 --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
-           
-        2) load dbs from KBD3 files directly
-
-           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml --inputbuild=bKBD3
-
-              should be same as
-
-           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
-           
-        
-        3) only build EXP_ARCH1 files from KBD3
-
-           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
-        
-        4) load dbs from KBD3 files and write EXP_ARCH1's for quicker reprocessing later or QA
-        
-           opasloader2 --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
-           
-        
-        """
         import shlex, subprocess
         pycmd = r"e:\\usr3\\GitHub\\openpubarchive\\app\\env\\Scripts\\python.exe E:\\usr3\\GitHub\\openpubarchive\\app\\opasDataLoader2\\opasDataLoader2.py "
         data_file1 = r"--key CFP.012.0022A"
@@ -157,25 +122,34 @@ class TestXMLProcessing(unittest.TestCase):
         data_file3 = r"--sub _PEPCurrent\\CFP\\012.2022"
         
         command_lines = [
-            fr"{pycmd} {data_file1} --nocheck --verbose",
-            fr"{pycmd} {data_file1} --nocheck --verbose --processxml --writeprocessed --inputbuild=bKBD3 --outputbuild=bEXP_TEST2",
-            fr"{pycmd} {data_file1} --nocheck --verbose --inputbuild=bEXP_TEST2",
-            fr"{pycmd} {data_file1} --nocheck --verbose --processxml --inputbuild=bKBD3",
-            fr"{pycmd} {data_file3} --nocheck --verbose --processxml", # implies --inputbuild=bKBD3
+            ("Processing file", "bEXP_ARCH1", fr"{pycmd} {data_file1} --nocheck --verbose"),
+            ("Exporting", "bEXP_TEST2", fr"{pycmd} {data_file1} --nocheck --verbose --processxml --writeprocessed --inputbuild=bKBD3 --outputbuild=bEXP_TEST2"),
+            ("Processing file", "bEXP_TEST2", fr"{pycmd} {data_file1} --nocheck --verbose --inputbuild=bEXP_TEST2"),
+            ("Finished!", "56 references", fr"{pycmd} {data_file1} --nocheck --verbose --processxml --inputbuild=bKBD3"),
+            ("Finished!", "Imported 19", fr"{pycmd} {data_file3} --nocheck --verbose --processxml --rebuild"), # implies --inputbuild=bKBD3
+            ("Finished!","Imported 0", fr"{pycmd} {data_file3} --nocheck --verbose --processxml"), # should not reprocess if not changed
         ]
         
-        for command_line in command_lines:
+        test_counter = 0
+        for command_line_tuple in command_lines:
+            test_counter += 1
             #print (command_line)
+            test_line = command_line_tuple[0]
+            test_text = command_line_tuple[1]
+            command_line = command_line_tuple[2]
             args = shlex.split(command_line)
-            print(f"opasDataLoader2 {args[2:]}")
+            print(f"Test {test_counter}. RUN: opasDataLoader2 {args[2:]}")
             p = subprocess.Popen(args, stdout=subprocess.PIPE, shell=True) # Success!
             out, err = p.communicate()
             out_str = str(out, 'utf-8')
             result = out_str.split('\r\n')
             for lin in result:
-                if "Processing file" in lin or "Writing file" in lin or "Finished!" in lin:
+                if "Processing file" in lin or "Writing file" in lin or "Finished!" in lin or "Exporting!" in lin:
                     print(lin)
            
+                if test_line in lin:
+                    assert test_text in lin
+                    print (f"Test {test_counter} passed.")
 
 if __name__ == '__main__':
     unittest.main()

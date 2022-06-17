@@ -66,10 +66,12 @@ def pgnbr_add_next_attrib(pepxml):
     return count
 
 #------------------------------------------------------------------------------------------------------
-def xml_update(root, pepxml, artInfo, ocd):
+def xml_update(parsed_xml, artInfo, ocd, pretty_print=False):
     ret_val = None
+    ret_status = False
+
     # write issn and id to artinfo
-    xml_artinfo = pepxml.find("artinfo")
+    xml_artinfo = parsed_xml.find("artinfo")
     source_row = ocd.get_sources(src_code=artInfo.src_code)
     known_books = PEPBookInfo.PEPBookInfo()
 
@@ -95,11 +97,11 @@ def xml_update(root, pepxml, artInfo, ocd):
     if artInfo.art_type is not None: xml_artinfo.set("arttype", artInfo.art_type)
     if artInfo.start_sectname is not None: xml_artinfo.set("newsecnm", artInfo.start_sectname)
     if artInfo.start_sectlevel is not None: xml_artinfo.set("newseclevel", artInfo.start_sectlevel)                
-    xml_artauth = pepxml.findall("artinfo/artauth")
+    xml_artauth = parsed_xml.findall("artinfo/artauth")
     for art_auth in xml_artauth:
         art_auth.set("hidden", art_auth.get("hidden", "false"))
 
-    xml_artauth_aut = pepxml.findall("artinfo/artauth/aut")
+    xml_artauth_aut = parsed_xml.findall("artinfo/artauth/aut")
     for aut in xml_artauth_aut:
         # print(aut)
         if aut.attrib.get("authindexid", None) is None:
@@ -120,11 +122,11 @@ def xml_update(root, pepxml, artInfo, ocd):
     # tag glossary words
     
     # add nextpgnum with id to n, possibly filling in prefixused
-    pgnbr_add_next_attrib(pepxml)
+    pgnbr_add_next_attrib(parsed_xml)
     
     # add links to biblio entries, rx to be
     if artInfo.ref_count > 0:
-        bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
+        bibReferences = parsed_xml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
         logger.info(("   ...Processing %s references for links." % (artInfo.ref_count)))
 
         #processedFilesCount += 1
@@ -137,7 +139,7 @@ def xml_update(root, pepxml, artInfo, ocd):
             ref_id = ref.attrib["id"]
             # see if it's already in table
             bib_saved_entry_tuple = ocd.get_references_from_biblioxml_table(article_id=artInfo.art_id, ref_local_id=ref_id)
-            if bib_saved_entry_tuple is not None:
+            if bib_saved_entry_tuple is not None and bib_saved_entry_tuple != []:
                 bib_saved_entry = bib_saved_entry_tuple[0]
             else:
                 bib_saved_entry = modelsOpasCentralPydantic.Biblioxml()
@@ -145,9 +147,17 @@ def xml_update(root, pepxml, artInfo, ocd):
             # merge record info
             bib_total_reference_count += 1
             bib_entry = opasSolrLoadSupport.BiblioEntry(artInfo, ref)
-            if not opasgenlib.is_empty(bib_entry.pgrg):
-                bib_pgstart, bib_pgend = bib_entry.pgrg.split("-")
-
+            try:
+                if not opasgenlib.is_empty(bib_entry.pgrg):
+                    bib_pgstart, bib_pgend = bib_entry.pgrg.split("-")
+            except ValueError as e:
+                if not opasgenlib.is_empty(bib_entry.pgrg):
+                    bib_pgstart = bib_entry.pgrg
+                    bib_pgend = bib_entry.pgrg
+                else:
+                    bib_pgstart = ""
+                    bib_pgend = ""
+                
             bk_locator = None
             if bib_entry.source_type != "book":
                 if not opasgenlib.is_empty(bib_entry.sourcecode):
@@ -169,7 +179,7 @@ def xml_update(root, pepxml, artInfo, ocd):
                     ref.attrib["rx"] = locator.articleID()
                     search_str = f"//be[@id='{ref_id}']"
                     if dbgVerbose:
-                        print(f"Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(pepxml, search_str)[0]}")
+                        print(f"Matched Journal {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}")
                 else:
                     locator = None
                     logger.info("Skipped: ", bib_saved_entry)
@@ -180,7 +190,7 @@ def xml_update(root, pepxml, artInfo, ocd):
                     ref.attrib["rx"] = bk_locator_str 
                     search_str = f"//be[@id='{ref_id}']"
                     if dbgVerbose:
-                        print(f"Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(pepxml, search_str)[0]}")
+                        print(f"Matched Book {match_val}. {opasxmllib.xml_xpath_return_xmlstringlist(parsed_xml, search_str)[0]}")
                     
                 else:
                     locator = None
@@ -195,8 +205,8 @@ def xml_update(root, pepxml, artInfo, ocd):
     
 
     # xml_artauth = pepxml.findall("artinfo/artauth/aut")
-    root, pepxml, result_text = glossEngine.doGlossaryMarkup(root)
-    
-    ret_val = root, pepxml, result_text
-    return ret_val
+    parsed_xml, ret_status = glossEngine.doGlossaryMarkup(parsed_xml, pretty_print=pretty_print)
+    ret_val = parsed_xml
+
+    return ret_val, ret_status
 

@@ -497,7 +497,7 @@ def main():
                 except Exception as e:
                     logger.warning("Could not determine file classification for %s (%s)" % (n.filespec, e))
                            
-                if options.processxml:
+                if options.processxml or options.write_processed:
                     # make changes to the XML
                     root, pepxml, fileXMLContents = opasXMLProcessor.xml_update(root, pepxml, artInfo, ocd)
                     # impx_count = int(pepxml.xpath('count(//impx[@type="TERM2"])'))

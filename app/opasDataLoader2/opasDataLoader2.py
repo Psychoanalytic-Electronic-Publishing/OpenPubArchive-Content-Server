@@ -7,10 +7,10 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0616/v2.0.002"   # semver versioning after date.
+__version__     = "2022.0617/v2.0.003"   # semver versioning after date.
 __status__      = "Development"
 
-programNameShort = "opasDataLoader2"
+programNameShort = "opasDataLoader"
 XMLProcessingEnabled = True
 
 import lxml
@@ -18,10 +18,17 @@ import sys
 if sys.version_info[0] < 3:
     raise Exception("Must be using Python 3")
 
-print(
+border = 80 * "*"
+print (f"""\n
+        {border}
+            {programNameShort} - Open Publications-Archive Server (OPAS) Loader
+                            Version {__version__}
+                   Document/Authors/References Core Processor/Loader
+        {border}
+        """)
+
+help_text = (
     f""" 
-        {programNameShort} - Open Publications-Archive Server (OPAS) Loader 2 - Document, Authors, and References Core Processor/Loader
-    
         - Read the XML KBD3 files specified, process into EXP_ARCH in memory and load to Solr/RDS directly
         - Can also output and save EXP_ARCH (procesed files)
         - Can also load the database (Solr/RD) from EXP_ARCH1 files
@@ -30,7 +37,7 @@ print(
           https://github.com/Psychoanalytic-Electronic-Publishing/OpenPubArchive-Content-Server/wiki/TBD  *** TBD ***
         
         Example Invocation:
-                $ python opasDataLoader2.py
+                $ python opasDataLoader.py
                 
         Important option choices:
          -h, --help         List all help options
@@ -47,8 +54,8 @@ print(
 
          V.2 New Options
          --inputbuild       input build name, e.g., (bKBD3)  
-         --processxml       Process the KBD XML to EXP_ARCH specifications (add biblio links, glossary tags, other attributes, before saving to Solr or an output file 
-         --writeprocessed   Write the processed file to an output file; otherwise write directly to Solr.
+         --processxml       Process the KBD XML to EXP_ARCH1 (add biblio links, glossary tags, etc, load to Solr
+         --writeprocessed   Write the processed file to an output file (implies processxml)
          --outputbuild      optional output build name, e.g., (bEXP_ARCH1), used with writeprocessed  
 
         Example:
@@ -56,8 +63,8 @@ print(
           As long as you don't specify -a, they will skip the ones the other did when they eventually
           cross
 
-             python opasDataLoader2.py 
-             python opasDataLoader2.py --reverse
+             python opasDataLoader.py 
+             python opasDataLoader.py --reverse
 
           Update all of PEPCurrent
 
@@ -65,7 +72,7 @@ print(
              
           Generate a new articles log file for 10 days back
              
-             python opasDataLoader2.py --nofiles --whatsnewdays=10
+             python opasDataLoader.py --nofiles --whatsnewdays=10
 
         Note:
           S3 is set up with root pep-web-xml (default).  The root must be the bucket name.
@@ -247,12 +254,12 @@ def main():
             print("Input data Root: ", start_folder)
             print("Input data Subfolder: ", options.subFolder)
             if options.processxml:
-                print (f"Input XML of build {options.input_build_pattern} will be processed into {options.output_build} and loaded.")
+                print (f"Input XML of build {options.input_build_pattern} will be processed into {options.output_build} and loaded into Solr DB.")
             else:
                 print(f"Input XML of build {options.input_build_pattern} will be loaded without processing: ")
                 
             if options.write_processed:
-                print(f"Output file of build {options.output_build} will be saved to a file.")
+                print(f"Processed build {options.output_build} will be saved to file.")
             
             print("Reset Core Data: ", options.resetCoreData)
             if options.forceRebuildAllFiles == True:
@@ -473,11 +480,12 @@ def main():
         
                 # import into lxml
                 parser = lxml.etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
-                pepxml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
-                root = pepxml.getroottree()
+                parsed_xml = etree.fromstring(opasxmllib.remove_encoding_string(fileXMLContents), parser)
+                #treeroot = pepxml.getroottree()
+                #root = pepxml.getroottree()
         
                 # save common document (article) field values into artInfo instance for both databases
-                artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
+                artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml, artID, logger)
                 artInfo.filedatetime = n.timestamp_str
                 artInfo.filename = base
                 artInfo.file_size = n.filesize
@@ -504,7 +512,7 @@ def main():
                 
                 if options.processxml:
                     # make changes to the XML
-                    root, pepxml, fileXMLContents = opasXMLProcessor.xml_update(root, pepxml, artInfo, ocd)
+                    parsed_xml, ret_status = opasXMLProcessor.xml_update(parsed_xml, artInfo, ocd, pretty_print=options.pretty_printed)
                     # impx_count = int(pepxml.xpath('count(//impx[@type="TERM2"])'))
                     # print (impx_count, fileXMLContents[500:2500])
     
@@ -512,20 +520,22 @@ def main():
                     if options.write_processed:
                         #fname = f"{artID}(bEXP_TEST).xml"  # *** TBD *** one file for now.
                         fname = str(n.filespec)
-                        fname = fname.replace("(bKBD3)", options.output_build)
+                        fname = re.sub("\(b.*\)", options.output_build, fname)
                         
-                        msg = f"Writing file {fname}"
+                        msg = f"Exporting! Writing processed file to {fname}"
                         print (msg)
-                        root.write(fname, encoding="utf8", method="xml", pretty_print=True, xml_declaration=True)
+                        root = parsed_xml.getroottree()
+                        root.write(fname, encoding="utf-8", method="xml", pretty_print=True, xml_declaration=True)
                         
-                        # the above does not add the xml line...need to address this!
-                        
+                        # xml_text version, not reconverted to tree
+                        #file_text = lxml.etree.tostring(parsed_xml, pretty_print=options.pretty_printed, encoding="utf8").decode("utf-8")
+                        #fname = fname.replace(options.output_build, "(bXML_TEXT)")
                         #with open(fname, 'w', encoding="utf8") as fo:
-                            ##fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
-                            #fo.write(root.tostring())
+                            #fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
+                            #fo.write(file_text)
 
                     # resave common document (article) field values into artInfo instance for both databases
-                    artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, pepxml, artID, logger)
+                    artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml, artID, logger)
                     artInfo.filedatetime = n.timestamp_str
                     artInfo.filename = base
                     artInfo.file_size = n.filesize
@@ -543,7 +553,7 @@ def main():
                     # load the glossary core if this is a glossary item
                     glossary_file_pattern=r"ZBK.069(.*)\(bEXP_ARCH1\)\.(xml|XML)$"
                     if re.match(glossary_file_pattern, n.basename):
-                        opasSolrLoadSupport.process_article_for_glossary_core(pepxml, artInfo, solr_gloss2, fileXMLContents, verbose=options.display_verbose)
+                        opasSolrLoadSupport.process_article_for_glossary_core(parsed_xml, artInfo, solr_gloss2, fileXMLContents, verbose=options.display_verbose)
                 
                 # input to the full-text and authors cores
                 if not options.glossary_only: # options.fulltext_core_update:
@@ -567,9 +577,9 @@ def main():
                     # -----
 
                     # load the docs (pepwebdocs) core
-                    opasSolrLoadSupport.process_article_for_doc_core(pepxml, artInfo, solr_docs2, fileXMLContents, include_paras=options.include_paras, verbose=options.display_verbose)
+                    opasSolrLoadSupport.process_article_for_doc_core(parsed_xml, artInfo, solr_docs2, fileXMLContents, include_paras=options.include_paras, verbose=options.display_verbose)
                     # load the authors (pepwebauthors) core.
-                    opasSolrLoadSupport.process_info_for_author_core(pepxml, artInfo, solr_authors2, verbose=options.display_verbose)
+                    opasSolrLoadSupport.process_info_for_author_core(parsed_xml, artInfo, solr_authors2, verbose=options.display_verbose)
                     # load the database (Moved to above new section name workaround)
                     #opasSolrLoadSupport.add_article_to_api_articles_table(ocd, artInfo, verbose=options.display_verbose)
                     #opasSolrLoadSupport.add_to_artstat_table(ocd, artInfo, verbose=options.display_verbose)
@@ -582,7 +592,7 @@ def main():
                 # Add to the references table
                 if 1: # options.biblio_update:
                     if artInfo.ref_count > 0:
-                        bibReferences = pepxml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
+                        bibReferences = parsed_xml.xpath("/pepkbd3//be")  # this is the second time we do this (also in artinfo, but not sure or which is better per space vs time considerations)
                         if options.display_verbose:
                             print(("   ...Processing %s references for the references database." % (artInfo.ref_count)))
     
@@ -605,7 +615,7 @@ def main():
                 if options.display_verbose:
                     print(("   ...Time: %s seconds." % (time.time() - fileTimeStart)))
         
-            print (f"Conversion/Load process complete ({time.ctime()}).")
+            print (f"Conversion/Load process complete ({time.ctime()} ). Time: {time.time() - fileTimeStart} seconds.")
             if processed_files_count > 0:
                 try:
                     print ("Performing final commit.")
@@ -661,7 +671,7 @@ def main():
                     fname = f"updated_issues_{dtime.datetime.now().strftime('%Y%m%d_%H%M%S')}({random.randint(1000,9999)}).xml"
             else:
                 fname = options.whatsnewfile
-            msg = f"Issue updates.  Writing file {fname}"
+            msg = f"Writing Issue updates.  Writing to file {fname}"
             print (msg)
             logging.info(msg)
             with open(fname, 'w', encoding="utf8") as fo:
@@ -793,15 +803,22 @@ if __name__ == "__main__":
     # New OpasLoader2 Options
     parser.add_option("--writeprocessed", action="store_true", dest="write_processed", default=False,
                       help="Write the processed data to files, using the output build (e.g., (bEXP_ARCH1).")
+    parser.add_option("--prettyprint", action="store_true", dest="pretty_printed", default=True,
+                      help="Pretty format the XML.")
     parser.add_option("--processxml", action="store_true", dest="processxml", default=False,
                       help="Process input format XML (e.g., (bKBD3) XML. Load result into database directly.")
     parser.add_option("--inputbuild", dest="input_build_pattern", default=loaderConfig.default_build_pattern,
                       help="Pattern of the build specifier to load (input), e.g., (bEXP_ARCH1|bSeriesTOC), or (bKBD3|bSeriesTOC)")
     parser.add_option("--outputbuild", dest="output_build", default='(bEXP_ARCH1)',
                       help="Specific output build specification, default='(bEXP_ARCH1)'.")
+    parser.add_option("--nohelp", action="store_true", dest="no_help", default=False,
+                      help="Turn off front-matter help")
 
     (options, args) = parser.parse_args()
     
+    if not options.no_help:
+        print (help_text)
+
     if len(options.output_build) < 2:
         logger.error("Bad output buildname. Using default.")
         options.output_build = '(bEXP_ARCH1)'
@@ -822,5 +839,6 @@ if __name__ == "__main__":
         doctest.testmod()
         print ("Fini. opasDataLoader2 Tests complete.")
         sys.exit()
+
 
     main()
