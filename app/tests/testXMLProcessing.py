@@ -35,7 +35,7 @@ class TestXMLProcessing(unittest.TestCase):
                   ('LU-AM.005I.0025A', 'B0001'),
                   ('CPS.039.0107A', 'B0008'), 
                   ('CPS.039.0107A', 'B0003'),
-                  ('IJP.068.0213A', 'B.*')
+                  ('IJP.101.0273A', 'B.*')
                   ]
 
     def test_1_get_reference_from_api_biblio_table(self):
@@ -59,7 +59,9 @@ class TestXMLProcessing(unittest.TestCase):
         parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         pepxml = etree.fromstring(testXML, parser)
         root = pepxml.getroottree()
-        result, result_tree, node_text = glossEngine.doGlossaryMarkup(root, pretty_print=False)
+        result_tree, markup_status = glossEngine.doGlossaryMarkup(root, pretty_print=False)
+        node_text = lxml.etree.tostring(result_tree, pretty_print=False, encoding="utf8").decode("utf-8")
+        
         a = testXML[0:29]
         b = node_text[0:118]
         output_list = [li for li in difflib.ndiff([a], [b]) if li[0] != ' ']
@@ -72,7 +74,8 @@ class TestXMLProcessing(unittest.TestCase):
         parser = etree.XMLParser(encoding='utf-8', recover=True, resolve_entities=True, load_dtd=True)
         pepxml = etree.fromstring(testXML, parser)
         root = pepxml.getroottree()
-        result, result_tree, node_text  = glossEngine.doGlossaryMarkup(root, pretty_print=False)
+        result_tree, markup_status = glossEngine.doGlossaryMarkup(root, pretty_print=False)
+        node_text = lxml.etree.tostring(result_tree, pretty_print=False, encoding="utf8").decode("utf-8")
         a = testXML[60:70]
         b = node_text[60:129]
         output_list = [li for li in difflib.ndiff([a], [b]) if li[0] != ' ']
@@ -86,37 +89,37 @@ class TestXMLProcessing(unittest.TestCase):
         
         1) load dbs from EXP_ARCH1 files (previous funct.)
 
-           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose
+           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose
            
            same as 
 
-           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --inputbuild=bEXP_ARCH1
+           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --inputbuild=bEXP_ARCH1
 
            or 
 
-           opasloader2 --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
+           opasloader --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
            
         2) load dbs from KBD3 files directly
 
-           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml --inputbuild=bKBD3
+           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml --inputbuild=bKBD3
 
               should be same as
 
-           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
+           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
            
         
         3) only build EXP_ARCH1 files from KBD3
 
-           opasloader2 -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
+           opasloader -d X:\_PEPA1\_PEPa1v\_PEPCurrent --verbose --processxml
         
         4) load dbs from KBD3 files and write EXP_ARCH1's for quicker reprocessing later or QA
         
-           opasloader2 --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
+           opasloader --only "X:\_PEPA1\_PEPa1v\_PEPCurrent\CFP\012.2022\CFP.012.0022A(bKBD3).xml" --nocheck --processxml --writeprocessed --outputbuild=bEXP_TEST
            
         
         """
         import shlex, subprocess
-        pycmd = r"e:\\usr3\\GitHub\\openpubarchive\\app\\env\\Scripts\\python.exe E:\\usr3\\GitHub\\openpubarchive\\app\\opasDataLoader2\\opasDataLoader2.py "
+        pycmd = r"e:\\usr3\\GitHub\\openpubarchive\\app\\env\\Scripts\\python.exe E:\\usr3\\GitHub\\openpubarchive\\app\\opasDataLoader2\\opasDataLoader.py "
         data_file1 = r"--key CFP.012.0022A"
         data_file2 = r"CFP.012.0022A(bKBD3).xml"
         data_file3 = r"--sub _PEPCurrent\\CFP\\012.2022"
