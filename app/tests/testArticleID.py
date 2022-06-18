@@ -9,6 +9,7 @@ import unittest
 import requests
 import unitTestConfig
 import opasConfig
+from opasArticleIDSupport import ArticleID
 
 from unitTestConfig import base_plus_endpoint_encoded, headers, get_headers_not_logged_in
 # Get session, but not logged in.
@@ -43,7 +44,7 @@ class TestArticleID(unittest.TestCase):
             assert(response.ok == True)
             # test return
             r = response.json()
-            a = opasConfig.ArticleID(**r)
+            a = ArticleID(**r)
             assert(a.standardized == n.upper())
             print (n, " = ", r)
           
@@ -67,7 +68,7 @@ class TestArticleID(unittest.TestCase):
             assert(response.ok == True)
             # test return
             r = response.json()
-            a = opasConfig.ArticleID(**r)
+            a = ArticleID(**r)
             if a.isSupplement:
                 assert(a.issueCodeInt == 0)
             else:
@@ -82,7 +83,7 @@ class TestArticleID(unittest.TestCase):
             "FA.001.R0002", 
         ]
         for n in testIDs:
-            a = opasConfig.ArticleID(articleID=n)
+            a = ArticleID(articleID=n)
             print (a.articleID, a.altStandard)
             
             

@@ -439,7 +439,7 @@ class PEPLibExport:
                         for auth in authSet:
                             self.setPrenames(auth)
                             auth = self.validateAuthLimits(auth)
-                            if sciSupport.isEmpty(auth[gConst.AUTHORNAMEROLE]):
+                            if opasgenlib.is_empty(auth[gConst.AUTHORNAMEROLE]):
                                 print("No author role.  Set to 'author'")
                                 auth[gConst.AUTHORNAMEROLE] = "author"
                             else:
@@ -466,7 +466,7 @@ class PEPLibExport:
                     for auth in authSet:
                         self.setPrenames(auth)
                         auth = self.validateAuthLimits(auth)
-                        if sciSupport.isEmpty(auth[gConst.AUTHORNAMEROLE]):
+                        if opasgenlib.is_empty(auth[gConst.AUTHORNAMEROLE]):
                             print("No author role.  Set to 'author'")
                             auth[gConst.AUTHORNAMEROLE] = "author"
                         else:
@@ -490,7 +490,7 @@ class PEPLibExport:
             else:
                 for auth in authSet:
                     self.setPrenames(auth)
-                    if sciSupport.isEmpty(auth[gConst.AUTHORNAMEROLE]):
+                    if opasgenlib.is_empty(auth[gConst.AUTHORNAMEROLE]):
                         #print "No author role.  Set to 'author'"
                         auth[gConst.AUTHORNAMEROLE] = "author"
                     else:
@@ -541,7 +541,7 @@ class PEPLibExport:
 
         if len(artRef[gConst.TITLE]) > limitTitle: artRef[gConst.TITLE] = artRef[gConst.TITLE][0:limitTitle]
         #print "Issue: ", artRef[gConst.ISSUE], artRef[gConst.TITLE]
-        if sciSupport.isEmptyOrNoneStr(artRef[gConst.ISSUE]):
+        if opasgenlib.is_emptyOrNoneStr(artRef[gConst.ISSUE]):
             artRef[gConst.ISSUE] = ""
 
         if artRef[gConst.ISSUE] == "S":
@@ -551,7 +551,7 @@ class PEPLibExport:
         if artRef[gConst.SOURCEPEPCODE] == "ZBK":
             artRef[gConst.VOL] = ""
 
-        if sciSupport.isEmptyOrNoneStr(artRef[gConst.PUBLISHER]):
+        if opasgenlib.is_emptyOrNoneStr(artRef[gConst.PUBLISHER]):
             artLoc = PEPLocator.Locator(artRef[gConst.KEY])
             if artLoc.isBook():
                 artBaseCode = artLoc.baseCode()
@@ -582,7 +582,7 @@ class PEPLibExport:
         if len(auth[gConst.AUTHORNAMEFIRSTMID]) > limitFirstName:
             auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEFIRSTMID][0:limitFirstName]
         if len(auth[gConst.AUTHORNAMELAST]) > limitLastName: auth[gConst.AUTHORNAMELAST] = auth[gConst.AUTHORNAMELAST][0:limitLastName]
-        if sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMESUFX]):
+        if opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMESUFX]):
             auth[gConst.AUTHORNAMESUFX] = ""
         else:
             if len(auth[gConst.AUTHORNAMESUFX]) > limitSuffix:
@@ -595,13 +595,13 @@ class PEPLibExport:
     def setPrenames(self, auth):
 
         auth[gConst.AUTHORNAMEFIRSTMID] = ""
-        if not sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMEFIRST]):
-            if not sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
+        if not opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMEFIRST]):
+            if not opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
                 auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEFIRST] + ", " + auth[gConst.AUTHORNAMEMID]
             else:
                 auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEFIRST]
         else:
-            if not sciSupport.isEmptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
+            if not opasgenlib.is_emptyOrNoneStr(auth[gConst.AUTHORNAMEMID]):
                 auth[gConst.AUTHORNAMEFIRSTMID] = auth[gConst.AUTHORNAMEMID]
 
         return auth
@@ -703,7 +703,7 @@ class PEPLibExport:
                 #print "Key, ToFind, Value", string.upper(key), fieldToFind, n
                 if string.upper(key) == fieldToFind:
                     # Found unless value is empty
-                    if not sciSupport.isEmpty(n):
+                    if not opasgenlib.is_empty(n):
                         val = True
 
                     # break in either case once the key is found
@@ -737,7 +737,7 @@ class PEPLibExport:
                 #print "Key, ToFind, Value", string.upper(key), fieldToFind, n
                 if string.upper(key) == fieldToFind:
                     # Found unless value is empty
-                    if not sciSupport.isEmpty(n):
+                    if not opasgenlib.is_empty(n):
                         val = True
                     # break in either case once the key is found
                     break
@@ -764,7 +764,7 @@ class PEPLibExport:
             retVal = self.rgcBaseToken.sub("", retVal)
             # now look again--any left?
             #m = self.rgcBaseToken.search(retVal)
-            #if m <> None:
+            #if m is not None:
             #	log_error("Still untranslated tokens in template: '%s'" % retVal)
 
         #Remove any token delimiters (they will still be there from the sub areas that worked

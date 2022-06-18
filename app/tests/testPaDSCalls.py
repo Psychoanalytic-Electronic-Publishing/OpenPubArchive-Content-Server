@@ -11,8 +11,7 @@ import tempfile
 import opasDocPermissions
 import models
 
-from localsecrets import API_KEY_NAME, AUTH_KEY_NAME, API_KEY, PADS_TEST_ID, PADS_TEST_PW, \
-                         PDF_ORIGINALS_PATH, PADS_BASED_CLIENT_IDS, use_server, PADS_BASE_URL
+from localsecrets import PADS_TEST_PW, use_server, PADS_BASE_URL
 from unitTestConfig import base_plus_endpoint_encoded, headers, test_login
 
 base = PADS_BASE_URL

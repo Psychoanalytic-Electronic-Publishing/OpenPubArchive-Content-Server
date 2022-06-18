@@ -40,10 +40,10 @@ try:
     
     # use dev server for testing!
     # PRODUCTION_DB_HOST = "development.c6re6qczl2ae.us-east-1.rds.amazonaws.com"
-    STAGE_PW = localsecrets.STAGE2PROD_PW[0]
-    PROD_PW = localsecrets.STAGE2PROD_PW[1]
-    STAGE_USER = localsecrets.STAGE2PROD_USER[0]
-    PROD_USER = localsecrets.STAGE2PROD_USER[1]
+    STAGE_PW = localsecrets.AWSDB_PWS[0]
+    PROD_PW = localsecrets.AWSDB_PWS[1]
+    STAGE_USER = localsecrets.AWSDB_USERS[0]
+    PROD_USER = localsecrets.AWSDB_USERS[1]
 except:
     msg = f"DB addresses need to be defined."
     logger.error(msg)

@@ -511,8 +511,8 @@
   <field name="tables_xml" type="text_general" indexed="true" stored="false" multiValued="true"/>
 
   <!--Added for faceting use, 2020-04-25 Storage not required -->
-  <field name="glossary_terms" type="string_ci" indexed="true" stored="false" multiValued="true"/>
-  <field name="glossary_group_terms" type="string_ci" indexed="true" stored="false" multiValued="true"/>
+  <field name="glossary_terms" type="string_ci" indexed="true" stored="true" multiValued="true"/>
+  <field name="glossary_group_terms" type="string_ci" indexed="true" stored="true" multiValued="true"/>
   <!--Store for debug only-->
   <field name="freuds_italics" type="string_ci" indexed="true" stored="false" multiValued="true"/>
 

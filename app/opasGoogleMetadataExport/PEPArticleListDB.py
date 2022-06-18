@@ -221,7 +221,7 @@ class PEPArticleListDB(ArticleListDBBase):
                 else:
                     queryArticleID = articleID
 
-        if not sciSupport.isEmpty(articleID):
+        if not opasgenlib.is_empty(articleID):
             # use entire key instead
             selqry = r"""select articleID,
                 arttype,
@@ -349,7 +349,7 @@ class PEPArticleListDB(ArticleListDBBase):
             and  pgstart = '%s'
             """ % (qTable, jrnlCode, int(vol), pgStart)
 
-        if sciSupport.isEmpty(vol) or sciSupport.isEmpty(jrnlCode) or sciSupport.isEmpty(pgStart):
+        if opasgenlib.is_empty(vol) or opasgenlib.is_empty(jrnlCode) or opasgenlib.is_empty(pgStart):
             raise Exception("%s Empty Article ID.  Cannot fetch article reference info." % funcName)
         else:
             if gDbg1: print("%s: %s" % (funcName, selqry))
@@ -560,7 +560,7 @@ class PEPArticleListDB(ArticleListDBBase):
         else:
             qTable = "jourlitarticles"
 
-        if not sciSupport.isEmpty(whereClause):
+        if not opasgenlib.is_empty(whereClause):
             # use entire key instead
             selqry = r"""select articleID,
                 arttype,
@@ -790,7 +790,7 @@ class PEPArticleListDB(ArticleListDBBase):
                 print("Starting with articleID: %s" % articleIDPattern)
             # start with common errors
 
-            if jrnlVol != 0 and not sciSupport.isEmpty(articleIDPattern) and jrnlCode!="SE":
+            if jrnlVol != 0 and not opasgenlib.is_empty(articleIDPattern) and jrnlCode!="SE":
                 result = self.fetchArticleReferenceFromArticleIDForceSuffix(articleIDPattern,
                                                                             noLog=1,
                                                                             callerID=callerID)
@@ -802,7 +802,7 @@ class PEPArticleListDB(ArticleListDBBase):
 
             if matchRef==None:
                 # try to force year
-                if not sciSupport.isEmpty(articleIDPattern) and jrnlCode!="SE":
+                if not opasgenlib.is_empty(articleIDPattern) and jrnlCode!="SE":
                     result = self.fetchArticleReferenceFromArticleIDForceYear(articleIDPattern,
                                                                               jrnlCode,
                                                                               jrnlYear,
@@ -818,7 +818,7 @@ class PEPArticleListDB(ArticleListDBBase):
 
                 if matchRef==None:
                     # try journal "equivalents"
-                    if not sciSupport.isEmpty(articleIDPattern) and jrnlCode!="SE":
+                    if not opasgenlib.is_empty(articleIDPattern) and jrnlCode!="SE":
                         if gDbg1: print("Trying Journal Equivalents")
 
                         if jrnlCode == "IJP":
@@ -870,7 +870,7 @@ class PEPArticleListDB(ArticleListDBBase):
                         # Second strategy.  General search
                         if gDbg1: print("Trying Second Strategy!!!!***************************************************")
 
-                        if not sciSupport.isEmpty(title) and not sciSupport.isEmpty(jrnlCode) and not sciSupport.isEmpty(authors):
+                        if not opasgenlib.is_empty(title) and not opasgenlib.is_empty(jrnlCode) and not opasgenlib.is_empty(authors):
                             if gDbg1: print("Trying author, title and journal search: (%s/%s)" % (sciUnicode.unicode2Console(title), jrnlCode))
                             result = self.fetchArticleFromReferenceInfo(authors=authors,
                                                                         title=title,
@@ -879,7 +879,7 @@ class PEPArticleListDB(ArticleListDBBase):
                                                                         noLog=1
                                                                         )
 
-                        elif not sciSupport.isEmpty(title) and not sciSupport.isEmpty(authors):
+                        elif not opasgenlib.is_empty(title) and not opasgenlib.is_empty(authors):
                             if gDbg1:
                                 print("Trying author, title search: (%s/%s)" % (sciUnicode.unicode2Console(authors), sciUnicode.unicode2Console(title)))
                             result = self.fetchArticleFromReferenceInfo(authors=authors,
@@ -888,14 +888,14 @@ class PEPArticleListDB(ArticleListDBBase):
                                                                         noLog=1
                                                                         )
 
-                        elif not sciSupport.isEmpty(title) and not sciSupport.isEmpty(jrnlCode):
+                        elif not opasgenlib.is_empty(title) and not opasgenlib.is_empty(jrnlCode):
                             if gDbg1: print("Trying title and journal search: (%s/%s)" % (sciUnicode.unicode2Console(title), jrnlCode))
                             result = self.fetchArticleFromReferenceInfo(title=title,
                                                                         jrnlCode=jrnlCode,
                                                                         callerID=callerID,
                                                                         noLog=1
                                                                         )
-                        elif not sciSupport.isEmpty(title):
+                        elif not opasgenlib.is_empty(title):
                             if gDbg1: print("Trying title search: (%s)" % sciUnicode.unicode2Console(title))
                             result = self.fetchArticleFromReferenceInfo(authors=authors,
                                                                         title=title,
@@ -910,7 +910,7 @@ class PEPArticleListDB(ArticleListDBBase):
                                                                    noLog=1
                                                                    )
 
-                        elif not sciSupport.isEmpty(jrnlCode):	# try to limit via journal code too
+                        elif not opasgenlib.is_empty(jrnlCode):	# try to limit via journal code too
                             if gDbg1: print("Trying jrnlCode search:")
                             self.fetchArticleFromReferenceInfo(authors=authors,
                                                                title=title,
@@ -919,7 +919,7 @@ class PEPArticleListDB(ArticleListDBBase):
                                                                callerID=callerID,
                                                                noLog=1
                                                                )
-                        elif not sciSupport.isEmpty(jrnlYear):	# try to limit via year too
+                        elif not opasgenlib.is_empty(jrnlYear):	# try to limit via year too
                             if gDbg1: print("Trying jrnlYear search:")
                             self.fetchArticleFromReferenceInfo(authors=authors,
                                                                title=title,
@@ -1352,28 +1352,28 @@ class PEPArticleListDB(ArticleListDBBase):
         if pgStart!=None:
             pgRangeClause = """ and   ((pgstart-2 < %s) AND (pgend > %s))""" % (pgStart, pgStart)
 
-        if not sciSupport.isEmpty(authors):
+        if not opasgenlib.is_empty(authors):
             escAuthors = sciSupport.doEscapes(authors)
             authorsClause = """ and MATCH hdgauthor AGAINST ('%s') > 1""" % escAuthors
             authorsSelect = """MATCH hdgauthor AGAINST ('%s') as relAuthor""" % escAuthors
         else:
             authorsSelect = """1 as relAuthor"""
 
-        if not sciSupport.isEmpty(bktitle):
+        if not opasgenlib.is_empty(bktitle):
             escbktitle = sciSupport.doEscapes(bktitle)
             bktitleClause = """ and MATCH bktitle AGAINST ('%s') > 1""" % escbktitle
             bktitleSelect = """MATCH bktitle AGAINST ('%s') as relBookTitle""" % escbktitle
         else:
             bktitleSelect = """1 as relBookTitle"""
 
-        if not sciSupport.isEmpty(bkauthors):
+        if not opasgenlib.is_empty(bkauthors):
             escbkauthors = sciSupport.doEscapes(bkauthors)
             bkauthorsClause = """ and MATCH bkauthors AGAINST ('%s') > 1""" % escbkauthors
             bkauthorsSelect = """MATCH bkauthors AGAINST ('%s') as relBookAuthors""" % escbkauthors
         else:
             bkauthorsSelect = """1 as relBookAuthors"""
 
-        if not sciSupport.isEmpty(title):
+        if not opasgenlib.is_empty(title):
             escTitle = sciSupport.doEscapes(title)
             titleClause = """ and MATCH hdgtitle AGAINST ('%s') > 10""" % escTitle
             titleSelect = """MATCH hdgtitle AGAINST ('%s') as relTitle""" % escTitle

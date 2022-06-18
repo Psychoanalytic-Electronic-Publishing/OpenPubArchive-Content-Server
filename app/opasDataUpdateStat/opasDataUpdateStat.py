@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0605/v1.1.7"
+__version__     = "2022.0618/v1.1.8"
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -39,7 +39,9 @@ print(
 )
 
 import sys
+sys.path.append('../libs')
 sys.path.append('../config')
+sys.path.append('../libs/configLib')
 
 UPDATE_AFTER = 2500
 
@@ -49,8 +51,10 @@ import pymysql
 import pysolr
 import localsecrets
 from pydantic import BaseModel
-
 from datetime import datetime
+
+from opasArticleIDSupport import ArticleID
+
 # logFilename = programNameShort + "_" + datetime.today().strftime('%Y-%m-%d') + ".log"
 FORMAT = '%(asctime)s %(name)s %(funcName)s %(lineno)d - %(levelname)s %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.WARNING, datefmt='%Y-%m-%d %H:%M:%S')
@@ -312,13 +316,6 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
     """
     Use in-place updates to update the views data
     """
-    try:
-        opasTryAlternateID = True
-        from opasConfig import ArticleID
-    except Exception as e:
-        logger.error(f"Can't load ArticleID from opasConfig {e}!!!")
-        opasTryAlternateID = False
-        
     update_count = 0
     skipped_as_update_error = 0
     skipped_as_missing = 0
@@ -343,19 +340,19 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             results = solrcon.search(q = f"art_id:{doc_id}")
             if results.raw_response["response"]["numFound"] > 0:
                 found = True
-            elif opasTryAlternateID:
+            else: # TryAlternateID:
                 parsed_id = ArticleID(articleID=doc_id)
                 results = solrcon.search(q = f"art_id:{parsed_id.altStandard}")
-                if results.raw_response["response"]["numFound"] == 1:
+                if results.raw_response["response"]["numFound"] == 1:  # only accept alternative if there's only one match (otherwise, not known which)
                     # odds are good this is what was cited.
                     found = True
-                    logger.error(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.altStandard}. Using that instead!")
+                    logger.info(f"Document ID {doc_id} not in Solr.  The correct ID seems to be {parsed_id.altStandard}. Using that instead!")
                     doc_id = parsed_id.altStandard
                 else:
-                    logger.error(f"Document ID {doc_id} not in Solr.  No alternative ID found.")
+                    logger.warning(f"Document ID {doc_id} not in Solr.  No alternative ID found.")
                 
         except Exception as e:
-            logger.error(f"Document {doc_id} not in Solr...skipping {e}")
+            logger.error(f"Issue finding Document ID {doc_id} in Solr...Exception: {e}")
             skipped_as_missing += 1
         else:
             if found:
@@ -430,7 +427,7 @@ def update_solr_stat_data(solrcon, all_records:bool=False):
             else:
                 errStr = (f"Document {doc_id} not in Solr...skipping")
                 #print (errStr)
-                logger.error(errStr)
+                logger.warning(errStr)
                 if ".jpg" in errStr:
                     print (f"Todo: eliminate these jpgs from the table driving the stat {doc_id}")
 

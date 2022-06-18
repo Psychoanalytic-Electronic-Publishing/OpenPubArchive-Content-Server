@@ -837,7 +837,7 @@ if __name__ == "__main__":
     if options.testmode:
         import doctest
         doctest.testmod()
-        print ("Fini. opasDataLoader Tests complete.")
+        print ("Fini. opasDataLoader2 Tests complete.")
         sys.exit()
 
 

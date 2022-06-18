@@ -1,6 +1,7 @@
 
 # Configuration file for opasDataLoader
-file_match_pattern = "\((bEXP_ARCH1|bSeriesTOC)\)\.(xml|XML)$"
+default_build_pattern = "(bEXP_ARCH1|bSeriesTOC)"
+default_process_pattern = "(bKBD3|bSeriesTOC)"
 
 # Global variables (for data and instances)
 options = None

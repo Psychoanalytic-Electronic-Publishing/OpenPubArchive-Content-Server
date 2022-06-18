@@ -3,8 +3,8 @@
 import os, sys
 # import re, string
 
-sys.path.append("e:\\usr3\py")
-sys.path.append("e:\\usr3\py\sciHL")
+#sys.path.append("e:\\usr3\py")
+#sys.path.append("e:\\usr3\py\sciHL")
 
 __author__ = 'Neil R. Shapiro'  # must be single quotes for my addin code to setup.py to find it.
 __version__ = '2021.10.31'
@@ -88,7 +88,7 @@ DECPGRG = "(%s(\-%s)?)" % ("\d+", "\d+")
 DECORROMANPGRG = "(%s|%s)" % (DECPGRG, ROMANPGRG)
 DECORROMANPG = "(%s|%s)" % (DECPG, ROMANPG)
 
-DEFAULTENTITYFILEDB = r"c:\_pepA1\entityDictDB.dat"
+#DEFAULTENTITYFILEDB = r"c:\_pepA1\entityDictDB.dat"
 #DEFAULTENTITYFILEDBALT = r"x:\_pepA1\entityDictDB.dat"
 
 gDgrAbbr = {

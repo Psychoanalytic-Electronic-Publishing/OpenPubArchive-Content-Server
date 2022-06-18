@@ -46,6 +46,7 @@ import schemaMap
 import opasGenSupportLib as opasgenlib
 
 import opasXMLHelper as opasxmllib
+from opasArticleIDSupport import parse_issue_code, parse_volume_code
    
 # import opasDocPermissions as opasDocPerm
 
@@ -1431,9 +1432,9 @@ def parse_search_query_parameters(search=None,             # url based parameter
     if opasgenlib.not_empty(vol):
         if re.search("[\&\|\,\]]|AND|OR", vol, flags=re.I) is None:
             # single vol specified, if it contains a suffix, parse apart
-            vol, implied_issue = opasConfig.parse_volume_code(vol)
+            vol, implied_issue = parse_volume_code(vol)
             if implied_issue is not None and implied_issue is not "*":
-                implied_issue = opasConfig.parse_issue_code(issue_code=implied_issue)
+                implied_issue = parse_issue_code(issue_code=implied_issue)
                 if opasgenlib.not_empty(issue) == False:
                     issue = implied_issue
                     implied_issue = None               
@@ -1447,7 +1448,7 @@ def parse_search_query_parameters(search=None,             # url based parameter
         # issue is a number, so if a letter is supplied, convert to numeric
         if re.search("[\&\|\,\]]|AND|OR", issue, flags=re.I) is None:
             # single issue specified, if it's a code, make it a number
-            issue = opasConfig.parse_issue_code(issue_code=issue)
+            issue = parse_issue_code(issue_code=issue)
 
         if implied_issue is not None:
             issue = issue + " OR " + implied_issue
