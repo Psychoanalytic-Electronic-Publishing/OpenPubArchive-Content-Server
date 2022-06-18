@@ -5,7 +5,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2021, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0605/v1.1.8"
+__version__     = "2022.0618/v1.1.8"
 __status__      = "Beta"
 
 programNameShort = "opasDataUpdateStat"
@@ -39,7 +39,9 @@ print(
 )
 
 import sys
+sys.path.append('../libs')
 sys.path.append('../config')
+sys.path.append('../libs/configLib')
 
 UPDATE_AFTER = 2500
 
