@@ -19,14 +19,18 @@ __license__     = "Apache 2.0"
 __version__     = "2021.1228.1"
 __status__      = "Development"
 
+import sys
+sys.path.append('./solrpy')
+sys.path.append('../libs')
+sys.path.append('../config')
+
+
 import re
 import logging
 logger = logging.getLogger(__name__)
 #import time
 #from datetime import datetime
 
-import sys
-sys.path.append('./solrpy')
 # import solrpy as solr
 #from xml.sax import SAXParseException
 import lxml
@@ -54,6 +58,8 @@ count_anchors = 0
 
 import smartsearch
 import smartsearchLib
+
+# from config import msgdb
 
 ocd = opasCentralDBLib.opasCentralDB()
 pat_prefix_amps = re.compile("^\s*&& ")
@@ -1975,7 +1981,7 @@ def parse_to_query_spec(solr_query_spec: models.SolrQuerySpec = None,
     #return ret_val
 
 #-----------------------------------------------------------------------------
-def get_excerpt_from_search_result(result, documentListItem: models.DocumentListItem, ret_format="HTML", omit_abstract=False):
+def get_excerpt_from_search_result(result: dict, documentListItem: models.DocumentListItem, ret_format="HTML", omit_abstract=False):
     """
     pass in the result from a solr query and this retrieves the abstract/excerpt from the excerpt field
      which is stored based on the abstract or summary or the first page of the document.
@@ -1983,6 +1989,7 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
      Substituted for dynamic generation of excerpt 2020-02-26
     """
     # make sure basic info has been retrieved
+    import msgdb
     if documentListItem.sourceTitle is None:
         documentListItem = get_base_article_info_from_search_result(result, documentListItem)
 
@@ -1997,7 +2004,7 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
         abstract = None
     else:
         if omit_abstract:
-            art_excerpt = ocd.get_user_message(msg_code=opasConfig.ACCESS_ABSTRACT_RESTRICTED_MESSAGE)
+            art_excerpt = msgdb.get_user_message(msg_code=opasConfig.ACCESS_ABSTRACT_RESTRICTED_MESSAGE)
         
         heading = opasxmllib.get_running_head(source_title=documentListItem.sourceTitle,
                                               pub_year=documentListItem.year,
@@ -2040,7 +2047,7 @@ def get_excerpt_from_search_result(result, documentListItem: models.DocumentList
     return documentListItem
 
 #-----------------------------------------------------------------------------
-def get_base_article_info_from_search_result(result, documentListItem: models.DocumentListItem, session_info=None):
+def get_base_article_info_from_search_result(result: dict, documentListItem: models.DocumentListItem, session_info=None):
     
     if result is not None:
         try:

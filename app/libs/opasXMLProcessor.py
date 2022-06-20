@@ -79,16 +79,19 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False):
         source_info = source_row[1][0]
         # gather info needed about source
         if artInfo.src_code is not None:
-            if artInfo.art_issn is None:
+            if source_info["ISSN"] is not None:
                 xml_artinfo.attrib["ISSN"] = source_info["ISSN"]
             else:
                 if artInfo.art_issn is not None:
                     xml_artinfo.attrib["ISSN"] = artInfo.art_issn
                 else:
-                    if artInfo.art_isbn is None:
+                    if source_info["ISBN-13"] is not None:
                         xml_artinfo.attrib["ISBN"] = source_info["ISBN-13"]
                     else:
-                        xml_artinfo.attrib["ISBN"] = artInfo.art_isbn
+                        if artInfo.art_isbn is not None:
+                            xml_artinfo.attrib["ISBN"] = artInfo.art_isbn
+                        else:
+                            logger.warning(f"Source Code: {artInfo.src_code} but no ISSN or ISBN")
 
     except Exception as e:
         print (e)
@@ -176,6 +179,11 @@ def xml_update(parsed_xml, artInfo, ocd, pretty_print=False):
                                        noStartingPageException=True, 
                                        filename=artInfo.filename)
                     # need to check if it's whole, and if it works, but for now.
+                    if locator.valid == 0:
+                        if dbgVerbose:
+                            print(f"Bib ID {ref_id} does not have enough info to link. {bib_entry.vol}.{bib_entry.pgStart}")
+                        continue
+                        
                     ref.attrib["rx"] = locator.articleID()
                     search_str = f"//be[@id='{ref_id}']"
                     if dbgVerbose:

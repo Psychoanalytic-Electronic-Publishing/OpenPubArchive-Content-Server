@@ -274,6 +274,8 @@ class DocumentListItem(BaseModel):
     issueSeqNbr: str = Field(None, title="Serial Issue Sequence Number (continuous count)") 
     issueTitle: str = Field(None, title="Serial Issue Title", description="Issues may have titles, e.g., special topic")
     newSectionName: str = Field(None, title="Name of Serial Section Starting", description="The name of the section of the issue, appears for the first article of a section")
+    currSectionName: str = Field(None, title="Current Section Name", description="The name of the section of the issue this article is in")
+    #instSectionName: str = Field(None, title="Name of Section from original instance", description="The name of the section of the issue, as represented in each article instance (even repetitively)")
     pgCount: str = Field(None, title="Page Count", description="The number of pages in the document")
     pgRg: str = Field(None, title="Page Range as Published", description="The published start and end pages of the document, separated by a dash")
     pgStart: str = Field(None, title="Starting Page Number as Published", description="The published start page number of the document")

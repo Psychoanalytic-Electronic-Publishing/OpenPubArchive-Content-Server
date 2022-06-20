@@ -418,6 +418,9 @@ class GlossaryRecognitionEngine(UserDict):
         idx = -1
         for rcrow in self.matchList: # mark terms
             idx += 1
+            if rcrow[1][1] <= 3: # skip single letter markup like '(M)'. rcrow[1][0]='(m)', [1][1] = 3, [1][2] = 'M', [1][3] = 'YP0008007699320'
+                continue
+
             subStrCxt = f"{self.leftMarker}\g<0>{self.midSeparator}{idx}{self.rightMarker}"
             # Match at the start, at the end, the whole, and in the middle, delineated
             rc = rcrow[0]
@@ -448,6 +451,13 @@ class GlossaryRecognitionEngine(UserDict):
                     elif re.search(f"{self.leftMarker}[^{self.rightMarker}]*?{self.leftMarker}", nodeText2, flags=re.IGNORECASE):
                         logger.debug("Double nested impx detected. Skipping markup")
                         continue
+                    # Can skip words in tags, but in current method, if found, skips everywhere in that document. 
+                    # ...So perhaps not worth the processing time for a rare find.
+                    # ...Later, try to remove from specific locations if found?  
+                    # ...Otherwise, go back to walking the tree by tag rather than the whole file at once.
+                    #elif re.search(f"<(nfirst|nlast)[^>]*?>[^<]*?{self.leftMarker}.*?{self.rightMarker}[^<]*?<", nodeText2, flags=re.IGNORECASE):
+                        #logger.debug("impx in special tags detected. Skipping markup")
+                        #continue
                     else:
                         # sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
                         changes = True
@@ -476,20 +486,21 @@ class GlossaryRecognitionEngine(UserDict):
             except Exception as e:
                 detail = "Skipped:$%s$ " % node_text.encode("utf-8")
                 logger.warning(f"Glossary Replacement makes this section unparseable. {detail}")
+            else:
+                # done, check new_node
+                #new_node_text = opasxmllib.xml_xpath_return_xmlstringlist(reparsed_xml, "//*", default_return=None)[0]
+                new_node_text = lxml.etree.tostring(reparsed_xml, pretty_print=pretty_print, encoding="utf8").decode("utf-8")
+                len_new_node_text = len(new_node_text)
 
-        # done, check new_node
-        #new_node_text = opasxmllib.xml_xpath_return_xmlstringlist(reparsed_xml, "//*", default_return=None)[0]
-        new_node_text = lxml.etree.tostring(reparsed_xml, pretty_print=pretty_print, encoding="utf8").decode("utf-8")
-        len_new_node_text = len(new_node_text)
-        if len_new_node_text < len_orig_node_text:
-            logger.error(f"GlossaryRecognition. OrigLen:{len_orig_node_text} > TaggedLen:{len_new_node_text}.  Tagging Skipped.")
-
-            # ret_val = parsed_xml # return original parsed xml (default)
-            # ret_status = False (default)
-        else:
-            # keep it
-            ret_val = reparsed_xml # return reparsed xml with tagging
-            ret_status = True
+                if len_new_node_text < len_orig_node_text:
+                    logger.error(f"GlossaryRecognition. OrigLen:{len_orig_node_text} > TaggedLen:{len_new_node_text}.  Tagging Skipped.")
+        
+                    # ret_val = parsed_xml # return original parsed xml (default)
+                    # ret_status = False (default)
+                else:
+                    # keep it
+                    ret_val = reparsed_xml # return reparsed xml with tagging
+                    ret_status = True
                
         # change impx's of TERM1 to TERM2 -- should be in L&P only
         #count = tree.unwrapElements(ALL, elemSpec=E("impx", {"type":"TERM1"}))

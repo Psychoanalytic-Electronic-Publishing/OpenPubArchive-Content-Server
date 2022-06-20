@@ -14,6 +14,10 @@ __license__     = "Apache 2.0"
 __version__     = "2020.1118.1"
 __status__      = "Development"
 
+import sys
+sys.path.append('./solrpy')
+sys.path.append('..')
+
 import re
 import os
 import tempfile
@@ -30,8 +34,8 @@ from collections import OrderedDict
 # import datetime as dtime
 # from operator import itemgetter
 
-import sys
-sys.path.append('./solrpy')
+from config import msgdb
+
 from xml.sax import SAXParseException
 # import lxml
 
@@ -71,8 +75,6 @@ import solrpy as solr
 # logging.getLogger('pysolr').setLevel(logging.INFO)
 # sourceDB = opasCentralDBLib.SourceInfoDB()
 ocd = opasCentralDBLib.opasCentralDB()
-
-from config import msgdb
 
 pat_prefix_amps = re.compile("^\s*&& ")
 
@@ -2046,6 +2048,8 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
         logger.error(f"metadata_get_contents: {err_info.httpcode}. Query: {query} Error: {err_info.error_description}")
         
     document_item_list = []
+    prev_section_name = None
+    prev_issue = None
     for result in results.docs:
         try:     # for debugging type error
             document_id = result.get("art_id", None) # everything should have an ID
@@ -2070,6 +2074,21 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
             issue = result.get("art_iss", None)
             issue_title = result.get("art_iss_title", None)
             issue_seqnbr = result.get("art_iss_seqnbr", None)
+            listed_new_section_name = new_section_name = result.get("art_newsecnm", None)
+            if prev_section_name is not None and new_section_name is None and issue == prev_issue:
+                title_sample = opasgenlib.trimPunctAndSpaces(result["title"]).lower()
+                prev_section_sample = opasgenlib.trimPunctAndSpaces(prev_section_name).lower()
+                if title_sample not in ("correction", "editorial") and prev_section_sample != title_sample:
+                    current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(prev_section_name)
+            
+            if new_section_name is None:
+                current_section_name = new_section_name = "TopLevel"
+            else:
+                current_section_name = new_section_name = opasgenlib.trimPunctAndSpaces(new_section_name)
+                
+            #if listed_new_section_name == prev_section_name:
+                #new_section_name = None
+            
             # turned this off 2022-05-25, the PEP Client generates issue numbers/sequence numbers so don't put it in the title
             #if issue is not None:
                 #if issue_title is None:
@@ -2090,6 +2109,11 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                     embargo_toc_addon = ""
             else:
                 toc_pg_start = pgStart
+                
+            # record prior info
+            prev_section_name = new_section_name
+            prev_issue = issue
+            
         except Exception as e:
             logger.error(f"metadata_get_contents: Value prep error: {e} (query: {query}) (log params: {log_params})")
            
@@ -2100,7 +2124,8 @@ def metadata_get_contents(pep_code, #  e.g., IJP, PAQ, CPS
                                            issue = issue,
                                            issueTitle = issue_title,
                                            issueSeqNbr = issue_seqnbr, 
-                                           newSectionName = result.get("art_newsecnm", None),
+                                           newSectionName = new_section_name,
+                                           currSectionName = new_section_name,
                                            pgRg = result.get("art_pgrg", None),
                                            pgCount=pgCount, 
                                            pgStart = toc_pg_start,

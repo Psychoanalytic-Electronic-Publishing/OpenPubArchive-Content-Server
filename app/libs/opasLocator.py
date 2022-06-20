@@ -523,11 +523,11 @@ class Locator:
         """
         self.valid = 0
         try:
-            if opasgenlib.is_empty(self.jrnlCode) or self.jrnlVol is None or (opasgenlib.is_empty(self.pgStart) and opasgenlib.is_empty(self.idxNamePrefix)):
+            if opasgenlib.is_empty(self.jrnlCode) or self.jrnlVol is None or self.jrnlVol == 0 or (opasgenlib.is_empty(self.pgStart) and opasgenlib.is_empty(self.idxNamePrefix)):
                 if self.jrnlVol is not None:
-                    errStr = "Incomplete ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol.volID(), self.pgStart)
+                    errStr = "Incomplete/Invalid ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol.volID(), self.pgStart)
                 else:
-                    errStr = "Incomplete ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol, self.pgStart)
+                    errStr = "Incomplete/Invalid ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol, self.pgStart)
     
                 logger.warning("Validating ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol.volID(), self.pgStart))
     

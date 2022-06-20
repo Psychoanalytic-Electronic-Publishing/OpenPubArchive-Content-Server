@@ -1138,7 +1138,7 @@ def convertStringToArabic(numStr, stripChars=0):
                 try:
                     num = int(numStr)
                 except Exception as e:
-                    raise ValueError("Cannot convert: %s" % numStr)
+                    ValueError("Invalid Roman number, and it's not integer. Cannot convert: %s" % numStr)
 
         else:
             # try not causing an exception on this.  If there's no numeric, then return None.
@@ -1147,11 +1147,11 @@ def convertStringToArabic(numStr, stripChars=0):
         try:
             num = int(numStr)
         except Exception as e:
-            raise ValueError(e)
+            ValueError(e)
 
     if num is None:
         num = 0
-        raise ValueError("Cannot convert: %s" % numStr)
+        ValueError("Cannot convert: %s" % numStr)
 
     return num
 

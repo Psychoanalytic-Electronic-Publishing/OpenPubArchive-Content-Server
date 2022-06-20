@@ -368,7 +368,7 @@ class opasCentralDB(object):
 
     def get_journal_vols(self, source_code=None):
         """
-        Load the journal year, vol, and doi data
+        Load the journal year, vol # Notand doi data
         """
         fname = "get_journal_vols"
         ret_val = {}

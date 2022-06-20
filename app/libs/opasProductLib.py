@@ -37,9 +37,9 @@ class SourceInfoDB(object):
         Returns a list of all journalcodes
         Note: Test results need updating whenever new journal codes are included.
 
-            >>> jrnlData = PEPJournalData()
-            >>> jrnlData.journalCodes()
-            ['PAQ', 'ANIJP-IT', 'FA', 'FD', 'PAH', 'PPSY', 'CPS', 'MPSA', 'SPR', 'RIP', 'ANIJP-DE', 'AOP', 'NP', 'BAFC', 'GW', 'JEP', 'ANRP', 'JCPTX', 'JAA', 'RPSA', 'IJPSP', 'SE', 'PPTX', 'IFP', 'BAP', 'PCS', 'PCAS', JOAP', 'PCT', 'AIM', 'JCP', 'ANIJP-FR', 'SGS', 'JICAP', 'GAP', 'IRP', 'PD', 'PDPSY', 'PI', 'BIP', 'IJAPS', 'AJP', 'RBP', 'CJP', 'PPERSP', 'IJP', 'APA', 'PSC', 'PSAR', 'PSP', 'PSW']
+            >>> jrnlData = SourceInfoDB()
+            >>> jrnlData.journalCodes()[:25]
+            ['ADPSA', 'AFCVS', 'AIM', 'AJP', 'AJRPP', 'ANIJP-CHI', 'ANIJP-DE', 'ANIJP-EL', 'ANIJP-FR', 'ANIJP-IT', 'ANIJP-TR', 'ANRP', 'AOP', 'APA', 'APM', 'APS', 'BAFC', 'BAP', 'BIP', 'BJP', 'BPSIVS', 'CFP', 'CJP', 'CPS', 'DR']
         """
         retVal = [*self.sourceData]
         return retVal
@@ -48,10 +48,9 @@ class SourceInfoDB(object):
         """
         Returns a list of tuples with vol, year  for a journal code
 
-            >>> jrnlData = PEPJournalData()
-            >>> jrnlData.volyears("PPTX")
-            [(1, 1985), (2, 1986), (3, 1987), (3, 1988), (4, 1989), (5, 1990), (5, 1991), (6, 1992), (7, 1993), (8, 1994), (9, 1995), (10, 1996), (11, 1997), (12, 1998), (13, 1999), (14, 2000), (15, 2001), (16, 2002), (17, 2003), (18, 2004), (19, 2005), (20, 2006), (21, 2007), (22, 2008), (23, 2009), (24, 2010), (25, 2011), (26, 2012), (27, 2013), (28, 2014), (29, 2015), (30, 2016), (31, 2017), (32, 2018), (33, 2019)]
-
+            >>> jrnlData = SourceInfoDB()
+            >>> jrnlData.volyears("PPTX")[:26]
+            [(1, 1985), (2, 1986), (3, 1987), (3, 1988), (4, 1989), (5, 1990), (5, 1991), (6, 1992), (7, 1993), (8, 1994), (9, 1995), (10, 1996), (11, 1997), (12, 1998), (13, 1999), (14, 2000), (15, 2001), (16, 2002), (17, 2003), (18, 2004), (19, 2005), (20, 2006), (21, 2007), (22, 2008), (23, 2009), (24, 2010)]
         """
         retVal = []
         source_code = source_code.upper()
@@ -74,10 +73,11 @@ if __name__ == "__main__":
     import doctest
 
     j = SourceInfoDB().journalCodes()
-    for n in j:
-        print (n)
+    #for n in j:
+        #print (n)
     print (f"{len(j)} journals")
     doctest.testmod()
+    print ("All Tests Complete")
     sys.exit()
 
 

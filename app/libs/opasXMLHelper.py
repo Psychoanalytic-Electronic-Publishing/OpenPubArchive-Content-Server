@@ -332,7 +332,7 @@ g_transformer.set_transformer(opasConfig.TRANSFORMER_XMLTOHTML_EXCERPT, opasConf
 g_transformer.set_transformer(opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT, opasConfig.XSLT_XMLTOHTML_GLOSSARY_EXCERPT)
 #g_transformer.set_transformer("testtransform", "testtransform.xslt")
 
-ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n")  # TODO - Move to module globals to optimize
+ENCODER_MATCHER = re.compile("\<\?xml\s+version=[\'\"]1.0[\'\"]\s+encoding=[\'\"](UTF-?8|ISO-?8859-?1?)[\'\"]\s*\?\>\n", flags=re.IGNORECASE)  # TODO - Move to module globals to optimize
 
 # -------------------------------------------------------------------------------------------------------
 
@@ -502,6 +502,10 @@ def get_html_citeas(authors_bib_style, art_year, art_title, art_pep_sourcetitle_
     ret_val = f"""<p class="citeas"><span class="authors">{authors_bib_style}</span> (<span class="year">{art_year}</span>) <span class="title">{art_title}</span>. <span class="sourcetitle">{art_pep_sourcetitle_full}</span> <span class="vol">{art_vol}</span>:<span class="pgrg">{art_pgrg}</span></p>"""
     return ret_val
 
+def xmlstr_remove_utf8_encoding(xmlstr):
+    ret_val = re.sub("encoding=\'UTF\-8\'", "", xmlstr, flags=re.IGNORECASE)
+    return ret_val # xmlstr without encoding declaration
+    
 def xmlstr_to_etree(xmlstr):
     """
     Convenience function - take an xmlstr, in bytes or string or as etree, and return root of an etree
@@ -514,7 +518,8 @@ def xmlstr_to_etree(xmlstr):
             logger.error(f"Error parsing Bytes xmlstr: {e}")
     elif isinstance(xmlstr, str):
         try:
-            xmlstr = xmlstr.replace("encoding=\'UTF-8\'", "")
+            #xmlstr = xmlstr.replace("encoding=\'UTF-8\'", "")
+            xmlstr = remove_encoding_string(xmlstr)
             root = etree.parse(StringIO(xmlstr))
         except Exception as e:
             logger.error(f"Error parsing xmlstr: {e}")

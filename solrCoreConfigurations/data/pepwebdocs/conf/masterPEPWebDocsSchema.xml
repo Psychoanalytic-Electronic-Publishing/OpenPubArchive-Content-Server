@@ -281,8 +281,12 @@
   <field name="art_doi" type="string_ci" indexed="true" stored="true" multiValued="false"/>
   <!--name for this section of an issue, e.g., section name in a issue TOC-->
   <field name="art_newsecnm" type="text_simple" indexed="true" stored="true" multiValued="false"/>
-  <field name="art_newseclevel" type="pint" indexed="false" stored="false" multiValued="false" docValues="true"/> # added 12/14/2021
-    
+  <field name="art_newseclevel" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/> # added 12/14/2021
+  <!--for cases where each instance lists the section name (even repetitively from previous), record it here, e.g., section name in a issue TOC-->
+  <!--We don't need this yet-->
+  <!--<field name="art_instsecnm" type="text_simple" indexed="true" stored="true" multiValued="false"/> # added 06/20/2022-->
+  <!--<field name="art_instseclevel" type="pint" indexed="false" stored="true" multiValued="false" docValues="true"/> # added 06/20/2022-->
+  
   <!-- extra metadata for books -->
   <field name="bk_title_xml" type="text_simple" indexed="true" stored="true" multiValued="false"/>
   <field name="bk_title_str" type="string_lc" indexed="true" uninvertible="true" stored="false" multiValued="false"/>  # for sorting

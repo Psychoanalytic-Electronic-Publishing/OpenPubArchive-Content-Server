@@ -119,9 +119,9 @@ class TestXMLProcessing(unittest.TestCase):
         
         """
         import shlex, subprocess
-        pycmd = r"e:\\usr3\\GitHub\\openpubarchive\\app\\env\\Scripts\\python.exe E:\\usr3\\GitHub\\openpubarchive\\app\\opasDataLoader2\\opasDataLoader.py "
+        pycmd = r"e:\\usr3\\GitHub\\openpubarchive\\app\\env\\Scripts\\python.exe E:\\usr3\\GitHub\\openpubarchive\\app\\opasDataLoader\\opasDataLoader.py "
         data_file1 = r"--key CFP.012.0022A"
-        data_file2 = r"CFP.012.0022A(bKBD3).xml"
+        # data_file2 = r"CFP.012.0022A(bKBD3).xml"
         data_file3 = r"--sub _PEPCurrent\\CFP\\012.2022"
         
         command_lines = [
@@ -141,7 +141,7 @@ class TestXMLProcessing(unittest.TestCase):
             test_text = command_line_tuple[1]
             command_line = command_line_tuple[2]
             args = shlex.split(command_line)
-            print(f"Test {test_counter}. RUN: opasDataLoader2 {args[2:]}")
+            print(f"Test {test_counter}. RUN: opasDataLoader {args[2:]}")
             p = subprocess.Popen(args, stdout=subprocess.PIPE, shell=True) # Success!
             out, err = p.communicate()
             out_str = str(out, 'utf-8')

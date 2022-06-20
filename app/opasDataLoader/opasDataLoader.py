@@ -253,14 +253,20 @@ def main():
             print("Messaging verbose: ", options.display_verbose)
             print("Input data Root: ", start_folder)
             print("Input data Subfolder: ", options.subFolder)
-            if options.processxml:
-                print (f"Input XML of build {options.input_build_pattern} will be processed into {options.output_build} and loaded into Solr DB.")
-            else:
+            if not options.processxml:
                 print(f"Input XML of build {options.input_build_pattern} will be loaded without processing: ")
                 
-            if options.write_processed:
-                print(f"Processed build {options.output_build} will be saved to file.")
-            
+            if options.no_load:
+                # written but not loaded
+                print(f"Processed build {options.output_build} will be saved to an XML file but will not be loaded to the databases.")
+                options.write_processed = True
+            elif options.write_processed:
+                # loaded and written
+                print(f"Processed build {options.output_build} will be saved to an XML file and loaded to the databases.")
+            elif options.processxml:
+                # loaded but not written
+                print (f"Input XML of build {options.input_build_pattern} will be processed into {options.output_build} and loaded into the databases (but not saved to an XML file.)")
+
             print("Reset Core Data: ", options.resetCoreData)
             if options.forceRebuildAllFiles == True:
                 msg = "Forced Rebuild - All files added, regardless of whether they are the same as in Solr."
@@ -517,7 +523,7 @@ def main():
                     # print (impx_count, fileXMLContents[500:2500])
     
                     # write output file
-                    if options.write_processed:
+                    if options.write_processed or options.no_load:
                         #fname = f"{artID}(bEXP_TEST).xml"  # *** TBD *** one file for now.
                         fname = str(n.filespec)
                         fname = re.sub("\(b.*\)", options.output_build, fname)
@@ -533,6 +539,8 @@ def main():
                         #with open(fname, 'w', encoding="utf8") as fo:
                             #fo.write( f'<?xml version="1.0" encoding="UTF-8"?>\n')
                             #fo.write(file_text)
+                        if options.no_load:
+                            continue # next document -- no need to do anything else for this doc
 
                     # resave common document (article) field values into artInfo instance for both databases
                     artInfo = opasSolrLoadSupport.ArticleInfo(sourceDB.sourceData, parsed_xml, artID, logger)
@@ -801,8 +809,10 @@ if __name__ == "__main__":
     parser.add_option("--whatsnewfile", dest="whatsnewfile", default=None,
                       help="File name to force the file and path rather than a generated name for the log of files added in the last n days.")
     # New OpasLoader2 Options
-    parser.add_option("--writeprocessed", action="store_true", dest="write_processed", default=False,
+    parser.add_option("-w", "--writexml", "--writeprocessed", action="store_true", dest="write_processed", default=False,
                       help="Write the processed data to files, using the output build (e.g., (bEXP_ARCH1).")
+    parser.add_option("--noload", action="store_true", dest="no_load", default=False,
+                      help="for use with option writeprocessed, don't load Solr...just process.")
     parser.add_option("--prettyprint", action="store_true", dest="pretty_printed", default=True,
                       help="Pretty format the XML.")
     parser.add_option("--processxml", action="store_true", dest="processxml", default=False,

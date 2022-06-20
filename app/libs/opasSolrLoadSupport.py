@@ -397,6 +397,9 @@ class ArticleInfo(object):
             #  look in newer, tagged, data
             self.start_sectname = opasxmllib.xml_xpath_return_textsingleton(pepxml, '//artinfo/artsectinfo/secttitle/node()', default_return=None)
         
+        if self.start_sectname is not None:
+            self.start_sectname = opasgenlib.trimPunctAndSpaces(self.start_sectname)
+        
         self.art_pgrg = opasxmllib.xml_get_subelement_textsingleton(artInfoNode, "artpgrg", default_return=None)  # note: getSingleSubnodeText(pepxml, "artpgrg")
         self.art_pgstart, self.art_pgend = opasgenlib.pgrg_splitter(self.art_pgrg)
 
@@ -1593,11 +1596,7 @@ def add_to_tracker_table(ocd, art_id, verbose=None):
 #--------------------------------------------------------------------------------
 def check_if_start_of_section(ocd, art_id, fname=None):
     """
-    Clean out any records that aren't in articles.
 
-    >>> PEPStat = PEPStats()
-    >>> PEPStat.garbageCollectStats()
-    True
     """
     ret_val = False
     sql = f"select * from vw_article_firstsectnames where art_id='{art_id}'"
@@ -1622,7 +1621,7 @@ def check_if_start_of_section(ocd, art_id, fname=None):
                 except Exception as e:
                     print (f"Error: {e}")
         else:
-            logger.error("Can't load message table.  ocd.db is None.")
+            logger.error("Can't load table.  ocd.db is None.")
             
         ocd.close_connection (caller_name=fname)
         

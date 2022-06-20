@@ -1800,132 +1800,132 @@ class PEPJournalData:
 
 
     #--------------------------------------------------------------------------------
-    def getSEVol(self, refText, PYXTree=None, noTrace=False):
-        """
-        See if this is SE, and if so, return the volume and page number, otherwise return
-        None.
+    #def getSEVol(self, refText, PYXTree=None, noTrace=False):
+        #"""
+        #See if this is SE, and if so, return the volume and page number, otherwise return
+        #None.
 
-        refText should be TEXT with XML markup.
+        #refText should be TEXT with XML markup.
 
-        If PYXTree is not none, it should be a SciHLPyxie tree and it should already be positioned
-            at the reference in question.
+        #If PYXTree is not none, it should be a SciHLPyxie tree and it should already be positioned
+            #at the reference in question.
 
-        >>> jrnlData = PEPJournalData()
-        >>> testData = 'FREUD, S. 1898a Sexuality in the Aetiology of the Neuroses, S.E. 3, 261'
-        >>> jrnlData.getSEVol(testData)
-        (3, 'P0261')
-        >>> testData = 'FREUD, S. 1898a Sexuality in the Aetiology of the Neuroses, SE 3, 261'
-        >>> jrnlData.getSEVol(testData)
+        #>>> jrnlData = PEPJournalData()
+        #>>> testData = 'FREUD, S. 1898a Sexuality in the Aetiology of the Neuroses, S.E. 3, 261'
+        #>>> jrnlData.getSEVol(testData)
+        #(3, 'P0261')
+        #>>> testData = 'FREUD, S. 1898a Sexuality in the Aetiology of the Neuroses, SE 3, 261'
+        #>>> jrnlData.getSEVol(testData)
 
-        >>> testData = 'Freud, S. 1925 Negation Standard Edition XIX     p. 235-243'
-        >>> jrnlData.getSEVol(testData)
-        (19, 'P0235')
-        >>> testData = '''<be lang="en" rx="SE.011.0177A" id="B014" class="na">Freud, S. (1912). On the universal tendency to debasement in the sphere of love. <i>S.E.</i> <i>11</i>.</be>'''
-        >>> jrnlData.getSEVol(testData)
-        (11, None)
-        >>> testData = '''<be id = "B019"><a><l>Freud</l>, S.</a> (<y>1905</y>). <t>Three Essays on the Theory of Sexuality</t>. <bst>S.E.</bst> <v>7</v>.</be>'''
-        >>> jrnlData.getSEVol(testData)
-        (5, None)
+        #>>> testData = 'Freud, S. 1925 Negation Standard Edition XIX     p. 235-243'
+        #>>> jrnlData.getSEVol(testData)
+        #(19, 'P0235')
+        #>>> testData = '''<be lang="en" rx="SE.011.0177A" id="B014" class="na">Freud, S. (1912). On the universal tendency to debasement in the sphere of love. <i>S.E.</i> <i>11</i>.</be>'''
+        #>>> jrnlData.getSEVol(testData)
+        #(11, None)
+        #>>> testData = '''<be id = "B019"><a><l>Freud</l>, S.</a> (<y>1905</y>). <t>Three Essays on the Theory of Sexuality</t>. <bst>S.E.</bst> <v>7</v>.</be>'''
+        #>>> jrnlData.getSEVol(testData)
+        #(5, None)
 
-        """
-        #print "MatchSE checking: ", refText
+        #"""
+        ##print "MatchSE checking: ", refText
 
-        pvol = None
-        ppp = None
-        psrc = None
-        ret_val = None
-        vol = None
-        pg = None
-        found = True
+        #pvol = None
+        #ppp = None
+        #psrc = None
+        #ret_val = None
+        #vol = None
+        #pg = None
+        #found = True
 
-        matchSE = self.matchSEtoReference(refText, PYXTree)
-        if matchSE == None:
-            # return none, don't go on!
-            #print "Not SE", refText, PYXTree
-            return ret_val
-        else:
-            SEName, restRef = matchSE
-            #print "Rest of Reference: ", restRef
-            #print "Input Text: ", refText
-            #print "Input Tree: ", type(PYXTree), PYXTree
+        #matchSE = self.matchSEtoReference(refText, PYXTree)
+        #if matchSE == None:
+            ## return none, don't go on!
+            ##print "Not SE", refText, PYXTree
+            #return ret_val
+        #else:
+            #SEName, restRef = matchSE
+            ##print "Rest of Reference: ", restRef
+            ##print "Input Text: ", refText
+            ##print "Input Tree: ", type(PYXTree), PYXTree
 
-        # Ok, we have SE.  What is the volume, page!
+        ## Ok, we have SE.  What is the volume, page!
 
-        if PYXTree != None and (PYXTree.getElements(SUB, E("v"))!=[]):
-            elem = PYXTree.CurPos.tag
-            # get vol, but must be direct child of current element.
-            vol = PYXTree.getElementTextSingleton(SUB, E('v'), parentSpec=E(elem))
-            #print "VOL0: ", vol
-            vol = processVol(vol)
-            pg = PYXTree.getElementTextSingleton(SUB, E('pp'), parentSpec=E(elem))
-            pg, vol = processPage(pg, vol)
-            ret_val = (vol, pg)  # set this anyway, saying it IS SE but no vol or page found
-            #if gDbg2: print "Found SE, Vol, Page! (xml): ", vol, pg
+        #if PYXTree != None and (PYXTree.getElements(SUB, E("v"))!=[]):
+            #elem = PYXTree.CurPos.tag
+            ## get vol, but must be direct child of current element.
+            #vol = PYXTree.getElementTextSingleton(SUB, E('v'), parentSpec=E(elem))
+            ##print "VOL0: ", vol
+            #vol = processVol(vol)
+            #pg = PYXTree.getElementTextSingleton(SUB, E('pp'), parentSpec=E(elem))
+            #pg, vol = processPage(pg, vol)
+            #ret_val = (vol, pg)  # set this anyway, saying it IS SE but no vol or page found
+            ##if gDbg2: print "Found SE, Vol, Page! (xml): ", vol, pg
 
-        else: # This is unmarked SE.  Find volume data
-            # look for volume and page
-            if gDbg1 and noTrace==False:
-                print("\t",80*"^")
-                #print "Searching for SE: ", refText
+        #else: # This is unmarked SE.  Find volume data
+            ## look for volume and page
+            #if gDbg1 and noTrace==False:
+                #print("\t",80*"^")
+                ##print "Searching for SE: ", refText
 
-            m = self.rgxSEVolPageOnly.search(refText)
-            if m != None:
-                if gDbg1: print("rgxSEVolPageOnly!", m.group("bvol"), m.group("bpgs"))
-                vol = m.group("bvol")
-                #print "VOL1: ", vol
-                #vol = re.split("[,/-]|\&amp;", vol)[0]
-                vol = processVol(vol)
-                pg = m.group("bpgs")
-                pg, vol = processPage(pg, vol)
-            else:
-                #print "Searching for vol using: ", self.rgxSEVol.pattern
-                m = self.rgxSEVol.search(refText)
-                if m != None:
-                    if gDbg1: print("rgxSEVolMatch!", m.group("extra"), m.group("bvol"), m.group("bpgs"))
-                    vol = m.group("bvol")
-                    #print "VOL2: ", vol
-                    #vol = re.split("[,/-]|\&amp;", vol)[0]
-                    vol = processVol(vol)
-                    pg = m.group("bpgs")
-                    pg, vol = processPage(pg, vol)
-                else:
-                    if restRef == None:
-                        restRef = refText
-                    #print "Searching restRef: ", restRef
-                    m = self.rgxSEVol3.search(restRef)
-                    if gDbg1: print("Warning - Searching for Vol # alone in italics out of desperation.")
-                    if m != None:
-                        if gDbg1: print("rgxSEVolMatch3!", m.groups())
-                        vol = m.group("bvol")
-                        vol = processVol(vol)
-                    else:
-                        m = self.rgxSEVol2.search(restRef)
-                        if gDbg1: print("Warning - Searching Vol # alone out of desperation.")
-                        if m != None:
-                            if gDbg1: print("rgxSEVolMatch2!", m.groups())
-                            vol = m.group("bvol")
-                            vol = processVol(vol)
-                            pg = m.group("bpgs")
-                            pg, vol = processPage(pg, vol)
-                        else: # try vol, ANYWHERE (not just after the journal
-                            m = self.rgxSEVol2.search(refText)
-                            if gDbg1: print("Warning - Searching Vol only, in all of Ref (4).")
-                            if m != None:
-                                if gDbg1: print("rgxSEVolMatch4!", m.groups())
-                                vol = m.group("bvol")
-                                vol = processVol(vol)
-                                pg = m.group("bpgs")
-                                pg, vol = processPage(pg, vol)
-                            else:
-                                vol = 1     # default volume (for refs where it's just the whole std edition cited
-            if int(opasgenlib.convRomanToArabic(vol)) > 0:
-                ret_val = (vol, pg)  # set this anyway, saying it IS SE but no vol or page found
-            else:
-                ret_val = None
+            #m = self.rgxSEVolPageOnly.search(refText)
+            #if m != None:
+                #if gDbg1: print("rgxSEVolPageOnly!", m.group("bvol"), m.group("bpgs"))
+                #vol = m.group("bvol")
+                ##print "VOL1: ", vol
+                ##vol = re.split("[,/-]|\&amp;", vol)[0]
+                #vol = processVol(vol)
+                #pg = m.group("bpgs")
+                #pg, vol = processPage(pg, vol)
+            #else:
+                ##print "Searching for vol using: ", self.rgxSEVol.pattern
+                #m = self.rgxSEVol.search(refText)
+                #if m != None:
+                    #if gDbg1: print("rgxSEVolMatch!", m.group("extra"), m.group("bvol"), m.group("bpgs"))
+                    #vol = m.group("bvol")
+                    ##print "VOL2: ", vol
+                    ##vol = re.split("[,/-]|\&amp;", vol)[0]
+                    #vol = processVol(vol)
+                    #pg = m.group("bpgs")
+                    #pg, vol = processPage(pg, vol)
+                #else:
+                    #if restRef == None:
+                        #restRef = refText
+                    ##print "Searching restRef: ", restRef
+                    #m = self.rgxSEVol3.search(restRef)
+                    #if gDbg1: print("Warning - Searching for Vol # alone in italics out of desperation.")
+                    #if m != None:
+                        #if gDbg1: print("rgxSEVolMatch3!", m.groups())
+                        #vol = m.group("bvol")
+                        #vol = processVol(vol)
+                    #else:
+                        #m = self.rgxSEVol2.search(restRef)
+                        #if gDbg1: print("Warning - Searching Vol # alone out of desperation.")
+                        #if m != None:
+                            #if gDbg1: print("rgxSEVolMatch2!", m.groups())
+                            #vol = m.group("bvol")
+                            #vol = processVol(vol)
+                            #pg = m.group("bpgs")
+                            #pg, vol = processPage(pg, vol)
+                        #else: # try vol, ANYWHERE (not just after the journal
+                            #m = self.rgxSEVol2.search(refText)
+                            #if gDbg1: print("Warning - Searching Vol only, in all of Ref (4).")
+                            #if m != None:
+                                #if gDbg1: print("rgxSEVolMatch4!", m.groups())
+                                #vol = m.group("bvol")
+                                #vol = processVol(vol)
+                                #pg = m.group("bpgs")
+                                #pg, vol = processPage(pg, vol)
+                            #else:
+                                #vol = 1     # default volume (for refs where it's just the whole std edition cited
+            #if int(opasgenlib.convRomanToArabic(vol)) > 0:
+                #ret_val = (vol, pg)  # set this anyway, saying it IS SE but no vol or page found
+            #else:
+                #ret_val = None
 
-        if gDbg1: print("Found SE, Vol, Page!: ", vol, pg)
+        #if gDbg1: print("Found SE, Vol, Page!: ", vol, pg)
 
-        return ret_val
+        #return ret_val
 
     #--------------------------------------------------------------------------------
     def getVol(self, jrnlCode, jrnlYear):
@@ -1987,38 +1987,7 @@ class PEPJournalData:
         #print "CurrVol, type: ", ret_val, type(ret_val)
         return ret_val, ret_valList
 
-
-    #--------------------------------------------------------------------------------
-    def isPEPSourceCode(self, sourceCode):
-        """
-        Return 1 if this is an official PEP publication
-        0 if it is not.
-        """
-
-        jrnl = self.jrnlAbbr.get(sourceCode, None)
-        if jrnl!=None:
-            ret_val = 1
-        else:
-            ret_val = 0
-        return ret_val
-
-    #--------------------------------------------------------------------------------
-    def getPEPSourceAbbr(self, sourceCode):
-        """
-        Return the official PEP source title for this code.
-        """
-        ret_val = self.jrnlAbbr.get(sourceCode)
-        return ret_val
-
-    #--------------------------------------------------------------------------------
-    def getJournalFull(self, sourceCode):
-        """
-        Return the official PEP source title for this code.
-        """
-        ret_val = self.jrnlFull.get(sourceCode)
-        return ret_val
-
-    #--------------------------------------------------------------------------------
+     #--------------------------------------------------------------------------------
     def getPEPJournalCode(self, strText, exactText = False):
         """
         Given a full journal name, as it might be "cited", returns a tuple with
@@ -2377,99 +2346,99 @@ class PEPJournalData:
         return ret_val
 
     #--------------------------------------------------------------------------------
-    def matchSEtoReference(self, strRef, refPYX=None):
-        """
-        Returns either None if not SE, or the SE journal found
+    #def matchSEtoReference(self, strRef, refPYX=None):
+        #"""
+        #Returns either None if not SE, or the SE journal found
 
-        NOTE: This currently will not match the unpunctuated abbr SE in "text" (it will in the <j> tag.
+        #NOTE: This currently will not match the unpunctuated abbr SE in "text" (it will in the <j> tag.
 
-        """
-        jrnl = None
-        rest = None
-        exactText = False
-        elem = ""
-        if refPYX!=None:
-            found = True
-            elem = refPYX.CurPos.tag
-            jrnl = refPYX.getElementTextSingleton(SUB, E('j|bst'), parentSpec=E(elem))
-            #print "jrnl/src: ", jrnl
-            # try getting the text, minus any sub-bincs
-            fullRef = refPYX.getCurrElementText(notIncludingTagRegex=("binc"))
-        elif strRef != None:
-            fullRef = strRef
-        else:
-            raise "No data supplied in reference."
+        #"""
+        #jrnl = None
+        #rest = None
+        #exactText = False
+        #elem = ""
+        #if refPYX!=None:
+            #found = True
+            #elem = refPYX.CurPos.tag
+            #jrnl = refPYX.getElementTextSingleton(SUB, E('j|bst'), parentSpec=E(elem))
+            ##print "jrnl/src: ", jrnl
+            ## try getting the text, minus any sub-bincs
+            #fullRef = refPYX.getCurrElementText(notIncludingTagRegex=("binc"))
+        #elif strRef != None:
+            #fullRef = strRef
+        #else:
+            #raise "No data supplied in reference."
 
-        # now, if not already resolved...
-        if not opasgenlib.is_empty(jrnl):
-            #print "J/BST present: ", jrnl
-            m = self.rgxSEPat.match(jrnl)
-            if m == None:
-                #print "trying pattern 2 on jrnl"
-                m = self.rgxSEPat2.match(jrnl)
+        ## now, if not already resolved...
+        #if not opasgenlib.is_empty(jrnl):
+            ##print "J/BST present: ", jrnl
+            #m = self.rgxSEPat.match(jrnl)
+            #if m == None:
+                ##print "trying pattern 2 on jrnl"
+                #m = self.rgxSEPat2.match(jrnl)
 
-            if m != None:
-                # journal matched, it's SE
-                rest = refEntry.getElementTextSingleton(SUB, E('v'), parentSpec=E(elem))
-                ret_val = (jrnl, rest)
-            else:
-                # Not SE
-                ret_val = None
-        else:
-            # not resolved, do by search
-            if gDbg1: print("Checking SE FullRef: ", fullRef)
-            m = self.rgxSEPat.search(fullRef)
+            #if m != None:
+                ## journal matched, it's SE
+                #rest = refEntry.getElementTextSingleton(SUB, E('v'), parentSpec=E(elem))
+                #ret_val = (jrnl, rest)
+            #else:
+                ## Not SE
+                #ret_val = None
+        #else:
+            ## not resolved, do by search
+            #if gDbg1: print("Checking SE FullRef: ", fullRef)
+            #m = self.rgxSEPat.search(fullRef)
 
-            if m!=None:
-                jrnl = m.group("jrnlname")
-                try:
-                    rest = fullRef[m.end("jrnlname"):]
-                except:
-                    rest = ""
-                    if gDbg1: print("Nothing else after name", strRef)
-            else:
-                jrnl = None
+            #if m!=None:
+                #jrnl = m.group("jrnlname")
+                #try:
+                    #rest = fullRef[m.end("jrnlname"):]
+                #except:
+                    #rest = ""
+                    #if gDbg1: print("Nothing else after name", strRef)
+            #else:
+                #jrnl = None
 
-            if jrnl != None:
-                ret_val = (jrnl, rest)
-                #print "SE Journal found"
-            else:
-                ret_val = None
+            #if jrnl != None:
+                #ret_val = (jrnl, rest)
+                ##print "SE Journal found"
+            #else:
+                #ret_val = None
 
-        return ret_val
+        #return ret_val
 
-    #--------------------------------------------------------------------------------
-    def years(self, jrnlCode):
-        """
-        Returns a list of all years for a journal code
+    ##--------------------------------------------------------------------------------
+    #def years(self, jrnlCode):
+        #"""
+        #Returns a list of all years for a journal code
 
-            >>> jrnlData = PEPJournalData()
-            >>> jrnlData.years("pptx")
-            [1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]
-        """
-        ret_val = []
-        jrnlCode = jrnlCode.upper()
-        try:
-            for year, vol in list(self.all[jrnlCode].items()):
-                ret_val.append(year)
-        except:
-            print("Journal Code not found: ", jrnlCode)
+            #>>> jrnlData = PEPJournalData()
+            #>>> jrnlData.years("pptx")
+            #[1985, 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]
+        #"""
+        #ret_val = []
+        #jrnlCode = jrnlCode.upper()
+        #try:
+            #for year, vol in list(self.all[jrnlCode].items()):
+                #ret_val.append(year)
+        #except:
+            #print("Journal Code not found: ", jrnlCode)
 
-        return ret_val
+        #return ret_val
 
-    #--------------------------------------------------------------------------------
-    def journalCodes(self):
-        """
-        Returns a list of all journalcodes
-        Note: Test results need updating whenever new journal codes are included.
+    ##--------------------------------------------------------------------------------
+    #def journalCodes(self):
+        #"""
+        #Returns a list of all journalcodes
+        #Note: Test results need updating whenever new journal codes are included.
 
-            >>> jrnlData = PEPJournalData()
-            >>> jrnlData.journalCodes()
-            ['PAQ', 'ANIJP-IT', 'FA', 'FD', 'PAH', 'PPSY', 'CPS', 'MPSA', 'SPR', 'RIP', 'ANIJP-DE', 'AOP', 'NP', 'BAFC', 'GW', 'JEP', 'ANRP', 'JCPTX', 'JAA', 'RPSA', 'IJPSP', 'SE', 'PPTX', 'IFP', 'BAP', 'PCS', 'PCAS', JOAP', 'PCT', 'AIM', 'JCP', 'ANIJP-FR', 'SGS', 'JICAP', 'GAP', 'IRP', 'PD', 'PDPSY', 'PI', 'BIP', 'IJAPS', 'AJP', 'RBP', 'CJP', 'PPERSP', 'IJP', 'APA', 'PSC', 'PSAR', 'PSP', 'PSW']
-        """
-        ret_val = list(self.all.keys())
-        ret_val.sort()
-        return ret_val
+            #>>> jrnlData = PEPJournalData()
+            #>>> jrnlData.journalCodes()
+            #['PAQ', 'ANIJP-IT', 'FA', 'FD', 'PAH', 'PPSY', 'CPS', 'MPSA', 'SPR', 'RIP', 'ANIJP-DE', 'AOP', 'NP', 'BAFC', 'GW', 'JEP', 'ANRP', 'JCPTX', 'JAA', 'RPSA', 'IJPSP', 'SE', 'PPTX', 'IFP', 'BAP', 'PCS', 'PCAS', JOAP', 'PCT', 'AIM', 'JCP', 'ANIJP-FR', 'SGS', 'JICAP', 'GAP', 'IRP', 'PD', 'PDPSY', 'PI', 'BIP', 'IJAPS', 'AJP', 'RBP', 'CJP', 'PPERSP', 'IJP', 'APA', 'PSC', 'PSAR', 'PSP', 'PSW']
+        #"""
+        #ret_val = list(self.all.keys())
+        #ret_val.sort()
+        #return ret_val
 
     #--------------------------------------------------------------------------------
     def vols(self, jrnlCode):

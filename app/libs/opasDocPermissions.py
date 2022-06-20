@@ -9,6 +9,11 @@
 #     - column 'accessClassificaiton' sets a journal as archive or future. (current is not at the journal level)
 # 
 
+import sys
+sys.path.append("..") # Adds higher directory to python modules path.
+sys.path.append('../libs')
+sys.path.append('../config')
+
 import requests
 import datetime
 from datetime import datetime as dt # to avoid python's confusion with datetime.timedelta
@@ -20,13 +25,12 @@ import logging
 import localsecrets
 # import urllib.parse
 # import json
-import sys
 from fastapi import HTTPException
 from errorMessages import *
 from opasConfig import USER_NOT_LOGGED_IN_NAME
 
-sys.path.append("..") # Adds higher directory to python modules path.
 from config.opasConfig import OPASSESSIONID
+from config import msgdb
 
 logger = logging.getLogger(__name__)
 # for this module
@@ -52,7 +56,6 @@ base = PADS_BASE_URL
 # base = "http://development.org:9300"
 import opasCentralDBLib
 ocd = opasCentralDBLib.opasCentralDB()
-from config import msgdb
 
 def user_logged_in_per_header(request, session_id=None, caller_name="unknown") -> bool:
     """
