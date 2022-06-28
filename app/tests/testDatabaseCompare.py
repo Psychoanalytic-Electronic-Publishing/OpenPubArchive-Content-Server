@@ -23,11 +23,11 @@ class TestDoDatabaseCompare(unittest.TestCase):
             print ("Table differences found!")
         assert(ret_val == 0)
         
-    def test_2(self):
+    def test_2_active_product_comparison(self):
         ret_val = compareTables.compare_critical_columns("api_productbase","basecode", "active")
         assert(ret_val == 0)
 
-    def test_2a1(self):
+    def test_2a1_Critical_column_lists_common(self):
         col_list = [
             "config_settings", 
         ]
@@ -35,7 +35,7 @@ class TestDoDatabaseCompare(unittest.TestCase):
         print (f"Difference Count ={ret_val}")
         assert(ret_val == 0)
 
-    def test_2a2(self):
+    def test_2a2_Critical_column_lists_language_specific(self):
         col_list = [
             "config_settings", 
         ]
@@ -43,7 +43,7 @@ class TestDoDatabaseCompare(unittest.TestCase):
         print (f"Difference Count ={ret_val}")
         assert(ret_val == 0)
 
-    def test_2b(self):
+    def test_2b_Productbase_Compare(self):
         col_list = [
                       "articleID", 
                       "active", 
@@ -87,7 +87,7 @@ class TestDoDatabaseCompare(unittest.TestCase):
         assert(ret_val == 0)
 
 
-    def test_3a(self):
+    def test_3a_compare_articles_on_localdev_but_not_stage(self):
         print ("Articles on LOCALDEV not on STAGE")
         col_list = [
                       "art_title"
@@ -97,7 +97,7 @@ class TestDoDatabaseCompare(unittest.TestCase):
         print (f"Difference Count ={ret_val}")
         assert(ret_val == 0)
 
-    def test_3b(self):
+    def test_3b_compare_articles_on_stage_but_not_localdev(self):
         print ("Articles on STAGE not on LOCALDEV")
         col_list = [
                       "art_title"

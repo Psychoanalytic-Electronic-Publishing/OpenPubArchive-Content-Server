@@ -158,7 +158,7 @@ class TestDatabaseSearchSpecialCases(unittest.TestCase):
         response_info = r["documentList"]["responseInfo"]
         response_set = r["documentList"]["responseSet"]
         print (response_info["fullCount"])
-        assert response_info["fullCount"] >= 130 and response_info["fullCount"] <= 154, f"Count: {response_info['fullCount']}" # just make sure there's a count
+        assert response_info["fullCount"] >= 130 and response_info["fullCount"] <= 165, f"Count: {response_info['fullCount']}" # just make sure there's a count
 
     def test_search_viewed_count_3_ranges(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?viewcount=2 TO 10&sourcecode=IJP')

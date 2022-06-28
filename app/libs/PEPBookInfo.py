@@ -1258,7 +1258,7 @@ class PEPBookInfo:
         retVal = None, None, None
         matchID = None
 
-        self.LastPYXRefTree = None # called with string, so reset tree.
+        # self.LastPYXRefTree = None # called with string, so reset tree.
         # fall through and process string
 
         if opasgenlib.is_empty(theReference):
@@ -1294,7 +1294,7 @@ class PEPBookInfo:
                 continue # (must keep looking)
 
             # Add an extra search of the entire reference; this can be used to "whittle down" false positives.
-            if not opasgenlib.is_empty(rgxExtra):
+            if isinstance(rgxExtra, re.Pattern):
                 m = rgxExtra.search(theReference)
                 if m != None:
                     if gDbg1: logger.info("*%s Matched Extra Pattern: %s)" % (bookID, rgxExtra.pattern))
@@ -1398,7 +1398,7 @@ class PEPBookInfo:
         This is used XML based references (most accurate
         """
 
-        self.LastPYXRefTree = None # reset saved tree.
+        # self.LastPYXRefTree = None # reset saved tree.
         matchID, sRatio, refobj = self.getPEPBookCodeXML(theReference=theReference, refText=refText)
 
         return matchID, sRatio, refobj

@@ -34,7 +34,7 @@ class TestOpasLoaderProgram(unittest.TestCase):
     
     """
     def test_process_sub(self):
-        result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '--sub=_PEPFree', '--nocheck'], capture_output=True)
+        result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '--sub=_PEPFree', '--nocheck', '--load'], capture_output=True)
         out = result.stdout.decode("UTF-8")
         err = result.stderr.decode("UTF-8")
         print ("Stdout:")
@@ -46,9 +46,9 @@ class TestOpasLoaderProgram(unittest.TestCase):
     def test_process_newroot(self):
         if CONFIG == "Local":
             #--nocheck -d X:\_PEPA1\_PEPa1v --sub=_PEPFree
-            result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '-dX:/_PEPA1/_PEPa1v', '--sub=_PEPFree', '--nocheck'], capture_output=True)
+            result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '-dX:/_PEPA1/_PEPa1v', '--sub=_PEPFree', '--nocheck', '--load'], capture_output=True)
         else:
-            result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '-dpep-web-xml', '--sub=_PEPFree', '--nocheck'], capture_output=True)
+            result = subprocess.run([sys.executable, '../opasDataLoader/opasDataLoader.py', '-dpep-web-xml', '--sub=_PEPFree', '--nocheck', '--load'], capture_output=True)
 
         out = result.stdout.decode("UTF-8")
         err = result.stderr.decode("UTF-8")

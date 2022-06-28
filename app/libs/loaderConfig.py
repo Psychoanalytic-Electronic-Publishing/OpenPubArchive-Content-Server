@@ -1,7 +1,12 @@
 
 # Configuration file for opasDataLoader
-default_build_pattern = "(bEXP_ARCH1|bSeriesTOC)"
+default_input_build_pattern = "(bKBD3|bSeriesTOC)"
+default_precompiled_input_build_pattern = "(bEXP_ARCH1|bSeriesTOC)"
+default_precompiled_input_build = "(bEXP_ARCH1)"
 default_process_pattern = "(bKBD3|bSeriesTOC)"
+default_input_build = "(bKBD3)"
+default_output_build = "(bEXP_ARCH1)"
+default_doctype = '<!DOCTYPE pepkbd3 SYSTEM "http://peparchive.org/pepa1dtd/pepkbd3.dtd">'
 
 # Global variables (for data and instances)
 options = None

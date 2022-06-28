@@ -52,7 +52,9 @@ class TestAPIStatus(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
+        print ("Checking PEPArchive")
         assert(response_info["count"] == 1)
+        print ("OK")
         
         # has current been loaded
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/IJP.103.0046A/')
@@ -61,7 +63,9 @@ class TestAPIStatus(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
+        print ("Checking PEPCurrent")
         assert(response_info["count"] == 1)
+        print ("OK")
         
         # have pep free docs been loaded?
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/PEPGRANTVS.001.0004A.xml/')
@@ -70,7 +74,9 @@ class TestAPIStatus(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
+        print ("Checking PEPFree")
         assert(response_info["count"] == 1)
+        print ("OK")
 
         # has special been loaded
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/IJPOPEN.003.0004A/')
@@ -79,16 +85,20 @@ class TestAPIStatus(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
+        print ("Checking IJPOpen")
         assert(response_info["count"] == 1)
+        print ("OK")
 
         # have pep offsite docs been loaded?        
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/OAJPSI.116.0322A/')
+        print ("Checking offsite docs")
         response = requests.get(full_URL, headers=headers)
         assert(response.ok == True)
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
+        print ("OK")
 
         # have stats been run?
         print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")
@@ -97,11 +107,13 @@ class TestAPIStatus(unittest.TestCase):
         # Confirm that the request-response cycle completed successfully.
         assert(response.ok == True)
         r = response.json()
+        print ("Checking if stats have been run")
         # print (r)
         print (f"Count: {r['documentList']['responseInfo']['count']}")
         print (f"Limit: {r['documentList']['responseInfo']['limit']}")
         print (f"ReturnedData: {r['documentList']['responseSet'][0]['stat']['art_cited_5']}")
         assert(r['documentList']['responseSet'][0]['stat']['art_cited_5'] >= 15)       
+        print ("OK")
 
        
 if __name__ == '__main__':

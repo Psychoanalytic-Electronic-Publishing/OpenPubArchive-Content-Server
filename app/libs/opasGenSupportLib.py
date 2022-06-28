@@ -20,6 +20,7 @@ import sys
 import os.path
 import re
 import logging
+import numbers
 logger = logging.getLogger(__name__)
 
 import time
@@ -43,6 +44,24 @@ reverseStr = lambda s: ''.join([s[i] for i in range(len(s)-1, -1, -1)])	# from h
 
 rgxNumStrSplit = re.compile("(?P<str1>[A-Z\-]*)(?P<num>[0-9]+)(?P<str2>[A-Z\-]*)", re.IGNORECASE)
 rgxTrim = re.compile("^\s+(?P<cleanStr>.*?)\s+$")
+
+#----------------------------------------------------------------------------------------
+def	do_escapes(data, hasEscapes=0):
+    retVal = data
+    if retVal != None:
+        if hasEscapes==0:
+            if re.search(r'\\',	retVal)	is not None:
+                retVal = re.sub(r'\\', r'\\\\',	retVal)
+        if re.search(r'"',	retVal)	is not None:
+            retVal = re.sub(r'(?P<pre>([^\\]|\A))"', r'\1\\"', retVal)
+        # if doubled, take care of second one here, and first in next set
+        # This extra effort has to be done because you have to watch for
+        # already-escaped slashes!
+        if re.search(r"''", retVal) is not None:
+            retVal = re.sub(r"''",	r"'\\'", retVal)
+        if re.search(r"'", retVal) is not None:
+            retVal = re.sub(r"(?P<pre>([^\\]|\A))'", r"\1\\'", retVal)
+    return retVal
 
 class DocumentID(object):
     """
@@ -745,10 +764,14 @@ def default(val, defVal):
 
 #-----------------------------------------------------------------------------
 def is_empty(arg):
-    if arg is None or arg == "":
-        return True
+    if not isinstance(arg, numbers.Number):
+        if arg is None or len(arg) == 0:
+            return True
+        else:
+            return False
     else:
         return False
+        
 
 
 #----------------------------------------------------------------------------

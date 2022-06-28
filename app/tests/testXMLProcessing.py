@@ -122,15 +122,15 @@ class TestXMLProcessing(unittest.TestCase):
         pycmd = r"e:\\usr3\\GitHub\\openpubarchive\\app\\env\\Scripts\\python.exe E:\\usr3\\GitHub\\openpubarchive\\app\\opasDataLoader\\opasDataLoader.py "
         data_file1 = r"--key CFP.012.0022A"
         # data_file2 = r"CFP.012.0022A(bKBD3).xml"
-        data_file3 = r"--sub _PEPCurrent\\CFP\\012.2022"
+        data_file3 = r"--sub _PEPFree\PEPGRANTVS"
         
         command_lines = [
-            ("Processing file", "bEXP_ARCH1", fr"{pycmd} {data_file1} --nocheck --verbose"),
-            ("Exporting", "bEXP_TEST2", fr"{pycmd} {data_file1} --nocheck --verbose --processxml --writeprocessed --inputbuild=bKBD3 --outputbuild=bEXP_TEST2"),
-            ("Processing file", "bEXP_TEST2", fr"{pycmd} {data_file1} --nocheck --verbose --inputbuild=bEXP_TEST2"),
-            ("Finished!", "56 references", fr"{pycmd} {data_file1} --nocheck --verbose --processxml --inputbuild=bKBD3"),
-            ("Finished!", "Imported 19", fr"{pycmd} {data_file3} --nocheck --verbose --processxml --rebuild"), # implies --inputbuild=bKBD3
-            ("Finished!","Imported 0", fr"{pycmd} {data_file3} --nocheck --verbose --processxml"), # should not reprocess if not changed
+            ("Processing file", "bEXP_ARCH1", fr"{pycmd} {data_file1} --nocheck --load --verbose"),
+            ("Exporting", "bEXP_TEST2", fr"{pycmd} {data_file1} --nocheck --verbose --smartload --outputbuild=(bEXP_TEST2)"),
+            ("Processing file", "bEXP_TEST2", fr"{pycmd} {data_file1} --nocheck --verbose --inputbuild=(bEXP_TEST2)"),
+            ("Finished!", "56 references", fr"{pycmd} {data_file1} --nocheck --verbose --smartload"),
+            ("Finished!", "Imported 19", fr"{pycmd} {data_file3} --nocheck --verbose --smartload --rebuild"), # implies --inputbuild=bKBD3
+            ("Finished!","Imported 0", fr"{pycmd} {data_file3} --nocheck --verbose --smartload"), # should not reprocess if not changed
         ]
         
         test_counter = 0

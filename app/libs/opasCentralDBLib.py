@@ -825,7 +825,7 @@ class opasCentralDB(object):
                ((
                        `r0`.`cited_document_id` IS NOT NULL 
                        ) 
-                   AND ( `r0`.`cited_document_id` <> 'None' ) 
+                   AND ( `r0`.`cited_document_id` != 'None' ) 
                    AND (
                    substr( `r0`.`cited_document_id`, 1, 3 ) NOT IN ( 'ZBK', 'IPL', 'SE.', 'GW.' ))) 
            GROUP BY

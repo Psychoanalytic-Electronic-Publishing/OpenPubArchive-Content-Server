@@ -4,8 +4,8 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0610/v2.1.163"   # semver versioning after date.
-__status__      = "Production"  
+__version__     = "2022.0628/v2.1.164"   # semver versioning after date.
+__status__      = "Development/Libs/Loader"  
 
 """
 Main entry module for PEP version of OPAS API

@@ -53,3 +53,5 @@ githib commit summary.txt
 app/back/main.py
 app/libs/styles/jats-archive-oasis-article1-mathml3flat-edited.dtd
 *.xpr
+app/libs/opasSplitPgxHelper.py
+app/libs/XMLArticle.py

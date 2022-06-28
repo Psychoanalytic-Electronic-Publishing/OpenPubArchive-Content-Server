@@ -20,10 +20,7 @@ __version__     = "2021.1228.1"
 __status__      = "Development"
 
 import sys
-sys.path.append('./solrpy')
-sys.path.append('../libs')
-sys.path.append('../config')
-
+sys.path.append("..") # Adds higher directory to python modules path.
 
 import re
 import logging
@@ -58,8 +55,6 @@ count_anchors = 0
 
 import smartsearch
 import smartsearchLib
-
-# from config import msgdb
 
 ocd = opasCentralDBLib.opasCentralDB()
 pat_prefix_amps = re.compile("^\s*&& ")
@@ -1989,7 +1984,6 @@ def get_excerpt_from_search_result(result: dict, documentListItem: models.Docume
      Substituted for dynamic generation of excerpt 2020-02-26
     """
     # make sure basic info has been retrieved
-    import msgdb
     if documentListItem.sourceTitle is None:
         documentListItem = get_base_article_info_from_search_result(result, documentListItem)
 
@@ -2004,6 +1998,7 @@ def get_excerpt_from_search_result(result: dict, documentListItem: models.Docume
         abstract = None
     else:
         if omit_abstract:
+            import msgdb
             art_excerpt = msgdb.get_user_message(msg_code=opasConfig.ACCESS_ABSTRACT_RESTRICTED_MESSAGE)
         
         heading = opasxmllib.get_running_head(source_title=documentListItem.sourceTitle,

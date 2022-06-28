@@ -41,6 +41,7 @@ import opasCentralDBLib
 import opasGenSupportLib as opasgenlib
 import opasXMLHelper as opasxmllib
 import loaderConfig
+import opasLocator
 
 import logging
 logger = logging.getLogger(__name__)
@@ -382,10 +383,10 @@ class ArticleInfo(object):
             self.art_vol_suffix = None
             
         if self.verbose and self.art_vol_title is not None:
-            print (f"   ...Volume title: {self.art_vol_title}")
+            print (f"\t...Volume title: {self.art_vol_title}")
     
         if self.verbose and self.art_issue_title is not None:
-            print (f"   ...Issue title: {self.art_issue_title}")
+            print (f"\t...Issue title: {self.art_issue_title}")
             
         self.art_doi = opasxmllib.xml_get_element_attr(artInfoNode, "doi", default_return=None) 
         self.art_issn = opasxmllib.xml_get_element_attr(artInfoNode, "ISSN", default_return=None) 
@@ -640,8 +641,17 @@ class ArticleInfo(object):
         else:
             self.art_qual = pepxml.xpath("//artbkinfo/@extract")
             if self.art_qual == []:
-                self.art_qual = None 
+                self.art_qual = None
+            else:
+                self.art_qual = str(opasLocator.Locator(self.art_qual[0]))
 
+        self.artinfo_bkinfo_next = pepxml.xpath("//artbkinfo/@next")
+        self.artinfo_bkinfo_prev = pepxml.xpath("//artbkinfo/@prev")
+        if self.artinfo_bkinfo_next != []:
+            self.artinfo_bkinfo_next = str(opasLocator.Locator(self.artinfo_bkinfo_next[0]))
+        if self.artinfo_bkinfo_prev != []:
+            self.artinfo_bkinfo_prev = str(opasLocator.Locator(self.artinfo_bkinfo_prev[0]))
+            
         # will be None if not a book extract
         # self.art_qual = None
         if self.art_qual is not None:
@@ -702,10 +712,16 @@ class ArticleInfo(object):
         self.bk_info_xml = opasxmllib.xml_xpath_return_xmlsingleton(pepxml, "/pepkbd3//artbkinfo") # all book info in instance
         # break it down a bit for the database
         self.main_toc_id = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//artbkinfo/@extract", None)
+        if self.main_toc_id is not None:
+            self.main_toc_id = str(opasLocator.Locator(self.main_toc_id))
+            
         self.bk_title = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//bktitle", None)
         self.bk_publisher = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//bkpubandloc", None)
         self.bk_seriestoc = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//artbkinfo/@seriestoc", None)
         self.bk_next_id = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artbkinfo/@next", None)
+        if self.bk_next_id is not None:
+            self.bk_next_id = opasLocator.Locator(self.bk_next_id)
+        
         # self.bk_pubyear = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//artbkinfo/bkpubyear", default_return=self.art_year_str)
         # hard code special cases SE/GW if they are not covered by the instances
         if self.bk_seriestoc is None:
@@ -714,23 +730,28 @@ class ArticleInfo(object):
             if self.src_code == "GW":
                 self.bk_seriestoc = "GW.000.0000A"
 #------------------------------------------------------------------------------------------------------
-def get_file_dates_solr(solrcore, filename=None):
+def get_file_dates_solr(solrcore, filename=None, art_id=None):
     """
     Fetch the article dates
     """
     ret_val = {}
     max_rows = 1000000
 
-    basename = os.path.basename(filename)
+    if filename is not None:
+        basename = os.path.basename(filename)
 
-    # these legal file name chars are special chars to Solr, so escape them!
-    b_escaped = basename.translate(str.maketrans({"(":  r"\(", 
-                                                  ")":  r"\)", 
-                                                  "-":  r"\-", 
-                                                  ":":  r"\:", 
-                                                  }))    
+        # these legal file name chars are special chars to Solr, so escape them!
+        b_escaped = basename.translate(str.maketrans({"(":  r"\(", 
+                                                      ")":  r"\)", 
+                                                      "-":  r"\-", 
+                                                      ":":  r"\:", 
+                                                      }))    
 
-    getFileInfoSOLR = f'art_level:1 && file_name:"{b_escaped}"'
+        getFileInfoSOLR = f'art_level:1 && file_name:"{b_escaped}"'
+    elif art_id is not None:
+        getFileInfoSOLR = f'art_level:1 && art_id:{art_id}'
+    else:
+        raise Exception("Must supply filename or art_id")
 
     try:
         results = solrcore.search(getFileInfoSOLR, fl="art_id, file_name, file_last_modified, timestamp", rows=max_rows)
@@ -755,7 +776,7 @@ def process_article_for_glossary_core(pepxml, artInfo, solr_gloss, fileXMLConten
     ret_val = False
     glossary_groups = pepxml.xpath("/pepkbd3//dictentrygrp")  
     group_count = len(glossary_groups)
-    msg = f"   ...Processing XML for Glossary Core. File has {group_count} groups."
+    msg = f"\t...Processing XML for Glossary Core. File has {group_count} groups."
     logger.info(msg)
     if verbose:
         print (msg)
@@ -842,7 +863,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
 
     """
     ret_val = False
-    msg = f"   ...Processing XML for Docs Core."
+    msg = f"\t...Processing XML for Docs Core."
     logger.info(msg)
     if verbose:
         print (msg)
@@ -961,7 +982,7 @@ def process_article_for_doc_core(pepxml, artInfo, solrcon, file_xml_contents, in
 
         child_list = children.child_list
         # indented status
-        msg = f"      -->Adding children, tags/counts: {children.tag_counts}"
+        msg = f"\t\t\t\t-->Adding children, tags/counts: {children.tag_counts}"
         logger.info(msg)
         if verbose:
             print (msg)
@@ -1234,7 +1255,7 @@ def process_info_for_author_core(pepxml, artInfo, solrAuthor, verbose=None):
     #<!-- ID = PEP articleID + authorID -->
     
     ret_val = False
-    msg = f"   ...Processing XML for Author Core."
+    msg = f"\t...Processing XML for Author Core."
     logger.info(msg)
     if verbose:
         print (msg)
@@ -1416,7 +1437,7 @@ def add_article_to_api_articles_table(ocd, artInfo, verbose=None):
       
     """
     ret_val = False
-    msg = f"   ...Processing metadata for Articles DB."
+    msg = f"\t...Processing metadata for Articles DB."
     logger.info(msg)
     if verbose:
         print (msg)
@@ -1653,7 +1674,7 @@ def garbage_collect_stat(ocd):
         logger.error(e)
         ret_val = False
     else:
-        print ("cleaned up artstat: removed article statistics for any article ids not in article table.")
+        print ("Cleaned up artstat: removed article statistics for any article ids not in article table.")
         
     return ret_val
 
@@ -1664,7 +1685,7 @@ def add_to_artstat_table(ocd, artInfo, verbose=None):
     """
     ret_val = False
     procname = "AddToArtStatDB"
-    msg = f"   ...Processing statistics for artStat table."
+    msg = f"\t...Processing statistics for artStat table."
     logger.info(msg)
     if verbose:
         print (msg)

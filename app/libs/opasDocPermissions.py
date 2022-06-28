@@ -11,8 +11,6 @@
 
 import sys
 sys.path.append("..") # Adds higher directory to python modules path.
-sys.path.append('../libs')
-sys.path.append('../config')
 
 import requests
 import datetime
@@ -55,6 +53,7 @@ from localsecrets import PADS_BASE_URL, PADS_TEST_ID, PADS_TEST_PW # , PADS_BASE
 base = PADS_BASE_URL
 # base = "http://development.org:9300"
 import opasCentralDBLib
+from config import msgdb
 ocd = opasCentralDBLib.opasCentralDB()
 
 def user_logged_in_per_header(request, session_id=None, caller_name="unknown") -> bool:

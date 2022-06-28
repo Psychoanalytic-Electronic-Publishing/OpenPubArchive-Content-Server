@@ -19,12 +19,16 @@ import sys, os.path
 import logging
 logger = logging.getLogger(programNameShort)
 
+global gDbg1
+gDbg1 = False
+
 import copy
 import string, re
 
 from opasConfig import gBookCodes, gSplitBooks, REFBOOK, REFBOOKSERIES, REFBOOKSERIESARTICLE, REFBOOKARTICLE, REFJOURNALARTICLE
 
 import PEPJournalData
+import PEPSplitBookData
 
 # Was importing this from PEPGlobals, but does not work in test situation when called from PEPJournalData (symbol generates an import error)  Try this.
 global gJrnlData
@@ -185,7 +189,7 @@ class Locator:
     #--------------------------------------------------------------------------------
     def __init__(self, strLocator=None, jrnlCode=None, jrnlVolSuffix="", jrnlVol=None, jrnlIss=None, pgVar="A",
                  pgStart=None, jrnlYear=None, localID=None, keepContext=1, forceRoman=False, notFatal=True,
-                 noStartingPageException=True, filename=None):
+                 noStartingPageException=True, filename=None, art_info=None, ocd=None):
         """
         Initialize the locator.  Make sure that other args, except keepcontext, are not specified if
             strLocator is.
@@ -194,6 +198,9 @@ class Locator:
 
         self.__reset()
         self.filename = filename
+        self.ocd = ocd
+        self.art_info = art_info # provide full information about the xml of the article we're dealing with
+
         if jrnlVolSuffix is None:
             jrnlVolSuffix = ""
 
@@ -219,14 +226,14 @@ class Locator:
             if isinstance(strLocator, str):  # supports string and unicode Was type(strLocator) == type(""):
                 self.decompile(strLocator)
             elif isinstance(strLocator, Locator):
-                self.decompile(repr(strLocator))
+                self.decompile(str(strLocator))
                 # try just returning the locator, save time!
                 #self = strLocator
             else:
                 try:
                     self.decompile(strLocator)
                 except:
-                    errMsg = "CODING ERROR: Bad conversion type %s for Locator: %s" % (type(strLocator), repr(strLocator))
+                    errMsg = "CODING ERROR: Bad conversion type %s for Locator: %s" % (type(strLocator), str(strLocator))
                     raise Exception(errMsg)
         else:
             if jrnlCode != None:
@@ -240,8 +247,8 @@ class Locator:
             self.jrnlIss = jrnlIss
             self.pgVar = pgVar
             # check if there needs to be a pgStart Exception, e.g., IJPOPEN
-            pgStart = pageStartException(jrnlCode, fullFilename=filename,
-                                        noExceptionPageStart=pgStart)
+            pgStart = pageStartException(jrnlCode, fullFilename=self.filename,
+                                         noExceptionPageStart=pgStart)
 
             if isinstance(pgStart, opasDocuments.PageNumber):
                 self.pgStart = pgStart
@@ -299,11 +306,11 @@ class Locator:
             return retVal
         elif isinstance(other, str):  # supports string and unicode Was type(other) == type(""):
             #print "Locator Compare - strings"
-            cmpTo = repr(self)
+            cmpTo = str(self)
         elif isinstance(other, Locator):
             #print "Locator Compare - Objects"
-            cmpTo = repr(self)
-            other = repr(other)
+            cmpTo = str(self)
+            other = str(other)
         else:
             raise Exception("Locator Compare - Mismatched Objects")
 
@@ -325,19 +332,19 @@ class Locator:
         if self.locatorType == 0:
             # no need for P0000 local ID!
             if self.__localIDRef is not None and self.__localIDRef != "P0000":
-                retVal = self.prefix + self.idxNamePrefix + self.articleID() + "." + repr(self.__localIDRef) + self.suffix
+                retVal = self.prefix + self.idxNamePrefix + self.articleID() + "." + str(self.__localIDRef) + self.suffix
             else:
                 try:
                     retVal = self.prefix + self.idxNamePrefix + self.articleID() + self.suffix
                 except Exception as e:
                     if self.articleID() is None:
-                        print ("Warning: No article ID to display")
+                        print (f"articleID() Warning: No article ID to display ({e})")
                         retVal = self.prefix + self.idxNamePrefix + "" + self.suffix
         # if its an index type (TOJ)
         else:
             raise Exception("TOJ Type locator request.")
 
-        return retVal
+        return str(retVal)
 
     #--------------------------------------------------------------------------------
     def __getslice__(self, start, end):
@@ -368,7 +375,8 @@ class Locator:
         else:
             tmpLoc = self.articleID()
             retVal = tmpLoc[index]
-        return retVal
+
+        return str(retVal)
 
 
     #--------------------------------------------------------------------------------
@@ -388,14 +396,15 @@ class Locator:
         """
         Return the length of the locator
         """
-        return len(repr(self))
+        return len(str(self))
 
     #--------------------------------------------------------------------------------
     def __standardize(self, oldStyleVar=0):
         """
         Make sure the attributes of this locator are all in standard form
         """
-
+        global gDbg1
+        
         # standardize number formats and make sure we fill in any field
         # that is not known but can be deduced
         if self.pgVar == None:
@@ -403,16 +412,16 @@ class Locator:
         else:
             if self.pgVar in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]:
                 # this is a numeric page variant, change to a letter.
-                #print "Old Variant: ", self.pgVar
+                if gDbg1: print ("Old Variant: ", self.pgVar)
                 val = int(self.pgVar)
                 self.pgVar = chr(ord("A") + val)
-                #print "New Variant: ", self.pgVar
+                if gDbg1: print ("New Variant: ", self.pgVar)
 
             elif isinstance(self.pgVar, int):	# numeric
                 raise Exception("Numeric variant.(%d)..add code" % self.pgVar)
 
         if oldStyleVar==1:
-            self.pgVar = repr(ord(self.pgVar) - ord("A"))
+            self.pgVar = str(ord(self.pgVar) - ord("A"))
             logger.info(f"Old Style Variant Requested: {self.pgVar}")
 
         if (self.jrnlVol is None and self.jrnlYear is not None and self.jrnlCode is None):
@@ -486,7 +495,7 @@ class Locator:
             elif self.jrnlVol != None:
                 self.jrnlYear = self.jrnlVol
             else:
-                raise "No data to calc year %s" % repr(self)
+                raise "No data to calc year %s" % str(self)
 
             if self.jrnlYear == None or self.jrnlYear == 0:
                 artIDParts = self.splitArticleID(includeLocalID=0)
@@ -528,9 +537,9 @@ class Locator:
                     errStr = "Incomplete/Invalid ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol.volID(), self.pgStart)
                 else:
                     errStr = "Incomplete/Invalid ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol, self.pgStart)
-    
+
                 logger.warning("Validating ID: %s/v%s/p%s" % (self.jrnlCode, self.jrnlVol.volID(), self.pgStart))
-    
+
                 self.validError = errStr
                 self.valid = 0
             else:
@@ -538,7 +547,7 @@ class Locator:
                 self.valid = 1
         except Exception as e:
             logger.error(f"Error validating Locator. {e}")
-    
+
         return self.valid
 
     #--------------------------------------------------------------------------------
@@ -560,7 +569,7 @@ class Locator:
             self.origLocator = self.articleID()
             #validate = 0
 
-            if opasgenlib.is_emptyOrZero(forceJrnlVol):
+            if opasgenlib.is_empty(forceJrnlVol) or forceJrnlVol == 0:
                 forceJrnlVol=self.jrnlVol
 
             if forceJrnlVolSuffix==None:
@@ -600,7 +609,7 @@ class Locator:
             logger.error(f"Severe - Locator - {errMsg} ")
             retVal = ""
 
-        return retVal
+        return str(retVal)
 
     #--------------------------------------------------------------------------------
     def isBook(self):
@@ -684,7 +693,7 @@ class Locator:
         if opasgenlib.is_empty(jrnlCode):
             errMsg =  "Bad JrnlCode '%s'" % (jrnlCode)
             logger.error(f"Severe - Locator - {errMsg} ")
-            
+
 
         retVal = gSplitBooks.get("%s%s" % (jrnlCode, jrnlVol), None)
         #	print "Current Locator: ", self
@@ -753,16 +762,15 @@ class Locator:
                     patStr = "%s.%s.%s%s%04d%s"
                     retVal = patStr % theArticleIDTuple
 
-                except:
+                except Exception as e:
                     # 9/5/2003 : removed raise from here; just log them, since this routine
                     # is used for reference locators as well as primary locators.
-                    logger.error("""jrnlCode: '%s'
-				                           jrnlVol: '%s'
-                                            prePrefix: '%s'
-                                            romanPrefix: '%s'
-                                            pgStart: '%s'
-                                            pgVar: '%s'""" % theArticleIDTuple
-                                        )
+                    logger.error(f"""jrnlCode: '%s'
+                                     jrnlVol: '%s'
+                                     prePrefix: '%s'
+                                     romanPrefix: '%s'
+                                     pgStart: '%s'
+                                     pgVar: '%s' {e}""" % theArticleIDTuple)
             else:
                 # this could be a Jump to TOJ
                 #retVal = "%s.%s.%02d%s" % (	self.idxNamePrefix,
@@ -774,12 +782,15 @@ class Locator:
                 else:
                     retVal = errReturn
         else: # Cannot make locator
-            if errReturn == None:
-                errMsg = "Cannot form locator.  %s" % self.validError
-                logger.error(f"Severe - Locator - {errMsg} ")
+            #if errReturn == None:
+            #else:
+            if errReturn is not None:
                 retVal = errReturn
             else:
-                retVal = errReturn
+                #errMsg = "Cannot form locator.  %s" % self.validError
+                #logger.error(f"Severe - Locator - {errMsg} ")
+                #retVal = errReturn
+                retVal = None
 
             self.notFatal = holdFatal
 
@@ -817,7 +828,7 @@ class Locator:
             self.pgStart = newLoc.pgStart
 
         #Return either article ID or localID as appropriate.
-        return repr(self)
+        return str(self)
 
     #--------------------------------------------------------------------------------
     def decompile(self, theStr):
@@ -871,7 +882,7 @@ class Locator:
 
             localIDSuffix = lm.group("localID")
             if localIDSuffix != None:
-                self.__localIDRef = PEPLocalID.LocalID(localIDSuffix)
+                self.__localIDRef = opasLocalID.LocalID(localIDSuffix)
             else:
                 self.__localIDRef = None
 
@@ -894,7 +905,7 @@ class Locator:
                 #print self.jrnlYear
 
                 if self.jrnlVol.volSuffix != "" and self.jrnlVol.volSuffix != "S": # not for Supplements
-                    jrnlIss = repr(ord(self.jrnlVol.volSuffix[0]) - ord("A") + 1)
+                    jrnlIss = str(ord(self.jrnlVol.volSuffix[0]) - ord("A") + 1)
                     if jrnlIss > 0 and jrnlIss < 8: # only allow 8 issues, otherwise must be "special" like Supplement
                         self.jrnlIss = jrnlIss
 
@@ -903,32 +914,35 @@ class Locator:
         self.__standardize()
         # validate if it's not a TOJ locator
         if self.locatorType != 1:
-            self.validate()
+            if not self.isSplitBook():
+                self.validate()
+            else:
+                pass
 
         return retVal
 
-    #--------------------------------------------------------------------------------
-    def isCurrentlyPartOfPEP(self):
-        """
-        Return True if this journal is currently PEP
+    ##--------------------------------------------------------------------------------
+    #def isCurrentlyPartOfPEP(self):
+        #"""
+        #Return True if this journal is currently PEP
 
-        	>>> a = Locator("IPL.052.0001")
-        	>>> print a.isCurrentlyPartOfPEP()
-        	True
-        	>>> a = Locator("IPL.052.0000")
-        	>>> print a.isCurrentlyPartOfPEP()
-        	True
-        """
-        # see if its a string
-        baseCode = self.baseCode()
+                #>>> a = Locator("IPL.052.0001")
+                #>>> print a.isCurrentlyPartOfPEP()
+                #True
+                #>>> a = Locator("IPL.052.0000")
+                #>>> print a.isCurrentlyPartOfPEP()
+                #True
+        #"""
+        ## see if its a string
+        #baseCode = self.baseCode()
 
-        if gBooksNotYetInPEP.get(baseCode) == 0:
-            # this is not in PEP
-            retVal = False
-        else:
-            retVal = True
+        #if gBooksNotYetInPEP.get(baseCode) == 0:
+            ## this is not in PEP
+            #retVal = False
+        #else:
+            #retVal = True
 
-        return retVal
+        #return retVal
 
     #--------------------------------------------------------------------------------
     def localIDType(self):
@@ -948,7 +962,7 @@ class Locator:
             return None
 
     #--------------------------------------------------------------------------------
-    def localID(self, localIDRef=None, saveLocalID=0, noArticleID=False, checkSplitInThisBiblioDB=None):
+    def localID(self, localIDRef=None, saveLocalID=0, noArticleID=False, ocd=None):
         """
         Return a string that is a standard locator and/or local id (current article ID + localID)
 
@@ -974,23 +988,24 @@ class Locator:
         """
         retVal = ""
         retValSuffix = ""
+        if ocd is None:
+            ocd = self.ocd
 
-        if checkSplitInThisBiblioDB==True:
-            checkSplitInThisBiblioDB = libPEPBiblioDB.BiblioDB()
+        split_book_data = PEPSplitBookData.SplitBookData(ocd)
 
         if localIDRef != None:
             # parameter Specified.
-            localIDRefTemp = PEPLocalID.LocalID(localIDRef)
+            localIDRefTemp = opasLocalID.LocalID(localIDRef)
             localIDRef = localIDRefTemp
             if saveLocalID == 1:
                 self.__localIDRef = localIDRefTemp
 
-            retValSuffix = localIDRefTemp
+            retValSuffix = str(localIDRefTemp)
 
         else: # get any stored localIDRef
             if self.__localIDRef != None:
                 #print "Using Stored LocalID: ", self.__localIDRef
-                localIDRef = retValSuffix = self.__localIDRef
+                localIDRef = retValSuffix = str(self.__localIDRef)
 
         if opasgenlib.is_empty(retValSuffix):
             # no local ID, none stored
@@ -1004,21 +1019,22 @@ class Locator:
                     retValSep = ""
 
                 # default return, unless split is called for
-                retVal = self.articleID(notFatal=True) + retValSep + repr(retValSuffix)
+                retVal = self.articleID(notFatal=True) + retValSep + str(retValSuffix)
 
                 # nested checks are to do as little as possible unless absolutely necessary
                 # the worst case scenario is having to look it up in the DB and that's time consuming.
-                if checkSplitInThisBiblioDB != None and localIDRef.localIDType[0] == "P":
+                if localIDRef.localIDType[0] == "P":
                     if self.isSplitBook():
                         # lookup where this page is found!
-                        newLoc = Locator(self.forceArticleID(forcePgStart=localIDRef.localIDVal))
-                        splitArticleID = checkSplitInThisBiblioDB.splitPageData.getSplitBookInstance(newLoc.jrnlCode, newLoc.jrnlVol, retValSuffix[1:])
+                        newLoc = Locator(self.forceArticleID(forcePgStart=localIDRef.localIDVal), art_info=self.art_info)
+                        splitArticleID = split_book_data.getSplitBookInstance(jrnlCode=newLoc.jrnlCode, vol=str(newLoc.jrnlVol), pageID=retValSuffix[1:])
+                        #splitArticleID = checkSplitInThisBiblioDB.splitPageData.getSplitBookInstance(newLoc.jrnlCode, newLoc.jrnlVol, retValSuffix[1:])
                         if splitArticleID != None:
-                            retVal = Locator(splitArticleID).articleID() + retValSep + repr(retValSuffix)
+                            retVal = Locator(splitArticleID).articleID() + retValSep + str(retValSuffix)
                         else:
                             #see if the page # is an exception!
                             newLoc = Locator(self.forceArticleID(forcePgStart=localIDRef.localIDVal))
-                            splitArticleID = checkSplitInThisBiblioDB.splitPageData.getSplitBookInstance(newLoc.jrnlCode, newLoc.jrnlVol, retValSuffix[1:])
+                            splitArticleID = split_book_data.getSplitBookInstance(newLoc.jrnlCode, newLoc.jrnlVol, retValSuffix[1:])
                             logger.warning("The page lookup for %s.%s didn't find any instances" % (newLoc.baseCode(), retValSuffix))
                     #else:
                     #	print "Not split book"
@@ -1080,9 +1096,9 @@ class Locator:
         (similar to the way "split" works.)
         """
         if includeLocalID==1:
-            return string.split(self.localID(), ".")
+            return self.localID().split(".")
         else:
-            return string.split(self.articleID(), ".")
+            return self.articleID().split(".")
 
     #--------------------------------------------------------------------------------
     def splitLocator(self, includeLocalID=0):
@@ -1184,7 +1200,7 @@ def isLocator(idString):
         if idString != None:
             if not isinstance(idString, str):  # supports string and unicode Was if type(idString) != type(""):
                 #print "isLocator sent type: ", type(idString)
-                tStr = repr(idString)
+                tStr = str(idString)
             else:
                 tStr = idString
 

@@ -539,7 +539,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
         count1 = response_info["fullCount"]
-        assert (count1 >= 114 and count1 <= 150), f"Count: {count1}" 
+        assert (count1 >= 114 and count1 <= 175), f"Count: {count1}" 
 
     def test_14f_example_smart_search_with_colons(self):
         """
@@ -553,7 +553,7 @@ class TestDatabaseSmartSearch(unittest.TestCase):
         print (f'Smarttext: {response_info["description"]}')
         print (response_info["fullCount"])
         count1 = response_info["fullCount"]
-        assert (count1 >= 114 and count1 <= 150), f"Count: {count1}" 
+        assert (count1 >= 114 and count1 <= 175), f"Count: {count1}" 
 
     def test_14g_example_smart_search_with_colons(self):
         full_URL = base_plus_endpoint_encoded('/v2/Database/Search/?smarttext="Treating the Untreatable: Healing in the Realms of Madness"')

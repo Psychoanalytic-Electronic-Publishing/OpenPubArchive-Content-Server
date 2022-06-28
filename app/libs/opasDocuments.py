@@ -269,7 +269,11 @@ class VolumeNumber:
 
     #--------------------------------------------------------------------------------
     def volID(self, noSuffix=False, noLeadingZeros=False):
-        if self.volSuffix == None:
+        if self.volNumber is None:
+            logger.error("Volume number is None")
+            raise ValueError()
+        
+        if self.volSuffix is None:
             if 1: raise ValueError("None Suffix ERROR!")
             self.volSuffix = ""
 
@@ -560,7 +564,7 @@ class PageNumber:
             return True
         else:
             return False
-    def __ne__(self, other): # For x != y OR x <> y
+    def __ne__(self, other): # For x != y OR x != y
         if not isinstance(other, PageNumber):
             other = PageNumber(other)
         if (self.pgPrefix == "R" or self.pgNumber < 0) and other.pgPrefix != "R":
@@ -1067,7 +1071,7 @@ class PageRange:
         else:
             return False
         
-    def __ne__(self, other): # For x != y OR x <> y
+    def __ne__(self, other): # For x != y OR x != y
         if not isinstance(other, PageRange):
             other = PageRange(other)
         if self.pgEnd.pgNumber !=  other.pgStart.pgNumber and self.pgEnd.pgNumber != other.pgEnd.pgNumber:

@@ -70,15 +70,6 @@ class LocalID:
 
 	if the checkSplitInThisBiblioDB parameter is specified, it will return
 
-	 >>> (LocalID("B0005") > LocalID("B0006"))
-	 False
-	 >>> (LocalID("B0005") > LocalID("B004"))
-	 True
-	 >>> (LocalID("B0005") > LocalID("B005"))
-	 False
-	 >>> (LocalID("B0005") == LocalID("B005"))
-	 True
-
 	"""
 
     SHORTIDPREFIXLETTERS = "ABFGHNPTOY"
@@ -152,9 +143,9 @@ class LocalID:
         >>> LocalID("B3")
         B0003
         >>> LocalID("F001")
-        F0001
+        F00001
         >>> LocalID("FN001")
-        FN001
+        FN00001
 
         """
 
@@ -254,10 +245,10 @@ class LocalID:
             retVal = 1
             return retVal
         elif isinstance(other, str):  # supports string and unicode
-            cmpTo = repr(self)
+            cmpTo = str(self)
         elif isinstance(other, LocalID):
-            cmpTo = repr(self)
-            other = repr(other)
+            cmpTo = str(self)
+            other = str(other)
         else:
             raise Exception("LocalID Compare - Mismatched Objects")
 
@@ -286,7 +277,7 @@ class LocalID:
         if self.localIDStr == None:
             return ""
         else:
-            return self.localIDStr
+            return str(self.localIDStr)
 
     #--------------------------------------------------------------------------------
     def __len__(self):
@@ -413,8 +404,6 @@ class LocalID:
             else:
                 prefix = parts[0]
                 if prefix == "TFN": prefix="O"
-                #print "IDString: %s / Parts %s" % (idString, parts)
-                #print "IDString: %s / Parts 1.0:  %s" % (idString, parts[1][0])
                 if not parts[1][0].isdigits():
                     parts[1] = parts[1][1:]
                     # Create new ID--Add 500 to avoid collisions
@@ -425,7 +414,6 @@ class LocalID:
                 try:
                     num = int(parts[1]) + offsetPre
                     retVal = "%s%03d" % (prefix[0], num)
-                    #print "...Fixed ID:", retVal
                 except Exception as e:
                     # for now, lets see what happens if we allow "a" etc. suffixes through
                     # get last char
@@ -470,24 +458,24 @@ def splitLocalID(idString):
       First member is locator, or None
       Second member is localID or None or idString if it's not a Locator
 
-    >>> print splitLocalID("gobbely gook")
+    >>> print (splitLocalID("gobbely gook"))
     (None, 'gobbely gook')
 
-    >>> print splitLocalID("zbk.052.0001A.P0607")
+    >>> print (splitLocalID("zbk.052.0001A.P0607"))
     ('zbk.052.0001A', 'P0607')
 
     test abberant local ID from TNF
-    >>> print splitLocalID("zbk.052.0001A.FN0607")
+    >>> print (splitLocalID("zbk.052.0001A.FN0607"))
     ('zbk.052.0001A', 'FN0607')
 
-    >>> print splitLocalID("zbk.052.0001A")
+    >>> print (splitLocalID("zbk.052.0001A"))
     ('zbk.052.0001A', None)
     """
 
     locatorRef = None
     # make sure its a string
     if not isinstance(idString, str):  # supports string and unicode
-        idString = repr(idString)
+        idString = str(idString)
 
     m = opasLocator.Locator.rgxLocator.match(idString)
     if m != None:
@@ -530,7 +518,7 @@ def isLocalID(idString):
     retVal = False  #default return
 
     if not isinstance(idString, str):  # supports string and unicode Was type(idString)!=type(""):
-        idString = repr(idString)
+        idString = str(idString)
 
     #print "IDString: ", idString
     if not PEPAuthorID.isAuthorIDString(idString):

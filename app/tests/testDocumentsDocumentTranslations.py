@@ -34,7 +34,7 @@ class TestGetDocumentTranslations(unittest.TestCase):
         data = opasAPISupportLib.documents_get_document(self.doc_with_translations, session_info=session_info, option_flags=opasConfig.OPTION_2_RETURN_TRANSLATION_SET)
         # Confirm that the request-response cycle completed successfully.
         assert data.documents.responseInfo.fullCount == 1, f"Document {self.doc_with_translations} not found"
-        assert len(data.documents.responseSet[0].translationSet) >= 3, f"Document {self.doc_with_translations} has two few translations returned"
+        assert len(data.documents.responseSet[0].translationSet) >= 3, f"Document {self.doc_with_translations} has too few translations returned"
 
     def test_api_translation_request(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Document/{self.doc_with_translations}/?translations=true')

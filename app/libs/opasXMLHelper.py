@@ -196,13 +196,13 @@ class FirstPageCollector:
                     self.para_count += 1
 
                 if self.para_count > self.para_limit:
-                    msg = f"   ...Paragraph limit {self.para_limit} for excerpt reached. Para Count: {self.para_count}, Char Count: {self.char_count}"
+                    msg = f"\t\t...Paragraph limit {self.para_limit} for excerpt reached. Para Count: {self.para_count}, Char Count: {self.char_count}"
                     logger.debug(msg)
                     if show_dbg_messages: print (msg)
                     self.close_up = True
     
                 if self.char_count > self.char_limit:
-                    msg = f"   ...Character limit {self.char_limit} for excerpt reached or exceeded, at end of para. Para Count: {self.para_count}, Char Count: {self.char_count}."
+                    msg = f"\t\t...Character limit {self.char_limit} for excerpt reached or exceeded, at end of para. Para Count: {self.para_count}, Char Count: {self.char_count}."
                     logger.debug(msg)
                     if show_dbg_messages: print (msg)
                     self.close_up = True
@@ -1205,6 +1205,7 @@ def get_first_page_excerpt_from_doc_root(elem_or_xmlstr, ret_format="HTML"):
     # NOT CURRENTLY USED in OPAS (2020-09-14)
     # Finally Removed 2021-06-03
     #"""
+
     
 def xml_elem_or_str_to_text(elem_or_xmlstr, default_return=""):
     """

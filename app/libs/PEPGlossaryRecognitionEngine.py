@@ -167,7 +167,7 @@ class GlossaryRecognitionEngine(UserDict):
 
         """
         retVal = []
-        # changed 2010-09-28: use <> 1 to allow the terms with massive occurrences, but still have a mechanism to disallow others.
+        # changed 2010-09-28: use != 1 to allow the terms with massive occurrences, but still have a mechanism to disallow others.
         selTerms = r"""select distinct lower(regex), length(regex), glossary_group, groups_group_id from vw_opasloader_glossary_group_terms
                        where `regex_ignore` is NULL
                        order by length(regex) DESC"""
@@ -459,7 +459,7 @@ class GlossaryRecognitionEngine(UserDict):
                         #logger.debug("impx in special tags detected. Skipping markup")
                         #continue
                     else:
-                        # sciSupport.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
+                        # #sciSupport\.trace("%s%sMarked Abbr %s in %s: " % (60*"-","\n", rc.pattern, nodeText2), outlineLevel=1, debugVar=gDbg7)
                         changes = True
                         count += 1
                         node_text = nodeText2
@@ -513,7 +513,7 @@ class GlossaryRecognitionEngine(UserDict):
 
         endTime = time.time()
         timeDiff = endTime - startTime
-        print (f"Time to do glossary markup: {timeDiff}")
+        if gDbg1: print (f"Time to do glossary markup: {timeDiff}")
 
         return ret_val, ret_status # return new reparsed_xml if ret_status is true, orig parsed_xml if not.
 
