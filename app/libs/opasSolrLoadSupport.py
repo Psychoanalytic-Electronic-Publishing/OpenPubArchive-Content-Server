@@ -332,7 +332,7 @@ class ArticleInfo(object):
             self.src_title_full = None
             self.src_type = "book"
             self.src_embargo = None
-            logger.error("ArticleInfoError: Source %s not found in source info db.  Assumed to be an offsite book.  Or you can add to the api_productbase table in the RDS/MySQL DB", self.src_code)
+            logger.warning("ArticleInfoError: Source %s not found in source info db.  Assumed to be an offsite book.  Or you can add to the api_productbase table in the RDS/MySQL DB", self.src_code)
         except Exception as err:
             logger.error("ArticleInfoError: Problem with this files source info. File skipped. (%s)", err)
             #processingErrorCount += 1
@@ -643,7 +643,11 @@ class ArticleInfo(object):
             if self.art_qual == []:
                 self.art_qual = None
             else:
-                self.art_qual = str(opasLocator.Locator(self.art_qual[0]))
+                self.art_qual = str(self.art_qual[0])
+                #try:
+                    #self.art_qual = str(opasLocator.Locator(self.art_qual))
+                #except Exception as e:
+                    #print (e)
 
         self.artinfo_bkinfo_next = pepxml.xpath("//artbkinfo/@next")
         self.artinfo_bkinfo_prev = pepxml.xpath("//artbkinfo/@prev")
@@ -713,14 +717,15 @@ class ArticleInfo(object):
         # break it down a bit for the database
         self.main_toc_id = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//artbkinfo/@extract", None)
         if self.main_toc_id is not None:
-            self.main_toc_id = str(opasLocator.Locator(self.main_toc_id))
+            self.main_toc_id = str(self.main_toc_id)
+            #self.main_toc_id = str(opasLocator.Locator(self.main_toc_id))
             
         self.bk_title = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//bktitle", None)
         self.bk_publisher = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//bkpubandloc", None)
         self.bk_seriestoc = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//artbkinfo/@seriestoc", None)
         self.bk_next_id = opasxmllib.xml_xpath_return_textsingleton(pepxml, "//artbkinfo/@next", None)
-        if self.bk_next_id is not None:
-            self.bk_next_id = opasLocator.Locator(self.bk_next_id)
+        #if self.bk_next_id is not None:
+            #self.bk_next_id = opasLocator.Locator(self.bk_next_id)
         
         # self.bk_pubyear = opasxmllib.xml_xpath_return_textsingleton(pepxml, "/pepkbd3//artbkinfo/bkpubyear", default_return=self.art_year_str)
         # hard code special cases SE/GW if they are not covered by the instances

@@ -5,6 +5,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import unittest
 #from unitTestConfig import base_api, base_plus_endpoint_encoded, headers
 #import opasAPISupportLib
@@ -19,6 +20,7 @@ import opasCentralDBLib
 import PEPGlossaryRecognitionEngine
 import lxml
 from lxml import etree
+from pathlib import Path
 
 ocd = opasCentralDBLib.opasCentralDB()
 
@@ -119,18 +121,41 @@ class TestXMLProcessing(unittest.TestCase):
         
         """
         import shlex, subprocess
-        pycmd = r"e:\\usr3\\GitHub\\openpubarchive\\app\\env\\Scripts\\python.exe E:\\usr3\\GitHub\\openpubarchive\\app\\opasDataLoader\\opasDataLoader.py "
-        data_file1 = r"--key CFP.012.0022A"
-        # data_file2 = r"CFP.012.0022A(bKBD3).xml"
-        data_file3 = r"--sub _PEPFree\PEPGRANTVS"
+        import sys
+        import glob
+        pycmd = Path(sys.executable)
+        curr_folder = Path(os.getcwd())
+        load_prog = Path("../opasDataLoader/opasDataLoader.py")
+        pycmd = f"{pycmd} {load_prog}"
         
+        
+        data_file1 = r"--key CFP.012.0022A"
+        data_folder = curr_folder / "testxml"
+        delete_exp_arch1_files = curr_folder / "testxml/*ARCH1*.xml"
+        data_file3 = fr"--dataroot {data_folder}"
+        data_file2 = curr_folder / "testxml/PEPGRANTVS.001.0017A(bKBD3).xml"
+        data_file2 = f"--only {data_file2}"
+        print (f"Data file3 folder: {data_file3}")
+               
         command_lines = [
+            ("Processing file", "bEXP_TEST2", fr"{pycmd} {data_file2} --nocheck --verbose --load --outputbuild=(bEXP_TEST2)"),
+            # Force build via REBUILD option (or RELOAD) forces the build
+            ("Finished!", "Smart compiled, saved and loaded 10 documents", fr"{pycmd} {data_file3} --nocheck --verbose --rebuild --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
+            # The parens () around builds now optional, they will be added if missing
+            ("Finished!", "Smart compiled, saved and loaded 0 documents (bEXP_TEST1)", fr"{pycmd} {data_file3} --nocheck --verbose --smartload --inputbuild=bKBD3 --outputbuild=bEXP_TEST1"),
+            ("Finished!", "Smart compiled, saved and loaded 10 documents (bEXP_ARCH1)", fr"{pycmd} {data_file3} --nocheck --verbose --rebuild --inputbuild=(bKBD3) --outputbuild=(bEXP_ARCH1)"),
+            # bEXP_ARCH1 files deleted automatically after above command
+            # bEXP_TEST1 files still in place
+            ("Finished!","loaded 0", fr"{pycmd} {data_file3} --nocheck --verbose --smartload --outputbuild=(bEXP_TEST1)"), # should not reprocess if not changed
+            ("Finished!", "Smart compiled, saved and loaded 10", fr"{pycmd} {data_file3} --nocheck --reload --verbose --outputbuild=(bEXP_TEST1)"), # force rebuild, implied bKBD3 input
+            
+            ("Finished!", "56 references", fr"{pycmd} {data_file1} --nocheck --verbose --smartload --outputbuild=(bEXP_TEST1)"),
+            #  note it always builds when there's only one file specified.
+            ("Exporting!", "Writing compiled file", fr"{pycmd} {data_file1} --nocheck --verbose --smartload --outputbuild=(bEXP_TEST1)"),
             ("Processing file", "bEXP_ARCH1", fr"{pycmd} {data_file1} --nocheck --load --verbose"),
-            ("Exporting", "bEXP_TEST2", fr"{pycmd} {data_file1} --nocheck --verbose --smartload --outputbuild=(bEXP_TEST2)"),
-            ("Processing file", "bEXP_TEST2", fr"{pycmd} {data_file1} --nocheck --verbose --inputbuild=(bEXP_TEST2)"),
-            ("Finished!", "56 references", fr"{pycmd} {data_file1} --nocheck --verbose --smartload"),
-            ("Finished!", "Imported 19", fr"{pycmd} {data_file3} --nocheck --verbose --smartload --rebuild"), # implies --inputbuild=bKBD3
-            ("Finished!","Imported 0", fr"{pycmd} {data_file3} --nocheck --verbose --smartload"), # should not reprocess if not changed
+            # Already built, should not load any
+            ("Finished!", "Smart compiled, saved and loaded 0 documents", fr"{pycmd} {data_file3} --nocheck --verbose --smartload"),
+            ("Finished!", "Smart compiled, saved and loaded 0 documents", fr"{pycmd} {data_file3} --nocheck --verbose --smartload --inputbuild=(bKBD3) --outputbuild=(bEXP_TEST1)"),
         ]
         
         test_counter = 0
@@ -140,19 +165,35 @@ class TestXMLProcessing(unittest.TestCase):
             test_line = command_line_tuple[0]
             test_text = command_line_tuple[1]
             command_line = command_line_tuple[2]
-            args = shlex.split(command_line)
+            args = shlex.split(command_line, posix=False)
             print(f"Test {test_counter}. RUN: opasDataLoader {args[2:]}")
             p = subprocess.Popen(args, stdout=subprocess.PIPE, shell=True) # Success!
             out, err = p.communicate()
-            out_str = str(out, 'utf-8')
+            try:
+                out_str = str(out, 'utf-8')
+            except Exception as e:
+                out_str = str(out)
+            
             result = out_str.split('\r\n')
+            
             for lin in result:
-                if "Processing file" in lin or "Writing file" in lin or "Finished!" in lin or "Exporting!" in lin:
+                if "Processing file" in lin or "Writing file" in lin or "Finished!" in lin or "Exporting!" or "Loaded" in lin:
                     print(lin)
            
                 if test_line in lin:
                     assert test_text in lin
                     print (f"Test {test_counter} passed.")
+                    if "bEXP_ARCH1" in lin:
+                        print (f"Deleting temporary test files: {delete_exp_arch1_files}")
+                        file_list = glob.glob(str(f"{delete_exp_arch1_files}"))
+                        count = 0
+                        for file_path in file_list:
+                            try:
+                                os.remove(file_path)
+                                count += 1
+                            except:
+                                print("Error while deleting file : ", file_path)                        
+                        print (f"Deleted {count} temporary test files.")
 
 if __name__ == '__main__':
     unittest.main()

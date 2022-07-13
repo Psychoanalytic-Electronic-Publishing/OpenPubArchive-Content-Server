@@ -572,7 +572,7 @@ class opasCentralDB(object):
 
             if author is not None:
                 author = re.sub("[^\.]\*", ".*", author, flags=re.IGNORECASE)
-                author_clause = f" AND hdgauthor rlike {author}"
+                author_clause = f" AND hdgauthor rlike '{author}'"
             else:
                 author_clause = ""
                 
@@ -591,7 +591,7 @@ class opasCentralDB(object):
             
             # select_clause = "textref, lastweek, lastmonth, last6months, last12months, lastcalyear"
             # Note that WHERE 1 = 1 is used since clauses all start with AND
-            sql = f"""SELECT {select_clause} 
+            sql = f"""SELECT DISTINCT {select_clause} 
                       FROM vw_stat_most_viewed
                       WHERE 1 = 1
                       {doc_type_clause}
@@ -756,7 +756,7 @@ class opasCentralDB(object):
                 more_than_clause = ""
                 
             # Note that WHERE 1 = 1 is used since clauses all start with AND
-            sql = f"""SELECT {select_clause} 
+            sql = f"""SELECT DISTINCT {select_clause} 
                       FROM vw_stat_cited_crosstab_with_details
                       WHERE 1 = 1
                       {doc_type_clause}

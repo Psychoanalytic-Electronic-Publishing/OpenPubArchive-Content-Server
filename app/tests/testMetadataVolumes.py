@@ -89,7 +89,7 @@ class TestMetadataVolumes(unittest.TestCase):
         # test return
         r = response.json()
         print (f"SE Volume Count: {r['volumeList']['responseInfo']['fullCount']}")
-        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_SE + 1) # 24 vols of SE + new overview vol 0
+        assert(r['volumeList']['responseInfo']['fullCount'] == unitTestConfig.VOL_COUNT_SE) # 24 vols of SE
 
     def test_0_meta_volumes_api_IPL(self): 
         # ---------------------------------------------------------------------------------------

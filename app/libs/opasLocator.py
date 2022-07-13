@@ -199,6 +199,8 @@ class Locator:
         self.__reset()
         self.filename = filename
         self.ocd = ocd
+        self_copy = copy.copy(self)
+        
         self.art_info = art_info # provide full information about the xml of the article we're dealing with
 
         if jrnlVolSuffix is None:

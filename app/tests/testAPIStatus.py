@@ -99,6 +99,17 @@ class TestAPIStatus(unittest.TestCase):
         response_set = r["documents"]["responseSet"] 
         assert(response_info["count"] == 1)
         print ("OK")
+        
+        # has the glossary been loaded?
+        full_URL = base_plus_endpoint_encoded('/v2/Database/Glossary/Search/?fulltext1=consciousness')
+        print ("Checking the glossary")
+        # Confirm that the request-response cycle completed successfully.
+        response = requests.get(full_URL, headers=headers)
+        assert(response.ok == True)
+        r = response.json()
+        print (f"Count: {r['documentList']['responseInfo']['fullCount']} Count complete: {r['documentList']['responseInfo']['fullCountComplete']}")
+        assert(r['documentList']['responseInfo']['fullCount'] >= 21)
+        assert(r['documentList']['responseInfo']['fullCountComplete'] == False)
 
         # have stats been run?
         print (f"Running: {sys._getframe(  ).f_code.co_name} at {datetime.now()}")

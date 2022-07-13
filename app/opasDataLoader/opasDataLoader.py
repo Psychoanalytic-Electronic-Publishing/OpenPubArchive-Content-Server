@@ -165,7 +165,7 @@ def get_defaults(options, default_input_build_pattern, default_input_build):
     else:
         input_build_pattern = options.input_build_pattern
         if options.input_build is None:
-            selected_input_build = default_input_build
+            selected_input_build = input_build_pattern
         else:
             if options.input_build == default_input_build:
                 # this is an error, no doubt, they are not Precompiled
@@ -497,7 +497,7 @@ def main():
     timeStart = time.time()
 
     if options.no_files == False: # process and/or load files (no_files just generates a whats_new list, no processing or loading)
-        print (f"Locating files for processing at {start_folder} with build pattern {options.input_build}. Started at ({time.ctime()}).")
+        print (f"Locating files for processing at {start_folder} with build pattern {selected_input_build}. Started at ({time.ctime()}).")
         if options.file_key is not None:  
             # print (f"File Key Specified: {options.file_key}")
             # Changed from opasDataLoader (reading in bKBD3 files rather than EXP_ARCH1)
@@ -617,7 +617,8 @@ def main():
                             smart_file_rebuild = True
                         else:
                             smart_file_rebuild = False
-                            print (f"SmartLoad: No need to rebuild file: {outputfname}. Loading only.")
+                            if options.display_verbose:
+                                print (f"SmartLoad: Loading only. No need to rebuild: {outputfname}.")
                 
                 # Read file    
                 fileXMLContents = fs.get_file_contents(n.filespec)
@@ -677,7 +678,9 @@ def main():
                         fname = re.sub("\(b.*\)", options.output_build, fname)
                         
                         msg = f"Exporting! Writing compiled file to {fname}"
-                        print (msg)
+                        if options.display_verbose:
+                            print (msg)
+
                         root = parsed_xml.getroottree()
                         root.write(fname, encoding="utf-8", method="xml", pretty_print=True, xml_declaration=True, doctype=options.output_doctype)
                     
@@ -864,7 +867,7 @@ def main():
                 logger.info(msg)
                 print (msg)
             else:
-                msg = f"Finished! {post_action_verb} {processed_files_count} documents. Total file load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
+                msg = f"Finished! {post_action_verb} {processed_files_count} documents {options.output_build}. Total file load time: {elapsed_seconds:.2f} secs ({elapsed_minutes:.2f} minutes.)"
                 logger.info(msg) 
                 print (msg)
             if processed_files_count > 0:
@@ -949,26 +952,27 @@ if __name__ == "__main__":
     parser.add_option("--whatsnewfile", dest="whatsnewfile", default=None,
                       help="File name to force the file and path rather than a generated name for the log of files added in the last n days.")
     # New OpasLoader2 Options
-    parser.add_option("--inputbuildpattern", dest="input_build_pattern", default=None,
+    parser.add_option("--inputbuildpattern", dest="input_build_pattern", default="(bEXP_ARCH1|bSeriesTOC)",
                       help="Pattern of the build specifier to load (input), e.g., (bEXP_ARCH1|bSeriesTOC), or (bKBD3|bSeriesTOC)")
     
     parser.add_option("--inputbuild", dest="input_build", default=None,
-                      help=f"Build specifier to load (input)")
+                      help=f"Build specifier to load (input), e.g., (bKBD3) or just bKBD3")
     
     parser.add_option("--outputbuild", dest="output_build", default=loaderConfig.default_output_build,
-                      help=f"Specific output build specification, default='{loaderConfig.default_output_build}'.")
+                      help=f"Specific output build specification, default='{loaderConfig.default_output_build}'. e.g., (bEXP_ARCH1) or just bEXP_ARCH1.")
     
-    parser.add_option("--load", "--loadxml", action="store_true", dest="loadprecompiled", default=False,
+    # --load option still the default.  Need to keep for backwards compatibility, at least for now (7/2022)
+    parser.add_option("--load", "--loadxml", action="store_true", dest="loadprecompiled", default=True,
                       help="Load already compiled XML, e.g. (bEXP_ARCH1) into database.")
 
     parser.add_option("--smartload", "--smartbuild", action="store_true", dest="smartload", default=False,
-                      help="Load already compiled XML, or if needed, compile XML and load into database.")
+                      help="Load already processed XML (e.g., bEXP_ARCH1), or if needed, compile unprocessed XML (e.g., bKBD3) into processed format, and load into database.")
 
     parser.add_option("--compiletoload", "--compileload", action="store_true", dest="compiletoload", default=False,
-                      help="Compile input XML (e.g., (bKBD3) to a processed build of XML (don't save) AND load into database.")
+                      help="Compile input XML (e.g., (bKBD3) to a processed build of XML (don't save) AND load into database.  Much slower, since it must always process, not recommended.")
     
     parser.add_option("--compiletosave", "--compilesave", action="store_true", dest="compiletosave", default=False,
-                      help="Compile input XML (e.g., (bKBD3) to processed XML. Just save compiled XML to the output build (e.g., (bEXP_ARCH1).")
+                      help="Compile input XML (e.g., (bKBD3) to processed XML. Just save compiled XML to the output build (e.g., (bEXP_ARCH1), for later loading")
 
     parser.add_option("--compiletorebuild", "--compilerebuild", action="store_true", dest="compiletorebuild", default=False,
                       help="Compile input XML (e.g., (bKBD3) to a processed build of XML, Save, AND load into database.")
@@ -999,10 +1003,20 @@ if __name__ == "__main__":
         logger.error("Bad output buildname. Using default.")
         options.output_build = '(bEXP_ARCH1)'
         
-    if options.output_build[0] != "(" and options.output_build[-1] != ")":
-        print ("Warning: output build should have parenthesized format like (bEXP_ARCH1). Adding ()")
-        options.output_build = f"({options.output_build})"
+    if options.output_build is not None and (options.output_build[0] != "(" or options.output_build[-1] != ")"):
+        print ("Warning: output build should have parenthesized format like (bEXP_ARCH1). Adding () as needed.")
+        if options.output_build[0] != "(":
+            options.output_build = f"({options.output_build}"
+        if options.output_build[-1] != ")":
+            options.output_build = f"{options.output_build})"
     
+    if options.input_build is not None and (options.input_build[0] != "(" or options.input_build[-1] != ")"):
+        print ("Warning: input build should have parenthesized format like (bKBD3). Adding () as needed.")
+        if options.input_build[0] != "(":
+            options.input_build = f"({options.input_build}"
+        if options.input_build[-1] != ")":
+            options.input_build = f"{options.input_build})"
+
     if options.glossary_only and options.file_key is None:
         options.file_key = "ZBK.069"
 

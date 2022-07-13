@@ -133,6 +133,7 @@ class FlexFileSystem(object):
         """
         Search for file; return None if not found, filename/path if found.
         """
+        ret_val = None
         if path_root is None:
             path_root = self.root
            

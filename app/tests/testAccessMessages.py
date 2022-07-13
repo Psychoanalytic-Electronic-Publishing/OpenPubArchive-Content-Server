@@ -246,6 +246,19 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         assert (response_set["accessClassification"] == 'archive')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
+        # ijpopen document
+        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJPOPEN.004.0008A/?return_format=XML")
+        response = requests.get(full_URL, headers=headers)
+        r = response.json()
+        response_info = r["documents"]["responseInfo"]
+        response_set = r["documents"]["responseSet"][0]
+        #print(f'Classification: {response_set["accessClassification"]}')
+        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        assert (response_set["accessLimited"] == False)
+        assert (response_set["accessClassification"] == 'special')
+        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+
         # free document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/PEPGRANTVS.001.0007A/?return_format=XML")
         response = requests.get(full_URL, headers=headers)
@@ -259,20 +272,7 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'free')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
-        
-        # ijpopen document
-        full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJPOPEN.004.0008A/?return_format=XML")
-        response = requests.get(full_URL, headers=headers)
-        r = response.json()
-        response_info = r["documents"]["responseInfo"]
-        response_set = r["documents"]["responseSet"][0]
-        #print(f'Classification: {response_set["accessClassification"]}')
-        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
-        assert (response_set["accessLimited"] == False)
-        assert (response_set["accessClassification"] == 'special')
-        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
+        message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'      
 
     def test_014A_get_archive_subscriber_only_permission_manually_proof_messages(self):
         print ("Login peparchive subscriber user!")

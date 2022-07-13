@@ -39,11 +39,10 @@ import opasLocator
 from opasLocator import Locator
 import opasGenSupportLib as opasgenlib
 import opasSolrLoadSupport
-
 import PEPBookInfo
 import PEPAuthorID 
 import PEPGlossaryRecognitionEngine
-#import PEPSplitBookData  - Module not done and may not be needed.
+import PEPSplitBookData  # Module not done and may not be needed.
 import opasLocalID
 
 import opasConfig
