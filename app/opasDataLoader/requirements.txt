@@ -31,7 +31,7 @@ idna==2.10
 #
 jmespath==0.10.0
 #
-lxml==4.6.5
+lxml==4.9.1
 nameparser==1.0.6
 namesparser==1.0.0
 #
