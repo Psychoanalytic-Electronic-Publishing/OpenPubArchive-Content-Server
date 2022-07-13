@@ -31,13 +31,13 @@ idna==2.10
 #
 jmespath==0.10.0
 #
-lxml==4.6.5
+lxml~=4.9.1  # update per dependabot  from 4.6.5
 nameparser==1.0.6
 namesparser==1.0.0
 #
 #
 # Required by pandas numpy and pytz installed when numpy is installed (2020-08-31)
-numpy==1.21.0
+numpy==1.22.0 # upgrade per dependabot alert
 pandas==1.1.1
 pytz==2020.1
 #
