@@ -110,28 +110,28 @@ class ClientConfigs(BaseModel):
     session_id: str
     last_update: datetime = None
 
-class Biblioxml(BaseModel):
-    art_id: str = None
-    bib_local_id: str = None 
-    art_year: int = 0
-    bib_rx: str = None
-    bib_rxcf: str = None
-    bib_sourcecode: str = None
-    bib_authors: str = None
-    bib_articletitle: str = None
-    title: str = None
-    full_ref_text: str = None
-    bib_sourcetype: str = None
-    bib_sourcetitle: str = None
-    bib_authors_xml: str = None
-    full_ref_xml: str = None
-    bib_pgrg: str = None
-    doi: str = None
-    bib_year: str = None
-    bib_year_int: int = 0
-    bib_volume: str = None
-    bib_publisher: str = None
-    last_update: datetime = None
+#class Biblioxml(BaseModel):
+    #art_id: str = None
+    #bib_local_id: str = None 
+    #art_year: int = 0
+    #bib_rx: str = None
+    #bib_rxcf: str = None
+    #bib_sourcecode: str = None
+    #bib_authors: str = None
+    #bib_articletitle: str = None
+    #title: str = None
+    #full_ref_text: str = None
+    #bib_sourcetype: str = None
+    #bib_sourcetitle: str = None
+    #bib_authors_xml: str = None
+    #full_ref_xml: str = None
+    #bib_pgrg: str = None
+    #doi: str = None
+    #bib_year: str = None
+    #bib_year_int: int = 0
+    #bib_volume: str = None
+    #bib_publisher: str = None
+    #last_update: datetime = None
 
 # Deleted since article table being deprecated 2020-08-09    
 #class MostCitedArticlesWithDetails(MostCitedArticles):

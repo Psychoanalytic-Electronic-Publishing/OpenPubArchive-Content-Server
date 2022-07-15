@@ -28,9 +28,13 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
           with forced order in the names.
     
     """
+    userid = localsecrets.PADS_TEST_ARCHIVEONLY
+    userpw = localsecrets.PADS_TEST_ARCHIVEONLY_PW
+    usertype = "Registered user"
+    print (f"Login PADS_TEST_ARCHIVEONLY! {userid} - {usertype}")
+    sessID, headers, session_info = test_login(username=userid, password=userpw)
     search_term = "test"
-    print (f"User for tests: {localsecrets.PADS_TEST_ARCHIVEONLY}")
-    # Embargoed files (removed IJPOPen for example, xml flag:embargo=true)
+
     def test_001B_download_embargoed_document_PDF(self):
         full_URL = base_plus_endpoint_encoded(f'/v2/Documents/Downloads/PDF/APA.068.0027A/')
         response = requests.get(full_URL, headers=headers)
@@ -209,11 +213,13 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         print(f'Description: {response_set["accessLimitedDescription"]}\n')
        
     def test_013A_get_ijpopen_only_permission_manually_proof_messages(self):
-        print ("Login IJPOPen only user!")
         usertype = "IJPOpen Only subscriber"
         message_collection[usertype] = {}
-        
-        sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_IJPOPENONLY, password=localsecrets.PADS_TEST_IJPOPENONLY_PW)
+        userid = localsecrets.PADS_TEST_IJPOPENONLY
+        userpw = localsecrets.PADS_TEST_IJPOPENONLY_PW
+        usertype = "IJPOpen only"
+        print (f"Login PADS_TEST_IJPOPENONLY! {userid} - {usertype}")
+        sessID, headers, session_info = test_login(username=userid, password=userpw)
         # Try to return IJPOPEN, should be ok
 
         # pepcurrent document
@@ -267,19 +273,20 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         r = response.json()
         response_info = r["documents"]["responseInfo"]
         response_set = r["documents"]["responseSet"][0]
-        #print(f'Classification: {response_set["accessClassification"]}\n')
-        #print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
-        #print(f'Description: {response_set["accessLimitedDescription"]}\n')
+        print(f'Classification: {response_set["accessClassification"]}\n')
+        print(f'Reason:\n   {response_set["accessLimitedReason"]}\n')
+        print(f'Description: {response_set["accessLimitedDescription"]}\n')
         assert (response_set["accessLimited"] == False)
         assert (response_set["accessClassification"] == 'free')
         message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'      
 
     def test_014A_get_archive_subscriber_only_permission_manually_proof_messages(self):
-        print ("Login peparchive subscriber user!")
-        usertype = "archive subscriber"
         message_collection[usertype] = {}
-        
-        sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_ARCHIVEONLY, password=localsecrets.PADS_TEST_ARCHIVEONLY_PW)
+        usertype = "archive subscriber"
+        userid = localsecrets.PADS_TEST_ARCHIVEONLY
+        userpw = localsecrets.PADS_TEST_ARCHIVEONLY_PW
+        print (f"Login PADS_TEST_ARCHIVEONLY! {userid} - {usertype}")
+        sessID, headers, session_info = test_login(username=userid, password=userpw)
         # Try to return IJPOPEN, should be ok
 
         # pepcurrent document
@@ -341,11 +348,13 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
     def test_015A_get_pepall_permission_manually_proof_messages(self):
-        userid = localsecrets.PADS_TEST_ARCHIVEANDCURRENT
         usertype = "All Access user"
-        print (f"Login pep all access user {userid} {usertype}!")
         message_collection[usertype] = {}
-        sessID, headers, session_info = test_login(userid, password=localsecrets.PADS_TEST_ARCHIVEANDCURRENT_PW)
+        userid = localsecrets.PADS_TEST_ARCHIVEANDCURRENT
+        userpw = localsecrets.PADS_TEST_ARCHIVEANDCURRENT_PW
+        print (f"Login PADS_TEST_ARCHIVEANDCURRENT! {userid} - {usertype}")
+        sessID, headers, session_info = test_login(username=userid, password=userpw)
+
         # pepcurrent document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/AJP.080.0001A/?return_format=XML")
         response = requests.get(full_URL, headers=headers)
@@ -410,13 +419,13 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         #message_collection[usertype][response_set["accessClassification"]] = f'Reason:\n   {response_set["accessLimitedReason"]}\n'
 
     def test_016A_get_registered_user_permission_manually_proof_messages(self):
-        userid = localsecrets.PADS_TEST_REGISTEREDUSER
-        usertype = "Registered user"
-        print (f"Login registered user {userid}, {usertype}!")
         # global message_collection
         message_collection[usertype] = {}
-        
-        sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_REGISTEREDUSER, password=localsecrets.PADS_TEST_REGISTEREDUSER_PW)
+        userid = localsecrets.PADS_TEST_REGISTEREDUSER
+        userpw = localsecrets.PADS_TEST_REGISTEREDUSER_PW
+        usertype = "Registered user"
+        print (f"Login PADS_TEST_REGISTEREDUSER! {userid} - {usertype}")
+        sessID, headers, session_info = test_login(username=userid, password=userpw)
         # Try to return IJPOPEN
         # ijpopen document
         full_URL = base_plus_endpoint_encoded(f"/v2/Documents/Document/IJPOPEN.004.0008A/?return_format=XML")
@@ -480,8 +489,6 @@ class TestAccessMessageDisplay_To_INSPECT_MANUALLY(unittest.TestCase):
         usertype = "Non-Logged-in-user"
         # global message_collection
         message_collection[usertype] = {}
-        
-        #sessID, headers, session_info = test_login(username=localsecrets.PADS_TEST_REGISTEREDUSER, password=localsecrets.PADS_TEST_REGISTEREDUSER_PW)
         headers = get_headers_not_logged_in()
         if test_logout(sessID):
             # Try to return IJPOPEN

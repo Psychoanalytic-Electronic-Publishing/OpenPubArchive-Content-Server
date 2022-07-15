@@ -106,6 +106,35 @@ class TimePeriod(Enum):
     twenty = '20'
     alltime = 'all'
 
+#--------------------------------------------------------------------
+# Biblio records, moved from modelsOpasCentralPydantic
+#--------------------------------------------------------------------
+class BiblioxmlGeneric(BaseModel):
+    row: dict = Field({}, title="Fully flexible content row from Database")
+
+class Biblioxml(BaseModel):
+    art_id: str = Field(None)
+    bib_local_id: str = Field(None)
+    art_year: int = Field(0)
+    bib_rx: str = Field(None)
+    bib_rxcf: str = Field(None)
+    bib_sourcecode: str = None
+    bib_authors: str = Field(None)
+    bib_articletitle: str = Field(None)
+    title: str = Field(None)
+    full_ref_text: str = Field(None)
+    bib_sourcetype: str = Field(None)
+    bib_sourcetitle: str = Field(None)
+    bib_authors_xml: str = Field(None)
+    full_ref_xml: str = Field(None)
+    bib_pgrg: str = Field(None)
+    doi: str = Field(None)
+    bib_year: str = Field(None)
+    bib_year_int: int = Field(0)
+    bib_volume: str = Field(None)
+    bib_publisher: str = Field(None)
+    last_update: datetime = Field(None)
+
 #-------------------------------------------------------
 # Error Return classes (Can also return "No Error", 200 httpcode)
 #-------------------------------------------------------
@@ -563,7 +592,6 @@ class JournalInfoList(BaseModel):
     sourceInfo: JournalInfoStruct
 
 #-------------------------------------------------------
-
 class ReportListItem(BaseModel):
     row: dict = Field({}, title="Fully flexible content report row from Database")
     
@@ -573,11 +601,34 @@ class ReportStruct(BaseModel):
 
 class Report(BaseModel):
     report: ReportStruct
+
+# Tried this method when the normal mapping method was yielding {} in each row.  
+# started yielding empty rows, but worked before: ret_val = [model(**row) for row in curs.fetchall()]
+# explicit method worked: ret_val = [model(row=row) for row in curs.fetchall()] 
+# 
+# This workaround worked but with many complications that kept escalating.
+#import copy
+#from copy import deepcopy
+#from typing import Any, Dict
+
+#class ReportListItem_Alternate_Method(BaseModel):
+    #__root__: Dict[Any, Any]
+
+    #def __iter__(self):
+        #return iter(self.__root__)
+
+    #def __getattr__(self, item):
+        #return self.__root__[item]
     
-    #responseInfo: ResponseInfo
-    #responseSet: List[VolumeListItem] = []   
-    #reportTitle: str = Field(None, title="")
-    #reportData: List[ReportRow] = [] # ReportListStruct
+    #def __deepcopy__(self, item):
+        #dpcpy = self.__class__()
+        #item[id(self)] = dpcpy
+        #for attr in dir(self):
+            #if not attr.startswith('_'):
+                #value = getattr(self, attr)
+                #setattr(dpcpy, attr, copy.deepcopy(value, item))
+        #return dpcpy        
+ 
 
 #-------------------------------------------------------
 # This is the model (SolrQuerySpec) 

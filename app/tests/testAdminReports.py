@@ -50,6 +50,7 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
+        assert(response_set[0]["row"]["return_status_code"] == 200) # to validate content is in record
 
     def test01b_session_log_report_matchstr(self):
         # note api_key is required, but already in headers
@@ -61,6 +62,7 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
+        assert(response_set[0]["row"]["return_status_code"] == 200) # to validate content is in record
 
     def test01b_session_log_report_download(self):
         # note api_key is required, but already in headers
@@ -80,6 +82,7 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
+        assert(response_set[0]["row"]["type"] == "Document")
 
     def test03_document_view__stat_report(self):
         # note api_key is required, but already in headers
@@ -91,6 +94,7 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
+        assert(response_set[0]["row"]["views"] >= 1)  # to validate content is in record
 
     def test04_user_searches_report(self):
         # note api_key is required, but already in headers
@@ -102,6 +106,7 @@ class TestReports(unittest.TestCase):
         response_info = r["report"]["responseInfo"]
         response_set = r["report"]["responseSet"]
         assert(response_info["count"] >= 1)
+        assert(response_set[0]["row"]["return_status_code"] == 200)
 
     def test05_session_log_report_endpointid(self):
         # note api_key is required, but already in headers
@@ -153,8 +158,8 @@ class TestReports(unittest.TestCase):
     def test07_session_log_report_dateformats(self):
         # note api_key is required, but already in headers
         import datetime
-        from datetime import date, timedelta
-        dt1 = datetime.datetime.now() - timedelta(15)
+        from datetime import timedelta
+        dt1 = datetime.datetime.now() - timedelta(30)
         dt2 = datetime.datetime.now() - timedelta(7)
         df1 = dt1.strftime("%Y-%m-%d")
         print (df1)

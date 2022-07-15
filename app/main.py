@@ -4,7 +4,7 @@
 __author__      = "Neil R. Shapiro"
 __copyright__   = "Copyright 2019-2022, Psychoanalytic Electronic Publishing"
 __license__     = "Apache 2.0"
-__version__     = "2022.0713/v2.1.166"   # semver versioning after date.
+__version__     = "2022.0715/v2.1.167"   # semver versioning after date.
 __status__      = "Development/Libs/Loader"  
 
 """
@@ -871,7 +871,7 @@ async def admin_reports(response: Response,
         else:
             # this comes back as a list of ReportListItems
             ts = time.time()
-            results = ocd.get_select_as_list_of_models(select, model=models.ReportListItem)
+            results = ocd.get_select_as_list_of_models(select, model=models.ReportListItem, model_type="Generic")
             limited_count = len(results)
             if count > 0:
                 full_count_complete_checked = limited_count >= count
@@ -5845,7 +5845,9 @@ if __name__ == "__main__":
     print (f"Configuration used: {CONFIG}")
     print (f"Version: {__version__}")
     import fastapi
+    import pydantic
     print (f"FastAPI Version {fastapi.__version__}")
+    print (f"Pydantic Version {pydantic.__version__}")
     
     try:
         if opasConfig.DEBUG_TRACE:

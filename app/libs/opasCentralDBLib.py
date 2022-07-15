@@ -1066,9 +1066,17 @@ class opasCentralDB(object):
         # return session model object
         return ret_val # None or Session Object
         
-    def get_select_as_list_of_models(self, sqlSelect: str, model):
+    #------------------------------------------------------------------------------------------------------
+    def get_select_as_list_of_models(self, sqlSelect: str, model, model_type="Structured"):
         """
         Generic retrieval from database, into dict
+        
+        if model is explicit, i.e., not a generic dict, this works: 
+            ret_val = [model(**row) for row in rows]
+        if model is a dict (generic) this works
+            ret_val = [model(row=row) for row in rows]
+
+        Not sure why!  But only call this with a generic dict based model
         
         >>> ocd = opasCentralDB()
         >>> records = ocd.get_select_as_list_of_models(sqlSelect="SELECT * from vw_reports_session_activity;", model=models.ReportListItem)
@@ -1088,10 +1096,12 @@ class opasCentralDB(object):
             if warnings:
                 for warning in warnings:
                     logger.warning(warning)
-                    
-            ret_val = [model(**row) for row in curs.fetchall()]
-            #ret_val = [model(row=row) for row in rows]
-            
+            rows = curs.fetchall()
+            if model_type == "Generic":
+                ret_val = [model(row=row) for row in rows]
+            else: # structured
+                ret_val = [model(**row) for row in rows]
+                
         self.close_connection(caller_name=fname) # make sure connection is closed
 
         # return session model object
@@ -1113,7 +1123,7 @@ class opasCentralDB(object):
                      WHERE art_id = '{article_id}' {local_id_clause}
                      """
     
-        results = self.get_select_as_list_of_models(select, model=modelsOpasCentralPydantic.Biblioxml)
+        results = self.get_select_as_list_of_models(select, model=models.Biblioxml)
         
         ret_val = results
     
